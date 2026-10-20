@@ -1,0 +1,30 @@
+{
+  "C1_semantic_contract": "PASS_DEFERRED_OBSERVED_CHECKS",
+  "C2_C4_mean_seconds": 42.57514192708333,
+  "arm": "full",
+  "cpu_mock_endpoint_arithmetic": null,
+  "cycle_2_seconds": 42.40702734375001,
+  "cycle_walls_seconds": [
+    47.20363671875,
+    42.40702734375001,
+    42.693757812499996,
+    42.624640624999984
+  ],
+  "cycles_in_same_process": 4,
+  "driver_free_sampling_scope": "FINAL_BOUNDARY_ONLY_NOT_CYCLE_MINIMUM",
+  "effective_plan_sha256": "5310e4181485259086ff2a6a5ee3e627403c6f67302492f773e24e58568f4490",
+  "errors": [],
+  "evidence_kind": "NATIVE",
+  "final_boundary_driver_free_min_bytes": 512098304,
+  "formal_timing_eligible": false,
+  "independent_initializations": 1,
+  "native_descriptive_timing_eligible": true,
+  "numerical_status": "REVIEW_NOT_STRICT_EQUIVALENCE",
+  "observed_peak_allocated_bytes": 37747405312,
+  "observed_peak_reserved_bytes": 40877686784,
+  "profiler": false,
+  "rank_count": 16,
+  "schema_version": "distillschedule.livewan_system_factorial_r2.v1",
+  "source_head": "a62cafeea6e0aeb1f0708e845f6eacf483494440",
+  "status": "PASS"
+}

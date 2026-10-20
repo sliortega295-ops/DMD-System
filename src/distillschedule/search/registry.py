@@ -73,6 +73,13 @@ def candidates(workload: str) -> tuple[Candidate, ...]:
 
 
 def get_candidate(workload: str, candidate_id: str) -> Candidate:
+    if workload == LIVEWAN and candidate_id == "c51":
+        from distillschedule.runtime.livewan_c51_bundle import source_template, VARIANT
+        raw = source_template()
+        kernels = tuple(sorted(v["name"] for v in raw["metadata"].values()
+                               if isinstance(v, dict) and v.get("enabled") and "name" in v))
+        return Candidate("c51", LIVEWAN, "8g8score", kernels, ("pointwise", "compute"),
+                         "c34", "accepted_c51_full_bundle_v1", VARIANT)
     from .helios_implementation import NO_GAN, GAN, HeliosImplementation
     if workload in (NO_GAN,GAN) and candidate_id.startswith("joint-helios"):
         impl = HeliosImplementation.parse(candidate_id)
@@ -120,6 +127,8 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     if candidate.workload == WAN:
         from .wan_implementation import is_generated, WanImplementation
         joint = WanImplementation.parse(candidate.id) if is_generated(candidate.id) else None
+        require(joint is None or not joint.candidate_bundle.enabled,
+                "incumbent bundle uses task-bound workloads native calibrate/plan/run; legacy profile lowering is not admitted")
         p["topology"]["placement"] = candidate.placement
         if candidate.id == "fsdp-reference" or (joint is not None and joint.placement == "fsdp"):
             p["topology"].update(model_replication="world16_full_shard",
@@ -169,6 +178,15 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
                                  })
         if is_baseline:
             template = "livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
+        elif candidate.id == "c51":
+            from distillschedule.runtime.livewan_c51_bundle import PLAN, receipt_contract
+            template = Path(PLAN).name
+            runtime["planner_c51_bundle"] = receipt_contract()
+            p["historical"] = dict(formal_speedup_eligible=False,
+                scope="NO_MATCHING_INTEGRATION_MEASUREMENT; HISTORICAL_SECONDS_ARE_NOT_COSTS")
+            p["required_assets"]["score_flash_attn3_kernel"] = dict(
+                environment="DISTILLSCHEDULE_SCORE_FA3_KERNEL", kind="directory",
+                identity_file="metadata.json", fingerprint_required=True)
         else:
             template = "livewan_wan13b_14b_sf_dmd_" + candidate.variant.replace("-", "_") + ".json"
         runtime["typed_plan"] = "configs/distillschedule/plans/" + template

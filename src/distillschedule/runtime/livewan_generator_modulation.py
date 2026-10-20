@@ -146,7 +146,9 @@ def model_runtime_scope(torch, student):
             yield
 
 
-def runtime_receipt_errors(r, *, rank, cycles):
+def runtime_receipt_errors(r, *, rank, cycles, request=None):
+    from distillschedule.search.livewan_request import LiveWanRequest
+    allowed = (request or LiveWanRequest()).kernel_scope_calls("modulation")
     if rank >= 8:
         return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C32 changed Score scope']
     calls = r.get('scope_forward_calls', [])
@@ -154,7 +156,7 @@ def runtime_receipt_errors(r, *, rank, cycles):
         or r.get('execution_status') != 'PASS' or r.get('scope_entries') != 10*cycles
         or r.get('scope_exits') != 10*cycles or r.get('active') is not False
         or r.get('scope_failures') != 0 or r.get('contract_failures') != 0
-        or len(calls) != 10*cycles or any(c not in (1281, 1586, 1891) for c in calls)
+        or len(calls) != 10*cycles or any(c not in allowed for c in calls)
         or r.get('calls') != sum(calls)):
         return ['C32 actual no-grad modulation call/scope/precision contract failed']
     return []

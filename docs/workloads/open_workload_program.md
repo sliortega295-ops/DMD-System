@@ -9,6 +9,10 @@ optimization candidates, placement choices or a model-specific scheduler.
 Python loops/branches instantiate the actual workload from parameters before
 planning. Unresolved data-dependent control flow is not guessed.
 
+For a bounded Student1/FakeN detached-score loop, the optional
+[DMD semantic builder](open_workload_dmd_builder.md) constructs these same calls
+from user-owned forward, noising, loss and history hooks; it selects no strategy.
+
 ```bash
 python scripts/distillctl.py workloads native program auto \
   --factory examples/open_workloads/video_input_gradient.py:build \
@@ -53,12 +57,16 @@ requires explicit --execute; no implicit Hub download or cluster allocation.
 The open callable backend now executes local programs and explicitly allocated
 multi-process data-parallel programs. For admitted module-forward contracts it
 matches replicated post-backward reduction, DDP asynchronous reduction and FSDP2
-reshard/keep-forward layouts. These use the SAME Program, calibrator, search
+reshard/keep-forward layouts, plus topology-admitted HSDP2 and per-module layout
+assignments. These use the SAME Program, calibrator, search
 service and call executor, with extra completion edges for reducer lifetimes.
 See [Distributed open workloads](open_workload_distributed.md) for exact
-contracts, tested execution, examples and remaining restrictions. Generic HSDP,
-role-pool partition and cross-pool execution are not implemented. The original
-workload-specific routes remain available; no five-model GPU parity is implied.
+contracts, CPU/Gloo coverage, examples and remaining restrictions. The separate
+[RoleTask/RoleFunctions route](open_role_pools.md) implements bounded role-pool
+partitioning and cross-pool VJP transport; arbitrary Workload graphs are not
+automatically lowered to it. A100/H100 validation of these generic capabilities
+is NOT_RUN. Original workload-specific routes remain available; no five-model
+GPU parity is implied.
 
 `immutable_modules` and `replay_safe` are semantic promises verified where
 possible, not automatic inference of all Python side effects. All relevant

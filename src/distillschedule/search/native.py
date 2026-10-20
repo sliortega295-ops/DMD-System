@@ -59,6 +59,15 @@ def checked_summary(receipt: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     require(all(summary.get("integration_binding", {}).get(k) == v for k, v in expected.items()),
             "native summary does not bind this execution")
     require(summary.get("status") == "PASS" and not summary.get("errors"), "native summary failed")
+    if receipt["profile_id"] == LIVEWAN and "request" in receipt.get("fully_resolved_profile", {}).get("contract", {}):
+        from .livewan_request import LiveWanRequest
+        from distillschedule.runtime.livewan_geometry import receipt_errors
+        request = LiveWanRequest.from_dict(receipt["fully_resolved_profile"]["contract"]["request"])
+        require(summary.get("workload_request") == request.to_dict(), "native summary LiveWan request differs")
+        for rank in range(16):
+            raw = read(out / "receipts" / f"rank_{rank:03d}.json")
+            errors = receipt_errors(raw, request, expected_plan_sha256=fingerprint(receipt["nodes"][rank//8]["resolved_native_plan"]))
+            require(not errors, f"rank{rank} native request/actual shape failed: {errors}")
     if receipt["profile_id"] == LIVEWAN and receipt["native_mode"] == "trajectory":
         # This native writer counts rank-cycle rows, not ranks. Do not invent
         # rank_count or accept 32 rows without checking the sixteen owners.
@@ -92,17 +101,23 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
                        stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=600)
 
 
-def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any], *,
+                 repeat=None, noise_policy=None) -> dict[str, Any]:
+    require((repeat is None and noise_policy is None) or
+            reference["profile_id"] == "minimax_h3_grid1000_best",
+            "noise diagnostic admission is only supported by the explicit H3 cache adapter")
     if reference["search_candidate"]["id"].startswith("joint-helios1-"):
         from .helios_native import prepare_pair as helios_pair
         return helios_pair(reference,candidate)
     if reference["profile_id"] == "minimax_h3_grid1000_best":
         from .h3_native_bridge import prepare_pair as h3_pair
-        return h3_pair(reference, candidate)
+        return h3_pair(reference, candidate, repeat=repeat, noise_policy=noise_policy)
     from .wan_implementation import is_generated, WanImplementation
     ref_id = reference["search_candidate"]["id"]
     new_ref = reference["profile_id"] == WAN and is_generated(ref_id)
-    require(ref_id == "fsdp-reference" or ref_id == "joint-livewan1-fsdp-m0-g0-r0"
+    from .livewan_implementation import LiveWanImplementation
+    livewan_ref = reference["profile_id"] == LIVEWAN and ref_id.startswith("joint-livewan1-")
+    require(ref_id == "fsdp-reference" or (livewan_ref and LiveWanImplementation.parse(ref_id).placement == "fsdp")
             or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
             "unregistered baseline")
     require(new_ref == is_generated(candidate["search_candidate"]["id"]),
@@ -176,6 +191,18 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     dirty = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True)
     require(not dirty.strip(), "remote search checkout is dirty")
     action = payload.get("action")
+    if action in {"r9_prepare", "r9_qualify", "r9_seal", "r9_collect", "r9_rebind"}:
+        from . import r9_native
+        if action == "r9_rebind":
+            return r9_native.rebind(payload["receipt"], run_id=payload["run_id"], assets=payload["assets"])
+        if action == "r9_prepare":
+            return r9_native.prepare(payload["receipt"], payload["deployment"])
+        if action == "r9_qualify":
+            require(type(payload["node_rank"]) is int and payload["node_rank"] in (0, 1), "R9 explicit node rank")
+            return r9_native.qualify(payload["draft"], payload["node_rank"])
+        if action == "r9_seal":
+            return r9_native.seal(payload["draft"])
+        return r9_native.collect(payload["manifest"])
     if action == "runtime_identity":
         from .runtime_identity import collect_planned_node_identity
         return collect_planned_node_identity(payload["receipt"], node_rank=payload["node_rank"])
@@ -196,7 +223,12 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
         return resolve_candidate(candidate.workload, candidate.id, root=root, assets_path=path,
                                  run_id=payload["run_id"], mode=payload["mode"])
     if action == "prepare_pair":
-        return prepare_pair(payload["reference"], payload["candidate"])
+        return prepare_pair(payload["reference"], payload["candidate"],
+                            repeat=payload.get("repeat"), noise_policy=payload.get("noise_policy"))
+    if action == "validate_h3_preparation":
+        from .h3_native_bridge import validate_preparation
+        return validate_preparation(payload["preparation"], expected_head=payload["source_head"],
+                                    candidate_id=payload["candidate_id"], noise_policy=payload.get("noise_policy"))
     if action == "measurement":
         if payload["receipt"]["search_candidate"]["id"].startswith("joint-helios1-"):
             from .helios_native import normalize_native

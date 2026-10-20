@@ -1,0 +1,118 @@
+{
+  "cache_root": "/tmp/lyy-experiments/DMD-System/h3-ar-native-barrier-r46",
+  "capacity_policy": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/configs/capacity.json",
+    "sha256": "ad136f63183b1917cabf3b12df575f44330f31c1813bed4527dccaf2920fa632"
+  },
+  "cycles": 2,
+  "expected_head": "69a9464997de16deafd5786338f538ba7930d9a5",
+  "lease_seconds": 1260,
+  "local_root": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native_controller",
+  "manual_packet": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/manual-packet.json",
+    "sha256": "ddae71538361b7974468989794b2c07be4a0d8ae7c99ab5bd342b3c972ebbaad"
+  },
+  "master_addr": "172.24.211.163",
+  "master_ports": {
+    "manual-child": 33742,
+    "manual-control": 33741
+  },
+  "max_native_starts": 2,
+  "native_dependency": {
+    "dist_info": {
+      "bytes": 45656,
+      "files": 8,
+      "tree_sha256": "104108264e27a84ff340ddcb95e16839a5f199bc3464d9434a52bb0dbde601c7"
+    },
+    "environment_sha256": "5a161dd2ba6b27a26d0f1a36bf94d48a52bef26eed4e0c355445776c821ecc84",
+    "metadata_sha256": "ed1c0dd9cca2d1449bbae7d641208431f5fccc7d5e06e20bec802c1d81340f6c",
+    "overlay_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/assets/native-accelerate-1.14",
+    "package": {
+      "bytes": 1491684,
+      "files": 84,
+      "tree_sha256": "3ee3c0d50df3d29faa8a07034a4ec26da94e964a7f9e4336e790457e52be1b6f"
+    },
+    "provenance_probe_sha256": [
+      "9a6340983b9c52a0eb9946ed640809fe07494522076d9f1d7e4c6cbd1eb9cfa8",
+      "78065e73757775a2b277e132b7e74d374f51a3079b6cc43895aa8bc38f6ae354"
+    ],
+    "schema_version": "distillschedule.h3_ar_native_accelerate.v1",
+    "source_site_packages": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/lib/python3.10/site-packages",
+    "version": "1.14.0"
+  },
+  "native_manifest": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/steady_two_cycle_20261012_r1/configs/world16_r1_manifest.json",
+    "sha256": "2d92ed819845340e680c5dab3efce3f450c5d050680355bb6dc58b4fe50b3a13"
+  },
+  "nodes": [
+    {
+      "assigned_gpu_uuids": [
+        "GPU-cad55364-e014-c35f-337e-db899afd1c6a",
+        "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617",
+        "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283",
+        "GPU-bab43db0-a051-0419-39f7-e33effa9445b",
+        "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e",
+        "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e",
+        "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3",
+        "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+      ],
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "python": {
+        "path": "/tmp/distillschedule-helios-official-torch210/bin/python",
+        "sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331"
+      },
+      "ssh_port": 2222,
+      "ssh_target": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn"
+    },
+    {
+      "assigned_gpu_uuids": [
+        "GPU-a7668680-c210-ecdd-c247-a8337b735231",
+        "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a",
+        "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc",
+        "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060",
+        "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2",
+        "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d",
+        "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521",
+        "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6"
+      ],
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "python": {
+        "path": "/tmp/distillschedule-helios-official-torch210/bin/python",
+        "sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331"
+      },
+      "ssh_port": 2222,
+      "ssh_target": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn"
+    }
+  ],
+  "owner_files": {
+    "scripts/check_outputs.py": "59805def5ae5c472947bb14b913ddade9b30251fb4b42faf26e807b540cd817b",
+    "scripts/fd_ownership.py": "c6e411de4cd65f3213b39e0c4a8ba7bb3d3b9ca4d31ed74ce658529880cb218e",
+    "scripts/node_stage.py": "b4f013a96c371f8c54e47b56b0e04b9375e23c4bcde8a8b30e6b3fe09c27c71a",
+    "scripts/packet_common.py": "f950571dd591bf5a4d45b63d9071541644f56acf71edd279430e4f4577d09917",
+    "scripts/stage_command.py": "60074c66282ee53de07839f46855291c95b452d8cec6cdeaaec01ddaa867a311"
+  },
+  "owner_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_hardware_closure_20261015/night_execution_20261015/wan_execution_packet_r3",
+  "profiler": false,
+  "run_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native",
+  "schema_version": "distillschedule.h3_ar_metadata_barrier_controller.v2",
+  "scripts": {
+    "controller": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/h3_ar_match_controller.py",
+      "sha256": "711f1dd832b3d12704f37e3e156b7a35fa4003a99f50be10c7953ea9796948b2"
+    },
+    "node": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/h3_ar_match_node.py",
+      "sha256": "dfa21da4f6249285ac3c8928dca40bdc850740e2919ee7ad4209333fc1db69b7"
+    }
+  },
+  "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/h3-ar-nograd-fa3-69a9464997de-20261018",
+  "startup_generator": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/scripts/native_gpu_info_cache_cpu_r1.py",
+    "sha256": "49f7496bf64ce75137cd72e85c901d905a1f7bbde683529d97ad87b511b15d52"
+  },
+  "task": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/h3-ar-nograd-fa3-69a9464997de-20261018/configs/distillschedule/original_h3_ar/w6_reference.json",
+    "sha256": "3345bb5f9343e7912b9b5bebfeac7a24caa7705770e4e2dc15398e7216a86875"
+  },
+  "work_seconds": 1200
+}

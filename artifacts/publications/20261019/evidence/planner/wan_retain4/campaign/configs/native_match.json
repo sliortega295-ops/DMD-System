@@ -1,0 +1,116 @@
+{
+  "schema_version": "dmd.wan_state_planning_pair.v1",
+  "HEAD": "ea29129342741b54e59c4773e07454f541fadcc7",
+  "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/wan-state-planner-ea2912934274-20261017",
+  "run_id": "wan-state-plan-ea29129-20261017-r18",
+  "artifact_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native",
+  "nodes": [
+    {
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "ssh_port": 2222,
+      "python_env": "/tmp/distillschedule-helios-official-torch210",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "assigned_gpu_uuids": [
+        "GPU-cad55364-e014-c35f-337e-db899afd1c6a",
+        "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617",
+        "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283",
+        "GPU-bab43db0-a051-0419-39f7-e33effa9445b",
+        "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e",
+        "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e",
+        "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3",
+        "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+      ],
+      "python": "/tmp/distillschedule-helios-official-torch210/bin/python"
+    },
+    {
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "ssh_port": 2222,
+      "python_env": "/tmp/distillschedule-helios-official-torch210",
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "assigned_gpu_uuids": [
+        "GPU-a7668680-c210-ecdd-c247-a8337b735231",
+        "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a",
+        "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc",
+        "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060",
+        "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2",
+        "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d",
+        "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521",
+        "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6"
+      ],
+      "python": "/tmp/distillschedule-helios-official-torch210/bin/python"
+    }
+  ],
+  "master_addr": "172.24.211.163",
+  "cycles": 2,
+  "max_native_starts": 4,
+  "GPU_reserve_bytes": 2147483648,
+  "host_reserve_bytes": 68719476736,
+  "original_owner_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_hardware_closure_20261015/night_execution_20261015/wan_execution_packet_r3",
+  "owner_files": {
+    "scripts/node_stage.py": "b4f013a96c371f8c54e47b56b0e04b9375e23c4bcde8a8b30e6b3fe09c27c71a",
+    "scripts/fd_ownership.py": "c6e411de4cd65f3213b39e0c4a8ba7bb3d3b9ca4d31ed74ce658529880cb218e",
+    "scripts/packet_common.py": "f950571dd591bf5a4d45b63d9071541644f56acf71edd279430e4f4577d09917",
+    "scripts/stage_command.py": "60074c66282ee53de07839f46855291c95b452d8cec6cdeaaec01ddaa867a311",
+    "scripts/check_outputs.py": "59805def5ae5c472947bb14b913ddade9b30251fb4b42faf26e807b540cd817b"
+  },
+  "adapter_sha256": "190639018079b48aff6d3ba398edc4d16ce554dfd686bf157ab045be811442c4",
+  "task": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/task.json",
+  "assets": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/assets.json",
+  "strategies": {
+    "control": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/control-strategy.json",
+    "bundle": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/bundle-strategy.json",
+    "manual": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/manual-strategy.json"
+  },
+  "input_metadata_sha256": {
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/task.json": "a3ad1a57875185753315d31c7c53afac8f2288a02035ef27c5bd1eeca7516f42",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/assets.json": "f76d6ce0b3d9f4e1057de31259dfa9121a28f4fbe59a37ba3faa5061ae0e1a1f",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/control-strategy.json": "b1d50379c10eeb3dfccf752cdbd0c29cc44d29ab2bb767347197afceb5641dca",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/bundle-strategy.json": "2af2d19c24f5f5fa7eb615339aa660ed333d374f62ff98afeec576fa6d73384b",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/manual-strategy.json": "c1044781b266e255ec6060403da05ceb4eb54db9daddf9971d191990b706e724"
+  },
+  "hf_home": "/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210",
+  "cache_root": "/tmp/lyy-experiments/DMD-System/wan-state-plan-ea29129-r18",
+  "capacity_policy": "ACTUAL_COLD_AND_WARM_ALLOCATED_HIGHWATER_TOTAL_MINUS_2GIB; NO_R3_GUARD_OR_HISTORY_REWRITTEN",
+  "numerical": "KEEP_ORIGINAL_COMPARE_RUNS_REVIEW; NO_TOLERANCE_CHANGE",
+  "admission": "TARGET_CPU_ONLY_NATIVE_NOT_YET_ADMITTED",
+  "target": {
+    "source": {
+      "head": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/wan-state-planner-ea2912934274-20261017",
+      "pins": {
+        "livewan": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5",
+        "wan21": "9737cba9c1c3c4d04b33fcad41c111989865d315"
+      },
+      "environment_created": false,
+      "models_copied": false
+    },
+    "nodes": [
+      {
+        "node": 0,
+        "rc": 0,
+        "head": "ea29129342741b54e59c4773e07454f541fadcc7",
+        "log": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/logs/target210-node0.log",
+        "sha256": "d30a9ec9a16c28f93373d30579ae30215b966e3d39d7a5ce41c419b985840c22",
+        "tail": "........................................................................ [ 30%]\n........................................................................ [ 60%]\n........................................................................ [ 91%]\n.....................                                                    [100%]\n237 passed in 33.65s\nTARGET={\"rc\": 0, \"torch\": \"2.10.0+cu128\", \"CUDA_initialized\": false}\n\n",
+        "GPU_started": 0
+      },
+      {
+        "node": 1,
+        "rc": 0,
+        "head": "ea29129342741b54e59c4773e07454f541fadcc7",
+        "log": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/logs/target210-node1.log",
+        "sha256": "0c4f12405381e8dcb790922a5e345aa70752b85ff3a9087165fe20c8cf161d5b",
+        "tail": "........................................................................ [ 30%]\n........................................................................ [ 60%]\n........................................................................ [ 91%]\n.....................                                                    [100%]\n237 passed in 33.04s\nTARGET={\"rc\": 0, \"torch\": \"2.10.0+cu128\", \"CUDA_initialized\": false}\n\n",
+        "GPU_started": 0
+      }
+    ]
+  },
+  "profiler": false,
+  "arm": "STATE_POLICY_SEARCH_CONTROL_RETAIN4",
+  "master_ports": {
+    "calibrate-control": 32701,
+    "calibrate-bundle": 32702,
+    "manual": 32703,
+    "selected": 32704
+  }
+}

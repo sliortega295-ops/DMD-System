@@ -1,0 +1,286 @@
+{
+  "arms": {
+    "manual-ap": {
+      "C1": 258.221402789,
+      "C2": 255.501368846,
+      "completed_ranks": 16,
+      "rank_cycles": 32,
+      "final_versions": {
+        "ema": 0,
+        "fake": 2,
+        "student": 2
+      },
+      "initial_versions": {
+        "ema": 0,
+        "fake": 0,
+        "student": 0
+      },
+      "implementation": {
+        "attention_replay_cache_storage": "cpu_staged",
+        "attention_replay_cache_transfer": "native_D2H_H2D_with_bounded_prefetch",
+        "checkpoint_boundary_offload": false,
+        "cutlass_lora": true,
+        "id": "zero3-ap",
+        "lora_inplace": true,
+        "optimizer_offload": false,
+        "overlap_comm": true,
+        "parameter_offload": false,
+        "pinned_allocator": "expandable_segments_host_register4",
+        "pointwise_fusion": true,
+        "rms_fusion": true,
+        "selected_cache_prefetch": true,
+        "swiglu_fusion": true,
+        "unit_prefetch": true,
+        "zero_stage": 3
+      },
+      "task": {
+        "denoising_steps": 8,
+        "ema_updates": 0,
+        "fake_updates": 1,
+        "fps": 24,
+        "input_contract_sha256": "c12a59eff4ac2907f06645a4132d5f0dea58458729546083041b98c53c173d82",
+        "lora_rank": 64,
+        "physical_batch": 1,
+        "precision": "native_bf16_autocast_cache_disabled",
+        "previous_frames": 56,
+        "protocol": "diffsynth_native_previous_current_av_dmd2_v1",
+        "schema_version": "distillschedule.original_h3_ar_task.v2",
+        "video_frames": 56,
+        "video_height": 768,
+        "video_width": 1344,
+        "world_size": 16
+      },
+      "source_identity": {
+        "assets_sha256": "a62cb387201a60aeaa7ac39b8b9cebf25028890817e523998f54f6f21aa350b3",
+        "source": {
+          "source_fingerprint": "c1451baa16cd107d47526335950e7803037105b8a18263ffb4e89035757a8eec",
+          "source_head": "e88d21c168ce54be99134cecd195c961319cb45a"
+        },
+        "task_sha256": "4fcb6064021be2fbd029e0190fa1486187d13fa9d77401ace0ef9f53d7818b6c"
+      },
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.5234375,
+      "minimum_cycle_boundary_free_MiB": 2.375,
+      "host_max_sampled_current_GiB": {
+        "0": 432.75408935546875,
+        "1": 437.292423248291
+      },
+      "host_peak": "UNAVAILABLE; NOT_CURRENT_AS_PEAK",
+      "OOM_increment_max": 0,
+      "oom_kill_increment_max": 0,
+      "plan_sha256": null,
+      "native_refs": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_000.json",
+          "sha256": "9f503e9d0e6f6f1320e43fff60eef87961335c82f534b792c35690d03c470139"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_001.json",
+          "sha256": "51242355f3666d6c07912d2560856eb007f3cf2b904a49085ff00760ca7da522"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_002.json",
+          "sha256": "dc39d5ed5e859aac96153edc03a6e69d62713f145b358fedbd7e5ff93e6a74cc"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_003.json",
+          "sha256": "04dcf6e0955e9b5c614e622b5eeb5ff0ebfdb02d2e44cfc1ad76ec74bd4ec87f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_004.json",
+          "sha256": "d2f9d2170d437fe0ae35d515c1900bcf2c0014f9691142dc49d39c127d0d4178"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_005.json",
+          "sha256": "5c2275b918b6392a3b5e433a31bd3c9f4c3b1372b2870729f6c5d19b97307202"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_006.json",
+          "sha256": "76618fb7886f355a25766fc6887fc07548833178e8b6c961851861f4eceeac06"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_007.json",
+          "sha256": "9c112ed8b482e8fc010fa5bd23da10fdc005241da89a4ac1bdc463b896582778"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_008.json",
+          "sha256": "4624fe39ad9f6093577aaeef865096732b932d48bc86e266ca68a005d950b6fa"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_009.json",
+          "sha256": "020c7f82f8a0f224e1f36bb9aeebe608f8a659b8e14d176f2a4e2faa3c9d89e7"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_010.json",
+          "sha256": "0cadd65c0c1d2ec73deae0771ee942e296d07479834be528663913f7f69defba"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_011.json",
+          "sha256": "b0ba677f14dfc8038c47ecda78984d1280b6747aa901ba80cbf1807dbef8478e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_012.json",
+          "sha256": "7f23626fc7edeaf68a849f772839d8fa77cd766bc98a48c1f6761c40e822d177"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_013.json",
+          "sha256": "1d4d0bae1c0da5301a589aaaca992e79b68eb74357636adcdd2c878f41694c5f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_014.json",
+          "sha256": "c0e38c49add618daf7f2ebcc1a9bc5a47f29416a82c7c0dd3409d14143200734"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/manual-ap/rank_015.json",
+          "sha256": "33b41f219bac066d2c8d6da7ec9a1ed6dbc339b344ae790d1880f76104fd58d3"
+        }
+      ]
+    },
+    "selected": {
+      "C1": 257.52008572,
+      "C2": 255.442535079,
+      "completed_ranks": 16,
+      "rank_cycles": 32,
+      "final_versions": {
+        "ema": 0,
+        "fake": 2,
+        "student": 2
+      },
+      "initial_versions": {
+        "ema": 0,
+        "fake": 0,
+        "student": 0
+      },
+      "implementation": {
+        "attention_replay_cache_storage": "cpu_staged",
+        "attention_replay_cache_transfer": "native_D2H_H2D_with_bounded_prefetch",
+        "checkpoint_boundary_offload": false,
+        "cutlass_lora": true,
+        "id": "zero3-ap",
+        "lora_inplace": true,
+        "optimizer_offload": false,
+        "overlap_comm": true,
+        "parameter_offload": false,
+        "pinned_allocator": "expandable_segments_host_register4",
+        "pointwise_fusion": true,
+        "rms_fusion": true,
+        "selected_cache_prefetch": true,
+        "swiglu_fusion": true,
+        "unit_prefetch": true,
+        "zero_stage": 3
+      },
+      "task": {
+        "denoising_steps": 8,
+        "ema_updates": 0,
+        "fake_updates": 1,
+        "fps": 24,
+        "input_contract_sha256": "c12a59eff4ac2907f06645a4132d5f0dea58458729546083041b98c53c173d82",
+        "lora_rank": 64,
+        "physical_batch": 1,
+        "precision": "native_bf16_autocast_cache_disabled",
+        "previous_frames": 56,
+        "protocol": "diffsynth_native_previous_current_av_dmd2_v1",
+        "schema_version": "distillschedule.original_h3_ar_task.v2",
+        "video_frames": 56,
+        "video_height": 768,
+        "video_width": 1344,
+        "world_size": 16
+      },
+      "source_identity": {
+        "assets_sha256": "a62cb387201a60aeaa7ac39b8b9cebf25028890817e523998f54f6f21aa350b3",
+        "source": {
+          "source_fingerprint": "c1451baa16cd107d47526335950e7803037105b8a18263ffb4e89035757a8eec",
+          "source_head": "e88d21c168ce54be99134cecd195c961319cb45a"
+        },
+        "task_sha256": "4fcb6064021be2fbd029e0190fa1486187d13fa9d77401ace0ef9f53d7818b6c"
+      },
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.447265625,
+      "minimum_cycle_boundary_free_MiB": 2.375,
+      "host_max_sampled_current_GiB": {
+        "0": 432.7466278076172,
+        "1": 437.28343963623047
+      },
+      "host_peak": "UNAVAILABLE; NOT_CURRENT_AS_PEAK",
+      "OOM_increment_max": 0,
+      "oom_kill_increment_max": 0,
+      "plan_sha256": "549cbb440ad61296a035a89888d49c37854269e18163070455aaaaedb0a4b82e",
+      "native_refs": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_000.json",
+          "sha256": "d4fdc54f360330e74addb49831d67712ba580b0cf01d08248dfa193dae6473ff"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_001.json",
+          "sha256": "9240b3ca6ac358733bd2aacf4074ffb91e432f840ff7238149f4ec37c16511b8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_002.json",
+          "sha256": "d574be188a4ce823d776bcc5ccefee2324278622091456d46b6c1c7459ebeeb4"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_003.json",
+          "sha256": "304f297410557642ac545cf32f661b0415c7154acdb38bd12fbe36d831ed4c4d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_004.json",
+          "sha256": "b96e1c5c583c5e0660d837de58d7992ba344f9ee6efc7df00c2c53d1df89842d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_005.json",
+          "sha256": "b882b2fa4d86119fc083bec506b7e531de6145bf9385d9256b1aa357d37e67e8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_006.json",
+          "sha256": "66285c1dfef7b20c6ad14b40f143538869f2f70b18be4658a575911aca9ff54c"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_007.json",
+          "sha256": "cfd7b2701ff4e4f628b5800dec6bd1bbc74bf9ebf6f85d632958d9c407afabfc"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_008.json",
+          "sha256": "83f6fcc5a0f149584e85e21c4aaa3b541c929c9905baea4a4795fd6d7e923bb6"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_009.json",
+          "sha256": "83af53d0f114d074fbc409376f1050029b349ecd24035af41c5fe683e2046e74"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_010.json",
+          "sha256": "91666b11eb6255e534da1f8aa1576aec9932eac46377e610919c594ced4ceef3"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_011.json",
+          "sha256": "402e79364d5b567e4d4c5f58138496a2240a35354ae0dacb7109bd389530dbf9"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_012.json",
+          "sha256": "19f293336e9682180302e9a15ac8a263122d3be6fe7a3e9ac09a92893253c636"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_013.json",
+          "sha256": "4705e933ac5767d573e9311f391500b582c94464db6534e383544ffffa1873db"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_014.json",
+          "sha256": "926371a4d3ba75a63bbe342a17cd0bf0a720001dd25a1affcd1ff5582fcba527"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/native_match/selected/rank_015.json",
+          "sha256": "c6807f7ab2b42988c90846414fa647c2ac1d1837c3afb5292b212d15b4996b4d"
+        }
+      ]
+    }
+  },
+  "source": {
+    "source_fingerprint": "c1451baa16cd107d47526335950e7803037105b8a18263ffb4e89035757a8eec",
+    "source_head": "e88d21c168ce54be99134cecd195c961319cb45a"
+  },
+  "selected_over_manual": 0.9997697320868936,
+  "status": "MEASURED_SINGLE_PAIRED_C2_REQUIRES_NUMERICAL_REVIEW",
+  "numerical": "REVIEW_REQUIRES_MATCHED_REFERENCE",
+  "qual": "NOT_FULL_STATE_OR_STATISTICAL_EQUIVALENCE",
+  "C2_scope": "ORIGINAL_MAX16_HOST_CUDA_FENCED_NATIVE_CYCLE2",
+  "profiler": false
+}

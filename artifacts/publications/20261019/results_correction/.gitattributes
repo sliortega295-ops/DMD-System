@@ -1,0 +1,2 @@
+# Immutable historical evidence must keep original bytes and line endings.
+evidence/** -text -whitespace

@@ -31,6 +31,9 @@ class OriginalWanTask:
     ema_every: int = 1
     world_size: int = 16
     physical_batch: int = 1
+    # An explicit systems-benchmark scope, never an implicit fallback from
+    # upstream rank-local amplification. Default capture still fails closed.
+    stage_schedule_policy: str = "source_normal_only"
 
     def __post_init__(self):
         path = "original_wan.task"
@@ -41,6 +44,8 @@ class OriginalWanTask:
                     f"{name} must be a positive integer", path=path)
         require(self.world_size == 16 and self.physical_batch == 1,
                 "existing native engine supports world16/B1 only", path=path)
+        require(self.stage_schedule_policy in ("source_normal_only", "benchmark_v4_strict_global"),
+                "unsupported stage schedule policy", path=path)
         require(self.video_height % 64 == self.video_width % 64 == 0
                 and (self.video_frames - 1) % 4 == 0,
                 "shape must fit VAE and all three pyramid patch lattices", path=path)
@@ -82,7 +87,11 @@ class OriginalWanTask:
         return fingerprint(self.to_dict())
 
     def to_dict(self):
-        return json.loads(json.dumps(asdict(self), allow_nan=False))
+        value = asdict(self)
+        # Keep all existing task identities and default serialized plans stable.
+        if self.stage_schedule_policy == "source_normal_only":
+            value.pop("stage_schedule_policy")
+        return json.loads(json.dumps(value, allow_nan=False))
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]):

@@ -74,8 +74,11 @@ class StaticFSDP2P0Policy:
     generator_nograd_persistent_unshard: bool = False
     generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
     cuda_allocator_expandable_segments: bool = False
+    lora_b_gemm_epilogue: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.lora_b_gemm_epilogue) is not bool:
+            raise ValueError("lora_b_gemm_epilogue must be an explicit boolean")
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
             raise ValueError(f"unsupported mesh policy: {self.mesh_policy}")
         if self.rollout_batch_size not in SUPPORTED_ROLLOUT_BATCH_SIZES:
@@ -223,7 +226,38 @@ class StaticFSDP2P0Policy:
                 suffixes.append("generatorpersistnoflush")
         if self.cuda_allocator_expandable_segments:
             suffixes.append("expandablesegments")
+        if self.lora_b_gemm_epilogue:
+            suffixes.append("lorabgemmepilogue")
         return "-".join((base, *suffixes))
+
+
+def validate_nogan_b_gemm_request(
+    *, enabled: bool, checkpoint_replay_scope: bool,
+    all_role_scale1_add: bool, variant: str, rollout_batch_size: int,
+    pack_real_score_pair: bool, attention_backend: str, gan_manual_bundle: bool = False,
+) -> None:
+    """Reject an unqualified port configuration before model construction.
+
+    This is the NoGAN B1 port of the existing N37 kernel, not a new GAN,
+    batching, precision, or placement experiment. The default-off path does
+    not import Torch, Triton, or any new runtime implementation.
+    """
+    if any(type(value) is not bool for value in (
+        enabled, checkpoint_replay_scope, all_role_scale1_add, pack_real_score_pair, gan_manual_bundle,
+    )):
+        raise ValueError("LoRA-B port switches must be explicit booleans")
+    if checkpoint_replay_scope and not all_role_scale1_add:
+        raise ValueError("LoRA checkpoint scope requires all-role scale1 add")
+    if enabled and not (
+        all_role_scale1_add and checkpoint_replay_scope
+        and (variant == "no-gan" or (variant == "gan" and gan_manual_bundle))
+        and type(rollout_batch_size) is int and rollout_batch_size == 1
+        and not pack_real_score_pair and attention_backend == "local-fa2"
+    ):
+        raise ValueError(
+            "NoGAN LoRA-B port requires B1, packing OFF, pinned local-fa2, "
+            "all-role scale1 add, and captured checkpoint replay scope"
+        )
 
 
 def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:
@@ -262,13 +296,26 @@ def apply_blockwise_fsdp2_policy(
     expected_block_count: int = 40,
     param_dtype: Any | None = None,
     reduce_dtype: Any | None = None,
+    separate_gan_heads: bool = False,
 ) -> dict[str, Any]:
     """Shard every expected block bottom-up under FSDP or node-local HSDP.
 
     The default remains the fail-closed 40-block Helios-14B contract.  A
     caller must opt in explicitly to another audited architecture, such as the
     30-block Wan2.1-T2V-1.3B control used by the FSDP upper-bound experiment.
+    The explicit GAN-only option restores the source-qualified five-head
+    grouping; it does not alter the default or the Wan architecture path.
     """
+
+    if type(separate_gan_heads) is not bool:
+        raise ValueError("separate_gan_heads must be an explicit boolean")
+    if separate_gan_heads and not (
+        type(expected_block_count) is int and expected_block_count == 40
+        and type(world_size) is int and world_size == WORLD_SIZE
+        and mesh_policy == "world16-fsdp"
+        and getattr(module, "is_use_gan", False) is True
+    ):
+        raise ValueError("separate GAN-head FSDP requires the GAN Critic, 40 blocks and world16-fsdp")
 
     import torch
     import torch.distributed as dist
@@ -283,6 +330,16 @@ def apply_blockwise_fsdp2_policy(
         raise AssertionError(
             f"Transformer block count changed: {len(blocks)} != {expected_block_count}"
         )
+    head_units = ()
+    if separate_gan_heads:
+        from helios.modules.transformer_helios import Discriminator3DHead
+        from .fsdp2_gan_head_groups import gan_head_fsdp_units
+
+        # Resolve every ownership/alias check before creating a mesh or
+        # mutating even the first block with fully_shard.
+        head_units = gan_head_fsdp_units(
+            module, head_type=Discriminator3DHead, container_type=torch.nn.ModuleDict,
+        )
     mesh = create_device_mesh(mesh_policy, world_size=world_size)
     mp_policy = MixedPrecisionPolicy(
         param_dtype=param_dtype if param_dtype is not None else torch.bfloat16,
@@ -295,6 +352,8 @@ def apply_blockwise_fsdp2_policy(
             reshard_after_forward=True,
             mp_policy=mp_policy,
         )
+    for _, head in head_units:
+        fully_shard(head, mesh=mesh, reshard_after_forward=True, mp_policy=mp_policy)
     fully_shard(
         module,
         mesh=mesh,
@@ -305,7 +364,7 @@ def apply_blockwise_fsdp2_policy(
     parameters = list(module.parameters())
     if not parameters or not all(hasattr(value, "device_mesh") for value in parameters):
         raise AssertionError("FSDP2 did not convert every parameter to DTensor")
-    return {
+    receipt = {
         "backend": (
             "FSDP2_COMPOSABLE_FULL_SHARD"
             if mesh_policy == "world16-fsdp"
@@ -323,6 +382,20 @@ def apply_blockwise_fsdp2_policy(
         "parameter_streaming": False,
         "transition": False,
     }
+    if separate_gan_heads:
+        # Preserve the legacy/default-off receipt exactly, including the
+        # parameterized 30-block path. Only the new opt-in reports new fields.
+        receipt.update(
+            wrap_policy="40_BLOCKS_THEN_5_GAN_HEADS_THEN_ROOT",
+            separate_gan_head_fsdp={
+                "requested": True, "enabled": True,
+                "head_paths": [path for path, _ in head_units],
+                "head_unit_count": len(head_units),
+                "fsdp_unit_count": len(blocks) + len(head_units) + 1,
+                "original_gradient_mesh_size": world_size,
+            },
+        )
+    return receipt
 
 
 def chunked(values: Sequence[Any], size: int) -> tuple[tuple[Any, ...], ...]:

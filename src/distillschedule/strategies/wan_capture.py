@@ -114,7 +114,8 @@ def prepare_history(native, task, sample, config):
     # Original GT-history losses corrupt history here; saturation is only
     # applied inside run_generator's non-GT preparation branch. Never add it
     # merely because the shared training configuration has is_add_saturation.
-    require(not all(bool(x.sum() == 0) for x in (short, mid, long)),
+    require(not all(bool(x.sum() == 0) for x in (short, mid, long))
+            or task.stage_schedule_policy == 'benchmark_v4_strict_global',
             'all-zero history uses the unsupported rank-local amplified branch; '
             'no silent resampling or disabling of dropout is allowed', path='wan.capture')
     return {'continuous_history': continuous, 'history_short': short, 'history_mid': mid,
@@ -122,16 +123,23 @@ def prepare_history(native, task, sample, config):
             'indices_history_mid': mid_i, 'indices_history_long': long_i}
 
 
-def stage_control(native, task, seed, cohort, step, phase):
+def stage_control(native, task, seed, cohort, step, phase, *, all_history_zero=False):
     """Native scheduler times depend only on the requested stage shapes/horizons."""
     import torch
+    require(type(all_history_zero) is bool, 'explicit history predicate required', path='wan.capture')
+    require(not all_history_zero or task.stage_schedule_policy == 'benchmark_v4_strict_global',
+            'rank-local amplified history requires a separately declared benchmark scope', path='wan.capture')
     with input_stream(seed, cohort, step, phase, 'rank0-stage-exits'):
         exits = [native.post.generate_and_sync_flag(SimpleNamespace(device='cpu', is_main_process=True),
                   horizon, last_step_only=False, is_sync=False) for horizon in task.stage2_inference_steps]
     scheduler = native.scheduler(shift=1., stages=3, stage_range=[0, 1/3, 2/3, 1], gamma=1/3)
     sequence = []
     for stage, (horizon, hw, exit_index) in enumerate(zip(task.stage2_inference_steps, task.stage_spatial_shapes, exits)):
-        scheduler.set_timesteps(horizon+1, stage, device='cpu')
+        # The historical strict-global benchmark fixes exits, not the native
+        # zero-history scheduler budget. Retain its doubled timestep grid and
+        # all sampled history/noise; do not resample or disable history dropout.
+        budget = horizon * (2 if all_history_zero else 1)
+        scheduler.set_timesteps(budget+1, stage, device='cpu')
         scheduler.timesteps = scheduler.timesteps[:-1]
         scheduler.sigmas = torch.cat([scheduler.sigmas[:-2], scheduler.sigmas[-1:]])
         shape = (*task.latent_shape[:3], *hw)
@@ -140,12 +148,17 @@ def stage_control(native, task, seed, cohort, step, phase):
                          max_seq_len=4096, base_shift=.5, max_shift=1.15, time_shift_type='linear')
         times = scheduler.timesteps_per_stage[stage]
         times = times.min() + sigmas[:-1] * (times.max()-times.min())
-        require(len(times) == horizon, 'native stage scheduler contract changed', path='wan.capture')
+        require(len(times) == budget, 'native stage scheduler contract changed', path='wan.capture')
         sequence.append({'stage': stage, 'denoising_exit': exit_index, 'call_count': exit_index+1,
+                         'denoising_step_budget': budget,
                          'latent_shape': list(shape), 'timestep': times[:exit_index+1].tolist()})
-    return {'pyramid_stage_call_sequence': sequence, 'call_count': sum(x+1 for x in exits),
+    result = {'pyramid_stage_call_sequence': sequence, 'call_count': sum(x+1 for x in exits),
             'initial_synchronized_pyramid_stage_exit': exits,
             'stage_schedule_scope': 'global_rank0_broadcast_equivalent'}
+    if task.stage_schedule_policy == 'benchmark_v4_strict_global':
+        result.update(stage_schedule_policy=task.stage_schedule_policy, all_history_zero=all_history_zero,
+                      limitation='STRICT_GLOBAL_BENCHMARK_NOT_UPSTREAM_RANK_LOCAL_AMPLIFIED_DISTRIBUTION')
+    return result
 
 
 def capture(task, sources, training_config, output):
@@ -208,7 +221,9 @@ def capture(task, sources, training_config, output):
                         writer.add_tensor(prefix+'/'+key, tensor, role=key)
                     keys = [prefix+'/'+k for k in tensors] + ['sample/0/text_embedding', 'sample/0/attention_mask']
                     writer.add_operation(prefix+'/rollout', component=phase, operation='native_pyramid_rollout',
-                        tensor_keys=keys, control=stage_control(native, task, sources.seed, sources.cohort, step, phase))
+                        tensor_keys=keys, control=stage_control(native, task, sources.seed, sources.cohort, step, phase,
+                            all_history_zero=all(bool(tensors[k].sum() == 0) for k in
+                                ('history_short', 'history_mid', 'history_long'))))
                     writer.add_operation(prefix+('/dmd' if phase == 'generator' else '/train'),
                         component=phase, operation='native_score_inputs', tensor_keys=keys, control={'global_step':step})
             trace = writer.write(root/f'rank_{rank:02d}', contract={TRACE_KEY:task.to_dict(),

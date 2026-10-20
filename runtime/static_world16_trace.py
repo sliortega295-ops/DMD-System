@@ -109,12 +109,16 @@ class StaticGeneratorEntry:
 
 
 class StaticWorld16Trace:
-    def __init__(self, root: str | Path, *, variant: str) -> None:
+    def __init__(self, root: str | Path, *, variant: str, request=None) -> None:
         if variant not in {"no-gan", "gan"}:
             raise ValueError(variant)
         self.root = Path(root).resolve()
         self.variant = variant
         self.gan = variant == "gan"
+        from distillschedule.search.helios_request import OriginalHeliosRequest
+        if request is not None and (type(request) is not OriginalHeliosRequest or request.variant != variant):
+            raise ValueError("trace requires a typed matching ORIGINAL Helios request")
+        self.request = request
         self.logical_steps = tuple(range(1000, 1005)) if self.gan else tuple(range(10, 15))
         bundle = load_operation_trace_bundle_manifest(self.root, verify=True)
         if bundle is None or len(bundle.get("ranks", ())) != WORLD_SIZE:
@@ -124,11 +128,12 @@ class StaticWorld16Trace:
         self._loaded: dict[int, OperationTrace] = {}
         for rank in range(WORLD_SIZE):
             trace_root = resolve_rank_trace_root(self.root, rank)
+            if request is not None and self.root not in trace_root.resolve().parents:
+                raise ValueError("ORIGINAL Helios rank trace escapes the bound bundle root")
             manifest = json.loads((trace_root / "trace.json").read_text())
             self._control[rank] = OperationTrace(root=trace_root, manifest=manifest, tensors={})
-        self.rank_control_validation = validate_official_rank_stage_schedule_semantics(
-            self._control
-        )
+        self.rank_control_validation = (validate_official_rank_stage_schedule_semantics(self._control)
+            if request is None else request.validate_rank_controls(self._control))
         self._validate()
         self.binding_hash = hashlib.sha256(
             _canonical(
@@ -138,6 +143,7 @@ class StaticWorld16Trace:
                     "bundle_hash": self.bundle_hash,
                     "logical_steps": list(self.logical_steps),
                     "rank_slots": list(range(WORLD_SIZE)),
+                    **({"original_helios_request_sha256": request.digest} if request is not None else {}),
                 }
             )
         ).hexdigest()
@@ -150,6 +156,8 @@ class StaticWorld16Trace:
             value = OperationTrace.load(resolve_rank_trace_root(self.root, rank), verify=True)
             if value.trace_hash != self._control[rank].trace_hash:
                 raise ValueError("trace payload changed after manifest preflight")
+            if getattr(self, "request", None) is not None:
+                self.request.validate_loaded_history(value)
             self._loaded[rank] = value
         return value
 
@@ -168,8 +176,11 @@ class StaticWorld16Trace:
         )
 
     def _validate(self) -> None:
+        from distillschedule.search.helios_request import TRACE_KEY, TRACE_HASH_KEY
         for rank, trace in self._control.items():
             contract = trace.manifest.get("contract", {})
+            if self.request is None and (TRACE_KEY in contract or TRACE_HASH_KEY in contract):
+                raise ValueError("request-qualified Helios trace requires an explicit runtime request")
             expected_contract = {
                 "resolution": [384, 640],
                 "stage_spatial_shapes": [[12, 20], [24, 40], [48, 80]],
@@ -177,6 +188,8 @@ class StaticWorld16Trace:
                 "dtype": "bfloat16",
                 "dfake_gen_update_ratio": 5,
             }
+            if self.request is not None:
+                expected_contract = self.request.trace_contract()
             for key, expected in expected_contract.items():
                 if contract.get(key) != expected:
                     raise ValueError(f"rank {rank} trace violates {key}")

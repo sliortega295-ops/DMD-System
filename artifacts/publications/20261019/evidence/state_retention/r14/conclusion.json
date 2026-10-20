@@ -1,0 +1,21 @@
+{
+  "status": "SMALL_DESCRIPTIVE_POSITIVE_NOT_DEFAULT_PROMOTED",
+  "source": "0dfce74b66499419fdf38ec40b5e621544d8b904",
+  "control_C2": 42.488375000000005,
+  "candidate_C2": 42.334359375,
+  "saved_seconds": 0.15401562500000665,
+  "ratio": 1.0036380761932815,
+  "ranks_each": 16,
+  "numerical": "REVIEW; C2 Critic Adam sketch nL2=0.2127849, no symmetric noise floor; not strict equivalence",
+  "runtime_census": "ACTUAL_POST_TIMER_RUNTIME_CENSUS_VERIFIED",
+  "resources_cleaned": true,
+  "phases_charged": 4,
+  "prior_failed_family_phases": 2,
+  "total_family_charges": 6,
+  "campaign_charges": 54,
+  "no_more_same_family_retry": true,
+  "push": false,
+  "main_default_changed": false,
+  "H100": false,
+  "report": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r14/reports/pair-summary.md"
+}

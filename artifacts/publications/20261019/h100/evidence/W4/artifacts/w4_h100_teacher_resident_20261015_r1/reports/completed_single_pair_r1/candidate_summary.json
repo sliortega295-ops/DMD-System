@@ -1,0 +1,357 @@
+{
+  "arm_id": "h100-pipeline-c34-continuous-b16-residual-layout",
+  "claim_boundary": "CYCLE2_ONLY_NATIVE_UNPROFILED",
+  "correctness_binding": {
+    "gate_sha256": "0ef88c21f82f74b3f07b891c3b9939047dd4bd7786cb4b717b9c4293392dcb64",
+    "trajectory_comparison_sha256": "36223ced7342601982f00a2b8d98e9ff4d7633f18ff9ed6f75fe2c619ee2484b"
+  },
+  "correctness_hardware_binding_audit": [
+    {
+      "rank": 0,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 1,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 2,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 3,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 4,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 5,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 6,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    },
+    {
+      "rank": 7,
+      "source": "SERIALIZED_RECEIPT_FIELD"
+    }
+  ],
+  "cycle_1": {
+    "claimable": false,
+    "critical_rank_local_endpoint_deltas": {
+      "count": 4,
+      "max": 49.3125703125,
+      "mean": 49.3124853515625,
+      "median": 49.312494140625,
+      "min": 49.3123828125
+    },
+    "role": "WARMUP_DIAGNOSTIC",
+    "world_completion_endpoint_seconds": 49.3125703125
+  },
+  "cycle_2": {
+    "claimable": true,
+    "critical_rank_local_endpoint_deltas": {
+      "count": 4,
+      "max": 45.257226562499994,
+      "mean": 45.2571572265625,
+      "median": 45.257158203125,
+      "min": 45.2570859375
+    },
+    "denominator": "MAX_SCORE_POOL_COMPLETION_2_MINUS_MAX_SCORE_POOL_COMPLETION_1",
+    "endpoint_1_world_seconds": 49.3125703125,
+    "endpoint_2_world_seconds": 94.569796875,
+    "includes_cross_cycle_lookahead_and_hot_sync": true,
+    "role": "STEADY_STATE_CLAIMABLE",
+    "seconds": 45.257226562499994
+  },
+  "cycles_in_same_process": 2,
+  "errors": [],
+  "execution_mode": "pipeline",
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "formal_timing_eligible": true,
+  "hardware_profile": {
+    "critic_accumulations_per_commit": 2,
+    "critic_physical_batch_size": 2,
+    "generator_pool_size": 4,
+    "global_batch": 16,
+    "logical_world_size": 16,
+    "name": "h100-8-b16",
+    "physical_world_size": 8,
+    "pipeline_waves": 4,
+    "score_pool_size": 4
+  },
+  "head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+  "heads": {
+    "pipeline": "4d7c589acd01a4a6c90ca141da266b3090df2b68"
+  },
+  "identity": {
+    "bootstrap_sha256": "d71cbb48bf57cfa92b6a05614d93c52062d371d43b1d106fcab7b1acbc185fc3",
+    "source_receipt_sha256": "43c99f0bf054c4656d339b2146c2b7096bac5ba5a09870be1a054a33642eb493",
+    "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+  },
+  "implementation": {
+    "effective_plan_sha256": "1aeda4a63febeb55f6853d1562e4768f7a0fb5a7ec946dfb3f9b0d15e41fb8d5",
+    "fingerprint": "73f7642dd223206d6da65c456cfaadc0022edffd0553077e7426a74a3850765b",
+    "mode": "pipeline",
+    "physical_call_inventory": {
+      "critic/grad/checkpoint": 80,
+      "critic/nograd/plain": 32,
+      "student/grad/checkpoint": 96,
+      "student/nograd/plain": 4120,
+      "teacher/nograd/plain": 32
+    },
+    "variant": "c34-continuous-b16-residual-layout"
+  },
+  "logical_call_inventory": {
+    "critic": 192,
+    "critic/grad": 160,
+    "critic/grad/checkpoint": 160,
+    "critic/nograd": 32,
+    "critic/nograd/plain": 32,
+    "student": 4216,
+    "student/grad": 96,
+    "student/grad/checkpoint": 96,
+    "student/nograd": 4120,
+    "student/nograd/plain": 4120,
+    "teacher": 32,
+    "teacher/nograd": 32,
+    "teacher/nograd/plain": 32
+  },
+  "logical_world_size": 16,
+  "matched_workload_contract": {
+    "cycles_in_same_process": 2,
+    "global_batch": 16,
+    "hardware_profile": {
+      "critic_accumulations_per_commit": 2,
+      "critic_physical_batch_size": 2,
+      "generator_pool_size": 4,
+      "global_batch": 16,
+      "logical_world_size": 16,
+      "name": "h100-8-b16",
+      "physical_world_size": 8,
+      "pipeline_waves": 4,
+      "score_pool_size": 4
+    },
+    "head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+    "identity": {
+      "bootstrap_sha256": "d71cbb48bf57cfa92b6a05614d93c52062d371d43b1d106fcab7b1acbc185fc3",
+      "source_receipt_sha256": "43c99f0bf054c4656d339b2146c2b7096bac5ba5a09870be1a054a33642eb493",
+      "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+    },
+    "logical_call_inventory": {
+      "critic/grad/checkpoint": 160,
+      "critic/nograd/plain": 32,
+      "student/grad/checkpoint": 96,
+      "student/nograd/plain": 4120,
+      "teacher/nograd/plain": 32
+    },
+    "logical_updates": {
+      "critic": 10,
+      "ema": 0,
+      "generator": 2
+    },
+    "logical_world_size": 16,
+    "profiled": false,
+    "schema": "livewan_two_cycle_timing_contract_v1",
+    "seed": 20260830,
+    "source_reuse_across_cycles": true,
+    "timer_boundary": "one pre-run barrier+synchronize; no midpoint barrier/synchronize; one post-cycle2 synchronize+barrier",
+    "world_size": 8
+  },
+  "matched_workload_fingerprint": "1aa0fc83c9277f34b348cd48dcdfbb4a9b0e59d58f574daa97b7554d5de57aa3",
+  "native_unprofiled": true,
+  "outer_two_cycle_wall_diagnostic": {
+    "count": 8,
+    "max": 94.57168771047145,
+    "mean": 94.57143187290058,
+    "median": 94.57138627860695,
+    "min": 94.57131458818913
+  },
+  "per_cycle_call_inventory": [
+    {
+      "cycle": 1,
+      "logical": {
+        "critic": 96,
+        "critic/grad": 80,
+        "critic/grad/checkpoint": 80,
+        "critic/nograd": 16,
+        "critic/nograd/plain": 16,
+        "student": 2108,
+        "student/grad": 48,
+        "student/grad/checkpoint": 48,
+        "student/nograd": 2060,
+        "student/nograd/plain": 2060,
+        "teacher": 16,
+        "teacher/nograd": 16,
+        "teacher/nograd/plain": 16
+      },
+      "physical": {
+        "critic": 56,
+        "critic/grad": 40,
+        "critic/grad/checkpoint": 40,
+        "critic/nograd": 16,
+        "critic/nograd/plain": 16,
+        "student": 2108,
+        "student/grad": 48,
+        "student/grad/checkpoint": 48,
+        "student/nograd": 2060,
+        "student/nograd/plain": 2060,
+        "teacher": 16,
+        "teacher/nograd": 16,
+        "teacher/nograd/plain": 16
+      }
+    },
+    {
+      "cycle": 2,
+      "logical": {
+        "critic": 96,
+        "critic/grad": 80,
+        "critic/grad/checkpoint": 80,
+        "critic/nograd": 16,
+        "critic/nograd/plain": 16,
+        "student": 2108,
+        "student/grad": 48,
+        "student/grad/checkpoint": 48,
+        "student/nograd": 2060,
+        "student/nograd/plain": 2060,
+        "teacher": 16,
+        "teacher/nograd": 16,
+        "teacher/nograd/plain": 16
+      },
+      "physical": {
+        "critic": 56,
+        "critic/grad": 40,
+        "critic/grad/checkpoint": 40,
+        "critic/nograd": 16,
+        "critic/nograd/plain": 16,
+        "student": 2108,
+        "student/grad": 48,
+        "student/grad/checkpoint": 48,
+        "student/nograd": 2060,
+        "student/nograd/plain": 2060,
+        "teacher": 16,
+        "teacher/nograd": 16,
+        "teacher/nograd/plain": 16
+      }
+    }
+  ],
+  "physical_call_inventory": {
+    "critic": 112,
+    "critic/grad": 80,
+    "critic/grad/checkpoint": 80,
+    "critic/nograd": 32,
+    "critic/nograd/plain": 32,
+    "student": 4216,
+    "student/grad": 96,
+    "student/grad/checkpoint": 96,
+    "student/nograd": 4120,
+    "student/nograd/plain": 4120,
+    "teacher": 32,
+    "teacher/nograd": 32,
+    "teacher/nograd/plain": 32
+  },
+  "physical_world_size": 8,
+  "pipeline_teacher_placement": {
+    "hardware_profile": {
+      "critic_accumulations_per_commit": 2,
+      "critic_physical_batch_size": 2,
+      "generator_pool_size": 4,
+      "global_batch": 16,
+      "logical_world_size": 16,
+      "name": "h100-8-b16",
+      "physical_world_size": 8,
+      "pipeline_waves": 4,
+      "score_pool_size": 4
+    },
+    "name": "full-resident",
+    "schema_version": "distillschedule.livewan_pipeline_teacher_placement.v1",
+    "teacher_fsdp": false,
+    "teacher_parameter_offload": "off",
+    "teacher_reshard_after_forward": false,
+    "teacher_storage_dtype": "bfloat16",
+    "teacher_trainable": false
+  },
+  "pipeline_variant": "c34-continuous-b16-residual-layout",
+  "profiled": false,
+  "profiler_status": "NOT_RUN",
+  "rank_count": 8,
+  "run_id": "livewan_h100_teacher_resident_candidate_timing_resume_20261015_r1",
+  "run_kind": "two-cycle-timing",
+  "run_root": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing",
+  "schema_version": "distillschedule.livewan_two_cycle_timing_summary.v1",
+  "status": "PASS",
+  "teacher_storage_binding": {
+    "effective_plan_sha256": "42517e4e227bc8de2baa9ce644cc14a394286037a690f90191ad17d6bb763b77",
+    "pipeline_teacher_placement": {
+      "hardware_profile": {
+        "critic_accumulations_per_commit": 2,
+        "critic_physical_batch_size": 2,
+        "generator_pool_size": 4,
+        "global_batch": 16,
+        "logical_world_size": 16,
+        "name": "h100-8-b16",
+        "physical_world_size": 8,
+        "pipeline_waves": 4,
+        "score_pool_size": 4
+      },
+      "name": "full-resident",
+      "schema_version": "distillschedule.livewan_pipeline_teacher_placement.v1",
+      "teacher_fsdp": false,
+      "teacher_parameter_offload": "off",
+      "teacher_reshard_after_forward": false,
+      "teacher_storage_dtype": "bfloat16",
+      "teacher_trainable": false
+    },
+    "rank_bindings": [
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_000.json",
+        "rank": 0,
+        "sha256": "aed58422083caa814edaaea546ae015a4f4798b7362ba1640201060134d60db6"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_001.json",
+        "rank": 1,
+        "sha256": "6792844f2e13cb0d02e1428f45c3925152fe09126777bb4bac28b05ba6c4077f"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_002.json",
+        "rank": 2,
+        "sha256": "464e29a39cfd55907123537c24797e3a47d9aff4cd69adf468b7e261d48bda34"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_003.json",
+        "rank": 3,
+        "sha256": "33c86d88266f08fdbddc2da63ad1710a135a5f6c154df3070c1437091b00ab71"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_004.json",
+        "rank": 4,
+        "sha256": "e2fd5a2ee084ea00f19a1c9b2c9a4f9eeef9418cd3f54aa0597fa9dc94bbc581"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_005.json",
+        "rank": 5,
+        "sha256": "9ee6425c88caee18e1deaca2dade4b3fb4b154224ebfe08845c191656d1f6a2c"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_006.json",
+        "rank": 6,
+        "sha256": "ac497bb203337ec202e8fe988f0d6971ffcecabbcc273ebb9227fc3ceaff8721"
+      },
+      {
+        "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing/receipts/rank_007.json",
+        "rank": 7,
+        "sha256": "db42882c45bc392b09072a33983942c970f05d56051516afeac5b11468647ca1"
+      }
+    ],
+    "run_root": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing"
+  },
+  "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+}

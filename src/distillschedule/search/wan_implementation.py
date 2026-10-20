@@ -13,10 +13,13 @@ from typing import Any, Mapping
 
 from .contracts import Candidate, require
 from .precision import ExecutionPrecision
+from .wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT
 
 WAN = "wan13b_nogan_resident_best"
 PREFIX = "joint-wan1-"
 PATTERN = re.compile(r"joint-wan1-(fsdp|resident)-c(512|1024|2048)-e([01])$")
+BUNDLE_PREFIX = "joint-wan3-"
+BUNDLE_PATTERN = re.compile(r"joint-wan3-resident-c2048-e1-bincumbent21a-v1(?:-w([1-5]))?$")
 SCHEDULE_PREFIX = "joint-wan2-"
 SCHEDULE_PATTERN = re.compile(r"joint-wan2-(fsdp|resident)-c(512|1024|2048)-e([01])-w([1-5])$")
 PRECISION = ExecutionPrecision("bfloat16", "float32", "float32", True, True,
@@ -29,8 +32,11 @@ class WanImplementation:
     chunk_tokens: int
     lora_epilogue: bool
     rollout_window: int | None = None
+    candidate_bundle: WanCandidateBundle = OFF
 
     def __post_init__(self) -> None:
+        require(isinstance(self.candidate_bundle, WanCandidateBundle), "typed Wan candidate bundle required")
+        self.candidate_bundle.validate_backend(self.placement, self.chunk_tokens, self.lora_epilogue)
         require(self.placement in {"fsdp", "resident"}, "unsupported Wan placement")
         require(type(self.chunk_tokens) is int and self.chunk_tokens in {512, 1024, 2048}, "unsupported chunk size")
         require(type(self.lora_epilogue) is bool, "epilogue must be boolean")
@@ -41,6 +47,9 @@ class WanImplementation:
 
     @property
     def id(self) -> str:
+        if self.candidate_bundle.enabled:
+            suffix = "" if self.rollout_window is None else f"-w{self.rollout_window}"
+            return f"{BUNDLE_PREFIX}resident-c2048-e1-b{self.candidate_bundle.id}{suffix}"
         prefix = PREFIX if self.rollout_window is None else SCHEDULE_PREFIX
         suffix = "" if self.rollout_window is None else f"-w{self.rollout_window}"
         return f"{prefix}{self.placement}-c{self.chunk_tokens}-e{int(self.lora_epilogue)}{suffix}"
@@ -53,12 +62,16 @@ class WanImplementation:
 
     @property
     def assignment(self) -> dict[str, str]:
-        return {"placement": self.placement, "chunk_tokens": str(self.chunk_tokens),
+        return {**({"candidate_bundle": self.candidate_bundle.id} if self.candidate_bundle.enabled else {}),
+                "placement": self.placement, "chunk_tokens": str(self.chunk_tokens),
                 "lora_epilogue": "on" if self.lora_epilogue else "off",
                 **({"rollout_window": str(self.rollout_window)} if self.rollout_window is not None else {})}
 
     @classmethod
     def parse(cls, key: str) -> "WanImplementation":
+        bundle = BUNDLE_PATTERN.fullmatch(key)
+        if bundle is not None:
+            return cls("resident", 2048, True, int(bundle[1]) if bundle[1] else None, INCUMBENT)
         match = PATTERN.fullmatch(key) or SCHEDULE_PATTERN.fullmatch(key)
         require(match is not None, "malformed/unregistered joint Wan implementation")
         return cls(match[1], int(match[2]), bool(int(match[3])),
@@ -66,6 +79,8 @@ class WanImplementation:
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "WanImplementation":
+        assignment = dict(assignment)
+        bundle = WanCandidateBundle.parse(assignment.pop("candidate_bundle", "none"))
         required = {"placement", "chunk_tokens", "lora_epilogue"}
         require(set(assignment) in (required, required | {"rollout_window"}), "Wan plan has extra/missing decisions")
         require(assignment["chunk_tokens"] in {"512", "1024", "2048"}
@@ -73,22 +88,24 @@ class WanImplementation:
         require("rollout_window" not in assignment or assignment["rollout_window"] in {"1","2","3","4","5"},
                 "invalid rollout window")
         return cls(assignment["placement"], int(assignment["chunk_tokens"]), assignment["lora_epilogue"] == "on",
-                   int(assignment["rollout_window"]) if "rollout_window" in assignment else None)
+                   int(assignment["rollout_window"]) if "rollout_window" in assignment else None, bundle)
 
     def candidate(self) -> Candidate:
         kernels = (f"modulation_chunk{self.chunk_tokens}",) + (("lora_nograd_epilogue",) if self.lora_epilogue else ())
+        if self.candidate_bundle.enabled:
+            kernels += ("incumbent21a_coupled_bundle_v1",)
         return Candidate(self.id, WAN, self.native_placement, kernels,
                          ("nccl", "pointwise"), mechanism="joint_placement_and_existing_kernel_parameters")
 
     def environment(self) -> dict[str, str]:
-        return {**PRECISION.launch_environment(),
+        return {**PRECISION.launch_environment(), **self.candidate_bundle.environment(),
                 "DISTILLSCHEDULE_WAN13B_PLANNER_PRECISION": PRECISION.digest,
                 **({"DISTILLSCHEDULE_WAN_ROLLOUT_WINDOW":str(self.rollout_window)}
                    if self.rollout_window is not None else {})}
 
 
 def is_generated(key: str) -> bool:
-    return key.startswith((PREFIX, SCHEDULE_PREFIX))
+    return key.startswith((PREFIX, SCHEDULE_PREFIX, BUNDLE_PREFIX))
 
 
 def current_implementation(environment: Mapping[str, str] | None = None) -> WanImplementation | None:
@@ -117,6 +134,7 @@ extra collective, CUDA synchronization or per-call instrumentation is added.
     if current_implementation(env) is None:
         require(not env.get("DISTILLSCHEDULE_WAN13B_PLANNER_PRECISION"), "planner precision without planner implementation")
         return None
+    current_implementation(env).candidate_bundle.verify_environment(env)
     require(env.get("DISTILLSCHEDULE_WAN13B_PLANNER_PRECISION") == PRECISION.digest, "planner precision identity changed")
     require(all(env.get(k) == v for k, v in PRECISION.launch_environment().items()), "planner precision launch environment changed")
     require(env.get("NVIDIA_TF32_OVERRIDE") in {None, ""}, "unregistered driver precision override")

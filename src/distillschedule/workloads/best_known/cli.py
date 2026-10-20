@@ -9,6 +9,21 @@ from .registry import list_profiles, load_profile, resolve_profile, verify_asset
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "hardware-helios-c2":
+        from distillschedule.search.hardware_helios_c2_cli import main as helios_c2_main
+        return helios_c2_main(argv[1:])
+    if argv and argv[0] == "hardware-helios":
+        from distillschedule.search.hardware_helios_cli import main as helios_hardware_main
+        return helios_hardware_main(argv[1:])
+    if argv and argv[0] == "hardware":
+        from distillschedule.search.hardware_wan_cli import main as hardware_main
+        return hardware_main(argv[1:])
+    if argv and argv[0] == "r9-owner":
+        from distillschedule.search.r9_transport import main as r9_main
+        return r9_main(argv[1:])
+    if argv and argv[0] in {"candidates", "calibrate", "assemble-calibration"}:
+        from distillschedule.search.workflow_cli import main as workflow_main
+        return workflow_main(argv)
     if argv and argv[0] in {"profile", "search"}:
         from distillschedule.search.cli import main as search_main
         return search_main(argv)
@@ -36,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         if action == "run":
             sub.add_argument("--dry-run", action="store_true")
             sub.add_argument("--search-plan", type=Path, help="Execute a registered, source-bound search plan")
+            sub.add_argument("--r9-transport", type=Path, help="Opt-in reviewed R9 deployment for a saved H3 plan")
             sub.add_argument("--coordinator-output", type=Path, help="Fresh local directory for search-plan replay logs")
     args = parser.parse_args(argv)
     try:
@@ -48,6 +64,9 @@ def main(argv: list[str] | None = None) -> int:
             from .registry import _object, _require
             receipt = _object(args.search_plan)
             _require(receipt.get("profile_id") == args.workload, "search-plan workload differs")
+            if args.r9_transport:
+                from distillschedule.search.r9_transport import rebind_r9_plan
+                rebind_plan = rebind_r9_plan
             if not args.dry_run:
                 _require(args.coordinator_output is not None, "replay requires a fresh coordinator-output and run-id")
                 receipt = rebind_plan(receipt, run_id=args.run_id, assets_path=args.assets_config,
@@ -55,7 +74,10 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _require(args.assets_config is None, "dry-run inspects the bound plan; assets override forbidden")
             return run_plan(receipt, dry_run=args.dry_run,
-                            coordinator_output=args.coordinator_output / "dispatch" if args.coordinator_output else None)
+                            coordinator_output=args.coordinator_output / "dispatch" if args.coordinator_output else None,
+                            transport_config=_object(args.r9_transport) if args.r9_transport else None)
+        if args.action == "run" and args.r9_transport:
+            raise ValueError("R9 transport requires a registered serialized --search-plan")
         receipt = resolve_profile(args.workload, assets_path=args.assets_config, run_id=args.run_id, mode=args.mode)
         if args.action == "explain":
             print(json.dumps(receipt, indent=2, sort_keys=True))

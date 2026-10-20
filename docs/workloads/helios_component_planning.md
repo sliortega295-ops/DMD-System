@@ -12,8 +12,11 @@ versioned graph, not the old one-cycle loop, now dispatches those helpers.
 | Helios No-GAN | world16 FSDP / node HSDP 2x8 | 512 / 2048 | 1..5 | off |
 | Helios GAN | world16 FSDP | 512 / 2048 | 5 | off / on |
 
-Other canonical kernels, B1/global16, unpacked DMD Score, both CUDA residuals,
-CUDA EMA and local FA2 are frozen. There are no new sharing aliases or TP/PP
+For the legacy `native0` candidate, other canonical kernels, B1/global16,
+unpacked DMD Score, both CUDA residuals, CUDA EMA and local FA2 are frozen.
+The separate explicit complete GAN manual bundle is pinned-SM80-FA3/down40,
+with merged-LoRA/N70 execution OFF; it is not a FA2-only candidate and requires
+its own source-bound calibration. There are no new sharing aliases or TP/PP
 pools. The existing Score/Teacher adapter alias remains. GAN's official packed
 fake/real/R1 Score input is physical B3; it is still logical B1, not searched
 batching. R2 is inactive.
@@ -68,9 +71,27 @@ unsupported/missing combinations remain `UNCALIBRATED`.
 
 Memory uses observed post-setup static allocation and per-action peak deltas,
 plus separately measured retained latent lifetimes. Other trace/cache/state
-growth remains conservatively inside workspace. A 2 GiB model capacity margin
-is not a substitute for native capacity validation. Serial world16 action
+growth remains conservatively inside workspace. The allocator margin defaults
+to exactly 2 GiB; it is not a substitute for native capacity validation.
+Construction-memory peaks are outside this post-setup model. Serial world16 action
 envelopes do not invent additional inter-action GPU overlap.
+
+An explicit Helios-only `assemble-calibration --helios-allocator-margin-mib N`
+sets a nonnegative integer margin in MiB. The API keyword is
+`allocator_margin_bytes`; the optional layout field has that same name and
+rejects booleans, negative values and nonintegers. Omission preserves old layout
+fields and the exact 2 GiB default. Per-rank caps remain derived from actual
+driver total minus maximum observed nonallocator usage (`total-free-reserved`,
+floored at zero) minus this margin, taking the minimum across fragments.
+Arbitrary caller memory limits are not accepted: native validation rebuilds
+from the hash-bound layout, and manual-match protocol budgets must equal it.
+
+This input does not redefine `gpu_reserve_bytes`, the independent sampled
+driver-free gate, and neither gate proves continuous free-memory extrema.
+A different margin requires authorization and fresh source-bound preregistration
+before new match runs. It cannot make a prior strict-2-GiB rejection pass or
+relabel older native receipts under a new HEAD, authorize GPU execution, or
+establish numerical equivalence or formal speedup.
 
 `helios_model_adapter.py` constructs the common `PlanningProblem`, verifies raw
 source-linked costs, and lowers the selected plan. `helios_native.py` rechecks
@@ -87,6 +108,11 @@ python scripts/distillctl.py workloads search --strategy model-based \
   --workload helios14b_gan_best --dry-run
 
 # After NativeTrialRunner has collected matched correctness and component costs:
+python scripts/distillctl.py workloads assemble-calibration \
+  --workload helios14b_gan_best --result <baseline-result.json> <manual-result.json> \
+  --expected-head <same-source-head> --include-helios-gan-manual \
+  --helios-allocator-margin-mib 2048 --output <new-assembled-directory>
+
 python scripts/distillctl.py workloads search --strategy model-based \
   --workload helios14b_nogan_best --planning-layout <layout.json> \
   --cost-model <cost-model.json> --assets-config <assets.json> \

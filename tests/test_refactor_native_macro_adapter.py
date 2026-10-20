@@ -63,8 +63,8 @@ def test_shared_adapter_dispatch_rejects_unknown_and_supports_three_workloads():
         adapter_for('helios_unknown')
 
 
-@pytest.mark.parametrize('workload', [LIVEWAN, H3])
-def test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path, workload):
+@pytest.mark.parametrize('workload,new_frames', [(LIVEWAN,False),(LIVEWAN,True),(H3,False)])
+def test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path, workload, new_frames):
     import json
     from distillschedule.search.native_macro_adapter import (
         ADAPTER, MEMORY, build_problem, implementations, precision_contract, operation_contract, cost_key,
@@ -74,11 +74,13 @@ def test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path, workl
     from distillschedule.search.contracts import semantic_contract
     from distillschedule.search.cost_model import CostModel, OperationCost
     from distillschedule.search.model_search import search_plans
-    values = implementations(workload)
+    from distillschedule.search.livewan_request import LiveWanRequest
+    request = LiveWanRequest(frames=69) if new_frames else None
+    values = implementations(workload, livewan_request=request)
     anchors = (values[0], values[-1])
     bind = dict(source_head=git_head(repository_root()),
-        precision_fingerprint=fingerprint(precision_contract(workload)),
-        semantic_fingerprint=fingerprint(semantic_contract(load_profile(workload))),
+        precision_fingerprint=fingerprint(precision_contract(workload,livewan_request=request)),
+        semantic_fingerprint=fingerprint(semantic_contract(request.profile() if request else load_profile(workload))),
         **{k:'a'*64 for k in ('asset_fingerprint','environment_fingerprint','hardware_fingerprint')})
     layout = dict(schema_version='distillschedule.native_macro_layout.v1', adapter=ADAPTER,
         workload=workload, binding=bind, status='PASS', profiled=False, memory_definition=MEMORY,
@@ -108,3 +110,11 @@ def test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path, workl
     plan=lower_prediction(result,problem,costs,run_id='cpu-fixture')
     assert plan['search_candidate']==anchors[-1].candidate().to_dict()
     assert problem.graph.metadata['arbitrary_pool_dag_lowering'] is False
+    if new_frames:
+        assert plan['fully_resolved_profile']['contract']['request'] == request.to_dict()
+        assert problem.graph.metadata['workload_request'] == request.to_dict()
+        changed = dict(layout)
+        changed['implementations'] = {**layout['implementations'], values[0].id.removesuffix('-f69'): layout['implementations'][values[0].id]}
+        path.write_text(json.dumps(changed))
+        with pytest.raises(ValueError, match='mix requests'):
+            build_problem(path)

@@ -460,7 +460,15 @@ def install_generator_nograd_lora_fused_epilogue(
         receipt["disabled_reason"] = "NOT_REQUESTED"
         return receipt
     if _enabled(os.environ.get(CAST_CACHE_ENV)):
-        raise RuntimeError("cast cache and fused epilogue must be tested separately")
+        from .wan13b_cast_graph_composition import check
+        from distillschedule.search.wan_implementation import current_implementation
+        implementation = current_implementation()
+        if implementation is None or not implementation.candidate_bundle.enabled:
+            raise RuntimeError("cast cache composition requires the typed incumbent bundle")
+        check(implementation.native_placement, cast_cache=True, fused=True,
+              graph=os.environ.get("DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH") == "1",
+              input_gemm=os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") != "0",
+              shadow=os.environ.get("DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW", "0") != "0")
     if _enabled(os.environ.get(ATTRIBUTION_ENV)):
         raise RuntimeError("operator attribution and fused epilogue are separate runs")
     if role != "generator":

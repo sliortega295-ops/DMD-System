@@ -34,8 +34,10 @@ The second path permits a DMD adapter to compute Real/Fake scores and construct
 its original target gradient WITHOUT replacing its loss with the scalar-objective
 fixture. Runtime applies the common equal-microbatch normalization ONCE. Neither
 interface automatically translates arbitrary DMD/GAN/EMA protocols. The current
-native update family remains G1 followed by zero or one Score update using the
-specified source cohort; more update rules need explicit semantic bindings.
+native update family is G1 followed by 0..64 Score updates. More than one needs
+an explicit `score_update_input` cycle/update/sample provider, including any
+intentional reuse or transformation of the detached source cohort. Other update
+orderings/protocols still need explicit semantic bindings.
 
 ## Continuing a selected plan
 
@@ -74,7 +76,17 @@ calibration, shared selection, selected-plan continuation and the actual public
 torchrun CLI. Fake CUDA stream tests check host API ordering only; two real CUDA
 regressions are skipped on CPU and must run on A100/H100 before GPU claims.
 
-Pool-internal FSDP/HSDP with shared/mixed-precision roles, cross-layout numerical
+Implemented CPU/Gloo scope now includes bounded contiguous and balanced
+per-node cuts, restricted Generator/frozen-Score/trainable-Score FSDP2 and
+initialized Adam moment preservation. Trainable Score sharding requires the
+constructed no-grad gradient interface, balanced paired pools and explicit
+repeated-update input semantics; mixed dtypes require homogeneous leaf ownership.
+See `test_open_workload_role_updates.py`, `test_open_workload_role_trainable_score.py`
+and `test_open_workload_role_composition.py`. This is not new A100/H100 evidence:
+those generic GPU paths remain NOT_RUN.
+
+General pool-internal HSDP/shared-state layouts, arbitrary mixed parameter
+ownership, cross-layout numerical
 admission for arbitrary factories, fine-grained cost-predicted role schedules,
 production checkpoint/restart, full original DMD adapters and real GPU quality /
 performance evidence remain separate unsatisfied scope gates.

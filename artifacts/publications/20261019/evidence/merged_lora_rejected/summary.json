@@ -1,0 +1,138 @@
+{
+  "budget": {
+    "CUDA_no_model_canary": "ONE_OWNED_GPU_PRIVATE_RNG_PASS",
+    "conservative_GPU_hours_16cards": 13.257777777777777,
+    "controller_GPU_envelopes_seconds": 2983,
+    "user_budget_GPU_hours": 32
+  },
+  "comparison_reuse": "trajectory_coarse and compare_wan13b_trajectory_world16, thresholds unchanged; full LoRA and probe evidence supplemented",
+  "cycles_per_arm": 30,
+  "eligibility": {
+    "B": false,
+    "C": false,
+    "native_C2_timing": "NOT_RUN",
+    "speedup": "NOT_CLAIMABLE"
+  },
+  "expected_head": "c69876197aeaccbab19b515b54d1022f07634422",
+  "final_versions_all_arms": {
+    "critic": 160,
+    "ema": 160,
+    "generator": 32
+  },
+  "finished_utc": "2026-10-12T17:19:48.995119+00:00",
+  "operational_status": "ALL_FOUR_ARMS_30_CYCLES_16_RANKS_PASS",
+  "preregistration_sha256": "7e1d6464abf31b28e29c4e4563f7f1316b25be5a83c867c5c4c50e6550dcd5f3",
+  "push": "NOT_RUN",
+  "raw_snapshots": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/wan13b-shadow-noise30-20261012/artifacts/runs/<run_id>/execution/shadow_study",
+  "remote_artifacts": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/wan13b_shadow_noise30_20261012_r1",
+  "resources": {
+    "wan_shadow_noise30_A_20261012_r1": {
+      "cycle1_training_diagnostic": 22.531169646419585,
+      "cycle2_training_diagnostic": 20.901451158337295,
+      "peak_allocated_GiB": 21.877685546875,
+      "peak_reserved_GiB": 22.3828125,
+      "rank_count": 16,
+      "statuses": [
+        "PASS"
+      ]
+    },
+    "wan_shadow_noise30_Arepeat_20261012_r1": {
+      "cycle1_training_diagnostic": 22.51548149716109,
+      "cycle2_training_diagnostic": 20.909129093401134,
+      "peak_allocated_GiB": 21.877685546875,
+      "peak_reserved_GiB": 22.3828125,
+      "rank_count": 16,
+      "statuses": [
+        "PASS"
+      ]
+    },
+    "wan_shadow_noise30_B_20261012_r1": {
+      "cycle1_training_diagnostic": 20.388585933484137,
+      "cycle2_training_diagnostic": 18.838824775069952,
+      "peak_allocated_GiB": 24.584060668945312,
+      "peak_reserved_GiB": 25.421875,
+      "rank_count": 16,
+      "statuses": [
+        "PASS"
+      ]
+    },
+    "wan_shadow_noise30_Cstochastic_20261012_r1": {
+      "cycle1_training_diagnostic": 20.717022926546633,
+      "cycle2_training_diagnostic": 19.065412141382694,
+      "peak_allocated_GiB": 24.584060668945312,
+      "peak_reserved_GiB": 25.421875,
+      "rank_count": 16,
+      "statuses": [
+        "PASS"
+      ]
+    }
+  },
+  "rounding": {
+    "B": {
+      "bias_below_0p5": false,
+      "head_lost_ratio_mean": 0.9920105744549618,
+      "lost_ratio_decreases": true,
+      "near_one_tail_count": 10,
+      "tail_bias_cos_median": 0.9390698197950675,
+      "tail_lost_ratio_mean": 0.9693484236154889
+    },
+    "C": {
+      "bias_below_0p5": true,
+      "head_lost_ratio_mean": 11.743507945896635,
+      "lost_ratio_decreases": true,
+      "near_one_tail_count": 0,
+      "tail_bias_cos_median": -8.086995669580977e-06,
+      "tail_lost_ratio_mean": 4.980284400457748
+    }
+  },
+  "rows": [
+    {
+      "arm": "A_repeat",
+      "claimable_speedup": null,
+      "critic_mean_loss_curve_normalized_rmse": 1.8374956585360183e-05,
+      "critic_parameter_deviation_relative_training_motion": 0.0007476036445369653,
+      "generator_loss_curve_normalized_rmse": 0.00038690157763448944,
+      "generator_parameter_deviation_relative_training_motion": 0.0016499039871920459,
+      "native_C2": "NOT_RUN",
+      "original_G_probe_cycle30_nl2": 0.014723815840714156,
+      "rounding_interpretation": "NOT_APPLICABLE",
+      "status": "NOISE_FLOOR_REFERENCE"
+    },
+    {
+      "arm": "B_round_nearest",
+      "claimable_speedup": null,
+      "critic_mean_loss_curve_normalized_rmse": 0.04244302646513396,
+      "critic_parameter_deviation_relative_training_motion": 0.2761711451406946,
+      "generator_loss_curve_normalized_rmse": 0.004473093732676111,
+      "generator_parameter_deviation_relative_training_motion": 0.01525184669586184,
+      "native_C2": "NOT_RUN",
+      "original_G_probe_cycle30_nl2": 0.019932839995061718,
+      "rounding_interpretation": "SYSTEMATIC_LORA_CANCELLATION",
+      "status": "FAIL_PREREGISTERED_TRAJECTORY_GATE"
+    },
+    {
+      "arm": "C_stochastic",
+      "claimable_speedup": null,
+      "critic_mean_loss_curve_normalized_rmse": 0.040829285255366,
+      "critic_parameter_deviation_relative_training_motion": 0.24764260288542356,
+      "generator_loss_curve_normalized_rmse": 0.003913696948193603,
+      "generator_parameter_deviation_relative_training_motion": 0.01404091772983309,
+      "native_C2": "NOT_RUN",
+      "original_G_probe_cycle30_nl2": 0.018815873942190645,
+      "rounding_interpretation": "DIRECTIONALLY_UNBIASED_BUT_EXCESS_TRAJECTORY_DRIFT",
+      "status": "FAIL_PREREGISTERED_TRAJECTORY_GATE"
+    }
+  ],
+  "run_ids": [
+    "wan_shadow_noise30_A_20261012_r1",
+    "wan_shadow_noise30_Arepeat_20261012_r1",
+    "wan_shadow_noise30_B_20261012_r1",
+    "wan_shadow_noise30_Cstochastic_20261012_r1"
+  ],
+  "schema_version": "wan13b.shadow_noise_final.v1",
+  "scope_warning": "One seed and one self-repeat. C raw FAIL_SYSTEMATIC_BIAS label denotes preregistered growing trajectory excess, NOT nonzero mean weight-rounding bias.",
+  "semantic_contract": "SAME_SOURCE_BOOTSTRAP_TRACE_SEED_FP32_TRAINING_LORA_G1_C5_EMA5_WORLD16_B1;ONLY_POST_G_SHADOW_ROUNDING_DIFFERS",
+  "source_worktree": "/home/lyy/Helios/DMD-System/worktrees/wan13b-shadow-noise30-20261012",
+  "study_id": "wan13b_shadow_noise30_20261012_r1",
+  "total_rank_cycle_receipts": 1920
+}

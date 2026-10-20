@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 from typing import Any
-from .registry import load_profile, write_new_json, fingerprint, git_head, repository_root, _require
+from .registry import load_profile, write_new_json, fingerprint, git_head, repository_root, _require, asset_identity
 
 
 def bind_livewan_gate(gate: dict[str, Any], receipt: dict[str, Any]) -> dict[str, Any]:
@@ -23,7 +23,7 @@ def bind_livewan_gate(gate: dict[str, Any], receipt: dict[str, Any]) -> dict[str
              "canonical gate profile differs")
     _require(receipt.get("mode") == "correctness" and receipt.get("native_mode") == "trajectory",
              "binding must come from canonical correctness, not timing")
-    _require(receipt.get("asset_fingerprint") == fingerprint(receipt["asset_config"]["assets"]),
+    _require(receipt.get("asset_fingerprint") == fingerprint(asset_identity(receipt["asset_config"])),
              "canonical gate asset fingerprint differs")
     arm = gate.get("arms", {}).get("pipeline", {})
     _require(arm.get("run_id") == receipt.get("run_id")

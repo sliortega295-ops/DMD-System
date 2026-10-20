@@ -1,0 +1,32 @@
+{
+  "status": "PASS_DOCUMENT_SCOPE_HASH_ARITHMETIC_AND_LINKS_ONLY",
+  "utc": "2026-10-20T02:53:25.101957+00:00",
+  "manifest_files": 5,
+  "A100_paper_rows": 6,
+  "H100_measured_rows": 6,
+  "planner_rows": 6,
+  "planner_timed_rows": 5,
+  "local_markdown_links_checked": 33,
+  "checks": [
+    {
+      "name": "original_publication",
+      "returncode": 0,
+      "log_sha256": "fdb3cdca97b4897d87bd37fb0cf9fd888ece265104bef994cd9d52f872d48d3f"
+    },
+    {
+      "name": "h100_publication",
+      "returncode": 0,
+      "log_sha256": "f845499fadd1802adb00d91bbd86d655249564a99d104b3604a7281d4fce0ed8"
+    },
+    {
+      "name": "h100_regression",
+      "returncode": 0,
+      "log_sha256": "a052b3f2cdd6274b61f8f27e191e8e227370a217113b5d78ea5e547747eb4a4a"
+    }
+  ],
+  "GPU_started": 0,
+  "SSH_calls": 0,
+  "strict_numerical_promoted": false,
+  "main_or_training_defaults_changed": false,
+  "boundary": "New user table snapshot and old real evidence, not fresh timing or renewed equivalence. Raw post-timer FAIL remains."
+}

@@ -1,0 +1,100 @@
+{
+  "schema_version": "dmd.wan_exact_ema_graph_manual_pair.v1",
+  "HEAD": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+  "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/wan-fa3-large-a5b550af56b3-20261018",
+  "run_id": "wan-exact-ema-control-20261018-r34",
+  "artifact_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/runs/control",
+  "nodes": [
+    {
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "ssh_port": 2222,
+      "python_env": "/tmp/distillschedule-helios-official-torch210",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "assigned_gpu_uuids": [
+        "GPU-cad55364-e014-c35f-337e-db899afd1c6a",
+        "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617",
+        "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283",
+        "GPU-bab43db0-a051-0419-39f7-e33effa9445b",
+        "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e",
+        "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e",
+        "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3",
+        "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+      ],
+      "python": "/tmp/distillschedule-helios-official-torch210/bin/python"
+    },
+    {
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "ssh_port": 2222,
+      "python_env": "/tmp/distillschedule-helios-official-torch210",
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "assigned_gpu_uuids": [
+        "GPU-a7668680-c210-ecdd-c247-a8337b735231",
+        "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a",
+        "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc",
+        "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060",
+        "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2",
+        "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d",
+        "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521",
+        "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6"
+      ],
+      "python": "/tmp/distillschedule-helios-official-torch210/bin/python"
+    }
+  ],
+  "master_addr": "172.24.211.163",
+  "master_port": 29881,
+  "cycles": 2,
+  "max_native_starts": 2,
+  "GPU_reserve_bytes": 2147483648,
+  "host_reserve_bytes": 68719476736,
+  "original_owner_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_hardware_closure_20261015/night_execution_20261015/wan_execution_packet_r3",
+  "owner_files": {
+    "scripts/node_stage.py": "b4f013a96c371f8c54e47b56b0e04b9375e23c4bcde8a8b30e6b3fe09c27c71a",
+    "scripts/fd_ownership.py": "c6e411de4cd65f3213b39e0c4a8ba7bb3d3b9ca4d31ed74ce658529880cb218e",
+    "scripts/packet_common.py": "f950571dd591bf5a4d45b63d9071541644f56acf71edd279430e4f4577d09917",
+    "scripts/stage_command.py": "60074c66282ee53de07839f46855291c95b452d8cec6cdeaaec01ddaa867a311",
+    "scripts/check_outputs.py": "59805def5ae5c472947bb14b913ddade9b30251fb4b42faf26e807b540cd817b"
+  },
+  "adapter_sha256": "653988a0a31a78fa752afc41905debd0d3d1e615b9cd374c31081ea72c1d8950",
+  "task": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/task.json",
+  "assets": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/assets.json",
+  "strategies": {
+    "manual": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r25/configs/strategy.json"
+  },
+  "input_metadata_sha256": {
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/task.json": "a3ad1a57875185753315d31c7c53afac8f2288a02035ef27c5bd1eeca7516f42",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/configs/assets.json": "f76d6ce0b3d9f4e1057de31259dfa9121a28f4fbe59a37ba3faa5061ae0e1a1f",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r25/configs/strategy.json": "f3a47b3dc410c0f5f8b33342379a213eaea8bf8b540849329aead259ad7cb80f",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r30/scripts/manual_entry.py": "d0fb3f85f7bd1399475ff967670d48b7ed5375478dc197eba517c44541e1b62b",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r30/scripts/stream_execution.py": "f954758d7642f85d41a535ad9582af8862b396f3e98c21e481773d40a25e857e",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/exact_ema_graph.py": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/manual_entry.py": "0dfacf682828f4d3594285c3bbdd5e986d0cb7d22270f096941dfe6c9d946ffc",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-backend.json": "20bff8b5bfcb7014b9ee6887a532bdb615b644afef3a97593ab5bb31422ddfa4",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-stream.json": "72451d231de73238d6148526cba8d36238a190e5ce380e23b85372849f6f9b5b",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-ema.json": "b8fec651987b751e582a2dcc4da8487f7950cbfa1df15f3286e79b7bad24c53f"
+  },
+  "hf_home": "/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210",
+  "cache_root": "/tmp/lyy-experiments/DMD-System/wan-fa3-a5b550-20261018",
+  "capacity_policy": "ACTUAL_COLD_AND_WARM_ALLOCATED_HIGHWATER_TOTAL_MINUS_2GIB; NO_R3_GUARD_OR_HISTORY_REWRITTEN",
+  "numerical": "KEEP_ORIGINAL_COMPARE_RUNS_REVIEW; NO_TOLERANCE_CHANGE",
+  "admission": "GPU_COMPONENT_ALL618_SHAPES_TEN_EMA_UPDATES_BITWISE_RNG_PASS; SAME_R30_STREAM_ORDER_BOTH_ARMS; ORIGINAL_FULL_STATE_REVIEW_RETAINED",
+  "target": "POSITIVE_MATCHED_NATIVE_C2_GAIN_WITH_NUMERICAL_REVIEW_RETAINED",
+  "profiler": false,
+  "arm": "overlap",
+  "retained_critic_blocks": [
+    26,
+    27,
+    28,
+    29
+  ],
+  "experiment_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-backend.json",
+  "experiment_packet_sha256": "20bff8b5bfcb7014b9ee6887a532bdb615b644afef3a97593ab5bb31422ddfa4",
+  "manual_entry": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/manual_entry.py",
+  "stream_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-stream.json",
+  "stream_packet_sha256": "72451d231de73238d6148526cba8d36238a190e5ce380e23b85372849f6f9b5b",
+  "stream_execution_sha256": "f954758d7642f85d41a535ad9582af8862b396f3e98c21e481773d40a25e857e",
+  "ema_arm": "control",
+  "ema_source_sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+  "ema_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-ema.json",
+  "ema_packet_sha256": "b8fec651987b751e582a2dcc4da8487f7950cbfa1df15f3286e79b7bad24c53f",
+  "graph_scope": "KNOWN_DECAY11_TO20_TWO_CYCLE_EXPERIMENT_ONLY_NOT_UNBOUNDED_TRAINING_READY"
+}

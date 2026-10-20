@@ -19,16 +19,25 @@ from .wan_worker import OriginalWanAssets
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='distillctl workloads native [original-Wan]')
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign', 'capture-inputs', 'prepare-task', 'auto-run', 'prepare-stream', 'train-stream'):
+    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'benchmark-manual', 'prepare-campaign', 'campaign', 'capture-inputs', 'prepare-task', 'auto-run', 'prepare-stream', 'train-stream'):
         p = sub.add_parser(name)
         p.add_argument('--task', type=Path, required=True)
         p.add_argument('--output', type=Path, required=name not in ('validate','campaign'))
-        if name in ('calibrate', 'run', 'train-stream'):
+        if name == 'validate':
+            p.add_argument('--include-incumbent-bundle', action='store_true')
+            p.add_argument('--include-critic-retention', action='store_true',
+                           help='Opt-in bounded retainC26-29 inventory; needs incumbent capability and fresh calibration')
+        if name in ('calibrate', 'run', 'train-stream', 'benchmark-manual'):
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--execute', action='store_true')
-            if name == 'calibrate':
+            if name != 'train-stream':
+                p.add_argument('--record-memory-highwater', action='store_true',
+                               help='host-only opt-in accounting across native peak-counter resets')
+            if name in ('calibrate', 'benchmark-manual'):
                 p.add_argument('--implementation', type=Path, required=True,
                                help='admitted primitive strategy JSON from validate, not a recipe name')
+                if name == 'benchmark-manual':
+                    p.add_argument('--cycles', type=int, default=2)
             else:
                 p.add_argument('--plan', type=Path, required=True)
                 if name == 'run':
@@ -82,8 +91,10 @@ def main(argv=None):
             importlib.metadata.version('triton'); has_triton = True
         except importlib.metadata.PackageNotFoundError:
             has_triton = False
-        if args.command == 'validate' or (args.command in {'calibrate', 'run', 'train-stream'} and not args.execute):
-            result = capability_report(task, triton_available=has_triton)
+        if args.command == 'validate' or (args.command in {'calibrate', 'run', 'train-stream', 'benchmark-manual'} and not args.execute):
+            result = capability_report(task, triton_available=has_triton,
+                incumbent_bundle_available=getattr(args, "include_incumbent_bundle", False),
+                critic_retention_available=getattr(args, "include_critic_retention", False))
             result['native_execution'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
             if args.command == 'validate' and args.output:
                 write_new_json(args.output, result)
@@ -143,9 +154,11 @@ def main(argv=None):
         else:
             from .wan_worker import run_worker
             assets = OriginalWanAssets.from_dict(json.loads(args.assets.read_text()))
-            strategy = WanStrategy.from_dict(json.loads(args.implementation.read_text())) if args.command == 'calibrate' else None
-            result = run_worker(task, assets, output=args.output, mode=args.command, strategy=strategy,
-                                plan_path=getattr(args, 'plan', None), cycles=getattr(args, 'cycles', 2))
+            strategy = WanStrategy.from_dict(json.loads(args.implementation.read_text())) if args.command in ('calibrate', 'benchmark-manual') else None
+            mode = 'manual' if args.command == 'benchmark-manual' else args.command
+            result = run_worker(task, assets, output=args.output, mode=mode, strategy=strategy,
+                                plan_path=getattr(args, 'plan', None), cycles=getattr(args, 'cycles', 2),
+                                **({'record_memory_highwater': True} if args.record_memory_highwater else {}))
         print(json.dumps(result, sort_keys=True, indent=2, allow_nan=False))
         return 0
     except (ValueError, TypeError, KeyError, OSError, RuntimeError) as exc:

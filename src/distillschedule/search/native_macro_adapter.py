@@ -10,7 +10,6 @@ H3 observes seven existing native stages; duplicate Fake ranges are preserved.
 Both adapters use source-bound operation costs and the common simulator, but
 only measured compositions are admitted. Unmeasured decisions remain rejected.
 """
-from itertools import product
 from pathlib import Path
 
 from distillschedule.core.enums import GradientMode, OperationKind
@@ -33,23 +32,33 @@ def implementation_type(workload):
     return LiveWanImplementation if workload == LIVEWAN else H3Implementation
 
 
-def implementations(workload):
+def implementations(workload, *, h3_request=None, livewan_request=None, explicit_cache=False,
+                    include_livewan_c51=False):
     implementation_type(workload)
     if workload == LIVEWAN:
         from .livewan_implementation import implementations as values
-        return values()
-    return tuple(H3Implementation(d, n) for d, n in product((1, 2), (64, 128)))
+        return values(request=livewan_request, include_c51=include_livewan_c51)
+    require(not include_livewan_c51, "C51 bundle opt-in is LiveWan only")
+    from .h3_implementation import implementations as h3_implementations
+    from .h3_request import H3Request
+    return h3_implementations(request=h3_request or H3Request(), explicit_cache=explicit_cache)
 
 
-def precision_contract(workload):
+def precision_contract(workload, *, h3_request=None, livewan_request=None):
     """Pin native precision source/config; do not pretend this is a dtype probe."""
-    p = load_profile(workload)
+    p = h3_request.profile() if workload == H3 and h3_request is not None else load_profile(workload)
     source = ("src/distillschedule/runtime/livewan_crossscale_worker.py" if workload == LIVEWAN
               else "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py")
-    return dict(workload=workload, native_precision_source_sha256=file_sha256(repository_root()/source),
+    result = dict(workload=workload, native_precision_source_sha256=file_sha256(repository_root()/source),
                 dependency_contract=p.get("dependency_contract"),
                 model_config=p["runtime"].get("model_config"),
                 scope="SOURCE_BOUND_NATIVE_PRECISION_NOT_NEW_DTYPE_POLICY")
+    if workload == LIVEWAN and livewan_request is not None:
+        from .livewan_request import LiveWanRequest
+        if livewan_request != LiveWanRequest():
+            result.update(workload_request=livewan_request.to_dict(), latent_shape=list(livewan_request.latent_shape),
+                          attention_tokens=livewan_request.attention_tokens)
+    return result
 
 
 def native_graph(workload):
@@ -85,7 +94,9 @@ def native_graph(workload):
 
 def operation_contract(workload, op, impl, *, precision_fingerprint=None):
     return dict(adapter=ADAPTER, workload=workload, operation_id=op.operation_id,
-        implementation=impl.assignment, precision_fingerprint=(precision_fingerprint or fingerprint(precision_contract(workload))),
+        implementation=impl.assignment, precision_fingerprint=(precision_fingerprint or fingerprint(
+            precision_contract(workload, h3_request=impl.request if workload == H3 else None,
+                               livewan_request=impl.request if workload == LIVEWAN else None))),
         memory_definition=MEMORY, timing_definition="CONTEXTUAL_CUDA_STREAM_ENVELOPE_NOT_FORMAL_WALL",
         aggregation="MAX_LOCAL_DURATION_PER_PARTITION_NOT_CROSS_DEVICE_CLOCK_UNION")
 
@@ -115,11 +126,12 @@ def observed_operations(workload, raw):
     return rows
 
 
-def capability_report(workload):
-    values = implementations(workload)
+def capability_report(workload, *, h3_request=None, livewan_request=None, include_livewan_c51=False):
+    values = implementations(workload, h3_request=h3_request, livewan_request=livewan_request,
+                             explicit_cache=workload == H3, include_livewan_c51=include_livewan_c51)
     return dict(adapter=ADAPTER, workload=workload,
         native_implementations=[dict(id=i.id, assignment=i.assignment) for i in values],
-        precision_fingerprint=fingerprint(precision_contract(workload)),
+        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=h3_request, livewan_request=livewan_request)),
         arbitrary_pool_dag_lowering=False, gpu_execution="NOT_RUN", cost_calibration="REQUIRED",
         limitation="FIXED_SOURCE_NATIVE_SCHEDULES_ONLY; NO_INDEPENDENT_G_SCORE_OR_LINK_PREDICTION")
 
@@ -131,6 +143,9 @@ def build_problem(layout_path, *, root=None):
     root = root or repository_root()
     layout_path = Path(layout_path)
     layout = _object(layout_path)
+    if "calibration_results" in layout:
+        from .native_macro_calibration import validate_assembled_layout
+        validate_assembled_layout(layout)
     require(layout.get("schema_version") == "distillschedule.native_macro_layout.v1"
             and layout.get("status") == "PASS" and layout.get("profiled") is False
             and layout.get("adapter") == ADAPTER and layout.get("memory_definition") == MEMORY,
@@ -138,13 +153,39 @@ def build_problem(layout_path, *, root=None):
     w, binding = layout["workload"], layout["binding"]
     validate_binding(binding)
     require(binding["source_head"] == git_head(root), "native calibration source changed")
-    precision = fingerprint(precision_contract(w))
-    require(binding["semantic_fingerprint"] == fingerprint(semantic_contract(load_profile(w)))
-            and binding["precision_fingerprint"] == precision, "native workload/precision changed")
-    all_impls = implementations(w)
     rows = layout["implementations"]
+    require(isinstance(rows, dict) and bool(rows), "native layout implementation inventory missing")
+    parsed = [implementation_type(w).parse(k) for k in rows]
+    request = parsed[0].request
+    explicit_cache = w == H3 and parsed[0].cache_policy != "legacy_cpu_staged"
+    livewan_bundle = w == LIVEWAN and parsed[0].bundle != "legacy"
+    if w == H3:
+        require(all(i.request == request and (i.cache_policy != "legacy_cpu_staged") == explicit_cache for i in parsed),
+                "H3 layout cannot mix requests/shapes or legacy and v3 decision schemas")
+        require(all(i.rollout_window is None for i in parsed), "H3 action candidates require action-qualified layout")
+        require(not explicit_cache or bool(layout.get("calibration_results")),
+                "H3 v3 requires joined source-qualified calibration results; hand-written cost layouts are not admitted")
+    if w == LIVEWAN:
+        require(all(i.request == request for i in parsed), "LiveWan layout cannot mix requests/shapes")
+        require(all((i.bundle != "legacy") == livewan_bundle for i in parsed),
+                "LiveWan layout cannot mix legacy and versioned bundle decision schemas")
+        require(not livewan_bundle or bool(layout.get("calibration_results")),
+                "C51 bundle cohort requires joined source-qualified calibration results; historical/hand-written costs are not admitted")
+    precision = fingerprint(precision_contract(w, h3_request=request if w == H3 else None,
+                                              livewan_request=request if w == LIVEWAN else None))
+    semantic_profile = request.profile() if request is not None else load_profile(w)
+    require(binding["semantic_fingerprint"] == fingerprint(semantic_contract(semantic_profile))
+            and binding["precision_fingerprint"] == precision, "native workload/precision changed")
+    all_impls = implementations(w, h3_request=request if w == H3 else None,
+                               livewan_request=request if w == LIVEWAN else None, explicit_cache=explicit_cache,
+                               include_livewan_c51=livewan_bundle)
     require(set(rows) <= {i.id for i in all_impls} and len(rows) >= 2, "invalid calibrated implementation inventory")
     graph, states, rules = native_graph(w), [], []
+    from .livewan_request import LiveWanRequest
+    if explicit_cache or (w == LIVEWAN and request != LiveWanRequest()):
+        from dataclasses import replace
+        graph = replace(graph, metadata={**graph.metadata, "workload_request": request.to_dict(),
+                                         "workload_request_sha256": fingerprint(request.to_dict())})
     domains = {k: tuple(sorted({i.assignment[k] for i in all_impls})) for k in all_impls[0].assignment}
     for impl in all_impls:
         if impl.id not in rows:
@@ -186,6 +227,7 @@ def lower_prediction(result, problem, costs, *, run_id, assets_path=None, mode="
     from .model_search import validate_saved_prediction
     validate_native_problem(problem)
     costs.verify_receipts()
+    validate_native_costs(problem, costs)
     selected = validate_saved_prediction(result, problem, costs)
     require(selected["status"] == "PREDICTED_FEASIBLE", "prediction cannot execute")
     impl = implementation_type(problem.workload).from_assignment(selected["assignment"])
@@ -202,13 +244,22 @@ def validate_lowered_plan(receipt):
     validate_native_problem(p)
     costs = CostModel.from_dict(receipt["model_plan"]["cost_model"])
     costs.verify_receipts()
+    validate_native_costs(p, costs)
     selected = validate_saved_prediction(receipt["model_plan"]["search_result"], p, costs)
     impl = implementation_type(p.workload).from_assignment(selected["assignment"])
+    require(receipt["profile_id"] == p.workload, "native lowered plan workload differs from selected problem")
     require(receipt["integration_head"] == p.binding["source_head"]
             and receipt["workload_semantics_hash"] == p.binding["semantic_fingerprint"]
             and receipt["search_candidate"] == impl.candidate().to_dict(), "native lowering binding changed")
     if receipt.get("asset_config"):
         require(receipt["asset_fingerprint"] == p.binding["asset_fingerprint"], "native assets changed")
+
+
+def validate_native_costs(problem, costs):
+    layout = _object(Path(problem.lowering["layout_receipt"]))
+    if "calibration_results" in layout:
+        from .native_macro_calibration import validate_assembled_costs
+        validate_assembled_costs(layout, costs)
 
 
 def assemble_native(*args, **kwargs):

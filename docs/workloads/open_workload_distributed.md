@@ -26,6 +26,8 @@ The system currently matches and measures:
 | Nonreentrant checkpoint | User-declared replay-safe regions; backward still runs |
 | FSDP2 reshard | Native `fully_shard`, declared trainable roots, parameter/gradient/optimizer sharding |
 | FSDP2 keep-forward | Same sharding with `reshard_after_forward=False` |
+| HSDP2 reshard/keep-forward | Native replicate-by-node, shard-within-node mesh, admitted only for complete equal multi-rank nodes |
+| Per-module layouts | Bounded combinations of admitted replicated/DDP/FSDP2/HSDP2 layouts for separate declared model roots |
 
 FSDP roots include their frozen base parameters, but other frozen-only model
 roots remain resident. Aliases across separate roots are NOT combined with
@@ -84,6 +86,10 @@ Tests also exercise public torchrun -> measured calibration -> common DP ->
 selected execution, rank-specific stale input rejection and completion edges.
 A separate measured FSDP candidate is replayed even when the CPU timing winner
 is a replicated strategy; that replay is not called an automatic FSDP win.
+Four-process CPU/Gloo coverage also exercises HSDP2 on two **logical** nodes on
+one host, including warmed Adam moments, a global-batch reference and measured
+common-plan replay (`test_open_workload_hsdp.py`). This does not establish
+physical multi-node NCCL behavior or A100/H100 GPU validity (NOT_RUN).
 
 CPU FSDP tests require Torch >=2.10. The distributed CI pins 2.10 so these tests
 are executed rather than silently skipped. Older CPU environments retain the
@@ -91,8 +97,11 @@ replicated path and explicitly decline FSDP2. Original canonical paths are not
 migrated to a newer Torch runtime by this test workflow.
 
 This is still an admitted finite-program executor, NOT an unrestricted production
-trainer: no automatic HSDP, arbitrary role pools, general activation offload,
-mid-run topology changes or resumable streaming training. Factories initially
+trainer: HSDP2 requires complete equal multi-rank node groups, and this callable
+data-parallel path does not automatically lower arbitrary role pools or general
+activation offload. Bounded role pools have a separate
+[RoleTask/RoleFunctions contract](open_role_pools.md). Mid-run topology changes
+and resumable streaming training remain unsupported. Factories initially
 construct dense state and calibration clones it; sharding does not yet solve
 large-model initialization capacity. CPU capacity uses storage accounting with
 explicit DDP/FSDP staging allowances, not an RSS bound. GPU allocator behavior,
@@ -131,8 +140,8 @@ per-rank snapshot are retained in the plan; execution checks current real
 headroom again before attempting a selected CUDA plan. CPU still requires an
 explicit memory budget (tracked tensors are not whole-process RSS).
 
-These features do NOT supply an H100-only kernel, automatic role-pool
-partitioning, layerwise bandwidth roofline, full GPU Nsight trace or verified
+These features do NOT supply an H100-only kernel, automatic role-pool lowering
+of arbitrary Workload graphs, layerwise bandwidth roofline, full GPU Nsight trace or verified
 A100/H100 numerical throughput. Hardware-specific strategy selection is
 conditioned on **real** candidate measurements, not assumed winners. Mixed
 GPU models within a rank group and inter-node transport require dedicated

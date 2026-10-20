@@ -60,6 +60,8 @@ def component_contract(operation, implementation: WanImplementation,
     require(action[:1] in FAMILIES and cycle in (1, 2), "not a bound native Wan action")
     kind = action[0]
     local = {"native_family": FAMILIES[kind]}
+    if implementation.candidate_bundle.enabled:
+        local.update(implementation.candidate_bundle.component_identity())
     if kind in "grc":
         local["modulation_chunk_tokens"] = implementation.chunk_tokens
     if kind in "gr":

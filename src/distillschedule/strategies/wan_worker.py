@@ -62,6 +62,24 @@ def topology(environment):
     return rank, local
 
 
+def gather_metadata(distributed, value, metadata_group):
+    """Control-plane objects must not use the Tree-only gradient NCCL group."""
+    require(metadata_group is not None and distributed.get_backend(metadata_group) == 'gloo',
+            'metadata requires an explicit Gloo process group', path='wan.worker')
+    rows = [None] * 16
+    distributed.all_gather_object(rows, value, group=metadata_group)
+    return rows
+
+
+def destroy_process_groups(distributed, metadata_group):
+    """Attempt tensor-group cleanup even if control-plane teardown fails."""
+    try:
+        if metadata_group is not None:
+            distributed.destroy_process_group(metadata_group)
+    finally:
+        distributed.destroy_process_group()
+
+
 def load_assets(task, spec, *, rank):
     """Validate source assets before constructing the large model."""
     from distillschedule.runtime.wan13b_upper_bound import Wan13BBootstrap
@@ -162,7 +180,9 @@ def runtime_info(torch):
             'tf32_matmul': torch.backends.cuda.matmul.allow_tf32,
             'tf32_cudnn': torch.backends.cudnn.allow_tf32,
             'matmul_precision': torch.get_float32_matmul_precision(),
-            'deterministic': torch.are_deterministic_algorithms_enabled()}
+            'deterministic': torch.are_deterministic_algorithms_enabled(),
+            'tf32_cublas_override': os.environ.get('TORCH_ALLOW_TF32_CUBLAS_OVERRIDE', 'NOT_SET'),
+            'nvidia_tf32_override': os.environ.get('NVIDIA_TF32_OVERRIDE', 'NOT_SET')}
 
 
 def save_final_state(session, output):
@@ -199,21 +219,33 @@ def save_final_state(session, output):
     return evidence
 
 
-def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None):
+def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None,
+               record_memory_highwater=False):
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
-    require(mode in {'calibrate', 'run'}, 'invalid worker mode', path='wan.worker')
+    require(mode in {'calibrate', 'run', 'manual'}, 'invalid worker mode', path='wan.worker')
     rank, local_rank = topology(os.environ)
     document = None
     if mode == 'calibrate':
         require(plan_path is None and isinstance(strategy, WanStrategy) and strategy.rollout_window == 1
                 and cycles == 2, 'calibration is one primitive arm, two cycles, window1', path='wan.worker')
+    elif mode == 'manual':
+        require(plan_path is None and isinstance(strategy, WanStrategy) and cycles == 2
+                and stream_path is None,
+                'manual reference requires explicit strategy, exactly two fixed-trace cycles and no plan/stream',
+                path='wan.worker')
     else:
         require(plan_path is not None and strategy is None, 'run must use a validated selected plan', path='wan.worker')
         document = validate_plan(task, plan_path)
         strategy = WanStrategy.from_dict(document['selected']['strategy'])
     strategy.validate_for(task)
+    require(not strategy.retained_critic_blocks or mode == 'manual'
+            or strategy.retention_execution == 'planner-retain4.v1',
+            'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
+            path='wan.worker')
+    require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
+            'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
     if stream_path is not None:
         require(mode == 'run', 'cohort training requires a selected plan, not a calibration arm', path='wan.worker')
@@ -228,8 +260,13 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
     receipt = {'status': 'STARTED_ORIGINAL_WAN_WORK', 'mode': mode, 'rank': rank,
                'task': task.to_dict(), 'strategy': strategy.to_dict(), 'gpu_execution': 'NOT_RUN',
                'claimable_speedup': False, 'host': socket.gethostname()}
+    if mode == 'manual':
+        receipt.update(execution_kind='MANUAL_REFERENCE_DIRECT_NATIVE_ORDER',
+                       manual_strategy_sha256=fingerprint(strategy.to_dict()),
+                       search_performed=False)
     _json(path, receipt)
-    observer = None; initialized = False
+    require(type(record_memory_highwater) is bool, 'explicit memory recorder boolean required', path='wan.worker')
+    observer = None; initialized = False; metadata_group = None; highwater = None
     try:
         with strategy_environment(strategy):
             import torch
@@ -238,7 +275,15 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     'eight visible CUDA devices per node required', path='wan.worker')
             require(not dist.is_initialized(), 'strategy must be selected before NCCL initialization', path='wan.worker')
             torch.cuda.set_device(local_rank); device = torch.device('cuda', local_rank)
+            if record_memory_highwater:
+                from .wan_memory import CudaHighwater
+                highwater = CudaHighwater(torch.cuda, device)
+                highwater.start()
             bootstrap, trace, negative, asset_identity = load_assets(task, assets, rank=rank)
+            if strategy.candidate_bundle.enabled:
+                strategy.candidate_bundle.validate_model_files(bootstrap.manifest, asset_identity["model_files"])
+                strategy.candidate_bundle.validate_assets({**asset_identity,
+                    'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
             verify_execution_precision(torch)
@@ -257,24 +302,28 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                         'host': socket.gethostname(), 'local_rank': local_rank}
             if document is not None:
                 require(document['identity'] == identity, 'source/assets differ from planned calibration', path='wan.worker')
-                from .wan_planning import load_collections, _read
+                from .wan_planning import load_collections, calibrated_variant, _read
                 _, variants = load_collections(task, [c['path'] for c in document['collections']])
-                variant = next(v for s, v, _ in variants if s.backend == strategy.backend)
+                variant, _ = calibrated_variant(strategy, variants)
                 observed = [_read(s['path']) for s in variant['rank_sources']]
                 old = next(v for v in observed if v['rank'] == rank)
                 require(old['runtime'] == runtime and old['hardware'] == hardware,
                         'runtime/hardware changed: recalibration required', path='wan.worker')
             dist.init_process_group('nccl', timeout=timedelta(minutes=15)); initialized = True
-            seen = [None] * 16
-            dist.all_gather_object(seen, {'identity': identity, 'strategy': strategy.to_dict(),
-                                        'stream_sha256': None if stream is None else stream['stream_sha256']})
+            # CPU identity/trace bookkeeping is outside cycle timers. NCCL
+            # remains unchanged for real tensor/FSDP/reducer communication.
+            metadata_group = dist.new_group(backend='gloo', timeout=timedelta(minutes=15))
+            seen = gather_metadata(dist, {'identity': identity, 'strategy': strategy.to_dict(),
+                'stream_sha256': None if stream is None else stream['stream_sha256']}, metadata_group)
             require(all(row == seen[0] for row in seen), 'rank task/strategy/asset mismatch', path='wan.worker')
             negative_tensor = negative.embedding.to(device=device, dtype=torch.bfloat16)
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
             session = OriginalWanSession(task=task, strategy=strategy, fair=fair, bootstrap=bootstrap,
                 model_root=assets.model_root, device=device, rank=rank, trace=trace, negative=negative_tensor,
-                diagnostics=StaticProfileDiagnostics(enabled=False, rank=rank))
+                diagnostics=StaticProfileDiagnostics(enabled=False, rank=rank),
+                asset_identity={**asset_identity, 'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
             from .wan_evidence import validate_build, validate_cycle
+            strategy.candidate_bundle.validate_versions(session.versions())
             effects = validate_build(strategy, session.build)
             receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build, backend_effects=effects)
             _json(path, receipt)
@@ -282,7 +331,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
                     work=trace_work(task, trace), torch=torch, distributed=dist, device=device,
                     rank=rank, implementation=strategy, source_head=source_head)
-            elif stream is None:
+            elif document is not None and stream is None:
                 free, _ = torch.cuda.mem_get_info(device)
                 predicted = next(r for r in document['selected']['memory'] if r['rank'] == rank)
                 require(predicted['peak_bytes'] <= free + torch.cuda.memory_allocated(device),
@@ -301,17 +350,27 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     stream_source=str(Path(stream_path).resolve()))
                 def before_cycle(cycle, current):
                     event = bind_cohort(current, task, stream, cycle-1, tuple(document['selected']['order']))
-                    peers = [None] * 16
-                    dist.all_gather_object(peers, {'cohort': event['receipt'], 'versions': current.versions(),
-                                                  'order': event['operation_order']})
+                    peers = gather_metadata(dist, {'cohort': event['receipt'], 'versions': current.versions(),
+                        'order': event['operation_order']}, metadata_group)
                     require(all(p == peers[0] for p in peers), 'rank cohort/order/version mismatch', path='wan.worker')
                     return event
-            result = execute_cycles(session, cycles=cycles, mode=mode, torch=torch, distributed=dist,
+            result = execute_cycles(session, cycles=cycles, mode='run' if mode == 'manual' else mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
                 before_cycle=before_cycle, progress=progress,
                 validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
             receipt.update(result)
-            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True)
+            # Host metadata after both native timers, before CPU state export.
+            # Native helpers may reset counters; only the opt-in recorder spans them.
+            free, total = torch.cuda.mem_get_info(device)
+            receipt['gpu_memory'] = dict(allocated_bytes=torch.cuda.memory_allocated(device),
+                reserved_bytes=torch.cuda.memory_reserved(device),
+                peak_allocated_bytes=torch.cuda.max_memory_allocated(device),
+                peak_reserved_bytes=torch.cuda.max_memory_reserved(device),
+                driver_free_bytes=free, total_bytes=total,
+                scope='SINCE_LAST_NATIVE_RESET_NOT_PROCESS_CUMULATIVE')
+            if highwater is not None:
+                receipt['gpu_memory'].update(highwater.close())
+            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
             receipt['state_evidence'] = save_final_state(session, root)
@@ -331,6 +390,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         _json(path, receipt)
         raise
     finally:
+        if highwater is not None:
+            highwater.close()
         if initialized:
             import torch.distributed as dist
-            dist.destroy_process_group()
+            destroy_process_groups(dist, metadata_group)

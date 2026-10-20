@@ -32,15 +32,22 @@ def two_cycles(task, initial_versions, window):
 def component(task, action, strategy, *, cycle, work):
     kind=action[0]
     local={'family':kind}
+    if strategy.candidate_bundle.enabled:
+        local.update(strategy.candidate_bundle.component_identity())
     if kind in 'grc':local['chunk_tokens']=strategy.chunk_tokens
     if kind in 'gr':local['lora_nograd_epilogue']=strategy.lora_epilogue
+    context={'warm_state':'cold' if cycle==1 else 'warm',
+             'concurrency':'exclusive_world16','input_lifetime':'retained_until_C_return'}
+    if strategy.compute_policy:
+        # The persistent allocation context can affect every action, including
+        # Generator/EMA. Do not relabel old component costs as state-qualified.
+        context['state_policy'] = strategy.compute_policy
     return ComponentContract(family='original_wan.'+kind,
         work={'task_sha256':task.digest,'action':action,'trace_work':work[action]},
         precision={'execution_precision':PRECISION.digest},
         placement={'world_size':16,'placement':strategy.placement,
             'gradient_sync':'async128_tree' if strategy.placement=='resident' else 'fsdp_sum_divide16'},
-        implementation=local,context={'warm_state':'cold' if cycle==1 else 'warm',
-            'concurrency':'exclusive_world16','input_lifetime':'retained_until_C_return'})
+        implementation=local,context=context)
 
 
 def trace_work(task, trace):

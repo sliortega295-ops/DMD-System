@@ -58,6 +58,14 @@ def _receipts(impl=None):
                                cumulative_updates=dict(student=cycle, fake=5 * cycle, ema=0),
                                grid_replay_delta=replay, grid_replay={k: v * cycle for k, v in replay.items()},
                                finite_losses=True, losses=dict(student=[.25], fake=[.5] * 5)))
+        if impl.cache_policy != "legacy_cpu_staged":
+            for item in cycles:
+                item["fa3_replay_cache_registration"] = dict(enabled=True, block_indices=list(range(50)),
+                    storage=impl.storage, max_d2h_inflight=impl.prefetch_depth,
+                    trim_before_backward=impl.trim_before_backward,
+                    stats=dict(compact_forward_impl_calls=300, compact_backward_calls=300,
+                        cpu_d2h_bytes=0, cpu_h2d_bytes=0, cpu_pool_allocated_bytes=0,
+                        cpu_stage_allocated_bytes=0, allocator_trim_calls=0))
         rows.append(dict(schema_version="distillschedule.h3_native_two_cycle.v1",
                          status="PASS_NATIVE_RUNTIME_CONTRACTS", rank=rank, integration_head=HEAD,
                          semantics="approximate_grid1000", cycles=cycles,

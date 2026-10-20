@@ -116,6 +116,7 @@ def fsdp2_metadata_tolerant_checkpoint(
     *args: Any,
     operation_source: bool = False,
     selective_flash_receipt: dict[str, Any] | None = None,
+    function_wrapper: Any | None = None,
     **kwargs: Any,
 ) -> Any:
     """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
@@ -154,8 +155,11 @@ def fsdp2_metadata_tolerant_checkpoint(
             _selective_flash_checkpoint_contexts,
             selective_flash_receipt,
         )
+    function = module.__call__
+    if function_wrapper is not None:
+        function = function_wrapper(function)
     return checkpoint(
-        module.__call__,
+        function,
         *args,
         use_reentrant=False,
         determinism_check="none",
@@ -215,11 +219,18 @@ def configure_fsdp2_checkpointing(
         "auxiliary_checkpoint_module_counts": {},
         "block_call_counts": {str(index): 0 for index in range(len(blocks))},
         "operation_source": bool(operation_source),
+        "lora_checkpoint_replay_scope": callable(
+            getattr(model, "_distillschedule_lora_checkpoint_function_wrapper", None)
+        ),
         "adds_synchronization": False,
         "changes_module_math": False,
         "changes_physical_model_call_inventory": False,
     }
     model._distillschedule_checkpoint_policy_receipt = receipt
+    function_wrapper = getattr(
+        model, "_distillschedule_lora_checkpoint_function_wrapper", None
+    )
+    extra = {"function_wrapper": function_wrapper} if function_wrapper is not None else {}
 
     if not selective_flash_checkpoint_stride:
         if operation_source:
@@ -229,6 +240,10 @@ def configure_fsdp2_checkpointing(
             )
         else:
             model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+        if extra:
+            model._gradient_checkpointing_func = functools.partial(
+                model._gradient_checkpointing_func, **extra
+            )
         return receipt
 
     block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
@@ -257,7 +272,7 @@ def configure_fsdp2_checkpointing(
             receipt["auxiliary_checkpoint_forward_count"] += 1
             counts = receipt["auxiliary_checkpoint_module_counts"]
             counts[module_name] = int(counts.get(module_name, 0)) + 1
-            return fsdp2_metadata_tolerant_checkpoint(module, *args, **kwargs)
+            return fsdp2_metadata_tolerant_checkpoint(module, *args, **extra, **kwargs)
 
         receipt["checkpoint_forward_count"] += 1
         receipt["block_call_counts"][str(block_index)] += 1
@@ -267,6 +282,7 @@ def configure_fsdp2_checkpointing(
             selective_flash_receipt=(
                 receipt if block_index in selected_set else None
             ),
+            **extra,
             **kwargs,
         )
 

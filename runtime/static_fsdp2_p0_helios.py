@@ -63,7 +63,7 @@ def run_generator_trace_rollout_batch(
     from helios.utils.utils_helios_post import run_generator
 
     loaded = make_batched_loaded_entry(tuple(loaded_entries))
-    from distillschedule.strategies.wan_task import rollout_geometry
+    from distillschedule.runtime.rollout_geometry import rollout_geometry
     geometry = rollout_geometry(loaded.operation_trace)
     tensors = loaded.tensors
     validation = loaded.operation_trace.validation

@@ -47,6 +47,22 @@ original precision/history semantics, three stages and no-GAN. This does not
 parameterize Helios14B, H3, LiveWan, arbitrary pool splits, automatic backbone
 sharing or arbitrary intermediate-state offload.
 
+### Explicit historical benchmark input scope
+
+`stage_schedule_policy="benchmark_v4_strict_global"` is an opt-in extension for
+parameter-generalization systems experiments using the previously declared v4
+strict-global exit scope. It preserves sampled history dropout, zero-history
+tensors and operation-qualified RNG; it does not resample passing inputs. For
+all-zero history it retains the native doubled timestep grid, but the exits are
+still the rank-zero synchronized exits declared by this benchmark. This is not
+the upstream rank-local amplified-exit distribution, and must not be reported as
+full-distribution training or quality equivalence. Every changed task needs new
+trace identities and measured costs.
+
+The default `source_normal_only` capture remains unchanged and rejects all-zero
+history. Its serialized task identity is unchanged. No default profile, original
+training helper, loss, gradient or optimizer is modified by this input scope.
+
 ## Search and execution
 
 `validate` inventories candidates without model construction. `auto-run` is

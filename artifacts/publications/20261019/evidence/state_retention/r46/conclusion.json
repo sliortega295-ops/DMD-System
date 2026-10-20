@@ -1,0 +1,58 @@
+{
+  "status": "MEASURED_ONE_FACTOR_NATIVE_METADATA_BARRIER_REVIEW",
+  "utc": "2026-10-18T13:36:40.841529+00:00",
+  "source": "69a9464997de16deafd5786338f538ba7930d9a5",
+  "external_packet": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/manual-packet.json",
+    "sha256": "ddae71538361b7974468989794b2c07be4a0d8ae7c99ab5bd342b3c972ebbaad"
+  },
+  "values": {
+    "manual-control": {
+      "C1_s": 256.572889876,
+      "C2_s": 262.384847224,
+      "ranks": 16,
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.51171875,
+      "min_sampled_driver_free_bytes": 2097152,
+      "CUDA_OOM": false,
+      "host_OOM_delta": 0
+    },
+    "manual-child": {
+      "C1_s": 256.167686945,
+      "C2_s": 253.740367298,
+      "ranks": 16,
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.4453125,
+      "min_sampled_driver_free_bytes": 2097152,
+      "CUDA_OOM": false,
+      "host_OOM_delta": 0
+    }
+  },
+  "control_C2_s": 262.384847224,
+  "candidate_C2_s": 253.740367298,
+  "saved_s": 8.644479926000002,
+  "speedup": 1.034068209241014,
+  "all16_census_versions_inputs_RNG": true,
+  "original_checkpoint_attention_cache_gate": true,
+  "actual_FA3_calls_per_cycle_per_rank": 350,
+  "actual_native_metadata_reads_per_rank_cycle": {
+    "control": 0,
+    "candidate": 350
+  },
+  "same_FA3_backend_both_arms": true,
+  "grad_and_selected_attention_unchanged": true,
+  "frozen_AdaLN_bank_enabled": false,
+  "parameters_eliminated": false,
+  "weights_merged": false,
+  "scheduler_integration": false,
+  "numerical_status": "REVIEW_REQUIRES_MATCHED_FULL_STATE_OR_TRAJECTORY",
+  "formal_speedup_eligible": false,
+  "claim_scope": "single native C2 descriptive paired mechanism timing, not long convergence",
+  "charged_owner_phases": 104,
+  "raw_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native",
+  "interpretation": "SINGLE_PAIR_CAUSAL_COMPARISON_OF_METADATA_BARRIER_WITHIN_SAME_FA3_NOT_ENTIRE_INCUMBENT_SPEEDUP",
+  "historical_original_SDPA_C2_s": 255.528302602,
+  "historical_original_SDPA_comparison_scope": "SAME_TRAINING_HEAD_DIFFERENT_EXTERNAL_WRAPPER_EARLIER_RUN_PROVENANCE_ONLY_NOT_ADDITIONAL_MATCHED_PAIR",
+  "historical_original_SDPA_minus_candidate_s": 1.7879353040000012,
+  "decision": "KEEP_MANUAL_COMBINABLE_CANDIDATE_REVIEW_NO_DEFAULT_OR_PLANNER_PROMOTION"
+}

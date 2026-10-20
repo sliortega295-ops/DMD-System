@@ -36,8 +36,10 @@ def validate_action_admission(data, receipt, root):
         require(hashlib.sha256(old).hexdigest()==sha,"H3 source bridge differs from the actually tested Git object")
     candidate = H3Implementation.parse(receipt["search_candidate"]["id"])
     source_impl = H3Implementation.parse(proof["candidate_id"])
-    require((candidate.prefetch_depth,candidate.lora_epilogue_block_n)==
-            (source_impl.prefetch_depth,source_impl.lora_epilogue_block_n),
+    require((candidate.prefetch_depth,candidate.lora_epilogue_block_n,candidate.storage,
+             candidate.trim_before_backward,candidate.request)==
+            (source_impl.prefetch_depth,source_impl.lora_epilogue_block_n,source_impl.storage,
+             source_impl.trim_before_backward,source_impl.request),
             "H3 kernel/cache policy requires its own action proof")
     references = proof.get("ranks", [])
     require(len(references)==16 and len({r['path'] for r in references})==16, "H3 action proof requires sixteen sources")

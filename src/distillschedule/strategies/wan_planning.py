@@ -63,6 +63,9 @@ def assemble(task, rank_paths, output, *, reserve_bytes=2**31):
         require(len(row.get('cycles',[]))==2 and all(
             cycle.get('call_census',{}).get('status')=='PASS_TRACE_DERIVED_CALL_CENSUS'
             for cycle in row['cycles']), 'native sampler inventory missing',path='wan.calibration')
+        if strategy.candidate_bundle.enabled:
+            from .wan_evidence import validate_build
+            validate_build(strategy, row['build'], executed=True, cycles=2)
         c=row['calibration']
         require(c['status']=='PASS' and c['evidence_scope']=='MEASURED'
                 and c['pending_output'] is None and c['retained_input_bytes_at_finish']==0,
@@ -142,8 +145,16 @@ def load_collections(task, paths):
             require(costs.scope==doc['evidence_scope'],'fixture costs cannot be used as GPU costs',path='wan.plan')
             variants.append((candidate,v,costs))
     require(first is not None and variants,'no observed candidates',path='wan.plan')
-    require(len({s.backend.id for s,_,_ in variants})==len(variants),'duplicate implementation measurements',path='wan.plan')
+    require(len({s.compute_key for s,_,_ in variants})==len(variants),'duplicate implementation measurements',path='wan.plan')
     return first,variants
+
+
+def calibrated_variant(strategy, variants):
+    """Bind the complete compute/state policy; rollout order is searched later."""
+    matches = [(v, costs) for candidate, v, costs in variants
+               if candidate.compute_key == strategy.compute_key]
+    require(len(matches) == 1, 'selected compute/state policy not uniquely calibrated', path='wan.run')
+    return matches[0]
 
 
 def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory_limit_bytes=None):
@@ -165,14 +176,14 @@ def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory
         lives=tuple(Lifetime(f'output-r{i}',f'r{i}',(f'c{i}',),ranks,v['output_bytes'][f'r{i}'],'producer_exit')
                     for i in range(task.fake_updates))
         state=(StateAllocation('state',ranks,v['static_bytes'],('native_runtime',),False,'original-native-state'),)
-        bound.append(BoundCandidate(strategy.backend.id,strategy.to_dict(),graph,rules,costs,state,lives,
+        bound.append(BoundCandidate(strategy.compute_key,strategy.to_dict(),strategy.candidate_bundle.admit_graph(graph),rules,costs,state,lives,
                      {r:limit for r in ranks},'original-wan-world16'))
     searched=select(bound,max_states=max_states,beam_width=beam_width,timeout_seconds=timeout_seconds)
     for result in searched['rejected']:
         rejected.append({'strategy':result['implementation'],'schedule':result})
     for result in searched['ranked']:
         strategy=WanStrategy.from_dict(result['implementation'])
-        costs=next(c for candidate,_,c in variants if candidate.backend==strategy.backend)
+        _,costs=calibrated_variant(strategy,variants)
         live=peak=0
         for key in result['order']:
             live+=1 if key.startswith('r') else (-1 if key.startswith('c') else 0);peak=max(peak,live)
@@ -181,8 +192,11 @@ def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory
         ranked.append(result)
     require(ranked,'no feasible plan within observed candidates and search budget',path='wan.plan')
     ranked.sort(key=lambda x:(x['predicted_makespan_ns'],max(r['peak_bytes'] for r in x['memory']),fingerprint(x['strategy'])))
-    measured={s.backend.id for s,_,_ in variants}
-    missing=[s.to_dict() for s in implementations(task,triton_available=True) if s.backend.id not in measured]
+    measured={s.compute_key for s,_,_ in variants}
+    inventory=implementations(task,triton_available=True,
+        incumbent_bundle_available=any(s.candidate_bundle.enabled for s,_,_ in variants),
+        critic_retention_available=any(bool(s.retained_critic_blocks) for s,_,_ in variants))
+    missing=[s.to_dict() for s in inventory if s.compute_key not in measured]
     result={'schema_version':PLAN,'task':task.to_dict(),'identity':doc['identity'],
         'collections':[{'path':str(Path(p).resolve()),'sha256':file_sha256(Path(p))} for p in paths],
         'selected':ranked[0],'ranked':ranked,'rejected':rejected,'uncalibrated':missing,
@@ -205,13 +219,13 @@ def validate_plan(task, path):
     doc,variants=load_collections(task,paths)
     require(result['identity']==doc['identity'],'plan identity changed',path='wan.run')
     selected=result['selected'];strategy=WanStrategy.from_dict(selected['strategy']);strategy.validate_for(task)
-    matches=[(v,costs) for s,v,costs in variants if s.backend==strategy.backend]
-    require(len(matches)==1,'selected backend not calibrated',path='wan.run')
-    v,costs=matches[0]
+    v,costs=calibrated_variant(strategy,variants)
     require(selected['cost_model_sha256']==costs.digest and selected['model_binding']==dict(costs.binding),
             'selected cost model changed',path='wan.run')
     graph=build_parameterized_cycle_graph(source_steps=task.source_steps,
         initial_versions=doc['warm_initial_versions'],ema_after=task.ema_after)
+    graph = strategy.candidate_bundle.admit_graph(graph)
+    strategy.candidate_bundle.validate_order(tuple(selected['order']))
     from distillschedule.runtime.role_runner import StaticRoleRunner
     from distillschedule.runtime.version_sync import VersionLedger
     handlers={op.kind.value:lambda ctx:None for op in graph.operations}

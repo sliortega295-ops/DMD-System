@@ -223,6 +223,8 @@ def _build_static_model(
         ),
         role=role,
         all_role_scale1=bool(args.all_role_lora_scale1_add),
+        checkpoint_replay_scope=bool(getattr(args, "lora_checkpoint_replay_scope", False)),
+        lora_b_gemm_epilogue=policy.lora_b_gemm_epilogue,
     )
     residual_fusion = (
         install_generator_nograd_residual_fusion(
@@ -310,6 +312,8 @@ def _build_static_model(
         model,
         mesh_policy=policy.mesh_policy,
         world_size=WORLD_SIZE,
+        **({'separate_gan_heads': True}
+           if getattr(args, '_planner_gan_manual_bundle', False) and role == 'critic' else {}),
     )
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
@@ -658,22 +662,31 @@ def _precompute_critic_rollouts(
             with diagnostics.scope(
                 f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
             ):
-                generated, record = run_generator_trace_rollout_batch(
-                    model=generator_engine.module,
-                    loaded_entries=entries,
-                    device=device,
-                    detailed_profile=False,
-                    record_output_sha256=collect_diagnostics,
-                    collect_diagnostics=collect_diagnostics,
-                    diagnostics_scope=diagnostics.scope,
-                    use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
-                    use_static_context_cache=(
-                        policy.generator_nograd_static_context_cache
-                    ),
-                    synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
-                    clean_runtime=clean_runtime,
-                    runtime_cache=runtime_cache,
-                )
+                graph = getattr(generator_engine.module, "_distillschedule_rollout_cuda_graph", None)
+                if graph is not None:
+                    if policy.rollout_batch_size != 1 or policy.generator_nograd_persistent_unshard:
+                        raise ValueError("incumbent rollout graph requires resident detached B1 scope")
+                    graph.begin_rollout(version=int(generator_engine.global_steps), logical_steps=tuple(step_group))
+                try:
+                    generated, record = run_generator_trace_rollout_batch(
+                        model=generator_engine.module if graph is None else graph,
+                        loaded_entries=entries,
+                        device=device,
+                        detailed_profile=False,
+                        record_output_sha256=collect_diagnostics,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics_scope=diagnostics.scope,
+                        use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
+                        use_static_context_cache=(
+                            policy.generator_nograd_static_context_cache
+                        ),
+                        synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+                        clean_runtime=clean_runtime,
+                        runtime_cache=runtime_cache,
+                    )
+                finally:
+                    if graph is not None:
+                        graph.end_rollout()
             persistence["rollout_batch_count"] += 1
             persistence["rollout_memory"].append(
                 {
@@ -1123,11 +1136,36 @@ def _parser() -> Any:
         default=DEFAULT_TARGET_BYTES,
     )
     value.add_argument("--operation-source-max-events", type=int, default=256)
+    value.add_argument(
+        "--lora-checkpoint-replay-scope", action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Capture only the all-role LoRA scope in the actual checkpoint function",
+    )
+    value.add_argument(
+        "--lora-b-gemm-epilogue", action=argparse.BooleanOptionalAction,
+        default=False,
+        help="NoGAN B1 opt-in: BF16 rank256 B-GEMM/add with native first-order backward",
+    )
     return value
 
 
 def main() -> int:
     args = _parser().parse_args()
+    from distillschedule.search.helios_implementation import current_implementation
+    from distillschedule.search.helios_gan_bundle import HeliosGANBundle
+    planner_impl = current_implementation()
+    args._planner_gan_manual_bundle = (
+        planner_impl is not None and type(planner_impl.candidate_bundle) is HeliosGANBundle)
+    from distillschedule.runtime.fsdp2_p0 import validate_nogan_b_gemm_request
+    validate_nogan_b_gemm_request(
+        enabled=bool(args.lora_b_gemm_epilogue),
+        checkpoint_replay_scope=bool(args.lora_checkpoint_replay_scope),
+        all_role_scale1_add=bool(args.all_role_lora_scale1_add),
+        variant=args.variant, rollout_batch_size=args.rollout_batch_size,
+        pack_real_score_pair=bool(args.pack_real_score_pair),
+        attention_backend=args.attention_backend,
+        gan_manual_bundle=args._planner_gan_manual_bundle,
+    )
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
     diagnostic_single_critic = args.critic_only_step is not None
@@ -1220,6 +1258,7 @@ def main() -> int:
         )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
+        lora_b_gemm_epilogue=bool(args.lora_b_gemm_epilogue),
         rollout_batch_size=args.rollout_batch_size,
         pack_real_score_pair=bool(args.pack_real_score_pair),
         rollout_backend=args.rollout_backend,
@@ -1295,6 +1334,7 @@ def main() -> int:
         "p0_policy": {
             "id": policy.id,
             "mesh_policy": policy.mesh_policy,
+            "lora_b_gemm_epilogue": policy.lora_b_gemm_epilogue,
             "rollout_batch_size": policy.rollout_batch_size,
             "pack_real_score_pair": policy.pack_real_score_pair,
             "rollout_backend": policy.rollout_backend,
@@ -1324,6 +1364,7 @@ def main() -> int:
                 args.generator_nograd_lora_fused_epilogue
             ),
             "all_role_lora_scale1_add": bool(args.all_role_lora_scale1_add),
+            "lora_checkpoint_replay_scope": bool(args.lora_checkpoint_replay_scope),
             "optimizer_dispatch_warmup": bool(
                 args.optimizer_dispatch_warmup
             ),
@@ -1391,9 +1432,15 @@ def main() -> int:
         )
         if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
             raise ValueError("logical checkpoint identity changed")
-        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
+        from distillschedule.search.helios_implementation import current_implementation
+        helios_implementation = current_implementation()
+        helios_request = helios_implementation.request if helios_implementation is not None else None
+        args.original_helios_request = helios_request
+        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant, request=helios_request)
         if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
             raise ValueError("trace bundle identity changed")
+        helios_native_grid = (helios_request.validate_native_stage_grids(trace._control[rank])
+                              if helios_request is not None else None)
         control_entries = [
             trace.load_critic_entry(rank=rank, step=step, device="cpu")
             for step in contract.logical_steps
@@ -1411,6 +1458,8 @@ def main() -> int:
             "rank_control_validation": trace.rank_control_validation,
             "cross_step_rollout_batchability": "PASS",
         }
+        if helios_native_grid is not None:
+            result["identities"]["original_helios_native_grid"] = helios_native_grid
         if args.validate_only:
             result.update(status="PASS", validate_only=True)
             base._atomic_json(output, result)
@@ -1422,6 +1471,8 @@ def main() -> int:
             device=device, dtype=torch.bfloat16
         )
         cfg = load_official_config(args.gan_config) if args.variant == "gan" else None
+        if helios_request is not None and cfg is not None:
+            cfg = helios_request.bind_official_config(cfg)
         generator_engine, critic_engine, build = _build_engines(
             args=args,
             package=logical,

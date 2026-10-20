@@ -61,6 +61,12 @@ def test_runtime_default_off_and_actual_receipt_gate():
         assert runtime_receipt_errors(dict(r,**{key:value}),rank=0,cycles=2)
     assert runtime_receipt_errors(r,rank=8,cycles=2)
     assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE'},rank=8,cycles=2)
+    from distillschedule.search.livewan_request import LiveWanRequest
+    new = dict(r, scope_forward_calls=[1470]*20, calls=1470*20)
+    assert runtime_receipt_errors(new,rank=0,cycles=2)
+    assert not runtime_receipt_errors(new,rank=0,cycles=2,request=LiveWanRequest(frames=69))
+    assert runtime_receipt_errors(dict(r,scope_forward_calls=[2820]*20,calls=2820*20),
+                                  rank=0,cycles=2,request=LiveWanRequest(frames=69))
 
 
 def test_c29_plan_changes_only_epilogue(monkeypatch):

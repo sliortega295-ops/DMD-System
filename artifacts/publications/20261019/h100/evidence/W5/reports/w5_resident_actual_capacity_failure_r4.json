@@ -1,0 +1,132 @@
+{
+  "AdaLN_dropped_numel": 13010457600,
+  "AdaLN_registered_parameters": 0,
+  "activation_policy": "none",
+  "allocated_at_failure_GiB_rounded": 76.17,
+  "attempted_allocation_GiB": 2.02,
+  "cgroup_oom_delta": {
+    "oom": 0,
+    "oom_kill": 0
+  },
+  "driver_free_rank0_MiB_rounded": 770.94,
+  "failure_stage": "second Fake optimizer update, checkpoint backward replay",
+  "full5_correctness": "FAIL_NOT_COMPLETED",
+  "last_completed_updates": {
+    "fake": 1,
+    "student": 1
+  },
+  "logical_global_batch": 16,
+  "node_cgroup_observed_peak_bytes": 694670061568,
+  "owned_process_cleanup": "PASS",
+  "per_rank": [
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 0 has a total capacity of 79.11 GiB of which 770.94 MiB is free. Process 3610604 has 78.35 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 340.59 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 0,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_000.json",
+      "receipt_sha256": "7d984282267ab6446d0b9c8c3c615e3882c98976dbfe88170467c73c4a404b78",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 1 has a total capacity of 79.11 GiB of which 810.94 MiB is free. Process 3610605 has 78.31 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 300.62 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 1,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_001.json",
+      "receipt_sha256": "47dfe3786f67271a11fc8a448905a1362a674fdf89a291695c347320e4b9a025",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 2 has a total capacity of 79.11 GiB of which 730.94 MiB is free. Process 3610606 has 78.39 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 380.54 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 2,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_002.json",
+      "receipt_sha256": "d4ec9db98cc561bbdb2ed8e2517f068c848d4f3c559cfdb97a23a0237af2adbf",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 3 has a total capacity of 79.11 GiB of which 850.94 MiB is free. Process 3610607 has 78.27 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 262.26 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 3,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_003.json",
+      "receipt_sha256": "f11d6f050d86d92bdc65d00330d37576f8338e7673a2d97d0c6a58f9190e9e4f",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 4 has a total capacity of 79.11 GiB of which 792.94 MiB is free. Process 3610608 has 78.33 GiB memory in use. Of the allocated memory 76.16 GiB is allocated by PyTorch, and 322.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 4,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_004.json",
+      "receipt_sha256": "6d214e6ddcc182dc8bc2ff095df4b22c3c7bd09b935b601ce19aeab4aeac5e86",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 5 has a total capacity of 79.11 GiB of which 850.94 MiB is free. Process 3610609 has 78.27 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 260.62 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 5,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_005.json",
+      "receipt_sha256": "f8b992af428748aaa1f13036c212ca828d21f7504896cbc9a330d0ed25bef73f",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 6 has a total capacity of 79.11 GiB of which 810.94 MiB is free. Process 3610610 has 78.31 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 302.01 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 6,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_006.json",
+      "receipt_sha256": "d273c8e51776efa64f7ac04f46da27423ddac04bdd0f01522618814ee8a3e072",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    },
+    {
+      "allocation_error": "CUDA out of memory. Tried to allocate 2.02 GiB. GPU 7 has a total capacity of 79.11 GiB of which 770.94 MiB is free. Process 3610611 has 78.35 GiB memory in use. Of the allocated memory 76.17 GiB is allocated by PyTorch, and 342.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "failure_api": "Fake backward checkpoint replay \u2192 FFN LoRA-B Linear",
+      "observed_optimizer_commits": {
+        "fake": 1,
+        "student": 1
+      },
+      "rank": 7,
+      "receipt": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h3_h100_three_arm_matched_20261014_r4/00_correctness_resident/rank_receipts/rank_007.json",
+      "receipt_sha256": "dd6c5dfe94d526c0d023fdefe6a6acc00d5647cfe963ac0e2d2dc2554e808dd1",
+      "transformer_block": "UNKNOWN_NOT_IN_FAILURE_TRACE"
+    }
+  ],
+  "physical_ranks_failed": 8,
+  "recovery_candidate": "existing checkpoint_boundary_cpu policy, distinct named capacity fallback; full-model GPU residency retained",
+  "rejected_paths": [
+    "blind segment8",
+    "generic threshold offload",
+    "dropping model/frames/rank/global batch"
+  ],
+  "root_cause_boundary": "PROVEN CUDA capacity failure after full static Resident + Adam/grad/boundary/transient workload; exact additive object attribution UNRESOLVED",
+  "run_id": "h3_h100_three_arm_matched_20261014_r4_00_correctness_resident",
+  "source_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+  "status": "FAIL_CUDA_OOM_PRESERVED",
+  "timing": "NOT_RUN",
+  "utc": "2026-10-14T20:29:52.228743+00:00"
+}
