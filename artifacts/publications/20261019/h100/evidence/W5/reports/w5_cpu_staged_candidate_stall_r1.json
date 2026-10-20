@@ -1,0 +1,18 @@
+{
+  "status": "FAIL_STALLED_CPU_STAGED_CORRECTNESS_PRESERVED",
+  "run_id": "h3_h100_three_arm_matched_20261014_r4_03_correctness_candidate",
+  "source_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+  "timing": "NOT_RUN",
+  "cgroup_oom_delta": {
+    "oom": 0,
+    "oom_kill": 0
+  },
+  "CUDA_OOM": "NOT_OBSERVED",
+  "GPU_cleanup": "PASS_ZERO_CONTEXTS",
+  "root_cause": "UNRESOLVED_WAIT_STALL; repeated fixed low-power GPU states/rank2 zero and all main threads futex, GDB ptrace unavailable",
+  "successful_FSDP_control_correctness_and_timing": "PRESERVED_NOT_INVALIDATED",
+  "FSDP_control_full5_seconds": 638.522138278,
+  "recovery": "only existing CUDA cache residency after real FA3 selective-checkpoint library gate",
+  "failed_cpu_staged_same_path_rerun": "NOT_ADMITTED_WITHOUT_NEW_EVIDENCE",
+  "utc": "2026-10-14T21:12:31.364987+00:00"
+}

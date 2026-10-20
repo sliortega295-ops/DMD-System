@@ -1,0 +1,16 @@
+{
+  "status": "PASS_ANALYZER_ONLY_COMMIT_AND_REAL_CPU_REAUDIT",
+  "analyzer_commit": "812236caf73163824e20aa055dda0326fdfec258",
+  "training_head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+  "training_checkout_changed": false,
+  "analyzer_sha256": "4e8a017107502132e67791912c13e7519621c0fbae7d81b40de34616bd417903",
+  "test_sha256": "aa7d34110f3f026570c3d5067e5f1b76bbfa4f3307d458621af5001621e8144b",
+  "tests": "8 executable unittestmethods incl10negativeidentitysubcases; actual8rankrealmetadatareauditPASS",
+  "local_pytest": "NOT_RUN_PYTEST_NOT_INSTALLED_NO_INSTALL_ATTEMPT",
+  "original_raw_summary": "FAIL_PRESERVED_NOT_BACKFILLED",
+  "baseline_reaudit_sha256": "b5c4a287a30dcc13bcedf8865d8ca67f4a8f50761492d9916653475b0c298cb0",
+  "unprofiled_C2_seconds_unchanged": 45.3613984375,
+  "numerical_policy": "unchanged original TRAJECTORY_REVIEW_50C_COMPLETED notstrictnumericalPASS",
+  "math_changed": false,
+  "push": false
+}

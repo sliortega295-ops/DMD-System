@@ -1,0 +1,71 @@
+{
+  "CV": "NOT_MEASURED_SINGLE_PAIR",
+  "GPU_status": "PASS_COMPLETE_ONE_MATCHED_PAIR",
+  "baseline_seconds": 52.066607125103474,
+  "candidate_seconds": 37.669794753193855,
+  "contract": "same-process two cycles; only cycle2 timed",
+  "correctness": "fresh both-arm execution gate before timing",
+  "exact_head": "7a668bcb12ad37d831dced3aca1be4ec7be0a2fe",
+  "lock_scope": "inherited asset/project/node FDs held through audit/run/teardown",
+  "logical_batch": 16,
+  "logical_slots": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "numerical_policy": "unchanged existing thresholds; REVIEW/NOT_RUN not strict PASS",
+  "order": [
+    [
+      "baseline",
+      "candidate"
+    ]
+  ],
+  "physical_ranks": 8,
+  "profiled": false,
+  "records": [
+    {
+      "arm": "baseline",
+      "pair": 0,
+      "profiled": false,
+      "run_id": "wan_h100_resident_baseline_timing_pair0_20261014_r1",
+      "seconds": 52.066607125103474,
+      "strict_claimable": false,
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_resident_baseline_timing_pair0_20261014_r1/summary.json",
+      "summary_sha256": "55cd35d22c0de0614a8fe0883765f74506289dc8e6cd497064d557cbb9812cee",
+      "summary_status": "PASS"
+    },
+    {
+      "arm": "candidate",
+      "pair": 0,
+      "profiled": false,
+      "run_id": "wan_h100_resident_candidate_timing_pair0_20261014_r1",
+      "seconds": 37.669794753193855,
+      "strict_claimable": false,
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_resident_candidate_timing_pair0_20261014_r1/summary.json",
+      "summary_sha256": "63fc5268874af67d2e05963877884d9b482592703a3007b9f2d13d75d68562bf",
+      "summary_status": "PASS"
+    }
+  ],
+  "replications": 1,
+  "repo": "/home/jiangzhikun/yongyan_liu/Helios-H100/repos/DMD-System-h100-resident-baselines-20261014",
+  "rollout": "B1; independent original trace row per logical slot",
+  "single_pair_ratio": 1.3821845185575101,
+  "source_bound_numerical_report": "unchanged comparator; REVIEW remains REVIEW",
+  "status": "PASS_CONTROLLED_DIAGNOSTIC",
+  "strict_claimable": false,
+  "strict_full_state_equivalence": "NOT_RUN",
+  "workload": "wan"
+}

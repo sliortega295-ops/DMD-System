@@ -1,0 +1,4 @@
+# Frozen historical evidence/source packets retain their original bytes,
+# including CRLF CSVs and historical trailing blank lines. Do not reformat.
+evidence/** -text -whitespace
+source_packets/** -text -whitespace

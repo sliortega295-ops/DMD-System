@@ -1,0 +1,5001 @@
+{
+  "result": {
+    "CV": "NOT_MEASURED_SINGLE_PAIR",
+    "GPU_status": "PASS_COMPLETE_ONE_MATCHED_PAIR",
+    "baseline_policy": "official whole-role swap; GPU ZeRO1 optimizer/EMA; no activation/gradient/optimizer offload",
+    "baseline_seconds": 192.98604553751647,
+    "candidate_seconds": 117.3435074267909,
+    "contract": "one GAN G1/C5/EMA1 Full5",
+    "correctness": "fresh both-arm execution gate before timing",
+    "exact_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+    "lock_scope": "inherited asset/project/node FDs held through audit/run/teardown",
+    "logical_batch": 16,
+    "logical_slots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "numerical_policy": "unchanged existing thresholds; REVIEW/NOT_RUN not strict PASS",
+    "order": [
+      [
+        "baseline",
+        "candidate"
+      ]
+    ],
+    "physical_ranks": 8,
+    "prior_full_resident_OOM": "PRESERVED_NOT_RELABELED",
+    "profiled": false,
+    "records": [
+      {
+        "arm": "baseline",
+        "pair": 0,
+        "profiled": false,
+        "run_id": "helios_h100_official_swap_gan_baseline_timing_pair0_20261014_r1",
+        "seconds": 192.98604553751647,
+        "strict_claimable": false,
+        "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_official_swap_gan_baseline_timing_pair0_20261014_r1/summary.json",
+        "summary_sha256": "e79af61f5feef6b6832d8b58545fa41e6da17f951b57bb03c3e228de46dc3cc6",
+        "summary_status": "PASS"
+      },
+      {
+        "arm": "candidate",
+        "pair": 0,
+        "profiled": false,
+        "run_id": "helios_h100_official_swap_gan_candidate_timing_pair0_20261014_r1",
+        "seconds": 117.3435074267909,
+        "strict_claimable": false,
+        "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_official_swap_gan_candidate_timing_pair0_20261014_r1/summary.json",
+        "summary_sha256": "f36927cf0d2b23e47c5a841432646807ca3068265831ecb00bd4b249a5b2f4a5",
+        "summary_status": "PASS"
+      }
+    ],
+    "replications": 1,
+    "repo": "/home/jiangzhikun/yongyan_liu/Helios-H100/repos/DMD-System-h100-helios-official-swap-20261014-r1",
+    "rollout": "B1; independent original trace row per logical slot",
+    "single_pair_ratio": 1.644624826455933,
+    "source_bound_numerical_report": "unchanged comparator; REVIEW remains REVIEW",
+    "status": "PASS_CONTROLLED_DIAGNOSTIC",
+    "strict_claimable": false,
+    "strict_full_state_equivalence": "NOT_RUN",
+    "workload": "gan"
+  },
+  "arms": [
+    {
+      "arm": "baseline",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_official_swap_gan_baseline_timing_pair0_20261014_r1/summary.json",
+      "summary_sha256": "e79af61f5feef6b6832d8b58545fa41e6da17f951b57bb03c3e228de46dc3cc6",
+      "status": "PASS",
+      "updates": [
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        }
+      ],
+      "final": {
+        "critic": 1005,
+        "ema": 801,
+        "generator": 201
+      },
+      "cgroup_delta": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "cleanup": [],
+      "actual_memory_candidates": [
+        {
+          "key": "/0/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/0/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/0/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/0/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/0/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/0/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/0/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/0/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/0/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/0/final/memory/driver_free_gib",
+          "value": 8.54193115234375
+        },
+        {
+          "key": "/0/final/memory/max_allocated_gib",
+          "value": 64.78612995147705
+        },
+        {
+          "key": "/0/final/memory/max_reserved_gib",
+          "value": 67.978515625
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/0/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/0/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/0/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/1/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/1/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/1/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/1/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/1/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/1/final/memory/driver_free_gib",
+          "value": 8.54193115234375
+        },
+        {
+          "key": "/1/final/memory/max_allocated_gib",
+          "value": 64.78612995147705
+        },
+        {
+          "key": "/1/final/memory/max_reserved_gib",
+          "value": 67.978515625
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60443115234375
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60443115234375
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/1/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/1/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/1/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/2/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/2/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/2/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/2/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/2/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/2/final/memory/driver_free_gib",
+          "value": 8.67279052734375
+        },
+        {
+          "key": "/2/final/memory/max_allocated_gib",
+          "value": 64.78052234649658
+        },
+        {
+          "key": "/2/final/memory/max_reserved_gib",
+          "value": 67.84765625
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/2/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/2/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/2/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00677490234375
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.513671875
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/3/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/3/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/3/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/3/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/3/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/3/final/memory/driver_free_gib",
+          "value": 8.67083740234375
+        },
+        {
+          "key": "/3/final/memory/max_allocated_gib",
+          "value": 64.78052234649658
+        },
+        {
+          "key": "/3/final/memory/max_reserved_gib",
+          "value": 67.849609375
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/3/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/3/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/3/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/4/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/4/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/4/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/4/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/4/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/4/final/memory/driver_free_gib",
+          "value": 8.67279052734375
+        },
+        {
+          "key": "/4/final/memory/max_allocated_gib",
+          "value": 64.78052234649658
+        },
+        {
+          "key": "/4/final/memory/max_reserved_gib",
+          "value": 67.84765625
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/4/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/4/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/4/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00677490234375
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.513671875
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/5/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/5/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/5/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/5/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/5/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/5/final/memory/driver_free_gib",
+          "value": 8.54193115234375
+        },
+        {
+          "key": "/5/final/memory/max_allocated_gib",
+          "value": 64.78612995147705
+        },
+        {
+          "key": "/5/final/memory/max_reserved_gib",
+          "value": 67.978515625
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60443115234375
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60443115234375
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/5/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/5/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/5/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/6/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/6/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/6/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/6/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/6/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/6/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/6/final/memory/driver_free_gib",
+          "value": 8.53802490234375
+        },
+        {
+          "key": "/6/final/memory/max_allocated_gib",
+          "value": 64.76938343048096
+        },
+        {
+          "key": "/6/final/memory/max_reserved_gib",
+          "value": 67.982421875
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.63568115234375
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.216796875
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 12.09466552734375
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.5416145324707
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.68359375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.63568115234375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.216796875
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 12.09466552734375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.5416145324707
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.68359375
+        },
+        {
+          "key": "/6/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/6/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/6/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.46575927734375
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.98388910293579
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.056640625
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.46575927734375
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.001858711242676
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.056640625
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/driver_free_gib",
+          "value": 19.84661865234375
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99130344390869
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.673828125
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/driver_free_gib",
+          "value": 19.84661865234375
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.01015043258667
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.673828125
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/driver_free_gib",
+          "value": 19.90130615234375
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.987828731536865
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.619140625
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/driver_free_gib",
+          "value": 19.90130615234375
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.006263732910156
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.619140625
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/driver_free_gib",
+          "value": 19.93060302734375
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.987149715423584
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.58984375
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/driver_free_gib",
+          "value": 19.93060302734375
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.006561279296875
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.58984375
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/driver_free_gib",
+          "value": 19.93060302734375
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.992669105529785
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.58984375
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/driver_free_gib",
+          "value": 19.93060302734375
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.009753704071045
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.58984375
+        },
+        {
+          "key": "/7/build/critic/construction_memory_after_role_offload/driver_free_gib",
+          "value": 52.54779052734375
+        },
+        {
+          "key": "/7/build/critic/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/7/build/critic/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/driver_free_gib",
+          "value": 33.08294677734375
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 43.9059624671936
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 43.9375
+        },
+        {
+          "key": "/7/build/generator/construction_memory_after_role_offload/driver_free_gib",
+          "value": 68.77435302734375
+        },
+        {
+          "key": "/7/build/generator/construction_memory_after_role_offload/max_allocated_gib",
+          "value": 36.06510400772095
+        },
+        {
+          "key": "/7/build/generator/construction_memory_after_role_offload/max_reserved_gib",
+          "value": 41.177734375
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/driver_free_gib",
+          "value": 47.08685302734375
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.497880935668945
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 31.505859375
+        },
+        {
+          "key": "/7/final/memory/driver_free_gib",
+          "value": 8.67279052734375
+        },
+        {
+          "key": "/7/final/memory/max_allocated_gib",
+          "value": 64.78052234649658
+        },
+        {
+          "key": "/7/final/memory/max_reserved_gib",
+          "value": 67.84765625
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 13.60638427734375
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 60.10741949081421
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 63.248046875
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 11.98333740234375
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 62.54530334472656
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 64.794921875
+        },
+        {
+          "key": "/7/initial/memory/driver_free_gib",
+          "value": 52.25482177734375
+        },
+        {
+          "key": "/7/initial/memory/max_allocated_gib",
+          "value": 52.133636474609375
+        },
+        {
+          "key": "/7/initial/memory/max_reserved_gib",
+          "value": 61.361328125
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/max_allocated_gib",
+          "value": 52.984163761138916
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/driver_free_gib",
+          "value": 8.47943115234375
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/max_allocated_gib",
+          "value": 53.00321674346924
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/max_reserved_gib",
+          "value": 68.04296875
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/max_allocated_gib",
+          "value": 52.99337863922119
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/max_allocated_gib",
+          "value": 53.011653423309326
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/max_allocated_gib",
+          "value": 52.99041509628296
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/max_allocated_gib",
+          "value": 53.00889587402344
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/max_allocated_gib",
+          "value": 52.98930025100708
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/max_allocated_gib",
+          "value": 53.009483337402344
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/max_allocated_gib",
+          "value": 52.99301242828369
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/max_reserved_gib",
+          "value": 56.515625
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/driver_free_gib",
+          "value": 20.00482177734375
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/max_allocated_gib",
+          "value": 53.01382780075073
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/max_reserved_gib",
+          "value": 56.515625
+        }
+      ],
+      "attention_backend": "sdpa",
+      "strict_claimable": false
+    },
+    {
+      "arm": "candidate",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_official_swap_gan_candidate_timing_pair0_20261014_r1/summary.json",
+      "summary_sha256": "f36927cf0d2b23e47c5a841432646807ca3068265831ecb00bd4b249a5b2f4a5",
+      "status": "PASS",
+      "updates": [
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        },
+        {
+          "critic": 5,
+          "ema": 1,
+          "generator": 1
+        }
+      ],
+      "final": {
+        "critic": 1005,
+        "ema": 801,
+        "generator": 201
+      },
+      "cgroup_delta": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "cleanup": [],
+      "actual_memory_candidates": [
+        {
+          "key": "/0/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/0/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/0/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/0/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/0/final/memory/driver_free_gib",
+          "value": 34.68450927734375
+        },
+        {
+          "key": "/0/final/memory/max_allocated_gib",
+          "value": 42.90144157409668
+        },
+        {
+          "key": "/0/final/memory/max_reserved_gib",
+          "value": 47.0390625
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.35833740234375
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/0/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.01458740234375
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.19973659515381
+        },
+        {
+          "key": "/0/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 38.970703125
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.35833740234375
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.01458740234375
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.19973659515381
+        },
+        {
+          "key": "/0/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 38.970703125
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30559069184
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41861251072
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30559069184
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41861251072
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065072128
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50507808768
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065072128
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50507808768
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46270114304
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50503614464
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003583488
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50505711616
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46020441600
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50505711616
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46040883200
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50505711616
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065072128
+        },
+        {
+          "key": "/0/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50507808768
+        },
+        {
+          "key": "/0/initial/memory/driver_free_gib",
+          "value": 59.19036865234375
+        },
+        {
+          "key": "/0/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/0/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.08099365234375
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/0/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/0/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/0/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/0/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.07708740234375
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/0/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/driver_free_gib",
+          "value": 29.95013427734375
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.09240198135376
+        },
+        {
+          "key": "/0/rollout_batches/5/memory/max_reserved_gib",
+          "value": 47.03515625
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/driver_free_gib",
+          "value": 29.94818115234375
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.844175815582275
+        },
+        {
+          "key": "/0/rollout_batches/6/memory/max_reserved_gib",
+          "value": 47.037109375
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/driver_free_gib",
+          "value": 29.94818115234375
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.85987615585327
+        },
+        {
+          "key": "/0/rollout_batches/7/memory/max_reserved_gib",
+          "value": 47.037109375
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/driver_free_gib",
+          "value": 29.94818115234375
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.87891387939453
+        },
+        {
+          "key": "/0/rollout_batches/8/memory/max_reserved_gib",
+          "value": 47.037109375
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/driver_free_gib",
+          "value": 29.94622802734375
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.90144157409668
+        },
+        {
+          "key": "/0/rollout_batches/9/memory/max_reserved_gib",
+          "value": 47.0390625
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.20989990234375
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20221471786499
+        },
+        {
+          "key": "/1/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.07708740234375
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/1/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/1/final/memory/driver_free_gib",
+          "value": 34.77435302734375
+        },
+        {
+          "key": "/1/final/memory/max_allocated_gib",
+          "value": 42.90295600891113
+        },
+        {
+          "key": "/1/final/memory/max_reserved_gib",
+          "value": 47.033203125
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.51263427734375
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.571507453918457
+        },
+        {
+          "key": "/1/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.671875
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.08685302734375
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.199645042419434
+        },
+        {
+          "key": "/1/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.0234375
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.51263427734375
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.571507453918457
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.671875
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.08685302734375
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.199645042419434
+        },
+        {
+          "key": "/1/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.0234375
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30554989568
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41917874176
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30554989568
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41917874176
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46156056576
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50352619520
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45888694272
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45906330624
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45926739456
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46272137728
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50497323008
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46004242944
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46020572672
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041251840
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/1/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/1/initial/memory/driver_free_gib",
+          "value": 59.29974365234375
+        },
+        {
+          "key": "/1/initial/memory/max_allocated_gib",
+          "value": 39.20221471786499
+        },
+        {
+          "key": "/1/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.21575927734375
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.98617744445801
+        },
+        {
+          "key": "/1/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.89453125
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7371768951416
+        },
+        {
+          "key": "/1/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.753602027893066
+        },
+        {
+          "key": "/1/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.7726092338562
+        },
+        {
+          "key": "/1/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.21185302734375
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.79532766342163
+        },
+        {
+          "key": "/1/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.8984375
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.08099365234375
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.09428644180298
+        },
+        {
+          "key": "/1/rollout_batches/5/memory/max_reserved_gib",
+          "value": 47.029296875
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84478998184204
+        },
+        {
+          "key": "/1/rollout_batches/6/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.85999822616577
+        },
+        {
+          "key": "/1/rollout_batches/7/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.87925720214844
+        },
+        {
+          "key": "/1/rollout_batches/8/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.07708740234375
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.90295600891113
+        },
+        {
+          "key": "/1/rollout_batches/9/memory/max_reserved_gib",
+          "value": 47.033203125
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/2/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/2/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/2/final/memory/driver_free_gib",
+          "value": 34.63177490234375
+        },
+        {
+          "key": "/2/final/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/2/final/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/2/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/2/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/2/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46271670784
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50405048320
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003206656
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46021056000
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041497600
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/2/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/2/initial/memory/driver_free_gib",
+          "value": 59.31536865234375
+        },
+        {
+          "key": "/2/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/2/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.20599365234375
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/2/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/2/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/2/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/2/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.20208740234375
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/2/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.16693115234375
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.0938515663147
+        },
+        {
+          "key": "/2/rollout_batches/5/memory/max_reserved_gib",
+          "value": 46.943359375
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84382486343384
+        },
+        {
+          "key": "/2/rollout_batches/6/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.860448360443115
+        },
+        {
+          "key": "/2/rollout_batches/7/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.879486083984375
+        },
+        {
+          "key": "/2/rollout_batches/8/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.16302490234375
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/2/rollout_batches/9/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/3/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/3/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/3/final/memory/driver_free_gib",
+          "value": 34.63177490234375
+        },
+        {
+          "key": "/3/final/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/3/final/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/3/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/3/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/3/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46271670784
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50405048320
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003206656
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46021056000
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041497600
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/3/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/3/initial/memory/driver_free_gib",
+          "value": 59.31536865234375
+        },
+        {
+          "key": "/3/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/3/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.20599365234375
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/3/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/3/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/3/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/3/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.20208740234375
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/3/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.16693115234375
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.0938515663147
+        },
+        {
+          "key": "/3/rollout_batches/5/memory/max_reserved_gib",
+          "value": 46.943359375
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84382486343384
+        },
+        {
+          "key": "/3/rollout_batches/6/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.860448360443115
+        },
+        {
+          "key": "/3/rollout_batches/7/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.879486083984375
+        },
+        {
+          "key": "/3/rollout_batches/8/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.16302490234375
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/3/rollout_batches/9/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/4/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/4/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/4/final/memory/driver_free_gib",
+          "value": 34.63177490234375
+        },
+        {
+          "key": "/4/final/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/4/final/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/4/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/4/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/4/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46271670784
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50405048320
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003206656
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46021056000
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041497600
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/4/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/4/initial/memory/driver_free_gib",
+          "value": 59.31536865234375
+        },
+        {
+          "key": "/4/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/4/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.20599365234375
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/4/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/4/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/4/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/4/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.20208740234375
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/4/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.16693115234375
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.0938515663147
+        },
+        {
+          "key": "/4/rollout_batches/5/memory/max_reserved_gib",
+          "value": 46.943359375
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84382486343384
+        },
+        {
+          "key": "/4/rollout_batches/6/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.860448360443115
+        },
+        {
+          "key": "/4/rollout_batches/7/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.879486083984375
+        },
+        {
+          "key": "/4/rollout_batches/8/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.16302490234375
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/4/rollout_batches/9/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/5/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/5/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/5/final/memory/driver_free_gib",
+          "value": 34.63177490234375
+        },
+        {
+          "key": "/5/final/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/5/final/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/5/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/5/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/5/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46271670784
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50405048320
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003206656
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46021056000
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041497600
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/5/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/5/initial/memory/driver_free_gib",
+          "value": 59.31536865234375
+        },
+        {
+          "key": "/5/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/5/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.20599365234375
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/5/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/5/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/5/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/5/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.20208740234375
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/5/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.16693115234375
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.0938515663147
+        },
+        {
+          "key": "/5/rollout_batches/5/memory/max_reserved_gib",
+          "value": 46.943359375
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84382486343384
+        },
+        {
+          "key": "/5/rollout_batches/6/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.860448360443115
+        },
+        {
+          "key": "/5/rollout_batches/7/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.879486083984375
+        },
+        {
+          "key": "/5/rollout_batches/8/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.16302490234375
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/5/rollout_batches/9/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.19036865234375
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/6/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.09661865234375
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/6/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/6/final/memory/driver_free_gib",
+          "value": 34.63177490234375
+        },
+        {
+          "key": "/6/final/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/6/final/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/6/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/6/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.48333740234375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.57154941558838
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.701171875
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.05755615234375
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.198039054870605
+        },
+        {
+          "key": "/6/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.052734375
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30558577664
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41949331456
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46152017920
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50363105280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45886216192
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45904303104
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45923409408
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50365202432
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45946017280
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50367299584
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46271670784
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50405048320
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46003206656
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46021056000
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041497600
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50407145472
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46065891328
+        },
+        {
+          "key": "/6/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50409242624
+        },
+        {
+          "key": "/6/initial/memory/driver_free_gib",
+          "value": 59.31536865234375
+        },
+        {
+          "key": "/6/initial/memory/max_allocated_gib",
+          "value": 39.20319128036499
+        },
+        {
+          "key": "/6/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.20599365234375
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.9824161529541
+        },
+        {
+          "key": "/6/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.904296875
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7348690032959
+        },
+        {
+          "key": "/6/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.75171375274658
+        },
+        {
+          "key": "/6/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.20404052734375
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.76950788497925
+        },
+        {
+          "key": "/6/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.90625
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.20208740234375
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.790563106536865
+        },
+        {
+          "key": "/6/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.908203125
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.16693115234375
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.0938515663147
+        },
+        {
+          "key": "/6/rollout_batches/5/memory/max_reserved_gib",
+          "value": 46.943359375
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84382486343384
+        },
+        {
+          "key": "/6/rollout_batches/6/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.860448360443115
+        },
+        {
+          "key": "/6/rollout_batches/7/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.16497802734375
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.879486083984375
+        },
+        {
+          "key": "/6/rollout_batches/8/memory/max_reserved_gib",
+          "value": 46.9453125
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.16302490234375
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.902204513549805
+        },
+        {
+          "key": "/6/rollout_batches/9/memory/max_reserved_gib",
+          "value": 46.947265625
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/driver_free_gib",
+          "value": 68.20989990234375
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/max_allocated_gib",
+          "value": 39.20221471786499
+        },
+        {
+          "key": "/7/build/critic/memory_after_shard/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/driver_free_gib",
+          "value": 74.07708740234375
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/max_allocated_gib",
+          "value": 31.594091415405273
+        },
+        {
+          "key": "/7/build/generator/memory_after_shard/max_reserved_gib",
+          "value": 32.06640625
+        },
+        {
+          "key": "/7/final/memory/driver_free_gib",
+          "value": 34.77435302734375
+        },
+        {
+          "key": "/7/final/memory/max_allocated_gib",
+          "value": 42.90295600891113
+        },
+        {
+          "key": "/7/final/memory/max_reserved_gib",
+          "value": 47.033203125
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/driver_free_gib",
+          "value": 45.51263427734375
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/max_allocated_gib",
+          "value": 22.571507453918457
+        },
+        {
+          "key": "/7/generator/microbatches/0/rollout/memory/max_reserved_gib",
+          "value": 31.671875
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/driver_free_gib",
+          "value": 38.08685302734375
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/max_allocated_gib",
+          "value": 23.199645042419434
+        },
+        {
+          "key": "/7/generator/microbatches/1/rollout/memory/max_reserved_gib",
+          "value": 39.0234375
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/driver_free_gib",
+          "value": 45.51263427734375
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/max_allocated_gib",
+          "value": 22.571507453918457
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/0/memory/max_reserved_gib",
+          "value": 31.671875
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/driver_free_gib",
+          "value": 38.08685302734375
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/max_allocated_gib",
+          "value": 23.199645042419434
+        },
+        {
+          "key": "/7/generator/rollout/microbatches/1/memory/max_reserved_gib",
+          "value": 39.0234375
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 30554989568
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 41917874176
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_allocated_bytes",
+          "value": 30554989568
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before/max_reserved_bytes",
+          "value": 41917874176
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46156056576
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50352619520
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 45888694272
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 45906330624
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 45926739456
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50354716672
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/0/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_pre_empty_cache/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_after_restore/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_allocated_bytes",
+          "value": 45951133184
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before/max_reserved_bytes",
+          "value": 50356813824
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/memory_before_exit/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_allocated_bytes",
+          "value": 46272137728
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/0/max_reserved_bytes",
+          "value": 50497323008
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_allocated_bytes",
+          "value": 46004242944
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/1/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_allocated_bytes",
+          "value": 46020572672
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/2/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_allocated_bytes",
+          "value": 46041251840
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/3/max_reserved_bytes",
+          "value": 50499420160
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_allocated_bytes",
+          "value": 46066698240
+        },
+        {
+          "key": "/7/generator_nograd_persistent_unshard/microbatches/1/persistence/rollout_memory/4/max_reserved_bytes",
+          "value": 50501517312
+        },
+        {
+          "key": "/7/initial/memory/driver_free_gib",
+          "value": 59.29974365234375
+        },
+        {
+          "key": "/7/initial/memory/max_allocated_gib",
+          "value": 39.20221471786499
+        },
+        {
+          "key": "/7/initial/memory/max_reserved_gib",
+          "value": 40.01953125
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/driver_free_gib",
+          "value": 30.21575927734375
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/max_allocated_gib",
+          "value": 42.98617744445801
+        },
+        {
+          "key": "/7/rollout_batches/0/memory/max_reserved_gib",
+          "value": 46.89453125
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/max_allocated_gib",
+          "value": 42.7371768951416
+        },
+        {
+          "key": "/7/rollout_batches/1/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/max_allocated_gib",
+          "value": 42.753602027893066
+        },
+        {
+          "key": "/7/rollout_batches/2/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/driver_free_gib",
+          "value": 30.21380615234375
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/max_allocated_gib",
+          "value": 42.7726092338562
+        },
+        {
+          "key": "/7/rollout_batches/3/memory/max_reserved_gib",
+          "value": 46.896484375
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/driver_free_gib",
+          "value": 30.21185302734375
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/max_allocated_gib",
+          "value": 42.79532766342163
+        },
+        {
+          "key": "/7/rollout_batches/4/memory/max_reserved_gib",
+          "value": 46.8984375
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/driver_free_gib",
+          "value": 30.08099365234375
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/max_allocated_gib",
+          "value": 43.09428644180298
+        },
+        {
+          "key": "/7/rollout_batches/5/memory/max_reserved_gib",
+          "value": 47.029296875
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/max_allocated_gib",
+          "value": 42.84478998184204
+        },
+        {
+          "key": "/7/rollout_batches/6/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/max_allocated_gib",
+          "value": 42.85999822616577
+        },
+        {
+          "key": "/7/rollout_batches/7/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/driver_free_gib",
+          "value": 30.07904052734375
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/max_allocated_gib",
+          "value": 42.87925720214844
+        },
+        {
+          "key": "/7/rollout_batches/8/memory/max_reserved_gib",
+          "value": 47.03125
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/driver_free_gib",
+          "value": 30.07708740234375
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/max_allocated_gib",
+          "value": 42.90295600891113
+        },
+        {
+          "key": "/7/rollout_batches/9/memory/max_reserved_gib",
+          "value": 47.033203125
+        }
+      ],
+      "attention_backend": "local-fa2",
+      "strict_claimable": false
+    }
+  ]
+}

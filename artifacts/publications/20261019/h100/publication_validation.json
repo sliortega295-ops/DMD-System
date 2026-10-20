@@ -1,0 +1,36 @@
+{
+  "status": "PASS_CPU_ARCHIVE_AND_SOURCE_SYNTAX_ONLY",
+  "utc": "2026-10-20T02:23:29.199569+00:00",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "checks": [
+    {
+      "name": "h100_publication",
+      "returncode": 0,
+      "log_sha256": "f845499fadd1802adb00d91bbd86d655249564a99d104b3604a7281d4fce0ed8"
+    },
+    {
+      "name": "h100_regression",
+      "returncode": 0,
+      "log_sha256": "6b42791dcf306c5fc7b7ea48566113ceb2142804f4881279d62a3ecaea2f2d51"
+    },
+    {
+      "name": "original_publication",
+      "returncode": 0,
+      "log_sha256": "fdb3cdca97b4897d87bd37fb0cf9fd888ece265104bef994cd9d52f872d48d3f"
+    },
+    {
+      "name": "compileall",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "archive_files_scanned": 179,
+  "secret_pattern_findings": [],
+  "archive_source_syntax_files": 147,
+  "existing_scripts_shell_syntax_files": 24,
+  "new_training_source_changes": false,
+  "GPU_started": 0,
+  "SSH_calls": 0,
+  "training_unit_tests": "NOT_RERUN_HISTORICAL_EVIDENCE_RETAINED",
+  "boundary": "Publication tests, file hashes, syntax and secret-pattern scan only; no renewed GPU/numerical/trajectory claim."
+}
