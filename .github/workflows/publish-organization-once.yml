@@ -1,0 +1,132 @@
+name: publish-organization-once
+on:
+  push:
+    branches: [agent/general-workload-planning-20261012]
+    paths: [.github/workflows/publish-organization-once.yml]
+permissions:
+  contents: write
+jobs:
+  prepare-verified-commit:
+    if: github.repository == 'sliortega295-ops/DMD-System'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    env:
+      BASE: 0e8cbe5c006fceda36a7547b3eda60d6daea1eb8
+      OUTPUT_TREE: b0ba8e48a5316be8b958d661601fe4a723c1035e
+      PAYLOAD_SHA256: 9a6d3794a5cb9c4f6fa8275800b7696d6e7ab01034b4a7349569a2b3ccb51951
+      PYTHONPATH: src:.
+      CUDA_VISIBLE_DEVICES: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Check exact starting commit
+        run: test "$(git rev-parse HEAD^)" = "$BASE"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install lightweight source checks only
+        run: python -m pip install -e '.[test]' wheel
+      - name: Reproduce reviewed organization and protect training sources
+        run: |
+          python - <<'PY'
+          import base64, gzip, hashlib, json, os, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd()
+          paths = [root / f'.github/maintenance/organization-payload-{i}.b64' for i in range(4)]
+          compressed = base64.b64decode(''.join(p.read_text() for p in paths), validate=True)
+          assert hashlib.sha256(compressed).hexdigest() == os.environ['PAYLOAD_SHA256']
+          payload = json.loads(gzip.decompress(compressed))
+          context = {'ROOT': root, 'json': json}
+          sys.path[:0] = [str(root / 'src'), str(root)]
+          for source in payload['scripts']:
+              exec(compile(source, '<reviewed-source-migration>', 'exec'), context)
+          for relative, source in payload['files'].items():
+              target = (root / relative).resolve()
+              assert target.is_relative_to(root) and '.git' not in target.relative_to(root).parts
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(source)
+          exec(compile(payload['post'], '<reviewed-reference-fixes>', 'exec'), context)
+          exec(compile(payload['lock'], '<reviewed-source-lock>', 'exec'), context)
+          for path in paths:
+              path.unlink()
+          (root / '.github/workflows/publish-organization-once.yml').unlink()
+          protected = ['runtime/', 'src/distillschedule/runtime/', 'src/distillschedule/strategies/',
+                       'src/distillschedule/backends/', 'configs/', 'third_party/', 'artifacts/',
+                       'docs/contracts/', 'docs/status/']
+          subprocess.run(['git', 'diff', '--exit-code', os.environ['BASE'], '--', *protected], check=True)
+          subprocess.run(['git', 'add', '-A'], check=True)
+          tree = subprocess.check_output(['git', 'write-tree'], text=True).strip()
+          assert tree == os.environ['OUTPUT_TREE'], f'Unreviewed output tree: {tree}'
+          print('PASS_EXACT_REVIEWED_TREE', tree)
+          PY
+      - name: Catalog, source provenance and original recipe regression
+        run: |
+          set -euo pipefail
+          python scripts/distillctl.py workloads verify-catalog --repo-root . | tee /tmp/organization-catalog.log
+          python scripts/distillschedule/check_best_known_integration.py > /tmp/organization-source.log
+          python scripts/distillschedule/check_source_publication.py > /tmp/organization-publication.log
+          python scripts/distillschedule/check_h100_source_publication.py > /tmp/organization-h100.log
+          python -m pytest -q tests/test_repository_organization.py tests/test_refactor_best_known*.py | tee /tmp/organization-tests.log
+          git diff --cached --check
+      - name: Isolated wheel check including former PYTHONPATH contamination
+        run: |
+          set -euo pipefail
+          python scripts/check_wheel_install.py | tee /tmp/organization-wheel.log
+      - name: Create verified Git objects only; never move a branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, urllib.request
+          from pathlib import Path
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          # Build products are ignored; any other mutation after validation rejects.
+          subprocess.run(['git', 'diff', '--exit-code'], check=True)
+          tree = git('write-tree').decode().strip()
+          assert tree == os.environ['OUTPUT_TREE']
+          existing = set(git('ls-tree', '-r', '--format=%(objectname)', 'HEAD').decode().splitlines())
+          entries = []
+          for line in git('ls-files', '--stage', '-z').split(b'\0'):
+              if not line:
+                  continue
+              meta, path = line.split(b'\t', 1)
+              mode, sha, stage = meta.decode().split()
+              assert stage == '0'
+              row = {'path': path.decode(), 'mode': mode, 'type': 'commit' if mode == '160000' else 'blob'}
+              if sha in existing or mode == '160000':
+                  row['sha'] = sha
+              else:
+                  row['content'] = git('cat-file', 'blob', sha).decode('utf-8')
+              entries.append(row)
+          api = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+          def post(endpoint, value):
+              request = urllib.request.Request(api + endpoint, data=json.dumps(value).encode(), method='POST',
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                           'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
+                           'X-GitHub-Api-Version': '2022-11-28'})
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  return json.load(response)
+          remote_tree = post('/git/trees', {'tree': entries})
+          assert remote_tree['sha'] == tree
+          commit = post('/git/commits', {
+              'message': 'refactor: organize six-workload entrypoints, isolate developer tools, and verify source packaging',
+              'tree': tree, 'parents': [os.environ['GITHUB_SHA']]})
+          receipt = {'commit_sha': commit['sha'], 'tree_sha': tree, 'parent_sha': os.environ['GITHUB_SHA'],
+                     'source_base': os.environ['BASE'], 'branch_updated': False,
+                     'source_catalog_package_checks': 'PASS', 'new_gpu_execution': 'NOT_RUN',
+                     'six_workloads': 6, 'relocated_utilities': 33,
+                     'training_and_immutable_evidence_changed': False}
+          Path('/tmp/organization-result.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          print(json.dumps(receipt))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: six-workload-organization-${{ github.sha }}
+          path: /tmp/organization-*
+          retention-days: 7
+          if-no-files-found: warn
