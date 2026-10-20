@@ -1,3 +1,5 @@
+> **Read first — six-workload results erratum:** [current A100/H100 results, old-audit corrections and reading order](docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md). Keep paper snapshots, later native pairs and planner matches distinct; the W3 N70 correction remains explicit.
+>
 > **2026-10-19 source/evidence snapshot:** [latest optimization, planner and scheduler index](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md). This branch is a research source archive, not a merge into `main`. Measured source commits and REVIEW/FAIL/NOT_RUN boundaries are preserved.
 
 # DMD-System

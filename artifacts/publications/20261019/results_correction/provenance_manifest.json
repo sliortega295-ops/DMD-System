@@ -1,0 +1,41 @@
+{
+  "schema": "dmd.results_erratum_files.v1",
+  "files": [
+    {
+      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/gan_nomerge_retime_20261013/reports/gan_nomerge_retime.json",
+      "bytes": 25130,
+      "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496",
+      "kind": "HISTORICAL_REAL_TIMING_WITH_POST_TIMER_FAIL_NOT_A_NEW_GPU_RUN"
+    },
+    {
+      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/gan_nomerge_retime_20261013/reports/gan_nomerge_retime.md",
+      "bytes": 6765,
+      "sha256": "18dca983e43aff38c7ab8d2b368911ad5d217a14ac8adc0559fded20b007caba",
+      "kind": "HISTORICAL_REAL_TIMING_WITH_POST_TIMER_FAIL_NOT_A_NEW_GPU_RUN"
+    },
+    {
+      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/post_timer_schema_bug_fix_CPU.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/gan_nomerge_retime_20261013/reports/post_timer_schema_bug_fix_CPU.json",
+      "bytes": 406,
+      "sha256": "d360167781b01b950ecc2427924d38e14d9203b739492d8e2e1b2e9dd4870fd6",
+      "kind": "HISTORICAL_REAL_TIMING_WITH_POST_TIMER_FAIL_NOT_A_NEW_GPU_RUN"
+    },
+    {
+      "path": "artifacts/publications/20261019/results_correction/results.json",
+      "bytes": 24482,
+      "sha256": "fb011a80ccc709ff310d6bc4d3dc9d8a2956bbe69964f0ee2cb5c286cd93bfe8",
+      "kind": "DERIVED_SCOPE_LABELED_NOT_NEW_EXPERIMENT"
+    },
+    {
+      "path": "artifacts/publications/20261019/results_correction/A100_user_reported_main_table.csv",
+      "bytes": 1105,
+      "sha256": "8843659d19b3dabb976d604073f12f0e1a1893fab264e0e448193b11e0f6df1c",
+      "kind": "DERIVED_SCOPE_LABELED_NOT_NEW_EXPERIMENT"
+    }
+  ],
+  "historical_results_not_rewritten": true,
+  "GPU_started": 0,
+  "SSH_calls": 0
+}

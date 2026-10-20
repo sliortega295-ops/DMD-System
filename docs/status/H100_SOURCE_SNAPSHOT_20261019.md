@@ -1,5 +1,7 @@
 # H100 六 workload 源码与历史实测索引
 
+审计总性能时先读[六项结果口径与旧审计勘误](SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)；本页H100结果不能与A100主表混成同硬件配对。
+
 这是对 [A100／规划器源码索引](GITHUB_SOURCE_SNAPSHOT_20261019.md) 的补充。**发布代码和小型证据，不是重新运行 H100，也不是合并 main。**
 
 六项分别是 Wan1.3B、Helios No-GAN、Helios GAN-on、Self-Forcing／LiveWan、H3 全序列 AV 和 H3 自回归 AV；不能把两项 H3 合成一项。

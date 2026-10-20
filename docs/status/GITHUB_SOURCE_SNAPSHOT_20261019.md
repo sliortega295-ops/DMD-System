@@ -2,6 +2,8 @@
 
 **这是源码发布和证据归档，不是把所有研究分支合并到 main。**
 
+**性能审计请先读：[六项结果纠偏与阅读顺序](SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)。** 该页区分用户当前论文主表、后续原生增量、N70-OFF更正、A100手工/保存计划配对和H100六项结果，避免用旧五项registry或早期中间报告代替项目最新范围。
+
 **H100 六 workload 后续补充发布：**请同时读 [H100 源码／历史实测索引](H100_SOURCE_SNAPSHOT_20261019.md)。它补齐 W1 后续 CPU 候选、W3 独立来源分支、W4 Teacher 常驻、W5 GPU Attention 缓存和 W6 原生 FA2／状态管理源码，并归档 Git 外执行 packet；不是重新启动 H100。下面原发布中的“仅固定依赖 8fc”范围不代表这份后续补充的全部范围。
 
 核对时 main 为 `e69f4bf8b8bb64f54542fea74c452b53e090b526`，仍是早期五 workload 集成入口。
