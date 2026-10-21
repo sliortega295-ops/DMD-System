@@ -6,7 +6,6 @@ across the allocated data-parallel world; this is NOT a role-pool pipeline.
 """
 from __future__ import annotations
 import itertools
-from dataclasses import replace
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -145,8 +144,9 @@ class MixedLifecycle(ReplicaLifecycle):
         session.synchronize()
         digests = gather(fingerprint(signature({k:unwrap_module(v) for k,v in session.state.items()})))
         require(len(set(digests)) == 1, 'mixed-layout state diverged', path='open.mixed')
+        self._drain_ddp_telemetry()
         session.effects.update(parameter_backward_calls=self.backward_count, replica_state_consensus=True,
             reduction_completed=True, gradient_collectives=None,
             collective_count_scope='mixed native collectives not fully instrumented',
             reference_collectives=self.reference.collectives,
-            ddp_bucket_completions=sum(len(h.bucket_bytes) for h in self.hooks))
+            ddp_bucket_completions=self.collectives)

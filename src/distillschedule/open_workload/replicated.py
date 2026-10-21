@@ -230,6 +230,15 @@ class ReplicaLifecycle:
             dist.all_reduce(grad,op=dist.ReduceOp.SUM);grad.mul_(1.0/self.world)
             p.grad=grad; self.collectives+=1; self.gradient_bytes+=grad.numel()*grad.element_size()
 
+    def _drain_ddp_telemetry(self):
+        # Backward futures have completed at this cycle boundary. Retain only
+        # cumulative scalars, not every bucket ever seen by a persistent hook.
+        for hook in self.hooks:
+            self.collectives += len(hook.bucket_bytes)
+            self.gradient_bytes += sum(hook.bucket_bytes)
+            hook.bucket_bytes.clear()
+            hook.bucket_indices.clear()
+
     def finish(self, session):
         # DDP backward completion waits for registered futures; CUDA synchronization
         # then closes the physical lifetime before the next update/version boundary.
@@ -237,9 +246,10 @@ class ReplicaLifecycle:
         state=fingerprint(signature({k:unwrap_module(v) for k,v in session.state.items()}))
         digests=gather(state)
         require(len(set(digests))==1, 'replicated model/optimizer state diverged', path='open.replicated')
+        self._drain_ddp_telemetry()
         session.effects.update(parameter_backward_calls=self.backward_count,
-            gradient_collectives=self.collectives+sum(len(h.bucket_bytes) for h in self.hooks),
-            communicated_gradient_bytes=self.gradient_bytes+sum(sum(h.bucket_bytes) for h in self.hooks),
+            gradient_collectives=self.collectives,
+            communicated_gradient_bytes=self.gradient_bytes,
             replica_state_consensus=True, reduction_completed=True)
 
 

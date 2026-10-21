@@ -44,7 +44,9 @@ def cycle_structure(workload):
                for key, model in workload.state.items() if isinstance(model, torch.nn.Module)}
     return digest({"program": program, "modules": modules, "feeds": shapes(dict(workload.feeds)),
                    "bindings": {key: code_signature(fn) for key, fn in workload.bindings.items()},
-                   "immutable_modules": workload.immutable_modules})
+                   "immutable_modules": workload.immutable_modules,
+                   "replica_semantics": (workload.replica_semantics.to_dict()
+                                         if workload.replica_semantics is not None else None)})
 
 
 class CyclePolicy:
@@ -62,19 +64,33 @@ class CyclePolicy:
         """Install the saved physical layout before restoring its local shards."""
         from distillschedule.open_workload.execution import ExecutionBackend
         from distillschedule.open_workload.planning import source_identity
-        if (self.bound["source"] != source_identity()
-                or self.bound["structure"] != cycle_structure(workload)
-                or self.bound["mode"] != self.execution.get("mode", "reference")):
-            raise ValueError("checkpoint execution source or structure changed")
-        self.session = ExecutionBackend(workload).session(self.bound["implementation"],
-                                                          copy_state=False, persistent=True)
+        backend = ExecutionBackend(workload)
+        def admit():
+            if (self.bound["source"] != source_identity()
+                    or self.bound["structure"] != cycle_structure(workload)
+                    or self.bound["mode"] != self.execution.get("mode", "reference")):
+                raise ValueError("checkpoint execution source or structure changed")
+        backend.validated(admit, "checkpoint execution policy admission")
+        self.session = backend.session(self.bound["implementation"], copy_state=False, persistent=True)
         return self.session
 
     def run(self, workload, output):
         from distillschedule.open_workload.execution import ExecutionBackend
         from distillschedule.open_workload.planning import source_identity
-        current_structure = cycle_structure(workload)
         backend = ExecutionBackend(workload)
+        def admit():
+            current_structure = cycle_structure(workload)
+            if self.bound is not None:
+                if self.bound["source"] != source_identity() or self.bound["structure"] != current_structure:
+                    raise ValueError("training policy source, workload, model precision or input structure changed")
+                if self.bound["mode"] != self.execution.get("mode", "reference"):
+                    raise ValueError("checkpoint execution policy changed")
+                if self.session is not None:
+                    self.session.bind_cycle(workload, graph=backend.graph(self.bound["implementation"]))
+            return current_structure
+        # Only local validation/rebinding belongs inside checked. Installing a
+        # layout and running its lifecycle issue collectives of their own.
+        current_structure = backend.validated(admit, "training cycle policy admission")
         if self.bound is None:
             mode = self.execution.get("mode", "reference")
             if mode in ("auto", "plan"):
@@ -121,10 +137,6 @@ class CyclePolicy:
                           "initial_reference_gate": {"status": "NOT_RUN", "reason": "explicit user strategy"}}
             self.session = session
             return session, outputs
-        if self.bound["source"] != source_identity() or self.bound["structure"] != current_structure:
-            raise ValueError("training policy source, workload, model precision or input structure changed")
-        if self.bound["mode"] != self.execution.get("mode", "reference"):
-            raise ValueError("checkpoint execution policy changed")
         implementation = self.bound["implementation"]
         # Session applies the actual capability predicates. A user-admitted
         # manual combination need not appear in a truncated search inventory.
@@ -133,7 +145,6 @@ class CyclePolicy:
             self.session = session
         else:
             session = self.session
-            session.bind_cycle(workload, graph=backend.graph(implementation))
         if session.device.type == "cuda" and "memory_limit_bytes" in self.bound:
             from distillschedule.open_workload.hardware_probe import plan_memory_limit
             plan_memory_limit(session.device, distributed=backend.distributed, consensus=backend.consensus,
