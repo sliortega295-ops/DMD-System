@@ -6,7 +6,11 @@ from distillschedule.strategies.wan_task import OriginalWanTask, TRACE_KEY as WA
 
 def rollout_geometry(operation_trace):
     contract = operation_trace.manifest.get("contract", {})
-    require(not (HELIOS_KEY in contract and WAN_KEY in contract), "ambiguous Wan/Helios task identity")
+    from distillschedule.training.helios_inputs import HeliosCohortTask, TRACE_KEY as TRAINING_KEY
+    require(sum(key in contract for key in (HELIOS_KEY, WAN_KEY, TRAINING_KEY)) <= 1,
+            "ambiguous Wan/Helios task identity")
+    if TRAINING_KEY in contract:
+        return HeliosCohortTask.from_dict(contract[TRAINING_KEY]).request
     request = trace_request(operation_trace)
     if request is not None:
         return request

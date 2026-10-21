@@ -44,7 +44,8 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
     catalog = json.loads((Path(__file__).parents[1] / "workloads/catalog.json").read_text())
     row = next(item for item in catalog["workloads"] if item["id"] == workload)
     worker = workload in ("W1", "W6")
-    return dict(
+    helios_stream = _helios_stream(config, workload)
+    result = dict(
         workload=workload, name=row["name"], protocol=row["protocol"],
         algorithm=_FAMILIES[workload][0], config_source=str(config.source),
         native_api=(f"distillschedule.strategies.{'wan' if workload == 'W1' else 'h3_ar'}_cli:main"
@@ -72,6 +73,22 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                 if workload == "W1" else dict(supported=False,
                     reason="native sampled/fingerprint receipts are not tensor checkpoints"))),
         historical_note=row["note"], gpu_execution="NOT_RUN", claimable_speedup=False)
+    if helios_stream:
+        result.update(native_api="distillschedule.training.helios_worker:run_reference",
+                      launch="enter on each existing world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["reference"],
+            cycles=dict(min=2, max=64, fresh_inputs="original_helios_cohort_stream.v1",
+                        scope="five actual step-qualified per-rank source features per cohort"),
+            checkpoint=dict(supported=True, scope="original G/C trainables, Adam, scheduler, EMA, clocks and per-rank RNG",
+                            verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
+            resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
+                        verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
+    return result
+
+
+def _helios_stream(config, workload):
+    return workload == "W2" and config.data.get("input_kind") == "original_helios_cohort_stream.v1"
 
 
 def _path(config, section, key, *, required=True):
@@ -125,6 +142,14 @@ def _options(config, workload):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
     _require("seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    if _helios_stream(config, workload):
+        _require(config.execution.get("mode", "reference") == "reference"
+                 and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
+                 "W2 fresh stream currently supports explicit reference only; manual/selected plans are not ignored")
+        _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared")),
+                 "W2 fresh stream requires explicit prepared data; fixed replay is not substituted")
+        _require(2 <= config.trainer["cycles"] <= 64, "W2 fresh stream cycles must be 2..64")
+        return "reference"
     _require(not (config.trainer.get("checkpoint_every", 0) or config.trainer.get("resume_from"))
              or workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
                 and bool(config.data.get("prepared")),
@@ -350,6 +375,9 @@ def _admit(config):
     assets_value = _object(paths["assets"], "execution.assets")
     if workload == "W1":
         admitted = _wan(config, mode, task_value, assets_value, paths)
+    elif _helios_stream(config, workload):
+        from .helios_worker import admit_reference
+        admitted = admit_reference(config, task_value, assets_value, paths)
     elif workload == "W6":
         admitted = _h3_ar(config, mode, task_value, assets_value, paths)
     else:
@@ -398,6 +426,9 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
     if workload == "W1":
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
+    if _helios_stream(config, workload):
+        from .helios_worker import run_reference
+        return run_reference(config, admitted, source)
     if workload == "W6":
         from distillschedule.strategies.h3_ar_cli import main
         return main(admitted["argv"])

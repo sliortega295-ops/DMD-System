@@ -14,7 +14,6 @@ from __future__ import annotations
 import gc
 import hashlib
 import importlib.util
-import json
 import os
 import socket
 import sys
@@ -1465,6 +1464,8 @@ def main() -> int:
             base._atomic_json(output, result)
             dist.barrier()
             return 0
+        from distillschedule.training.helios_lifecycle import admit_original_rank, current_training
+        admit_original_rank(torch=torch, dist=dist, rank=rank, args=args, policy=policy)
         if args.variant == "gan" and args.gan_config is None:
             raise ValueError("GAN variant requires --gan-config")
         negative = NegativePromptAsset.load(args.negative_prompt).embedding.to(
@@ -1516,6 +1517,18 @@ def main() -> int:
         }
         from distillschedule.search.helios_implementation import current_implementation
 
+        if current_training() is not None:
+            from distillschedule.training.helios_lifecycle import run_training_cycles
+
+            run_training_cycles(
+                p0=sys.modules[__name__], args=args, policy=policy, result=result,
+                output=output, rank=rank, device=device, logical=logical,
+                generator_engine=generator_engine, critic_engine=critic_engine,
+                ema=ema, diagnostics=diagnostics, negative=negative,
+            )
+            base._atomic_json(output, result)
+            dist.barrier()
+            return 0
         if current_implementation() is not None:
             from distillschedule.runtime.helios_planner_cycle import run_two_cycles
 

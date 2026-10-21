@@ -43,6 +43,13 @@ def doctor(config=None):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:2] == ["data", "prepare-helios-stream"]:
+        from .helios_worker import prepare_main
+        try:
+            return prepare_main(argv[2:])
+        except (ValueError, TypeError, KeyError, OSError, RuntimeError, ImportError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
     if argv and argv[0] == "data":
         from distillschedule.data.cli import main as data_main
         return data_main(argv[1:])
