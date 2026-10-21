@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import copy
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,6 +11,7 @@ torch = pytest.importorskip("torch")
 from distillschedule.runtime.wan13b_modulated_norm_fusion import (
     install_exact_modulated_norm_epilogue,
 )
+from distillschedule.runtime import wan13b_modulated_norm_fusion as fusion
 from distillschedule.runtime.p0_parity import tensor_parity_metrics
 
 
@@ -128,6 +130,63 @@ def test_install_is_default_off() -> None:
     )
     assert receipt["enabled"] is False
     assert receipt["disabled_reason"] == "NOT_REQUESTED"
+    assert module._TembAwareChunkedNorm.forward is original_forward
+
+
+@pytest.mark.parametrize(
+    ("path", "kernel_module", "kernel_symbol"),
+    [
+        ("epilogue", "wan13b_modulated_norm_kernel", "fused_modulated_norm_epilogue"),
+        (
+            "materialization",
+            "wan13b_modulated_norm_kernel",
+            "fused_modulated_norm_materialization",
+        ),
+        (
+            "layernorm",
+            "wan13b_fused_layernorm_kernel",
+            "fused_bf16_layernorm_modulation",
+        ),
+        (
+            "backward",
+            "wan13b_fused_layernorm_backward_kernel",
+            "fused_bf16_layernorm_modulation_hidden_backward",
+        ),
+    ],
+)
+def test_selected_path_requires_its_uninjected_default_kernel(
+    monkeypatch, path: str, kernel_module: str, kernel_symbol: str
+) -> None:
+    module = _module()
+    original_forward = module._TembAwareChunkedNorm.forward
+    monkeypatch.setattr(
+        fusion, "SUPPORTED_HELIOS_TRANSFORMER_SHA256", fusion._sha256(Path(__file__))
+    )
+    imported = []
+    original_import = builtins.__import__
+
+    def block_kernel_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.startswith("distillschedule.runtime.wan13b_") and name.endswith("_kernel"):
+            imported.append((name, fromlist))
+            raise ModuleNotFoundError("selected fusion kernel unavailable")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", block_kernel_import)
+    kwargs = {
+        "fuse_materialization": path != "epilogue",
+        "fuse_backward": path in {"layernorm", "backward"},
+        "fuse_layernorm": path in {"layernorm", "backward"},
+        "fuse_backward_kernel": path == "backward",
+    }
+    if path == "backward":
+        kwargs["fused_layernorm"] = lambda *_args, **_kwargs: None
+    with pytest.raises(ModuleNotFoundError, match="selected fusion kernel unavailable"):
+        install_exact_modulated_norm_epilogue(
+            enabled=True, role="generator", transformer_module=module, **kwargs
+        )
+    assert len(imported) == 1
+    assert imported[0][0] == f"distillschedule.runtime.{kernel_module}"
+    assert imported[0][1][0] == kernel_symbol
     assert module._TembAwareChunkedNorm.forward is original_forward
 
 

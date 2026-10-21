@@ -162,13 +162,15 @@ def install_exact_modulated_norm_epilogue(
             "Helios transformer source changed: "
             f"{observed_sha} != {SUPPORTED_HELIOS_TRANSFORMER_SHA256}"
         )
-    if fused_epilogue is None:
+    # Forward selects LayerNorm, then materialization, then the plain epilogue.
+    # Load defaults only for the selected path; fully injected paths need no Triton.
+    if not fuse_materialization and fused_epilogue is None:
         from distillschedule.runtime.wan13b_modulated_norm_kernel import (
             fused_modulated_norm_epilogue,
         )
 
         fused_epilogue = fused_modulated_norm_epilogue
-    if fuse_materialization and fused_materialization is None:
+    if fuse_materialization and not fuse_layernorm and fused_materialization is None:
         from distillschedule.runtime.wan13b_modulated_norm_kernel import (
             fused_modulated_norm_materialization,
         )
