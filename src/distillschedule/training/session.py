@@ -38,6 +38,11 @@ def _json(path, value):
     os.replace(temporary, path)
 
 
+def _append_json(path, value):
+    with Path(path).open("a") as stream:
+        stream.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
+
+
 def _seed(seed):
     import torch
     random.seed(seed)
@@ -174,7 +179,8 @@ def _train(config: TrainingConfig):
     if config.trainer.get("resume_from"):
         # Build the original declared state shape before restoring modules,
         # optimizer/scheduler state, history and the exact next data position.
-        workload = build_cycle(config, components, dataset, algorithm, cycle=0, cursor=rank)
+        workload = distributed.checked(lambda: build_cycle(
+            config, components, dataset, algorithm, cycle=0, cursor=rank), "resume cycle construction")
         metadata = distributed.checked(lambda: read_manifest(config.trainer["resume_from"], identity=identity),
                                        "checkpoint reading")
         policy.restore(metadata["policy"])
@@ -213,8 +219,8 @@ def _train(config: TrainingConfig):
             versions = session.receipt["dispatcher"]["final_versions"]
             if validation is not None and (cycle + 1) % validation.settings["every_cycles"] == 0:
                 validation_row = validation.run(config, session.state, cycle=cycle + 1)
-                with (rank_root / "validation.jsonl").open("a") as stream:
-                    stream.write(json.dumps(validation_row, sort_keys=True, allow_nan=False) + "\n")
+                distributed.checked(lambda: _append_json(rank_root / "validation.jsonl", validation_row),
+                                    "validation metrics publication")
                 rank_validation = distributed.gather(validation_row)
                 last_validation = {"cycle": cycle + 1, "ranks": rank_validation,
                                    "metrics": validation_row["metrics"], "aggregation": "equal_record_mean",
@@ -230,8 +236,8 @@ def _train(config: TrainingConfig):
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}
             completed_cycles_this_process += 1
-            with (rank_root / "metrics.jsonl").open("a") as stream:
-                stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
+            distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
+                                "training metrics publication")
             every = config.trainer.get("checkpoint_every", 1)
             if every and ((cycle + 1) % every == 0 or cycle + 1 == config.trainer["cycles"]):
                 latest = save_checkpoint(root / "checkpoints" / f"cycle-{cycle + 1:06d}", session.state,
@@ -254,9 +260,13 @@ def _train(config: TrainingConfig):
         distributed.primary(lambda: _json(root / "summary.json", result), "training summary publication")
         return result
     except BaseException as exc:
-        _json(rank_root / "failure.json", {"status": "FAILED", "error": str(exc),
-                                     "completed_cycles_this_process": completed_cycles_this_process, "cursor": cursor,
-                                     "last_complete_checkpoint": str(latest) if latest else None})
+        try:
+            _json(rank_root / "failure.json", {"status": "FAILED", "error": str(exc),
+                                         "completed_cycles_this_process": completed_cycles_this_process, "cursor": cursor,
+                                         "last_complete_checkpoint": str(latest) if latest else None})
+        except Exception:
+            # A full/unwritable output directory must not mask the training error.
+            pass
         raise
 
 
