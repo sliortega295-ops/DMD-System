@@ -4,11 +4,12 @@ Native recipes retain their original process-group/role-pool owners. This
 module serves the existing generic Program backend and never acquires GPUs or
 changes network/environment settings.
 """
-import hashlib
 import os
 from contextlib import ExitStack, contextmanager
 from datetime import timedelta
 from pathlib import Path
+
+from distillschedule.workloads.best_known.registry import file_sha256
 
 
 def rank_world():
@@ -46,7 +47,7 @@ def admit_run_controls(config):
         manifest_sha = None
         if trainer.get("resume_from"):
             root = Path(trainer["resume_from"])
-            manifest_sha = hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
+            manifest_sha = file_sha256(root / "manifest.json")
             if (root / "_SUCCESS").read_text().strip() != manifest_sha:
                 raise ValueError("resume checkpoint is not complete or its manifest changed")
         return {"cycles": trainer["cycles"], "checkpoint_every": trainer.get("checkpoint_every", 1),

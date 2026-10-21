@@ -13,6 +13,8 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+from distillschedule.workloads.best_known.registry import file_sha256
+
 from . import distributed
 from .adapters import ModelComponents
 from .checkpoint import (
@@ -357,7 +359,7 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None):
                     "checkpoint_cycle": payload["cycle"], "identity": identity, "ranks": results,
                     "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
                     "quality_validation": "NOT_RUN"})
-            (root / "_SUCCESS").write_text(hashlib.sha256((root / "generation.json").read_bytes()).hexdigest() + "\n")
+            (root / "_SUCCESS").write_text(file_sha256(root / "generation.json") + "\n")
         distributed.primary(publish, "evaluation summary publication")
         return result
 
@@ -408,7 +410,7 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
         "sample_id": sample_id, "input_identity": dataset.identity,
         "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
         "loaded_factory": model_source,
-        "export_manifest_sha256": hashlib.sha256((root / "export.json").read_bytes()).hexdigest(),
+        "export_manifest_sha256": file_sha256(root / "export.json"),
         "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]})
-    (output / "_SUCCESS").write_text(hashlib.sha256((output / "generation.json").read_bytes()).hexdigest() + "\n")
+    (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
     return result

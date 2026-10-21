@@ -8,7 +8,7 @@ All loads preserve live Parameters, hooks and gradient-buffer views.
 from __future__ import annotations
 from copy import copy, deepcopy
 
-from .checkpoint import _validate_layout
+from .checkpoint import _class, _validate_layout
 from .tensor_state import layout
 
 
@@ -68,14 +68,14 @@ class OptimizerState:
 
     def state_dict(self):
         optimizer = self.engine.optimizer
-        return {"class": type(optimizer).__module__ + "." + type(optimizer).__qualname__,
+        return {"class": _class(optimizer),
                 "parameters": self._names(), "optimizer": optimizer.state_dict()}
 
     def _stage(self, value):
         import torch
         optimizer = self.engine.optimizer
         if (value["parameters"] != self._names()
-                or value["class"] != type(optimizer).__module__ + "." + type(optimizer).__qualname__):
+                or value["class"] != _class(optimizer)):
             raise ValueError("native optimizer parameter ownership changed")
         staged = copy(optimizer)
         staged.param_groups = [dict(group, params=list(group["params"])) for group in optimizer.param_groups]
