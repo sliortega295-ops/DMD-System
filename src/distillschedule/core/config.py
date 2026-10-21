@@ -133,6 +133,17 @@ class LoadedPlan:
         return output
 
 
+def load_document(path: str | Path) -> tuple[dict[str, Any], tuple[Path, ...]]:
+    """Resolve a public JSON/YAML document without importing a model backend.
+
+    Training and data configuration share the plan loader's includes and
+    environment rules; their own typed validators own the document schema.
+    """
+    sources: list[Path] = []
+    raw = _load_with_includes(Path(path), stack=(), sources=sources)
+    return _expand_env(raw, path="config"), tuple(dict.fromkeys(sources))
+
+
 def load_plan(path: str | Path) -> LoadedPlan:
     source_path = Path(path).expanduser().resolve()
     sources: list[Path] = []
