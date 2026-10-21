@@ -105,6 +105,18 @@ def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
         assert f'torch>=2.5;extra=="{extra}"' in requirements
 
 
+@pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])
+def test_full_refactor_ci_provisions_the_tensor_and_asset_dependencies(workflow):
+    import yaml
+
+    config = yaml.safe_load((ROOT / ".github/workflows" / workflow).read_text())
+    for job in config["jobs"].values():
+        commands = "\n".join(step.get("run", "") for step in job["steps"])
+        assert "tests/test_refactor_*.py" in commands
+        assert "torch==2.10.0" in commands, "real tensor regressions must execute, not import-skip"
+        assert ".[test,native]" in commands, "native bootstrap collection requires NumPy and safetensors"
+
+
 @pytest.fixture(scope="module")
 def installed_report(tmp_path_factory):
     output = tmp_path_factory.mktemp("framework-wheel-acceptance") / "report.json"
