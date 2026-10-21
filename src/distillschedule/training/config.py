@@ -1,11 +1,15 @@
 """A user training request, separate from a physical ExecutionPlan."""
 from __future__ import annotations
+
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+
 from distillschedule.core.config import load_document
 from distillschedule.workloads.best_known.registry import fingerprint as digest
+
 from .plugins import resolve_reference
 
 SCHEMA = "distillschedule.training.v1"
@@ -49,11 +53,11 @@ class TrainingConfig:
             raise ValueError("checkpoint_every must be a nonnegative integer")
         if execution.get("adapter", "program") == "program":
             allowed = {
-                "model": {"factory", "parameters"}, "data": {"prepared", "sharding"},
+                "model": {"factory", "parameters"}, "data": {"prepared", "sharding", "validation_prepared"},
                 "algorithm": {"factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
                               "max_candidates", "samples", "max_program_runs", "max_states"},
-                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed"},
+                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed", "validation"},
             }
             for key, names in allowed.items():
                 if set(parts[key]) - names:
@@ -75,6 +79,31 @@ class TrainingConfig:
                 raise ValueError("data.prepared is required; prepare raw media before training")
             if parts["data"].get("sharding", "single") not in ("single", "rank_strided"):
                 raise ValueError("data.sharding must be single or rank_strided")
+            if ("validation" in trainer) != ("validation_prepared" in parts["data"]):
+                raise ValueError("trainer.validation and data.validation_prepared must be supplied together")
+            if "validation" in trainer:
+                settings = trainer["validation"]
+                if (not isinstance(settings, dict) or set(settings) - {"every_cycles", "samples", "parameters"}
+                        or any(type(settings.get(key)) is not int or settings[key] < 1
+                               for key in ("every_cycles", "samples"))):
+                    raise ValueError("validation requires positive every_cycles/samples and no unknown fields")
+                if (not isinstance(parts["data"]["validation_prepared"], str)
+                        or not parts["data"]["validation_prepared"]):
+                    raise ValueError("data.validation_prepared must be an explicit prepared manifest path")
+                def json_keys(value):
+                    if isinstance(value, dict):
+                        return all(isinstance(key, str) and json_keys(item) for key, item in value.items())
+                    if isinstance(value, (list, tuple)):
+                        return all(json_keys(item) for item in value)
+                    return value is None or type(value) in (str, int, float, bool)
+                parameters = settings.get("parameters", {})
+                try:
+                    canonical = json.dumps(parameters, allow_nan=False, sort_keys=True)
+                    if not isinstance(parameters, dict) or not json_keys(parameters):
+                        raise ValueError("not a JSON mapping")
+                    settings["parameters"] = json.loads(canonical)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError("validation parameters must be a finite JSON mapping with string keys") from exc
             if "distributed" in trainer:
                 distributed = trainer["distributed"]
                 if (not isinstance(distributed, dict) or set(distributed) - {"backend", "timeout_seconds"}
@@ -83,9 +112,11 @@ class TrainingConfig:
                         or distributed.get("timeout_seconds", 180) <= 0):
                     raise ValueError("trainer.distributed requires an explicit gloo/nccl backend and positive timeout")
         else:
+            if "validation" in trainer or "validation_prepared" in parts["data"]:
+                raise ValueError("periodic validation is supported only by the Program adapter")
             if parts["model"].get("workload") not in tuple(f"W{i}" for i in range(1, 7)):
                 raise ValueError("native model.workload must be W1-W6")
-        for section, keys in (("data", ("prepared",)), ("trainer", ("output_dir", "resume_from")),
+        for section, keys in (("data", ("prepared", "validation_prepared")), ("trainer", ("output_dir", "resume_from")),
                               ("execution", ("plan", "task", "assets", "capacity_policy", "transport"))):
             for key in keys:
                 if parts[section].get(key):

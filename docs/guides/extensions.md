@@ -13,7 +13,8 @@ Teacher is constructed and frozen by this factory. The framework never guesses
 which parameters to train or converts LoRA/base compute dtype implicitly.
 
 `metadata` identifies the model/checkpoint/precision and any fixture/quality
-boundary. `generate`, `decode`, `export` and `load_export` callbacks remain model-owned. Keep
+boundary. `generate`, `decode`, `export`, `load_export` and optional `validate_batch`
+callbacks remain model-owned. Keep
 immutable submodules explicitly declared; aliasing is an admitted execution
 capability, not a factory side effect.
 
@@ -82,6 +83,41 @@ implicitly changing them with placement. Mutable history or EMA state must be
 declared and checkpoint-serializable. Mark only pure, valid grad forwards as
 replay-safe. The tiny example reuses the repository's DMD boundary functions,
 but a new model need not adopt that example's algorithm.
+
+### A different stateful workflow, not just a different architecture
+
+[`newworkflow.py`](../../examples/framework/newworkflow.py) is an external plugin
+using the same tiny genuine Student/Fake losses but a different explicit
+workflow. Its three forwards read a previous-cycle feature tensor from declared
+`history`. After all Student1/FakeN updates, a no-grad Program `Call` commits
+Student parameter EMA, next-cycle history and both exponential schedulers.
+The schedulers' learning-rate changes also declare optimizer writes. All EMA,
+history and scheduler objects live in `components.state`; no model or optimizer
+is captured in a closure. Persistent owner and version checks are the existing
+Program checks, with no generic model/workflow-name branch or second solver.
+The template explicitly admits CPU/single-process execution only; rank-local
+history is not asserted to have replicated semantics.
+
+Its fixture selects disjoint records through existing raw manifests/preparation.
+Its held-out `student_teacher_flow_mse` measures deterministic t=0 flow agreement
+with the **frozen random Teacher**, not pretrained media quality or a pass gate.
+`validate_batch(state, feeds, parameters)` must be an inspectable function with
+three positional arguments, return named finite scalar metrics, and never mutate
+declared persistent state. It must use the supplied state/feeds, not captured
+models/tensors/optimizers. The framework restores modes and RNG on both success
+and failure; state mutation rejects without rolling the model/optimizer back.
+Metrics and checkpoint identity are independent of generation callbacks. See
+[periodic validation](training.md#optional-periodic-held-out-validation) for the
+explicit config, stream, artifact and current local-only boundaries.
+
+Portable inference deliberately uses the current Student with **zero history**,
+not the training EMA or restored previous-cycle history. That deployment choice
+matches the held-out metric convention and is recorded in model metadata. The
+default exporter saves named modules only, not arbitrary EMA/history trees. If
+your deployment uses those trees, put needed inference state in a frozen named
+module or provide paired explicit export/load callbacks; never silently generate
+from freshly initialized, unexported EMA/history. Full training checkpoints do
+retain all of the template's declared state and exact continuation semantics.
 
 ## Physical execution capability
 

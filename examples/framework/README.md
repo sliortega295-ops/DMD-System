@@ -183,10 +183,60 @@ sandboxed interchange format. The template's imported tiny hooks are appropriate
 only while their exact latent, guidance, detach and optimizer contract still
 matches your algorithm. Do not rename the fixture and claim real-model parity.
 
+## Another workflow: history, EMA and schedulers
+
+[`newworkflow.py`](newworkflow.py) is a **different stateful workflow**, while
+`newmodel.py` above demonstrates a different architecture. This external plugin
+adds previous-cycle Student feature conditioning and an explicit post-cycle
+commit of Student EMA, next-cycle history and two exponential learning-rate
+schedulers, all through the existing `Program`/`Call` ABI. Student surrogate and
+Fake denoising losses remain genuine tiny DMD losses, not dummy random losses.
+The generic planner/runtime needs no model-name or workflow-name edits.
+
+From the source checkout, run:
+
+```sh
+DEMO="$(mktemp -d -t distillschedule-newworkflow.XXXXXX)"
+python examples/framework/newworkflow.py --output "$DEMO" --samples 6 --validation-samples 2
+distillctl data prepare "$DEMO/raw/manifest.json" --output "$DEMO/prepared"
+distillctl data prepare "$DEMO/raw/validation-manifest.json" --output "$DEMO/validation-prepared"
+distillctl train "$DEMO/train.json" --cycles 2 --output "$DEMO/first"
+distillctl train "$DEMO/train.json" --resume "$DEMO/first/checkpoints/cycle-000002" \
+  --cycles 6 --output "$DEMO/resumed"
+distillctl train "$DEMO/train.json" --cycles 6 --output "$DEMO/uninterrupted"
+```
+
+The builder generates the complete runnable config with explicit external `.py`
+factories, `data.validation_prepared` and
+`trainer.validation={"every_cycles":2,"samples":2}`. The two validation records
+are disjoint from the six training records. Every second complete cycle measures
+held-out `student_teacher_flow_mse`, equal-record mean flow agreement at t=0
+against the **random frozen Teacher**. This is a meaningful deterministic
+adapter diagnostic, **not** FVD, VBench, a quality threshold or pretrained quality.
+It never advances the training cursor. Logs are `validation.jsonl`,
+`validation-summary.json` and the training summary's separate `validation` field;
+`quality_validation` remains `NOT_RUN`.
+
+The template is explicitly CPU/single-process only, including validation.
+Distributed validation requests fail before construction/updates/output; this
+does not change the existing distributed training capabilities when validation
+is absent. Validation is read-only and runs under eval/no-grad with exact mode
+and training RNG restoration even on failure. Mutation rejects without silently
+rolling persistent model/optimizer state back. Changed validation records or
+settings reject checkpoint resume.
+
+All parameters, Adam state, EMA, history, schedulers, RNG, cursor and logical
+versions are carried in complete training checkpoints. The fresh-process test
+below compares interrupted/restarted continuation with uninterrupted training,
+including exact held-out metrics. Portable `generate`/`export` instead uses
+**current Student with zero history**, explicitly recorded in model metadata;
+it does not pretend the default module-only export includes EMA/history trees.
+
 ## Focused proof
 
 ```sh
 python -m pytest -q tests/test_training_example.py tests/test_open_workload_dmd_builder.py
+python -m pytest -q tests/test_training_validation.py tests/test_training_workflow_extension.py
 ```
 
 The example tests actual modality-dependent encoding, global-RNG isolation,

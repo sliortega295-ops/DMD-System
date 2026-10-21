@@ -156,6 +156,59 @@ last completed checkpoint. Failed partial updates are never counted complete.
 Distributed rank metrics are in `ranks/rank-NNNNN/metrics.jsonl`; the shared
 summary records all actual completed ranks rather than predicting rank counts.
 
+## Optional periodic held-out validation
+
+Generation via `evaluate` is **not** a validation metric. A Program model may
+separately implement `validate_batch(state, feeds, parameters)`, returning a
+nonempty mapping of named, finite scalar metrics. Opt in with both fields:
+
+```json
+{
+  "data": {"prepared":"prepared/manifest.json",
+           "validation_prepared":"heldout/manifest.json"},
+  "trainer": {"cycles":6, "seed":7, "device":"cpu", "output_dir":"run",
+              "validation":{"every_cycles":2, "samples":2, "parameters":{}}}
+}
+```
+
+This fragment belongs in the normal five-section request. `samples` counts
+fixed prepared **records per rank**, not batches inferred from tensor shapes;
+the adapter owns each record's internal batch and metric definition. There must
+be at least `samples × world_size` records; this initial validation capability
+is **single-process only**. Any distributed validation request rejects before
+model construction, wrapper installation, training updates or output creation.
+DDP/FSDP2/HSDP training without validation is unchanged; no distributed or GPU
+validation correctness is claimed. Original-native recipes do not accept this
+new option. Missing pairs, unknown options, invalid counts and non-JSON or
+nonfinite parameter maps reject rather than silently disabling validation.
+
+At complete cycles divisible by `every_cycles`, validation rereads the same
+first `samples` records from its explicit manifest, independent of the training
+cursor. Use a genuinely disjoint held-out dataset: the framework cannot infer
+semantic overlap between prepared media. There is no forced final validation
+outside that interval and no validation at initialization. Validation data,
+callback source and all settings bind checkpoint identity; changed inputs or
+settings cannot silently resume an earlier checkpoint.
+
+The callback runs under no-grad and evaluation mode, using a deterministic
+per-record validation stream. Exact nested module modes and Python/NumPy/Torch
+and the initialized, owned CUDA device's RNG state are restored, even on error.
+Declared model/optimizer/scheduler/EMA/history state and gradient contents and
+ownership are guarded using the existing runtime signatures. Mutation stops
+training; **only modes and RNG are restored**, not corrupted model or optimizer
+state. A failed callback does not publish a new complete checkpoint. This is a
+trusted-plugin contract, not a sandbox for hostile Python or hidden globals.
+
+`validation.jsonl` records rank, cycle, fixed sample IDs and equal-record mean
+metrics. `validation-summary.json` and the training summary preserve the last
+event and actual ranks, with process-local run counts. Metrics are explicitly
+**adapter-defined held-out diagnostics, not a quality gate**: no pass threshold,
+early stopping, best-model selection, quality label or hidden metric is inferred.
+`quality_validation` remains `NOT_RUN`. There are no validation reads/callbacks
+when disabled, and enabling a read-only callback does not change training math,
+state, RNG or data progress. See the [stateful workflow tutorial](../../examples/framework/README.md#another-workflow-history-ema-and-schedulers)
+for a real held-out metric and fresh-process restart example.
+
 ## Generate and export
 
 ```sh

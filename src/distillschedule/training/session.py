@@ -26,6 +26,7 @@ from .checkpoint import (
 from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy, cycle_structure
+from .validation import Validation, admit_scope
 
 
 def _json(path, value):
@@ -91,18 +92,22 @@ def _same_factory(current, original):
     return current_path.endswith(".py") and original_path.endswith(".py") and current_symbol == original_symbol
 
 
-def construct(config):
+def construct(config, *, include_validation=False):
     from distillschedule.data import PreparedDataset
     dataset = PreparedDataset(config.data["prepared"])
     _seed(config.trainer.get("seed", 0))
     components, model_source = _construct_model(config)
     algorithm, algorithm_source = load_callable(config.algorithm["factory"])
+    validation = Validation.prepare(config, components)
     identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
                 "algorithm": algorithm_source, "framework": _source(),
                 "model_metadata": dict(components.metadata)}
+    if validation is not None:
+        identity["validation"] = validation.identity
     if config.execution.get("mode") == "plan":
         identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
-    return components, dataset, algorithm, identity
+    result = (components, dataset, algorithm, identity)
+    return (*result, validation) if include_validation else result
 
 
 def build_cycle(config, components, dataset, algorithm, *, cycle, cursor, versions=None):
@@ -150,7 +155,11 @@ def train(config: TrainingConfig):
 
 
 def _train(config: TrainingConfig):
-    components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "training construction")
+    # Reject unsupported collective validation before constructing any model,
+    # installing a wrapper, updating state or creating output.
+    distributed.checked(lambda: admit_scope(config), "validation scope admission")
+    components, dataset, algorithm, identity, validation = distributed.checked(
+        lambda: construct(config, include_validation=True), "training construction")
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
@@ -184,6 +193,8 @@ def _train(config: TrainingConfig):
     if world > 1:
         distributed.checked(lambda: rank_root.mkdir(parents=True, exist_ok=False), "rank output creation")
     completed_cycles_this_process = 0
+    validation_runs = 0
+    last_validation = None
     latest = Path(config.trainer["resume_from"]).resolve() if config.trainer.get("resume_from") else None
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
@@ -197,6 +208,17 @@ def _train(config: TrainingConfig):
                 raise ValueError(f"nonfinite training state/output at cycle {cycle + 1}")
             components.state.update({key: session.state[key] for key in components.state})
             versions = session.receipt["dispatcher"]["final_versions"]
+            if validation is not None and (cycle + 1) % validation.settings["every_cycles"] == 0:
+                validation_row = validation.run(config, session.state, cycle=cycle + 1)
+                with (rank_root / "validation.jsonl").open("a") as stream:
+                    stream.write(json.dumps(validation_row, sort_keys=True, allow_nan=False) + "\n")
+                rank_validation = distributed.gather(validation_row)
+                last_validation = {"cycle": cycle + 1, "ranks": rank_validation,
+                                   "metrics": validation_row["metrics"], "aggregation": "equal_record_mean",
+                                   "metric_scope": validation_row["metric_scope"], "quality_validation": "NOT_RUN"}
+                validation_runs += 1
+                distributed.primary(lambda last_validation=last_validation: _json(root / "validation-summary.json", last_validation),
+                                    "validation summary publication")
             index = cursor + rank
             cursor += world
             row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(index), "cursor": cursor,
@@ -220,6 +242,9 @@ def _train(config: TrainingConfig):
                   "resume_cycle": start_cycle, "cursor": cursor, "final_versions": versions,
                   "finite": True, "numerical_status": policy.bound["initial_reference_gate"]["status"],
                   "quality_validation": "NOT_RUN", "claimable_speedup": False,
+                  "validation": {"status": ("DISABLED" if validation is None else
+                                             "COMPLETED_ADAPTER_METRICS" if validation_runs else "NOT_DUE"),
+                                 "runs_this_process": validation_runs, "last": last_validation},
                   "checkpoint": str(latest) if latest else None, "identity": identity,
                   "world_size": world, "rank_count": len(rank_results), "ranks": rank_results,
                   "policy": policy.bound, "gpu_execution": session.receipt["gpu_execution"]}
