@@ -23,7 +23,8 @@ HEAD = "a" * 40
 
 
 def _module(name):
-    path = ROOT / "scripts/distillschedule" / f"{name}.py"
+    folder = "tools/assets" if name == "build_livewan_continuous_trace" else "scripts/distillschedule"
+    path = ROOT / folder / f"{name}.py"
     spec = importlib.util.spec_from_file_location(f"cpu_test_{name}", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

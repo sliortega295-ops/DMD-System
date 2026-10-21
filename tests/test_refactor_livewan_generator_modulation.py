@@ -42,7 +42,7 @@ def test_only_installed_on_explicit_validated_g_scope():
 def test_plan_only_no_assets_or_cuda(tmp_path):
     root=Path(__file__).resolve().parents[1]
     out=tmp_path/'unused.json'
-    p=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_generator_modulation.py'),
+    p=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_generator_modulation.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(out),'--plan-only'],
         text=True,capture_output=True,check=True,timeout=20)
     v=json.loads(p.stdout)

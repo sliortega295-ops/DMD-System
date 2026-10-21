@@ -12,7 +12,7 @@ torch = pytest.importorskip("torch")
 pytest.importorskip("safetensors")
 from safetensors.torch import load_file, save_file
 
-from scripts.distillschedule.build_systems_gan_precast import (
+from tools.assets.build_systems_gan_precast import (
     INDEX,
     MARKER,
     PRECAST_MANIFEST,

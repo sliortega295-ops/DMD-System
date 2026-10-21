@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PATH = ROOT / "scripts" / "distillschedule" / "analyze_gan_full5_nsys.py"
+PATH = ROOT / 'tools/profiling/analyze_gan_full5_nsys.py'
 SPEC = importlib.util.spec_from_file_location("gan_full5_nsys_analysis", PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None

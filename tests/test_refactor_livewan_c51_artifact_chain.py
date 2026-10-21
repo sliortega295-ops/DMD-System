@@ -273,7 +273,8 @@ def _sha(path):
 
 
 def _invoke(name, *arguments):
-    return subprocess.run([sys.executable, str(ROOT / "scripts/distillschedule" / name),
+    folder = "tools/assets" if name == "build_livewan_continuous_trace.py" else "scripts/distillschedule"
+    return subprocess.run([sys.executable, str(ROOT / folder / name),
                            *map(str, arguments)], capture_output=True, text=True, timeout=60)
 
 

@@ -16,7 +16,7 @@ def main(argv=None):
             dict(schema_version='distillschedule.native_flow_task.v1', scope='new explicit flow protocol; not historical W6'),
             dict(schema_version='distillschedule.original_wan_task.v1', scope='original Wan pyramid no-GAN'),
             dict(schema_version='distillschedule.original_h3_ar_task.v2', scope='W6 original DiffSynth rank-qualified previous/current AV DMD2')],
-            canonical_profiles='UNCHANGED_FIVE_FROZEN_PROFILES', gpu_execution='NOT_RUN'), indent=2))
+            canonical_profiles='UNCHANGED_FIVE_FROZEN_PROFILES', project_workloads=6, catalog='distillctl workloads list', gpu_execution='NOT_RUN'), indent=2))
         return 0
     if argv and argv[0] == "program":
         from distillschedule.open_workload.cli import main as program_main

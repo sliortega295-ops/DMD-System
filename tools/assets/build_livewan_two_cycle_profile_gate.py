@@ -17,7 +17,7 @@ from distillschedule.runtime.livewan_two_cycle_profile import SCHEMA,VARIANT,sha
 ALLOWED={
     'src/distillschedule/runtime/livewan_crossscale_worker.py',
     'src/distillschedule/runtime/livewan_two_cycle_profile.py',
-    'scripts/distillschedule/build_livewan_two_cycle_profile_gate.py',
+    'tools/assets/build_livewan_two_cycle_profile_gate.py',
     'scripts/distillschedule/run_livewan_crossscale_world16.py',
     'scripts/distillschedule/launch_livewan_crossscale_world16_node.sh',
     'scripts/distillschedule/summarize_livewan_continuous_world16.py',

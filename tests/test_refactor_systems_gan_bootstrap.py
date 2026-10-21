@@ -14,11 +14,11 @@ torch = pytest.importorskip("torch")
 
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.runtime.gan_baseline import validate_systems_gan_bootstrap
-from scripts.distillschedule.build_systems_gan_bootstrap import (
+from tools.assets.build_systems_gan_bootstrap import (
     gan_head_specs,
     zero1_partition_with_tail_padding,
 )
-from scripts.distillschedule.build_systems_gan_trace import _crop, _seed
+from tools.assets.build_systems_gan_trace import _crop, _seed
 
 
 def test_official_gan_head_inventory_is_frozen() -> None:

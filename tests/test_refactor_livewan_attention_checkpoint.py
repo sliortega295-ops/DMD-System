@@ -50,7 +50,7 @@ def test_plan_only_has_no_cuda_import(tmp_path):
     import sys
     from pathlib import Path
     root=Path(__file__).resolve().parents[1]
-    p=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_attention_checkpoint.py'),
+    p=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_attention_checkpoint.py'),
                       '--plan-only','--output',str(tmp_path/'canary.json')],check=True,capture_output=True,text=True)
     d=json.loads(p.stdout)
     assert d['world16']=='NOT_RUN' and not (tmp_path/'canary.json').exists()

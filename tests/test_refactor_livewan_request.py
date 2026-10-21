@@ -208,9 +208,9 @@ def request_trace(tmp_path):
     for n in range(80): (data/f'{n:03d}.pt').write_bytes(f'CPU_HASH_ONLY_FIXTURE_{n}'.encode())
     prompts=tmp_path/'prompts.bin';prompts.write_bytes(b'CPU_HASH_ONLY_PROMPTS')
     source=tmp_path/'source.json';target=tmp_path/'trace.json'
-    subprocess.run([sys.executable,str(root/'scripts/distillschedule/build_livewan_crossscale_trace.py'),
+    subprocess.run([sys.executable,str(root/'tools/assets/build_livewan_crossscale_trace.py'),
         '--data',str(data),'--prompts',str(prompts),'--output',str(source)],check=True,capture_output=True)
-    subprocess.run([sys.executable,str(root/'scripts/distillschedule/build_livewan_continuous_trace.py'),
+    subprocess.run([sys.executable,str(root/'tools/assets/build_livewan_continuous_trace.py'),
         '--source-trace',str(source),'--output',str(target),'--cycles','2'],check=True,capture_output=True)
     value=json.loads(target.read_text());req=LiveWanRequest(frames=69)
     value.update(workload_request=req.to_dict(),workload_request_sha256=fingerprint(req.to_dict()),

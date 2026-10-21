@@ -39,7 +39,7 @@ def test_preserve_native_reduction():
 
 def test_plan_only_has_no_torch_or_asset_dependency(tmp_path):
     root=Path(__file__).resolve().parents[1]
-    r=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_generator_rms_epilogue.py'),
+    r=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_generator_rms_epilogue.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(tmp_path/'out.json'),'--plan-only'],
         check=True,text=True,capture_output=True)
     assert json.loads(r.stdout)['status']=='NOT_RUN'

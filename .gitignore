@@ -55,3 +55,8 @@ artifacts/g_offload_search/**
 *.sqlite
 
 .pytest_cache/
+
+# Build products are never source/evidence
+*.egg-info/
+build/
+dist/

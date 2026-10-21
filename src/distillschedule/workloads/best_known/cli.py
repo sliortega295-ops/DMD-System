@@ -37,9 +37,11 @@ def main(argv: list[str] | None = None) -> int:
         from distillschedule.search.native import handle_request
         print(json.dumps(handle_request(json.load(sys.stdin)), sort_keys=True, allow_nan=False))
         return 0
-    parser = argparse.ArgumentParser(prog="distillctl workloads")
+    parser = argparse.ArgumentParser(prog="distillctl workloads",
+        epilog="Project scope: workloads list (W1-W6); describe --workload W6. "
+               "Native planning: workloads native --help. This parser retains legacy profile commands.")
     subs = parser.add_subparsers(dest="action", required=True)
-    subs.add_parser("list", help="List exactly five canonical workloads without Torch or GPU imports")
+    subs.add_parser("list", help="List five immutable legacy profiles (project scope is six protocols)")
     for action in ("explain", "validate", "render", "run"):
         sub = subs.add_parser(action)
         sub.add_argument("--workload", required=True)

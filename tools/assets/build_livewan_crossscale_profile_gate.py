@@ -81,8 +81,8 @@ def _profile_source_identity(
         text=True,
     ).splitlines()
     allowed = {
-        "scripts/distillschedule/build_livewan_crossscale_profile_gate.py",
-        "scripts/distillschedule/analyze_livewan_crossscale_nsys.py",
+        "tools/assets/build_livewan_crossscale_profile_gate.py",
+        "tools/profiling/analyze_livewan_crossscale_nsys.py",
         "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
         "scripts/distillschedule/run_livewan_crossscale_world16.py",
         "src/distillschedule/runtime/livewan_crossscale_worker.py",

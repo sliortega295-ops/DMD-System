@@ -15,11 +15,13 @@ from distillschedule.workloads.best_known.registry import CANONICAL_IDS, load_pr
 
 
 def main() -> int:
-    for folder in ("src","runtime","scripts/distillschedule"):
+    for folder in ("src", "runtime", "scripts", "tools", "benchmarks/kernels"):
         if not compileall.compile_dir(ROOT/folder,quiet=1):raise SystemExit(f"compile failed: {folder}")
-    for p in (ROOT/"scripts").rglob("*.sh"):
-        subprocess.run(["bash","-n",str(p)],check=True)
-    manifest=json.loads((ROOT/"docs/workloads/source_import_map.json").read_text())
+    for folder in ("scripts", "tools", "benchmarks/kernels"):
+        for p in (ROOT / folder).rglob("*.sh"):
+            subprocess.run(["bash", "-n", str(p)], check=True)
+    from distillschedule.evidence.source_layout import reviewed_imports
+    manifest = {"files": reviewed_imports(ROOT)}
     for r in manifest["files"]:
         p=ROOT/r["target"]
         if not p.is_file() or hashlib.sha256(p.read_bytes()).hexdigest()!=r["integrated_sha256"]:
@@ -52,6 +54,6 @@ def main() -> int:
     for name in sorted(CANONICAL_IDS):source_layout(ROOT,load_profile(name,root=ROOT))
     subprocess.run([sys.executable,str(ROOT/"scripts/distillschedule/verify_helios_compat_source.py")],check=True)
     subprocess.run([sys.executable,"-m","unittest","discover","-s",str(ROOT/"tests"),"-p","test_refactor_best_known*.py","-v"],cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT/"src")+os.pathsep+str(ROOT)}, check=True)
-    print(json.dumps({"status":"PASS_CPU_INTEGRATION","canonical_profiles":5,"gpu_server":"NOT_RUN_ON_INTEGRATION_BRANCH"}))
+    print(json.dumps({"status":"PASS_CPU_INTEGRATION","legacy_canonical_profiles":5, "project_workloads":6,"gpu_server":"NOT_RUN_ON_INTEGRATION_BRANCH"}))
     return 0
 if __name__=="__main__":raise SystemExit(main())

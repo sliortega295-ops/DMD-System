@@ -32,7 +32,14 @@ H3_SYSTEM_TOOLCHAIN_PATH = "/usr/bin:/bin"
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parents[4]
+    root = Path(__file__).resolve().parents[4]
+    if not (root / "src/distillschedule").is_dir() or not (root / "pyproject.toml").is_file():
+        raise ValueError(
+            "Native/legacy operations require an editable DMD-System source checkout; "
+            "install with pip install -e . there. Installed-wheel discovery is available "
+            "through distillctl workloads list/describe."
+        )
+    return root
 
 
 def canonical_bytes(value: Any) -> bytes:

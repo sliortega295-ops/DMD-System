@@ -1,0 +1,251 @@
+{
+  "schema_version": "distillschedule.workload_catalog.v1",
+  "source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
+  "scope": "SIX_PROTOCOLS_NOT_SIX_NEW_STRICT_GPU_RELEASES",
+  "evidence_files": {
+    "artifacts/publications/20261019/h100/measured_results.csv": "1a644dd33a8e26d32a52180d03b68e344a7492886881c6b5ce04f1a9864d71cf",
+    "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842",
+    "artifacts/publications/20261019/results_correction/results.json": "fb011a80ccc709ff310d6bc4d3dc9d8a2956bbe69964f0ee2cb5c286cd93bfe8",
+    "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50"
+  },
+  "workloads": [
+    {
+      "id": "W1",
+      "slug": "wan_ar",
+      "name": "Wan1.3B autoregressive DMD",
+      "protocol": "Helios hierarchical AR; No-GAN; G1/C5/EMA5",
+      "legacy_profile": "wan13b_nogan_resident_best",
+      "task": "configs/distillschedule/original_wan/full5_reference.json",
+      "runbook": "docs/runbooks/wan_compute_state_planning_v1.md",
+      "code": [
+        "src/distillschedule/strategies/wan_cli.py",
+        "src/distillschedule/strategies/wan_worker.py",
+        "src/distillschedule/strategies/wan_planning.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "native",
+        "validate",
+        "--task",
+        "configs/distillschedule/original_wan/full5_reference.json"
+      ],
+      "note": "Original Wan adapter with compute-qualified retention. Fresh measured costs are required; r34 hand-written EMA packets are not promoted. The optional optimized inventory requires an installed compatible Triton; basic protocol validation stays CPU-only.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/wan_ar/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "ea29129342741b54e59c4773e07454f541fadcc7",
+        "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/DMD-System",
+        "measured_source": "7a668bcb12ad37d831dced3aca1be4ec7be0a2fe",
+        "published_source": "97b8ecc9cf7747d93619acad1a6083f98faae084",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "Resident reference, not FSDP baseline",
+        "numerical_status": "NOT_RUN"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs.",
+      "optimized_inventory_args": [
+        "workloads",
+        "native",
+        "validate",
+        "--task",
+        "configs/distillschedule/original_wan/full5_reference.json",
+        "--include-incumbent-bundle",
+        "--include-critic-retention"
+      ]
+    },
+    {
+      "id": "W2",
+      "slug": "helios_nogan",
+      "name": "Helios14B No-GAN",
+      "protocol": "Hierarchical AR; G1/C5/EMA5",
+      "legacy_profile": "helios14b_nogan_best",
+      "task": null,
+      "runbook": "docs/runbooks/native_planner_workflow.md",
+      "code": [
+        "src/distillschedule/search/helios_model_adapter.py",
+        "src/distillschedule/search/workflow_cli.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "candidates",
+        "--workload",
+        "helios14b_nogan_best",
+        "--include-helios-safe-incumbent"
+      ],
+      "note": "Explicit safe-incumbent cohort, not the older locked 94-second recipe. Later partial-retention derivatives remain independently pinned.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/helios_nogan/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+        "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/DMD-System",
+        "measured_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+        "published_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "Same-head retained-G control; only interior fence policy differs",
+        "numerical_status": "NOT_RUN_FULL_STATE"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
+    },
+    {
+      "id": "W3",
+      "slug": "helios_gan",
+      "name": "Helios14B GAN-on",
+      "protocol": "DMD + GAN-G/GAN-D; G1/C5/EMA1",
+      "legacy_profile": "helios14b_gan_best",
+      "task": null,
+      "runbook": "docs/runbooks/native_planner_workflow.md",
+      "code": [
+        "src/distillschedule/search/helios_model_adapter.py",
+        "src/distillschedule/runtime/helios_gan_manual/__init__.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "candidates",
+        "--workload",
+        "helios14b_gan_best",
+        "--include-helios-gan-manual"
+      ],
+      "note": "No merged-LoRA promotion. N70-OFF timing has a preserved post-timer FAIL and numerical REVIEW; historical 113.59 s is N70-ON.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/helios_gan/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+        "status": "REUSED_MATCHED_DIAGNOSTIC_TARGET_MET"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/DMD-System",
+        "measured_source": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+        "published_source": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "official whole-role swap; GPU ZeRO1 optimizer/EMA; no activation/gradient/optimizer offload",
+        "numerical_status": "NOT_RUN"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
+    },
+    {
+      "id": "W4",
+      "slug": "self_forcing",
+      "name": "Self-Forcing DMD / LiveWan C51",
+      "protocol": "14B teacher -> 1.3B student; continuous sigma; G1/C5/EMA0",
+      "legacy_profile": "livewan_crossscale_pipeline_best",
+      "task": null,
+      "runbook": "docs/runbooks/livewan_c51_planner_v1.md",
+      "code": [
+        "src/distillschedule/search/livewan_implementation.py",
+        "src/distillschedule/runtime/livewan_crossscale_worker.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "candidates",
+        "--workload",
+        "livewan_crossscale_pipeline_best",
+        "--include-livewan-c51"
+      ],
+      "note": "Current C51 opt-in must be explicit. The five-profile compatibility registry still locks C34; do not silently dispatch C34 for this recipe.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/self_forcing/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "5cdffc2efab969ad35a8f69dd7b94ad061cc8c86",
+        "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/DMD-System",
+        "measured_source": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+        "published_source": "1b8236c243323ff21023935f3b8192ab3e5d136d",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "H100 Resident vs Teacher-resident candidate; not A100 C51",
+        "numerical_status": "REVIEW_UNCHANGED_NOT_STRICT_PASS"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
+    },
+    {
+      "id": "W5",
+      "slug": "h3_fullseq",
+      "name": "Audio-Video DMD (Full-Sequence / H3 Grid1000)",
+      "protocol": "Full-sequence AV; approximate Grid1000 sigma; 4-step; G1/F5; LoRA128",
+      "legacy_profile": "minimax_h3_grid1000_best",
+      "task": null,
+      "runbook": "docs/runbooks/native_planner_workflow.md",
+      "code": [
+        "src/distillschedule/search/h3_action_model_adapter.py",
+        "src/distillschedule/backends/training/minimax_h3/trainer_loop.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "candidates",
+        "--workload",
+        "minimax_h3_grid1000_best"
+      ],
+      "note": "Historical A100/H100 timings exist. The latest manual/saved-plan pair is blocked by a sampled backward numerical FAIL. Do not bypass the gate.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/h3_fullseq/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+        "status": "DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/H3-DMD-for-A100",
+        "measured_source": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+        "published_source": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "Same-source Grid1000 FSDP control vs GPU attention cache",
+        "numerical_status": "NOT_RUN_FULL_STATE"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
+    },
+    {
+      "id": "W6",
+      "slug": "h3_ar",
+      "name": "Autoregressive Audio-Video DMD (Original DiffSynth H3)",
+      "protocol": "Previous+current AV chunks; continuous sigma; 8-step; G1/F1; LoRA64",
+      "legacy_profile": null,
+      "task": "configs/distillschedule/original_h3_ar/w6_reference.json",
+      "runbook": "docs/runbooks/original_h3_ar_native.md",
+      "code": [
+        "src/distillschedule/strategies/h3_ar_cli.py",
+        "src/distillschedule/strategies/h3_ar_session.py",
+        "src/distillschedule/strategies/h3_ar_planning.py"
+      ],
+      "inspect_args": [
+        "workloads",
+        "native",
+        "validate",
+        "--task",
+        "configs/distillschedule/original_h3_ar/w6_reference.json"
+      ],
+      "note": "Original AR adapter, not the generic flow example and not W5. A100 zero3-native/AP and H100 native-FSDP/FA2 are separate contracts.",
+      "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "recipe": "recipes/h3_ar/README.md",
+      "a100_saved_plan_evidence": {
+        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "source": "e88d21c168ce54be99134cecd195c961319cb45a",
+        "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+      },
+      "h100": {
+        "repository": "sliortega295-ops/DMD-System",
+        "measured_source": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+        "published_source": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+        "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
+        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "baseline_definition": "Same-source native FSDP vs candidate; not ZeRO-3 renamed FSDP",
+        "numerical_status": "NOT_RUN"
+      },
+      "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
+    }
+  ]
+}
