@@ -33,3 +33,10 @@ H100 measured source: `sliortega295-ops/DMD-System@7a668bcb12ad37d831dced3aca1be
 Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before interpreting any number. No new GPU or quality result is created by this recipe.
 
 To inspect the optimized compute/retention cohort, append `--include-incumbent-bundle --include-critic-retention` in the qualified native environment. This requires compatible Triton and intentionally rejects an unqualified environment; it does not install a backend.
+
+## Public training configuration
+
+Use [`training.json`](training.json) with your explicit qualified native inputs
+and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
+for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
+operations. This binding does not replace the original protocol or certify GPU execution.

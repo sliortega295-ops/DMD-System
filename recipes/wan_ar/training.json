@@ -1,0 +1,25 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W1"
+  },
+  "data": {
+    "input_kind": "original_wan_cohort_stream.v1",
+    "prepared": "REPLACE_WITH_ORIGINAL_WAN_COHORT_STREAM.json"
+  },
+  "algorithm": {
+    "name": "original_wan_ar_dmd"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "plan",
+    "task": "../../configs/distillschedule/original_wan/full5_reference.json",
+    "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
+    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 0,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}
