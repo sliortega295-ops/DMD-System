@@ -30,7 +30,9 @@ def test_describe_is_truthful_and_does_not_open_model_assets(tmp_path, workload)
     result = describe_native(config(tmp_path, workload))
     assert result["workload"] == workload
     assert result["gpu_execution"] == "NOT_RUN"
-    assert result["capabilities"]["resume"]["supported"] is False
+    assert result["capabilities"]["resume"]["supported"] is (workload == "W1")
+    if workload == "W1":
+        assert "stream" in result["capabilities"]["resume"]["scope"]
     assert result["capabilities"]["generate"]["supported"] is False
 
 
@@ -331,3 +333,41 @@ def test_w6_reference_enters_real_task_and_capacity_api(tmp_path, monkeypatch):
     write(tmp_path / "policy.json", value)
     with pytest.raises(ValueError, match="invalid capacity policy"):
         validate_native(conf)
+
+
+def test_w1_fresh_reference_stream_reaches_original_checkpoint_worker(tmp_path, monkeypatch):
+    """Metadata wiring fixture; original tensor/capacity checks still run in worker."""
+    from distillschedule.strategies.wan_task import OriginalWanTask
+    from distillschedule.strategies.wan_stream import SCHEMA, WanCohortSources, task_at
+    from distillschedule.strategies.wan_inputs import WanInputSources
+    from distillschedule.strategies.wan_planning import source_fingerprint
+    from distillschedule.workloads.best_known.registry import fingerprint
+    from dataclasses import replace
+    import distillschedule.strategies.wan_stream as streams
+    import distillschedule.strategies.wan_worker as worker
+    conf = wan_reference_fixture(tmp_path)
+    task = OriginalWanTask.from_dict(json.loads((tmp_path / 'task.json').read_text()))
+    source = WanInputSources(tuple(str(tmp_path / f'rank-{i}.pt') for i in range(16)))
+    cohorts = WanCohortSources(tuple(replace(source, cohort=i) for i in range(3)))
+    document = {'schema_version': SCHEMA, 'status': 'READY_FRESH_COHORT_STREAM', 'task': task.to_dict(),
+        'identity': {'task': task.to_dict(), 'sources': cohorts.to_dict(),
+                     'source_fingerprint': source_fingerprint(), 'inventory': [{}] * 3},
+        'cohorts': [{'index': i, 'task': task_at(task, i).to_dict()} for i in range(3)]}
+    document['stream_sha256'] = fingerprint(document)
+    write(tmp_path / 'stream.json', document)
+    raw = conf.to_dict()
+    raw['data'] = {'prepared': 'stream.json', 'input_kind': 'original_wan_cohort_stream.v1'}
+    raw['trainer'].update(cycles=3, checkpoint_every=1)
+    conf = TrainingConfig.from_dict(raw, source=conf.source)
+    argv = validate_native(conf)['native_argv']
+    assert argv[0] == 'train-stream' and argv[-2:] == ['--checkpoint-every', '1']
+    assert '--implementation' in argv and '--plan' not in argv
+    calls = []
+    monkeypatch.setattr(streams, 'load_stream', lambda *a: document)
+    monkeypatch.setattr(worker, 'run_worker', lambda *a, **kw: calls.append(kw) or {'status': 'CPU_WIRING_ONLY'})
+    from distillschedule.strategies.wan_cli import main
+    assert main(argv) == 0
+    assert calls[0]['mode'] == 'train' and calls[0]['cycles'] == 3
+    assert calls[0]['checkpoint_every'] == 1 and calls[0]['strategy'].placement == 'fsdp'
+    assert calls[0]['stream_path'] == tmp_path / 'stream.json'
+    assert not (tmp_path / 'run').exists()

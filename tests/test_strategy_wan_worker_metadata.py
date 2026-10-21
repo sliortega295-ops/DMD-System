@@ -1,7 +1,6 @@
 """CPU-only control-plane collective regression; training NCCL remains untouched."""
-from datetime import timedelta
 from types import SimpleNamespace as NS
-import ast,inspect
+import inspect
 from distillschedule.strategies import wan_worker
 
 
@@ -28,7 +27,10 @@ def test_worker_routes_both_metadata_checks_and_cleans_group_outside_timer():
     source=inspect.getsource(wan_worker.run_worker)
     assert "new_group(backend='gloo'" in source
     assert source.index("new_group(backend='gloo'")<source.index('OriginalWanSession(')
-    assert source.count('gather_metadata(')==2
+    # Asset/cohort agreements remain unconditional in their owning path;
+    # environment admission is an additional opt-in restart check.
+    assert source.count('gather_metadata(')==3
+    assert source.index('admit_run_controls(')<source.index('environments = gather_metadata(')
     assert 'dist.all_gather_object(' not in source
     assert 'destroy_process_groups(dist, metadata_group)' in source
     assert 'all_gather' not in inspect.getsource(wan_worker.execute_cycles)
@@ -43,3 +45,41 @@ def test_world_teardown_attempted_even_if_metadata_teardown_fails():
     with pytest.raises(RuntimeError,match='metadata teardown failure'):
         wan_worker.destroy_process_groups(NS(destroy_process_group=destroy),group)
     assert calls==[(group,),()]
+
+
+def test_restart_agreement_rejects_mismatched_intervals_before_branching():
+    import pytest
+    def gather(output, value, *, group):
+        output[:] = [value] * 16
+        output[8] = {**value, 'controls': {**value['controls'], 'checkpoint_every': 0}}
+    group = object()
+    dist = NS(all_gather_object=gather, get_backend=lambda g: 'gloo')
+    with pytest.raises(ValueError, match='rank.*control'):
+        wan_worker.admit_run_controls(dist, group, mode='train', cycles=4,
+                                     checkpoint_every=1, resume_from=None)
+
+
+def test_restart_agreement_compares_checkpoint_content_not_local_alias(tmp_path):
+    from distillschedule.workloads.best_known.registry import file_sha256
+    import pytest
+    path = tmp_path / 'checkpoint'
+    path.mkdir()
+    (path / 'manifest.json').write_text('{"schema_version":"fixture-only"}')
+    sha = file_sha256(path / 'manifest.json')
+    (path / '_SUCCESS').write_text(sha + '\n')
+    alias = tmp_path / 'alias'
+    alias.symlink_to(path, target_is_directory=True)
+    values = []
+    def gather(output, value, *, group):
+        values.append(value)
+        output[:] = [value] * 16
+    dist = NS(all_gather_object=gather, get_backend=lambda g: 'gloo')
+    for root in (path, alias):
+        wan_worker.admit_run_controls(dist, object(), mode='train', cycles=4,
+                                     checkpoint_every=1, resume_from=root)
+    assert values[0] == values[1]
+    assert values[0]['controls']['resume_manifest_sha256'] == sha
+    (path / '_SUCCESS').write_text('incorrect')
+    with pytest.raises(ValueError, match='checkpoint.*complete'):
+        wan_worker.admit_run_controls(dist, object(), mode='train', cycles=4,
+                                     checkpoint_every=1, resume_from=path)

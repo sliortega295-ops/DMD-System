@@ -56,10 +56,14 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         capabilities=dict(
             modes=["reference", "manual", "plan"] if worker else ["plan"],
             cycles=(dict(min=2, max=64, fresh_inputs="original_wan_cohort_stream.v1",
-                         reference_manual=2, incumbent_bundle=2)
+                         reference_manual_fixed_trace=2, incumbent_bundle=2)
                     if workload == "W1" else dict(exact=2, arbitrary_training=False)),
-            checkpoint=dict(supported=False, reason="native worker has no public restart-checkpoint writer"),
-            resume=dict(supported=False, reason="no complete model/optimizer/RNG restart loader in this binding"),
+            checkpoint=dict(supported=workload == "W1", scope=(
+                "fresh native cohort stream only; trainable weights, named Adam, scheduler, EMA, clocks and per-rank RNG"
+                if workload == "W1" else "not exposed by this binding"), verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
+            resume=dict(supported=workload == "W1", scope=(
+                "complete native cohort boundary, same source/stream/topology/strategy" if workload == "W1"
+                else "not exposed by this binding"), verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
             generate=dict(supported=False, reason="no native generation adapter exposed by this binding"),
             export=dict(supported=False, reason="no portable inference-export adapter exposed by this binding"),
             final_state_evidence=(dict(supported=True,
@@ -117,11 +121,13 @@ def _options(config, workload):
                  "original shape/math belong in execution.task")
     _require(not config.algorithm.get("name") or config.algorithm["name"] == _FAMILIES[workload][0],
              "algorithm.name does not match the original workload")
-    for field in ("resume_from", "generate", "export"):
+    for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
     _require("seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
-    _require(config.trainer.get("checkpoint_every", 0) == 0,
+    _require(not (config.trainer.get("checkpoint_every", 0) or config.trainer.get("resume_from"))
+             or workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
+                and bool(config.data.get("prepared")),
              "native checkpoint_every must be 0; final evidence is not a restart checkpoint")
     cycles = config.trainer["cycles"]
     _require((workload == "W1" and 2 <= cycles <= 64) or (workload != "W1" and cycles == 2),
@@ -183,7 +189,8 @@ def _wan(config, mode, task_value, assets_value, paths):
         files = [model / "config.json", *sorted(model.glob("*.safetensors")), *sorted(model.glob("*.index.json"))]
         _require(identity.get("model_files") == {p.name: file_sha256(p) for p in files}, "Wan model file identity differs from plan")
     else:
-        _require(config.trainer["cycles"] == 2, "Wan reference/manual supports exactly 2 cycles")
+        _require(config.trainer["cycles"] == 2 or config.data.get("prepared"),
+                 "Wan reference/manual supports exactly 2 cycles without a fresh native stream")
         plan = None
         strategy = WanStrategy.from_dict(_object(paths["implementation"], "execution.implementation"))
         strategy.validate_for(task)
@@ -193,7 +200,7 @@ def _wan(config, mode, task_value, assets_value, paths):
              or strategy.retention_execution == "planner-retain4.v1", "uncalibrated experimental Wan retention")
     prepared = _path(config, "data", "prepared", required=False)
     if prepared:
-        _require(mode == "plan" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
+        _require(config.data.get("input_kind") == "original_wan_cohort_stream.v1"
                  and not config.data.get("replay_fixed_trace"),
                  "data.prepared must explicitly be an original_wan_cohort_stream.v1, not generic prepared data")
         # Metadata/source admission is CPU-only. The unmodified native
@@ -227,6 +234,13 @@ def _wan(config, mode, task_value, assets_value, paths):
     else:
         args += ["--implementation", str(paths["implementation"])]
     args += ["--stream", str(prepared)] if prepared else ["--cycles", str(config.trainer["cycles"])]
+    if config.trainer.get("checkpoint_every", 0):
+        args += ["--checkpoint-every", str(config.trainer["checkpoint_every"])]
+    if config.trainer.get("resume_from"):
+        resume = _path(config, "trainer", "resume_from")
+        _require((resume / "manifest.json").is_file() and (resume / "_SUCCESS").is_file(),
+                 "native resume requires a complete checkpoint directory")
+        args += ["--resume-from", str(resume)]
     return dict(task=task.to_dict(), selected=strategy.to_dict(), plan=plan, argv=args,
                 validation_scope="CPU_TASK_PLAN_BOOTSTRAP_MODEL_IDENTITIES; ORIGINAL_TRACE_TENSORS_DEFERRED_TO_WORKER")
 

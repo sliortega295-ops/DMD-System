@@ -110,7 +110,7 @@ of mesh, retention, precision and kernel policy for every workload.
 | `execution.expected_head` | Optional exact source HEAD assertion; saved-plan source checks are always mandatory |
 | `trainer.output_dir` | Explicit project output directory; existing native ownership/non-overwrite rules remain active |
 | `trainer.cycles` | Actual supported native count, checked against selected contract; not a timing normalization |
-| `trainer.checkpoint_every` | `0`; native evidence must not masquerade as restart checkpoints |
+| `trainer.checkpoint_every` | W1 fresh streams: opt-in positive interval; all other native paths require `0` |
 
 For W2-W5, extract `asset_config` from the plan you actually compiled; do not
 edit a path in a saved receipt to make it fit another machine. Asset locations
@@ -145,9 +145,35 @@ contract and matched admission; do not crop, pad or rewrite historical locks.
 
 ## Lifecycle and evidence are not interchangeable
 
-No native binding here exposes a complete restart loader, periodic restart
-checkpoints, generation, decoding or portable inference export. `resume_from`,
-nonzero `checkpoint_every`, `generate` and `export` requests fail clearly.
+W1 fresh cohort streams can opt into periodic complete-cycle restart:
+
+```json
+{"trainer": {"cycles": 6, "checkpoint_every": 2, "output_dir": "training-run"}}
+```
+
+Merge those trainer fields into a complete native training configuration, with
+`data.prepared` pointing to the six-cohort native stream. Reference/manual
+strategies use that same original worker without requiring calibration; saved
+plans retain their source/strategy admission. At restart, keep the **same full
+stream and target count**, set `trainer.resume_from` (or CLI `--resume`) to
+`training-run/checkpoints/cycle-000002`, and use a new output directory.
+Do not recapture inputs or change the source, bootstrap, runtime or layout.
+Use a shared persistent checkpoint filesystem and explicit torchrun `GROUP_RANK`.
+
+The restart state is a view of the original engines, not a substitute trainer:
+optimizer-owned trainable weights/buffers, named Adam groups and moments,
+schedulers, EMA shadows/counter, engine clocks, absolute cohort cursor and
+per-rank Python/NumPy/Torch/owned-device CUDA RNG. Frozen weights are rebound by
+their original asset hashes; temporary rollout/attention caches are rebuilt.
+Only zero-gradient complete cycles publish a manifest after **every rank's
+shard** has been written and hashed. State I/O is separately recorded outside
+the original compute timer. A failed write is not a valid checkpoint.
+CPU tests exercise original dispatch/cursor logic and actual engine/Adam
+restart on scalar fixtures; real pretrained Wan/CUDA restart remains NOT_RUN.
+
+W2-W6 do not yet expose complete restart through this binding. Native
+generation, decoding and portable inference export also remain unavailable
+here. Unsupported lifecycle requests fail instead of silently being ignored.
 W1's existing final writer saves trainable/Adam/EMA **evidence** automatically
 outside native timers (`wan_worker.save_final_state`); it is not a complete RNG/
 distributed restart checkpoint. W2-W6 sampled state/fingerprint JSON is not a

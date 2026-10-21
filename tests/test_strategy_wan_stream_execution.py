@@ -98,3 +98,29 @@ def test_transition_cannot_replace_engines_before_training():
         with pytest.raises(ValueError,match='reset model'):
             execute_cycles(session,cycles=2,mode='run',torch=NS(cuda=None),distributed=None,before_cycle=reset)
     assert not seen
+
+
+def test_resumed_dispatch_starts_at_the_next_cohort_and_checkpoints_outside_compute(monkeypatch):
+    import distillschedule.strategies.wan_trace as traces
+    from distillschedule.strategies.wan_stream import restore_stream_cursor
+    task = OriginalWanTask(fake_updates=1, first_step=2, lora_rank=64)
+    strategy = WanStrategy('resident', 512, False, 1)
+    document = {'stream_sha256': 'CPU_TEST_ONLY', 'cohorts': [
+        {'task': task_at(task, i).to_dict(), 'trace_bundle': str(i), 'trace_hash': str(i)} for i in range(3)]}
+    monkeypatch.setattr(traces, 'load_original_trace', lambda t, *a, **k: NS(variant='no-gan', logical_steps=t.source_steps))
+    stub_torch = NS(cuda=NS(synchronize=lambda d: None))
+    events = []
+    with strategy_environment(strategy):
+        session, _, seen = session_and_helpers(task, strategy)
+        # This orchestration test isolates cursor restoration; actual complete
+        # model/Adam/scheduler/RNG restoration is exercised by native-state tests.
+        session.g.global_steps, session.c.global_steps, session.ema.optimization_step = 2, 2, 2
+        restore_stream_cursor(session, task, document, completed_cycles=2)
+        result = execute_cycles(session, cycles=3, start_cycle=2, mode='run', torch=stub_torch,
+            distributed=NS(barrier=lambda: None),
+            before_cycle=lambda cycle, current: bind_cohort(current, task, document, cycle-1, ('g','r0','c0','e0')),
+            after_cycle=lambda cycle, current, record: events.append((cycle, current.versions(), record['finite'])))
+    assert len(result['cycles']) == 1 and result['cycles'][0]['cycle'] == 3
+    assert result['cycles'][0]['cohort']['cohort_index'] == 2
+    assert events == [(3, dict(generator=3, critic=3, ema=3), True)]
+    assert [step for role, step in seen if role == 'c'] == [4]

@@ -13,7 +13,7 @@ import random
 import time
 
 from .adapters import ModelComponents
-from .checkpoint import cpu_tree, restore_checkpoint, save_checkpoint, read_checkpoint, unpack_state
+from .checkpoint import cpu_tree, restore_checkpoint, save_checkpoint, read_checkpoint, read_manifest, unpack_state
 from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy
@@ -129,7 +129,7 @@ def _train(config: TrainingConfig):
         # Build the original declared state shape before restoring modules,
         # optimizer/scheduler state, history and the exact next data position.
         workload = build_cycle(config, components, dataset, algorithm, cycle=0, cursor=rank)
-        metadata = distributed.checked(lambda: read_checkpoint(config.trainer["resume_from"], identity=identity),
+        metadata = distributed.checked(lambda: read_manifest(config.trainer["resume_from"], identity=identity),
                                        "checkpoint reading")
         policy.restore(metadata["policy"])
         del metadata

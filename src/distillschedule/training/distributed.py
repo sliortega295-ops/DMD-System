@@ -4,7 +4,7 @@ Native recipes retain their original process-group/role-pool owners. This
 module serves the existing generic Program backend and never acquires GPUs or
 changes network/environment settings.
 """
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from datetime import timedelta
 import os
 
@@ -49,30 +49,44 @@ def context(config):
     requested = config.trainer.get("distributed")
     world = int(os.environ.get("WORLD_SIZE", "1"))
     owned = False
+    metadata_group = None
     if not dist.is_initialized() and world > 1:
         if not requested:
             raise ValueError("torchrun training requires explicit trainer.distributed configuration")
         backend = requested["backend"]
         if backend == "nccl":
-            if not torch.cuda.is_available():
-                raise ValueError("NCCL training requires CUDA")
+            if not torch.cuda.is_available() or not dist.is_gloo_available():
+                raise ValueError("NCCL training requires CUDA and a Gloo metadata backend")
             local_rank = int(os.environ["LOCAL_RANK"])
             torch.cuda.set_device(local_rank)
         dist.init_process_group(backend, timeout=timedelta(seconds=requested.get("timeout_seconds", 180)))
         owned = True
     try:
         rank, actual_world = rank_world()
-        if actual_world > 1:
-            if world != actual_world:
-                raise ValueError("launcher and initialized process-group world sizes differ")
-            if requested and str(dist.get_backend()) != requested["backend"]:
-                raise ValueError("initialized process group differs from trainer.distributed")
-            if config.data.get("sharding") != "rank_strided":
-                raise ValueError("distributed training requires explicit data.sharding=rank_strided")
-        elif requested:
-            raise ValueError("trainer.distributed requires at least two explicitly launched ranks")
-        yield rank, actual_world
+        if actual_world > 1 and str(dist.get_backend()) == "nccl":
+            metadata_group = dist.new_group(backend="gloo", timeout=timedelta(
+                seconds=requested.get("timeout_seconds", 180) if requested else 180))
+        with ExitStack() as stack:
+            if metadata_group is not None:
+                from distillschedule.open_workload.replicated import control_plane
+                stack.enter_context(control_plane(metadata_group))
+            def validate():
+                if actual_world > 1:
+                    if world != actual_world:
+                        raise ValueError("launcher and initialized process-group world sizes differ")
+                    if requested and str(dist.get_backend()) != requested["backend"]:
+                        raise ValueError("initialized process group differs from trainer.distributed")
+                    if config.data.get("sharding") != "rank_strided":
+                        raise ValueError("distributed training requires explicit data.sharding=rank_strided")
+                elif requested:
+                    raise ValueError("trainer.distributed requires at least two explicitly launched ranks")
+            checked(validate, "training resource contract")
+            yield rank, actual_world
     finally:
         # Do not destroy a group owned by an embedding application/native adapter.
-        if owned:
-            dist.destroy_process_group()
+        try:
+            if metadata_group is not None:
+                dist.destroy_process_group(metadata_group)
+        finally:
+            if owned:
+                dist.destroy_process_group()

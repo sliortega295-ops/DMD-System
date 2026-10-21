@@ -15,7 +15,7 @@ from distillschedule.workloads.best_known.registry import file_sha256 as _sha
 from . import distributed
 from .tensor_state import pack, decode, layout, live_meshes
 
-SCHEMA = "distillschedule.training_checkpoint.v1"
+SCHEMA = "distillschedule.training_checkpoint.v2"
 
 
 def cpu_tree(value):
@@ -138,6 +138,8 @@ def _stage_state(packed, state):
             optimizers[key] = staged
         elif row["kind"] == "value" and isinstance(value, torch.Tensor):
             _validate_layout(value, restored[key], key)
+        elif row["kind"] == "stateful" and callable(getattr(value, "validate_state_dict", None)):
+            value.validate_state_dict(restored[key])
     return restored, optimizers
 
 
@@ -168,7 +170,10 @@ def rng_state():
     import torch
     result = {"python": random.getstate(), "torch": torch.get_rng_state()}
     if torch.cuda.is_initialized():
-        result["cuda"] = torch.cuda.get_rng_state_all()
+        # The execution ABI owns one device per rank. Querying all visible
+        # devices can initialize unrelated CUDA contexts and consume their HBM.
+        device = torch.cuda.current_device()
+        result["cuda"] = {"device": device, "state": torch.cuda.get_rng_state(device)}
     try:
         import numpy as np
         name, values, position, gauss, cached = np.random.get_state()
@@ -178,14 +183,29 @@ def rng_state():
     return result
 
 
+def validate_rng(value):
+    import torch
+    random.Random().setstate(value["python"])
+    torch.Generator(device="cpu").set_state(value["torch"])
+    if "cuda" in value:
+        if (not torch.cuda.is_initialized() or value["cuda"]["device"] != torch.cuda.current_device()
+                or not isinstance(value["cuda"]["state"], torch.Tensor)
+                or value["cuda"]["state"].dtype != torch.uint8
+                or value["cuda"]["state"].shape != torch.cuda.get_rng_state(torch.cuda.current_device()).shape):
+            raise ValueError("checkpoint CUDA topology changed")
+    if "numpy" in value:
+        import numpy as np
+        name, values, position, gauss, cached = value["numpy"]
+        np.random.RandomState().set_state((name, np.asarray(values, dtype=np.uint32), position, gauss, cached))
+
+
 def restore_rng(value):
     import torch
+    validate_rng(value)
     random.setstate(value["python"])
     torch.set_rng_state(value["torch"])
     if "cuda" in value:
-        if not torch.cuda.is_initialized() or len(value["cuda"]) != torch.cuda.device_count():
-            raise ValueError("checkpoint CUDA topology changed")
-        torch.cuda.set_rng_state_all(value["cuda"])
+        torch.cuda.set_rng_state(value["cuda"]["state"], device=value["cuda"]["device"])
     if "numpy" in value:
         import numpy as np
         name, values, position, gauss, cached = value["numpy"]
@@ -202,6 +222,10 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         if any(p.grad is not None for value in state.values() if isinstance(value, torch.nn.Module)
                for p in value.parameters()):
             raise ValueError("checkpoint requires a zero-gradient complete-cycle boundary")
+        for value in state.values():
+            validate = getattr(value, "validate_checkpoint_boundary", None)
+            if callable(validate):
+                validate()
     distributed.checked(boundary, "checkpoint boundary")
     rank, world = distributed.rank_world()
     allocated = distributed.topology()
@@ -225,7 +249,10 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         def write_shard():
             if not staging.is_dir():
                 raise ValueError("checkpoint output must be shared by all ranks")
-            torch.save(payload, staging / filename)
+            with (staging / filename).open("xb") as handle:
+                torch.save(payload, handle)
+                handle.flush()
+                os.fsync(handle.fileno())
             return {filename: _sha(staging / filename)}
         shard = distributed.checked(write_shard, "checkpoint shard writing")
         files = {key: value for row in distributed.gather(shard) for key, value in row.items()}
@@ -235,6 +262,7 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                 raise ValueError("checkpoint shards incomplete on shared storage")
             manifest = {"schema_version": SCHEMA, "kind": "RESUMABLE_COMPLETE_CYCLE",
                         "identity": identity, "cycle": cycle, "cursor": cursor,
+                        "versions": dict(versions), "policy": policy,
                         "topology": allocated, "torch": torch.__version__, "files": files}
             (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
             (staging / "_SUCCESS").write_text(_sha(staging / "manifest.json") + "\n")
@@ -248,7 +276,13 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
     return path
 
 
-def read_checkpoint(path, *, identity):
+def read_manifest(path, *, identity):
+    """Validate restart metadata before constructing a physical model layout.
+
+    Tensor hashes are checked again before any state restore. Metadata does not
+    load a model-sized snapshot simply to read its saved policy and cursor.
+    All ranks participate when a distributed group is initialized.
+    """
     import torch
     allocated = distributed.topology()
     path = Path(path).resolve()
@@ -263,20 +297,30 @@ def read_checkpoint(path, *, identity):
         raise ValueError("checkpoint topology changed")
     if manifest.get("torch") != torch.__version__:
         raise ValueError("checkpoint runtime version changed")
-    rank, world = distributed.rank_world()
+    _, world = distributed.rank_world()
     expected = {"state.pt"} if world == 1 else {f"rank-{r:05d}.pt" for r in range(world)}
-    if set(manifest.get("files", {})) != expected or any(
-            not (path / name).is_file() or _sha(path / name) != sha for name, sha in manifest["files"].items()):
+    if set(manifest.get("files", {})) != expected or any(not (path / name).is_file() for name in expected):
         raise ValueError("checkpoint shard missing or hash changed")
+    return manifest
+
+
+def read_checkpoint(path, *, identity):
+    import torch
+    path = Path(path).resolve()
+    manifest = read_manifest(path, identity=identity)
+    if any(_sha(path / name) != sha for name, sha in manifest["files"].items()):
+        raise ValueError("checkpoint shard missing or hash changed")
+    rank, world = distributed.rank_world()
     payload = torch.load(path / ("state.pt" if world == 1 else f"rank-{rank:05d}.pt"),
                          map_location="cpu", weights_only=True)
-    if payload["cycle"] != manifest["cycle"] or payload["cursor"] != manifest["cursor"]:
+    if any(payload[key] != manifest[key] for key in ("cycle", "cursor", "versions", "policy")):
         raise ValueError("checkpoint progress disagrees with manifest")
     return payload
 
 
 def restore_checkpoint(path, state, *, identity):
     payload = distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission")
+    distributed.checked(lambda: validate_rng(payload["rng"]), "checkpoint RNG admission")
     unpack_state(payload["state"], state)
     restore_rng(payload["rng"])
     return payload

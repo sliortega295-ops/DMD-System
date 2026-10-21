@@ -6,6 +6,8 @@ averaged; input/latent gradients remain on their original autograd path. Each
 rank executes the same program with its own feeds. No FSDP/pool claim is made.
 """
 from __future__ import annotations
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Callable
 import torch
 import torch.distributed as dist
@@ -15,14 +17,39 @@ from distillschedule.workloads.best_known.registry import fingerprint
 from .torch_backend import Session, candidates as local_candidates, signature, tensors, unwrap_module
 
 BACKEND = 'torch-callable-replicated-v1'
+_CONTROL_GROUP = ContextVar('distillschedule_control_group', default=None)
+
+
+@contextmanager
+def control_plane(group):
+    """Route only metadata through an explicitly owned full-world Gloo group.
+
+    Tensor/FSDP/reducer collectives retain their original NCCL group, algorithm
+    and math. This avoids sending Python objects through a Tree-only NCCL path.
+    """
+    require(dist.is_initialized() and group is not None and dist.get_backend(group) == 'gloo'
+            and dist.get_world_size(group) == dist.get_world_size()
+            and dist.get_rank(group) == dist.get_rank(),
+            'control plane requires matching full-world Gloo rank order', path='open.replicated')
+    token = _CONTROL_GROUP.set(group)
+    try:
+        yield
+    finally:
+        _CONTROL_GROUP.reset(token)
 
 
 def gather(value):
     require(dist.is_available() and dist.is_initialized() and dist.get_world_size() >= 2,
             'explicit initialized group with at least two ranks required', path='open.replicated')
     rows = [None] * dist.get_world_size()
-    dist.all_gather_object(rows, value)
+    dist.all_gather_object(rows, value, group=_CONTROL_GROUP.get())
     return rows
+
+
+def broadcast(value):
+    box = [value]
+    dist.broadcast_object_list(box, src=0, group=_CONTROL_GROUP.get())
+    return box[0]
 
 
 def checked(fn: Callable, label: str):

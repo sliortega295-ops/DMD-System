@@ -124,6 +124,15 @@ def _rejection_worker(rank, rendezvous, output):
     try:
         from copy import deepcopy
         from distillschedule.training.checkpoint import pack_state, unpack_state, save_checkpoint
+        from distillschedule.open_workload.replicated import control_plane, gather, broadcast
+        metadata = dist.new_group(backend="gloo")
+        try:
+            with control_plane(metadata):
+                assert gather(rank) == [0, 1]
+                assert broadcast("rank0" if rank == 0 else None) == "rank0"
+                assert dist.get_backend() == "gloo"
+        finally:
+            dist.destroy_process_group(metadata)
         model = torch.nn.Linear(2, 2)
         optimizer = torch.optim.AdamW(model.parameters())
         model(torch.ones(1, 2)).sum().backward()
@@ -156,3 +165,17 @@ def _rejection_worker(rank, rendezvous, output):
 
 def test_rank_local_rejection_is_collective_and_cannot_publish_partial_checkpoint(tmp_path):
     mp.spawn(_rejection_worker, args=(str(tmp_path / "rdzv"), str(tmp_path)), nprocs=2, join=True)
+
+
+def test_cuda_rng_checkpoint_queries_only_the_owned_device(monkeypatch):
+    from distillschedule.training.checkpoint import rng_state, restore_rng
+    expected = torch.arange(8, dtype=torch.uint8)
+    observed = []
+    monkeypatch.setattr(torch.cuda, "is_initialized", lambda: True)
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 3)
+    monkeypatch.setattr(torch.cuda, "get_rng_state", lambda device: expected.clone() if device == 3 else pytest.fail("foreign GPU RNG"))
+    monkeypatch.setattr(torch.cuda, "get_rng_state_all", lambda: pytest.fail("initializes unrelated GPU contexts"))
+    monkeypatch.setattr(torch.cuda, "set_rng_state", lambda value, device: observed.append((value.clone(), device)))
+    state = rng_state()
+    restore_rng(state)
+    assert len(observed) == 1 and torch.equal(observed[0][0], expected) and observed[0][1] == 3

@@ -39,11 +39,17 @@ def main(argv=None):
                 if name == 'benchmark-manual':
                     p.add_argument('--cycles', type=int, default=2)
             else:
-                p.add_argument('--plan', type=Path, required=True)
                 if name == 'run':
+                    p.add_argument('--plan', type=Path, required=True)
                     p.add_argument('--cycles', type=int, default=2)
                 else:
+                    choice = p.add_mutually_exclusive_group(required=True)
+                    choice.add_argument('--plan', type=Path)
+                    choice.add_argument('--implementation', type=Path,
+                                        help='explicit original strategy; no calibration is required')
                     p.add_argument('--stream', type=Path, required=True)
+                    p.add_argument('--checkpoint-every', type=int, default=0)
+                    p.add_argument('--resume-from', type=Path)
         if name in ('capture-inputs', 'prepare-task', 'auto-run'):
             p.add_argument('--sources', type=Path, required=True)
             p.add_argument('--training-config', type=Path, required=True)
@@ -107,8 +113,13 @@ def main(argv=None):
             from .wan_worker import run_worker
             stream = load_stream(task, args.stream)
             assets = OriginalWanAssets.from_dict(json.loads(args.assets.read_text()))
-            result = run_worker(task, assets, output=args.output, mode='run', plan_path=args.plan,
-                                cycles=len(stream['cohorts']), stream_path=args.stream)
+            strategy = WanStrategy.from_dict(json.loads(args.implementation.read_text())) if args.implementation else None
+            options = {}
+            if args.checkpoint_every or args.resume_from:
+                options.update(checkpoint_every=args.checkpoint_every, resume_from=args.resume_from)
+            result = run_worker(task, assets, output=args.output, mode='run' if args.plan else 'train',
+                                plan_path=args.plan, **({'strategy': strategy} if strategy else {}),
+                                cycles=len(stream['cohorts']), stream_path=args.stream, **options)
         elif args.command in ('capture-inputs', 'prepare-task', 'auto-run'):
             from .wan_inputs import WanInputSources, preflight_sources
             from .wan_capture import capture, read_training_config

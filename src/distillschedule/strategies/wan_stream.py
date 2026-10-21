@@ -173,3 +173,22 @@ def bind_cohort(session, base_task, document, index, selected_order):
             'receipt': {'stream_sha256': document['stream_sha256'], 'cohort_index': index,
                         'trace_hash': entry['trace_hash'], 'source_steps': list(current.source_steps),
                         'prediction_transfer': 'NOT_CLAIMED_NEW_RANDOM_EXITS'}}
+
+
+def restore_stream_cursor(session, base_task, document, *, completed_cycles):
+    """Restore only the next input binding after native state/RNG restoration.
+
+    No input is replayed, optimizer rebuilt, RNG consumed or CUDA cache restored.
+    The caller has already validated the complete source-bound checkpoint.
+    """
+    require(type(completed_cycles) is int and 0 < completed_cycles < len(document['cohorts'])
+            and session.task == base_task and not session.finite
+            and getattr(session, '_stream_binding', None) is None,
+            'resume needs a fresh session and an incomplete stream cursor', path='wan.stream')
+    previous = task_at(base_task, completed_cycles - 1)
+    require(document['cohorts'][completed_cycles-1]['task'] == previous.to_dict(),
+            'resume stream task changed', path='wan.stream')
+    session.task = previous
+    session._stream_binding = (document['stream_sha256'], completed_cycles - 1)
+    if session.runtime_cache is not None:
+        session.runtime_cache.clear()

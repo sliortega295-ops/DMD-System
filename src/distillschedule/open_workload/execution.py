@@ -134,8 +134,6 @@ class ExecutionBackend:
 
     def select_plan(self,fn):
         if not self.distributed: return fn()
-        from .replicated import checked
-        import torch.distributed as dist
+        from .replicated import checked, broadcast
         value=checked(lambda:fn() if self.rank==0 else None,'planning')
-        box=[value];dist.broadcast_object_list(box,src=0)
-        return box[0]
+        return broadcast(value)
