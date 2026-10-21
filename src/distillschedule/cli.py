@@ -128,6 +128,9 @@ def _run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] in {"doctor", "data", "train", "evaluate", "export", "config"}:
+        from distillschedule.training.cli import main as training_main
+        return training_main(argv)
     if len(argv) > 1 and argv[0] == "workloads":
         if argv[1:] == ["list", "--legacy"]:
             from distillschedule.workloads.best_known.cli import main as legacy_main

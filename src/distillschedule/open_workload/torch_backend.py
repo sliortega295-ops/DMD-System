@@ -250,7 +250,7 @@ class Context:
 
 
 class Session:
-    def __init__(self, workload: Workload, implementation, *, lifecycle=None):
+    def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True):
         workload.validate()
         from .checkpoint_policy import POLICIES, operations
         policy=implementation.get('checkpoint_policy','recompute')
@@ -266,7 +266,13 @@ class Session:
                 and set(implementation['checkpoint_bindings']) <= {c.binding for c in workload.program.calls if c.replay_safe},
                 'implementation not admitted by capability predicates',path='open.runtime')
         self.workload=workload; self.implementation=deepcopy(implementation)
-        self.state,self.feeds=deepcopy((dict(workload.state),dict(workload.feeds)))
+        require(type(copy_state) is bool and (copy_state or lifecycle is None),
+                'owned training state requires the local resident lifecycle', path='open.runtime')
+        # Paired trials keep the original clone semantics. A persistent trainer
+        # explicitly owns its modules/optimizers and must not clone them at each
+        # update boundary (including preserving optimizer Parameter ownership).
+        self.state,self.feeds=(deepcopy((dict(workload.state),dict(workload.feeds)))
+                               if copy_state else (dict(workload.state),dict(workload.feeds)))
         self.device=workload.device; self.graph=workload.program.compile()
         self.profile={}; self.effects={'shared_parameter_aliases':0,'checkpoint_calls':0,'recompute_calls':0}
         self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}
