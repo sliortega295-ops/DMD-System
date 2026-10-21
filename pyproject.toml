@@ -24,8 +24,11 @@ native-wan = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24", "diffusers==0.35.
 distillctl = "distillschedule.cli:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "src", "runtime" = "runtime"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["distillschedule*"]
+where = ["src", "."]
+include = ["distillschedule*", "runtime*"]
+
+[tool.setuptools.package-data]
+"distillschedule.workloads" = ["catalog.json"]

@@ -1,20 +1,46 @@
 name: unified-source-snapshot
 on:
   push:
-    branches: [agent/unified-strategy-planner-20261012]
+    branches:
+      - agent/unified-strategy-planner-20261012
+      - agent/general-workload-planning-20261012
     paths: [.github/workflows/unified-source-snapshot.yml]
 permissions:
   contents: read
 jobs:
   snapshot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
-      - run: git archive --format=tar.gz HEAD > /tmp/unified-source.tar.gz
+      - name: Archive tracked sources and Git objects only
+        env:
+          INDEX: c823cb084d0161ba3dd3fba14c9fb673b2c50b9f
+          PLANNER: ea29129342741b54e59c4773e07454f541fadcc7
+        run: |
+          set -euo pipefail
+          git fsck --connectivity-only --no-dangling
+          git cat-file -e "$INDEX^{commit}"
+          git cat-file -e "$PLANNER^{commit}"
+          git update-ref refs/heads/review-six-source "$INDEX"
+          git update-ref refs/heads/review-six-planner "$PLANNER"
+          git bundle create /tmp/dmd-six-review.bundle HEAD refs/heads/review-six-source refs/heads/review-six-planner
+          git archive --format=tar.gz "$INDEX" > /tmp/dmd-six-source.tar.gz
+          git archive --format=tar.gz HEAD > /tmp/dmd-pr34-source.tar.gz
+          printf 'pr_head=%s\nsource_index=%s\nplanner=%s\n' "$GITHUB_SHA" "$INDEX" "$PLANNER" > /tmp/source-commits.txt
+          sha256sum /tmp/dmd-six-review.bundle /tmp/dmd-six-source.tar.gz /tmp/dmd-pr34-source.tar.gz > /tmp/source-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: unified-source-${{ github.sha }}
-          path: /tmp/unified-source.tar.gz
-          retention-days: 3
+          name: dmd-six-source-${{ github.sha }}
+          path: |
+            /tmp/dmd-six-review.bundle
+            /tmp/dmd-six-source.tar.gz
+            /tmp/dmd-pr34-source.tar.gz
+            /tmp/source-commits.txt
+            /tmp/source-sha256.txt
+          if-no-files-found: error
+          retention-days: 7

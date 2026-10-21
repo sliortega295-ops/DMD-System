@@ -1,0 +1,336 @@
+{
+  "schema": "dmd.state_retention_campaign_results.v1",
+  "utc": "2026-10-17T20:16:58.407724+00:00",
+  "bounded_campaign_status": "SIX_ACTUALLY_ATTEMPTED_ALL_OWNED_NATIVE_RUNS_TERMINATED",
+  "user_overall_project_complete": false,
+  "all_six_numerical_equivalent": false,
+  "all_six_faster": false,
+  "rows": [
+    {
+      "workload": "W1",
+      "name": "Wan1.3B",
+      "status": "MEASURED_DESCRIPTIVE_REVIEW",
+      "source": "c7cd187052295690735b41f5b7be0133de9d2cd4",
+      "control_C2_s": 20.32420779,
+      "candidate_C2_s": 20.002454808,
+      "saved_s": 0.3217529819999996,
+      "ratio": 1.0160856747378484,
+      "control_peak_allocated_GiB": 23.408957958221436,
+      "candidate_peak_allocated_GiB": 26.691760540008545,
+      "ranks": 16,
+      "numerical": "REVIEW",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/wan-pair-summary.json"
+    },
+    {
+      "workload": "W2",
+      "name": "Helios No-GAN",
+      "status": "MEASURED_DESCRIPTIVE_REVIEW",
+      "source": "0d035dd2c35f506df503f75a5d1b7bb38eebe328",
+      "control_C2_s": 84.84047295432538,
+      "candidate_C2_s": 84.34519393648952,
+      "saved_s": 0.4952790178358555,
+      "ratio": 1.0058720478870296,
+      "control_peak_allocated_GiB": 22.733145236968994,
+      "candidate_peak_allocated_GiB": 22.733145236968994,
+      "ranks": 16,
+      "numerical": "REVIEW",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/nogan-pair-summary.json"
+    },
+    {
+      "workload": "W3",
+      "name": "Helios GAN-on",
+      "status": "MEASURED_DESCRIPTIVE_REVIEW",
+      "source": "155ffbb585356a29b544573a391eb456b790a15a",
+      "control_C2_s": 117.07420703582466,
+      "candidate_C2_s": 116.67375742644072,
+      "saved_s": 0.4004496093839407,
+      "ratio": 1.0034322166202319,
+      "control_peak_allocated_GiB": 37.17882061004639,
+      "candidate_peak_allocated_GiB": 37.17882061004639,
+      "ranks": 16,
+      "numerical": "REVIEW",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/gan-pair-summary.json"
+    },
+    {
+      "workload": "W4",
+      "name": "LiveWan",
+      "status": "MEASURED_C2_GAIN_NUMERICAL_REVIEW",
+      "source": "0dc45575f5a148e0956393640d71e0ccd2a3f7e0",
+      "control_C2_s": 42.48697656249999,
+      "candidate_C2_s": 42.24371874999999,
+      "saved_s": 0.24325781249999778,
+      "ratio": 1.005758437460007,
+      "control_peak_allocated_GiB": 35.1522798538208,
+      "candidate_peak_allocated_GiB": 35.1522798538208,
+      "ranks": 16,
+      "numerical": "REVIEW",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/livewan-pair-summary.json"
+    },
+    {
+      "workload": "W5",
+      "name": "H3 Full Sequence Grid1000",
+      "status": "TWO_REAL_LOCAL_BACKWARD_DIAGNOSTICS_COMPLETE; PRIOR_NUMERICAL_FAIL_UNRESOLVED; NO_SPEED_PAIR",
+      "source": "48f3dc43b17aee8e18c932c3857e51dc20e7ed7e",
+      "control_C2_s": null,
+      "candidate_C2_s": null,
+      "saved_s": null,
+      "ratio": null,
+      "control_peak_allocated_GiB": null,
+      "candidate_peak_allocated_GiB": null,
+      "ranks": 16,
+      "numerical": "PREVIOUS_FAIL_UNCHANGED",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/h3-block10-numerical-summary.json"
+    },
+    {
+      "workload": "W6",
+      "name": "H3 AR DiffSynth",
+      "status": "MEASURED_SLOWER_NOT_PROMOTED",
+      "source": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+      "control_C2_s": 255.363757909,
+      "candidate_C2_s": 260.582584122,
+      "saved_s": -5.218826213000028,
+      "ratio": 0.9799724673443384,
+      "control_peak_allocated_GiB": 33.728214263916016,
+      "candidate_peak_allocated_GiB": 34.178321838378906,
+      "ranks": 16,
+      "numerical": "REVIEW_NOT_FULL_NUMERICAL_DISTANCE_OR_LONG_TRAINING_EQUIVALENCE",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/h3-ar-pair-summary.json"
+    }
+  ],
+  "followups": {
+    "wan_tail8": "CUDA_OOM_NOT_PROMOTED",
+    "wan_frozen_down": {
+      "status": "MEASURED_NO_C2_GAIN",
+      "control_C2": 20.028682893,
+      "child_C2": 20.169802765,
+      "saved_seconds": -0.14111987200000087,
+      "scope": "RETAIN4_VS_FROZEN_DOWN_ONLY; NOT_ADDITIVE",
+      "source": "fa249cc03447ed8263f9b16b1bf048ab7a41111e",
+      "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/wan-frozen-down-pair-summary.json"
+    }
+  },
+  "new_native_starts": 24,
+  "native_starts_by_workload": {
+    "W1": 6,
+    "W2": 4,
+    "W3": 4,
+    "W4": 6,
+    "W5": 2,
+    "W6": 2
+  },
+  "failed_attempts": [
+    "LiveWan old-source transport argparse before model",
+    "Wan whole-block tail8 CUDA OOM"
+  ],
+  "no_profiled_times": true,
+  "no_averaged_cycles": true,
+  "numerical_policy": "ORIGINAL_GATES_RETAINED; REVIEW_IS_NOT_STRICT_EQUIVALENCE; W5_FAIL_UNRESOLVED",
+  "source_manifests": {
+    "source-gan.json": {
+      "head": "155ffbb585356a29b544573a391eb456b790a15a",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-155ffbb58535-20261017",
+      "manifest_sha256": "c2ed0bc9ec073fca6dd50d5509979dc51edc53a771dd6986442a70563122db3a"
+    },
+    "source-h3-ar.json": {
+      "head": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-45938af88d65-20261017",
+      "manifest_sha256": "fcd14cb928c0879b2a5718befb74e829e9c062665103d2467bf6e9e4962308b9"
+    },
+    "source-h3-block10.json": {
+      "head": "48f3dc43b17aee8e18c932c3857e51dc20e7ed7e",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-48f3dc43b17a-20261017",
+      "manifest_sha256": "b037db7dc2f2b2d56fa10afd9296069978907906703cdd20897f05d53cafbe6f"
+    },
+    "source-h3-raw.json": {
+      "head": "3aaf818504a6e66e7e510b4a4240ac08c394a6b5",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-3aaf818504a6-20261017",
+      "manifest_sha256": "3a0b29b0c26d04a0f4075b13a7e4a827c2a20fbb0632d6d92f631251e25c7e8d"
+    },
+    "source-helios.json": {
+      "head": "0d035dd2c35f506df503f75a5d1b7bb38eebe328",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-0d035dd2c35f-20261017",
+      "manifest_sha256": "2e5551508b5a04f7e6e47958e8bbf71daab463638ed52886850acd8ac51386c9"
+    },
+    "source-livewan-v2.json": {
+      "head": "0dc45575f5a148e0956393640d71e0ccd2a3f7e0",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-0dc45575f5a1-20261017",
+      "manifest_sha256": "26c3a40dafb4076de6d35df61b6fb02a3d869c6d4be55f6fc20bc57780262102"
+    },
+    "source-livewan.json": {
+      "head": "9c653aeca1d44b1864090cfe29d404226be24e53",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-9c653aeca1d4-20261017",
+      "manifest_sha256": "ccb7871bc3e7b669d3e61389bdff9c3cc852c35de44882c98ccc2119981eaa17"
+    },
+    "source-wan-frozen-down.json": {
+      "head": "fa249cc03447ed8263f9b16b1bf048ab7a41111e",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-fa249cc03447-20261017",
+      "manifest_sha256": "a6476219f129c88dc093ed12f49585082353c16acf5674132d1e92babea284ca"
+    },
+    "source-wan-tail8.json": {
+      "head": "4abf07b4d7b365191a5716fe573c772acb398273",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-4abf07b4d7b3-20261017",
+      "manifest_sha256": "d09be5e80aa2735e2d2808a8e3b7830f197e9256b4ffd1809db13faf77bf72dd"
+    },
+    "source-wan.json": {
+      "head": "c7cd187052295690735b41f5b7be0133de9d2cd4",
+      "source": "/share/project/shuchenweng/yongyan_liu/DMD-System_worktrees/state-retention-c7cd18705229-20261017",
+      "manifest_sha256": "8ea569c4d358d5adeddb30bc0f9335081c0cb2c1aff7d05d6505922962a62f7f"
+    }
+  },
+  "cleanup": [
+    {
+      "node": 0,
+      "utc": "2026-10-17T20:14:36.145691+00:00",
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "apps": "",
+      "source_head": "fa249cc03447ed8263f9b16b1bf048ab7a41111e",
+      "source_status": "",
+      "gpus": [
+        "0, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "1, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "2, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "3, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "4, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "5, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "6, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "7, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB"
+      ],
+      "cgroup": {
+        "memory.current": "13252136960",
+        "memory.max": "962072674304",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0"
+      },
+      "persistent_device": 49,
+      "node_lock": "AVAILABLE_OBSERVED_AND_RELEASED",
+      "unpaired_tail8_source_control": {
+        "source": "4abf07b4d7b365191a5716fe573c772acb398273",
+        "C1": 35.643741453,
+        "C2": 20.032316251,
+        "ranks": 16,
+        "peak_allocated_bytes": 28660059648,
+        "peak_reserved_bytes": 36446404608,
+        "child": "CUDA_OOM_NO_C2_NO_SPEEDUP"
+      },
+      "h3_block10": {
+        "rank_count": 16,
+        "actual_contract": {
+          "activation_checkpoint_segment_size": 1,
+          "activation_offload_enabled": false,
+          "activation_policy": "none",
+          "adaln_grid_enabled": true,
+          "adaln_grid_size": 1000,
+          "attention_backend": "_flash_3_hub",
+          "auto_resume": false,
+          "fa3_grad_num_splits": 2,
+          "fa3_nograd_num_splits": 2,
+          "fa3_replay_cache_blocks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49
+          ],
+          "fa3_replay_cache_max_d2h_inflight": 2,
+          "fa3_replay_cache_storage": "cpu_staged",
+          "fa3_replay_cache_trim_before_backward": true,
+          "fake_update_ratio": 5,
+          "gradient_accumulation_iters": 1,
+          "gradient_checkpointing": true,
+          "matched_compute_enabled": true,
+          "max_train_iters": 2,
+          "reorder_critic_rollouts": true,
+          "save_every_iters": 0
+        },
+        "peak_allocated_bytes": 35857402880,
+        "peak_reserved_bytes": 40816869376,
+        "minimum_boundary_sampled_driver_free_bytes": 1170604032,
+        "memory_scope": "DIAGNOSTIC_EXTRA_KERNELS_NOT_NATIVE_TIMING_OR_SAME_MEMORY_AS_BASELINE",
+        "host_peak": "memory.peak_UNAVAILABLE; do_not_substitute_memory.current",
+        "collection_sha256": "51131e7ebebcf4d100c3bd1b3169d8a8458b17c4adc1003643b50a6521877bee"
+      },
+      "campaign_cgroup_OOM_delta": {
+        "oom": 0,
+        "oom_kill": 0
+      }
+    },
+    {
+      "node": 1,
+      "utc": "2026-10-17T20:14:37.599818+00:00",
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "apps": "",
+      "source_head": "fa249cc03447ed8263f9b16b1bf048ab7a41111e",
+      "source_status": "",
+      "gpus": [
+        "0, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "1, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "2, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "3, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "4, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "5, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "6, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB",
+        "7, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB"
+      ],
+      "cgroup": {
+        "memory.current": "18368823296",
+        "memory.max": "816043786240",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 3"
+      },
+      "persistent_device": 69,
+      "node_lock": "AVAILABLE_OBSERVED_AND_RELEASED",
+      "campaign_cgroup_OOM_delta": {
+        "oom": 0,
+        "oom_kill": 0
+      }
+    }
+  ],
+  "no_push": true,
+  "main_defaults_modified": false,
+  "H100_contacted": false,
+  "Downloads_modified": false,
+  "raw_artifacts_remote_only": true
+}

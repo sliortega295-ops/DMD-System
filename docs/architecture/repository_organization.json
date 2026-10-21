@@ -1,0 +1,221 @@
+{
+  "schema_version": "distillschedule.repository_organization.v2",
+  "base_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+  "six_workload_source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
+  "runtime_layout": "Compatibility runtime stays byte-identical in runtime/ and is now packaged.",
+  "preserved_launcher_closure": [
+    "scripts/distillschedule/baai_server_smoke.sh",
+    "scripts/distillschedule/build_gan_execution_receipts.py",
+    "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py",
+    "scripts/distillschedule/build_routea_evidence_contract.py",
+    "scripts/distillschedule/cancel_remote_stage.sh",
+    "scripts/distillschedule/check_best_known_integration.py",
+    "scripts/distillschedule/check_h100_source_publication.py",
+    "scripts/distillschedule/check_source_publication.py",
+    "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py",
+    "scripts/distillschedule/compare_wan13b_trajectory_world16.py",
+    "scripts/distillschedule/gan_launch_shim.sh",
+    "scripts/distillschedule/helios_gan_compat_entrypoint.py",
+    "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+    "scripts/distillschedule/launch_minimax_h3_best_node.sh",
+    "scripts/distillschedule/launch_routea_world16_typed_node.sh",
+    "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
+    "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
+    "scripts/distillschedule/livewan_crossscale_entrypoint.py",
+    "scripts/distillschedule/livewan_ncu_rank_wrapper.py",
+    "scripts/distillschedule/own_h3_native_plan.py",
+    "scripts/distillschedule/prepare_livewan_crossscale_source.sh",
+    "scripts/distillschedule/probe_livewan_crossscale_transport.py",
+    "scripts/distillschedule/probe_phaseb_communicator_collapse.py",
+    "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
+    "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+    "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",
+    "scripts/distillschedule/probe_wan13b_fair_world16.py",
+    "scripts/distillschedule/probe_wan13b_trajectory_world16.py",
+    "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
+    "scripts/distillschedule/probe_wan13b_upper_bound_world16.py",
+    "scripts/distillschedule/probe_world16_topology.py",
+    "scripts/distillschedule/process_tree.sh",
+    "scripts/distillschedule/remote_stage_wrapper.sh",
+    "scripts/distillschedule/render_accelerate_config.py",
+    "scripts/distillschedule/run_best_known_workload.py",
+    "scripts/distillschedule/run_g_offload_search.py",
+    "scripts/distillschedule/run_routea_world16.py",
+    "scripts/distillschedule/summarize_livewan_continuous_world16.py",
+    "scripts/distillschedule/summarize_livewan_trajectory_world16.py",
+    "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
+    "scripts/distillschedule/summarize_routea_world16_typed.py",
+    "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py",
+    "scripts/distillschedule/summarize_wan13b_fair_world16.py",
+    "scripts/distillschedule/validate_gan_nsys_receipts.py",
+    "scripts/distillschedule/verify_helios_compat_source.py"
+  ],
+  "relocations": [
+    {
+      "from": "scripts/distillschedule/analyze_gan_full5_nsys.py",
+      "to": "tools/profiling/analyze_gan_full5_nsys.py",
+      "original_sha256": "fc412436c05690f22c52da8b02f8681a46c69b259a82987528cf81455d547dff"
+    },
+    {
+      "from": "scripts/distillschedule/analyze_livewan_crossscale_nsys.py",
+      "to": "tools/profiling/analyze_livewan_crossscale_nsys.py",
+      "original_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63"
+    },
+    {
+      "from": "scripts/distillschedule/analyze_nsys_activity_overlay.py",
+      "to": "tools/profiling/analyze_nsys_activity_overlay.py",
+      "original_sha256": "645a890087f42051d0e58ba5d095d318c93166e00bc845648c741c3557848beb"
+    },
+    {
+      "from": "scripts/distillschedule/analyze_w16_pool_nsys.py",
+      "to": "tools/profiling/analyze_w16_pool_nsys.py",
+      "original_sha256": "18f52ba4fa01bff26e2bc39d106ba4631bc95f573c70bb5c514541ee93bbfa70"
+    },
+    {
+      "from": "scripts/distillschedule/assemble_wan_action_calibrations.py",
+      "to": "tools/assets/assemble_wan_action_calibrations.py",
+      "original_sha256": "7a9cbca275ef3089d58ac4659eb4a985165a7881db94b21b2189c0af4d853f13"
+    },
+    {
+      "from": "scripts/distillschedule/bench_transfer.py",
+      "to": "tools/profiling/bench_transfer.py",
+      "original_sha256": "0fd323b5b28a9f88d38d110827c88848dce87b0d5b7b16e12df62f80935c667e"
+    },
+    {
+      "from": "scripts/distillschedule/build_gan_baseline_contract.py",
+      "to": "tools/assets/build_gan_baseline_contract.py",
+      "original_sha256": "645967aafc5948afd198cb836a4c539316fbde5413800f431b8b1757a56d59c7"
+    },
+    {
+      "from": "scripts/distillschedule/build_gan_rolephase_source_identity.py",
+      "to": "tools/assets/build_gan_rolephase_source_identity.py",
+      "original_sha256": "aa15436ebb62ee0cde84289ea2665308864f5c989c8f7eaece87bd47766730c7"
+    },
+    {
+      "from": "scripts/distillschedule/build_livewan_continuous_trace.py",
+      "to": "tools/assets/build_livewan_continuous_trace.py",
+      "original_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa"
+    },
+    {
+      "from": "scripts/distillschedule/build_livewan_crossscale_bootstrap.py",
+      "to": "tools/assets/build_livewan_crossscale_bootstrap.py",
+      "original_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59"
+    },
+    {
+      "from": "scripts/distillschedule/build_livewan_crossscale_profile_gate.py",
+      "to": "tools/assets/build_livewan_crossscale_profile_gate.py",
+      "original_sha256": "aed0188a42528978d72945db586eb820ebbf8833925a47624e7da012b65403fb"
+    },
+    {
+      "from": "scripts/distillschedule/build_livewan_crossscale_trace.py",
+      "to": "tools/assets/build_livewan_crossscale_trace.py",
+      "original_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c"
+    },
+    {
+      "from": "scripts/distillschedule/build_livewan_two_cycle_profile_gate.py",
+      "to": "tools/assets/build_livewan_two_cycle_profile_gate.py",
+      "original_sha256": "3e0f72741271535042af57531b69b142c6d3d10ba1b49ec2b9b51296e18280c1"
+    },
+    {
+      "from": "scripts/distillschedule/build_systems_gan_bootstrap.py",
+      "to": "tools/assets/build_systems_gan_bootstrap.py",
+      "original_sha256": "cfd00de0642cfbc22aaded6852ea2fb4c4e4d74cb459d96438886d2e46762864"
+    },
+    {
+      "from": "scripts/distillschedule/build_systems_gan_precast.py",
+      "to": "tools/assets/build_systems_gan_precast.py",
+      "original_sha256": "216a64985e88589c8c0ede951d9e19bc04307611a8c71fdf75dbe45e4b7651f6"
+    },
+    {
+      "from": "scripts/distillschedule/build_systems_gan_trace.py",
+      "to": "tools/assets/build_systems_gan_trace.py",
+      "original_sha256": "7ac0410f59cf886759915252f8ada54a97cddc03fef3555225ac8623cf6b15db"
+    },
+    {
+      "from": "scripts/distillschedule/calibrate_wan_native_stages.py",
+      "to": "tools/assets/calibrate_wan_native_stages.py",
+      "original_sha256": "8b6c189a087932bf6496b20509570a9701b6eee386c238b1d10fb0f23ed7c796"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_action_observation.py",
+      "to": "benchmarks/kernels/canary_livewan_action_observation.py",
+      "original_sha256": "daf22584e1df044e8ad9598e36922445b6cef5607b966c784514302934a674b6"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_attention_checkpoint.py",
+      "to": "benchmarks/kernels/canary_livewan_attention_checkpoint.py",
+      "original_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_context_staging.py",
+      "to": "benchmarks/kernels/canary_livewan_context_staging.py",
+      "original_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_generator_gate.py",
+      "to": "benchmarks/kernels/canary_livewan_generator_gate.py",
+      "original_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_generator_modulation.py",
+      "to": "benchmarks/kernels/canary_livewan_generator_modulation.py",
+      "original_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_generator_rms_epilogue.py",
+      "to": "benchmarks/kernels/canary_livewan_generator_rms_epilogue.py",
+      "original_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_rollout_cast_cache.py",
+      "to": "benchmarks/kernels/canary_livewan_rollout_cast_cache.py",
+      "original_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640"
+    },
+    {
+      "from": "scripts/distillschedule/canary_livewan_score_rmsnorm.py",
+      "to": "benchmarks/kernels/canary_livewan_score_rmsnorm.py",
+      "original_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7"
+    },
+    {
+      "from": "scripts/distillschedule/derive_livewan_continuous_bootstrap.py",
+      "to": "tools/assets/derive_livewan_continuous_bootstrap.py",
+      "original_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356"
+    },
+    {
+      "from": "scripts/distillschedule/nsys_profile_command.sh",
+      "to": "tools/profiling/nsys_profile_command.sh",
+      "original_sha256": "da81c81a10e1f004a1e713f49e0202897657db5fef93ba1368323d65a873a61f"
+    },
+    {
+      "from": "scripts/distillschedule/plot_w16_nsys_latest.py",
+      "to": "tools/profiling/plot_w16_nsys_latest.py",
+      "original_sha256": "029becf98d8aa293f5aab8c0516911a187d9813fbcfeccfa63c62188a7cb2039"
+    },
+    {
+      "from": "scripts/distillschedule/prepare_livewan_crossscale_python_overlay.sh",
+      "to": "tools/assets/prepare_livewan_crossscale_python_overlay.sh",
+      "original_sha256": "5d5cdfbefb8d2ef362acda482f21af7e2404d496a6fd9eb857523e65e40f549f"
+    },
+    {
+      "from": "scripts/distillschedule/prepare_m1_calibration_assets.py",
+      "to": "tools/assets/prepare_m1_calibration_assets.py",
+      "original_sha256": "b71cd7a5d8def9fe079067bf5eb101ccf1e4f7e75694cf801f1014ca3aaad5d0"
+    },
+    {
+      "from": "scripts/distillschedule/prepare_negative_prompt_asset.py",
+      "to": "tools/assets/prepare_negative_prompt_asset.py",
+      "original_sha256": "f43e14b6330ec322665bdd956900399f85cf2637d3c9ec41f11c284336817969"
+    },
+    {
+      "from": "scripts/distillschedule/profile_step10a_module_granularity.py",
+      "to": "tools/profiling/profile_step10a_module_granularity.py",
+      "original_sha256": "4d67965c03ad6b877e41c5f845871185e9804b918d0d215b4f01e08ec1271626"
+    },
+    {
+      "from": "scripts/distillschedule/run_nsys_locked.sh",
+      "to": "tools/profiling/run_nsys_locked.sh",
+      "original_sha256": "fdf531e71c93dccd19035a509f9f4cbe1aa2e820178bae22e3cdd3e8574adfa6"
+    }
+  ],
+  "validation_scope": "SOURCE_AND_CPU_ONLY_NO_NEW_GPU_RESULTS"
+}

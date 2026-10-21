@@ -7,6 +7,7 @@ test_refactor_native_macro_calibration.py; this tests summary eligibility.
 from __future__ import annotations
 
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import sys
@@ -22,7 +23,8 @@ HEAD = "a" * 40
 
 
 def _module(name):
-    path = ROOT / "scripts/distillschedule" / f"{name}.py"
+    folder = "tools/assets" if name == "build_livewan_continuous_trace" else "scripts/distillschedule"
+    path = ROOT / folder / f"{name}.py"
     spec = importlib.util.spec_from_file_location(f"cpu_test_{name}", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -155,3 +157,55 @@ def test_calibration_still_fails_closed_on_mixed_policy_or_native_failure(tmp_pa
     assert result["status"] == "FAIL" and any(error in item for item in result["errors"])
     assert result["calibration_only"] is True
     assert result["formal_timing_eligible"] is False and result["cycle_2"]["claimable"] is False
+
+
+def test_request_summary_rejects_actual_old_shape_not_only_metadata(tmp_path, monkeypatch):
+    module, run, output = _inputs(tmp_path, monkeypatch, 'baseline')
+    from distillschedule.search.livewan_request import LiveWanRequest, lower_native_plan
+    from distillschedule.search.execution import resolve_candidate
+    from distillschedule.search.livewan_implementation import LIVEWAN, LiveWanImplementation
+    from distillschedule.core.plan import ExecutionPlan
+    from distillschedule.workloads.best_known.registry import fingerprint
+    req = LiveWanRequest(frames=69)
+    # Upgrade only the CPU fixture's request/trace/actual-shape evidence.
+    trace_path = Path(sys.argv[sys.argv.index('--trace')+1])
+    trace = json.loads(trace_path.read_text())
+    trace.update(workload_request=req.to_dict(), workload_request_sha256=fingerprint(req.to_dict()),
+        sample_generation=dict(method='gen_teacher',livewan_commit='1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5',frames=69,steps=40,size='1.3B'))
+    for row in trace['rows']:
+        index = row['logical_step'] % 5 * 16 + row['logical_slot']
+        row['sample_sha256'] = f'{index:064x}'
+    trace.pop('trace_sha256')
+    trace['trace_sha256'] = fingerprint(trace)
+    _json(trace_path, trace)
+    native = resolve_candidate(LIVEWAN, LiveWanImplementation('fsdp',request=req).id)['native_plan']['template']
+    def expand(v):
+        if isinstance(v,str) and '${ENV:' in v: return '/cpu/unused'
+        if isinstance(v,list): return [expand(x) for x in v]
+        if isinstance(v,dict): return {k:expand(x) for k,x in v.items()}
+        return v
+    native=ExecutionPlan.from_mapping(expand(native)).to_dict()
+    effective = copy.deepcopy(native)
+    effective['evidence']['steps'] = 10
+    sha = fingerprint(effective)
+    for n in (0,1):
+        _json(run/f'launch-native-plan.node{n}.json',native)
+        _json(run/f'effective_plan.node{n}.json',dict(effective,effective_plan_sha256=sha))
+    parsed=module.FormalTrace.load(trace_path,expected_cycles=2)
+    logical,physical=module._expected_inventory(parsed,mode='baseline')
+    for r in range(16):
+        path=run/f'receipts/rank_{r:03d}.json'; raw=json.loads(path.read_text())
+        raw.update(workload_request=req.to_dict(), actual_latent_shapes=[list(req.latent_shape)],
+            installed_plan_sha256=fingerprint(native), effective_plan_sha256=sha,trace_sha256=trace['trace_sha256'],
+            logical_call_inventory={k:v//16 for k,v in logical.items()},physical_call_inventory={k:v//16 for k,v in physical.items()})
+        for cyc in raw['two_cycle_timing']['per_cycle_contract']:
+            cyc.update(logical_call_inventory_delta={k:v//32 for k,v in logical.items()},
+                       physical_call_inventory_delta={k:v//32 for k,v in physical.items()})
+        _json(path,raw)
+    assert module.main() == 0
+    assert json.loads(output.read_text())['workload_request'] == req.to_dict()
+    raw=json.loads((run/'receipts/rank_015.json').read_text())
+    raw['actual_latent_shapes']=[[1,16,21,46,80]]
+    _json(run/'receipts/rank_015.json',raw)
+    assert module.main() == 1
+    assert any('actual LiveWan latent shape' in e for e in json.loads(output.read_text())['errors'])

@@ -1,0 +1,48 @@
+{
+  "utc": "2026-10-19T11:54:25.872793+00:00",
+  "nodes": [
+    {
+      "node": 0,
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+      "source_clean": true,
+      "lock_available": true,
+      "gpu": "0, GPU-cad55364-e014-c35f-337e-db899afd1c6a, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n1, GPU-a904c6f6-6410-dc0f-c7c3-efc068004617, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n2, GPU-79ab3e5e-e382-1f9c-bede-1900666e9283, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n3, GPU-bab43db0-a051-0419-39f7-e33effa9445b, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n4, GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n5, GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n6, GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n7, GPU-01fff32a-1dd6-93a7-1aae-60d378382961, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB",
+      "gpu_processes": "",
+      "framework_processes": [],
+      "refs": {
+        "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/configs/W4/operation_trace_cycles4.json": "2bc7a53ff79e19280bfae4c70855b429f271f20df7ab9f6206fe0cc3df4dcabb",
+        "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/configs/W4/bootstrap_cycles4.json": "0b6968ea863b74844ceae3005c6cb60de29f738d8bd0c622c6cd8e94c81ea9ef",
+        "/share/project/shuchenweng/yongyan_liu/DistillSchedule_assets/livewan_two_cycle_c25_8f52113_20260905_r1/manifests/source_receipt.json": "cb1842d7e90db027724e3d2ee39c17362a5267116cae0e5e05a1e6916cc2fe8f"
+      },
+      "mount": "/share/project none[/airs/sharefs/d63902e2-3277-4e5b-a8aa-4de780a2dc9d/e69f95a1-926a-434d-8302-fd3c23b8c5a9/PUBLIC] LeoFS",
+      "cgroup_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "cgroup_current": "15093178368",
+      "cgroup_peak": null,
+      "cgroup_peak_status": "KERNEL_FILE_NOT_EXPOSED_NOT_ZERO",
+      "GO": true
+    },
+    {
+      "node": 1,
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+      "source_clean": true,
+      "lock_available": true,
+      "gpu": "0, GPU-a7668680-c210-ecdd-c247-a8337b735231, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n1, GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n2, GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n3, GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n4, GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n5, GPU-2d8db9f8-6454-f744-0d9b-0f553205267d, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n6, GPU-75e465e8-461a-dfde-2e54-6d79c23fc521, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB\n7, GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6, NVIDIA A100-SXM4-40GB, 40960 MiB, 0 MiB",
+      "gpu_processes": "",
+      "framework_processes": [],
+      "refs": {
+        "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/configs/W4/operation_trace_cycles4.json": "2bc7a53ff79e19280bfae4c70855b429f271f20df7ab9f6206fe0cc3df4dcabb",
+        "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/configs/W4/bootstrap_cycles4.json": "0b6968ea863b74844ceae3005c6cb60de29f738d8bd0c622c6cd8e94c81ea9ef",
+        "/share/project/shuchenweng/yongyan_liu/DistillSchedule_assets/livewan_two_cycle_c25_8f52113_20260905_r1/manifests/source_receipt.json": "cb1842d7e90db027724e3d2ee39c17362a5267116cae0e5e05a1e6916cc2fe8f"
+      },
+      "mount": "/share/project none[/airs/sharefs/d63902e2-3277-4e5b-a8aa-4de780a2dc9d/e69f95a1-926a-434d-8302-fd3c23b8c5a9/PUBLIC] LeoFS",
+      "cgroup_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 3\n",
+      "cgroup_current": "19022532608",
+      "cgroup_peak": null,
+      "cgroup_peak_status": "KERNEL_FILE_NOT_EXPOSED_NOT_ZERO",
+      "GO": true
+    }
+  ],
+  "force_cleanup_performed": false
+}

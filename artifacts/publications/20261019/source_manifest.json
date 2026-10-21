@@ -1,0 +1,706 @@
+{
+  "schema": "dmd.github_source_snapshot.v1",
+  "date": "2026-10-19",
+  "repository": "sliortega295-ops/DMD-System",
+  "publication_scope": "Source/evidence archive only. No new GPU run, main merge, mathematical change or canonical default promotion.",
+  "main_snapshot": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+  "training_source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+  "branches": [
+    {
+      "role": "planner_search_scheduler",
+      "branch": "codex/wan-state-policy-planner-20261017",
+      "head": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "origin_head_before": null,
+      "unpublished_commits": 57,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/ea29129342741b54e59c4773e07454f541fadcc7",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/wan-state-policy-planner-20261017",
+      "main_merged": false,
+      "scope": "Bounded measured-cost search, native saved-plan lowering, A100 and H100 code/CPU adapters; five original-parameter A100 manual/selected matches; W5 unresolved."
+    },
+    {
+      "role": "livewan_full_b_reselected_a",
+      "branch": "codex/livewan-r2-capacity-offload-20261019",
+      "head": "053bdcad2cf0e5388738156599f96a6ec5905518",
+      "origin_head_before": null,
+      "unpublished_commits": 37,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/053bdcad2cf0e5388738156599f96a6ec5905518",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/livewan-r2-capacity-offload-20261019",
+      "main_merged": false,
+      "scope": "W4 complete B on FSDP16 and reselected G8FSDP8 A; both measured at053bdcad, numerical REVIEW."
+    },
+    {
+      "role": "wan_factorial_fsdp_compatible_b",
+      "branch": "codex/w1-r2-fsdp-compatible-b-20261019",
+      "head": "7fa27ff8cab0a483a65fd857e0df762d46194d6d",
+      "origin_head_before": null,
+      "unpublished_commits": 26,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/7fa27ff8cab0a483a65fd857e0df762d46194d6d",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/w1-r2-fsdp-compatible-b-20261019",
+      "main_merged": false,
+      "scope": "W1 factorial runtime; only_B is FSDP-compatible subset, not complete B. Numerical NOT_RUN remains."
+    },
+    {
+      "role": "wan_large_attention",
+      "branch": "codex/wan-large-attention-backend-20261018",
+      "head": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+      "origin_head_before": null,
+      "unpublished_commits": 60,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/wan-large-attention-backend-20261018",
+      "main_merged": false,
+      "scope": "W1 manually measured large-shape FA3 backend; separate from planner and from r34 external EMA source."
+    },
+    {
+      "role": "helios_nogan_retention",
+      "branch": "codex/nogan-partial-parameter-retention-20261018",
+      "head": "e2374f084977a31ef1fd06a2e81a5e9582af818c",
+      "origin_head_before": null,
+      "unpublished_commits": 56,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/e2374f084977a31ef1fd06a2e81a5e9582af818c",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/nogan-partial-parameter-retention-20261018",
+      "main_merged": false,
+      "scope": "W2 first24 G phase-local retention and bounded Critic retention; small single-pair REVIEW gain."
+    },
+    {
+      "role": "helios_gan_retention",
+      "branch": "codex/state-retention-six-20261017",
+      "head": "155ffbb585356a29b544573a391eb456b790a15a",
+      "origin_head_before": null,
+      "unpublished_commits": 55,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/155ffbb585356a29b544573a391eb456b790a15a",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/state-retention-six-20261017",
+      "main_merged": false,
+      "scope": "W3 opt-in frozen FFN-up retention; small single-pair REVIEW gain; not merged-LoRA."
+    },
+    {
+      "role": "h3_ar_fa3_bank",
+      "branch": "codex/h3-ar-uncached-rollout-fa3-20261018",
+      "head": "69a9464997de16deafd5786338f538ba7930d9a5",
+      "origin_head_before": null,
+      "unpublished_commits": 54,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/69a9464997de16deafd5786338f538ba7930d9a5",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/h3-ar-uncached-rollout-fa3-20261018",
+      "main_merged": false,
+      "scope": "W6 independent exact frozen AdaLN bank and uncached FA3 candidates; r41/r43 slower. r46 metadata-barrier external source archived separately."
+    },
+    {
+      "role": "h3_full_numeric_diagnostic",
+      "branch": "codex/h3-full-local-state-diagnostic-20261018",
+      "head": "285b31e3ec4789d7f98816265f19f7853827b3e2",
+      "origin_head_before": null,
+      "unpublished_commits": 55,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/285b31e3ec4789d7f98816265f19f7853827b3e2",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/h3-full-local-state-diagnostic-20261018",
+      "main_merged": false,
+      "scope": "W5 full-sequence sampled numerical failure localization, not a passing manual/selected speed pair."
+    },
+    {
+      "role": "livewan_tail4_candidate",
+      "branch": "codex/livewan-c51-tail4-census-20261017",
+      "head": "0dfce74b66499419fdf38ec40b5e621544d8b904",
+      "origin_head_before": null,
+      "unpublished_commits": 33,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/0dfce74b66499419fdf38ec40b5e621544d8b904",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/livewan-c51-tail4-census-20261017",
+      "main_merged": false,
+      "scope": "W4 tail4 retention with actual replay counters; manual experiment, not the R3 full-B arm."
+    },
+    {
+      "role": "pp_fsdp_dp_cpu_prototype",
+      "branch": "codex/wan-grid-static-shared-20261014",
+      "head": "7cde0ff8101725d8bab2843c52dcde127b09525a",
+      "origin_head_before": null,
+      "unpublished_commits": 44,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/7cde0ff8101725d8bab2843c52dcde127b09525a",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/wan-grid-static-shared-20261014",
+      "main_merged": false,
+      "scope": "PP2 x FSDP shard4 x replica2, TP1; CPU prototype. No world16 C2; not the old TP4 baseline."
+    },
+    {
+      "role": "wan_merged_lora_negative_evidence",
+      "branch": "codex/wan13b-shadow-noise30-20261012",
+      "head": "c69876197aeaccbab19b515b54d1022f07634422",
+      "origin_head_before": null,
+      "unpublished_commits": 13,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/c69876197aeaccbab19b515b54d1022f07634422",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/codex/wan13b-shadow-noise30-20261012",
+      "main_merged": false,
+      "scope": "Merged-LoRA trajectory/noise study. Rejected mechanism, archived for provenance; not an accepted speedup."
+    },
+    {
+      "role": "h100_native_pinned_dependency",
+      "branch": "agent/h100-helios-nograd-retain-20261014",
+      "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+      "origin_head_before": null,
+      "unpublished_commits": 35,
+      "same_as_origin": false,
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/8fc70e8ce9f6e0243604812120119c9f4c078e55",
+      "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/agent/h100-helios-nograd-retain-20261014",
+      "main_merged": false,
+      "scope": "Exact8fc70e8 native dependency pinned by H100 adapter. Local CPU protocol verification only; no H100 connection or resumed campaign."
+    }
+  ],
+  "files": [
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/conclusion.json",
+      "bytes": 13002,
+      "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r1/reports/conclusion.md",
+      "bytes": 6099,
+      "sha256": "af60b0470bed1cede2774f11411d7ec5f83630e22ec14f3af574100f4307167f",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r14/reports/conclusion.json",
+      "bytes": 833,
+      "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/reports/conclusion.json",
+      "bytes": 13611,
+      "sha256": "ae00d0adb1c361f9511c84c3477d5bd9ce0c95eb8f99200f0788faf7a6cb0548",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/reports/conclusion.md",
+      "bytes": 2641,
+      "sha256": "b6a55cb6ef6a32bc4a46514299ac1ac0d19336d65e64075f7d9d6425b9616032",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r25/reports/conclusion.json",
+      "bytes": 129521,
+      "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r25/reports/conclusion.md",
+      "bytes": 2222,
+      "sha256": "26805e2cb24f629981776ebc954d77a739669d88064823fcb82ca654477bb710",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/reports/conclusion.json",
+      "bytes": 100990,
+      "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/reports/conclusion.md",
+      "bytes": 2190,
+      "sha256": "42d55333e8093f0c82973ee0370c9ad17ed327447cf0271bb48bce23e89d31da",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r36/reports/conclusion.json",
+      "bytes": 2725,
+      "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r36/reports/conclusion.md",
+      "bytes": 1966,
+      "sha256": "c997b752a759ddc0b5a4f476f5dc7142764da51da65b7b99d9204e8e59b80f37",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r41/reports/conclusion.json",
+      "bytes": 1497,
+      "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r41/reports/conclusion.md",
+      "bytes": 1272,
+      "sha256": "2aa791da97dc58bdccb66bd8fc6f8bf1758c66dfdf27e011c8312a75c32425cc",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/reports/conclusion.json",
+      "bytes": 1601,
+      "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/reports/conclusion.md",
+      "bytes": 1312,
+      "sha256": "54ebdc2da251fab92fd9d3686224a568d501471540e5be19eab7db2f300e67d2",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/reports/conclusion.json",
+      "bytes": 2476,
+      "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/reports/conclusion.md",
+      "bytes": 1477,
+      "sha256": "e63ad7a67696f23a119a6ca3b0257053e49c73801b0940021093a616cbd1f703",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/reports/six-workload-planner-status-v4.json",
+      "bytes": 8091,
+      "sha256": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/W2_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion-v2.json",
+      "bytes": 38284,
+      "sha256": "9321f1d64c29724d680ebe2c943859b20bf3f00b811eab1f20c2c7dbea75791f",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/W4_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/reports/conclusion.json",
+      "bytes": 24641,
+      "sha256": "9c371393c220e2502bbed6f9a7834e267dc9d0e9aaf286b62c284284b5ce7b7b",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/W5_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq/reports/conclusion-v2.json",
+      "bytes": 3463,
+      "sha256": "9920ffe3f818fd9d2457030b3857344b9ef71f93dc0fefed8f27ea8c1b3837c8",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/W6_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r16/reports/derived-pair.json",
+      "bytes": 15135,
+      "sha256": "8ee328fa81738c6abb2b6e17ec310c5723b0bc874cdcdf68b16860afacf890e2",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/GAN_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/reports/conclusion-v2.json",
+      "bytes": 18738,
+      "sha256": "9ac6970e81164bae25f93c79698ad7cf9381bccf47dd9e07684ff0df2795effd",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/C34_conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/livewan_c34_r1/reports/conclusion.json",
+      "bytes": 14381,
+      "sha256": "fdb759370ae40fd7f8f699a954e7431a6be6005e00bf97f30f006f4fb3076278",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/wan_retain4/campaign/configs/native_match.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/campaign/configs/native_match.json",
+      "bytes": 7663,
+      "sha256": "45e423e74576639a6de3336590269b7dc39185a53b6e30e07d9c8d39c2573f9f",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/wan_retain4/campaign/manifests/qualification_and_plan.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/campaign/manifests/qualification_and_plan.json",
+      "bytes": 22098,
+      "sha256": "d1e78b5d35bdc05ba13a52ece33bdc76d34936594ec29496d619f11897c24909",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/wan_retain4/campaign/reports/wan_native_pair.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/campaign/reports/wan_native_pair.json",
+      "bytes": 13439,
+      "sha256": "ce9f40d4e538c7ecf8188a2203cfbe4afa754ffbbde0c151819033543b5f54b5",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/wan_retain4/configs/manual-strategy.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/configs/manual-strategy.json",
+      "bytes": 505,
+      "sha256": "c1044781b266e255ec6060403da05ceb4eb54db9daddf9971d191990b706e724",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/reports/conclusion.json",
+      "bytes": 5657,
+      "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/reports/conclusion.md",
+      "bytes": 3342,
+      "sha256": "60d6c13daaf57ab5bd349d6e11ea728354a9121fe8b2d15bc2885315e7a6355e",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/data/results.csv",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/data/results.csv",
+      "bytes": 745,
+      "sha256": "da501e23b5b870c58d0c4e2ba37f2428c82e8223a88e9de9f88a922373890208",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/data/complete_B_actual_kernel_counts.csv",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/data/complete_B_actual_kernel_counts.csv",
+      "bytes": 7426,
+      "sha256": "137dea1ebedc780621ad12b227035b20c5d4f18e70113560e61b2c2834838104",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/manifests/final_cleanup_followup.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/manifests/final_cleanup_followup.json",
+      "bytes": 4236,
+      "sha256": "76fce99152d32ea2c8fabaeb79968290ce73ed0014f779bd9ddfb293d1c7dc0a",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/runs/paper_r3_W4_only_A_g8_fsdp8_v1_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/runs/paper_r3_W4_only_A_g8_fsdp8_v1_20261019/summary.json",
+      "bytes": 1093,
+      "sha256": "34a28550c0d35a28f9833442e155d17274a6666a250621b797a483ecbb7bc5a6",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/runs/paper_r3_W4_only_B_full_fsdp16_v1_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/runs/paper_r3_W4_only_B_full_fsdp16_v1_20261019/summary.json",
+      "bytes": 1084,
+      "sha256": "6fce16669892a1921e01bf370866a8a0550bd1b657816f7f9c538ec0d0f81027",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/data/native_ablation_results.csv",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/data/native_ablation_results.csv",
+      "bytes": 2581,
+      "sha256": "aa940773632dc0b5b49bf4e0d43fabcb4ed8154bfbd72851b6fbba26bda89bd0",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/only_B_measurement_followup_r2/reports/results.csv",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/only_B_measurement_followup_r2/reports/results.csv",
+      "bytes": 768,
+      "sha256": "2dcd963b7b206b601e54136c36da2ed33c6c2d489f7e5e4fd848bbb9a2bdd7c3",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/runs/paper_r2_W4_baseline_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/runs/paper_r2_W4_baseline_20261019/summary.json",
+      "bytes": 1066,
+      "sha256": "b71cf3b1560526eb7c528544e3d9662222318949e61c36b3de1c9543bd6505ba",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/runs/paper_r2_W4_full_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/runs/paper_r2_W4_full_20261019/summary.json",
+      "bytes": 1080,
+      "sha256": "d8a5398228e88d6fec225401e9f3cf43ea834043e6f905242ffa13ba8956604d",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/runs/paper_r2_W1_only_A_c1cpu_retry1_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/runs/paper_r2_W1_only_A_c1cpu_retry1_20261019/summary.json",
+      "bytes": 1241,
+      "sha256": "52eeec33f653d11bb2f61062b425393241d79f6557fd7b81c04a691289699da9",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/factorial_r2/runs/paper_r2_W1_full_20261019/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/runs/paper_r2_W1_full_20261019/summary.json",
+      "bytes": 1222,
+      "sha256": "cfa9988e617373688da76b8c6becaaccf100882019e8ce4379044917b6cd3aa9",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/wan13b_shadow_noise30_20261012_r1/reports/summary.json",
+      "bytes": 5547,
+      "sha256": "6b5e0ba4a1e5e93bb0b335707279d6e6dd02bb55f5fe90ddcec599a07bd1ba77",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/wan13b_shadow_noise30_20261012_r1/reports/summary.md",
+      "bytes": 4819,
+      "sha256": "de1ab6260c895d540bfd9cb24ea25ff5ea9f9b88a742017d1bc8104fd300ee53",
+      "kind": "historical_measured_evidence"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r30/scripts/manual_entry.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r30/scripts/manual_entry.py",
+      "bytes": 1726,
+      "sha256": "d0fb3f85f7bd1399475ff967670d48b7ed5375478dc197eba517c44541e1b62b",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r30/scripts/stream_execution.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r30/scripts/stream_execution.py",
+      "bytes": 6484,
+      "sha256": "f954758d7642f85d41a535ad9582af8862b396f3e98c21e481773d40a25e857e",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/manual_entry.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/manual_entry.py",
+      "bytes": 2285,
+      "sha256": "0dfacf682828f4d3594285c3bbdd5e986d0cb7d22270f096941dfe6c9d946ffc",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/exact_ema_graph.py",
+      "bytes": 6455,
+      "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/tests/test_exact_ema_graph.py",
+      "bytes": 3426,
+      "sha256": "c0fe41890a9aafe0d88510265054807e14a24b9c54f851c75579db49d904af2b",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_manual_ema_integration.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/tests/test_manual_ema_integration.py",
+      "bytes": 3986,
+      "sha256": "b9b1307a8d084001dc33727eab0abee734cbe0d6183327222dae7a3db08bcb0d",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/prepare_native_pair.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/prepare_native_pair.py",
+      "bytes": 7689,
+      "sha256": "3a8d80d525851e3809351e7a6848393382dc058a3513eac69511d3b57ec0ad3e",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/native_node.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/scripts/native_node.py",
+      "bytes": 16236,
+      "sha256": "653988a0a31a78fa752afc41905debd0d3d1e615b9cd374c31081ea72c1d8950",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r43/tests/test_manual_owner_contract.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/tests/test_manual_owner_contract.py",
+      "bytes": 5518,
+      "sha256": "817ece56b48ff68999cc45d9155ed611618484937d3385f74750bdbe4547cc2d",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r43/scripts/native_r2/h3_ar_match_controller.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/scripts/native_r2/h3_ar_match_controller.py",
+      "bytes": 47089,
+      "sha256": "91cc98602f80ff9c084311ee21f0b32468d36cb9256a8526c364881bbc790aa4",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r43/scripts/native_r2/manual_bank_worker.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/scripts/native_r2/manual_bank_worker.py",
+      "bytes": 1227,
+      "sha256": "4908b9fcaf12cffc3e8e3b4e4b9effa0b541e1a1f5c2a95a39f0fa9a6b6cc488",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/h3_ar_match_controller.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/h3_ar_match_controller.py",
+      "bytes": 48458,
+      "sha256": "711f1dd832b3d12704f37e3e156b7a35fa4003a99f50be10c7953ea9796948b2",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/h3_ar_match_node.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/h3_ar_match_node.py",
+      "bytes": 23906,
+      "sha256": "dfa21da4f6249285ac3c8928dca40bdc850740e2919ee7ad4209333fc1db69b7",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/metadata_barrier_worker.py",
+      "bytes": 2567,
+      "sha256": "8812bed6a7c7b9eda2beb4b58b32cd3264ed2e5e0affa3ec8e092713e47c4590",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/native_metadata_barrier.py",
+      "bytes": 3074,
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_metadata_barrier.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_metadata_barrier.py",
+      "bytes": 3074,
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/tests/test_metadata_barrier.py",
+      "bytes": 3047,
+      "sha256": "7b2eea329059d07cc7643c555aed2fcc426bc923abefad6d450339f0451bdf14",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_barrier_consumer.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/tests/test_barrier_consumer.py",
+      "bytes": 3283,
+      "sha256": "f5bf7811bb115213cc81c210a0a8a7bf3f9b00039ce0adbcdf2164a6b2dae0d7",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/prepare_native.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/prepare_native.py",
+      "bytes": 8151,
+      "sha256": "b2028ef00a62af41fa079174d4a64cae0b9ed76bb2cc753a29d0b072958c6c73",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/run_native_pair.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/run_native_pair.py",
+      "bytes": 3501,
+      "sha256": "f8e24c6939319e88170c99b467b4d2493d2b34a8f34f88b4d4cdfe63a7741d1a",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/collect_native_pair.py",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/collect_native_pair.py",
+      "bytes": 8064,
+      "sha256": "c7034d13dff5c677d9938c82cb6aa703854ee2c8812700e945e47206fc70af4d",
+      "kind": "historical_manual_source_not_default"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/control-backend.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-backend.json",
+      "bytes": 2211,
+      "sha256": "20bff8b5bfcb7014b9ee6887a532bdb615b644afef3a97593ab5bb31422ddfa4",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/graph.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/graph.json",
+      "bytes": 7609,
+      "sha256": "85b8c269b6b9e5da1f3d68e6228b4fc34524def792d098c0b63cb652af6247f6",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/control.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control.json",
+      "bytes": 7627,
+      "sha256": "1b6b2ae134def669d1546061e58e03e766fe58aeafd3e4fd117241e6891c5383",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/control-ema.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-ema.json",
+      "bytes": 891,
+      "sha256": "b8fec651987b751e582a2dcc4da8487f7950cbfa1df15f3286e79b7bad24c53f",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/GO-native.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/GO-native.json",
+      "bytes": 664,
+      "sha256": "e2591dba5abf925af91b3b2cc607b2673532c29b90a67d8a3d09889b62e0394b",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/graph-backend.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/graph-backend.json",
+      "bytes": 2209,
+      "sha256": "2c38c8b04692ad14856c183203dcfe12b6cd63e09e9a0977d3521c4b1dcce146",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/graph-ema.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/graph-ema.json",
+      "bytes": 885,
+      "sha256": "9eba1f4249dcf3a3a7060d34ed12f5107708c57f29c7ac080ce353cb9fdd34ff",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/graph-stream.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/graph-stream.json",
+      "bytes": 664,
+      "sha256": "4a3abef08d576341c4731227ead4d2d7e906ec823887249d11e9d621ef6afb7d",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/configs/control-stream.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/control-stream.json",
+      "bytes": 668,
+      "sha256": "72451d231de73238d6148526cba8d36238a190e5ce380e23b85372849f6f9b5b",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/configs/manual-packet.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/manual-packet.json",
+      "bytes": 696,
+      "sha256": "ddae71538361b7974468989794b2c07be4a0d8ae7c99ab5bd342b3c972ebbaad",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/configs/admission.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/admission.json",
+      "bytes": 7141,
+      "sha256": "05cf61ae1278051e2763f74e0d8f6a0d1c4a9d2ec84046d52fb8b99fcaa01d1c",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/configs/GO-native.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/GO-native.json",
+      "bytes": 1105,
+      "sha256": "20f54b384564fb018789eba8e25fd713989ecbd55b243a4ff5866005c2d0d7e4",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    },
+    {
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/configs/config.json",
+      "original_path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/config.json",
+      "bytes": 6415,
+      "sha256": "4c881321bcc35d993bef2746e8a11f494326b1b7e74af39f31a70b7c923db107",
+      "kind": "historical_manual_config_requires_original_assets_and_paths"
+    }
+  ],
+  "planner_gpu_matched_workloads": 5,
+  "planner_total_workloads": 6,
+  "H100_gpu_status": "CODE_CPU_ONLY_NO_NEW_H100_GPU",
+  "unresolved": [
+    "W5 sampled numerical failure; no fresh native speed pair",
+    "No unrestricted strategy/global-optimum claim",
+    "Latest independent optimization branches are not one merged runtime",
+    "W1 compatible B is a subset; not full B",
+    "Numerical REVIEW or NOT_RUN is not strict equivalence"
+  ],
+  "source_pin_note": "heads identify original code/measurement commits. The LiveWan publication branch later adds documentation/evidence only; exact remote tip is recorded in the publication delivery receipt."
+}

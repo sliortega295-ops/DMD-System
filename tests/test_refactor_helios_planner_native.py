@@ -65,8 +65,12 @@ def test_generated_identity_profile_and_mode_are_explicit(variant, mesh, chunk, 
     assert lowered["memory"] == baseline["memory"]
     for key, value in baseline["runtime"]["environment"].items():
         if key not in {"DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS",
+                       "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE",
                        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD"}:
             assert env[key] == value
+    assert env["DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE"] == "0"
+    assert baseline["runtime"]["environment"]["DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE"] == "2"
+    assert "seconds" not in lowered["historical"]
 
 
 @pytest.mark.parametrize("changes", [
@@ -279,7 +283,7 @@ def _fixture(monkeypatch, *, variant="no-gan", window=3, persistence=False, mode
             _precompute_critic_rollouts=precompute, _run_nogan_critic_precomputed=critic,
             _run_gan_critic_precomputed=critic)
     policy = NS(mesh_policy=impl.mesh, rollout_batch_size=1, pack_real_score_pair=False,
-                rollout_backend="native-fsdp2-batch", selective_flash_checkpoint_stride=2,
+                rollout_backend="native-fsdp2-batch", selective_flash_checkpoint_stride=0,
                 modulation_chunk_tokens=impl.chunk_tokens, generator_nograd_persistent_unshard=persistence,
                 elide_official_generator_free_memory=variant == "gan",
                 elide_critic_scalar_logs=variant == "gan")
@@ -379,7 +383,7 @@ def test_gan_loaded_systems_control_mapping_is_fail_closed(monkeypatch, change):
     assert not f.events
 
 
-@pytest.mark.parametrize("field,value", [("selective_flash_checkpoint_stride", 0),
+@pytest.mark.parametrize("field,value", [("selective_flash_checkpoint_stride", 2),
                                          ("rollout_backend", "external")])
 def test_effective_nonsearched_policy_must_match_canonical(monkeypatch, field, value):
     from distillschedule.runtime.helios_planner_cycle import run_two_cycles

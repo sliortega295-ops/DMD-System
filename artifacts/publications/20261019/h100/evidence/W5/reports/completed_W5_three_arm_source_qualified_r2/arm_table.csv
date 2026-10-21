@@ -1,0 +1,4 @@
+arm,source,native_seconds,peak_allocated_GiB,peak_reserved_GiB,host_sampled_cgroup_peak_GiB,activation_policy,strict_numeric
+resident_boundary_CPU,d81ebb2014af9ea3a84011e3be198818e63cb1e7,637.2043070364743,59.67044687271118,63.125,637.4247589111328,checkpoint_boundary_cpu,NOT_RUN
+FSDP_control,9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71,638.522138278,41.603105545043945,45.515625,665.0897026062012,none,NOT_RUN
+FSDP_GPU_attention_cache,9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71,539.7183830337599,64.11575555801392,71.08203125,757.6433143615723,none,NOT_RUN

@@ -42,10 +42,19 @@ def test_only_installed_on_explicit_validated_g_scope():
 def test_plan_only_no_assets_or_cuda(tmp_path):
     root=Path(__file__).resolve().parents[1]
     out=tmp_path/'unused.json'
-    p=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_generator_modulation.py'),
+    p=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_generator_modulation.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(out),'--plan-only'],
         text=True,capture_output=True,check=True,timeout=20)
     v=json.loads(p.stdout)
     assert v['status']==v['world16']=='NOT_RUN'
     assert v['parent']=='C31' and not v['production_installed']
     assert 'BITWISE' in v['correctness'] and not out.exists()
+
+
+def test_actual_request_specific_modulation_census():
+    from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT, runtime_receipt_errors
+    from distillschedule.search.livewan_request import LiveWanRequest
+    r=dict(PLAN_CONTRACT,execution_status='PASS',scope_entries=20,scope_exits=20,
+        scope_forward_calls=[976]*20,calls=976*20,active=False,scope_failures=0,contract_failures=0)
+    assert runtime_receipt_errors(r,rank=0,cycles=2)
+    assert not runtime_receipt_errors(r,rank=0,cycles=2,request=LiveWanRequest(frames=69))

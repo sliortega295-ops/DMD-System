@@ -16,6 +16,7 @@ from typing import Any, Callable, Mapping
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, write_new_json
 from .contracts import CAPACITY_FAILURES, FAILURES, Candidate, require, validate_measurement
 from .cost_model import CostModel
+from .execution import NativeTrialRunner
 from .model_search import validate_saved_prediction
 from .plan_ir import PlanningProblem
 from .registry import get_candidate
@@ -131,18 +132,37 @@ class ModelValidationSession:
         require(index < self.max_trials, "total timing budget exhausted")
         directory = self.output / "trials" / f"{index:02d}-{phase}-{cid}"
         directory.mkdir(parents=True, exist_ok=False)
-        # This is the graph-to-native binding proof. NativeTrialRunner resolves
-        # the same typed implementation with fresh run IDs and native gates;
-        # calibration paths need not be copied to every GPU worker filesystem.
+        # Preserve the actual saved graph/cost/prediction through the native
+        # runner. Its receipt references must remain readable where the normal
+        # dispatcher/collector revalidates the embedded model_plan.
         selection = {"problem_sha256": self.problem.digest, "cost_model_sha256": self.costs.digest,
                      "predicted_best": self.predictions[cid]}
-        plan = self.adapter.lower_prediction(selection, self.problem, self.costs, run_id=directory.name)
+        native_executor = isinstance(execute, NativeTrialRunner)
+        lowering_options = {}
+        if native_executor:
+            # Bind the saved selection to real assets before native preparation.
+            # Timing-only gates belong to the runner's candidate-specific
+            # prepared assets, not this initial correctness-mode lowering.
+            assets_path = (directory / "assets-config.json").resolve()
+            assets = {key: value for key, value in execute.assets.items()
+                      if key not in ("correctness", "trajectory_comparison")}
+            write_new_json(assets_path, assets)
+            lowering_options = {"assets_path": assets_path, "mode": "correctness"}
+        plan = self.adapter.lower_prediction(selection, self.problem, self.costs,
+            run_id=directory.name, **lowering_options)
         require(plan["search_candidate"] == self.candidates[cid].to_dict(), "lowering changed candidate")
         write_new_json(directory / "model-lowering.json", plan)
         self._append({"type": "START", "trial_id": directory.name, "candidate_id": cid, "phase": phase})
         started = time.monotonic()
         try:
-            raw = execute(self.candidates[cid], phase, directory)
+            if native_executor:
+                path = directory / "model-lowering.json"
+                raw = execute(self.candidates[cid], phase, directory,
+                    lowered_plan={"path": str(path.resolve()), "sha256": file_sha256(path)})
+            else:
+                # Existing CPU protocol executors keep the three-argument API;
+                # they are not evidence of saved-plan native execution.
+                raw = execute(self.candidates[cid], phase, directory)
             path = directory / "executor-receipt.json"
             write_new_json(path, raw)
             result = self._validate_raw(raw, self.candidates[cid])

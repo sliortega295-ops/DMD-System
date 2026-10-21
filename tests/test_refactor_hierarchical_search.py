@@ -188,7 +188,7 @@ def test_existing_macro_adapter_lowering_with_new_selector(tmp_path,monkeypatch,
         kwargs.update(algorithm='hierarchical',prune=False,max_proposals=1000)
         return original(*args,**kwargs)
     monkeypatch.setattr(model_search,'search_plans',hierarchical)
-    test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path,workload)
+    test_partial_calibrated_subspace_never_invents_missing_costs(tmp_path,workload,new_frames=False)
 
 
 @pytest.mark.parametrize('variant,window',[('no-gan',3),('gan',5)])

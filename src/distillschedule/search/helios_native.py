@@ -5,10 +5,11 @@ import json
 import math
 
 from distillschedule.workloads.best_known.registry import (
-    _object, fingerprint, file_sha256, write_new_json, repository_root, git_head,
+    _object, fingerprint, file_sha256, write_new_json, repository_root, git_head, load_profile,
 )
 from .contracts import require, finite_number, MEASUREMENT_SCHEMA, validate_measurement
 from .helios_implementation import HeliosImplementation, current_implementation, MODE_ENV
+from .helios_request import TRACE_KEY, TRACE_HASH_KEY
 
 SUMMARY_SCHEMA='distillschedule.helios_native_two_cycle_summary.v1'
 COMPARISON_SCHEMA='distillschedule.helios_native_two_cycle_comparison.v1'
@@ -46,7 +47,26 @@ def summarize(rows,*,expected_head,candidate_id):
                 and r.get('profiled') is False and r.get('profiler_status')=='DISABLED'
                 and r.get('same_process') is True and r.get('initializations')==1,
                 'Helios native source/mode/rank contract failed')
-        require(r['planner_binding']['planner_implementation']==impl.assignment,'effective implementation differs')
+        require(r.get('planner_binding',{}).get('planner_implementation')==impl.assignment,'effective implementation differs')
+        if impl.request is not None:
+            require(r['planner_binding'].get(TRACE_KEY)==impl.request.to_dict()
+                    and r['planner_binding'].get(TRACE_HASH_KEY)==impl.request.digest,
+                    'effective Helios request binding differs')
+            actual_hash=r['planner_binding'].get('expected_trace_hash')
+            grid=r.get('identities',{}).get('original_helios_native_grid',{})
+            require(actual_hash==r.get('identities',{}).get('trace_bundle_hash')
+                    and isinstance(actual_hash,str) and len(actual_hash)==64
+                    and actual_hash==rows[0]['planner_binding'].get('expected_trace_hash')
+                    and grid.get('status')=='PASS' and grid.get('request_sha256')==impl.request.digest
+                    and grid.get('operation_count')==6,
+                    'Helios exact launch trace/native grid preflight binding differs')
+        if impl.candidate_bundle.enabled:
+            source = impl.candidate_bundle.cost_identity()
+            binding = r['planner_binding'].get('candidate_bundle', {})
+            require(binding == source, 'safe No-GAN effective flags/source binding differs')
+            effects = r.get('candidate_bundle_effects', {})
+            actual = impl.candidate_bundle.executed_effects(r.get('build', {}), effects.get('before', {}))
+            require(effects == actual, 'safe No-GAN effects differ from actual build/call receipts')
         require(r['source_steps']==contract['logical_steps'] and r['source_cohort_policy']=='fixed_source_cohort_replay',
                 'Helios fixed source cohort changed')
         require(r['initial_versions']==contract['initial_versions'] and r['final_versions']==contract['final_versions'],
@@ -64,7 +84,14 @@ def summarize(rows,*,expected_head,candidate_id):
                 'Helios logical final engine labels differ')
         require(len(r['cycles'])==2,'Helios requires two cycles')
         previous=contract['initial_versions']
+        bundle_previous = r['candidate_bundle_effects']['before'] if impl.candidate_bundle.enabled else None
         for index,c in enumerate(r['cycles'],1):
+            if impl.candidate_bundle.enabled:
+                effect=c.get('candidate_bundle_effects',{})
+                require(effect.get('before')==bundle_previous,'safe No-GAN cycle counter chain differs')
+                require(effect==impl.candidate_bundle.effects_between(effect['before'],effect.get('after',{})),
+                        'safe No-GAN cycle effects differ')
+                bundle_previous=effect['after']
             require(c['cycle']==index and c['status']=='PASS' and c['measured']==(index==2)
                     and c['initial_versions']==previous,'Helios cycle sequence/status differs')
             require(c.get('initial_physical_versions')==physical(c['initial_versions'])
@@ -106,6 +133,9 @@ def summarize(rows,*,expected_head,candidate_id):
                         ('census','versions','finite','dtype','sample_rng')),'native semantic gate failed')
             previous=versions
         require(r['input_reuse']['critic_entries_still_cached']==0,'trace cache not drained')
+        if impl.candidate_bundle.enabled:
+            require(bundle_previous==r['candidate_bundle_effects']['after'],
+                    'safe No-GAN final cycle counters differ from actual build')
     return dict(schema_version=SUMMARY_SCHEMA,status='PASS',rank_count=16,source_head=expected_head,
         run_id=rows[0].get('run_id'),candidate_id=impl.id,mode=mode,profiled=False,
         initial_versions=contract['initial_versions'],final_versions=contract['final_versions'],
@@ -121,6 +151,12 @@ def checked(receipt):
     from .native import checked_summary
     out,summary=checked_summary(receipt);rows,refs=read_ranks(out)
     actual=summarize(rows,expected_head=receipt['integration_head'],candidate_id=receipt['search_candidate']['id'])
+    impl=HeliosImplementation.parse(receipt['search_candidate']['id'])
+    if impl.request is not None:
+        trace=receipt.get('original_helios_trace_binding',{})
+        require(trace.get('request_sha256')==impl.request.digest
+                and all(r['planner_binding'].get('expected_trace_hash')==trace.get('bundle_hash') for r in rows),
+                'Helios native ranks do not match exact asset-bound launch trace')
     require(all(summary.get(k)==v for k,v in actual.items()) and summary.get('native_evidence')==refs,
             'Helios summary differs from raw ranks')
     return out,summary,rows,refs
@@ -131,6 +167,9 @@ def compare_rows(left,right,*,head):
     from distillschedule.evidence.trajectory_coarse import COARSE_50C_THRESHOLDS
     left=sorted(left,key=lambda r:r['rank']);right=sorted(right,key=lambda r:r['rank'])
     reports=[];losses=[]
+    require(HeliosImplementation.parse(left[0]['candidate_id']).request==
+            HeliosImplementation.parse(right[0]['candidate_id']).request,
+            'Helios comparison cannot mix request cohorts')
     for l,r in zip(left,right,strict=True):
         require(l['mode']==r['mode']=='correctness','sampled parity requires correctness runs')
         require(l['source_steps']==r['source_steps'] and l['initial_versions']==r['initial_versions'],
@@ -248,6 +287,16 @@ def validate_admission(data,receipt,root=None):
 def validate_launcher_admission(environment):
     impl=current_implementation(environment)
     require(impl is not None,'Helios native identity/mode missing')
+    if impl.candidate_bundle.enabled or impl.request is not None:
+        require(all(environment.get(k) == v for k,v in impl.environment().items()
+                    if k!=MODE_ENV and not (impl.request is not None and k==impl.trace_hash_environment)),
+                'safe No-GAN launcher configuration/flags missing or changed')
+    if impl.request is not None:
+        import re
+        require(re.fullmatch(r'[0-9a-f]{64}',environment.get(impl.trace_hash_environment,'')) is not None,
+                'ORIGINAL Helios request requires exact asset-bound trace hash')
+    if impl.candidate_bundle.enabled:
+        impl.candidate_bundle.source_identity()
     if environment[MODE_ENV]=='correctness':return dict(status='PASS_CORRECTNESS_BOOTSTRAP_ONLY')
     p=environment.get('DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY','')
     require(bool(p) and Path(p).is_file(),'Helios native gate receipt missing')
@@ -257,6 +306,13 @@ def validate_launcher_admission(environment):
     require(git_head(repository_root())==plan['integration_head'] and plan['search_candidate']['id']==impl.id,
             'Helios launcher source/identity differs from native gate')
     validate_admission(data,plan)
+    if impl.request is not None:
+        trace=plan.get('original_helios_trace_binding',{})
+        key=load_profile(impl.workload)['required_assets']['trace']['environment']
+        require(trace.get('request_sha256')==impl.request.digest
+                and environment.get(impl.trace_hash_environment)==trace.get('bundle_hash')
+                and environment.get(key)==plan['asset_config']['assets']['trace']['path'],
+                'Helios launcher differs from admitted request trace')
     return dict(status='PASS_NATIVE_SOURCE_BOUND_ADMISSION',numerical_status='REVIEW')
 
 
@@ -300,7 +356,8 @@ def normalize_native(receipt,preparation,identity):
             peak_allocated_bytes=max(m['max_allocated_bytes'] for m in mem),
             peak_reserved_bytes=max(m['max_reserved_bytes'] for m in mem),
             min_driver_free_bytes=min(g['free_bytes'] for s in sample for g in s['gpus'] if g['device']==rank%8),
-            host_peak_bytes=max(s['cgroup_current_bytes'] for s in sample)))
+            host_peak_bytes=max(s['cgroup_current_bytes'] for s in sample),
+            host_peak_scope='MAX_SAMPLED_CGROUP_CURRENT_NOT_CONTINUOUS_PEAK'))
     result=dict(schema_version=MEASUREMENT_SCHEMA,status='PASS',**identity,candidate_id=impl.id,
         execution_fingerprint=fingerprint(impl.candidate().to_dict()),profiled=False,same_process=True,initializations=1,
         semantics_status='PASS',numerical_status='REVIEW',strict_numerical_gate='NOT_RUN',formal_timing_eligible=False,

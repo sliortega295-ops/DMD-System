@@ -76,7 +76,7 @@ def wan_probe_environment(node: dict[str, Any]) -> dict[str, str]:
 def collect_planned_node_identity(receipt: dict[str, Any], *, node_rank: int) -> dict[str, Any]:
     from .execution import validated_profile
     from .wan_implementation import WAN
-    from distillschedule.workloads.best_known.registry import git_head, repository_root
+    from distillschedule.workloads.best_known.registry import git_head, repository_root, verify_python_path_overlays
     require(type(node_rank) is int and node_rank in (0, 1), "invalid identity node")
     root = repository_root()
     validated_profile(receipt, root=root)
@@ -87,6 +87,7 @@ def collect_planned_node_identity(receipt: dict[str, Any], *, node_rank: int) ->
     node = receipt["nodes"][node_rank]
     require(Path(node["repo_root"]).resolve() == root.resolve(), "runtime probe on wrong source checkout")
     require(Path(node["python"]).resolve() == Path(sys.executable).resolve(), "runtime probe on wrong Python")
+    verify_python_path_overlays(receipt["asset_config"]["nodes"][node_rank])
     code = ("import json; from distillschedule.search.runtime_identity import collect_node_identity; "
             f"print(json.dumps(collect_node_identity(source_head={git_head(root)!r}, node_rank={node_rank})))")
     if receipt["profile_id"] == WAN or receipt["profile_id"].startswith("helios14b_"):

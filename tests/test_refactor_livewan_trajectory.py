@@ -104,7 +104,7 @@ def test_trace_builder_defaults_to_legacy_three_cycles(tmp_path: Path) -> None:
     subprocess.run(
         [
             sys.executable,
-            str(ROOT / "scripts/distillschedule/build_livewan_continuous_trace.py"),
+            str(ROOT / "tools/assets/build_livewan_continuous_trace.py"),
             "--source-trace",
             str(source),
             "--output",
@@ -128,7 +128,7 @@ def test_trace_builder_emits_50_fresh_operation_keyed_cycles(tmp_path: Path) -> 
     subprocess.run(
         [
             sys.executable,
-            str(ROOT / "scripts/distillschedule/build_livewan_continuous_trace.py"),
+            str(ROOT / "tools/assets/build_livewan_continuous_trace.py"),
             "--source-trace",
             str(source),
             "--output",
@@ -163,7 +163,7 @@ def test_trace_builder_supports_registered_canary_lengths(tmp_path: Path) -> Non
         subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "scripts/distillschedule/build_livewan_continuous_trace.py"),
+                str(ROOT / "tools/assets/build_livewan_continuous_trace.py"),
                 "--source-trace",
                 str(source),
                 "--output",
@@ -218,7 +218,7 @@ def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
         subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "scripts/distillschedule/build_livewan_continuous_trace.py"),
+                str(ROOT / "tools/assets/build_livewan_continuous_trace.py"),
                 "--source-trace",
                 str(source_trace),
                 "--output",
@@ -231,7 +231,7 @@ def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
         subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "scripts/distillschedule/derive_livewan_continuous_bootstrap.py"),
+                str(ROOT / "tools/assets/derive_livewan_continuous_bootstrap.py"),
                 "--source-bootstrap",
                 str(source_bootstrap),
                 "--source-receipt",
@@ -287,7 +287,7 @@ def test_continuous_bootstrap_rejects_stale_embedded_source_receipt(
     result = subprocess.run(
         [
             sys.executable,
-            str(ROOT / "scripts/distillschedule/derive_livewan_continuous_bootstrap.py"),
+            str(ROOT / "tools/assets/derive_livewan_continuous_bootstrap.py"),
             "--source-bootstrap",
             str(source_bootstrap),
             "--trace",

@@ -39,7 +39,7 @@ def test_original_native_mean_and_truthful_receipt():
 def test_c31_plan_only_does_not_load_assets_or_cuda(tmp_path):
     root = Path(__file__).resolve().parents[1]
     output = tmp_path/'unused.json'
-    process = subprocess.run([sys.executable, str(root/'scripts/distillschedule/canary_livewan_generator_rms_epilogue.py'),
+    process = subprocess.run([sys.executable, str(root/'benchmarks/kernels/canary_livewan_generator_rms_epilogue.py'),
         '--trace', '/unread', '--bootstrap', '/unread', '--output', str(output),
         '--fuse-cast-square', '--plan-only'], check=True, capture_output=True, text=True)
     result = json.loads(process.stdout)

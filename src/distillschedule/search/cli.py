@@ -8,7 +8,7 @@ import sqlite3
 import sys
 
 from distillschedule.workloads.best_known.registry import (
-    _object, fingerprint, git_head, load_assets, load_profile, repository_root, write_new_json,
+    _object, fingerprint, git_head, load_assets, load_profile, repository_root, write_new_json, asset_identity,
 )
 from .contracts import PILOTS, require
 from .engine import SearchSession
@@ -118,7 +118,7 @@ def main(argv: list[str]) -> int:
             profile = _object(args.profile)
             assets = load_assets(args.assets_config, load_profile(args.workload))
             identity = search_identity(args.workload, source_head=git_head(repository_root()),
-                                       assets=assets["assets"], hardware=profile["hardware"])
+                                       assets=asset_identity(assets), hardware=profile["hardware"])
             session = SearchSession(workload=args.workload, identity=identity, profile=profile,
                                     output=args.output, max_trials=args.max_trials, resume=args.resume,
                                     historical_prior=args.historical_profile_prior)

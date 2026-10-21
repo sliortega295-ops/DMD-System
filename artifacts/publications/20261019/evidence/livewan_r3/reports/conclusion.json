@@ -1,0 +1,124 @@
+{
+  "utc": "2026-10-19T11:55:41.804140+00:00",
+  "status": "COMPLETED_BOUNDED_W4_ONLY_A_AND_COMPLETE_B_SPEED_DIAGNOSTIC",
+  "workload": "W4 Self-Forcing DMD",
+  "resolution": [
+    368,
+    640
+  ],
+  "frames": 81,
+  "actual_global_batch": 16,
+  "seed": 20260830,
+  "updates_per_cycle": {
+    "G": 1,
+    "C": 5,
+    "EMA": 0
+  },
+  "sigma": "continuous",
+  "timer": "ONE_INITIALIZATION_FOUR_CONTINUOUS_CYCLES_C1_WARMUP_C2_PRIMARY_NO_PROFILER",
+  "results": [
+    {
+      "arm": "only_A_g8_fsdp8_v1",
+      "label": "仅A：重选G8 FSDP8、C8常驻/T8 FSDP8；B全关",
+      "run_id": "paper_r3_W4_only_A_g8_fsdp8_v1_20261019",
+      "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+      "cycles": [
+        103.4961015625,
+        82.33002343749999,
+        78.93006250000002,
+        77.75231250000002
+      ],
+      "C2_seconds": 82.33002343749999,
+      "C2_C4_mean_seconds": 79.67079947916667,
+      "historical_FSDP2_C2_seconds": 83.853875,
+      "relative_to_historical_FSDP2": 1.0185090626587374,
+      "saved_seconds": 1.5238515625000133,
+      "saved_percent": 1.8172702960954523,
+      "paper_FSDP2_reference_seconds": 84.26,
+      "relative_to_paper_reference": 1.0234419532743744,
+      "rank_count": 16,
+      "rank_cycle_count": 64,
+      "semantic_status": "PASS_DEFERRED_OBSERVED_CHECKS",
+      "numerical_status": "REVIEW_NOT_STRICT_EQUIVALENCE",
+      "peak_allocated_GiB": 18.959335327148438,
+      "peak_reserved_GiB": 37.66015625,
+      "final_boundary_driver_free_MiB": 4958.375,
+      "CUDA_OOM_increment": 0,
+      "host_OOM_increment": 0,
+      "profiler": false,
+      "independent_initializations": 1,
+      "summary_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/runs/paper_r3_W4_only_A_g8_fsdp8_v1_20261019/summary.json",
+      "summary_sha256": "34a28550c0d35a28f9833442e155d17274a6666a250621b797a483ecbb7bc5a6",
+      "evidence_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/data/only_A_g8_fsdp8_v1-evidence.json",
+      "evidence_sha256": "3458685537b30384d6420c58a6b06d4a488957485de8283d8789e2a95d8e8127"
+    },
+    {
+      "arm": "only_B_full_fsdp16_v1",
+      "label": "完整仅B：原FSDP16/顺序，完整C51 B作用域适配",
+      "run_id": "paper_r3_W4_only_B_full_fsdp16_v1_20261019",
+      "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+      "cycles": [
+        47.542921875,
+        42.1239140625,
+        40.76010156250001,
+        41.26746874999998
+      ],
+      "C2_seconds": 42.1239140625,
+      "C2_C4_mean_seconds": 41.383828124999994,
+      "historical_FSDP2_C2_seconds": 83.853875,
+      "relative_to_historical_FSDP2": 1.9906477559417797,
+      "saved_seconds": 41.7299609375,
+      "saved_percent": 49.76509545623264,
+      "paper_FSDP2_reference_seconds": 84.26,
+      "relative_to_paper_reference": 2.0002889540364635,
+      "rank_count": 16,
+      "rank_cycle_count": 64,
+      "semantic_status": "PASS_DEFERRED_OBSERVED_CHECKS",
+      "numerical_status": "REVIEW_NOT_STRICT_EQUIVALENCE",
+      "peak_allocated_GiB": 15.479804992675781,
+      "peak_reserved_GiB": 38.3828125,
+      "final_boundary_driver_free_MiB": 4.375,
+      "CUDA_OOM_increment": 0,
+      "host_OOM_increment": 0,
+      "profiler": false,
+      "independent_initializations": 1,
+      "summary_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/runs/paper_r3_W4_only_B_full_fsdp16_v1_20261019/summary.json",
+      "summary_sha256": "6fce16669892a1921e01bf370866a8a0550bd1b657816f7f9c538ec0d0f81027",
+      "evidence_path": "/home/lyy/Helios/research_artifacts/DMD-System/paper_evidence_three_tasks_20261018/r2_full_system_factorial_n1/factor_scope_correction_r3/execution_r1/data/only_B_full_fsdp16_v1-evidence.json",
+      "evidence_sha256": "5f69e760bd655c87732b0481d143a44da7eefce61060d39d229f4828783a5109"
+    }
+  ],
+  "baseline": {
+    "source": "a62cafeea6e0aeb1f0708e845f6eacf483494440",
+    "run_id": "paper_r2_W4_baseline_20261019",
+    "C2_seconds": 83.853875,
+    "status": "EXISTING_R2_DIAGNOSTIC_NOT_RERUN"
+  },
+  "joint_reference": {
+    "source": "a62cafeea6e0aeb1f0708e845f6eacf483494440",
+    "C2_seconds": 42.40702734375001,
+    "status": "REFERENCE_ONLY_NOT_RERUN"
+  },
+  "numeric_boundary": "FINITE_CALL_VERSION_LIFETIME_PASS_NOT_FULL_NUMERICAL_OR_LONG_TRAJECTORY_EQUIVALENCE",
+  "source_boundary": "Both new R3 arms same053bdcad; older baseline/full a62ca preserved; cross-source speed ratios are descriptive, not a fresh same-HEAD paired claim.",
+  "selection_boundary": "One bounded feasible A layout measured; not a global optimality proof over every pool/shard combination.",
+  "capacity_boundary": "No CUDA/host OOM increment; B final driver-free is4.375MiB, NOT a peak minimum. Allocated/reserved differ; no capacity margin was relaxed.",
+  "cast_cache_boundary": "No-grad autocast/retention scopes observed; direct hardware autocast-hit rate not independently measured.",
+  "budget": {
+    "previous_native_starts": 12,
+    "new_native_starts": 2,
+    "cumulative_native_starts": 14,
+    "unused_packet_starts": 2,
+    "baseline_full_rerun": false
+  },
+  "cleanup": {
+    "final_nodes_free": true,
+    "locks_available": true,
+    "owned_GPU_process_count": 0,
+    "force_cleanup": false,
+    "followup_sha256": "76fce99152d32ea2c8fabaeb79968290ce73ed0014f779bd9ddfb293d1c7dc0a"
+  },
+  "no_push": true,
+  "no_main_changes": true,
+  "no_H100": true
+}

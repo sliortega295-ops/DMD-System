@@ -39,7 +39,7 @@ def test_preserve_native_reduction():
 
 def test_plan_only_has_no_torch_or_asset_dependency(tmp_path):
     root=Path(__file__).resolve().parents[1]
-    r=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_generator_rms_epilogue.py'),
+    r=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_generator_rms_epilogue.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(tmp_path/'out.json'),'--plan-only'],
         check=True,text=True,capture_output=True)
     assert json.loads(r.stdout)['status']=='NOT_RUN'
@@ -61,6 +61,12 @@ def test_runtime_default_off_and_actual_receipt_gate():
         assert runtime_receipt_errors(dict(r,**{key:value}),rank=0,cycles=2)
     assert runtime_receipt_errors(r,rank=8,cycles=2)
     assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE'},rank=8,cycles=2)
+    from distillschedule.search.livewan_request import LiveWanRequest
+    new = dict(r, scope_forward_calls=[1470]*20, calls=1470*20)
+    assert runtime_receipt_errors(new,rank=0,cycles=2)
+    assert not runtime_receipt_errors(new,rank=0,cycles=2,request=LiveWanRequest(frames=69))
+    assert runtime_receipt_errors(dict(r,scope_forward_calls=[2820]*20,calls=2820*20),
+                                  rank=0,cycles=2,request=LiveWanRequest(frames=69))
 
 
 def test_c29_plan_changes_only_epilogue(monkeypatch):

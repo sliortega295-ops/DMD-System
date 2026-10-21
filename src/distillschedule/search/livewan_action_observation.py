@@ -110,6 +110,12 @@ def validate_action_observations(raws, *, expected_head):
     """
     require(len(raws) == 16 and {r['rank'] for r in raws} == set(range(16)), 'sixteen native ranks required')
     require(len({r['implementation'] for r in raws}) == 1, 'mixed implementations')
+    from .livewan_implementation import LiveWanImplementation
+    from .livewan_request import LiveWanRequest
+    from distillschedule.runtime.livewan_geometry import receipt_errors
+    implementation = raws[0]['implementation']
+    request = (LiveWanImplementation.parse(implementation).request
+               if implementation.startswith('joint-livewan1-') else LiveWanRequest())
     helper_sources = dict(generator_rollout='prepare_rollout', fake_velocity='_dmd_fake_velocity',
         teacher_velocity='_dmd_teacher_velocity', generator_backward='generator_backward_for_sample',
         critic_backward_b2='critic_backward_for_batch')
@@ -120,6 +126,7 @@ def validate_action_observations(raws, *, expected_head):
     message_keys = {(s,w) for s in range(10) if s % 5 for w in (0,1)} | {(5,0)}
     reuse_keys = {(s,w) for s in (1,2,3,6,7,8) for w in (0,1)} | {(4,0)}
     for raw in sorted(raws, key=lambda r:r['rank']):
+        require(not receipt_errors(raw, request), 'native action request/actual shape differs')
         rank, is_g = raw['rank'], raw['rank'] < 8
         require(raw.get('status') == 'PASS' and raw.get('source_head') == expected_head
                 and raw.get('profiled') is False, 'native action source/status differs')
@@ -131,6 +138,10 @@ def validate_action_observations(raws, *, expected_head):
         require(len(by_id) == len(rows), 'duplicate native action index')
         for row in helpers:
             m, family = row['metadata'], row['metadata']['action_kind']
+            if request != LiveWanRequest():
+                require(m.get('workload_request') == request.to_dict()
+                        and m.get('latent_shape') == list(request.latent_shape),
+                        'native helper request/latent shape differs')
             require(m['source_function'] == helper_sources[family], 'native helper owner changed')
             parent = by_id.get(row['parent'])
             require(parent is not None and parent['start_ns'] <= row['start_ns'] <= row['stop_ns'] <= parent['stop_ns'],
@@ -174,6 +185,8 @@ def validate_action_observations(raws, *, expected_head):
         require(contract.get('execution_status') == 'PASS' and contract.get('buffer_count') == len(message_keys),
                 'transport runtime census incomplete')
         shape = contract.get('payload_shape',[])
+        if request != LiveWanRequest():
+            require(shape == list(request.latent_shape), 'native transport request shape differs')
         require(shape and all(type(v) is int and v > 0 for v in shape)
                 and contract.get('payload_dtype') == 'torch.float32'
                 and prod(shape) * 4 == contract.get('payload_bytes'), 'latent payload contract differs')

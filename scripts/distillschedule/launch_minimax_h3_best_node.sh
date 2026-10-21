@@ -15,17 +15,21 @@ fi
 [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=all)" ]] || exit 4
 [[ "$(git -C "${LIGHTX2V_ROOT:?}" rev-parse HEAD)" == d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be ]] || exit 4
 [[ -z "$(git -C "$LIGHTX2V_ROOT" status --porcelain --untracked-files=all)" ]] || exit 4
-[[ "${H3_ACTIVATION_POLICY:?}" == none && "${H3_FA3_REPLAY_CACHE_STORAGE:?}" == cpu_staged ]] || exit 4
+[[ "${H3_ACTIVATION_POLICY:?}" == none ]] || exit 4
 [[ -x "$PYTHON" && -f "$CONFIG" ]] || exit 3
 [[ "${H3_PLANNER_TWO_CYCLE:-0}" == 0 || "${H3_PLANNER_TWO_CYCLE:-0}" == 1 ]] || exit 2
 [[ "${H3_PLANNER_CALIBRATION:-0}" == 0 || "${H3_PLANNER_CALIBRATION:-0}" == 1 ]] || exit 2
 if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
-  if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v2-d[12]-n(64|128)-w([1-5])$ ]]; then
-    [[ "${H3_PLANNER_ROLLOUT_WINDOW:-}" == "${BASH_REMATCH[2]}" ]] || exit 2
-  else
-    [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v1-d[12]-n(64|128)$ && \
-       -z "${H3_PLANNER_ROLLOUT_WINDOW:-}" ]] || exit 2
-  fi
+  # One typed validator owns IDs, shape, cache storage/trim and exact config.
+  # Run before the node lock/model construction; never duplicate its regex here.
+  "$PYTHON" - "$CONFIG" "$MODE" <<'PY'
+import json, os, pathlib, sys
+from distillschedule.search.h3_implementation import current_implementation
+impl = current_implementation()
+if impl is None:
+    raise SystemExit("unsupported H3 generated candidate")
+impl.receipt_binding(json.loads(pathlib.Path(sys.argv[1]).read_text()), os.environ, mode=sys.argv[2])
+PY
   [[ "${H3_PLANNER_TWO_CYCLE:-0}" == 1 && "${H3_PLANNER_CLOCK:-}" == host_fenced ]] || exit 2
   if [[ "$MODE" == calibration ]]; then
     [[ "${H3_PLANNER_CALIBRATION:-0}" == 1 ]] || exit 2
@@ -33,6 +37,8 @@ if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
     [[ "${H3_PLANNER_CALIBRATION:-0}" == 0 ]] || exit 2
   fi
 else
+  [[ "${H3_FA3_REPLAY_CACHE_STORAGE:?}" == cpu_staged && \
+     "${H3_FA3_REPLAY_CACHE_TRIM_BEFORE_BACKWARD:?}" == 1 ]] || exit 4
   [[ -z "${H3_PLANNER_ROLLOUT_WINDOW:-}" ]] || exit 2
   [[ "$MODE" != calibration && "${H3_PLANNER_TWO_CYCLE:-0}" == 0 && \
      "${H3_PLANNER_CALIBRATION:-0}" == 0 && -z "${H3_PLANNER_CLOCK:-}" ]] || exit 2

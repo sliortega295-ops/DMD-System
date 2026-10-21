@@ -277,8 +277,8 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
           "previous_integrated_sha256": "d83eeba2196a0d0eb96d66e441439da8185bb271492b85f5a70cc0390d400aa6",
-          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "publication_branch": "agent/original-wan-strategy-20261012",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
           "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
@@ -340,8 +340,8 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "01d2bf18f1161e6d7410bc5f599cf9d0ddc3df76ce145c0d187838d537bb0e12",
           "previous_integrated_sha256": "b9e702919d19d6d4da88ca87394891887508d9f644dbcaa17f854478ebc4f872",
-          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "publication_branch": "agent/original-wan-strategy-20261012",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
           "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
@@ -400,8 +400,8 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
           "previous_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
-          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "publication_branch": "agent/original-wan-strategy-20261012",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
           "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
@@ -424,8 +424,8 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
           "previous_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
-          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "publication_branch": "agent/original-wan-strategy-20261012",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
           "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
@@ -485,8 +485,8 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
           "previous_integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
-          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "publication_branch": "agent/original-wan-strategy-20261012",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
           "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
@@ -1047,9 +1047,16 @@
           "previous_integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
           "reason": "Gate H3 prepared-action calibration/native timing while preserving the canonical H3 invocation and winner profile.",
           "source_commit": "d730a89b11efe21074f411a865b3feda44f818f3"
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "890367b77b66e55ba5e39768202179490e6a5558026f1e9c5b662a06b457faf7",
+          "previous_integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
+          "reason": "Use the typed H3 v3 request/cache validator before model construction; admit only explicit CPU-staged/trim or CUDA/no-trim choices and retain canonical CPU defaults, clean-source, lock, ownership and teardown gates.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
         }
       ],
-      "integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
+      "integrated_sha256": "890367b77b66e55ba5e39768202179490e6a5558026f1e9c5b662a06b457faf7",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
       "source_repository": "integration-pr26",
@@ -1085,9 +1092,23 @@
           "new_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
           "previous_integrated_sha256": "601cea3e2f1eccc171463b57f8dc079eb1b8bd36ef0bb5e792ddb333f049c182",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
+          "previous_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
+          "reason": "Route unified native candidate/calibration assembly through the existing CLI and preserve action-qualified H3 admission for both legacy and explicit cache/request identities; no new trainer or canonical profile change.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
+        },
+        {
+          "base_integration_head": "1437839f3d2d98070de3ead09a4d7282a770721e",
+          "new_integrated_sha256": "f5c75c23ce2e1291c3153d8b87e603b17cdbf1e3d044cb32bf8d294a0ff516e7",
+          "previous_integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
+          "reason": "Opt-in SHA-bound R9 transport for current-source H3 cache calibration and saved-plan execution. Reuse exact in-memory asset lowering for portable source/runtime validation; remote cost evidence remains fully checked on receipt host and workers. Default profiles, training math and numerical thresholds unchanged.",
+          "source_commit": "040ce410d78248995f365991919da8f98c8c4f92"
         }
       ],
-      "integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
+      "integrated_sha256": "f5c75c23ce2e1291c3153d8b87e603b17cdbf1e3d044cb32bf8d294a0ff516e7",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/cli.py",
       "source_repository": "integration-pr26",
@@ -1114,9 +1135,23 @@
           "previous_integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
           "reason": "Route opt-in Helios measured component/native plans through existing best-known dispatch without altering canonical profiles.",
           "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "00226368fb25b6ec671e17e07aeb552c5f396f83ec32942f9aab26ed944f85b9",
+          "previous_integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
+          "reason": "Route unified native candidate/calibration assembly through the existing CLI and preserve action-qualified H3 admission for both legacy and explicit cache/request identities; no new trainer or canonical profile change.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
+        },
+        {
+          "base_integration_head": "2f74af27283027b0347301c4ec5bf764c3b93371",
+          "new_integrated_sha256": "e913087e841d55ed3cb98c700c89cc69c45c49508e4de4fe9e74f7215af0abc3",
+          "previous_integrated_sha256": "00226368fb25b6ec671e17e07aeb552c5f396f83ec32942f9aab26ed944f85b9",
+          "reason": "Explicit SHA-bound node-local dependency overlays for H3; preserve default profiles and invalidate asset/cost/plan identity when dependencies change. No observer, trainer arithmetic or numerical-policy changes.",
+          "source_commit": "88fd19dbf767d3b362e825e281b88d4bc365e19d"
         }
       ],
-      "integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
+      "integrated_sha256": "e913087e841d55ed3cb98c700c89cc69c45c49508e4de4fe9e74f7215af0abc3",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
@@ -1143,9 +1178,16 @@
           "previous_integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
           "reason": "Validate opt-in Helios native evidence/receipts while retaining REVIEW claim boundaries and unchanged canonical results.",
           "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        },
+        {
+          "base_integration_head": "2f74af27283027b0347301c4ec5bf764c3b93371",
+          "new_integrated_sha256": "42368d4cf5b6bd63611521e81fd48bd46a9bdda6c8c8eb71c0c784d1da224ae2",
+          "previous_integrated_sha256": "63f1d0bc95dde055ddbfab46af216deef49c2bb473324c500b3e638810e0eff2",
+          "reason": "Explicit SHA-bound node-local dependency overlays for H3; preserve default profiles and invalidate asset/cost/plan identity when dependencies change. No observer, trainer arithmetic or numerical-policy changes.",
+          "source_commit": "88fd19dbf767d3b362e825e281b88d4bc365e19d"
         }
       ],
-      "integrated_sha256": "63f1d0bc95dde055ddbfab46af216deef49c2bb473324c500b3e638810e0eff2",
+      "integrated_sha256": "42368d4cf5b6bd63611521e81fd48bd46a9bdda6c8c8eb71c0c784d1da224ae2",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
@@ -1173,9 +1215,30 @@
           "previous_integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
           "reason": "Expose opt-in Helios native planning modes in registry resolution; five canonical profile definitions/results remain unchanged.",
           "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        },
+        {
+          "base_integration_head": "2f74af27283027b0347301c4ec5bf764c3b93371",
+          "new_integrated_sha256": "bb73212f3fa370bc1ba10baff4239dc06cc8943a6d37f674174b874a51dc8a8a",
+          "previous_integrated_sha256": "7fc6a33383c9a6c10983ae393fbe8c26754af8e6a3056e62a36f6d84ddd4da49",
+          "reason": "Explicit SHA-bound node-local dependency overlays for H3; preserve default profiles and invalidate asset/cost/plan identity when dependencies change. No observer, trainer arithmetic or numerical-policy changes.",
+          "source_commit": "88fd19dbf767d3b362e825e281b88d4bc365e19d"
+        },
+        {
+          "base_integration_head": "acdf48b3ea74f35dad09ed04b7c19b9c4ea2359b",
+          "new_integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
+          "previous_integrated_sha256": "bb73212f3fa370bc1ba10baff4239dc06cc8943a6d37f674174b874a51dc8a8a",
+          "reason": "Explicit fixed /usr/bin:/bin H3 child toolchain PATH and serialized tamper rejection. No inherited caller paths, package installation, model/config/math or numerical policy change.",
+          "source_commit": "b39766cc8ac063d3fb8e24f89b72359231984e4b"
+        },
+        {
+          "base_integration_head": "1437839f3d2d98070de3ead09a4d7282a770721e",
+          "new_integrated_sha256": "cdcbed682c2c953b0de956266a8e391b86c039de8d0092bc222b2055147f0839",
+          "previous_integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
+          "reason": "Opt-in SHA-bound R9 transport for current-source H3 cache calibration and saved-plan execution. Reuse exact in-memory asset lowering for portable source/runtime validation; remote cost evidence remains fully checked on receipt host and workers. Default profiles, training math and numerical thresholds unchanged.",
+          "source_commit": "040ce410d78248995f365991919da8f98c8c4f92"
         }
       ],
-      "integrated_sha256": "7fc6a33383c9a6c10983ae393fbe8c26754af8e6a3056e62a36f6d84ddd4da49",
+      "integrated_sha256": "cdcbed682c2c953b0de956266a8e391b86c039de8d0092bc222b2055147f0839",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",

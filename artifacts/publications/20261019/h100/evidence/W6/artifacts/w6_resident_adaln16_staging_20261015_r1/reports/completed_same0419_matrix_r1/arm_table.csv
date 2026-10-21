@@ -1,0 +1,4 @@
+placement,head,native_C2_seconds,C1_warmup_excluded_seconds,peak_allocated_bytes,peak_reserved_bytes,sampled_host_cgroup_peak_bytes,physical_ranks,independent_logical_slots,final_versions,new_host_OOM,owned_cleanup,full_model_strict_native_C2_state,formal_speedup_eligible
+resident_named_CPU_fallback,0419b96b9ed9a8dd76737042e6c5020c80f6673a,308.6704701697454,315.12799312733114,79626779136,82388713472,923254501376,8,16,Student2/Fake2/EMA0,0,EMPTY,NOT_RUN,False
+fsdp,0419b96b9ed9a8dd76737042e6c5020c80f6673a,320.66605521179736,322.93644439801574,46044036608,50000297984,804860284928,8,16,Student2/Fake2/EMA0,0,EMPTY,NOT_RUN,False
+candidate,0419b96b9ed9a8dd76737042e6c5020c80f6673a,278.88644194882363,359.38038629852235,44174510080,49543118848,1348850413568,8,16,Student2/Fake2/EMA0,0,EMPTY,NOT_RUN,False

@@ -82,7 +82,7 @@ TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || \
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
@@ -100,7 +100,7 @@ if [[ "${RUN_KIND}" == trajectory ]]; then
     [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || \
        "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution ]] || {
       echo trajectory_pipeline_requires_supported_variant >&2; exit 2;
     }
@@ -115,7 +115,7 @@ elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
       echo two_cycle_baseline_requires_b1 >&2; exit 2;
     }
   else
-    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout ]] || {
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout ]] || {
       echo two_cycle_pipeline_requires_supported_variant >&2; exit 2;
     }
   fi
@@ -124,6 +124,10 @@ elif [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribut
   echo c24_critic_b1_attribution_requires_trajectory >&2; exit 2
 fi
 
+
+if [[ "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms ]]; then
+  [[ "${EXECUTION_MODE}" == pipeline && ( "${RUN_KIND}" == two-cycle-timing || ( "${RUN_KIND}" == trajectory && "${TRAJECTORY_CYCLES}" == 2 ) ) ]] || { echo c51_requires_exact_two_cycle_mode >&2; exit 2; }
+fi
 
 if [[ "${EXECUTION_MODE}" == baseline ]]; then
   [[ "${PIPELINE_VARIANT}" == b1 ]] || { echo baseline_pipeline_variant_mismatch >&2; exit 2; }
@@ -142,6 +146,7 @@ else
     c32-continuous-b16-generator-modulation) plan_file=livewan_wan13b_14b_sf_dmd_c32_continuous_b16_generator_modulation.json ;;
     c33-continuous-b16-generator-gate) plan_file=livewan_wan13b_14b_sf_dmd_c33_continuous_b16_generator_gate.json ;;
     c34-continuous-b16-residual-layout) plan_file=livewan_wan13b_14b_sf_dmd_c34_continuous_b16_residual_layout.json ;;
+    c51-continuous-b16-generator-fused-rms) plan_file=livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms.json ;;
     *) echo unsupported_integrated_livewan_variant="${PIPELINE_VARIANT}" >&2; exit 2 ;;
   esac
   PLAN="${ROOT}/configs/distillschedule/plans/${plan_file}"
@@ -177,7 +182,7 @@ if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
   CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?run requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || exit 3
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" "${EXECUTION_MODE}" "${PIPELINE_VARIANT}" "${ROOT}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 expected_head = sys.argv[2]
@@ -211,6 +216,14 @@ elif run_kind == "two-cycle-timing":
     comparison = value.get("trajectory_comparison", {})
     if comparison.get("contract_status") != "PASS" or comparison.get("complete") is not True:
         raise SystemExit("two-cycle trajectory comparison is not PASS")
+    if sys.argv[5] == "c51-continuous-b16-generator-fused-rms":
+        if sys.argv[4] != "pipeline":
+            raise SystemExit("C51 timing gate requires the pipeline arm")
+        # This CPU gate precedes the later worker PYTHONPATH export. Bind the
+        # import to this already-selected checkout, including standalone use.
+        sys.path.insert(0, str(pathlib.Path(sys.argv[6]) / "src"))
+        from distillschedule.runtime.livewan_c51_bundle import validate_timing_gate_binding
+        validate_timing_gate_binding(value)
 else:
     if value.get("profile_authorized") is not True or value.get("formal_timing_authorized") is not False:
         raise SystemExit("diagnostic profile gate is not PASS")
@@ -351,8 +364,19 @@ monitor &
 monitor_pid=$!
 
 RESOLVED="${RUN_ROOT}/resolved_plan.node${NODE_RANK}.json"
-"${PYTHON}" -m distillschedule.cli render "${PLAN}" --output "${RESOLVED}" \
-  >"${NODE_LOG}/render.log" 2>&1
+if [[ -n "${DISTILLSCHEDULE_LIVEWAN_REQUEST_ID:-}" ]]; then
+  # Explicit requests execute the exact serialized native plan. Re-rendering
+  # the variant template here would silently restore the historical 21 frames.
+  "${PYTHON}" -m distillschedule.runtime.livewan_launch_plan \
+    --input "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN:?missing request launch plan}" \
+    --sha256 "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256:?missing request launch SHA}" \
+    --request "${DISTILLSCHEDULE_LIVEWAN_REQUEST_ID}" --output "${RESOLVED}" \
+    >"${NODE_LOG}/render.log" 2>&1
+else
+  [[ -z "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN:-}${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256:-}" ]] || exit 2
+  "${PYTHON}" -m distillschedule.cli render "${PLAN}" --output "${RESOLVED}" \
+    >"${NODE_LOG}/render.log" 2>&1
+fi
 
 # Fail before 14B construction if the two hosts accidentally form split worlds
 # or the default NCCL communicator is unusable.  The probe is intentionally

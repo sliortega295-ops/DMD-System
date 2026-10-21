@@ -1,0 +1,22 @@
+{
+  "status": "GO_SAME_SOURCE_SAME_FA3_ONE_FACTOR_RESTORE_NATIVE_METADATA_BARRIER",
+  "utc": "2026-10-18T13:13:32.691707+00:00",
+  "source": "69a9464997de16deafd5786338f538ba7930d9a5",
+  "config_sha256": "4c881321bcc35d993bef2746e8a11f494326b1b7e74af39f31a70b7c923db107",
+  "prior_owner_phases": 102,
+  "stage_cap": 2,
+  "total_cap": 104,
+  "profiler": false,
+  "cycles": 2,
+  "scheduler_integration": false,
+  "capacity_policy_unchanged": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar_cpu/preparation_r6/configs/capacity.json",
+    "sha256": "ad136f63183b1917cabf3b12df575f44330f31c1813bed4527dccaf2920fa632"
+  },
+  "workload": "original W6 768x1344 previous56+current56frames,8steps,G1F1,continuous,LoRA64",
+  "same_FA3_backend_both_arms": true,
+  "external_source_packet": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/configs/manual-packet.json",
+    "sha256": "ddae71538361b7974468989794b2c07be4a0d8ae7c99ab5bd342b3c972ebbaad"
+  }
+}

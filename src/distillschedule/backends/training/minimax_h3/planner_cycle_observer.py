@@ -177,12 +177,14 @@ class H3PlannerCycleObserver:
             self.implementation_binding = self.implementation.receipt_binding(
                 trainer.config, os.environ, mode=os.environ.get("DISTILLSCHEDULE_RUN_KIND", "correctness"))
         expected_depth = self.implementation.prefetch_depth if self.implementation is not None else 2
+        expected_storage = self.implementation.storage if self.implementation is not None else "cpu_staged"
+        expected_trim = self.implementation.trim_before_backward if self.implementation is not None else True
         frozen = dict(max_train_iters=2, save_every_iters=0, auto_resume=False,
                       activation_policy="none", activation_checkpoint_segment_size=1,
                       gradient_checkpointing=True, activation_offload_enabled=False,
                       adaln_grid_enabled=True, adaln_grid_size=1000,
-                      fa3_replay_cache_storage="cpu_staged", fa3_replay_cache_max_d2h_inflight=expected_depth,
-                      fa3_replay_cache_trim_before_backward=True,
+                      fa3_replay_cache_storage=expected_storage, fa3_replay_cache_max_d2h_inflight=expected_depth,
+                      fa3_replay_cache_trim_before_backward=expected_trim,
                       fa3_nograd_num_splits=2, fa3_grad_num_splits=2,
                       matched_compute_enabled=True, fake_update_ratio=5,
                       gradient_accumulation_iters=1, reorder_critic_rollouts=True)
@@ -190,7 +192,7 @@ class H3PlannerCycleObserver:
             if getattr(trainer, key, None) != expected:
                 raise ValueError(f"H3 two-cycle frozen contract requires {key}={expected!r}")
         if tuple(trainer.fa3_replay_cache_blocks) != tuple(range(50)):
-            raise ValueError("H3 two-cycle frozen contract requires FA3 cpu_staged blocks 0-49")
+            raise ValueError("H3 two-cycle frozen contract requires FA3 replay blocks 0-49")
         if trainer.shared_model.config["model"].get("attention_backend") != "_flash_3_hub":
             raise ValueError("H3 two-cycle frozen contract requires the current FA3 attention backend")
         if self.host_fenced_clock:
@@ -206,11 +208,12 @@ class H3PlannerCycleObserver:
         if not self.torch.cuda.is_available():
             raise RuntimeError("H3 two-cycle timing requires native CUDA events")
         registration = getattr(trainer, "fa3_replay_cache_registration", None)
-        if (registration is None or not registration.enabled or registration.storage != "cpu_staged"
+        if (registration is None or not registration.enabled
+                or registration.storage != self.frozen_contract["fa3_replay_cache_storage"]
                 or tuple(registration.block_indices) != tuple(range(50))
                 or registration.max_d2h_inflight != self.frozen_contract["fa3_replay_cache_max_d2h_inflight"]
-                or not registration.trim_before_backward):
-            raise ValueError("H3 two-cycle native FA3 cpu_staged registration changed")
+                or registration.trim_before_backward != self.frozen_contract["fa3_replay_cache_trim_before_backward"]):
+            raise ValueError("H3 two-cycle native FA3 cache registration changed")
         if getattr(trainer, "grid_replay_registration", None) is None:
             raise ValueError("H3 two-cycle requires the native Grid-1000 replay registration")
         self.device = trainer.shared_model.device
@@ -327,6 +330,11 @@ class H3PlannerCycleObserver:
         row.update(status="PASS_NATIVE_RUNTIME_CONTRACTS", updates=delta, cumulative_updates=dict(self.updates),
                    census=trainer.matched_cycle_census.snapshot(), grid_replay=grid, grid_replay_delta=grid_delta,
                    losses=losses, finite_losses=True, memory_after=self.memory_probe(self.torch, self.device))
+        if self.implementation is not None and self.implementation.cache_policy != "legacy_cpu_staged":
+            from distillschedule.search.h3_implementation import validate_cache_registration
+            actual = trainer.fa3_replay_cache_registration.receipt()
+            validate_cache_registration(actual, self.implementation)
+            row["fa3_replay_cache_registration"] = actual
         if self.host_fenced_clock:
             row["rng_after"] = self._rng_fingerprints()
         if self.action_trace is not None:

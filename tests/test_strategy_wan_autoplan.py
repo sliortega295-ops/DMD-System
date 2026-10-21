@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import json
 import pytest
 from distillschedule.strategies import wan_autoplan as module
-from distillschedule.workloads.best_known.registry import write_new_json
+from distillschedule.strategies.wan_prepare import publish_new_json
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def setup(tmp_path, monkeypatch):
         calls.append(kw);root=Path(out);root.mkdir(exist_ok=True)
         ready={'status':'READY_FOR_ORIGINAL_WAN_CAMPAIGN','preparation_sha256':'a'*64,
                'campaign':str(root/'campaign/campaign.json'),'campaign_sha256':'c'*64,'trace_hash':'b'*64}
-        if not (root/'ready.json').exists():write_new_json(root/'ready.json',ready)
+        if not (root/'ready.json').exists():publish_new_json(root/'ready.json',ready)
         return ready
     def campaign(*args, **kwargs):
         launches.append(kwargs)
@@ -91,3 +91,29 @@ def test_duplicate_controller_does_not_poison_active_preparation(setup,tmp_path,
     monkeypatch.setattr(module,'prepare',busy)
     with pytest.raises(FileExistsError):run(0,execute=True)
     assert not list(root.glob('prepare-failure*')) and not launches
+
+
+def test_peer_readiness_is_published_atomically(tmp_path, monkeypatch):
+    from threading import Event
+    import distillschedule.strategies.wan_prepare as preparation
+    before_link, release = Event(), Event()
+    original_link = preparation.os.link
+    def paused_link(source, target):
+        before_link.set()
+        assert release.wait(5)
+        return original_link(source, target)
+    monkeypatch.setattr(preparation.os, 'link', paused_link)
+    target = tmp_path/'ready.json'
+    value = {'status':'READY', 'payload': list(range(1000))}
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(publish_new_json, target, value)
+        assert before_link.wait(5)
+        try:
+            # Temporary bytes may exist, but no peer can observe a partial final file.
+            assert not target.exists()
+        finally:
+            release.set()
+        pending.result()
+    assert json.loads(target.read_text()) == value
+    with pytest.raises(FileExistsError): publish_new_json(target, {'changed':True})
+    assert json.loads(target.read_text()) == value

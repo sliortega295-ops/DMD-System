@@ -1,0 +1,3 @@
+arm,native_Full5_seconds,physical_ranks,independent_logical_slots,max_captured_allocated_GiB,max_captured_reserved_GiB,numeric_full_state,formal_claimable
+control,95.53463149257004,8,16,52.00825786590576,55.125,NOT_RUN,False
+candidate,94.31143263261765,8,16,52.00825786590576,55.125,NOT_RUN,False

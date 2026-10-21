@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from distillschedule.workloads.best_known.registry import (
     CANONICAL_IDS, _object, fingerprint, git_head, load_profile, repository_root,
-    write_new_json,
+    write_new_json, asset_identity,
 )
 from .contracts import require
 from .cost_model import CostModel
@@ -79,7 +79,7 @@ def model_based_search(args):
             output=validation_dir, max_trials=budget, resume=args.resume)
         from .registry import candidate_profile, get_candidate
         assets = load_assets(args.assets_config, candidate_profile(get_candidate(args.workload, session.seeds[0])))
-        require(fingerprint(assets["assets"]) == problem.binding["asset_fingerprint"],
+        require(fingerprint(asset_identity(assets)) == problem.binding["asset_fingerprint"],
                 "native validation assets differ from calibration")
         runner = NativeTrialRunner(workload=args.workload, identity=session.identity, assets=assets,
             output=validation_dir, run_prefix=args.run_id, reference_id=session.seeds[0],

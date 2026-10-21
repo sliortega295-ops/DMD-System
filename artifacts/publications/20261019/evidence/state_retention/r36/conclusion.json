@@ -1,0 +1,88 @@
+{
+  "status": "SMALL_DESCRIPTIVE_GAIN_COMBINABLE_NO_DEFAULT_PROMOTION",
+  "source": "e2374f084977a31ef1fd06a2e81a5e9582af818c",
+  "control_C1_s": 91.61205628048629,
+  "candidate_C1_s": 90.37507396843284,
+  "control_C2_s": 83.97032845113426,
+  "candidate_C2_s": 83.02306464314461,
+  "saved_s": 0.9472638079896569,
+  "saving_percent": 1.1280934890482275,
+  "descriptive_single_pair_speedup": 1.0114096463682862,
+  "rank_count": 16,
+  "cycles": 2,
+  "final_versions": {
+    "critic": 20,
+    "ema": 20,
+    "generator": 4
+  },
+  "peak_allocated_GiB": {
+    "control": 26.41846752166748,
+    "candidate": 30.91085147857666
+  },
+  "peak_reserved_GiB": {
+    "control": 37.3359375,
+    "candidate": 37.400390625
+  },
+  "minimum_sampled_driver_free_MiB": {
+    "control": 50.0,
+    "candidate": 116.0
+  },
+  "host_peak_sampled_cgroup_GiB": {
+    "control": 82.98419189453125,
+    "candidate": 82.4854621887207
+  },
+  "numerical_status": "REVIEW",
+  "coarse_state_status": "REVIEW",
+  "sampled_state_worst_nL2": 0.00010912077937415003,
+  "state_scope": "ORIGINAL_SAMPLED_PARITY_NOT_FULL_STATE_OR_LONG_EQUIVALENCE",
+  "actual_scope_census": {
+    "rank_cycles": 32,
+    "G_forwards_per_scope": 27,
+    "retained_parameter_units": 24,
+    "remaining_full_units_after_scope": 0,
+    "version_failures": 0,
+    "grad_enabled_failures": 0
+  },
+  "allocator_reserve_policy": "ORIGINAL_2GiB_ALLOCATED_HIGHWATER_NOT_2GiB_DRIVER_FREE",
+  "host_reserve_GiB": 64,
+  "profiler": false,
+  "planner_integration": false,
+  "canonical_defaults_changed": false,
+  "push": false,
+  "H100": false,
+  "resources_cleaned": true,
+  "cleanup": {
+    "status": "PASS_FRESH_GPU_EMPTY_LOCKS_FREE_ZERO_HOST_OOM",
+    "nodes": [
+      {
+        "node": 0,
+        "utc": "2026-10-18T10:06:27.728088+00:00",
+        "GPU_processes": [],
+        "node_lock": "FRESHLY_ACQUIRED_AND_RELEASED",
+        "OOM_delta": {
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "memory_current": 14690471936
+      },
+      {
+        "node": 1,
+        "utc": "2026-10-18T10:06:27.742181+00:00",
+        "GPU_processes": [],
+        "node_lock": "FRESHLY_ACQUIRED_AND_RELEASED",
+        "OOM_delta": {
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "memory_current": 18831470592
+      }
+    ],
+    "charged_phases": 4,
+    "signals_sent": 0
+  },
+  "charged_stage_phases": 4,
+  "campaign_charges": 92,
+  "ledger": "CUMULATIVE_OWNER_PHASES_INCLUDING_FAILURES_NOT_92_WORLD16_TRAINING_RUNS",
+  "next_decision": "NO_BLOCK_COUNT_SWEEP; USE_CURRENT_TIMELINE_TO_FIND_MORE_VALUABLE_REMAINING_LAUNCH_OR_COMPUTE_COST",
+  "evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r36/reports/nogan-pair-summary.json"
+}

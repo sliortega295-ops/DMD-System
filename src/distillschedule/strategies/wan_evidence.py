@@ -3,7 +3,33 @@ from __future__ import annotations
 from distillschedule.core.contracts import require
 
 
-def validate_build(strategy, build, *, executed=False):
+def validate_build(strategy, build, *, executed=False, cycles=0):
+    from distillschedule.runtime.wan_incumbent_evidence import validate_bundle_build
+    bundle_effects = validate_bundle_build(strategy.candidate_bundle, build, executed=executed, cycles=cycles)
+    if strategy.candidate_bundle.enabled:
+        graph = build['generator']['metadata'].get('generator_rollout_cuda_graph', {})
+        pool = graph.get('scratch_pool', {})
+        require(pool.get('policy', 'isolated.v1') == strategy.rollout_graph_pool_policy,
+                'executed rollout graph pool differs from typed strategy', path='wan.actual')
+        if strategy.rollout_graph_pool_policy != 'isolated.v1':
+            require(pool.get('critic_grad_pool_shared') is False
+                    and pool.get('outputs_freshly_cloned') is True,
+                    'shared scratch leaked into grad graphs or output lifetime', path='wan.actual')
+            if executed:
+                require(pool.get('verified_capture_count') == graph.get('cache_entry_count')
+                        and pool.get('verified_capture_count', 0) >= 3,
+                        'shared scratch has no actual verified captures', path='wan.actual')
+    if strategy.retained_critic_blocks:
+        g = build['generator']['metadata'].get('checkpoint_block_retention', {})
+        c = build['critic']['metadata'].get('checkpoint_block_retention', {})
+        require(g.get('enabled') is False and c.get('enabled') is True
+                and c.get('block_indices') == list(strategy.retained_critic_blocks)
+                and c.get('weights_merged') is False and c.get('parameter_dtype_changed') is False,
+                'explicit retained-block candidate was not installed as planned', path='wan.actual')
+        if executed:
+            require(c['retained_forward_calls'] > 0 and c['checkpoint_forward_calls'] > 0
+                    and all(c['block_forward_counts'][str(i)] > 0 for i in strategy.retained_critic_blocks),
+                    'retained blocks did not execute during original graph capture', path='wan.actual')
     expected_sync = ('WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE'
                      if strategy.placement == 'resident' else 'FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER')
     for role in ('generator','critic'):
@@ -26,7 +52,7 @@ def validate_build(strategy, build, *, executed=False):
                     'requested fusion executed no elements', path='wan.actual')
     return {'status':'PASS_BACKEND_EFFECTS','gradient_sync':expected_sync,
             'chunk_tokens':strategy.chunk_tokens,'lora_epilogue':strategy.lora_epilogue,
-            'actual_compute_observed':executed}
+            'actual_compute_observed':executed, 'candidate_bundle_effects': bundle_effects}
 
 
 def validate_cycle(task, trace, result):

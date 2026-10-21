@@ -135,14 +135,20 @@ def main() -> int:
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     parser.add_argument(
-        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"), required=True
+        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c51-continuous-b16-generator-fused-rms"), required=True
     )
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     errors: list[str] = []
-    allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}
+    if args.pipeline_variant == "c51-continuous-b16-generator-fused-rms":
+        from distillschedule.runtime.livewan_c51_bundle import effective_plan_bindings
+        try:
+            effective_plan_bindings(args.run_root, kind="two-cycle-timing")
+        except (OSError, ValueError, RuntimeError) as error:
+            errors.append(f"C51 native metadata producer: {error}")
+    allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c51-continuous-b16-generator-fused-rms"}
     if args.pipeline_variant not in allowed_variants:
         errors.append("execution mode/physical implementation pair changed")
     if len(args.expected_head) != 40:
@@ -151,6 +157,11 @@ def main() -> int:
     trace = FormalTrace.load(
         args.trace, expected_cycles=2, expected_global_batch=16
     )
+    from distillschedule.runtime.livewan_geometry import launch_binding, receipt_errors
+    from distillschedule.search.livewan_request import request_from_plan
+    request, launch_plan_shas = launch_binding(args.run_root)
+    if trace.request != request:
+        errors.append("trace request differs from actual launch plan")
     expected_logical, expected_physical = _expected_inventory(
         trace, mode=args.execution_mode
     )
@@ -171,6 +182,8 @@ def main() -> int:
             errors.append(f"node{node}: launcher evidence missing/invalid: {error}")
             continue
         manifests.append(manifest)
+        if launch_plan_shas and request_from_plan(effective_plan) != request:
+            errors.append(f"node{node}: effective plan geometry differs from request")
         effective_plan_shas.add(effective_plan_sha)
         if int(dict(effective_plan.get("evidence", {})).get("steps", -1)) != 10:
             errors.append(f"node{node}: effective plan is not a 10-step/two-cycle plan")
@@ -224,6 +237,10 @@ def main() -> int:
             errors.append(f"rank{rank}: receipt missing/invalid: {error}")
             continue
         rows.append(row)
+        errors.extend(f"rank{rank}: {error}" for error in receipt_errors(
+            row, request, expected_plan_sha256=launch_plan_shas.get(rank//8)))
+        if row.get("workload_request") not in (None, request.to_dict()):
+            errors.append(f"rank{rank}: request has no matching immutable launch plan")
         if (
             row.get("status") != "PASS"
             or int(row.get("rank", -1)) != rank
@@ -255,6 +272,9 @@ def main() -> int:
             if after != before:
                 errors.append(f"rank{rank}: cgroup {key} changed")
 
+        if args.pipeline_variant == "c51-continuous-b16-generator-fused-rms":
+            from distillschedule.runtime.livewan_c51_bundle import runtime_receipt_errors as c51_errors
+            errors.extend(f"rank{rank}: {error}" for error in c51_errors(row, rank=rank, cycles=2))
         timing = dict(row.get("two_cycle_timing", {}))
         if args.pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
@@ -266,6 +286,7 @@ def main() -> int:
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
                 dict(row.get("generator_rms_epilogue", {})), rank=rank, cycles=2,
+                request=request,
                 fuse_cast_square=args.pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}))
         if args.pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
@@ -276,12 +297,13 @@ def main() -> int:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
-                dict(row.get("generator_modulation", {})), rank=rank, cycles=2))
+                dict(row.get("generator_modulation", {})), rank=rank, cycles=2, request=request))
         if args.pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
                 dict(row.get("generator_gate", {})), rank=rank, cycles=2,
+                request=request,
                 output_layout="row_major" if args.pipeline_variant == "c34-continuous-b16-residual-layout" else "native"))
         if args.pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
@@ -292,7 +314,8 @@ def main() -> int:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
-                dict(row.get("critic_attention_checkpoint", {})), rank=rank, expected_calls=300))
+                dict(row.get("critic_attention_checkpoint", {})), rank=rank, expected_calls=300,
+                query_tokens=request.attention_tokens))
         cycle1 = dict(timing.get("cycle_1", {}))
         cycle2 = dict(timing.get("cycle_2", {}))
         if (
@@ -595,6 +618,8 @@ def main() -> int:
         ),
         "rank_count": len(rows),
     }
+    if launch_plan_shas:
+        result["workload_request"] = request.to_dict()
     atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1

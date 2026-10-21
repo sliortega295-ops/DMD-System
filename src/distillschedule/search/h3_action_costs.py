@@ -47,8 +47,10 @@ def component_contract(op, impl, work):
     return ComponentContract(FAMILIES[kind],work,{"execution_precision_sha256":PRECISION},
         dict(world_size=16, placement="world16-fsdp2", shared_backbone=True, reshard_after_forward=True),
         dict(native_family=FAMILIES[kind], lora_epilogue_block_n=impl.lora_epilogue_block_n,
-             **({"fa3_cpu_staged_depth":impl.prefetch_depth} if kind in 'gc' else {})),
+             **({"fa3_cpu_staged_depth":impl.prefetch_depth} if kind in 'gc' and impl.storage == 'cpu_staged' else {}),
+             **({"fa3_cache_policy":impl.cache_policy, "workload_request":impl.request.id}
+                if impl.cache_policy != 'legacy_cpu_staged' else {})),
         dict(warm_state="SETUP_FIRST_CYCLE" if op.metadata['cycle']==1 else "AFTER_ONE_NATIVE_CYCLE",
-             concurrency="EXCLUSIVE_WORLD16_ACTION_ENVELOPE", fa3_storage="cpu_staged",
+             concurrency="EXCLUSIVE_WORLD16_ACTION_ENVELOPE", fa3_storage=impl.storage,
              boundary_offload="none", retained_inputs="MEASURED_LAST_CONSUMER_STORAGE_LIFETIMES",
              memory="CONSERVATIVE_ALLOCATION_ENVELOPE_NATIVE_CAPACITY_CONFIRMATION_REQUIRED"))

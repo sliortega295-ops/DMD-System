@@ -49,7 +49,7 @@ def test_profile_gate_is_diagnostic_only_and_preserves_failed_pair(tmp_path: Pat
     subprocess.run(
         [
             sys.executable,
-            str(ROOT / "scripts/distillschedule/build_livewan_crossscale_profile_gate.py"),
+            str(ROOT / "tools/assets/build_livewan_crossscale_profile_gate.py"),
             "--baseline-summary", str(baseline),
             "--pipeline-summary", str(pipeline),
             "--failed-pair-receipt", str(pair),
@@ -111,9 +111,9 @@ def test_profile_launcher_is_node_outer_and_fail_closed() -> None:
     assert "incomplete_nvtx_rank_ranges" in launcher
     assert "incomplete_kernel_device_coverage" in launcher
     gate = (
-        ROOT / "scripts/distillschedule/build_livewan_crossscale_profile_gate.py"
+        ROOT / "tools/assets/build_livewan_crossscale_profile_gate.py"
     ).read_text(encoding="utf-8")
-    assert '"scripts/distillschedule/analyze_livewan_crossscale_nsys.py"' in gate
+    assert '"tools/profiling/analyze_livewan_crossscale_nsys.py"' in gate
 
 
 def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> None:
@@ -152,7 +152,7 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
 
 def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
     analyzer = (
-        ROOT / "scripts/distillschedule/analyze_livewan_crossscale_nsys.py"
+        ROOT / "tools/profiling/analyze_livewan_crossscale_nsys.py"
     ).read_text(encoding="utf-8")
     # Nsight activity tables do not carry useful process/time indices in this
     # export.  A query per rank performs eight full scans of an 819 MB SQLite.
@@ -168,7 +168,7 @@ def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
 
 
 def test_profile_analyzer_attributes_collectives_inside_each_phase() -> None:
-    path = ROOT / "scripts/distillschedule/analyze_livewan_crossscale_nsys.py"
+    path = ROOT / "tools/profiling/analyze_livewan_crossscale_nsys.py"
     analyzer = path.read_text(encoding="utf-8")
     assert "def _collective_metric(" in analyzer
     assert '"collectives": _collective_metric(' in analyzer

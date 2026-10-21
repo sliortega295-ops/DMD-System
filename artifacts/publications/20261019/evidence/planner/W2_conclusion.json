@@ -1,0 +1,1036 @@
+{
+  "utc": "2026-10-17T10:22:33.046173+00:00",
+  "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+  "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+  "manual_C2": 84.86731821484864,
+  "selected_C2": 84.95865019131452,
+  "gap_percent": 0.10761737072293442,
+  "actual": {
+    "manual": {
+      "run_id": "ngmatch-07fcc0-r1-manual-native",
+      "candidate": {
+        "executable": true,
+        "gpu_validation": "NOT_RUN_ON_SEARCH_BRANCH",
+        "id": "joint-helios1-nogan-hsdp-c512-p0-w5-ksafe-nogan-ed8-v1",
+        "kernels": [
+          "modulation_chunk512",
+          "safe-nogan-ed8-v1"
+        ],
+        "mechanism": "native_mesh_chunk_retained_rollout_window_and_bounded_unshard",
+        "parent": null,
+        "placement": "node-hsdp",
+        "targets": [
+          "nccl",
+          "pointwise",
+          "residency"
+        ],
+        "variant": "no-gan",
+        "workload": "helios14b_nogan_best"
+      },
+      "rank_count": 16,
+      "cycle_wall_seconds": {
+        "1": 90.86949288286269,
+        "2": 84.86731821484864
+      },
+      "numerical_status": "REVIEW",
+      "initial_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "initial_physical_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_physical_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "peak_allocated_gib": 22.733145236968994,
+      "peak_reserved_gib": 33.76953125,
+      "min_sampled_driver_free_gib": 2.505859375,
+      "host_sampled_current_gib": {
+        "0": 76.45777893066406,
+        "1": 82.36261367797852
+      },
+      "cuda_oom_delta": 0,
+      "cgroup_oom_delta": 0,
+      "measurement": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual-native/measurement.json",
+        "sha256": "0cec5c1405e911c87fa1526ad88e848cfc58bbcbcd70e2d3cc9e3950e9f234e6"
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-manual-native/bound-summary.json",
+        "sha256": "7af860d37aa384aaee49820edc55c1521e101f04081498d4bd6f99eb859106c8"
+      },
+      "execution": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual-native/execution-plan.json",
+        "sha256": "2c7a1f050f6e4070d5d65fe590358a8337a57b00c3b60408d7481b2773884285"
+      },
+      "ranks": [
+        {
+          "rank": 0,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 1,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 2,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 3,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 4,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 5,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 6,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 7,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 8,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 9,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 10,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 11,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 12,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 13,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 14,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 15,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        }
+      ],
+      "resources": [
+        {
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-manual-native/search-resources.node0.json",
+            "sha256": "4ff6f4d758f56986ee55f3b512f5d08766b73cb469a233f93b23e852480aa7d8"
+          },
+          "node": 0,
+          "status": "PASS",
+          "errors": [],
+          "sample_count": 168,
+          "before": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "after": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "source_observations": {
+            "after": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792230573294020637,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            },
+            "before": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792230210292475872,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            }
+          }
+        },
+        {
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-manual-native/search-resources.node1.json",
+            "sha256": "296d611705870041a7d716034bc4fd2e06208c0405041a22f46ad1f59f430f33"
+          },
+          "node": 1,
+          "status": "PASS",
+          "errors": [],
+          "sample_count": 168,
+          "before": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 3
+          },
+          "after": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 3
+          },
+          "source_observations": {
+            "after": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792230573336426576,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            },
+            "before": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792230210823165366,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            }
+          }
+        }
+      ]
+    },
+    "selected": {
+      "run_id": "ngmatch-07fcc0-r1-match-selected-native",
+      "candidate": {
+        "executable": true,
+        "gpu_validation": "NOT_RUN_ON_SEARCH_BRANCH",
+        "id": "joint-helios1-nogan-hsdp-c512-p0-w5-ksafe-nogan-ed8-v1",
+        "kernels": [
+          "modulation_chunk512",
+          "safe-nogan-ed8-v1"
+        ],
+        "mechanism": "native_mesh_chunk_retained_rollout_window_and_bounded_unshard",
+        "parent": null,
+        "placement": "node-hsdp",
+        "targets": [
+          "nccl",
+          "pointwise",
+          "residency"
+        ],
+        "variant": "no-gan",
+        "workload": "helios14b_nogan_best"
+      },
+      "rank_count": 16,
+      "cycle_wall_seconds": {
+        "1": 91.06039303541183,
+        "2": 84.95865019131452
+      },
+      "numerical_status": "REVIEW",
+      "initial_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "initial_physical_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_physical_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "peak_allocated_gib": 22.733145236968994,
+      "peak_reserved_gib": 33.76953125,
+      "min_sampled_driver_free_gib": 2.505859375,
+      "host_sampled_current_gib": {
+        "0": 77.12640762329102,
+        "1": 80.4798698425293
+      },
+      "cuda_oom_delta": 0,
+      "cgroup_oom_delta": 0,
+      "measurement": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/selected-native/measurement.json",
+        "sha256": "35debb122dda7de11436bb62c529b0d769e01be3a06a0db2f4ecd534de19eee2"
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-match-selected-native/bound-summary.json",
+        "sha256": "744a1905fc9ccf8d008b3454fcfaefe1bd9ba208870e63be77ce1f39ca1ec2cd"
+      },
+      "execution": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/selected-native/execution-plan.json",
+        "sha256": "34f9ef7120fdacc646ebed1ca1757747c5379ba33c5a9518b1605803665ae9dd"
+      },
+      "ranks": [
+        {
+          "rank": 0,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 1,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 2,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 3,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 4,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 5,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 6,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 7,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 8,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 9,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 10,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 11,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 12,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 13,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 14,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        },
+        {
+          "rank": 15,
+          "status": "PASS",
+          "semantics_status": "PASS",
+          "cycles": 2,
+          "sample_rng_actions": {
+            "omitted_from_small_derived_report": true,
+            "count": 2,
+            "preserved_in": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json"
+          },
+          "final_versions": {
+            "critic": 20,
+            "ema": 20,
+            "generator": 4
+          }
+        }
+      ],
+      "resources": [
+        {
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-match-selected-native/search-resources.node0.json",
+            "sha256": "5a8262d43903a85e3acab43e55d88e3b0f7996d629ce22c92011fb3f72f61d01"
+          },
+          "node": 0,
+          "status": "PASS",
+          "errors": [],
+          "sample_count": 171,
+          "before": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "after": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "source_observations": {
+            "after": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792231705746988192,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            },
+            "before": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792231338306775250,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            }
+          }
+        },
+        {
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-match-selected-native/search-resources.node1.json",
+            "sha256": "6c1a7ae4e3f4863d3a6004c44a4e371c6adde8b9288c2b4643f9c86b4a432b1d"
+          },
+          "node": 1,
+          "status": "PASS",
+          "errors": [],
+          "sample_count": 172,
+          "before": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 3
+          },
+          "after": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 3
+          },
+          "source_observations": {
+            "after": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792231705729356267,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            },
+            "before": {
+              "git_status_porcelain": "",
+              "identity": {
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "dirty": false,
+                "head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1"
+              },
+              "observed_unix_ns": 1792231335652999592,
+              "scope": "GIT_BOUNDARY_HEAD_STATUS_AND_TRACKED_BINARY_DIFF_NOT_CONTINUOUS",
+              "status": "PASS"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "qualification_calibration_native_starts": 4,
+  "final_native_starts": 2,
+  "total_native_starts": 6,
+  "formal_speedup_eligible": false,
+  "numerical_status": {
+    "manual": "REVIEW",
+    "selected": "REVIEW"
+  },
+  "calibration": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/calibration-phase/complete.json",
+    "sha256": "a0656f2a6847f43b25481d529dade9bac9737a85dad712bacca74d077d4225c3"
+  },
+  "completion": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/complete.json",
+    "sha256": "c41feab388333bcb9ae7bc1c8fad312433acbb7d1fa7a9eb61a9e5781e2c59d5"
+  },
+  "validation": {
+    "reference": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual_incumbent_validation.json",
+      "sha256": "7bcaece5a0981bfa404434c62b49fe29b489e7557751f72f7fec749da8f47366"
+    },
+    "value": {
+      "claim_boundary": "DESCRIPTIVE_SINGLE_PAIR_ONLY",
+      "cycle2_seconds": {
+        "manual": 84.86731821484864,
+        "selected": 84.95865019131452
+      },
+      "evidence": {
+        "manual_execution": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual-native/execution-plan.json",
+          "sha256": "2c7a1f050f6e4070d5d65fe590358a8337a57b00c3b60408d7481b2773884285"
+        },
+        "manual_measurement": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual-native/measurement.json",
+          "sha256": "0cec5c1405e911c87fa1526ad88e848cfc58bbcbcd70e2d3cc9e3950e9f234e6"
+        },
+        "preregistration": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/manual_match_protocol.json",
+          "sha256": "c6643fe786a13a541273f0a5aee0a0596c822e9094647c2ac31604585328515e"
+        },
+        "selected_execution": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/selected-native/execution-plan.json",
+          "sha256": "34f9ef7120fdacc646ebed1ca1757747c5379ba33c5a9518b1605803665ae9dd"
+        },
+        "selected_measurement": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/selected-native/measurement.json",
+          "sha256": "35debb122dda7de11436bb62c529b0d769e01be3a06a0db2f4ecd534de19eee2"
+        },
+        "selected_plan": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/selected-plan.json",
+          "sha256": "20b5cc36512523562d979ce78799be62b7b9952666d105274b26c68491d37763"
+        }
+      },
+      "formal_timing_eligible": false,
+      "global_optimum": "NOT_CLAIMED",
+      "independent_pairs": 1,
+      "max_planner_overhead": 0.03,
+      "numerical_status": {
+        "manual": "REVIEW",
+        "selected": "REVIEW"
+      },
+      "planner_overhead_fraction": 0.0010761737072293442,
+      "selected_over_manual": 1.0010761737072293,
+      "source_head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+      "statistical_equivalence": "NOT_ESTABLISHED",
+      "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+    }
+  },
+  "original_coordinator_failure_preserved": true,
+  "transport_recovery_gpu_relaunches": 0,
+  "scope": "ORIGINAL_HELIOS_NOGAN_SAME_SOURCE_NATIVE_MANUAL_VS_ACTUAL_SAVED_PLAN_SINGLE_C2_PAIR",
+  "capacity_policy_scope": "ORIGINAL_2GIB_ALLOCATOR_MARGIN_DRIVER_RESERVE0_FINITE_HOST_CAP_HOST_PEAK_UNKNOWN_NOT_ZERO",
+  "hierarchical": {
+    "reference": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/prediction.json",
+      "sha256": "d7a652f1d1dcd2ba98d26a672bed0ef6aed7f964948c1d620235f0e4b70c2341"
+    },
+    "algorithm": "hierarchical",
+    "search_diagnostics": {
+      "beam_dropped": 0,
+      "beam_width": 0,
+      "bound_pruned": 1,
+      "bound_scope": "DECLARED_COST_MODEL_ONLY; EARLY_CYCLE2_USES_ZERO_TIME_BOUND",
+      "capacity_pruned": 0,
+      "contract_pruned": 6,
+      "decision_order": [
+        "mesh",
+        "candidate_bundle",
+        "chunk_tokens",
+        "persistent_unshard",
+        "rollout_window",
+        "variant"
+      ],
+      "dp_scope": "EQUIVALENT_RESIDUAL_BINDING_DOMAINS_NOT_NATIVE_EVENT_REORDERING",
+      "equivalent_pruned": 0,
+      "expanded": 46,
+      "generated": 52,
+      "native_optimality": "NOT_CLAIMED",
+      "optimality": "CALIBRATED_SUBSET_OPTIMAL",
+      "remaining_frontier": 0,
+      "safe_pruning": true,
+      "structural_decisions": [
+        "mesh"
+      ],
+      "termination": "COMPLETE",
+      "unfenced_bounds": 0
+    },
+    "assignment": {
+      "candidate_bundle": "safe-nogan-ed8-v1",
+      "chunk_tokens": "512",
+      "mesh": "node-hsdp",
+      "persistent_unshard": "off",
+      "rollout_window": "5",
+      "variant": "no-gan"
+    },
+    "predicted_cycle2_ns": 85390858723
+  },
+  "oracle": {
+    "reference": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/oracle/prediction.json",
+      "sha256": "41cce73c96f6a4d79caa4c3da7fc1d519f3ca18ea20a2e8c529f7d0a8a881602"
+    },
+    "algorithm": null,
+    "search_diagnostics": null,
+    "assignment": {
+      "candidate_bundle": "safe-nogan-ed8-v1",
+      "chunk_tokens": "512",
+      "mesh": "node-hsdp",
+      "persistent_unshard": "off",
+      "rollout_window": "5",
+      "variant": "no-gan"
+    },
+    "predicted_cycle2_ns": 85390858723
+  },
+  "saved_plan": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/selected-plan.json",
+    "sha256": "20b5cc36512523562d979ce78799be62b7b9952666d105274b26c68491d37763"
+  },
+  "saved_model_plan_source": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/selected-plan.json",
+    "sha256": "20b5cc36512523562d979ce78799be62b7b9952666d105274b26c68491d37763"
+  },
+  "effective_nodes": [
+    {
+      "node": 0,
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-match-selected-native/effective-contract.node0.json",
+        "sha256": "6a31faca602b1914ddd5411094819d0f2a68961febcb1e5fadbe2d9e1912e8c8"
+      },
+      "model_plan_source": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/selected-plan.json",
+        "sha256": "20b5cc36512523562d979ce78799be62b7b9952666d105274b26c68491d37763"
+      }
+    },
+    {
+      "node": 1,
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/runs/ngmatch-07fcc0-r1-match-selected-native/effective-contract.node1.json",
+        "sha256": "6a31faca602b1914ddd5411094819d0f2a68961febcb1e5fadbe2d9e1912e8c8"
+      },
+      "model_plan_source": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/native-match/match-phase/hierarchical/selected-plan.json",
+        "sha256": "20b5cc36512523562d979ce78799be62b7b9952666d105274b26c68491d37763"
+      }
+    }
+  ],
+  "details": "Same original384x640x33 globalB16 r256 G1/C5/EMA5, full safe HSDP bundle; original2GiB policy, no merged-LoRA. Actual saved model_plan/source present on both nodes. Ordinary numerical REVIEW, not strict/statistical equivalence.",
+  "cleanup": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/artifacts/cleanup.json",
+    "sha256": "117708aa6f26a870f363ffc3aa3804ac2882a0db5345d16a07d51e40fefccdb2"
+  },
+  "expanded_original": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion.json",
+    "sha256": "fa806c29ea87df16142f5ec7ab4d6e029e72431437262bd598650af79ef61df7",
+    "bytes": 24135936
+  }
+}

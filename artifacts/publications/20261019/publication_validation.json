@@ -1,0 +1,195 @@
+{
+  "schema": "dmd.publication_validation.v1",
+  "GPU_started": 0,
+  "SSH_calls": 0,
+  "main_modified": false,
+  "new_training_code": false,
+  "publication_integrity_unittest_passed": 3,
+  "local_cpu": [
+    {
+      "name": "livewan-cpu",
+      "tests": 151,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "d5ba4a8db35faa7a8a9a3331a316d3198b5d463c127dd026c7a3ae98ab6e68d7",
+      "junit_local": "/home/lyy/Helios/research_artifacts/DMD-System/github_publication_20261019/r1/logs/livewan-cpu.xml",
+      "skip_reasons": []
+    },
+    {
+      "name": "planner-cpu",
+      "tests": 194,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 12,
+      "junit_sha256": "930e8593a7a2c083614d3eb289c39d646368d1c86ca43946897cbbfeb816dcfe",
+      "junit_local": "/home/lyy/Helios/research_artifacts/DMD-System/github_publication_20261019/r1/logs/planner-cpu.xml",
+      "skip_reasons": [
+        "explicit native source required"
+      ]
+    },
+    {
+      "name": "manual-packets-cpu",
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "c1243166db2cf37af87e67fc3c4bad33a6307096906f4831de4cc86aedcb593c",
+      "junit_local": "/home/lyy/Helios/research_artifacts/DMD-System/github_publication_20261019/r1/logs/manual-packets-cpu.xml",
+      "skip_reasons": []
+    },
+    {
+      "name": "h100-pinned-native-cpu",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "e98e31f224dbc7db3fb3a14dd544fc79676a55d915775678c6e8f335f2ec2201",
+      "junit_local": "/home/lyy/Helios/research_artifacts/DMD-System/github_publication_20261019/r1/logs/h100-pinned-cpu.xml",
+      "skip_reasons": [],
+      "scope": "CPU native source protocol only; resolves original missing explicit-native-source skips; no H100 GPU"
+    }
+  ],
+  "target_CPU_history": {
+    "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+    "manifest_sha256": "6059a4151ebfcc5023b636b930256edddf94a974fbcd78f2ba72c68488506078",
+    "nodes": [
+      {
+        "node": 0,
+        "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+        "rc": 0,
+        "test_count": 151,
+        "passed": 151,
+        "failed": [],
+        "skipped": []
+      },
+      {
+        "node": 1,
+        "source": "053bdcad2cf0e5388738156599f96a6ec5905518",
+        "rc": 0,
+        "test_count": 151,
+        "passed": 151,
+        "failed": [],
+        "skipped": []
+      }
+    ],
+    "scope": "HISTORICAL_TARGET_TORCH210_CPU_NOT_RERUN_THIS_PUBLICATION"
+  },
+  "history_object_scan": {
+    "schema": "dmd.publication_preflight.v1",
+    "utc": "2026-10-19T14:59:07.028105+00:00",
+    "refs": [
+      {
+        "role": "planner_search_scheduler",
+        "branch": "codex/wan-state-policy-planner-20261017",
+        "head": "ea29129342741b54e59c4773e07454f541fadcc7",
+        "origin_head_before": null,
+        "unpublished_commits": 57,
+        "same_as_origin": false
+      },
+      {
+        "role": "livewan_full_b_reselected_a",
+        "branch": "codex/livewan-r2-capacity-offload-20261019",
+        "head": "053bdcad2cf0e5388738156599f96a6ec5905518",
+        "origin_head_before": null,
+        "unpublished_commits": 37,
+        "same_as_origin": false
+      },
+      {
+        "role": "wan_factorial_fsdp_compatible_b",
+        "branch": "codex/w1-r2-fsdp-compatible-b-20261019",
+        "head": "7fa27ff8cab0a483a65fd857e0df762d46194d6d",
+        "origin_head_before": null,
+        "unpublished_commits": 26,
+        "same_as_origin": false
+      },
+      {
+        "role": "wan_large_attention",
+        "branch": "codex/wan-large-attention-backend-20261018",
+        "head": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+        "origin_head_before": null,
+        "unpublished_commits": 60,
+        "same_as_origin": false
+      },
+      {
+        "role": "helios_nogan_retention",
+        "branch": "codex/nogan-partial-parameter-retention-20261018",
+        "head": "e2374f084977a31ef1fd06a2e81a5e9582af818c",
+        "origin_head_before": null,
+        "unpublished_commits": 56,
+        "same_as_origin": false
+      },
+      {
+        "role": "helios_gan_retention",
+        "branch": "codex/state-retention-six-20261017",
+        "head": "155ffbb585356a29b544573a391eb456b790a15a",
+        "origin_head_before": null,
+        "unpublished_commits": 55,
+        "same_as_origin": false
+      },
+      {
+        "role": "h3_ar_fa3_bank",
+        "branch": "codex/h3-ar-uncached-rollout-fa3-20261018",
+        "head": "69a9464997de16deafd5786338f538ba7930d9a5",
+        "origin_head_before": null,
+        "unpublished_commits": 54,
+        "same_as_origin": false
+      },
+      {
+        "role": "h3_full_numeric_diagnostic",
+        "branch": "codex/h3-full-local-state-diagnostic-20261018",
+        "head": "285b31e3ec4789d7f98816265f19f7853827b3e2",
+        "origin_head_before": null,
+        "unpublished_commits": 55,
+        "same_as_origin": false
+      },
+      {
+        "role": "livewan_tail4_candidate",
+        "branch": "codex/livewan-c51-tail4-census-20261017",
+        "head": "0dfce74b66499419fdf38ec40b5e621544d8b904",
+        "origin_head_before": null,
+        "unpublished_commits": 33,
+        "same_as_origin": false
+      },
+      {
+        "role": "pp_fsdp_dp_cpu_prototype",
+        "branch": "codex/wan-grid-static-shared-20261014",
+        "head": "7cde0ff8101725d8bab2843c52dcde127b09525a",
+        "origin_head_before": null,
+        "unpublished_commits": 44,
+        "same_as_origin": false
+      },
+      {
+        "role": "h100_native_pinned_dependency",
+        "branch": "agent/h100-helios-nograd-retain-20261014",
+        "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+        "origin_head_before": null,
+        "unpublished_commits": 35,
+        "same_as_origin": false,
+        "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/8fc70e8ce9f6e0243604812120119c9f4c078e55",
+        "github_branch_url": "https://github.com/sliortega295-ops/DMD-System/tree/agent/h100-helios-nograd-retain-20261014",
+        "main_merged": false,
+        "scope": "Exact8fc70e8 native dependency pinned by H100 adapter. Local CPU protocol verification only; no H100 connection or resumed campaign."
+      },
+      {
+        "role": "wan_merged_lora_negative_evidence",
+        "branch": "codex/wan13b-shadow-noise30-20261012",
+        "head": "c69876197aeaccbab19b515b54d1022f07634422",
+        "origin_head_before": null,
+        "unpublished_commits": 13,
+        "same_as_origin": false
+      }
+    ],
+    "blob_count": 1188,
+    "blob_bytes": 34280761,
+    "large_objects": [],
+    "binary_objects": [],
+    "secret_pattern_findings": [],
+    "scope": "Only objects newly published by selected refs relative to fresh origin refs; regex scan is not a proof of no secrets."
+  },
+  "setup_failures_preserved": {
+    "partial_source_export_missing_configs": "logs/*-partial-export-r1.*",
+    "complete_source_export_missing_git_identity": "logs/*-nogit-export-r2.*",
+    "resolution": "Reconstructed clean disposable checkouts at original commit using local read-only Git object alternates; no production or test golden changes."
+  }
+}

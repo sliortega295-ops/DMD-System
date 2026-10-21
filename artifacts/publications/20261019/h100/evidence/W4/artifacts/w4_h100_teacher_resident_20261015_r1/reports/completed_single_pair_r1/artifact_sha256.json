@@ -1,0 +1,12 @@
+{
+  "status": "PASS_LOCAL_SMALL_DERIVED_EVIDENCE",
+  "files": {
+    "baseline_summary.json": "b5c4a287a30dcc13bcedf8865d8ca67f4a8f50761492d9916653475b0c298cb0",
+    "result.json": "6b66166f3a36ddbe23a15e5d5c00cab6a2c1b851e99fcbd1fd75f907c01a04ca",
+    "candidate_summary.json": "333b63719852bcb8ad828ae2d465c0c6627ea44252e9cbf306f5c59fe1d74209"
+  },
+  "seconds_saved": 0.1041718750000058,
+  "ratio": 1.0023017732837902,
+  "numerical_status": "REVIEW_UNCHANGED_NOT_STRICT_PASS",
+  "formal_strict_state_equivalence": "NOT_ADMITTED_REVIEW_PRESERVED"
+}

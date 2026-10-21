@@ -6,7 +6,6 @@ Unmeasured depth/tile costs remain explicit calibration requests.
 """
 from collections import defaultdict
 from dataclasses import replace
-from itertools import product
 from pathlib import Path
 
 from distillschedule.workloads.best_known.registry import (
@@ -71,9 +70,10 @@ def _read(path, root):
     layout=_object(path)
     require(layout.get('schema_version')==SCHEMA,"not an H3 action layout")
     binding=layout['binding']; validate_binding(binding)
+    impl=H3Implementation.parse(layout['implementation_id'])
     require(binding['source_head']==git_head(root),"H3 action calibration source differs")
     require(binding['precision_fingerprint']==PRECISION and binding['semantic_fingerprint']==
-            fingerprint(semantic_contract(load_profile(H3))),"H3 precision/semantics differs")
+            fingerprint(semantic_contract(impl.request.profile())),"H3 precision/semantics differs")
     refs=layout['rank_receipts']
     require(len(refs)==16 and len({r['path'] for r in refs})==16,"H3 needs sixteen calibration sources")
     native=[]
@@ -139,8 +139,11 @@ def build_problem(layout_path, *, root=None):
                           fingerprint(layout['rank_receipts']))
     lives=tuple(Lifetime(k,k,(k.replace('.r','.c'),),RANKS,v,'producer_exit') for k,v in sorted(outputs.items()))
     rules=[];edges=[]
-    for d,n,w in product((1,2),(64,128),range(1,6)):
-        candidate=H3Implementation(d,n,w)
+    from .h3_implementation import implementations
+    candidates = implementations(request=impl.request, explicit_cache=impl.cache_policy != 'legacy_cpu_staged',
+                                 rollout_windows=range(1,6))
+    domains = {k: tuple(sorted({i.assignment[k] for i in candidates})) for k in candidates[0].assignment}
+    for candidate in candidates:
         for op in graph.operations:
             c=component_contract(op,candidate,work[op.operation_id])
             rules.append(BindingRule(op.operation_id,candidate.assignment,c.digest,RANKS,
@@ -148,8 +151,8 @@ def build_problem(layout_path, *, root=None):
     for w in range(1,6):
         order=action_graph(w).topological_order()
         edges.extend(dict(when={'rollout_window':str(w)},source=a,target=b) for a,b in zip(order,order[1:]))
-    return PlanningProblem(H3,binding,graph,DOMAINS,tuple(rules),(state,),lives,limits,
-        (H3Implementation(impl.prefetch_depth,impl.lora_epilogue_block_n,5).assignment,impl.assignment),
+    return PlanningProblem(H3,binding,graph,domains,tuple(rules),(state,),lives,limits,
+        (replace(impl,rollout_window=5).assignment,impl.assignment),
         conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
         lowering=dict(adapter=ADAPTER,layout_receipt=str(layout_path.resolve()),layout_sha256=file_sha256(layout_path),
             memory_scope='CONSERVATIVE_PERSISTENT_GROWTH_ENVELOPE_PLUS_RETAINED_STORAGE; NATIVE_CONFIRMATION_REQUIRED',

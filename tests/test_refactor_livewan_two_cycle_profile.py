@@ -10,7 +10,7 @@ from distillschedule.runtime.livewan_two_cycle_profile import enabled,apply_cont
 ROOT=Path(__file__).resolve().parents[1]
 
 def gate_module():
-    p=ROOT/'scripts/distillschedule/build_livewan_two_cycle_profile_gate.py'
+    p=ROOT/'tools/assets/build_livewan_two_cycle_profile_gate.py'
     s=importlib.util.spec_from_file_location('profile_gate_test',p)
     m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 

@@ -22,7 +22,7 @@ def test_scope_has_no_sync_copy_rng_model_or_optimizer_calls():
 
 def test_plan_only_needs_no_torch_or_assets(tmp_path):
     root = Path(__file__).resolve().parents[1]
-    p = subprocess.run([sys.executable, str(root / 'scripts/distillschedule/canary_livewan_rollout_cast_cache.py'),
+    p = subprocess.run([sys.executable, str(root / 'benchmarks/kernels/canary_livewan_rollout_cast_cache.py'),
                         '--plan-only', '--trace', '/unread', '--bootstrap', '/unread',
                         '--output', str(tmp_path/'result.json')], capture_output=True, text=True, check=True)
     assert json.loads(p.stdout)['status'] == 'NOT_RUN'
