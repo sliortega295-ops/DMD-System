@@ -479,7 +479,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 scope='SINCE_LAST_NATIVE_RESET_NOT_PROCESS_CUMULATIVE')
             if highwater is not None:
                 receipt['gpu_memory'].update(highwater.close())
-            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles-start_cycle)
+            if start_cycle:
+                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles-start_cycle)
+            else:
+                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
             receipt['state_evidence'] = save_final_state(session, root)

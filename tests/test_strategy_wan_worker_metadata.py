@@ -83,3 +83,25 @@ def test_restart_agreement_compares_checkpoint_content_not_local_alias(tmp_path)
     with pytest.raises(ValueError, match='checkpoint.*complete'):
         wan_worker.admit_run_controls(dist, object(), mode='train', cycles=4,
                                      checkpoint_every=1, resume_from=path)
+
+
+def test_completed_build_census_keeps_fresh_and_resumed_counts_separate():
+    """Execute the real metadata-only branch; this is not GPU qualification."""
+    import ast
+    source = ast.parse(inspect.getsource(wan_worker.run_worker))
+    branches = [node for node in ast.walk(source) if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name) and node.test.id == 'start_cycle']
+    assert len(branches) == 1
+    code = compile(ast.fix_missing_locations(ast.Module(body=branches, type_ignores=[])),
+                   '<actual-native-build-census>', 'exec')
+    for resumed, expected in ((0, 4), (1, 3), (3, 1)):
+        calls = []
+        strategy, build = object(), object()
+        def validate(selected, observed, **kwargs):
+            calls.append((selected, observed, kwargs))
+            return {'status': 'CPU_TEST_ONLY'}
+        receipt = {}
+        exec(code, {'start_cycle': resumed, 'cycles': 4, 'strategy': strategy,
+                    'session': NS(build=build), 'receipt': receipt, 'validate_build': validate})
+        assert calls == [(strategy, build, {'executed': True, 'cycles': expected})]
+        assert receipt['backend_effects'] == {'status': 'CPU_TEST_ONLY'}
