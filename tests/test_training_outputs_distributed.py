@@ -37,6 +37,9 @@ def _output_worker(rank, rendezvous, config_path, root, reduction, world):
             raw["execution"]["implementation"]["node_groups"] = [[0, 1], [2, 3]]
         config = TrainingConfig.from_dict(raw, source=config.source)
         trained = train(config)
+        rows = [json.loads(line) for line in (Path(root) / f"training/ranks/rank-{rank:05d}/metrics.jsonl").read_text().splitlines()]
+        assert len(rows) == 1
+        assert all(row["execution"]["effects"]["lifecycle_installations"] == 1 for row in rows)
         from distillschedule.training import session
         original_load = session.load_callable
         def custom_exporter(reference):
@@ -133,7 +136,8 @@ def _output_worker(rank, rendezvous, config_path, root, reduction, world):
 
 
 @pytest.mark.parametrize("reduction,world", [("post_backward", 2), ("ddp_overlap", 2),
-                                           ("fsdp2_reshard", 2), ("hsdp2_reshard", 4)])
+                                           ("fsdp2_reshard", 2), ("fsdp2_keep_forward", 2),
+                                           ("hsdp2_reshard", 4), ("hsdp2_keep_forward", 4)])
 def test_sharded_checkpoint_exports_dense_weights_and_evaluates_all_ranks(tmp_path, reduction, world):
     if "sdp2" in reduction and tuple(map(int, torch.__version__.split(".")[:2])) < (2, 10):
         pytest.skip("CPU FSDP2 requires Torch >= 2.10")
@@ -159,3 +163,17 @@ def test_sharded_checkpoint_exports_dense_weights_and_evaluates_all_ranks(tmp_pa
     summary = json.loads((tmp_path / "evaluated/generation.json").read_text())
     assert [row["sample_id"] for row in summary["ranks"]] == [f"sample-{rank:06d}" for rank in range(world)]
     assert (tmp_path / "evaluated/_SUCCESS").is_file()
+    new = tmp_path / "new-inputs"
+    build_fixture(new, samples=world * 2 + 1)
+    prepare(new / "raw/manifest.json", new / "prepared")
+    from distillschedule.data import PreparedDataset
+    training_inputs = PreparedDataset(media / "prepared/manifest.json")
+    new_inputs = PreparedDataset(new / "prepared/manifest.json")
+    assert new_inputs.manifest["records"][-1]["features"]["sha256"] not in {
+        row["features"]["sha256"] for row in training_inputs.manifest["records"]}
+    generated = generate_from_export(config, tmp_path / "weights", tmp_path / "portable-new-input",
+                                     prepared=new / "prepared/manifest.json", sample_index=world * 2)
+    assert generated["kind"] == "INFERENCE_FROM_EXPORTED_WEIGHTS"
+    assert generated["sample_id"] == f"sample-{world * 2:06d}"
+    assert generated["input_identity"] == new_inputs.identity != training_inputs.identity
+    assert Path(generated["artifact"]).is_file()

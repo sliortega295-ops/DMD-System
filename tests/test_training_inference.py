@@ -94,6 +94,38 @@ def _rewrite_manifest(output, change):
     (output / "_SUCCESS").write_text(hashlib.sha256(path.read_bytes()).hexdigest() + "\n")
 
 
+def _write_pickle_sentinel(path):
+    Path(path).write_text("forbidden pickle global executed\n")
+
+
+def test_hash_valid_export_rejects_forbidden_pickle_global_without_execution(tmp_path):
+    import hashlib
+    import pickle
+
+    from distillschedule.training.session import generate_from_export
+    root, config, output = _export_fixture(tmp_path)
+    sentinel = tmp_path / "pickle-side-effect"
+
+    class ForbiddenWeights:
+        def __reduce__(self):
+            return _write_pickle_sentinel, (str(sentinel),)
+
+    path = output / "weights.pt"
+    torch.save(ForbiddenWeights(), path)
+    _rewrite_manifest(output, lambda value: value["files"].update({"weights.pt": hashlib.sha256(path.read_bytes()).hexdigest()}))
+    safe_globals = torch.serialization.get_safe_globals()
+    assert _write_pickle_sentinel not in safe_globals
+    assert not sentinel.exists()
+    with pytest.raises(ValueError, match="invalid safe exported weights") as rejected:
+        generate_from_export(config, output, tmp_path / "bad-pickle", prepared=root / "prepared/manifest.json")
+    assert isinstance(rejected.value.__cause__, pickle.UnpicklingError)
+    assert "Unsupported global" in str(rejected.value.__cause__)
+    assert "_write_pickle_sentinel" in str(rejected.value.__cause__)
+    assert torch.serialization.get_safe_globals() == safe_globals
+    assert not sentinel.exists()
+    assert not (tmp_path / "bad-pickle").exists()
+
+
 @pytest.mark.parametrize("fault", ["incomplete", "manifest_hash", "schema", "escape", "symlink"])
 def test_export_admission_rejects_before_model_import(tmp_path, monkeypatch, fault):
     from distillschedule.training.session import generate_from_export

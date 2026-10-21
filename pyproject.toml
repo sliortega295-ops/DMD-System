@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,15 @@ version = "0.3.0"
 description = "Extensible training, state management and execution planning for DMD workflows"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY.md",
+    "third_party/helios_compat/NOTICE",
+    "third_party/helios_compat/LICENSE.txt",
+    "third_party/licenses/H3-DMD-for-A100-LICENSE",
+]
 authors = [{name = "DistillSchedule contributors"}]
 dependencies = []
 
