@@ -142,10 +142,10 @@
     "src/distillschedule/cli.py": {
       "target": "src/distillschedule/cli.py",
       "original_integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
-      "reviewed_source_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
-      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
-      "integrated_sha256": "ad0edf6826f1c50018a8712ced434c09fdb25a560a6894bb980c201eec7da994",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e",
+      "source_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
+      "integrated_sha256": "3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e",
+      "change": "public_training_lifecycle_routes_and_package_equivalent_source_entrypoint; canonical_math_unchanged"
     },
     "src/distillschedule/workloads/best_known/cli.py": {
       "target": "src/distillschedule/workloads/best_known/cli.py",
@@ -442,6 +442,14 @@
       "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
       "integrated_sha256": "747f16b9213d96113485220072e35c7d8892a7cd15d20ec21794413e9df0ac1b",
       "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillctl.py": {
+      "target": "scripts/distillctl.py",
+      "original_integrated_sha256": "d3a296a3d6add3301c610b524a8167c21dfbca99276fcaa5bf5f3a57c48e3992",
+      "reviewed_source_sha256": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
+      "source_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
+      "integrated_sha256": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
+      "change": "public_training_lifecycle_routes_and_package_equivalent_source_entrypoint; canonical_math_unchanged"
     }
   }
 }

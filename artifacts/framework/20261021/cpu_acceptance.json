@@ -1,0 +1,97 @@
+{
+  "compile_and_shell_syntax": "PASS",
+  "focused_lint": "PASS_F_AND_E9",
+  "fresh_process_resume_equals_uninterrupted": {
+    "cursor": true,
+    "cycle": true,
+    "policy": true,
+    "rng": true,
+    "state": true,
+    "versions": true
+  },
+  "fresh_process_validation_test": "tests/test_training_end_to_end.py::test_fresh_process_resume_matches_all_training_state_and_generates",
+  "functional_installed_wheel": {
+    "export": true,
+    "generate": true,
+    "git_optional": true,
+    "gpu_execution": "NOT_RUN",
+    "measured_plan_executed": true,
+    "pretrained_quality": "NOT_RUN",
+    "raw_media": true,
+    "real_autograd": true,
+    "restart_full_state_equal": true,
+    "status": "PASS_INSTALLED_FRAMEWORK_CPU"
+  },
+  "inherited_refactor_suite": {
+    "failed": 2,
+    "passed": 2147,
+    "reason": "triton unavailable; same failures reproduced on unmodified integration base",
+    "skipped": 85
+  },
+  "integration_base": "3a773ccb5be9539f12ed86984466effb8c5e7e90",
+  "junit_sha256": "bae5cb6abec6961450b9cea99e8df7c44eebb2ebe2ad0666723974b36dca1d7c",
+  "links": "PASS_69_LOCAL_LINKS",
+  "local_environment": {
+    "python": "3.12",
+    "torch": "2.14.0+cpu"
+  },
+  "model_downloads": 0,
+  "native_six_workload_status": "CPU_SOURCE_CONTRACT_LOWERING_ONLY; bounded APIs and native lifecycle limits documented",
+  "new_gpu_runs": 0,
+  "original_import_map_sha256": "599cf789dc6c949bbd24667aa07271050046f8906bd3edf10e318129477d8488",
+  "quality_validation": "NOT_RUN",
+  "review": {
+    "actionable_residuals": 0,
+    "confirmed_issues_addressed": 9,
+    "entrypoint_followup_addressed": 1,
+    "lenses": 8,
+    "status": "complete"
+  },
+  "schema_version": "distillschedule.framework_cpu_acceptance.v1",
+  "source_admission": {
+    "legacy_canonical_profiles": 5,
+    "log_sha256": "7761990c051948528a48c6a4c0d21029434b736ed01ea3696d458eb95999b7ac",
+    "original_import_map_unchanged": true,
+    "project_workloads": 6,
+    "status": "PASS_CPU_INTEGRATION"
+  },
+  "source_content_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
+  "source_manifest": {
+    "scripts/distillctl.py": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
+    "src/distillschedule/data/__init__.py": "a6b45a9a2e3fb108092a1fa99bbb0b41758b1eb631024a6602a880f77008d384",
+    "src/distillschedule/data/cli.py": "b27b29c424a224b4cab7a2dffc4732c1d3ff15fdd9ef5711941c62a199ec0553",
+    "src/distillschedule/data/dataset.py": "5004515859ef8ff4b9a56e928b814a49686b01660f7eac875ebcfb40660ed829",
+    "src/distillschedule/data/decoding.py": "0ea93ac9b86196b9791595e831d7c98bbb3b771af82efa04f5f5d6f9e1b915f5",
+    "src/distillschedule/data/manifest.py": "10980f08454b1e32a4fc80594baee0e5615033b58bb2e08de5f84754026b33f4",
+    "src/distillschedule/data/preparation.py": "6006efceaa51920608c7ead6d9b46b791dbbbaa7bffbb872e01052babe91db7d",
+    "src/distillschedule/data/tensors.py": "f1145c68d39002204971f00754550e684ad997ccc69d3f6c982689fe4628ef8d",
+    "src/distillschedule/examples/__init__.py": "4c960c930b137cff60126ad394e55c02f2f87a9d7cbb122940ced1524093ee44",
+    "src/distillschedule/examples/tiny_av.py": "45e8aff90e91e592c7d40d16052d37a79a840c42631654cdd68c3179162b8d7e",
+    "src/distillschedule/open_workload/planning.py": "7312fc49724345bae59e0e5c7685d8f648be580563ca10e9d8b2a71ee613121e",
+    "src/distillschedule/open_workload/role_planning.py": "36d0d278acfbb5d391f1e752d2ae66ce46397057bc3dcbe939df2a978bbdab17",
+    "src/distillschedule/open_workload/torch_backend.py": "c5cee983a6d245e09b13b12020e07593207948c29ed6bc71a831b2b16e795135",
+    "src/distillschedule/training/__init__.py": "42dcec9b70e1a53da7fbdb7623da2fdd1bfdd6b8b2a3ce60bdade75c60207fb1",
+    "src/distillschedule/training/adapters.py": "e74c12f9948615dc7363998eebd0950ad0c80cb05fd0a3cb870b4749d29e7083",
+    "src/distillschedule/training/checkpoint.py": "216fc1a059d8df53e777f8d95e0c4ae9f68d781864211bb9933c77faf9cdf90b",
+    "src/distillschedule/training/cli.py": "ee38d36827b2e7e524ba1101ed341ae9efbd8b5d6b0e5a88ba53cb1c28075dd6",
+    "src/distillschedule/training/config.py": "d1488693a207c46d57502984faefcc173ca544c0ead8536ecdc87ff7db0427d8",
+    "src/distillschedule/training/native.py": "5bf6db5fcb26fddf2326d377cdbbff02a61ade504e90e0df138cf87618acad25",
+    "src/distillschedule/training/plugins.py": "f15e7664945a2c84bc0f18c100cfc609179f7992e84f6f9904712cf2cae22530",
+    "src/distillschedule/training/policy.py": "216d470e4b67a217ea645d016d6acf4181672ae24ee203bae4760cabe083a5e9",
+    "src/distillschedule/training/session.py": "36a80754bd3febbf4148e6b63c550ede2c568673bb2eb90ab5242571e3acafc1"
+  },
+  "speedup_claim": false,
+  "ssh_connections": 0,
+  "test_scope": [
+    "tests/test_training_*.py",
+    "tests/test_data_*.py",
+    "tests/test_open_workload_*.py"
+  ],
+  "tests": {
+    "errors": 0,
+    "failures": 0,
+    "passed": 354,
+    "skipped": 2,
+    "tests": 356
+  }
+}
