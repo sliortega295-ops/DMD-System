@@ -142,10 +142,10 @@
     "src/distillschedule/cli.py": {
       "target": "src/distillschedule/cli.py",
       "original_integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
-      "reviewed_source_sha256": "3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e",
-      "source_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
-      "integrated_sha256": "3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e",
-      "change": "public_training_lifecycle_routes_and_package_equivalent_source_entrypoint; canonical_math_unchanged"
+      "reviewed_source_sha256": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
+      "source_commit": "04ecbee34d88c7160016e6af065a5175c6bfb8d7",
+      "integrated_sha256": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
+      "change": "public_training_lifecycle_routes_and_portable_inference_generate; previous_overlay=e6317e64232d4bdd53a3bbb57ff911121f21bc62:3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e; canonical_math_unchanged"
     },
     "src/distillschedule/workloads/best_known/cli.py": {
       "target": "src/distillschedule/workloads/best_known/cli.py",
