@@ -4,9 +4,11 @@ Native recipes retain their original process-group/role-pool owners. This
 module serves the existing generic Program backend and never acquires GPUs or
 changes network/environment settings.
 """
-from contextlib import contextmanager, ExitStack
-from datetime import timedelta
+import hashlib
 import os
+from contextlib import ExitStack, contextmanager
+from datetime import timedelta
+from pathlib import Path
 
 
 def rank_world():
@@ -30,6 +32,31 @@ def gather(value):
 
 def primary(fn, label):
     return checked(lambda: fn() if rank_world()[0] == 0 else None, label)
+
+
+def admit_run_controls(config):
+    """Agree on optional collective branches before construction or restart.
+
+    Restart paths may be explicit mount aliases: compare completed manifest
+    bytes, not their local spelling. Exchange local read failures before any
+    rank can enter a model factory or a checkpoint collective.
+    """
+    def local():
+        trainer = config.trainer
+        manifest_sha = None
+        if trainer.get("resume_from"):
+            root = Path(trainer["resume_from"])
+            manifest_sha = hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
+            if (root / "_SUCCESS").read_text().strip() != manifest_sha:
+                raise ValueError("resume checkpoint is not complete or its manifest changed")
+        return {"cycles": trainer["cycles"], "checkpoint_every": trainer.get("checkpoint_every", 1),
+                "output_root": str(Path(trainer["output_dir"]).resolve()),
+                "resume_manifest_sha256": manifest_sha}
+
+    controls = checked(local, "training run/restart control admission")
+    if any(row != controls for row in gather(controls)):
+        raise ValueError("ranks disagree on training run/restart controls: "
+                         "cycles, checkpoint cadence, output root or resume manifest")
 
 
 def topology():

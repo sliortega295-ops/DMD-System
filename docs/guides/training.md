@@ -126,6 +126,14 @@ format. Supply at least `cycles × world_size` records; at global cursor `k`,
 rank `r` consumes record `k+r`, then the cursor advances by `world_size`. No
 padding, recycling or dropping an incomplete rank cohort is permitted.
 
+Before any model factory, restart branch or output creation, ranks must agree
+on the total target cycles, checkpoint frequency, resolved shared output root
+and whether to resume from the same completed manifest. A missing manifest or
+invalid `_SUCCESS` on any rank rejects collectively. Explicit checkpoint mount
+aliases are allowed when their manifest bytes and completion hash agree.
+These controls may change between runs, but must match across ranks within one
+invocation; they do not change the checkpoint's mathematical identity.
+
 ```sh
 torchrun --standalone --nproc-per-node=2 -m distillschedule train train.json
 torchrun --standalone --nproc-per-node=2 -m distillschedule train train.json \

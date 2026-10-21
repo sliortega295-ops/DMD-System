@@ -158,6 +158,7 @@ def _train(config: TrainingConfig):
     # Reject unsupported collective validation before constructing any model,
     # installing a wrapper, updating state or creating output.
     distributed.checked(lambda: admit_scope(config), "validation scope admission")
+    distributed.admit_run_controls(config)
     components, dataset, algorithm, identity, validation = distributed.checked(
         lambda: construct(config, include_validation=True), "training construction")
     rank, world = distributed.rank_world()
