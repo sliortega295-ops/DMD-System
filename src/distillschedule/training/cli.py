@@ -1,11 +1,12 @@
 """Install -> prepare -> train -> resume -> generate/export public commands."""
 from __future__ import annotations
+
 import argparse
 import importlib.metadata
 import json
-from pathlib import Path
 import platform
 import sys
+from pathlib import Path
 
 from .config import TrainingConfig, load_training_config
 
@@ -53,7 +54,7 @@ def main(argv=None):
     config_parser = sub.add_parser("config", help="validate or render a training configuration")
     config_parser.add_argument("action", choices=("validate", "show"))
     config_parser.add_argument("config", type=Path)
-    for name in ("train", "evaluate", "export"):
+    for name in ("train", "evaluate", "export", "generate"):
         p = sub.add_parser(name)
         p.add_argument("config", type=Path)
         p.add_argument("--output", type=Path)
@@ -61,9 +62,12 @@ def main(argv=None):
             p.add_argument("--dry-run", action="store_true")
             p.add_argument("--resume", type=Path)
             p.add_argument("--cycles", type=int)
+        elif name == "generate":
+            p.add_argument("--weights", type=Path, required=True)
+            p.add_argument("--prepared", type=Path, required=True)
         else:
             p.add_argument("--checkpoint", type=Path, required=True)
-        if name == "evaluate":
+        if name in ("evaluate", "generate"):
             p.add_argument("--sample-index", type=int, default=0)
     args = parser.parse_args(argv)
     try:
@@ -93,9 +97,14 @@ def main(argv=None):
                 raise ValueError("generation/export requires --output")
             if config.execution.get("adapter", "program") == "native":
                 raise ValueError("use the native recipe's documented checkpoint/generation/export capability")
-            from .session import evaluate, export
-            result = (evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index)
-                      if args.command == "evaluate" else export(config, args.checkpoint, args.output))
+            from .session import evaluate, export, generate_from_export
+            if args.command == "generate":
+                result = generate_from_export(config, args.weights, args.output,
+                                              prepared=args.prepared, sample_index=args.sample_index)
+            elif args.command == "evaluate":
+                result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index)
+            else:
+                result = export(config, args.checkpoint, args.output)
         if type(result) is int:
             # Native front doors already emit their own original receipts.
             return result

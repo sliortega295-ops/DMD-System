@@ -20,7 +20,7 @@ python -m pip install -e '.[train,test]'
 There are no model downloads or remote services in this example. Its runtime
 commands neither install dependencies nor allocate a GPU.
 
-## Prepare → train → evaluate → export
+## Prepare → train → evaluate → export → new-input generation
 
 Run these public commands with `distillctl` and Python from the same installed
 environment. `DEMO` is a new, disposable directory; the builder refuses to
@@ -36,6 +36,11 @@ distillctl train "$DEMO/train.json"
 CP="$DEMO/run/checkpoints/cycle-000004"
 distillctl evaluate "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/generated"
 distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported"
+
+python -m distillschedule.examples.tiny_av --output "$DEMO/new-inputs" --samples 2
+distillctl data prepare "$DEMO/new-inputs/raw/manifest.json" --output "$DEMO/new-prepared"
+distillctl generate "$DEMO/train.json" --weights "$DEMO/exported" \
+  --prepared "$DEMO/new-prepared/manifest.json" --sample-index 1 --output "$DEMO/new-generated"
 ```
 
 The builder creates three real 8×8 PPM RGB frames, a 16-bit mono 8 kHz WAV tone
@@ -97,6 +102,12 @@ inferring success from file creation. Complete-cycle checkpoints live under
 `run/checkpoints/`. Evaluation loads the trained Student and invokes its real
 generation/decode callbacks. Export saves module weights and accompanying
 metadata; it does not turn these tiny weights into a pretrained model.
+`generate` then restores the hash-bound exported module weights on explicitly
+new prepared inputs without reading the original training dataset/checkpoint or
+constructing the algorithm. The original factory source and non-device
+parameters must still match. Its `generation.pt` and PNG `frames/` preserve the
+actual decoder output, with quality validation **NOT_RUN**, not invented
+high-resolution media. Exported weights are not a resumable checkpoint.
 
 Continue to a total of six cycles from the complete four-cycle checkpoint:
 
@@ -155,8 +166,10 @@ Adapt the three independently owned contracts for a real model:
 2. **Model factory** — `build_model(parameters) -> ModelComponents`. The trainer
    supplies explicit `device` and `seed`. Bind models and persistent optimizers
    in `state`; name immutable modules, and optionally provide
-   `generate(state, feeds, parameters)`, `decode(value, parameters)` and export
-   callbacks. Preserve any EMA/scaler/scheduler state your algorithm requires.
+   `generate(state, feeds, parameters)`, `decode(value, parameters)` and paired
+   custom `export`/`load_export` callbacks if needed. The decoder returns explicit
+   THWC uint8 video; the framework does not reinterpret latent tensors as pixels.
+   Preserve any EMA/scaler/scheduler state your algorithm requires.
    This tiny fixture intentionally has no EMA or scheduler.
 3. **Algorithm factory** —
    `build_algorithm(components, feeds, parameters, cycle, seed) -> Workload`

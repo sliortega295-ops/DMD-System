@@ -13,9 +13,45 @@ Teacher is constructed and frozen by this factory. The framework never guesses
 which parameters to train or converts LoRA/base compute dtype implicitly.
 
 `metadata` identifies the model/checkpoint/precision and any fixture/quality
-boundary. `generate`, `decode` and `export` callbacks remain model-owned. Keep
+boundary. `generate`, `decode`, `export` and `load_export` callbacks remain model-owned. Keep
 immutable submodules explicitly declared; aliasing is an admitted execution
 capability, not a factory side effect.
+
+Inference does not construct an algorithm or restore optimizer/RNG state. The
+original factory receives the effective non-device parameters recorded at
+export, plus the current declared device. Its source, metadata and named module
+class/state layouts must match the export. Put required non-module inference
+state in deterministic factory parameters/metadata, or use a paired custom
+serializer/loader; do not hide a dependency on optimizer history or the original
+training dataset. Factory code/dependency assets are not bundled with weights.
+An explicitly relocated local `.py` factory must keep identical source bytes
+and the same callable symbol. Package/module references stay exact, and full
+training-checkpoint identities are never relaxed for relocation.
+
+By default, full named module state dictionaries use the safe built-in loader.
+An optional `export(state, output_directory) -> JSON_metadata` writes only
+relative artifact files beneath the supplied **staging** directory and must
+have a paired `load_export(state, artifact_directory, JSON_metadata)` callback.
+The latter restores that exact format after file hashes/path bounds and model
+identity/layout are admitted. Never record the staging directory's absolute
+path in portable metadata. `export.json` and `_SUCCESS` are framework-owned
+reserved names. Missing explicit custom loaders reject; custom distributed
+export callbacks are currently unsupported. The built-in distributed exporter
+gathers full tensors on all owning ranks and writes shared files on primary.
+
+`generate(state, feeds, parameters)` receives the new prepared sample under
+no-grad with every declared module in evaluation mode. Its actual
+`decode(value, parameters)` for portable video generation returns nonempty THWC
+uint8 RGB/RGBA `video` (or generate may return that explicit decoded contract
+itself, as a mapping containing `video`). Legacy checkpoint `evaluate` also
+supports non-video safe tensor outputs without manufacturing frames; its receipt
+then reports `video.status=NOT_AVAILABLE`. If a `video` key is supplied, its
+shape/dtype are mandatory. The framework saves diagnostic pixels without latent
+resizing or inferred decoding, and keeps quality validation **NOT_RUN**.
+Callback parameters are finite canonical JSON; distributed evaluation admits
+their common digest before any forward. Receipts preserve this actual parameter
+map and the runtime `trainer.seed`, reseeded immediately before generation,
+separately from any model-factory initialization seed.
 
 An offline encoder takes decoded media plus its parameter mapping and returns
 the native tensor feeds expected by the model. Reuse that model's local

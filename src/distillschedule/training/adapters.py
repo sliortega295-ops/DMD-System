@@ -5,8 +5,10 @@ and returns the existing ``open_workload.torch_backend.Workload`` for ONE cycle.
 A model factory accepts a parameter mapping and returns ModelComponents.
 """
 from __future__ import annotations
+
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any
 
 
 @dataclass
@@ -17,6 +19,7 @@ class ModelComponents:
     generate: Callable | None = None
     decode: Callable | None = None
     export: Callable | None = None
+    load_export: Callable | None = None
 
     def validate(self):
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
@@ -29,7 +32,7 @@ class ModelComponents:
                 module = resolve_module(self.state, path)
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
-        for name in ("generate", "decode", "export"):
+        for name in ("generate", "decode", "export", "load_export"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")

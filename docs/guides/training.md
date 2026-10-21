@@ -161,12 +161,75 @@ summary records all actual completed ranks rather than predicting rank counts.
 ```sh
 distillctl evaluate train.json --checkpoint run/checkpoints/cycle-000004 --output generated
 distillctl export train.json --checkpoint run/checkpoints/cycle-000004 --output exported
+distillctl generate train.json --weights exported \
+  --prepared new-prepared/manifest.json --sample-index 0 --output new-generated
 ```
 
-Evaluation invokes the adapter's actual `generate(state, feeds, parameters)` and
-optional `decode(value, parameters)` under no-grad and writes `generation.pt`
-plus metadata. This operation generates a sample; it does not automatically
-calculate FVD, VBench or another quality metric. An adapter may implement a
-custom export callback; otherwise the framework exports named module state
-dictionaries. `export.json` explicitly labels inference weights as
-**not a resumable training checkpoint**. Missing generation support rejects.
+`evaluate` reads a **training checkpoint** with its original training request
+and prepared dataset. All original source/configuration/data/runtime/topology,
+module/optimizer/layout and shard-hash admission gates still apply. It installs
+the saved persistent Program policy before restoring local checkpoint shards;
+it does not run another training update or recalibrate the plan.
+
+For a distributed checkpoint, launch `evaluate` or `export` with the same
+torchrun topology and explicit distributed request used by training. Every
+rank participates in necessary FSDP/HSDP forwards and full-weight gathers.
+`--sample-index N` selects the evaluation cohort beginning at N: rank r reads
+N+r, with no padding/recycling. Each rank writes under
+`generated/ranks/rank-NNNNN/`; primary publishes the shared `generation.json`
+and `_SUCCESS` only after all rank outputs succeed. Export has one shared
+artifact, written by primary only. Unsupported custom distributed exporters
+reject rather than guessing rank ownership.
+Generation parameter maps are admitted as finite canonical JSON and must agree
+on every rank before any model/forward is constructed for evaluation; differing
+denoising step counts cannot silently enter different collective sequences.
+
+`export` creates `distillschedule.inference_export.v1`: named, full module state
+dictionaries in `weights.pt`, plus `export.json` binding every file hash, the
+original factory reference/source hash, effective non-device factory arguments
+(including the supplied default seed), model metadata and module state layout.
+The directory is atomically published after the complete manifest and its
+hash-bound `_SUCCESS` marker are written. It is explicitly labeled
+**INFERENCE_WEIGHTS_NOT_RESUMABLE_CHECKPOINT**: no optimizer, scheduler, data
+cursor or RNG restart state is exported. Do not pass it to `train --resume`.
+
+`generate` is single-process inference from that artifact and a **new explicit
+prepared manifest**. It does not open the original training dataset, run or
+checkpoint, and does not import/build the algorithm just to recover a model.
+The declared model factory must still be available with matching source,
+non-device arguments, metadata and module layout. The factory may naturally
+construct optimizers, but their training state is neither needed nor restored.
+Byte-identical local `.py` factories may be explicitly relocated by updating
+the current request's path while keeping the same callable symbol; their hash
+and module layout must still match. Package/module references remain exact.
+This inference-only relocation does **not** relax checkpoint-resume identity.
+The artifact is not a bundle of Python source or pretrained dependencies;
+trusted external dependency identities remain the adapter's responsibility.
+Completeness, schema, path bounds and every file hash are checked before model
+imports/construction or output creation. Changed source, incompatible weights,
+symlink/path escapes and incomplete exports reject.
+
+Both generation paths put modules in evaluation mode and invoke the adapter's
+actual `generate(state, feeds, parameters)` and `decode(value, parameters)`
+under no-grad. `trainer.seed` is reset immediately before inference, independent
+of factory initialization or RNG consumed assembling a training workload.
+Receipts record this `inference_seed` separately from the exported model's seed,
+alongside the actual canonical `generation_parameters` passed to the callbacks.
+
+Portable `generate` requires the decoded-video capability: the decoder returns
+`{"video": tensor, ...}` with nonempty THWC uint8 RGB/RGBA video (or generation
+already returns this decoded contract). `generation.pt` retains the
+generated/decoded values; PNGs in
+`frames/` preserve the decoder's exact pixels and dimensions. There is no latent
+resize, guessed normalization or substitute quality renderer. Missing generation
+or compatible decoding support rejects before output creation. For compatibility
+with non-video models, legacy `evaluate` may instead save latent/audio/other safe
+outputs to `generation.pt` without PNGs and explicitly reports
+`video.status=NOT_AVAILABLE`. Malformed explicitly supplied video still rejects.
+Video outputs are
+diagnostic frames, not evidence of useful pretrained quality: FVD, VBench and
+other quality validation remain **NOT_RUN**.
+
+Custom formats require paired `export` and explicit `load_export` callbacks;
+see [the extension contract](extensions.md). The framework never infers a loader
+from a filename or treats custom bytes as a resumable checkpoint.
