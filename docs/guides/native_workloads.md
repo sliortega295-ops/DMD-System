@@ -43,7 +43,7 @@ passed. A source/layout change requires new source-bound admission and costs.
 
 | Recipe | Original algorithm | Real API | Admitted cycle count |
 | --- | --- | --- | --- |
-| [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..64 for a compatible saved policy; manual/reference and literal incumbent bundles only 2 |
+| [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..64 fresh cohorts with a compatible saved policy or explicit manual/reference strategy; literal incumbent bundle remains fixed-trace/two-cycle |
 | [W2](../../recipes/helios_nogan/training.json) | Helios14B hierarchical AR, G1/C5/EMA5 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
 | [W3](../../recipes/helios_gan/training.json) | Helios14B DMD + GAN-G/GAN-D, G1/C5/EMA1 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
 | [W4](../../recipes/self_forcing/training.json) | C51 Self-Forcing, continuous sigma, G1/C5/EMA0 | `search.execution.run_plan` | Exactly the selected native contract's 2 |

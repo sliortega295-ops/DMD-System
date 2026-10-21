@@ -4,15 +4,26 @@ The public lifecycle and original-native integrations are different entry
 adapters to the existing runtime. This table describes implementation support,
 not throughput or pretrained-model quality.
 
-| Entry | Data | Execution | Continuous progress | Save/resume | Generate/export | This integration's verification |
-| --- | --- | --- | --- | --- | --- | --- |
-| Public Program factories | Generic raw media + explicit encoder, or prepared native feature tree | Local and distributed reference/manual; existing measured auto/saved-plan path with admitted DDP/FSDP2/HSDP | Persistent models/wrappers/optimizer, versioned one-cycle Program and explicit rank-strided cursor | Complete cycle, same topology; all-rank atomic local-shard checkpoint | Actual model callbacks; default named-module weight export | Real local and multi-process CPU autograd, fresh-process continuation and local-shard restart |
-| W1 Wan | Original rank-qualified trace or explicit fresh cohort stream | Original FSDP/Resident capability and saved plan | 2..64 fresh cohorts with explicit reference/manual/plan; literal incumbent bundle remains fixed-trace/two-cycle | Fresh stream only, complete cycle/same topology: original engine weights, named Adam, scheduler, EMA, clocks, input cursor and owned RNG; all-rank atomic shards | Native upstream tools, not unified callbacks | CPU source/contract/lowering and real Adam/engine-state restart on scalar fixtures; pretrained/GPU restart NOT_RUN |
-| W2 Helios No-GAN | Original encoded assets/request | Actual selected source-bound native plan, including admitted HSDP | Existing two-cycle native API | Not exposed by native binding | Native upstream tools | CPU source/contract/lowering |
-| W3 Helios GAN | Original GAN/ODE/text assets/request | Actual selected native plan | Existing two-cycle native API | Not exposed by native binding | Native upstream tools | CPU source/contract/lowering |
-| W4 Self-Forcing | Original C51 continuous-sigma inputs | Actual selected C51 role-pool native plan | Existing two-cycle native API | Not exposed by native binding | Native upstream tools | CPU source/contract/lowering |
-| W5 full-sequence H3 | LightX2V native AV assets; Grid1000 explicitly approximate | Actual selected FSDP2/cache policy | Existing two-cycle selected-plan API | Upstream mixin already saves LoRA/optimizer/RNG; exact data-cursor restart is not exposed here | Native upstream tools | CPU source/contract/lowering |
-| W6 original H3 AR | Original DiffSynth previous/current AV, rank-qualified locks | Original ZeRO-3 reference/manual/selected plan | Existing two-update API | Not exposed by native binding | Native upstream tools | CPU source/contract/lowering |
+| Entry | Data | Execution | Continuous progress | Save/resume | Generate/export | Held-out validation | This integration's verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Public Program factories | Generic raw media + explicit encoder, or prepared native feature tree | Local and distributed reference/manual; existing measured auto/saved-plan path with admitted DDP/FSDP2/HSDP | Persistent models/wrappers/optimizer, versioned one-cycle Program and explicit rank-strided cursor | Complete cycle, same topology; all-rank atomic local-shard checkpoint | Same-topology distributed checkpoint `evaluate` and full-weight `export`; local-only `generate --weights` on new prepared inputs with source/layout-bound loading; PNGs require an explicit model decoder | Optional periodic local-only `validate_batch` diagnostics on explicit held-out records; no inferred quality gate | Real local and multi-process CPU autograd, fresh-process continuation, local-shard restart, distributed outputs and installed-wheel new-input inference |
+| W1 Wan | Original rank-qualified trace or explicit fresh cohort stream | Original FSDP/Resident capability and saved plan | 2..64 fresh cohorts with explicit reference/manual/plan; literal incumbent bundle remains fixed-trace/two-cycle | Fresh stream only, complete cycle/same topology: original engine weights, named Adam, scheduler, EMA, clocks, input cursor and owned RNG; all-rank atomic shards | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering and real Adam/engine-state restart on scalar fixtures; pretrained/GPU restart NOT_RUN |
+| W2 Helios No-GAN | Original encoded assets/request | Actual selected source-bound native plan, including admitted HSDP | Existing two-cycle native API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
+| W3 Helios GAN | Original GAN/ODE/text assets/request | Actual selected native plan | Existing two-cycle native API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
+| W4 Self-Forcing | Original C51 continuous-sigma inputs | Actual selected C51 role-pool native plan | Existing two-cycle native API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
+| W5 full-sequence H3 | LightX2V native AV assets; Grid1000 explicitly approximate | Actual selected FSDP2/cache policy | Existing two-cycle selected-plan API | Upstream mixin already saves LoRA/optimizer/RNG; exact data-cursor restart is not exposed here | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
+| W6 original H3 AR | Original DiffSynth previous/current AV, rank-qualified locks | Original ZeRO-3 reference/manual/selected plan | Existing two-update API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
+
+Portable weights are not resumable checkpoints or a bundle of model Python
+source. New-input generation admits matching factory source, effective
+arguments, metadata, module layout and artifact hashes before loading weights;
+it needs no original training data or run directory. Distributed checkpoint
+outputs still require the original training dataset, request and topology.
+Periodic held-out validation is opt-in and single-process only; distributed or
+original-native requests reject rather than silently skipping it. Metrics and
+decoded frames do not change `quality_validation: NOT_RUN`. See
+[training/output contracts](training.md#generate-and-export) and
+[held-out validation](training.md#optional-periodic-held-out-validation).
 
 The archived Helios reference trainer already has checkpoint and validation
 hooks. Their existence does not mean the bounded planner worker exposes a

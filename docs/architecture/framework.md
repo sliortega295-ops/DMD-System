@@ -97,10 +97,6 @@ is informed by [ReaLHF's architecture](https://openpsi-project.github.io/ReaLHF/
 The distinction between algorithm control and distributed computation follows
 the [HybridFlow programming guide](https://verl.readthedocs.io/en/latest/hybrid_flow.html).
 These are structural references, not new runtime dependencies or claims that
-DMD-System implements every capability of either project.
-
-The separation follows the model/worker/training-flow approach documented by
-[ReaLHF](https://openpsi-project.github.io/ReaLHF/arch) and
-[HybridFlow](https://verl.readthedocs.io/en/latest/hybrid_flow.html). DMD-System's
+DMD-System implements every capability of either project. DMD-System's
 state/version graph and DMD-specific retained-state capabilities remain its own
 interfaces; Ray is not a required dependency.

@@ -20,7 +20,8 @@ distillctl workloads list
 Choose a compatible existing environment before installing. `pip install .`
 provides lightweight JSON configuration and six-workload discovery;
 `.[config]` adds YAML, `.[media]` adds NumPy/Pillow and `.[train]` adds public
-training dependencies. Video-file decoding uses existing `ffmpeg`/`ffprobe`.
+training dependencies, including Torch >= 2.10 for the public FSDP2 API.
+Video-file decoding uses existing `ffmpeg`/`ffprobe`.
 Original distributed recipes retain their pinned native environments/assets.
 
 ## A complete offline training example
@@ -40,7 +41,20 @@ CP="$DEMO/run/checkpoints/cycle-000004"
 distillctl train "$DEMO/train.json" --resume "$CP" --cycles 6 --output "$DEMO/resumed"
 distillctl evaluate "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/generated"
 distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported"
+
+# The seventh fixture record was not part of the six-record training dataset.
+NEW_INPUTS="$DEMO/new-inputs"
+python -m distillschedule.examples.tiny_av --output "$NEW_INPUTS" --samples 7
+distillctl data prepare "$NEW_INPUTS/raw/manifest.json" --output "$NEW_INPUTS/prepared"
+distillctl generate "$DEMO/train.json" --weights "$DEMO/exported" \
+  --prepared "$NEW_INPUTS/prepared/manifest.json" --sample-index 6 --output "$DEMO/new-generated"
 ```
+
+`evaluate` restores a training checkpoint; `generate --weights` instead loads
+portable inference weights with an explicit new prepared input. It needs neither
+the original training data nor optimizer/checkpoint state, but the model factory
+source, effective arguments and module layout must still match. Decoded PNG
+frames are diagnostic, not evidence of pretrained quality.
 
 Configuration has five sections: **model, data, algorithm, execution, trainer**.
 Data and adapter paths are explicit, with no implicit model downloads or
@@ -119,7 +133,9 @@ python scripts/distillschedule/check_best_known_integration.py
 ```
 
 CPU checks cover actual media, real autograd, optimizer state, fresh-process
-restart, selected-plan execution and an external model. Hardware-qualified
+restart, selected-plan execution and an external model. Installed-wheel
+acceptance also generates decoded frames from exported weights on genuinely new
+inputs after removing the original training data and checkpoints. Hardware-qualified
 records remain in the [source index](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md)
 and [H100 index](docs/status/H100_SOURCE_SNAPSHOT_20261019.md); this integration
 does not remeasure large-model performance or quality.
