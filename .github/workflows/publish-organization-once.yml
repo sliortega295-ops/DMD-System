@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 12
     env:
-      EXPECTED_PARENT: 3053ad91bdda5ec89ad77129e33889afbf5bfbac
+      EXPECTED_PARENT: aaea35fdee3effcfaa067da544d37d9de45c4383
       BASE: 0e8cbe5c006fceda36a7547b3eda60d6daea1eb8
       OUTPUT_TREE: b0ba8e48a5316be8b958d661601fe4a723c1035e
       PAYLOAD_SHA256: 9a6d3794a5cb9c4f6fa8275800b7696d6e7ab01034b4a7349569a2b3ccb51951
@@ -29,7 +29,6 @@ jobs:
           test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
           git merge-base --is-ancestor "$BASE" HEAD
           git cat-file -e ea29129342741b54e59c4773e07454f541fadcc7:scripts/distillschedule/probe_wan13b_fair_world16.py
-          git bundle create /tmp/organization-input.bundle HEAD refs/remotes/origin/codex/wan-state-policy-planner-20261017
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -81,53 +80,58 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/check_wheel_install.py | tee /tmp/organization-wheel.log
-      - name: Create verified Git objects only; never move a branch
+      - name: Export reviewed source and create content tree without workflow changes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
-          import json, os, subprocess, urllib.request
+          import json, os, subprocess, urllib.request, urllib.error
           from pathlib import Path
           def git(*args):
               return subprocess.check_output(['git', *args])
           subprocess.run(['git', 'diff', '--exit-code'], check=True)
           tree = git('write-tree').decode().strip()
           assert tree == os.environ['OUTPUT_TREE']
+          Path('/tmp/organization-source.tar.gz').write_bytes(git('archive', '--format=tar.gz', tree))
+          Path('/tmp/organization-changes.patch').write_bytes(git('diff', '--cached', '--binary', 'HEAD'))
           existing = set(git('ls-tree', '-r', '--format=%(objectname)', 'HEAD').decode().splitlines())
           entries = []
-          for line in git('ls-files', '--stage', '-z').split(b'\0'):
-              if not line:
+          changed = git('diff', '--name-only', '--no-renames', '-z', 'HEAD', tree).split(b'\0')
+          for path in changed:
+              if not path or path.startswith(b'.github/'):
                   continue
-              meta, path = line.split(b'\t', 1)
-              mode, sha, stage = meta.decode().split()
-              assert stage == '0'
-              row = {'path': path.decode(), 'mode': mode, 'type': 'commit' if mode == '160000' else 'blob'}
-              if sha in existing or mode == '160000':
+              record = git('ls-tree', '-z', tree, '--', path.decode())
+              if not record:
+                  entries.append({'path': path.decode(), 'mode': '100644', 'type': 'blob', 'sha': None})
+                  continue
+              meta, returned_path = record.rstrip(b'\0').split(b'\t', 1)
+              assert returned_path == path
+              mode, kind, sha = meta.decode().split()
+              row = {'path': path.decode(), 'mode': mode, 'type': kind}
+              if sha in existing or kind != 'blob':
                   row['sha'] = sha
               else:
                   row['content'] = git('cat-file', 'blob', sha).decode('utf-8')
               entries.append(row)
           api = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
-          def post(endpoint, value):
-              request = urllib.request.Request(api + endpoint, data=json.dumps(value).encode(), method='POST',
-                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
-                           'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
-                           'X-GitHub-Api-Version': '2022-11-28'})
+          request = urllib.request.Request(api + '/git/trees',
+              data=json.dumps({'base_tree': git('rev-parse', 'HEAD^{tree}').decode().strip(), 'tree': entries}).encode(),
+              method='POST', headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                  'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28'})
+          try:
               with urllib.request.urlopen(request, timeout=120) as response:
-                  return json.load(response)
-          remote_tree = post('/git/trees', {'tree': entries})
-          assert remote_tree['sha'] == tree
-          commit = post('/git/commits', {
-              'message': 'refactor: organize six-workload entrypoints, isolate developer tools, and verify source packaging',
-              'tree': tree, 'parents': [os.environ['GITHUB_SHA']]})
-          receipt = {'commit_sha': commit['sha'], 'tree_sha': tree, 'parent_sha': os.environ['GITHUB_SHA'],
-                     'source_base': os.environ['BASE'], 'branch_updated': False,
+                  remote_tree = json.load(response)
+          except urllib.error.HTTPError as error:
+              print('Git tree publication rejected:', error.code, error.read().decode('utf-8', errors='replace'))
+              raise
+          receipt = {'content_tree_sha': remote_tree['sha'], 'expected_final_tree': tree,
+                     'parent_sha': os.environ['GITHUB_SHA'], 'source_base': os.environ['BASE'],
+                     'branch_updated': False, 'workflow_changes_deferred_to_connector': True,
                      'source_catalog_package_checks': 'PASS', 'new_gpu_execution': 'NOT_RUN',
                      'six_workloads': 6, 'relocated_utilities': 33,
                      'training_and_immutable_evidence_changed': False}
           Path('/tmp/organization-result.json').write_text(json.dumps(receipt, indent=2) + '\n')
-          Path('/tmp/organization-source.tar.gz').write_bytes(git('archive', '--format=tar.gz', tree))
-          Path('/tmp/organization-changes.patch').write_bytes(git('diff', '--cached', '--binary', 'HEAD'))
           print(json.dumps(receipt))
           PY
       - uses: actions/upload-artifact@v4
