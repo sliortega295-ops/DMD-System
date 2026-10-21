@@ -106,7 +106,8 @@ def test_stream_metadata_tampering_and_wrong_legacy_bindings_reject(fresh_stream
         validate_controls(HeliosCohortTask(0), controls)
 
 
-def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp_path, monkeypatch):
+@pytest.mark.parametrize("deferred_gate", ["payload", "immutable"])
+def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp_path, monkeypatch, deferred_gate):
     from distillschedule.training.config import TrainingConfig
     import distillschedule.training.native as native
     import distillschedule.training.helios_worker as worker
@@ -119,6 +120,15 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
     raw["data"] = {"input_kind": "original_helios_cohort_stream.v1", "prepared": str(root / "prepared/stream.json")}
     raw["trainer"].update(cycles=3, checkpoint_every=1, output_dir=str(tmp_path / "training-output"))
     conf = TrainingConfig.from_dict(raw, source=bounded.source)
+    metadata_load = worker.load_stream
+    if deferred_gate == "payload":
+        def metadata_only(*args, **kwargs):
+            assert kwargs.get("verify_rank") is None, "rank payload read before original entry"
+            return metadata_load(*args, **kwargs)
+        monkeypatch.setattr(worker, "load_stream", metadata_only)
+    def deferred_immutable(_):
+        raise AssertionError("immutable payload read before original entry")
+    monkeypatch.setattr(worker, "immutable_assets", deferred_immutable)
     described = native.validate_native(conf)
     assert described["selected"]["mesh"] == "world16-fsdp"
     assert described["native_api"].endswith(":run_reference")
@@ -134,7 +144,6 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
     for name in ("LOCAL_KERNELS", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF"):
         monkeypatch.delenv(name, raising=False)
     parser = worker._backend().impl._parser()
-    monkeypatch.setattr(worker, "immutable_assets", lambda _: {"fixture": "EXTERNAL_PRETRAINED_PIN_BOUNDARY_ONLY"})
     seen = []
     def entrypoint():
         args = parser.parse_args()
@@ -145,6 +154,8 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
         assert all(getattr(args, name.replace("-", "_")) is False for name in worker._OFF)
         assert binding["identity"]["source_head"] == observed_source["identity"]["head"]
         assert len(binding["stream"]["cohorts"]) == 3
+        assert "verified_immutable_assets" not in binding["identity"]
+        assert "checkpoint_policy" not in binding
         seen.append(binding["identity"])
         return 23
     monkeypatch.setattr(worker, "_backend", lambda: SimpleNamespace(main=entrypoint))

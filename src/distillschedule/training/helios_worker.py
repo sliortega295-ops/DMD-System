@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 from distillschedule.core.contracts import require
-from distillschedule.workloads.best_known.registry import repository_root, load_profile, load_assets, verify_assets, fingerprint, file_sha256
+from distillschedule.workloads.best_known.registry import repository_root, load_profile, load_assets, verify_assets, file_sha256
 from .helios_inputs import HeliosCohortTask, HeliosCohortSources, load_stream, source_fingerprint
 
 _OFF = ("pack-real-score-pair", "generator-nograd-lora-fused-epilogue", "all-role-lora-scale1-add",
@@ -121,27 +121,18 @@ def run_reference(config, admitted, source):
     world, rank, local, local_world = (int(os.environ[k]) for k in names)
     require(world == 16 and local_world == 8 and 0 <= rank < 16 and local == rank % 8,
             "W2 requires two nodes of eight ranks", path="helios.training")
-    from distillschedule.search.helios_implementation import current_implementation
-    require(current_implementation() is None, "reference cannot inherit a generated plan environment", path="helios.training")
-    require(not os.environ.get("LOCAL_KERNELS") and not os.environ.get("PYTORCH_CUDA_ALLOC_CONF")
-            and not os.environ.get("PYTORCH_ALLOC_CONF"), "reference attention/allocator environment differs", path="helios.training")
-    output = Path(config.trainer["output_dir"])
-    require(not (output / "ranks" / f"rank_{rank:02d}.json").exists(),
-            "new output directory required; old rank receipt is preserved", path="helios.training")
-    # All local stochastic payloads/grid provenance are checked before original
-    # main can construct a model or initialize CUDA/NCCL.
-    stream = load_stream(config.data["prepared"], cycles=config.trainer["cycles"], verify_rank=rank)
-    frozen = immutable_assets(admitted["assets"])
+    # Public admission supplies metadata only. Rank-local input/frozen payloads
+    # must wait for the original worker's Gloo plane, or one failed rank could
+    # leave its peers entering the original NCCL initialization alone.
+    stream = admitted["stream"]
     bootstrap = load_profile("helios14b_nogan_best")["runtime"]["environment"]
     identity = {"schema_version": "distillschedule.helios_training_identity.v1",
         "source_head": source["identity"]["head"], "source_fingerprint": source_fingerprint(),
         "stream_sha256": stream["stream_sha256"], "assets": admitted["assets"]["assets"],
-        "verified_immutable_assets": frozen, "reference_policy": admitted["selected"],
+        "reference_policy": admitted["selected"],
         "bootstrap_logical_hash": bootstrap["DISTILLSCHEDULE_LOGICAL_STEP10_HASH"],
         "bootstrap_trace_hash": bootstrap["DISTILLSCHEDULE_TRACE_BUNDLE_HASH"]}
-    binding = {"config": config, "stream": stream, "identity": identity,
-               "checkpoint_policy": {"schema_version": "distillschedule.helios_training_checkpoint_policy.v1",
-                                     "identity_sha256": fingerprint(identity)}}
+    binding = {"config": config, "stream": stream, "identity": identity, "assets": admitted["assets"]}
     old = sys.argv
     try:
         sys.argv = ["original-helios-training-v1", *admitted["argv"]]

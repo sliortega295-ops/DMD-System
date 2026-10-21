@@ -9,13 +9,14 @@ from __future__ import annotations
 from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from datetime import timedelta
+import os
 from pathlib import Path
 import random
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
 from . import distributed
-from .helios_inputs import HeliosCohortTask, load_cohort
+from .helios_inputs import HeliosCohortTask, load_cohort, load_stream
 
 SCHEMA = "distillschedule.original_helios_training.v1"
 _ACTIVE = ContextVar("original_helios_training", default=None)
@@ -51,21 +52,47 @@ def admit_original_rank(*, torch, dist, rank, args, policy):
     binding = current_training()
     if binding is None:
         return
-    require(dist.get_world_size() == 16 and args.variant == "no-gan"
-            and args.timing_mode and not args.profile_mode and not args.profile_diagnostics,
+    require(dist.get_world_size() == 16,
             "reference original world16 helpers required", path="helios.training")
-    require(policy.mesh_policy == "world16-fsdp" and policy.rollout_batch_size == 1
-            and not policy.pack_real_score_pair and policy.modulation_chunk_tokens == 512
-            and not policy.generator_nograd_persistent_unshard and args.attention_backend == "sdpa"
-            and policy.selective_flash_checkpoint_stride == args.selective_flash_checkpoint_stride == 0
-            and args.ema_device == "cuda"
-            and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
-            "reference physical policy changed", path="helios.training")
-    from .helios_worker import _OFF
-    require(all(getattr(args, name.replace("-", "_")) is False for name in _OFF),
-            "reference cannot enable an unbound optimization", path="helios.training")
     binding["metadata_group"] = dist.new_group(backend="gloo", timeout=timedelta(minutes=15))
     with _plane(binding):
+        def local_admission():
+            from distillschedule.search.helios_implementation import current_implementation
+            from .helios_worker import _OFF, immutable_assets
+            require(args.variant == "no-gan" and args.timing_mode
+                    and not args.profile_mode and not args.profile_diagnostics,
+                    "reference original world16 helpers required", path="helios.training")
+            require(policy.mesh_policy == "world16-fsdp" and policy.rollout_batch_size == 1
+                    and not policy.pack_real_score_pair and policy.modulation_chunk_tokens == 512
+                    and not policy.generator_nograd_persistent_unshard and args.attention_backend == "sdpa"
+                    and policy.selective_flash_checkpoint_stride == args.selective_flash_checkpoint_stride == 0
+                    and args.ema_device == "cuda"
+                    and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
+                    "reference physical policy changed", path="helios.training")
+            require(all(getattr(args, name.replace("-", "_")) is False for name in _OFF),
+                    "reference cannot enable an unbound optimization", path="helios.training")
+            require(current_implementation() is None,
+                    "reference cannot inherit a generated plan environment", path="helios.training")
+            require(not os.environ.get("LOCAL_KERNELS") and not os.environ.get("PYTORCH_CUDA_ALLOC_CONF")
+                    and not os.environ.get("PYTORCH_ALLOC_CONF"),
+                    "reference attention/allocator environment differs", path="helios.training")
+            output = Path(binding["config"].trainer["output_dir"])
+            require(not (output / "ranks" / f"rank_{rank:02d}.json").exists(),
+                    "new output directory required; old rank receipt is preserved", path="helios.training")
+            stream = load_stream(binding["config"].data["prepared"],
+                                 cycles=binding["config"].trainer["cycles"], verify_rank=rank)
+            require(stream["stream_sha256"] == binding["identity"]["stream_sha256"],
+                    "stream changed during worker admission", path="helios.training")
+            identity = {**binding["identity"], "verified_immutable_assets": immutable_assets(binding["assets"])}
+            checkpoint_policy = {"schema_version": "distillschedule.helios_training_checkpoint_policy.v1",
+                                 "identity_sha256": fingerprint(identity)}
+            return stream, identity, checkpoint_policy
+
+        stream, identity, checkpoint_policy = distributed.checked(
+            local_admission, "Helios reference input/asset admission")
+        # Publish only collectively admitted, actually verified identities;
+        # neither identity agreement nor restart may use unverified asset pins.
+        binding.update(stream=stream, identity=identity, checkpoint_policy=checkpoint_policy)
         distributed.admit_run_controls(binding["config"])
         peers = distributed.gather({"identity": binding["identity"], "policy": binding["checkpoint_policy"]})
         require(all(item == peers[0] for item in peers), "rank source/stream/reference differs", path="helios.training")
