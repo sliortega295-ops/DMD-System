@@ -202,7 +202,6 @@ def install_exact_modulated_norm_epilogue(
 
     function = transformer_module._TembAwareChunkedNorm
     original_forward = function.forward
-    original_backward = function.backward
     materialize = transformer_module._materialize_scale_shift_component
     rebuild_temb = transformer_module._rebuild_temb
     phase_local_type = getattr(
