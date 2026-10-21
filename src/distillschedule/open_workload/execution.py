@@ -56,12 +56,12 @@ class ExecutionBackend:
         require(all(r==result for r in rows),'rank candidate inventories differ',path='open.backend')
         return result
 
-    def session(self,implementation):
+    def session(self,implementation, *, copy_state=True, persistent=False):
         if self.distributed:
             from .replicated import make_session
-            return make_session(self.workload,implementation)
+            return make_session(self.workload,implementation,copy_state=copy_state,persistent=persistent)
         from .torch_backend import Session
-        return Session(self.workload,implementation)
+        return Session(self.workload,implementation,copy_state=copy_state,persistent=persistent)
 
     def graph(self, implementation):
         if not self.distributed: return self.workload.program.compile()

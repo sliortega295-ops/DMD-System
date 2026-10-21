@@ -13,12 +13,12 @@ from .config import digest
 
 
 def cycle_structure(workload):
-    from distillschedule.open_workload.torch_backend import code_signature
+    from distillschedule.open_workload.torch_backend import code_signature, unwrap_module
     import torch
 
     def shapes(value):
         if isinstance(value, torch.Tensor):
-            return {"shape": list(value.shape), "dtype": str(value.dtype), "device": str(value.device)}
+            return {"shape": list(value.shape), "dtype": str(value.dtype), "device": value.device.type}
         if isinstance(value, dict):
             return {key: shapes(item) for key, item in value.items()}
         if isinstance(value, (list, tuple)):
@@ -31,9 +31,16 @@ def cycle_structure(workload):
         # A cycle index is the only explicitly relocatable Call attribute.
         if "cycle" in call["attributes"]:
             call["attributes"]["cycle"] = 0
-    modules = {key: {"class": code_signature(type(model)),
+    def model_class(model):
+        from torch.distributed.fsdp import FSDPModule
+        # fully_shard adds a runtime subclass; the model's actual source remains
+        # the original class, while the separately bound policy owns the layout.
+        return next(cls for cls in type(model).__mro__ if issubclass(cls, torch.nn.Module)
+                    and not issubclass(cls, FSDPModule)) if isinstance(model, FSDPModule) else type(model)
+
+    modules = {key: {"class": code_signature(model_class(unwrap_module(model))),
                      "parameters": {name: {**shapes(p), "requires_grad": p.requires_grad}
-                                    for name, p in model.named_parameters()}}
+                                    for name, p in unwrap_module(model).named_parameters()}}
                for key, model in workload.state.items() if isinstance(model, torch.nn.Module)}
     return digest({"program": program, "modules": modules, "feeds": shapes(dict(workload.feeds)),
                    "bindings": {key: code_signature(fn) for key, fn in workload.bindings.items()},
@@ -44,16 +51,30 @@ class CyclePolicy:
     def __init__(self, execution):
         self.execution = dict(execution)
         self.bound = None
+        self.session = None
 
     def restore(self, value):
         if not isinstance(value, dict) or value.get("schema_version") != "distillschedule.cycle_policy.v1":
             raise ValueError("checkpoint has no admitted cycle policy")
         self.bound = deepcopy(value)
 
+    def prepare_resume(self, workload):
+        """Install the saved physical layout before restoring its local shards."""
+        from distillschedule.open_workload.execution import ExecutionBackend
+        from distillschedule.open_workload.planning import source_identity
+        if (self.bound["source"] != source_identity()
+                or self.bound["structure"] != cycle_structure(workload)
+                or self.bound["mode"] != self.execution.get("mode", "reference")):
+            raise ValueError("checkpoint execution source or structure changed")
+        self.session = ExecutionBackend(workload).session(self.bound["implementation"],
+                                                          copy_state=False, persistent=True)
+        return self.session
+
     def run(self, workload, output):
-        from distillschedule.open_workload.torch_backend import Session
+        from distillschedule.open_workload.execution import ExecutionBackend
         from distillschedule.open_workload.planning import source_identity
         current_structure = cycle_structure(workload)
+        backend = ExecutionBackend(workload)
         if self.bound is None:
             mode = self.execution.get("mode", "reference")
             if mode in ("auto", "plan"):
@@ -63,20 +84,20 @@ class CyclePolicy:
                     if type(limit) is not int or limit <= 0:
                         raise ValueError("auto training requires explicit memory_limit_bytes")
                     root = Path(output) / "planning"
-                    root.mkdir(parents=True, exist_ok=False)
+                    backend.mkdir(root)
                     calibrate(workload, root / "calibration",
                               max_candidates=self.execution.get("max_candidates", 4),
                               samples=self.execution.get("samples", 1),
                               max_program_runs=self.execution.get("max_program_runs", 16),
                               profile_hardware=False)
-                    document = plan(root / "calibration/calibration.json", memory_limit_bytes=limit,
-                                    max_states=self.execution.get("max_states", 50000))
+                    document = backend.select_plan(lambda: plan(root / "calibration/calibration.json", memory_limit_bytes=limit,
+                                    max_states=self.execution.get("max_states", 50000)))
                     plan_path = root / "selected-plan.json"
-                    plan_path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+                    backend.publish(plan_path, document)
                 else:
                     plan_path = Path(self.execution["plan"])
                     document = json.loads(plan_path.read_text())
-                report, session, outputs = run(workload, plan_path, Path(output) / "plan-admission")
+                report, session, outputs = run(workload, plan_path, Path(output) / "plan-admission", persistent=True)
                 if report["reference_gate"]["status"] != "PASS":
                     raise ValueError("selected plan numerical admission needs review; training did not commit")
                 self.bound = {"schema_version": "distillschedule.cycle_policy.v1",
@@ -86,11 +107,11 @@ class CyclePolicy:
                               "plan_sha256": document["plan_sha256"],
                               "memory_limit_bytes": document["memory_limit_bytes"],
                               "initial_reference_gate": report["reference_gate"]}
+                self.session = session
                 return session, outputs
-            default = {"backend": "torch-callable-resident-v1", "share_immutable": False,
-                       "checkpoint_bindings": []}
+            default = backend.inventory(1)["candidates"][0]
             implementation = self.execution.get("implementation", default) if mode == "manual" else default
-            session = Session(workload, implementation, copy_state=False)
+            session = backend.session(implementation, copy_state=False, persistent=True)
             order = self.execution.get("order")
             outputs = session.run(order)
             self.bound = {"schema_version": "distillschedule.cycle_policy.v1", "mode": mode,
@@ -98,6 +119,7 @@ class CyclePolicy:
                           "implementation": deepcopy(implementation),
                           "order": list(order or (*[c.id for c in workload.program.calls], "__open_finish__")),
                           "initial_reference_gate": {"status": "NOT_RUN", "reason": "explicit user strategy"}}
+            self.session = session
             return session, outputs
         if self.bound["source"] != source_identity() or self.bound["structure"] != current_structure:
             raise ValueError("training policy source, workload, model precision or input structure changed")
@@ -106,9 +128,14 @@ class CyclePolicy:
         implementation = self.bound["implementation"]
         # Session applies the actual capability predicates. A user-admitted
         # manual combination need not appear in a truncated search inventory.
-        session = Session(workload, implementation, copy_state=False)
+        if self.session is None:
+            session = backend.session(implementation, copy_state=False, persistent=True)
+            self.session = session
+        else:
+            session = self.session
+            session.bind_cycle(workload, graph=backend.graph(implementation))
         if session.device.type == "cuda" and "memory_limit_bytes" in self.bound:
             from distillschedule.open_workload.hardware_probe import plan_memory_limit
-            plan_memory_limit(session.device, distributed=False, consensus=lambda value: [value],
+            plan_memory_limit(session.device, distributed=backend.distributed, consensus=backend.consensus,
                               requested=self.bound["memory_limit_bytes"], reserve_bytes=0)
         return session, session.run(self.bound["order"])

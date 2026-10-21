@@ -17,6 +17,7 @@ from .checkpoint import cpu_tree, restore_checkpoint, save_checkpoint, read_chec
 from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy
+from . import distributed
 
 
 def _json(path, value):
@@ -50,14 +51,14 @@ def _source():
 def construct(config):
     import torch
     from distillschedule.data import PreparedDataset
-    if int(os.environ.get("WORLD_SIZE", "1")) != 1 or (
-            torch.distributed.is_initialized() and torch.distributed.get_world_size() != 1):
-        raise ValueError("persistent Program training is single-process; use a native distributed recipe")
     dataset = PreparedDataset(config.data["prepared"])
     _seed(config.trainer.get("seed", 0))
     factory, model_source = load_callable(config.model["factory"])
     parameters = dict(config.model.get("parameters", {}))
-    parameters.setdefault("device", config.trainer.get("device", "cpu"))
+    device = config.trainer.get("device", "cpu")
+    if device == "cuda":
+        device = "cuda:" + str(torch.cuda.current_device())
+    parameters.setdefault("device", device)
     parameters.setdefault("seed", config.trainer.get("seed", 0))
     components = factory(parameters)
     if not isinstance(components, ModelComponents):
@@ -104,14 +105,22 @@ def _metrics(outputs):
 
 def _finite(state, outputs):
     import torch
-    from distillschedule.open_workload.torch_backend import tensors
-    return all(bool(torch.isfinite(tensor).all()) for tensor in tensors((state, outputs))
+    from distillschedule.open_workload.torch_backend import tensors, physical_tensor
+    return all(bool(torch.isfinite(physical_tensor(tensor)).all()) for tensor in tensors((state, outputs))
                if tensor.is_floating_point() or tensor.is_complex())
 
 
 def train(config: TrainingConfig):
-    components, dataset, algorithm, identity = construct(config)
-    if config.trainer["cycles"] > len(dataset):
+    with distributed.context(config):
+        return _train(config)
+
+
+def _train(config: TrainingConfig):
+    components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "training construction")
+    rank, world = distributed.rank_world()
+    if any(row != identity for row in distributed.gather(identity)):
+        raise ValueError("ranks disagree on training configuration, source or dataset identity")
+    if config.trainer["cycles"] * world > len(dataset):
         raise ValueError("trainer.cycles exceeds prepared samples; explicit dataset progression is required")
     start_cycle = cursor = 0
     versions = None
@@ -119,56 +128,71 @@ def train(config: TrainingConfig):
     if config.trainer.get("resume_from"):
         # Build the original declared state shape before restoring modules,
         # optimizer/scheduler state, history and the exact next data position.
-        workload = build_cycle(config, components, dataset, algorithm, cycle=0, cursor=0)
-        restored = restore_checkpoint(config.trainer["resume_from"], workload.state, identity=identity)
+        workload = build_cycle(config, components, dataset, algorithm, cycle=0, cursor=rank)
+        metadata = distributed.checked(lambda: read_checkpoint(config.trainer["resume_from"], identity=identity),
+                                       "checkpoint reading")
+        policy.restore(metadata["policy"])
+        del metadata
+        session = policy.prepare_resume(workload)
+        restored = restore_checkpoint(config.trainer["resume_from"], session.state, identity=identity)
         start_cycle, cursor, versions = restored["cycle"], restored["cursor"], restored["versions"]
-        components.state.update({key: workload.state[key] for key in components.state})
-        policy.restore(restored["policy"])
+        if cursor != start_cycle * world:
+            raise ValueError("checkpoint data cursor does not match complete rank-strided cycles")
+        components.state.update({key: session.state[key] for key in components.state})
+        del restored
     if start_cycle >= config.trainer["cycles"]:
         raise ValueError("resume target must exceed the checkpoint's completed cycles")
     root = Path(config.trainer["output_dir"])
-    root.mkdir(parents=True, exist_ok=False)
-    _json(root / "resolved-config.json", config.to_dict())
-    _json(root / "identity.json", identity)
+    distributed.primary(lambda: root.mkdir(parents=True, exist_ok=False), "training output creation")
+    distributed.primary(lambda: _json(root / "resolved-config.json", config.to_dict()), "config publication")
+    distributed.primary(lambda: _json(root / "identity.json", identity), "identity publication")
+    rank_root = root if world == 1 else root / "ranks" / f"rank-{rank:05d}"
+    if world > 1:
+        distributed.checked(lambda: rank_root.mkdir(parents=True, exist_ok=False), "rank output creation")
     completed_cycles_this_process = 0
     latest = Path(config.trainer["resume_from"]).resolve() if config.trainer.get("resume_from") else None
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
-            workload = build_cycle(config, components, dataset, algorithm, cycle=cycle, cursor=cursor,
-                                   versions=versions)
+            workload = distributed.checked(lambda: build_cycle(
+                config, components, dataset, algorithm, cycle=cycle, cursor=cursor + rank,
+                versions=versions), "cycle construction")
             started = time.perf_counter()
             session, outputs = policy.run(workload, root)
             wall = time.perf_counter() - started
-            if not _finite(session.state, outputs):
+            if not all(distributed.gather(_finite(session.state, outputs))):
                 raise ValueError(f"nonfinite training state/output at cycle {cycle + 1}")
             components.state.update({key: session.state[key] for key in components.state})
             versions = session.receipt["dispatcher"]["final_versions"]
-            cursor += 1
-            row = {"cycle": cycle + 1, "sample_id": dataset.sample_id(cursor - 1), "cursor": cursor,
+            index = cursor + rank
+            cursor += world
+            row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(index), "cursor": cursor,
                    "metrics": _metrics(outputs), "wall_s": wall,
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}
             completed_cycles_this_process += 1
-            with (root / "metrics.jsonl").open("a") as stream:
+            with (rank_root / "metrics.jsonl").open("a") as stream:
                 stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
             every = config.trainer.get("checkpoint_every", 1)
             if every and ((cycle + 1) % every == 0 or cycle + 1 == config.trainer["cycles"]):
                 latest = save_checkpoint(root / "checkpoints" / f"cycle-{cycle + 1:06d}", session.state,
                                          identity=identity, cycle=cycle + 1, cursor=cursor,
                                          versions=versions, policy=policy.bound)
-            _json(root / "effective-policy.json", policy.bound)
+            distributed.primary(lambda: _json(root / "effective-policy.json", policy.bound), "policy publication")
+        rank_results = distributed.gather({"rank": rank, "completed_cycles": config.trainer["cycles"],
+                                           "cursor": cursor, "versions": versions})
         result = {"schema_version": "distillschedule.training_result.v1", "status": "COMPLETE",
                   "completed_cycles": config.trainer["cycles"], "cycles_this_process": completed_cycles_this_process,
                   "resume_cycle": start_cycle, "cursor": cursor, "final_versions": versions,
                   "finite": True, "numerical_status": policy.bound["initial_reference_gate"]["status"],
                   "quality_validation": "NOT_RUN", "claimable_speedup": False,
                   "checkpoint": str(latest) if latest else None, "identity": identity,
+                  "world_size": world, "rank_count": len(rank_results), "ranks": rank_results,
                   "policy": policy.bound, "gpu_execution": session.receipt["gpu_execution"]}
-        _json(root / "summary.json", result)
+        distributed.primary(lambda: _json(root / "summary.json", result), "training summary publication")
         return result
     except BaseException as exc:
-        _json(root / "failure.json", {"status": "FAILED", "error": str(exc),
+        _json(rank_root / "failure.json", {"status": "FAILED", "error": str(exc),
                                      "completed_cycles_this_process": completed_cycles_this_process, "cursor": cursor,
                                      "last_complete_checkpoint": str(latest) if latest else None})
         raise

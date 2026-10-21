@@ -92,9 +92,59 @@ reject. The same topology, runtime, data and mathematical configuration are
 required. Output path, save frequency and total target cycles may change.
 Transient replay caches are reconstructed by the runtime.
 
-Generic checkpoints currently own one process/device. Native distributed
-checkpoint capabilities are documented per recipe; a sampled fingerprint or a
-final tensor-evidence file is not advertised as a complete restart checkpoint.
+For distributed Program training, every rank writes a local tensor shard;
+DTensor metadata binds global shape/stride, mesh rank order and placements.
+No pickled process groups or implicit parameter all-gather are used for restart.
+The completion marker is published only after **all** rank files have been
+written and hashed on the shared checkpoint filesystem. A missing rank,
+changed optimizer ownership, topology or shard layout rejects restoration.
+
+Native distributed checkpoint capabilities are documented per recipe; a
+sampled fingerprint or final tensor-evidence file is not a restart checkpoint.
+
+## Distributed Program training
+
+The same algorithm and lifecycle run through the existing `ExecutionBackend`.
+There is no model-name dispatcher and no second distributed solver. A recipe
+must declare `ReplicaSemantics` (the DMD hook builder accepts
+`replica_batch_size`); rank-local history in otherwise replicated state is not
+silently admitted. Each rank's local record may itself contain a model-defined
+batch. The objective remains the declared equal-rank mean.
+
+Set these fields explicitly for a CPU functional run:
+
+```json
+{
+  "data": {"prepared":"prepared/manifest.json", "sharding":"rank_strided"},
+  "trainer": {"cycles":4, "seed":7, "device":"cpu", "output_dir":"run",
+              "distributed":{"backend":"gloo", "timeout_seconds":180}}
+}
+```
+
+These are fragments of the normal five-section request, not a separate config
+format. Supply at least `cycles × world_size` records; at global cursor `k`,
+rank `r` consumes record `k+r`, then the cursor advances by `world_size`. No
+padding, recycling or dropping an incomplete rank cohort is permitted.
+
+```sh
+torchrun --standalone --nproc-per-node=2 -m distillschedule train train.json
+torchrun --standalone --nproc-per-node=2 -m distillschedule train train.json \
+  --resume run/checkpoints/cycle-000002 --cycles 6 --output resumed
+```
+
+Reference mode uses replicated post-backward mean; measured `auto` and saved
+`plan` modes use the real admitted candidate, including DDP, FSDP2 and HSDP
+where the current backend/mesh permits them. A manual option uses the existing
+`torch-callable-replicated-v1` schema with its local policy, reduction and bucket
+size. Models, optimizers, DDP wrappers, FSDP layout and hooks are installed once,
+not rebuilt at every cycle. Resume installs the **saved layout** before loading
+its local shards, then continues the saved policy without re-calibration.
+
+The group is owned by the caller when already initialized. Otherwise an
+explicit `trainer.distributed` request initializes only the resources supplied
+by torchrun. This API does not reserve GPUs, acquire nodes or launch SSH jobs.
+CPU/Gloo restart is functionally tested; CUDA/NCCL validation is separate and
+not implied by those tests.
 
 ## Run artifacts
 
@@ -103,6 +153,8 @@ records cycle, sample, scalar outputs, finite state, actual operations, logical
 versions and policy hash. `summary.json` records completion and the latest
 complete checkpoint. An interrupted/failed run retains `failure.json` and its
 last completed checkpoint. Failed partial updates are never counted complete.
+Distributed rank metrics are in `ranks/rank-NNNNN/metrics.jsonl`; the shared
+summary records all actual completed ranks rather than predicting rank counts.
 
 ## Generate and export
 

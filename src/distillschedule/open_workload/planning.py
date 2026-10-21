@@ -5,7 +5,6 @@ or fixed update count appears here. Calibration is a paired diagnostic from the
 same initial state, not a production training run or a speedup benchmark.
 """
 from __future__ import annotations
-from dataclasses import asdict
 import json
 from pathlib import Path
 import platform
@@ -176,7 +175,8 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
         backend.publish(root/'calibration.json',manifest)
         return manifest
     except BaseException as exc:
-        backend.primary(lambda: write_new_json(root/'failure.json',{'error':str(exc),'program_runs':actual,'claimable_speedup':False}),'record calibration failure')
+        error = str(exc)
+        backend.primary(lambda: write_new_json(root/'failure.json',{'error':error,'program_runs':actual,'claimable_speedup':False}),'record calibration failure')
         raise
 
 
@@ -268,7 +268,7 @@ def verify_order(selected,graph,rules,costs,lives,static,limit):
     return order
 
 
-def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False):
+def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False,persistent=False):
     from .execution import ExecutionBackend
     backend=ExecutionBackend(workload)
     def read_plan():
@@ -299,7 +299,7 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False):
     try:
         reference=backend.session(backend.inventory(1)['candidates'][0]);out=reference.run()
         expected=reference.result_state(out);del reference,out
-        session=backend.session(row['implementation'])
+        session=backend.session(row['implementation'],persistent=persistent)
         require(type(deep_profile) is bool, 'invalid deep-profile flag', path='open.run')
         traces=[]
         if deep_profile:
@@ -333,5 +333,6 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False):
         # an advertised resumable production checkpoint.
         return result,session,out
     except BaseException as exc:
-        backend.primary(lambda: write_new_json(root/'failure.json',{'error':str(exc),'plan_sha256':sha}),'record execution failure')
+        error = str(exc)
+        backend.primary(lambda: write_new_json(root/'failure.json',{'error':error,'plan_sha256':sha}),'record execution failure')
         raise

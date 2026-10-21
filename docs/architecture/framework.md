@@ -68,9 +68,11 @@ sample values equal the original calibration snapshot. The runtime records the
 selected implementation, plan hash, actual executed operations and final
 versions. It never falls back to a named historical winner.
 
-Generic persistent Program training currently owns one process/device. The
-existing allocated distributed Program and role-pool interfaces remain
-available with their own admission. The six native recipes preserve their
+Generic persistent Program training owns one device per process and uses the
+existing allocated distributed Program interface when an explicit torchrun
+group is supplied. Resident/DDP/FSDP2/HSDP layouts persist across cycles;
+same-topology restart restores local shards into the same live parameter
+objects. Role-pool interfaces retain their separate admission. Six native recipes preserve their
 original distributed contracts and bounded update counts. See the
 [support matrix](../guides/support_matrix.md); source/CPU integration does not
 constitute new CUDA validation.

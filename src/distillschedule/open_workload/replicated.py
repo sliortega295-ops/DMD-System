@@ -216,14 +216,16 @@ class ReplicaLifecycle:
             replica_state_consensus=True, reduction_completed=True)
 
 
-def make_session(workload, implementation):
+def make_session(workload, implementation, *, copy_state=True, persistent=False):
     checked(lambda: workload.validate(), 'session preflight')
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
     from .mixed_layout import MixedLifecycle, MODE as MIXED
     if implementation.get('reduction') == MIXED:
-        return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation))
+        return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation),
+                       copy_state=copy_state,persistent=persistent)
     from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
-    return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation))
+    return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation),
+                   copy_state=copy_state,persistent=persistent)

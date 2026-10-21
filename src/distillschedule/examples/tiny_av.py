@@ -248,6 +248,7 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
                      if key not in required | {"student_grad", "fake_grad"}},
         immutable_modules=components.immutable_modules,
         identity_extra={"quality_status": QUALITY_STATUS, "training_cycle": cycle, "ema": False},
+        replica_batch_size=latent.shape[0],
     )
 
 

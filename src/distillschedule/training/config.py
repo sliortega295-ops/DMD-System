@@ -49,11 +49,11 @@ class TrainingConfig:
             raise ValueError("checkpoint_every must be a nonnegative integer")
         if execution.get("adapter", "program") == "program":
             allowed = {
-                "model": {"factory", "parameters"}, "data": {"prepared"},
+                "model": {"factory", "parameters"}, "data": {"prepared", "sharding"},
                 "algorithm": {"factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
                               "max_candidates", "samples", "max_program_runs", "max_states"},
-                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device"},
+                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed"},
             }
             for key, names in allowed.items():
                 if set(parts[key]) - names:
@@ -73,6 +73,15 @@ class TrainingConfig:
                     raise ValueError(f"{key}.parameters must be an object")
             if not parts["data"].get("prepared"):
                 raise ValueError("data.prepared is required; prepare raw media before training")
+            if parts["data"].get("sharding", "single") not in ("single", "rank_strided"):
+                raise ValueError("data.sharding must be single or rank_strided")
+            if "distributed" in trainer:
+                distributed = trainer["distributed"]
+                if (not isinstance(distributed, dict) or set(distributed) - {"backend", "timeout_seconds"}
+                        or distributed.get("backend") not in ("gloo", "nccl")
+                        or type(distributed.get("timeout_seconds", 180)) is not int
+                        or distributed.get("timeout_seconds", 180) <= 0):
+                    raise ValueError("trainer.distributed requires an explicit gloo/nccl backend and positive timeout")
         else:
             if parts["model"].get("workload") not in tuple(f"W{i}" for i in range(1, 7)):
                 raise ValueError("native model.workload must be W1-W6")

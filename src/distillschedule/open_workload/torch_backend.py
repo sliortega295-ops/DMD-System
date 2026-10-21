@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 import hashlib
 import inspect
 import itertools
-import json
 import math
 import random
 import time
@@ -264,7 +263,7 @@ class Context:
 
 
 class Session:
-    def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True):
+    def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False):
         workload.validate()
         from .checkpoint_policy import POLICIES, operations
         policy=implementation.get('checkpoint_policy','recompute')
@@ -280,8 +279,9 @@ class Session:
                 and set(implementation['checkpoint_bindings']) <= {c.binding for c in workload.program.calls if c.replay_safe},
                 'implementation not admitted by capability predicates',path='open.runtime')
         self.workload=workload; self.implementation=deepcopy(implementation)
-        require(type(copy_state) is bool and (copy_state or lifecycle is None),
-                'owned training state requires the local resident lifecycle', path='open.runtime')
+        require(type(copy_state) is bool and type(persistent) is bool,
+                'explicit state ownership required', path='open.runtime')
+        self.persistent = persistent or not copy_state
         # Paired trials keep the original clone semantics. A persistent trainer
         # explicitly owns its modules/optimizers and must not clone them at each
         # update boundary (including preserving optimizer Parameter ownership).
@@ -303,8 +303,33 @@ class Session:
         self.lifecycle = lifecycle
         if lifecycle is not None:
             lifecycle.prepare(self)
+            self.effects['lifecycle_installations'] = 1
             self.initial_storage = storage_bytes((self.state, self.feeds))
             self.static_bytes = self.initial_storage
+
+    def bind_cycle(self, workload, *, graph=None):
+        """Rebind an owned complete-cycle session; never reinstall its layout.
+
+        The public trainer verifies structural/source identity. This final
+        ownership check prevents a rebuilt optimizer or model from silently
+        replacing the parameters retained by DDP/FSDP and their hooks.
+        Trial sessions remain one-shot unless explicitly adopted as persistent.
+        """
+        require(self.persistent, 'trial sessions are one-shot', path='open.runtime')
+        workload.validate()
+        require(set(workload.state) == set(self.state) and all(
+            workload.state[key] is self.state[key] for key in self.state),
+            'cycle must retain the owned state objects', path='open.runtime')
+        if self._ran:
+            require(workload.program.initial_versions == self.receipt['dispatcher']['final_versions'],
+                    'cycle must continue the last committed versions', path='open.runtime')
+        self.workload = workload
+        self.feeds = dict(workload.feeds)
+        self.graph = graph if graph is not None else workload.program.compile()
+        self.profile = {}
+        self._ran = False
+        if self.lifecycle is not None:
+            self.lifecycle.workload = workload
 
     def synchronize(self):
         if self.device.type=='cuda': torch.cuda.synchronize(self.device)

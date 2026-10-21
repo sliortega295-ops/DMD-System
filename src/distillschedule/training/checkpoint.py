@@ -1,7 +1,7 @@
 """Complete-cycle checkpoints for framework-owned training state.
 
-Native distributed adapters keep their own shard writers. This writer owns a
-single-process session and never mislabels a final weight export as resumable.
+Native distributed adapters keep their own shard writers. Program sessions use
+this same-topology atomic writer, with one safe local shard per actual rank.
 """
 from __future__ import annotations
 from copy import deepcopy
@@ -12,6 +12,8 @@ import random
 import shutil
 import uuid
 from distillschedule.workloads.best_known.registry import file_sha256 as _sha
+from . import distributed
+from .tensor_state import pack, decode, layout, live_meshes
 
 SCHEMA = "distillschedule.training_checkpoint.v1"
 
@@ -19,6 +21,8 @@ SCHEMA = "distillschedule.training_checkpoint.v1"
 def cpu_tree(value):
     import torch
     if isinstance(value, torch.Tensor):
+        from distillschedule.open_workload.torch_backend import full_tensor
+        value = full_tensor(value)
         return value.detach().cpu().clone()
     if isinstance(value, dict):
         return {key: cpu_tree(item) for key, item in value.items()}
@@ -35,30 +39,47 @@ def _class(value):
     return type(value).__module__ + "." + type(value).__qualname__
 
 
+def _parameter_names(state):
+    import torch
+    from distillschedule.open_workload.torch_backend import unwrap_module
+    return {id(p): f"{key}.{name}" for key, value in state.items()
+            if isinstance(value, torch.nn.Module)
+            for name, p in unwrap_module(value).named_parameters()}
+
+
 def pack_state(state):
     import torch
+    from distillschedule.open_workload.torch_backend import unwrap_module
+    parameter_names = _parameter_names(state)
     packed = {}
     for key, value in state.items():
         if isinstance(value, torch.nn.Module):
+            value = unwrap_module(value)
             packed[key] = {"kind": "module", "class": _class(value),
-                           "value": cpu_tree(value.state_dict()),
+                           "value": pack(value.state_dict()),
                            "training": {name: child.training for name, child in value.named_modules()},
                            "requires_grad": {name: p.requires_grad for name, p in value.named_parameters()}}
         elif isinstance(value, torch.optim.Optimizer):
-            packed[key] = {"kind": "optimizer", "class": _class(value), "value": cpu_tree(value.state_dict())}
+            packed[key] = {"kind": "optimizer", "class": _class(value), "value": pack(value.state_dict()),
+                           "parameters": [[parameter_names[id(p)] for p in group["params"]]
+                                          for group in value.param_groups]}
         elif callable(getattr(value, "state_dict", None)) and callable(getattr(value, "load_state_dict", None)):
-            packed[key] = {"kind": "stateful", "class": _class(value), "value": cpu_tree(value.state_dict())}
+            packed[key] = {"kind": "stateful", "class": _class(value), "value": pack(value.state_dict())}
         else:
-            packed[key] = {"kind": "value", "value": cpu_tree(value)}
+            packed[key] = {"kind": "value", "value": pack(value)}
     return packed
 
 
 def _validate_layout(current, restored, name):
     """Validate module extra-state with the same explicit safe-tree contract."""
     import torch
+    from torch.distributed.tensor import DTensor
     if isinstance(current, torch.Tensor):
         if not isinstance(restored, torch.Tensor) or current.shape != restored.shape or current.dtype != restored.dtype:
             raise ValueError(f"checkpoint module shape/dtype changed: {name}")
+        if isinstance(current, DTensor) != isinstance(restored, DTensor) or (
+                isinstance(current, DTensor) and layout(current) != layout(restored)):
+            raise ValueError(f"checkpoint tensor layout changed: {name}")
     elif isinstance(current, dict):
         if not isinstance(restored, dict) or current.keys() != restored.keys():
             raise ValueError(f"checkpoint module keys changed: {name}")
@@ -73,36 +94,74 @@ def _validate_layout(current, restored, name):
         raise ValueError(f"checkpoint module extra-state type changed: {name}")
 
 
-def unpack_state(packed, state):
+def _stage_state(packed, state):
     import torch
+    from copy import copy
+    from distillschedule.open_workload.torch_backend import unwrap_module
     if set(packed) != set(state):
         raise ValueError("checkpoint state names changed")
-    # Validate before mutating any live model or optimizer.
+    meshes = live_meshes(state)
+    restored = {key: decode(row["value"], meshes) for key, row in packed.items()}
+    parameter_names = _parameter_names(state)
+    optimizers = {}
+    # Validate/load staged optimizer objects before mutating any live tensor.
     for key, row in packed.items():
-        value = state[key]
+        value = unwrap_module(state[key]) if isinstance(state[key], torch.nn.Module) else state[key]
+        expected_kind = ("module" if isinstance(value, torch.nn.Module) else "optimizer"
+                         if isinstance(value, torch.optim.Optimizer) else "stateful"
+                         if callable(getattr(value, "state_dict", None)) and callable(getattr(value, "load_state_dict", None))
+                         else "value")
+        if row.get("kind") != expected_kind:
+            raise ValueError(f"checkpoint state kind changed: {key}")
         if row["kind"] != "value" and row["class"] != _class(value):
             raise ValueError(f"checkpoint state class changed: {key}")
         if row["kind"] == "module":
             current = value.state_dict()
-            _validate_layout(current, row["value"], key)
+            _validate_layout(current, restored[key], key)
             if row["requires_grad"] != {name: p.requires_grad for name, p in value.named_parameters()}:
                 raise ValueError(f"checkpoint trainables changed: {key}")
+            if (set(row["training"]) != {name for name, _ in value.named_modules()}
+                    or any(type(item) is not bool for item in row["training"].values())):
+                raise ValueError(f"checkpoint module training modes changed: {key}")
+        elif row["kind"] == "optimizer":
+            expected = [[parameter_names[id(p)] for p in group["params"]] for group in value.param_groups]
+            if row.get("parameters") != expected:
+                raise ValueError(f"checkpoint optimizer parameter ownership changed: {key}")
+            staged = copy(value)
+            staged.param_groups = [dict(group, params=list(group["params"])) for group in value.param_groups]
+            staged.state = {}
+            staged.load_state_dict(restored[key])
+            for parameter, values in staged.state.items():
+                for item in values.values():
+                    if isinstance(item, torch.Tensor) and item.ndim > 0:
+                        _validate_layout(parameter, item, key)
+            optimizers[key] = staged
+        elif row["kind"] == "value" and isinstance(value, torch.Tensor):
+            _validate_layout(value, restored[key], key)
+    return restored, optimizers
+
+
+def unpack_state(packed, state):
+    import torch
+    from distillschedule.open_workload.torch_backend import unwrap_module
+    # No rank begins mutation while any rank rejects a shard/layout/optimizer.
+    restored, optimizers = distributed.checked(lambda: _stage_state(packed, state), "checkpoint state admission")
     for key, row in packed.items():
-        value = state[key]
+        value = unwrap_module(state[key]) if isinstance(state[key], torch.nn.Module) else state[key]
         if row["kind"] == "module":
-            value.load_state_dict(row["value"], strict=True)
+            value.load_state_dict(restored[key], strict=True)
             for name, child in value.named_modules():
                 child.training = row["training"][name]
-        elif row["kind"] in ("optimizer", "stateful"):
-            value.load_state_dict(row["value"])
+        elif row["kind"] == "optimizer":
+            value.state = optimizers[key].state
+            value.param_groups = optimizers[key].param_groups
+        elif row["kind"] == "stateful":
+            value.load_state_dict(restored[key])
         elif isinstance(value, torch.Tensor):
-            restored = row["value"]
-            if not isinstance(restored, torch.Tensor) or restored.shape != value.shape or restored.dtype != value.dtype:
-                raise ValueError(f"checkpoint tensor shape/dtype changed: {key}")
             with torch.no_grad():
-                value.copy_(restored.to(value.device))
+                value.copy_(restored[key].to(value.device))
         else:
-            state[key] = deepcopy(row["value"])
+            state[key] = deepcopy(restored[key])
 
 
 def rng_state():
@@ -137,36 +196,61 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
     import torch
     if type(cycle) is not int or cycle < 0 or type(cursor) is not int or cursor < 0:
         raise ValueError("checkpoint must describe a complete cycle and data cursor")
-    if int(os.environ.get("WORLD_SIZE", "1")) != 1:
-        raise ValueError("distributed checkpoints must use the native adapter shard writer")
-    if any(p.grad is not None for value in state.values() if isinstance(value, torch.nn.Module)
-           for p in value.parameters()):
-        raise ValueError("checkpoint requires a zero-gradient complete-cycle boundary")
+    def boundary():
+        if int(os.environ.get("WORLD_SIZE", "1")) != distributed.rank_world()[1]:
+            raise ValueError("checkpoint requires the actual initialized rank group")
+        if any(p.grad is not None for value in state.values() if isinstance(value, torch.nn.Module)
+               for p in value.parameters()):
+            raise ValueError("checkpoint requires a zero-gradient complete-cycle boundary")
+    distributed.checked(boundary, "checkpoint boundary")
+    rank, world = distributed.rank_world()
+    allocated = distributed.topology()
+    common = {"identity": identity, "cycle": cycle, "cursor": cursor,
+              "versions": dict(versions), "policy": policy, "topology": allocated}
+    if any(row != common for row in distributed.gather(common)):
+        raise ValueError("ranks disagree on checkpoint identity or completed progress")
     path = Path(path).resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        raise FileExistsError(path)
-    staging = path.with_name("." + path.name + ".tmp-" + uuid.uuid4().hex)
-    staging.mkdir()
+    token = distributed.gather(uuid.uuid4().hex if rank == 0 else None)[0]
+    staging = path.with_name("." + path.name + ".tmp-" + token)
+    def create():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            raise FileExistsError(path)
+        staging.mkdir()
+    distributed.primary(create, "checkpoint staging")
     try:
-        payload = {"state": pack_state(state), "rng": rng_state(), "cycle": cycle,
-                   "cursor": cursor, "versions": dict(versions), "policy": policy}
-        torch.save(payload, staging / "state.pt")
-        manifest = {"schema_version": SCHEMA, "kind": "RESUMABLE_COMPLETE_CYCLE",
-                    "identity": identity, "cycle": cycle, "cursor": cursor,
-                    "topology": {"world_size": 1}, "torch": torch.__version__,
-                    "files": {"state.pt": _sha(staging / "state.pt")}}
-        (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-        (staging / "_SUCCESS").write_text(_sha(staging / "manifest.json") + "\n")
-        os.rename(staging, path)
+        payload = distributed.checked(lambda: {"state": pack_state(state), "rng": rng_state(), "cycle": cycle,
+                   "cursor": cursor, "versions": dict(versions), "policy": policy}, "checkpoint packing")
+        filename = "state.pt" if world == 1 else f"rank-{rank:05d}.pt"
+        def write_shard():
+            if not staging.is_dir():
+                raise ValueError("checkpoint output must be shared by all ranks")
+            torch.save(payload, staging / filename)
+            return {filename: _sha(staging / filename)}
+        shard = distributed.checked(write_shard, "checkpoint shard writing")
+        files = {key: value for row in distributed.gather(shard) for key, value in row.items()}
+        def publish():
+            if len(files) != world or any(not (staging / name).is_file() or _sha(staging / name) != sha
+                                          for name, sha in files.items()):
+                raise ValueError("checkpoint shards incomplete on shared storage")
+            manifest = {"schema_version": SCHEMA, "kind": "RESUMABLE_COMPLETE_CYCLE",
+                        "identity": identity, "cycle": cycle, "cursor": cursor,
+                        "topology": allocated, "torch": torch.__version__, "files": files}
+            (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+            (staging / "_SUCCESS").write_text(_sha(staging / "manifest.json") + "\n")
+            os.rename(staging, path)
+        distributed.primary(publish, "checkpoint publication")
     except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
+        if world == 1:
+            shutil.rmtree(staging, ignore_errors=True)
+        # Distributed incomplete staging remains explicitly unpublished for audit.
         raise
     return path
 
 
 def read_checkpoint(path, *, identity):
     import torch
+    allocated = distributed.topology()
     path = Path(path).resolve()
     if not (path / "_SUCCESS").is_file() or not (path / "manifest.json").is_file():
         raise ValueError("checkpoint is not complete")
@@ -175,20 +259,24 @@ def read_checkpoint(path, *, identity):
     manifest = json.loads((path / "manifest.json").read_text())
     if manifest.get("schema_version") != SCHEMA or manifest.get("identity") != identity:
         raise ValueError("checkpoint identity changed")
-    if manifest["topology"] != {"world_size": int(os.environ.get("WORLD_SIZE", "1"))}:
+    if manifest["topology"] != allocated:
         raise ValueError("checkpoint topology changed")
     if manifest.get("torch") != torch.__version__:
         raise ValueError("checkpoint runtime version changed")
-    if manifest.get("files") != {"state.pt": _sha(path / "state.pt")}:
+    rank, world = distributed.rank_world()
+    expected = {"state.pt"} if world == 1 else {f"rank-{r:05d}.pt" for r in range(world)}
+    if set(manifest.get("files", {})) != expected or any(
+            not (path / name).is_file() or _sha(path / name) != sha for name, sha in manifest["files"].items()):
         raise ValueError("checkpoint shard missing or hash changed")
-    payload = torch.load(path / "state.pt", map_location="cpu", weights_only=True)
+    payload = torch.load(path / ("state.pt" if world == 1 else f"rank-{rank:05d}.pt"),
+                         map_location="cpu", weights_only=True)
     if payload["cycle"] != manifest["cycle"] or payload["cursor"] != manifest["cursor"]:
         raise ValueError("checkpoint progress disagrees with manifest")
     return payload
 
 
 def restore_checkpoint(path, state, *, identity):
-    payload = read_checkpoint(path, identity=identity)
+    payload = distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission")
     unpack_state(payload["state"], state)
     restore_rng(payload["rng"])
     return payload
