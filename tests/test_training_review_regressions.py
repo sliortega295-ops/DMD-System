@@ -69,6 +69,93 @@ def test_scheduler_auto_reference_and_resume_include_all_persistent_state(tmp_pa
     assert session.state["scheduler"].optimizer is session.state["optimizer"]
 
 
+@pytest.mark.parametrize("optimizer_type", [torch.optim.Adafactor, torch.optim.LBFGS])
+def test_non_pointwise_native_optimizer_checkpoint_continuation(tmp_path, optimizer_type):
+    from test_training_end_to_end import equal
+
+    def build(seed):
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(seed)
+            model = torch.nn.Linear(3, 2)
+        options = {"max_iter": 3, "history_size": 3} if optimizer_type is torch.optim.LBFGS else {}
+        return {"model": model, "optimizer": optimizer_type(model.parameters(), lr=.1, **options)}
+
+    def update(state, offset):
+        def closure():
+            state["optimizer"].zero_grad(set_to_none=True)
+            prediction = state["model"](torch.tensor([[1., -2., 3.], [-1., 1., 2.]]))
+            loss = (prediction - offset).square().mean()
+            loss.backward()
+            return loss
+        state["optimizer"].step(closure)
+        state["optimizer"].zero_grad(set_to_none=True)
+
+    control = build(5)
+    update(control, .5)
+    weight_state = control["optimizer"].state[control["model"].weight]
+    if optimizer_type is torch.optim.Adafactor:
+        assert weight_state["row_var"].shape == (2, 1)
+        assert weight_state["col_var"].shape == (1, 3)
+        assert control["optimizer"].state[control["model"].bias]["variance"].shape == (2,)
+    else:
+        assert weight_state["d"].shape == (8,)
+        assert weight_state["old_dirs"]
+    identity = {"test": "native_optimizer_layout"}
+    checkpoint = save_checkpoint(tmp_path / "checkpoint", control, identity=identity,
+                                 cycle=1, cursor=1, versions=dict.fromkeys(control, 1))
+    restarted = build(19)
+    parameters = tuple(restarted["model"].parameters())
+    restore_checkpoint(checkpoint, restarted, identity=identity)
+    assert all(a is b for a, b in zip(parameters, restarted["model"].parameters()))
+    assert all(a is b for a, b in zip(parameters, restarted["optimizer"].param_groups[0]["params"]))
+    assert equal(control["model"].state_dict(), restarted["model"].state_dict())
+    assert equal(control["optimizer"].state_dict(), restarted["optimizer"].state_dict())
+    update(control, -.75)
+    update(restarted, -.75)
+    assert equal(control["model"].state_dict(), restarted["model"].state_dict())
+    assert equal(control["optimizer"].state_dict(), restarted["optimizer"].state_dict())
+
+
+@pytest.mark.parametrize("field", ["exp_avg", "exp_avg_sq", "max_exp_avg_sq"])
+@pytest.mark.parametrize("fault", ["shape", "dtype"])
+def test_pointwise_adam_checkpoint_rejects_malformed_moments_before_mutation(field, fault):
+    from distillschedule.training.checkpoint import pack_state, unpack_state
+    from test_training_end_to_end import equal
+    model = torch.nn.Linear(3, 2)
+    optimizer = torch.optim.AdamW(model.parameters(), amsgrad=True)
+    model(torch.ones(1, 3)).square().mean().backward()
+    optimizer.step()
+    optimizer.zero_grad(set_to_none=True)
+    state = {"model": model, "optimizer": optimizer}
+    before = pack_state(state)
+    malformed = deepcopy(before)
+    values = malformed["optimizer"]["value"]["state"][0]
+    values[field] = torch.zeros(1) if fault == "shape" else values[field].double()
+    with pytest.raises(ValueError, match="shape/dtype"):
+        unpack_state(malformed, state)
+    assert equal(pack_state(state), before)
+
+
+@pytest.mark.parametrize("fault,match", [("ownership", "ownership"), ("class", "class"),
+                                        ("groups", "parameter group")])
+def test_optimizer_checkpoint_preserves_named_class_and_group_admission(fault, match):
+    from distillschedule.training.checkpoint import pack_state, unpack_state
+    from test_training_end_to_end import equal
+    model = torch.nn.Linear(3, 2)
+    state = {"model": model, "optimizer": torch.optim.AdamW(model.parameters())}
+    before = pack_state(state)
+    malformed = deepcopy(before)
+    if fault == "ownership":
+        malformed["optimizer"]["parameters"][0].reverse()
+    elif fault == "class":
+        malformed["optimizer"]["class"] = "torch.optim.sgd.SGD"
+    else:
+        malformed["optimizer"]["value"]["param_groups"][0]["params"].pop()
+    with pytest.raises(ValueError, match=match):
+        unpack_state(malformed, state)
+    assert equal(pack_state(state), before)
+
+
 def test_stateful_signature_accounts_tensors_and_allows_scheduler_infinity():
     model = torch.nn.Linear(1, 1)
     optimizer = torch.optim.SGD(model.parameters(), lr=.1)

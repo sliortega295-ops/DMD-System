@@ -94,6 +94,37 @@ def _validate_layout(current, restored, name):
         raise ValueError(f"checkpoint module extra-state type changed: {name}")
 
 
+def _validate_optimizer_layout(optimizer, restored, name):
+    """Check known pointwise slots, not native factored/flattened state.
+
+    The native loader owns other optimizer schemas. Exact types avoid imposing
+    a built-in schema on custom subclasses. Validate the decoded source slots:
+    load_state_dict may otherwise silently cast a malformed moment's dtype.
+    """
+    import torch
+    fields = {
+        torch.optim.Adam: ("exp_avg", "exp_avg_sq", "max_exp_avg_sq"),
+        torch.optim.AdamW: ("exp_avg", "exp_avg_sq", "max_exp_avg_sq"),
+        torch.optim.SparseAdam: ("exp_avg", "exp_avg_sq"),
+        torch.optim.SGD: ("momentum_buffer",),
+        torch.optim.Adadelta: ("square_avg", "acc_delta"),
+        torch.optim.Adagrad: ("sum",),
+        torch.optim.Adamax: ("exp_avg", "exp_inf"),
+        torch.optim.ASGD: ("ax",),
+        torch.optim.NAdam: ("exp_avg", "exp_avg_sq"),
+        torch.optim.RAdam: ("exp_avg", "exp_avg_sq"),
+        torch.optim.RMSprop: ("square_avg", "momentum_buffer", "grad_avg"),
+        torch.optim.Rprop: ("prev", "step_size"),
+        torch.optim.Adafactor: ("variance",),
+    }.get(type(optimizer), ())
+    for group, saved_group in zip(optimizer.param_groups, restored["param_groups"]):
+        for parameter, parameter_id in zip(group["params"], saved_group["params"]):
+            values = restored["state"].get(parameter_id, {})
+            for field in fields:
+                if field in values:
+                    _validate_layout(parameter, values[field], f"{name}.{field}")
+
+
 def _stage_state(packed, state):
     import torch
     from copy import copy
@@ -131,10 +162,7 @@ def _stage_state(packed, state):
             staged.param_groups = [dict(group, params=list(group["params"])) for group in value.param_groups]
             staged.state = {}
             staged.load_state_dict(restored[key])
-            for parameter, values in staged.state.items():
-                for item in values.values():
-                    if isinstance(item, torch.Tensor) and item.ndim > 0:
-                        _validate_layout(parameter, item, key)
+            _validate_optimizer_layout(staged, restored[key], key)
             optimizers[key] = staged
         elif row["kind"] == "value" and isinstance(value, torch.Tensor):
             _validate_layout(value, restored[key], key)
