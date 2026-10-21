@@ -15,16 +15,19 @@ from distillschedule.core.contracts import require
 from distillschedule.search.cost_model import ComponentContract,CostModel,OperationCost
 from distillschedule.search.plan_ir import BindingRule,Lifetime,StateAllocation,graph_from_dict
 from distillschedule.search.service import BoundCandidate,select
-from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,repository_root,write_new_json
+from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,write_new_json
 
 SCHEMA='distillschedule.open_calibration.v1'
 PLAN='distillschedule.open_plan.v1'
 
 
 def source_identity():
-    root=repository_root()
-    paths=[root/'src/distillschedule/workloads/program.py']
-    for d in ('src/distillschedule/open_workload','src/distillschedule/search','src/distillschedule/core','src/distillschedule/runtime'):
+    # The common Program backend is usable from an installed wheel; only the
+    # legacy/native model launchers require a source checkout. Keep names stable
+    # between editable installs and wheels rather than hashing absolute paths.
+    root=Path(__file__).resolve().parents[1]
+    paths=[root/'workloads/program.py']
+    for d in ('open_workload','search','core','runtime'):
         paths.extend((root/d).glob('*.py'))
     return fingerprint({str(p.relative_to(root)):file_sha256(p) for p in sorted(set(paths))})
 
@@ -76,7 +79,7 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
         hardware_probe = {'status':'NOT_REQUESTED', 'ranks':[]}
     root=Path(output).resolve();backend.mkdir(root)
     # A real git source when available; an archive has an explicit non-Git label.
-    result=subprocess.run(['git','rev-parse','HEAD'],cwd=repository_root(),text=True,capture_output=True)
+    result=subprocess.run(['git','rev-parse','HEAD'],cwd=Path(__file__).resolve().parent,text=True,capture_output=True)
     head=result.stdout.strip() if result.returncode==0 else '0'*40
     binding={'source_head':head,'hardware_fingerprint':fingerprint(hardware),
         'environment_fingerprint':fingerprint({'source':source,'torch':identity['torch']}),
