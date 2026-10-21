@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 12
     env:
+      EXPECTED_PARENT: 3053ad91bdda5ec89ad77129e33889afbf5bfbac
       BASE: 0e8cbe5c006fceda36a7547b3eda60d6daea1eb8
       OUTPUT_TREE: b0ba8e48a5316be8b958d661601fe4a723c1035e
       PAYLOAD_SHA256: 9a6d3794a5cb9c4f6fa8275800b7696d6e7ab01034b4a7349569a2b3ccb51951
@@ -20,10 +21,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
-      - name: Check exact starting commit
-        run: test "$(git rev-parse HEAD^)" = "$BASE"
+      - name: Check exact parent and required historical source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
+          git merge-base --is-ancestor "$BASE" HEAD
+          git cat-file -e ea29129342741b54e59c4773e07454f541fadcc7:scripts/distillschedule/probe_wan13b_fair_world16.py
+          git bundle create /tmp/organization-input.bundle HEAD refs/remotes/origin/codex/wan-state-policy-planner-20261017
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -84,7 +90,6 @@ jobs:
           from pathlib import Path
           def git(*args):
               return subprocess.check_output(['git', *args])
-          # Build products are ignored; any other mutation after validation rejects.
           subprocess.run(['git', 'diff', '--exit-code'], check=True)
           tree = git('write-tree').decode().strip()
           assert tree == os.environ['OUTPUT_TREE']
@@ -121,6 +126,8 @@ jobs:
                      'six_workloads': 6, 'relocated_utilities': 33,
                      'training_and_immutable_evidence_changed': False}
           Path('/tmp/organization-result.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          Path('/tmp/organization-source.tar.gz').write_bytes(git('archive', '--format=tar.gz', tree))
+          Path('/tmp/organization-changes.patch').write_bytes(git('diff', '--cached', '--binary', 'HEAD'))
           print(json.dumps(receipt))
           PY
       - uses: actions/upload-artifact@v4
