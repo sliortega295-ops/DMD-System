@@ -12,7 +12,7 @@ def resolve_reference(reference: str, base_dir: Path) -> str:
     if not sep or not symbol.isidentifier() or not path:
         raise ValueError("adapter must be a module:callable or local.py:callable")
     if path.endswith(".py"):
-        return str((base_dir / path).expanduser().resolve()) + ":" + symbol
+        return str((base_dir / Path(path).expanduser()).resolve()) + ":" + symbol
     if not all(part.isidentifier() for part in path.split(".")):
         raise ValueError("invalid adapter module name")
     return reference

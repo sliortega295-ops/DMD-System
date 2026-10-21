@@ -110,6 +110,7 @@ class PreparedDataset:
 
 def inspect_prepared(path):
     dataset = PreparedDataset(path)
+    manifest = dataset.manifest
     return {"manifest": str(dataset.path), "identity": dataset.identity, "samples": len(dataset),
-            "records": dataset.manifest["records"], "metadata": dataset.manifest["metadata"],
+            "records": manifest["records"], "metadata": manifest["metadata"],
             "validation": "HASHES_ONLY_TENSORS_NOT_LOADED"}

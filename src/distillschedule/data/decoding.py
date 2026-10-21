@@ -30,8 +30,12 @@ def _video(path):
         return torch.from_numpy(np.stack(images))
     ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
     require(ffmpeg and ffprobe, "video files require existing ffmpeg and ffprobe executables")
+    # The manifest hashes this one file, not an external playlist's segments.
+    # Only admit self-contained media demuxers and local I/O, in BOTH tools.
+    input_options = ["-format_whitelist", "mov,matroska,webm,avi,mpeg,mpegts,flv,ogg,gif",
+                     "-protocol_whitelist", "file,pipe"]
     try:
-        probe = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+        probe = subprocess.run([ffprobe, "-v", "error", *input_options, "-select_streams", "v:0", "-show_entries",
                                 "stream=width,height", "-of", "json", str(path)],
                                capture_output=True, check=True)
         streams = json.loads(probe.stdout).get("streams", [])
@@ -39,7 +43,7 @@ def _video(path):
         width, height = streams[0]["width"], streams[0]["height"]
         require(type(width) is int and type(height) is int and width > 0 and height > 0,
                 "invalid decoded video geometry")
-        decoded = subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-noautorotate", "-i", str(path),
+        decoded = subprocess.run([ffmpeg, "-nostdin", "-v", "error", *input_options, "-noautorotate", "-i", str(path),
                                   "-map", "0:v:0", "-an", "-sn", "-vsync", "0", "-threads", "1",
                                   "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"],
                                  capture_output=True, check=True).stdout

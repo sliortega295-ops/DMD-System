@@ -25,6 +25,16 @@ def _build_parser() -> argparse.ArgumentParser:
         epilog="Six protocols: workloads list; original pinned profiles: workloads list --legacy.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    for name, help_text in (
+        ("doctor", "inspect environment and a training request without loading models"),
+        ("data", "prepare raw media or import native features"),
+        ("config", "validate or show a public training configuration"),
+        ("train", "train continuously and save/resume complete cycles"),
+        ("evaluate", "generate/decode from a complete training checkpoint"),
+        ("export", "export inference weights from a training checkpoint"),
+    ):
+        subparsers.add_parser(name, help=help_text)
+
     subparsers.add_parser("workloads", help="six workloads, native planning, and legacy profiles")
 
     validate = subparsers.add_parser("validate", help="validate and compile a plan")

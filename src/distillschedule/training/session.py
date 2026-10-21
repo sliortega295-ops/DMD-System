@@ -67,11 +67,13 @@ def construct(config):
     identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
                 "algorithm": algorithm_source, "framework": _source(),
                 "model_metadata": dict(components.metadata)}
+    if config.execution.get("mode") == "plan":
+        identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
     return components, dataset, algorithm, identity
 
 
 def build_cycle(config, components, dataset, algorithm, *, cycle, cursor, versions=None):
-    from distillschedule.open_workload.torch_backend import Workload, tensors
+    from distillschedule.open_workload.torch_backend import Workload
     import torch
     if cursor >= len(dataset):
         raise ValueError("prepared input exhausted; add samples instead of silently recycling")
@@ -128,8 +130,8 @@ def train(config: TrainingConfig):
     root.mkdir(parents=True, exist_ok=False)
     _json(root / "resolved-config.json", config.to_dict())
     _json(root / "identity.json", identity)
-    rows = []
-    latest = None
+    completed_cycles_this_process = 0
+    latest = Path(config.trainer["resume_from"]).resolve() if config.trainer.get("resume_from") else None
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
             workload = build_cycle(config, components, dataset, algorithm, cycle=cycle, cursor=cursor,
@@ -147,7 +149,7 @@ def train(config: TrainingConfig):
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}
-            rows.append(row)
+            completed_cycles_this_process += 1
             with (root / "metrics.jsonl").open("a") as stream:
                 stream.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
             every = config.trainer.get("checkpoint_every", 1)
@@ -157,7 +159,7 @@ def train(config: TrainingConfig):
                                          versions=versions, policy=policy.bound)
             _json(root / "effective-policy.json", policy.bound)
         result = {"schema_version": "distillschedule.training_result.v1", "status": "COMPLETE",
-                  "completed_cycles": config.trainer["cycles"], "cycles_this_process": len(rows),
+                  "completed_cycles": config.trainer["cycles"], "cycles_this_process": completed_cycles_this_process,
                   "resume_cycle": start_cycle, "cursor": cursor, "final_versions": versions,
                   "finite": True, "numerical_status": policy.bound["initial_reference_gate"]["status"],
                   "quality_validation": "NOT_RUN", "claimable_speedup": False,
@@ -167,7 +169,7 @@ def train(config: TrainingConfig):
         return result
     except BaseException as exc:
         _json(root / "failure.json", {"status": "FAILED", "error": str(exc),
-                                     "completed_cycles_this_process": len(rows), "cursor": cursor,
+                                     "completed_cycles_this_process": completed_cycles_this_process, "cursor": cursor,
                                      "last_complete_checkpoint": str(latest) if latest else None})
         raise
 

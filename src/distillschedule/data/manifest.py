@@ -69,7 +69,7 @@ def resolve_path(value, base_dir):
     nonempty(value, "source path")
     # Media decoding is offline only: URL-like references are never fetched.
     require("://" not in value, "source paths must be local, not URLs")
-    return (Path(base_dir) / value).expanduser().resolve()
+    return (Path(base_dir) / Path(value).expanduser()).resolve()
 
 
 def frame_paths(path):

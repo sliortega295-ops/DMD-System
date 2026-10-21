@@ -14,6 +14,8 @@ from distillschedule.examples.tiny_av import (
 )
 from distillschedule.training.adapters import ModelComponents
 
+__all__ = ["build_model", "build_algorithm", "encode"]
+
 
 class NewModel(nn.Module):
     """Example replacement architecture with the same four-channel I/O ABI."""

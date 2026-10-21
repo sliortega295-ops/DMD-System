@@ -15,6 +15,7 @@ import hashlib
 import inspect
 import itertools
 import json
+import math
 import random
 import time
 from typing import Any, Callable, Mapping
@@ -30,6 +31,10 @@ from distillschedule.workloads.program import Program
 from distillschedule.workloads.best_known.registry import fingerprint
 
 
+def _stateful(value):
+    return callable(getattr(value, 'state_dict', None)) and callable(getattr(value, 'load_state_dict', None))
+
+
 def tensors(value):
     if isinstance(value, torch.Tensor):
         yield value
@@ -39,6 +44,8 @@ def tensors(value):
             if p.grad is not None: yield p.grad
     elif isinstance(value, torch.optim.Optimizer):
         yield from tensors(value.state)
+    elif _stateful(value):
+        yield from tensors(value.state_dict())
     elif isinstance(value, Mapping):
         for v in value.values(): yield from tensors(v)
     elif isinstance(value, (tuple, list)):
@@ -71,7 +78,7 @@ def tensor_signature(t):
         'bytes':hashlib.sha256(v.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()})
 
 
-def signature(value):
+def signature(value, *, _metadata=False):
     if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value)}
     if isinstance(value, nn.Module):
         return {'class':type(value).__module__+'.'+type(value).__qualname__,
@@ -79,8 +86,15 @@ def signature(value):
                 'tensors':{k:signature(v) for k,v in value.state_dict().items()},
                 'requires_grad':{k:p.requires_grad for k,p in value.named_parameters()}}
     if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict())}
-    if isinstance(value, Mapping): return {str(k):signature(v) for k,v in value.items()}
-    if isinstance(value,(tuple,list)): return [signature(v) for v in value]
+    if _stateful(value):
+        return {'stateful':type(value).__module__+'.'+type(value).__qualname__,
+                'state':signature(value.state_dict(), _metadata=True)}
+    if isinstance(value, Mapping): return {str(k):signature(v, _metadata=_metadata) for k,v in value.items()}
+    if isinstance(value,(tuple,list)): return [signature(v, _metadata=_metadata) for v in value]
+    # E.g. ReduceLROnPlateau deliberately starts with best=+/-inf. Bind
+    # those scheduler sentinels explicitly without admitting nonfinite inputs.
+    if _metadata and type(value) is float and math.isinf(value):
+        return {'stateful_float_sentinel':repr(value)}
     require(value is None or type(value) in (int,float,bool,str),'state must have an explicit serializable signature',path='open.state')
     return value
 
@@ -177,14 +191,14 @@ def resolve_module(state,path):
     return module.get_submodule(rest) if rest else module
 
 
-def sharing_inventory(workload):
+def sharing_inventory(workload, *, include_existing=False):
     seen={}; pairs=[]
     for path in workload.immutable_modules:
         for name,p in resolve_module(workload.state,path).named_parameters():
             require(p.is_contiguous() and p.layout==torch.strided,'shared parameter must be contiguous strided storage',path='open.state')
             key=tensor_signature(p)
             item=(path,name,p)
-            if key in seen and seen[key][2] is not p:
+            if key in seen and (include_existing or seen[key][2] is not p):
                 pairs.append((seen[key][:2],item[:2],p.numel()*p.element_size()))
             else: seen[key]=item
     return pairs
@@ -260,7 +274,7 @@ class Session:
                      and bool(implementation['checkpoint_bindings'])))
                 and implementation['backend']=='torch-callable-resident-v1'
                 and type(implementation['share_immutable']) is bool
-                and (not implementation['share_immutable'] or bool(sharing_inventory(workload)))
+                and (not implementation['share_immutable'] or bool(sharing_inventory(workload, include_existing=True)))
                 and isinstance(implementation['checkpoint_bindings'],list)
                 and len(set(implementation['checkpoint_bindings']))==len(implementation['checkpoint_bindings'])
                 and set(implementation['checkpoint_bindings']) <= {c.binding for c in workload.program.calls if c.replay_safe},
@@ -389,6 +403,7 @@ class Session:
             if isinstance(v,torch.Tensor): return full_tensor(v).detach().cpu().clone()
             if isinstance(v,nn.Module): return clone(unwrap_module(v).state_dict())
             if isinstance(v,torch.optim.Optimizer): return clone(v.state_dict())
+            if _stateful(v): return clone(v.state_dict())
             if isinstance(v,Mapping): return {str(k):clone(x) for k,x in v.items()}
             if isinstance(v,(list,tuple)): return [clone(x) for x in v]
             return v

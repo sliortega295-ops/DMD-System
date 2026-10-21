@@ -21,6 +21,16 @@ SCHEMA='distillschedule.open_calibration.v1'
 PLAN='distillschedule.open_plan.v1'
 
 
+def source_revision():
+    """Git is optional for installed packages; source hashes remain mandatory."""
+    try:
+        result=subprocess.run(['git','rev-parse','HEAD'],cwd=Path(__file__).resolve().parent,
+                              text=True,capture_output=True)
+    except OSError:
+        return '0'*40
+    return result.stdout.strip() if result.returncode==0 else '0'*40
+
+
 def source_identity():
     # The common Program backend is usable from an installed wheel; only the
     # legacy/native model launchers require a source checkout. Keep names stable
@@ -29,7 +39,19 @@ def source_identity():
     paths=[root/'workloads/program.py']
     for d in ('open_workload','search','core','runtime'):
         paths.extend((root/d).glob('*.py'))
-    return fingerprint({str(p.relative_to(root)):file_sha256(p) for p in sorted(set(paths))})
+    files={str(p.relative_to(root)):file_sha256(p) for p in sorted(set(paths))}
+    # Original mathematical helpers are still shipped at their audited runtime/
+    # import path. Bind the package Python actually resolves, including wheels
+    # and explicit import-path overrides, not an assumed checkout sibling.
+    import importlib.util
+    spec=importlib.util.find_spec('runtime')
+    require(spec is not None and bool(spec.submodule_search_locations),
+            'shipped compatibility runtime package is missing', path='open.source')
+    for index,location in enumerate(spec.submodule_search_locations):
+        compatibility=Path(location).resolve()
+        files.update({f'compatibility-runtime-{index}/'+str(p.relative_to(compatibility)):file_sha256(p)
+                      for p in sorted(compatibility.rglob('*.py'))})
+    return fingerprint(files)
 
 
 def hardware_identity(device):
@@ -79,8 +101,7 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
         hardware_probe = {'status':'NOT_REQUESTED', 'ranks':[]}
     root=Path(output).resolve();backend.mkdir(root)
     # A real git source when available; an archive has an explicit non-Git label.
-    result=subprocess.run(['git','rev-parse','HEAD'],cwd=Path(__file__).resolve().parent,text=True,capture_output=True)
-    head=result.stdout.strip() if result.returncode==0 else '0'*40
+    head=source_revision()
     binding={'source_head':head,'hardware_fingerprint':fingerprint(hardware),
         'environment_fingerprint':fingerprint({'source':source,'torch':identity['torch']}),
         'asset_fingerprint':fingerprint({'state':identity['initial_state'],'feeds':identity['feeds']}),

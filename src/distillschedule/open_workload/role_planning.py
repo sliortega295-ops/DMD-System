@@ -13,7 +13,6 @@ import json
 import platform
 from pathlib import Path
 import statistics
-import subprocess
 
 import torch
 import torch.distributed as dist
@@ -23,7 +22,7 @@ from distillschedule.core.graph import Dependency, ExecutionGraph, Operation
 from distillschedule.search.cost_model import CostModel, OperationCost, ComponentContract
 from distillschedule.search.plan_ir import BindingRule, StateAllocation
 from distillschedule.search.service import BoundCandidate, select
-from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,repository_root,write_new_json
+from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,write_new_json
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts, transport_bytes_by_rank
 from .role_transport import RoleFunctions, RolePoolExecutor
 
@@ -46,8 +45,8 @@ def code_identity(bindings:RoleFunctions):
 
 
 def source_identity():
-    root=repository_root()
-    files=tuple(root/'src/distillschedule/open_workload'/name for name in
+    root=Path(__file__).resolve().parent
+    files=tuple(root/name for name in
         ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py','role_profiling.py','role_prediction.py','role_dispatch.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
@@ -68,8 +67,8 @@ def _run_identity(task,hardware,bindings,device):
     identities=[None]*hardware.world
     dist.all_gather_object(identities,props)
     # On multi-node A100/H100 ranks may differ in UUID but must agree on source.
-    head=subprocess.run(['git','rev-parse','HEAD'],cwd=repository_root(),text=True,capture_output=True)
-    revision=head.stdout.strip() if head.returncode==0 else '0'*40
+    from .planning import source_revision
+    revision=source_revision()
     value={'source_head':revision,'source_fingerprint':source_identity(),
            'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
            'source_functions_sha256':code_identity(bindings),

@@ -96,6 +96,9 @@ def main(argv=None):
             from .session import evaluate, export
             result = (evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index)
                       if args.command == "evaluate" else export(config, args.checkpoint, args.output))
+        if type(result) is int:
+            # Native front doors already emit their own original receipts.
+            return result
         print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
         return 2 if result.get("status") in {"MISSING_INPUTS", "FAILED"} else 0
     except (ValueError, TypeError, KeyError, OSError, RuntimeError, ImportError) as exc:

@@ -2,19 +2,13 @@
 from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
-import hashlib
-import json
 from pathlib import Path
 from typing import Any, Mapping
 from distillschedule.core.config import load_document
+from distillschedule.workloads.best_known.registry import fingerprint as digest
 from .plugins import resolve_reference
 
 SCHEMA = "distillschedule.training.v1"
-
-
-def digest(value) -> str:
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
-                                     allow_nan=False).encode()).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -28,7 +22,7 @@ class TrainingConfig:
 
     @classmethod
     def from_dict(cls, value, *, source):
-        source = Path(source).resolve()
+        source = Path(source).expanduser().resolve()
         if set(value) != {"schema_version", "model", "data", "algorithm", "execution", "trainer"}:
             raise ValueError("training config needs model/data/algorithm/execution/trainer sections")
         if value["schema_version"] != SCHEMA:
@@ -47,13 +41,30 @@ class TrainingConfig:
             raise ValueError("saved-plan mode requires execution.plan")
         if type(trainer.get("cycles")) is not int or trainer["cycles"] < 1:
             raise ValueError("trainer.cycles must be positive")
-        if type(trainer.get("seed", 0)) is not int:
-            raise ValueError("trainer.seed must be an integer")
+        if type(trainer.get("seed", 0)) is not int or not 0 <= trainer.get("seed", 0) < 2**63:
+            raise ValueError("trainer.seed must be an integer in [0, 2**63)")
         if not trainer.get("output_dir"):
             raise ValueError("trainer.output_dir is required")
         if type(trainer.get("checkpoint_every", 1)) is not int or trainer.get("checkpoint_every", 1) < 0:
             raise ValueError("checkpoint_every must be a nonnegative integer")
         if execution.get("adapter", "program") == "program":
+            allowed = {
+                "model": {"factory", "parameters"}, "data": {"prepared"},
+                "algorithm": {"factory", "parameters"},
+                "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
+                              "max_candidates", "samples", "max_program_runs", "max_states"},
+                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device"},
+            }
+            for key, names in allowed.items():
+                if set(parts[key]) - names:
+                    raise ValueError(f"unsupported {key} fields: {sorted(set(parts[key]) - names)}")
+            mode = execution.get("mode", "reference")
+            if mode != "manual" and ("implementation" in execution or "order" in execution):
+                raise ValueError("implementation/order overrides require manual mode")
+            if mode != "plan" and "plan" in execution:
+                raise ValueError("execution.plan requires saved-plan mode")
+            if mode == "manual" and not isinstance(execution.get("implementation"), dict):
+                raise ValueError("manual mode requires an explicit implementation object")
             for key in ("model", "algorithm"):
                 if not isinstance(parts[key].get("factory"), str):
                     raise ValueError(f"{key}.factory is required")
@@ -69,7 +80,7 @@ class TrainingConfig:
                               ("execution", ("plan", "task", "assets", "capacity_policy", "transport"))):
             for key in keys:
                 if parts[section].get(key):
-                    parts[section][key] = str((source.parent / parts[section][key]).expanduser().resolve())
+                    parts[section][key] = str((source.parent / Path(parts[section][key]).expanduser()).resolve())
         return cls(**parts, source=source)
 
     def to_dict(self):

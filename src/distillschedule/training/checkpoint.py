@@ -5,23 +5,15 @@ single-process session and never mislabels a final weight export as resumable.
 """
 from __future__ import annotations
 from copy import deepcopy
-import hashlib
 import json
 import os
 from pathlib import Path
 import random
 import shutil
 import uuid
+from distillschedule.workloads.best_known.registry import file_sha256 as _sha
 
 SCHEMA = "distillschedule.training_checkpoint.v1"
-
-
-def _sha(path):
-    value = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            value.update(chunk)
-    return value.hexdigest()
 
 
 def cpu_tree(value):
@@ -61,6 +53,26 @@ def pack_state(state):
     return packed
 
 
+def _validate_layout(current, restored, name):
+    """Validate module extra-state with the same explicit safe-tree contract."""
+    import torch
+    if isinstance(current, torch.Tensor):
+        if not isinstance(restored, torch.Tensor) or current.shape != restored.shape or current.dtype != restored.dtype:
+            raise ValueError(f"checkpoint module shape/dtype changed: {name}")
+    elif isinstance(current, dict):
+        if not isinstance(restored, dict) or current.keys() != restored.keys():
+            raise ValueError(f"checkpoint module keys changed: {name}")
+        for key, value in current.items():
+            _validate_layout(value, restored[key], f"{name}.{key}")
+    elif isinstance(current, (tuple, list)):
+        if type(restored) is not type(current) or len(current) != len(restored):
+            raise ValueError(f"checkpoint module sequence layout changed: {name}")
+        for index, (a, b) in enumerate(zip(current, restored)):
+            _validate_layout(a, b, f"{name}.{index}")
+    elif type(current) not in (type(None), str, bool, int, float) or type(restored) is not type(current):
+        raise ValueError(f"checkpoint module extra-state type changed: {name}")
+
+
 def unpack_state(packed, state):
     import torch
     if set(packed) != set(state):
@@ -72,11 +84,7 @@ def unpack_state(packed, state):
             raise ValueError(f"checkpoint state class changed: {key}")
         if row["kind"] == "module":
             current = value.state_dict()
-            if set(current) != set(row["value"]):
-                raise ValueError(f"checkpoint module keys changed: {key}")
-            if any(current[name].shape != tensor.shape or current[name].dtype != tensor.dtype
-                   for name, tensor in row["value"].items()):
-                raise ValueError(f"checkpoint module shape/dtype changed: {key}")
+            _validate_layout(current, row["value"], key)
             if row["requires_grad"] != {name: p.requires_grad for name, p in value.named_parameters()}:
                 raise ValueError(f"checkpoint trainables changed: {key}")
     for key, row in packed.items():

@@ -13,7 +13,7 @@ from .config import digest
 
 
 def cycle_structure(workload):
-    from distillschedule.open_workload.torch_backend import code_signature, signature
+    from distillschedule.open_workload.torch_backend import code_signature
     import torch
 
     def shapes(value):
@@ -51,7 +51,7 @@ class CyclePolicy:
         self.bound = deepcopy(value)
 
     def run(self, workload, output):
-        from distillschedule.open_workload.torch_backend import Session, candidates
+        from distillschedule.open_workload.torch_backend import Session
         from distillschedule.open_workload.planning import source_identity
         current_structure = cycle_structure(workload)
         if self.bound is None:
@@ -104,8 +104,8 @@ class CyclePolicy:
         if self.bound["mode"] != self.execution.get("mode", "reference"):
             raise ValueError("checkpoint execution policy changed")
         implementation = self.bound["implementation"]
-        if implementation not in candidates(workload, limit=128)["candidates"]:
-            raise ValueError("selected implementation no longer satisfies runtime capabilities")
+        # Session applies the actual capability predicates. A user-admitted
+        # manual combination need not appear in a truncated search inventory.
         session = Session(workload, implementation, copy_state=False)
         if session.device.type == "cuda" and "memory_limit_bytes" in self.bound:
             from distillschedule.open_workload.hardware_probe import plan_memory_limit

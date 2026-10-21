@@ -21,8 +21,14 @@ class ModelComponents:
     def validate(self):
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
             raise ValueError("model state must have explicit nonempty names")
-        if not set(self.immutable_modules) <= set(self.state):
-            raise ValueError("immutable_modules must name model state")
+        if self.immutable_modules:
+            from distillschedule.open_workload.torch_backend import resolve_module
+            for path in self.immutable_modules:
+                if not isinstance(path, str) or not path:
+                    raise ValueError("immutable_modules must name model subtrees")
+                module = resolve_module(self.state, path)
+                if any(p.requires_grad for p in module.parameters()):
+                    raise ValueError(f"immutable subtree has trainable parameters: {path}")
         for name in ("generate", "decode", "export"):
             value = getattr(self, name)
             if value is not None and not callable(value):

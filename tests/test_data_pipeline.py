@@ -92,6 +92,20 @@ def test_real_video_decoder_without_resize_or_temporal_recycling(tmp_path):
     assert decoded["video"][0, 0, 0].tolist() == [20, 40, 60]
 
 
+def test_video_decoder_rejects_unhashed_external_segment_dependencies(tmp_path):
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        pytest.skip("actual video decoding needs existing ffmpeg and ffprobe")
+    raw_fixture(tmp_path, count=1)
+    video = tmp_path / "clip.mkv"
+    subprocess.run(["ffmpeg", "-v", "error", "-framerate", "2", "-i",
+                    str(tmp_path / "frames-0/%02d.ppm"), "-c:v", "ffv1", str(video)],
+                   check=True, capture_output=True)
+    playlist = tmp_path / "unbound.ffconcat"
+    playlist.write_text("ffconcat version 1.0\nfile 'clip.mkv'\n")
+    with pytest.raises(ValueError, match="cannot decode video"):
+        decode_record({"id": "external", "video": str(playlist)})
+
+
 @pytest.mark.parametrize("change,match", [
     (lambda value: value["records"].append(dict(value["records"][0])), "duplicate"),
     (lambda value: value["records"][0].update(video="missing.mp4"), "does not exist"),
