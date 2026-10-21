@@ -34,9 +34,10 @@ flowchart TD
 
 `DMDModelAdapter` remains the original typed-plan/native invocation interface.
 `ModelComponents` supplies the model state for the existing open Program ABI;
-it does not replace that adapter or create another graph/solver. Existing
-`TrainingBackend` implementations retain responsibility for backend-specific
-initialization and distributed operations.
+it does not replace that adapter or create another graph/solver. The existing
+`ExecutionBackend` and original native workers own backend-specific
+initialization and distributed operations. The older `TrainingBackend` abstract
+interface is not the implementation of this public lifecycle.
 
 ## Continuous training and paired trials
 

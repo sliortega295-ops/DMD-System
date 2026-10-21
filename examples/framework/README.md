@@ -37,10 +37,11 @@ CP="$DEMO/run/checkpoints/cycle-000004"
 distillctl evaluate "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/generated"
 distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported"
 
-python -m distillschedule.examples.tiny_av --output "$DEMO/new-inputs" --samples 2
+# This seventh record was not present in the six-record training input.
+python -m distillschedule.examples.tiny_av --output "$DEMO/new-inputs" --samples 7
 distillctl data prepare "$DEMO/new-inputs/raw/manifest.json" --output "$DEMO/new-prepared"
 distillctl generate "$DEMO/train.json" --weights "$DEMO/exported" \
-  --prepared "$DEMO/new-prepared/manifest.json" --sample-index 1 --output "$DEMO/new-generated"
+  --prepared "$DEMO/new-prepared/manifest.json" --sample-index 6 --output "$DEMO/new-generated"
 ```
 
 The builder creates three real 8×8 PPM RGB frames, a 16-bit mono 8 kHz WAV tone
