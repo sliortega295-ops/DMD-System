@@ -25,6 +25,9 @@ config = ["omegaconf>=2.3"]
 helios = ["omegaconf>=2.3"]
 profiling = ["matplotlib>=3.7", "numpy>=1.24"]
 test = ["pytest>=7", "omegaconf>=2.3"]
+# CPU qualification of licensed original Helios input/rollout helpers. This is
+# not the CUDA training environment and does not replace native-wan's pins.
+test-helios = ["diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2", "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1"]
 media = ["numpy>=1.24", "Pillow>=10"]
 train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
 native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]

@@ -54,10 +54,10 @@
     "scripts/distillschedule/probe_static_fsdp2_p0_world16.py": {
       "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
       "original_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
-      "reviewed_source_sha256": "05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "fb0833f2202f6982049e40be66cd70b31832091320e3de41f89c4f9eeaac56e4",
+      "source_commit": "f096c7a01fafac5ed714b082df87e8875baa5b2c",
+      "integrated_sha256": "fb0833f2202f6982049e40be66cd70b31832091320e3de41f89c4f9eeaac56e4",
+      "change": "opt_in_original_W2_persistent_training_hooks; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4; canonical_two_cycle_math_unchanged"
     },
     "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py": {
       "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",

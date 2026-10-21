@@ -105,6 +105,16 @@ def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
         assert f'torch>=2.5;extra=="{extra}"' in requirements
 
 
+def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_metadata):
+    requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
+    for package in ("diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1", "ftfy==6.3.1"):
+        assert f'{package};extra=="test-helios"' in requirements
+    import yaml
+    workflow = yaml.safe_load((ROOT / ".github/workflows/framework-cpu.yml").read_text())
+    commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["lifecycle"]["steps"])
+    assert ".[train,test,test-helios]" in commands
+
+
 @pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])
 def test_full_refactor_ci_provisions_the_tensor_and_asset_dependencies(workflow):
     import yaml
