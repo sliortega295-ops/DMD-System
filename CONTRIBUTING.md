@@ -4,6 +4,12 @@ DMD-System is a research runtime with strict equivalence and evidence boundaries
 
 ## Choose the correct layer
 
+- Public data preparation belongs in `src/distillschedule/data/`; persistent
+  training ownership and checkpoint lifecycle belong in `training/`. Reuse the
+  existing Program/graph and native adapters rather than inventing another solver.
+- New models/algorithms must have an actual reference update and declared state;
+  use `examples/framework/newmodel.py` and the extension guide. Do not add a
+  model-name condition to the generic planner for a new factory.
 - Put model-independent schemas, contracts, adapters and orchestration in `src/distillschedule/`.
 - Keep already-measured compatibility mechanisms in root `runtime/` until their typed replacement passes operation/tensor/loss/version/optimizer/EMA parity.
 - Put immutable workload semantics in `docs/contracts/`.

@@ -1,0 +1,11 @@
+DMD-System
+Copyright DMD-System contributors.
+
+Project-authored framework code is distributed under the Apache License,
+Version 2.0, matching the project's existing package metadata.
+
+This repository also contains recovered/modified Helios compatibility source,
+separately licensed H3 components, and Git submodules. Their original copyright,
+license and NOTICE files remain authoritative. See THIRD_PARTY.md and
+third_party/helios_compat/NOTICE. The project license does not relicense model
+weights, datasets or external submodules.

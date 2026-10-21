@@ -9,6 +9,10 @@ Install the `train` extra for Torch and the media dependencies, or install the
 `media` extra alongside an existing compatible Torch environment. Frame folders
 need Pillow; video files need existing `ffmpeg` and `ffprobe` executables on
 `PATH`. The data package never installs these executables or fetches assets.
+File decoding accepts self-contained MOV/MP4, Matroska/WebM, AVI, MPEG/TS,
+FLV, Ogg and GIF containers, not HLS/concat playlists or external segment
+references. Both probing and decoding enforce the same format/protocol
+allowlist so a hashed file cannot silently introduce unhashed media inputs.
 
 ```sh
 distillctl data prepare raw/manifest.json --output prepared

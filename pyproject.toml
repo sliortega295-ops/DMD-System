@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "distillschedule"
-version = "0.2.0"
-description = "A typed runtime and planning layer for multi-component DMD workloads"
+version = "0.3.0"
+description = "Extensible training, state management and execution planning for DMD workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
@@ -17,6 +17,8 @@ config = ["omegaconf>=2.3"]
 helios = ["omegaconf>=2.3"]
 profiling = ["matplotlib>=3.7", "numpy>=1.24"]
 test = ["pytest>=7", "omegaconf>=2.3"]
+media = ["numpy>=1.24", "Pillow>=10"]
+train = ["torch>=2.5", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
 native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]
 native-wan = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24", "diffusers==0.35.2", "accelerate>=1.1,<2"]
 

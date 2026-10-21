@@ -16,9 +16,9 @@ datasets, source snapshots, or credentials are downloaded by these recipes.
 
 ```bash
 distillctl doctor --config recipes/helios_nogan/training.json
-distillctl train --config recipes/helios_nogan/training.json --dry-run
+distillctl train recipes/helios_nogan/training.json --dry-run
 # Only after admission, allocation and operator authorization:
-distillctl train --config recipes/helios_nogan/training.json
+distillctl train recipes/helios_nogan/training.json
 ```
 
 The Python equivalents are:
@@ -29,7 +29,7 @@ from distillschedule.training.native import describe_native, validate_native, ru
 
 config = load_training_config("recipes/helios_nogan/training.json")
 describe_native(config)              # catalog/capabilities only; opens no assets
-validate_native(config)              # actual CPU native admission, no Torch/CUDA
+validate_native(config)              # actual CPU native admission, no CUDA/model construction
 run_native(config, dry_run=True)     # validated lowering, no process or output
 run_native(config)                   # existing runtime; not an exit-code -> parity claim
 ```

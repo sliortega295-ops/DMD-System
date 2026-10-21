@@ -2,6 +2,11 @@
 
 ## Current use
 
+- [Framework architecture](architecture/framework.md), [training and recovery](guides/training.md),
+  [data preparation](guides/data.md), [new-model extension](guides/extensions.md),
+  [native integration](guides/native_workloads.md), and [support matrix](guides/support_matrix.md).
+- [Complete offline media-to-training example](../examples/framework/README.md).
+- [Framework CPU acceptance and remaining native limits](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
 - [Six workload guides](../recipes/README.md) and `distillctl workloads list`.
 - [Shared native planning](runbooks/native_planner_workflow.md), [Wan compute/state](runbooks/wan_compute_state_planning_v1.md), [LiveWan C51](runbooks/livewan_c51_planner_v1.md), [original H3 AR](runbooks/original_h3_ar_native.md).
 - [Open workload Program](workloads/open_workload_program.md) and [role pools](workloads/open_role_pools.md).
