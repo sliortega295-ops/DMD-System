@@ -2069,16 +2069,32 @@ class PreparedRollout:
 
 
 class InputLoader:
-    def __init__(self, *, torch: Any, trace: FormalTrace):
+    def __init__(self, *, torch: Any, trace: FormalTrace | None = None,
+                 input_kind: str | None = None, prepared: str | Path | None = None):
         self.torch = torch
+        self.inputs = None
+        self.input_kind = input_kind
+        if input_kind is not None or prepared is not None:
+            from distillschedule.training.livewan_inputs import KIND, NativeTeacherInputs
+            _require(trace is None and input_kind == KIND and prepared is not None,
+                     "fresh inputs require their explicit input_kind/prepared path, not a FormalTrace")
+            self.inputs = NativeTeacherInputs(prepared)
+            self.trace = self.inputs
+            self.prompts = self.inputs.prompts
+            return
+        _require(trace is not None, "historical InputLoader requires an explicit FormalTrace")
         self.trace = trace
         self.prompts = torch.load(trace.prompts_path, map_location="cpu", weights_only=False)
 
     @property
     def negative(self) -> Any:
+        if self.inputs is not None:
+            return self.inputs.negative
         return self.prompts["neg"][0].float().unsqueeze(0)
 
     def load(self, row: OperationTraceRow) -> tuple[Any, Any, int]:
+        if self.inputs is not None:
+            return self.inputs.load(row)
         if self.trace.request != LiveWanRequest():
             _require(row.request == self.trace.request, "input row request/shape differs from trace")
             _require(row.sample_sha256 is not None and sha256_file(Path(row.sample_path)) == row.sample_sha256,
@@ -2103,6 +2119,8 @@ class InputLoader:
     def context_from_trace(self, row: OperationTraceRow, *, device: Any) -> Any:
         """Replay the exact prompt tensor without cross-node context P2P."""
 
+        if self.inputs is not None:
+            return self.inputs.context(row, device=device)
         context = self.prompts["pos"][row.dataset_index].float()
         _require(
             tuple(context.shape) == TEXT_SHAPE[1:],

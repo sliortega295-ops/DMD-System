@@ -57,6 +57,11 @@ runtime is rejected, never silently executed as two. Unsupported shapes or proto
 fields reject through the original typed task/request validators. W5 is not a
 continuous-sigma variant, and W6 is never dispatched through W5 Grid1000.
 
+W4 additionally exposes a [finite original TeacherLatents data consumer](livewan_inputs.md)
+with independent record/prompt identities and a complete-cycle data cursor.
+This is not a public fresh-training lifecycle: selecting that input kind in
+`distillctl train` rejects until the actual C51 drain/save/resume seam exists.
+
 ## Reference before planning; no hidden winner
 
 W1 and W6 have real direct-reference entrypoints:

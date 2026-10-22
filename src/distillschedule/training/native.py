@@ -156,6 +156,9 @@ def _options(config, workload):
                  "original shape/math belong in execution.task")
     _require(not config.algorithm.get("name") or config.algorithm["name"] == _FAMILIES[workload][0],
              "algorithm.name does not match the original workload")
+    _require(not (workload == "W4" and config.data.get("input_kind") == "original_livewan_teacher_cohorts.v1"),
+             "W4 fresh inputs are usable by the native InputLoader only; the C51 fresh-training lifecycle "
+             "and drained complete-cycle restart seam are not implemented")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
     _require(_h3_grid_training(config, workload) or "seed" not in config.trainer,
