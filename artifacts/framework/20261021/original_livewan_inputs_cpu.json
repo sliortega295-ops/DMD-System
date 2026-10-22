@@ -1,0 +1,80 @@
+{
+  "schema_version": "distillschedule.framework_original_livewan_inputs_cpu.v1",
+  "status": "PASS_CPU_INPUT_OWNER_ONLY",
+  "behavior_source": "e61eed95894e698b0d9dddff82b5d0122a1b8fda",
+  "qualified_head": "74d6ccc59e92f80bdf53d5fa02575adbf75c2d2a",
+  "runtime": {
+    "python": "3.12",
+    "torch": "2.14.0+cpu",
+    "cuda_initialized": false
+  },
+  "original_source": {
+    "gitlink": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5",
+    "dataset_sha256": "57f6913207ef7f998d264e329b0b30a16f79125bdbc0b61bd4fc7e1adf444b93",
+    "license": "Apache-2.0"
+  },
+  "actual_chain": [
+    "restricted original-format admission",
+    "original TeacherLatents.__getitem__",
+    "production InputLoader",
+    "finite complete-cycle logical cursor",
+    "existing checkpoint stateful serializer"
+  ],
+  "public_entry": "distillctl data prepare-livewan-inputs",
+  "focused_parent": {
+    "passed": 138,
+    "skipped": 0,
+    "junit_sha256": "3126ee05904c38474d0a72360b939853a7db9cb5ed041751ab9ff47e3763c004"
+  },
+  "full_suites": {
+    "refactor": {
+      "tests": 2258,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 85,
+      "wall_seconds": 248.8593738470081,
+      "junit_sha256": "c6e59b6cd365ac86992f48cc16ce756a99c6d0714ebb45fbde44127defbc48d7"
+    },
+    "native-wan": {
+      "tests": 173,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wall_seconds": 18.161653045011917,
+      "junit_sha256": "dcae9b85c074ecbdfd76c620de13b7ffe4a47edfe6fb9b92c8dd54d98fc9cb45"
+    },
+    "framework": {
+      "tests": 705,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2,
+      "wall_seconds": 1027.732543391001,
+      "junit_sha256": "f2d3b32d19770868cd79e63606a9fec5375bdb82b5c6237b38f2710dd892da33"
+    }
+  },
+  "review": {
+    "run": "20261022-033809-693e35d5",
+    "local_lenses": 9,
+    "independent_validator_batches": 1,
+    "validated_findings": 7,
+    "applied_findings": 7,
+    "actionable_remaining": 0,
+    "external_peer": "AUTHENTICATION_SHAPED_NO_REVIEW; local adversarial completed; no cross-model corroboration"
+  },
+  "lint": {
+    "status": "PASS",
+    "python_files": 7,
+    "evidence_sha256": "398b23b89c009dc4b7c9edf65e08a94b6a7a40e84181822cd4c2981e18761115"
+  },
+  "boundaries": {
+    "fixture": "expanded native-shape CPU archives; not pretrained samples or quality",
+    "physical_pipeline_drain": "NOT_IMPLEMENTED",
+    "public_fresh_W4_training": "REJECTED",
+    "full_native_model_restart": "NOT_RUN",
+    "pretrained_generation_quality": "NOT_RUN",
+    "gpu_performance": "NOT_RUN",
+    "minimum_torch_210_ci": "workflow defined; consult exact-commit hosted result"
+  },
+  "historical_context_sha256": "13bf037518f10dbf1b020edd5fefebfdaed6938ed011125a88dd113a09365c02",
+  "source_import_map": "UNCHANGED; reviewed source-layout overlay explicit"
+}
