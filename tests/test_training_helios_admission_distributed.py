@@ -111,7 +111,8 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
         except Exception as exc:
             error = str(exc)
         report = {"case": case, "rank": rank, "error": error, "model_boundaries": len(reached),
-                  "metadata_group_created": bool(bindings and bindings[-1].get("metadata_group") is not None)}
+                  "metadata_group_created": bool(bindings and bindings[-1].get("metadata_group") is not None),
+                  "original_entries": len(bindings)}
         reports = [None, None]; dist.all_gather_object(reports, report)
         caller_value = torch.tensor(rank + 1)
         dist.all_reduce(caller_value)
@@ -154,7 +155,10 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
                         "off_flag": "unbound optimization", "environment": "attention/allocator environment differs",
                         "old_receipt": "old rank receipt is preserved"}
             assert all(row["error"] and messages[case] in row["error"] and row["model_boundaries"] == 0
-                       and row["metadata_group_created"] for row in reports), reports
+                       and row["metadata_group_created"] == (case != "old_receipt") for row in reports), reports
+            if case == "old_receipt":
+                assert all(row["original_entries"] == 0 for row in reports), reports
+                assert (Path(conf.trainer["output_dir"]) / "ranks/rank_01.json").read_text() == "preserved"
             assert reports[0]["error"] == reports[1]["error"], reports
             if case != "identity":
                 assert "rank failures [None," in error, "healthy rank did not finish its local gate"

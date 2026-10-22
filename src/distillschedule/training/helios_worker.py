@@ -180,7 +180,11 @@ def reference_process_group():
 def run_reference(config, admitted=None, source=None, *, admit=None):
     """Public execution admits all local source/config files collectively first."""
     if admit is None:
-        return _run_admitted(config, admitted, source)
+        import torch.distributed as dist
+        if dist.is_initialized():
+            return _run_admitted(config, admitted, source)
+        with reference_process_group() as ownership:
+            return _run_admitted(config, admitted, source, ownership=ownership)
     from . import distributed
     with reference_process_group() as ownership:
         _, source, _, admitted = distributed.checked(admit, "Helios original source/config/input admission")
@@ -195,7 +199,7 @@ def run_reference(config, admitted=None, source=None, *, admit=None):
 
 def _run_admitted(config, admitted, source, *, ownership=None, backend=None):
     """Entered on every existing torchrun rank; never launches/reserves nodes."""
-    from .helios_lifecycle import original_training_scope
+    from .helios_lifecycle import original_training_scope, admit_original_output
     if ownership is None:
         names = ("WORLD_SIZE", "RANK", "LOCAL_RANK", "LOCAL_WORLD_SIZE")
         require(all(os.environ.get(k, "").isdigit() for k in names), "explicit torchrun ranks required", path="helios.training")
@@ -220,6 +224,9 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None):
     try:
         sys.argv = ["original-helios-training-v1", *admitted["argv"]]
         with original_training_scope(binding):
+            # Reject collectively outside P0's catch-all receipt writer. Record
+            # publication eligibility only after all ranks admit their paths.
+            admit_original_output(rank=int(os.environ["RANK"]))
             return (backend or _backend()).main()
     finally:
         sys.argv = old

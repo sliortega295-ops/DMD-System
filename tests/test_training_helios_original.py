@@ -6,11 +6,13 @@ denoising loss, dispatch, optimizer, EMA recurrence and checkpoint code are real
 """
 from copy import deepcopy
 from contextlib import nullcontext
+import gc
 import json
 from pathlib import Path
 import pickle
 import random
 import shutil
+import weakref
 from types import SimpleNamespace
 
 import pytest
@@ -332,7 +334,7 @@ def original_cpu_engines(tmp_path, monkeypatch, original_logical, frozen_assets)
 
 
 def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stream, original_cpu_engines,
-        original_logical, frozen_assets, tmp_path):
+        original_logical, frozen_assets, tmp_path, monkeypatch):
     from distillschedule.training.helios_lifecycle import execute_cycles, expected_versions
     from distillschedule.training.native_state import engine_state
     from distillschedule.training.checkpoint import pack_state, rng_state
@@ -363,7 +365,9 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     torch.manual_seed(73); random.seed(73)
     control = build()
     before = control[0].module.weight.to_local().detach().clone()
-    result = run(control, tmp_path / "control")
+    progress_path = tmp_path / "control-progress.json"
+    result = run(control, tmp_path / "control", progress=lambda value: p0.base._atomic_json(progress_path, value))
+    assert json.loads(progress_path.read_text())["completed_cycles"] == 3
     expected_rng = rng_state()
     expected_state = pack_state(engine_state({"generator":control[0], "critic":control[1]}, ema=control[2]))
     assert result["final_versions"] == expected_versions(3)
@@ -383,7 +387,43 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     assert (checkpoint / "_SUCCESS").is_file()
     torch.randn(37); random.random()
     restored = build(); parameter_ids = [id(engine.module.weight) for engine in restored[:2]]
-    final = run(restored, tmp_path / "restored", resume=checkpoint)
+    from distillschedule.training import checkpoint as checkpoint_io
+    from distillschedule.runtime import helios_planner_cycle as original_cycle
+    original_restore, original_prepare = checkpoint_io.restore_checkpoint, original_cycle._prepare_cycle
+    payload_refs, copied_tensor_refs, resumed_preparations = [], [], []
+
+    class ObservedPayload(dict):
+        """Weak-referenceable view of the real, unmodified restore return."""
+
+    def observed_restore(*args, **kwargs):
+        payload = ObservedPayload(original_restore(*args, **kwargs))
+        assert set(payload["state"]) == set(engine_state(
+            {"generator": restored[0], "critic": restored[1]}, ema=restored[2]))
+        payload_refs.append(weakref.ref(payload))
+        copied = [payload["state"][role + ".weights"]["value"]["tensors"]["weight"]["local"]
+                  for role in ("generator", "critic")]
+        copied.extend(payload["state"]["ema"]["value"]["shadows"])
+        copied_tensor_refs.extend(weakref.ref(tensor) for tensor in copied)
+        return payload
+
+    def observed_prepare(*args, **kwargs):
+        gc.collect()
+        assert payload_refs and all(ref() is None for ref in payload_refs), \
+            "returned checkpoint CPU payload is still resident before resumed original cycle"
+        assert copied_tensor_refs and all(ref() is None for ref in copied_tensor_refs), \
+            "copied checkpoint weights/EMA payload is still resident before resumed original cycle"
+        resumed_preparations.append(tuple(kwargs["steps"]))
+        return original_prepare(*args, **kwargs)
+
+    monkeypatch.setattr(checkpoint_io, "restore_checkpoint", observed_restore)
+    monkeypatch.setattr(original_cycle, "_prepare_cycle", observed_prepare)
+    resumed_progress = tmp_path / "resumed-progress.json"
+    final = run(restored, tmp_path / "restored", resume=checkpoint,
+                progress=lambda value: p0.base._atomic_json(resumed_progress, value))
+    assert json.loads(resumed_progress.read_text())["completed_cycles"] == 3
+    assert resumed_preparations == [tuple(range(15,20)), tuple(range(20,25))]
+    monkeypatch.setattr(checkpoint_io, "restore_checkpoint", original_restore)
+    monkeypatch.setattr(original_cycle, "_prepare_cycle", original_prepare)
     assert [id(engine.module.weight) for engine in restored[:2]] == parameter_ids
     assert final["resume_cycle"] == 1 and [r["cohort_index"] for r in final["cycles"]] == [1,2]
     assert equal(expected_state, pack_state(engine_state({"generator":restored[0], "critic":restored[1]}, ema=restored[2])))
@@ -409,3 +449,11 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     with pytest.raises(ValueError, match="complete G1/C5/EMA5 boundary"):
         run(fresh, tmp_path / "invalid-resume", resume=checkpoint)
     assert equal(before_state, pack_state(engine_state({"generator":fresh[0], "critic":fresh[1]}, ema=fresh[2])))
+    (tmp_path / "restart-lifetime-proof.json").write_text(json.dumps({
+        "scope":"REAL_ORIGINAL_HELPERS_CPU_SCALAR_REPLICATED_DTENSOR_NOT_PRETRAINED_OR_GPU",
+        "restore_return_container_probes":len(payload_refs), "copied_weight_ema_tensor_probes":len(copied_tensor_refs),
+        "payload_collected_before_original_preparations":resumed_preparations,
+        "actual_state_matches_uninterrupted":True, "rng_matches_uninterrupted":True,
+        "live_parameter_identity_preserved":True, "final_versions":final["final_versions"],
+        "control_and_resumed_progress_published":True, "foreign_identity_and_wrong_boundary_rejected":True,
+    }, indent=2) + "\n")

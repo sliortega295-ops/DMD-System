@@ -52,6 +52,31 @@ def owns_original_process_group():
     return binding is not None and binding.get("owns_process_group") is True
 
 
+def admit_original_output(*, rank):
+    """Collectively admit an unused rank destination BEFORE entering P0."""
+    binding = current_training()
+    require(binding is not None, "original training scope missing", path="helios.training")
+    def local():
+        output = Path(binding["config"].trainer["output_dir"]) / "ranks" / f"rank_{rank:02d}.json"
+        require(not os.path.lexists(output),
+                "new output directory required; old rank receipt is preserved", path="helios.training")
+        return str(output.resolve())
+    with _plane(binding):
+        binding["owned_rank_output"] = distributed.checked(local, "Helios original output receipt admission")
+
+
+def owns_original_rank_output(output):
+    """Snapshot failure-write ownership at P0 entry, not after owned progress.
+
+    Default benchmark publication is unchanged. An opt-in invocation must have
+    admitted this destination, and may not replace a receipt present on entry.
+    This is not an exclusive filesystem reservation against concurrent writers.
+    """
+    binding = current_training()
+    return binding is None or (binding.get("owned_rank_output") == str(Path(output).resolve())
+                               and not os.path.lexists(output))
+
+
 def adopt_original_process_group(*, dist):
     """Only adopt the exact fresh group owned by the public training wrapper."""
     if not owns_original_process_group():
@@ -112,7 +137,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
                     and not os.environ.get("PYTORCH_ALLOC_CONF"),
                     "reference attention/allocator environment differs", path="helios.training")
             output = Path(binding["config"].trainer["output_dir"])
-            require(not (output / "ranks" / f"rank_{rank:02d}.json").exists(),
+            require(not os.path.lexists(output / "ranks" / f"rank_{rank:02d}.json"),
                     "new output directory required; old rank receipt is preserved", path="helios.training")
             stream = load_stream(binding["config"].data["prepared"],
                                  cycles=binding["config"].trainer["cycles"], verify_rank=rank)
@@ -207,6 +232,7 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             start = restored["cycle"]
             require(_versions(generator, critic, ema) == restored["versions"],
                     "restored original clocks differ from checkpoint", path="helios.training")
+            del restored
     # A value object only for _prepare_cycle's graph/call census. No generated
     # plan is selected, no winner inherited, and receipt_binding is not bypassed
     # for a saved plan: those combinations are rejected by public admission.

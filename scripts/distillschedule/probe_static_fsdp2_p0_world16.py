@@ -1302,7 +1302,7 @@ def main() -> int:
         ),
     )
     from distillschedule.training.helios_lifecycle import (
-        adopt_original_process_group, owns_original_process_group,
+        adopt_original_process_group, owns_original_process_group, owns_original_rank_output,
     )
     if not adopt_original_process_group(dist=dist):
         dist.init_process_group("nccl")
@@ -1323,6 +1323,7 @@ def main() -> int:
             f"{actual_allocator_conf!r} != {expected_allocator_conf!r}"
         )
     output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
+    owns_failure_output = owns_original_rank_output(output)
     result: dict[str, Any] = {
         "schema_version": "distillschedule.static_fsdp2_p0_rank.v1",
         "status": "RUNNING",
@@ -1882,7 +1883,8 @@ def main() -> int:
             result["memory_failure"] = base._memory(device)
         except BaseException:
             pass
-        base._atomic_json(output, result)
+        if owns_failure_output:
+            base._atomic_json(output, result)
         raise
     finally:
         if dist.is_initialized() and not owns_original_process_group():

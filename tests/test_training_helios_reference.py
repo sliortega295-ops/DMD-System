@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import random
 import shutil
+import sys
 import weakref
 from types import SimpleNamespace
 
@@ -156,7 +157,9 @@ def _portable_worker(rank, rendezvous, stream_path, frozen, logical, case, outpu
         with worker.reference_process_group():
             raise AssertionError("borrowed a caller group")
     os.environ.update(WORLD_SIZE="2", LOCAL_WORLD_SIZE="2")
-    root = Path(output); held = None; reached = []; groups = []
+    root = Path(output); held = None; reached = []; groups = []; p0_entries = []
+    old_receipt = root / "run/ranks/rank_01.json"
+    sentinel = b"prior rank receipt\x00must remain byte-for-byte\xff\n"
     local = root / f"logical-{rank}"; shutil.copytree(logical, local)
     assets = portable_asset_document(frozen, local)
     # Local spelling is itself part of the W2 identity, so both ranks normally
@@ -221,6 +224,12 @@ def _portable_worker(rank, rendezvous, stream_path, frozen, logical, case, outpu
             assert torch.equal(torch.random.get_rng_state(), torch.Generator().manual_seed(seed).get_state()), \
                 "original Torch runtime seed moved before dependency setup"
         reached.append("SYNTHETIC_MODEL_BOUNDARY_NOT_A_MODEL")
+        if case == "success":
+            # A current invocation must still replace its own progress receipt
+            # with the original P0 failure record. This is publication evidence,
+            # not a claim that this synthetic boundary ran a training cycle.
+            p0.base._atomic_json(root / f"run/ranks/rank_{rank:02d}.json",
+                {"status":"RUNNING", "scope":"SYNTHETIC_OWNED_PROGRESS"})
         raise Boundary("CPU_SYNTHETIC_MODEL_BOUNDARY")
     p0._build_engines = model_boundary
     @contextmanager
@@ -258,23 +267,85 @@ def _portable_worker(rank, rendezvous, stream_path, frozen, logical, case, outpu
                 shard.write_bytes(value[:-1]+bytes([value[-1]^1])); asset_path.write_text(json.dumps(assets))
         dist.barrier()
         error = None
-        try: native.run_native(conf)
-        except Exception as exc: error = str(exc)
+        def observe_p0(frame, event, arg):
+            if event == "call" and frame.f_code is p0.main.__code__:
+                p0_entries.append("ACTUAL_P0_MAIN")
+                if case == "late_old_receipt" and rank == 1:
+                    # Deterministically publish after wrapper admission but at
+                    # real P0 entry, without replacing the original main/writer.
+                    old_receipt.parent.mkdir(parents=True, exist_ok=True)
+                    old_receipt.write_bytes(sentinel)
+        sys.setprofile(observe_p0)
+        try:
+            try: native.run_native(conf)
+            except Exception as exc: error = str(exc)
+        finally:
+            sys.setprofile(None)
         report = {"rank":rank, "error":error, "model_boundaries":len(reached), "metadata_groups":len(groups)}
+        report["actual_p0_entries"] = len(p0_entries)
         reports = [None,None]; dist.all_gather_object(reports, report)
         if case in {"success", "attention_rng"}:
             assert all(r["error"] == "CPU_SYNTHETIC_MODEL_BOUNDARY" and r["model_boundaries"] == 1 for r in reports), reports
+            assert all(r["actual_p0_entries"] == 1 for r in reports), reports
+            owned = root / f"run/ranks/rank_{rank:02d}.json"
+            assert json.loads(owned.read_text())["status"] == "FAIL", "owned progress/failure publication was suppressed"
+            if case == "success":
+                if rank == 1: old_receipt.write_bytes(sentinel)
+                dist.barrier()
+                prior = {path: path.read_bytes() for path in (owned, old_receipt)}
+                p0_entries.clear()
+                sys.setprofile(observe_p0)
+                try:
+                    with pytest.raises(ValueError, match="old rank receipt is preserved"):
+                        native.run_native(conf)
+                finally:
+                    sys.setprofile(None)
+                assert all(path.read_bytes() == data for path, data in prior.items()), \
+                    "actual public-to-P0 reused-output rejection replaced a previous rank receipt"
+                assert not p0_entries, "reused output entered original P0 before collective admission"
+                assert len(reached) == 1
+                report.update(reused_receipts_preserved=True, reused_actual_p0_entries=0)
         else:
             messages = {"missing_assets":"assets-1.json", "bad_assets":"assets", "missing_stream":"absent-stream",
                 "bad_stream":"stream cycles/source changed", "missing_logical":"manifest.json", "bad_logical":"logical payload",
                 "late_missing_logical":"manifest.json",
                 "bad_ema":"EMA shard", "missing_startup":"tensors.pt", "bad_frozen":"shard hash mismatch",
-                "source":"rank source/stream/reference differs"}
+                "source":"rank source/stream/reference differs", "late_old_receipt":"old rank receipt is preserved"}
             assert all(r["error"] and messages[case] in r["error"] and r["model_boundaries"] == 0
                        and r["metadata_groups"] == 1 for r in reports), reports
             assert reports[0]["error"] == reports[1]["error"], reports
             if case != "source":
                 assert "rank failures [None," in error, "healthy rank did not finish its local gate"
+            if case == "late_old_receipt":
+                assert all(r["actual_p0_entries"] == 1 for r in reports), reports
+                assert old_receipt.read_bytes() == sentinel, "original P0 failure writer replaced an unowned entry-time receipt"
+                if rank == 0:
+                    assert json.loads((root / "run/ranks/rank_00.json").read_text())["status"] == "FAIL"
+                report["entry_time_receipt_preserved"] = True
+                # The opt-in guard must not change the original standalone
+                # benchmark's existing-destination failure-publication behavior.
+                default_root = root / "default-benchmark"
+                default_receipt = default_root / f"ranks/rank_{rank:02d}.json"
+                default_receipt.parent.mkdir(parents=True, exist_ok=True)
+                default_receipt.write_bytes(sentinel)
+                stream = worker.load_stream(stream_path, cycles=3)
+                logical_hash = json.loads((Path(logical) / "manifest.json").read_text())["manifest_hash"]
+                saved_argv = sys.argv
+                def default_attention_failure(expected):
+                    raise Boundary("CPU_DEFAULT_BENCHMARK_FAILURE")
+                p0._attention_backend_receipt = default_attention_failure
+                facade.init_process_group = lambda *a, **kw: None
+                try:
+                    sys.argv = ["standalone-original-benchmark", *worker.reference_argv(
+                        assets, default_root, stream=stream, logical_hash=logical_hash)]
+                    with pytest.raises(Boundary, match="CPU_DEFAULT_BENCHMARK_FAILURE"):
+                        backend.main()
+                finally:
+                    sys.argv = saved_argv
+                default_failure = json.loads(default_receipt.read_text())
+                assert default_failure["status"] == "FAIL" and default_failure["error"] == "CPU_DEFAULT_BENCHMARK_FAILURE"
+                assert old_receipt.read_bytes() == sentinel
+                report["standalone_default_failure_overwrites_existing"] = True
         value = torch.tensor(rank+1); dist.all_reduce(value)
         assert value.item() == 3 and lifecycle.current_training() is None and not torch.cuda.is_initialized()
         (root / f"{case}-{rank}.json").write_text(json.dumps(report))
@@ -291,3 +362,99 @@ def test_public_to_original_p0_collectively_admits_before_model(fresh_stream, fr
     root, _ = fresh_stream
     mp.spawn(_portable_worker, args=(str(tmp_path / "rendezvous"), str(root / "prepared/stream.json"), frozen_assets,
         str(original_logical), case, str(tmp_path)), nprocs=2, join=True)
+
+
+def test_public_to_original_p0_preserves_unowned_entry_time_receipt(
+        fresh_stream, frozen_assets, original_logical, tmp_path):
+    root, _ = fresh_stream
+    mp.spawn(_portable_worker, args=(str(tmp_path / "rendezvous"), str(root / "prepared/stream.json"), frozen_assets,
+        str(original_logical), "late_old_receipt", str(tmp_path)), nprocs=2, join=True)
+
+
+@pytest.mark.parametrize("outcome", ["success", "backend_failure", "old_receipt"])
+def test_pre_admitted_reference_startup_owns_and_cleans_fresh_groups(tmp_path, monkeypatch, outcome):
+    """Real owner context/order, mocked resources: NOT NCCL/GPU qualification."""
+    from distillschedule.training import helios_worker as worker, helios_lifecycle as lifecycle, distributed
+    from distillschedule.open_workload import topology
+    assert not dist.is_initialized() and not torch.cuda.is_initialized()
+    initialized = False
+    metadata = object()
+    events = []
+    for name, value in {"WORLD_SIZE":"16", "RANK":"0", "LOCAL_RANK":"0",
+                        "LOCAL_WORLD_SIZE":"8", "GROUP_RANK":"0"}.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(dist, "is_initialized", lambda: initialized)
+    monkeypatch.setattr(dist, "get_world_size", lambda group=None: 16)
+    monkeypatch.setattr(dist, "get_rank", lambda group=None: 0)
+    monkeypatch.setattr(dist, "get_backend", lambda group=None: "gloo" if group is metadata else "nccl")
+    monkeypatch.setattr(dist, "is_gloo_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "set_device", lambda rank: events.append(("set_device", rank)))
+
+    def initialize(backend, **kwargs):
+        nonlocal initialized
+        assert not initialized and backend == "nccl"
+        initialized = True
+        events.append("init_nccl")
+
+    def new_group(*, backend, **kwargs):
+        assert initialized and backend == "gloo"
+        events.append("new_gloo")
+        return metadata
+
+    def destroy(group=None):
+        nonlocal initialized
+        assert initialized
+        if group is metadata:
+            events.append("destroy_gloo")
+        else:
+            assert group is None
+            events.append("destroy_nccl")
+            initialized = False
+
+    monkeypatch.setattr(dist, "init_process_group", initialize)
+    monkeypatch.setattr(dist, "new_group", new_group)
+    monkeypatch.setattr(dist, "destroy_process_group", destroy)
+    monkeypatch.setattr(topology, "discover", lambda: {
+        "node_groups":[list(range(8)), list(range(8,16))], "logical_nodes_on_one_host":False})
+
+    def checked(fn, label):
+        assert initialized and "new_gloo" in events
+        events.append(label)
+        return fn()
+
+    monkeypatch.setattr(distributed, "checked", checked)
+    conf = config(tmp_path)
+    receipt = Path(conf.trainer["output_dir"]) / "ranks/rank_00.json"
+    if outcome == "old_receipt":
+        receipt.parent.mkdir(parents=True)
+        receipt.write_bytes(b"prior evidence\x00\xff")
+    admitted = {"assets":{"assets":{}}, "selected":{}, "argv":[],
+        "stream":{"identity":{"source_fingerprint":"SYNTHETIC_OWNER_CONTRACT"},
+                  "stream_sha256":"SYNTHETIC_STREAM", "cohorts":[{"trace_hash":"SYNTHETIC_TRACE"}]}}
+
+    def entrypoint():
+        assert initialized and lifecycle.owns_original_process_group()
+        assert lifecycle.adopt_original_process_group(dist=dist)
+        assert lifecycle.current_training()["owned_rank_output"] == str(receipt.resolve())
+        events.append("original_entrypoint")
+        if outcome == "backend_failure":
+            raise RuntimeError("SYNTHETIC_BACKEND_FAILURE")
+        return 23
+
+    monkeypatch.setattr(worker, "_backend", lambda: SimpleNamespace(main=entrypoint))
+    old_argv = sys.argv
+    source = {"identity":{"head":"SYNTHETIC_OWNER_CONTRACT"}}
+    if outcome == "success":
+        assert worker.run_reference(conf, admitted, source) == 23
+    else:
+        expected = "SYNTHETIC_BACKEND_FAILURE" if outcome == "backend_failure" else "old rank receipt is preserved"
+        with pytest.raises((RuntimeError, ValueError), match=expected):
+            worker.run_reference(conf, admitted, source)
+    assert events[:3] == [("set_device",0), "init_nccl", "new_gloo"]
+    assert events[-2:] == ["destroy_gloo", "destroy_nccl"]
+    assert events.count("original_entrypoint") == (0 if outcome == "old_receipt" else 1)
+    assert sys.argv is old_argv and lifecycle.current_training() is None and not initialized
+    assert not torch.cuda.is_initialized()
+    if outcome == "old_receipt":
+        assert receipt.read_bytes() == b"prior evidence\x00\xff"
