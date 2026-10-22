@@ -71,6 +71,42 @@ def test_native_shadow_and_invalid_optimizer_are_validated_before_mutation(tmp_p
     assert torch.equal(ema._shadows[0], snapshot["shadows"][0])
 
 
+def test_native_optimizer_rejects_raw_moment_cast_before_any_live_mutation():
+    from distillschedule.training.native_state import engine_state
+    from distillschedule.training.checkpoint import pack_state, unpack_state, rng_state
+    from test_training_end_to_end import equal
+    engine = _engine(); _update(engine)
+    state = engine_state({"generator": engine})
+    before = pack_state(state)
+    random_before = rng_state()
+    parameter_ids = [id(p) for p in engine.module.parameters()]
+    malformed = deepcopy(before)
+    # If admission is delayed until after AdamW.load_state_dict, this source
+    # dtype is silently cast back to FP32 and the malformed shard is accepted.
+    saved = malformed["generator.optimizer"]["value"]["optimizer"]
+    first = next(iter(saved["state"]))
+    saved["state"][first]["exp_avg"] = saved["state"][first]["exp_avg"].double()
+    with pytest.raises(ValueError, match="shape/dtype"):
+        unpack_state(malformed, state)
+    assert equal(before, pack_state(state))
+    assert equal(random_before, rng_state())
+    assert parameter_ids == [id(p) for p in engine.module.parameters()]
+
+
+def test_native_optimizer_raw_validation_does_not_impose_fixed_w4_policy():
+    from distillschedule.training.native_state import OptimizerState
+    engine = _engine(); _update(engine)
+    saved = deepcopy(OptimizerState(engine).state_dict())
+    # Scheduled native engines restore the saved group policy. W4's stricter
+    # fixed AdamW options/scalar-step representation do not belong here.
+    saved["optimizer"]["param_groups"][0]["lr"] = .0003
+    for slots in saved["optimizer"]["state"].values():
+        slots["step"] = slots["step"].double()
+    OptimizerState(engine).load_state_dict(saved)
+    assert engine.optimizer.param_groups[0]["lr"] == .0003
+    assert all(slots["step"].dtype == torch.float64 for slots in engine.optimizer.state.values())
+
+
 def test_actual_resident_clocks_and_unnamed_ema_owner_are_supported():
     from distillschedule.runtime.wan13b_upper_bound import ReplicatedTrainableAllReduceEngine
     from distillschedule.training.native_state import engine_state

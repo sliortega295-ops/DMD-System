@@ -11,6 +11,17 @@ including the default historical prefix behavior, are unchanged. A historical
 The immutable semantics are specified in the
 [versioned input contract](../contracts/original_livewan_teacher_cohorts_v1.md).
 
+The separate `training.livewan_state.model_bundle_state` API serializes the
+actual resident Generator or Critic `ModelBundle` owner in place. It binds the
+original LoRA source, frozen-base receipt, named trainables and fixed native
+AdamW policy, preserving Parameter objects, gradient views and hooks. These are
+state views, **not** a pipeline checkpoint command: they do not establish input
+consumption, complete outstanding transfers, reconstruct shadows or supply
+physical cycle/version admission. The public fresh-training guard remains.
+The [CPU state-owner receipt](../../artifacts/framework/20261021/original_livewan_state_cpu.json)
+separates tiny original-LoRA/Adam continuation from untested full-model and
+distributed behavior.
+
 ## Supplied assets and preparation
 
 Use a clean local LiveWan checkout at the exact gitlink

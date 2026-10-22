@@ -8,7 +8,7 @@ All loads preserve live Parameters, hooks and gradient-buffer views.
 from __future__ import annotations
 from copy import copy, deepcopy
 
-from .checkpoint import _class, _validate_layout
+from .checkpoint import _class, _validate_layout, _validate_optimizer_layout
 from .tensor_state import layout
 
 
@@ -77,6 +77,10 @@ class OptimizerState:
         if (value["parameters"] != self._names()
                 or value["class"] != _class(optimizer)):
             raise ValueError("native optimizer parameter ownership changed")
+        # Validate decoded source moments before PyTorch can silently cast a
+        # malformed dtype while loading. Group policy and scalar-step schemas
+        # remain owned by each native optimizer/adapter, not this shared view.
+        _validate_optimizer_layout(optimizer, value["optimizer"], "native optimizer")
         staged = copy(optimizer)
         staged.param_groups = [dict(group, params=list(group["params"])) for group in optimizer.param_groups]
         staged.state = {}
