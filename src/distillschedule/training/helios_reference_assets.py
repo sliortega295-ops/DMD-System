@@ -141,13 +141,19 @@ def load_bootstrap(value, *, verify_payloads=True):
         identity["ema_shards"][shard["file"]] = shard["sha256"]
         loaded.extend(shard["names"])
         if verify_payloads:
-            import torch
-            _require(file_sha256(path) == shard["sha256"], "logical EMA shard hash mismatch")
-            tensors = torch.load(path, map_location="cpu", weights_only=True)
-            _require(list(tensors) == shard["names"], "logical EMA shard names changed")
-            for name, tensor in tensors.items():
-                normalized_name = name[7:] if name.startswith("module.") else name
-                _require(isinstance(tensor, torch.Tensor) and list(tensor.shape) == records[normalized_name]["shape"],
-                         "logical EMA tensor shape changed")
+            _validate_ema_shard(path, shard, records)
     _require(len(loaded) == len(set(loaded)) and set(loaded) == set(names), "logical sparse EMA shard coverage changed")
     return package, identity
+
+
+def _validate_ema_shard(path, shard, records):
+    # Bound the lifetime of both the shard dictionary and its last tensor to
+    # one call, before the next shard is deserialized on every rank.
+    import torch
+    _require(file_sha256(path) == shard["sha256"], "logical EMA shard hash mismatch")
+    tensors = torch.load(path, map_location="cpu", weights_only=True)
+    _require(list(tensors) == shard["names"], "logical EMA shard names changed")
+    for name, tensor in tensors.items():
+        normalized_name = name[7:] if name.startswith("module.") else name
+        _require(isinstance(tensor, torch.Tensor) and list(tensor.shape) == records[normalized_name]["shape"],
+                 "logical EMA tensor shape changed")

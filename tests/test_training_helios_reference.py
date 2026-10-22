@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import random
 import shutil
+import weakref
 from types import SimpleNamespace
 
 import pytest
@@ -96,6 +97,48 @@ def test_reference_asset_schema_does_not_accept_launcher_or_historical_trace_fie
     with pytest.raises(ValueError, match="six native roles"): asset_config(changed)
     changed = deepcopy(value); changed["assets"]["logical_checkpoint"]["sha256"] = "unbound"
     with pytest.raises(ValueError, match="SHA256"): asset_config(changed)
+
+
+def test_portable_ema_validation_releases_each_shard_before_loading_next(
+        frozen_assets, original_logical, tmp_path, monkeypatch):
+    from distillschedule.training.helios_reference_assets import load_bootstrap
+    from distillschedule.workloads.best_known.registry import file_sha256
+    local = tmp_path / "two-ema-shards"
+    shutil.copytree(original_logical, local)
+    manifest_path = local / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    component = manifest["components"]["generator"]
+    component["logical_numel"] = 2
+    component["parameter_names"].append("other_weight")
+    component["records"]["other_weight"] = {"shape": [1], "numel": 1, "offset_elements": 1}
+    for payload in component["payloads"].values():
+        path = local / payload["path"]
+        path.write_bytes(path.read_bytes() * 2)
+        payload.update(bytes=path.stat().st_size, sha256=file_sha256(path))
+    manifest.pop("manifest_hash")
+    manifest["manifest_hash"] = fingerprint(manifest)
+    manifest_path.write_text(json.dumps(manifest))
+    ema_path = local / "ema/sparse_ema_manifest.json"
+    ema = json.loads(ema_path.read_text())
+    ema["tracked_names"].append("other_weight")
+    path = ema_path.parent / "other-weight.pt"
+    torch.save({"other_weight": torch.tensor([.2])}, path)
+    ema["shards"].append({"file": path.name, "names": ["other_weight"], "sha256": file_sha256(path)})
+    ema_path.write_text(json.dumps(ema))
+    original_load = torch.load
+    references = []
+
+    def witnessed_load(path, *args, **kwargs):
+        if Path(path).parent == ema_path.parent:
+            assert all(ref() is None for ref in references), "previous EMA shard is still resident"
+            values = original_load(path, *args, **kwargs)
+            references.extend(weakref.ref(tensor) for tensor in values.values())
+            return values
+        return original_load(path, *args, **kwargs)
+
+    monkeypatch.setattr(torch, "load", witnessed_load)
+    load_bootstrap(portable_asset_document(frozen_assets, local))
+    assert len(references) == 2 and all(ref() is None for ref in references)
 
 
 def _portable_worker(rank, rendezvous, stream_path, frozen, logical, case, output):
