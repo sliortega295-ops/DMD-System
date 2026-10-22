@@ -199,6 +199,10 @@ For original Helios G, [portable export and explicit native latent generation](r
 use the common inference interface after removing old training data and
 checkpoints. Without a real decoder, default video generation still refuses;
 latent diagnostics are never relabeled as generated videos.
+The [cached H3 current-Student companion](recipes/h3_ar/PORTABLE_INFERENCE_CPU.md)
+likewise exports actual current unmerged weights for new-condition audio/video
+latent inference. Its [source-scoped CPU acceptance](docs/status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md)
+includes an installed-wheel, three-process training/restart/export/generation proof.
 
 ## Organization
 
