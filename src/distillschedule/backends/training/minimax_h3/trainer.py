@@ -25,8 +25,6 @@ from .fused_qk_rmsnorm_rotary import install_fused_qk_rmsnorm_rotary
 from .fused_rotary import install_fused_rotary
 from .fused_swiglu import install_fused_swiglu
 from .fa3_nograd_splits import install_fa3_nograd_splits
-from .lora_scale1_elision import install_lora_scale1_elision
-from .triton_lora_epilogue import warmup_lora_epilogue
 from .matched_contract import FIXED_END_STEP_IDX, MatchedCycleCensus
 from .model import FAKE_ADAPTER, STUDENT_ADAPTER, MiniMaxH3A100Model
 from .trainer_loop import H3A100LoopMixin
@@ -378,6 +376,8 @@ class MiniMaxH3A100DmdTrainer(
             num_splits=self.fa3_nograd_num_splits,
             grad_num_splits=self.fa3_grad_num_splits,
         )
+        from .lora_scale1_elision import install_lora_scale1_elision
+
         self.lora_scale1_elision_registration = install_lora_scale1_elision(
             model.denoiser_module(),
             enabled=self.lora_scale1_elision_enabled,
@@ -397,6 +397,8 @@ class MiniMaxH3A100DmdTrainer(
         # One local rank compiles per node, then every rank launches the tiny
         # warmup once so no first-use work contaminates the formal cycle.
         if self.lora_nograd_epilogue_enabled:
+            from .triton_lora_epilogue import warmup_lora_epilogue
+
             if int(os.environ.get("LOCAL_RANK", 0)) == 0:
                 warmup_lora_epilogue(torch.cuda.current_device())
             if dist.is_initialized():

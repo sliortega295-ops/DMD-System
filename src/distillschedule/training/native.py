@@ -84,11 +84,26 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
             resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
                         verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
+    if _h3_grid_training(config, workload):
+        result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
+                      launch="enter on each original world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["reference"],
+            cycles=dict(min=2, max=64, fresh_inputs="original_h3_grid_latent_dataset.v1",
+                        scope="finite original latent_dataset; 96 distinct cached records per complete G1/F5 cycle"),
+            checkpoint=dict(supported=True, scope="two named LoRAs, original Adam/schedulers, clocks, sampler cursor and per-rank RNG; EMA0",
+                            verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
+            resume=dict(supported=True, scope="versioned complete-cycle checkpoint; exact same source/input/config/horizon/topology",
+                        verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"))
     return result
 
 
 def _helios_stream(config, workload):
     return workload == "W2" and config.data.get("input_kind") == "original_helios_cohort_stream.v1"
+
+
+def _h3_grid_training(config, workload):
+    return workload == "W5" and config.data.get("input_kind") == "original_h3_grid_latent_dataset.v1"
 
 
 def _path(config, section, key, *, required=True):
@@ -140,8 +155,18 @@ def _options(config, workload):
              "algorithm.name does not match the original workload")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
-    _require("seed" not in config.trainer,
+    _require(_h3_grid_training(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    if _h3_grid_training(config, workload):
+        _require(config.execution.get("mode", "reference") == "reference"
+                 and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
+                 "W5 upstream training supports explicit reference only; optimized selected plans are not admitted")
+        _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared")),
+                 "W5 requires its explicit native latent inventory; benchmark replay is not fresh input")
+        _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer
+                 and "checkpoint_every" in config.trainer,
+                 "W5 original training requires cycles 2..64 and explicit matching native seed/checkpoint_every")
+        return "reference"
     if _helios_stream(config, workload):
         _require(config.execution.get("mode", "reference") == "reference"
                  and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
@@ -378,6 +403,9 @@ def _admit(config):
     elif _helios_stream(config, workload):
         from .helios_worker import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
+    elif _h3_grid_training(config, workload):
+        from .h3_grid_training import admit_reference
+        admitted = admit_reference(config, task_value, assets_value, paths)
     elif workload == "W6":
         admitted = _h3_ar(config, mode, task_value, assets_value, paths)
     else:
@@ -406,6 +434,8 @@ def _report(config, workload, source, paths, admitted):
                       native_mode=admitted["plan"]["mode"], selected_plan=str(paths["plan"]))
     if "capacity_policy" in admitted:
         result["capacity_policy"] = admitted["capacity_policy"]
+    if "lifecycle" in admitted:
+        result["lifecycle"] = admitted["lifecycle"]
     return result
 
 
@@ -417,6 +447,11 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _h3_grid_training(config, _workload(config)) and not dry_run:
+        # This lifecycle enters a metadata plane before rank-local admission or
+        # model imports. A bad source/input on one rank must fail its peers too.
+        from .h3_grid_training import run_reference
+        return run_reference(config, admit=lambda: _admit(config))
     workload, source, paths, admitted = _admit(config)
     if dry_run:
         result = _report(config, workload, source, paths, admitted)

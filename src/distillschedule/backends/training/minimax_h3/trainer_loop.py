@@ -34,7 +34,6 @@ from .fa3_replay_cache import (
     trim_allocator_before_backward,
     validate_cycle as validate_fa3_replay_cache_cycle,
 )
-from .lora_scale1_elision import validate_cycle as validate_lora_scale1_cycle
 from .trainer_runtime import PreparedFakeUpdate
 
 
@@ -42,7 +41,11 @@ class H3A100LoopMixin:
     """Optimized one-Student/five-Fake DMD scheduling."""
 
     def train(self):
-        resume_ckpt_path, current_iter = self._resolve_resume_a100()
+        lifecycle = getattr(self, "grid_training_lifecycle", None)
+        if lifecycle is None:
+            resume_ckpt_path, current_iter = self._resolve_resume_a100()
+        else:
+            resume_ckpt_path, current_iter = None, lifecycle.start(self)
         planner_observer = getattr(self, "planner_cycle_observer", None)
         if planner_observer is not None:
             planner_observer.validate_start(
@@ -54,7 +57,7 @@ class H3A100LoopMixin:
         barrier()
 
         grad_accum_iters = max(1, int(self.gradient_accumulation_iters))
-        samples = self._iter_train_samples()
+        samples = self._iter_train_samples() if lifecycle is None else lifecycle.after_setup(self)
         logger.info(
             "[h3-a100] train start iter={}/{} world={} grad_accum={} fake_ratio={} reorder={}",
             current_iter,
@@ -154,7 +157,9 @@ class H3A100LoopMixin:
                 self.shared_model.log_adaln_stats()
                 self._log_cuda_memory(f"iter_{current_iter}")
 
-            if self.save_every_iters and current_iter % self.save_every_iters == 0:
+            if lifecycle is not None:
+                lifecycle.after_cycle(self, current_iter)
+            elif self.save_every_iters and current_iter % self.save_every_iters == 0:
                 self.save_checkpoint_a100(current_iter)
 
         logger.info("[h3-a100] train finished iter={}/{}", current_iter, self.max_train_iters)
@@ -475,6 +480,7 @@ class H3A100LoopMixin:
         registration = getattr(self, "lora_scale1_elision_registration", None)
         if registration is None or not registration.enabled:
             return
+        from .lora_scale1_elision import validate_cycle as validate_lora_scale1_cycle
         start = self._lora_scale1_cycle_start
         if start is None:
             raise RuntimeError("H3 LoRA scale-one cycle baseline is missing")
