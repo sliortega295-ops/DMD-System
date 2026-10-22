@@ -465,10 +465,19 @@ def test_original_owner_ci_covers_source_pins_and_historical_context():
     patterns = workflow["on"]["pull_request"]["paths"]
     for changed in ("third_party/livewan", ".gitmodules", "src/distillschedule/workloads/livewan_crossscale.py",
                     "src/distillschedule/search/livewan_request.py", "src/distillschedule/workloads/best_known/registry.py",
-                    "src/distillschedule/data/livewan_inputs.py", "tests/test_refactor_livewan_context_staging.py"):
+                    "src/distillschedule/data/livewan_inputs.py", "tests/test_refactor_livewan_context_staging.py",
+                    "tests/test_training_environment.py"):
         assert any(fnmatch.fnmatchcase(changed, pattern) for pattern in patterns), changed
     runs = "\n".join(step.get("run", "") for step in workflow["jobs"]["original-data-owner"]["steps"])
     assert "tests/test_refactor_livewan_context_staging.py" in runs
+    assert "tests/test_training_environment.py" in runs
+    for name in (
+        "test_real_detached_projector_first_boundary_save_new_owner_rng_continuation",
+        "test_real_driver_observer_producer_feeds_owned_binding_and_capacity_consumer",
+        "test_rank_local_owned_uuid_probe_failure_returns_to_real_gloo_peer_before_payload",
+        "test_token_rotation_does_not_change_checkpoint_identity[livewan_reference_assets]",
+    ):
+        assert name in runs
 
 
 @pytest.mark.parametrize("archive", ["record", "prompts"])

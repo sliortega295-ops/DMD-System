@@ -97,8 +97,10 @@ remain unchanged and unqualified by this CPU-only follow-up.
 ## Remaining production-native boundaries
 
 All six recipes still retain their individual algorithms and actual selected
-execution binding. W1/W2/W5 now expose their documented opt-in native reference
-continuation; W3/W4/W6 retain bounded selected/native workers, not universal
+execution binding. W1/W2/W5 expose their documented opt-in native reference
+continuation. The later [W4 reference follow-up](FRAMEWORK_LIVEWAN_REFERENCE_20261021.md)
+adds a distinct original baseline lifecycle without widening its C51 worker.
+W3/W6 retain bounded selected/native workers, not universal
 arbitrary-long trainers. W6 also requires a complete authorized upstream source
 distribution; its historical evidence snapshot is not that distribution.
 Common native generation/export and those remaining lifecycle adapters are

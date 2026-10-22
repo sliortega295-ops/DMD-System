@@ -79,6 +79,10 @@ original FlashAttention2 path and rejects inherited benchmark/optimization,
 profiling and allocator overrides. The metadata API does not import Torch or
 open weight payloads; `frozen_inventory` intentionally reads full file bytes
 to compute identities. Actual payload/backend admission occurs on workers.
+Environment snapshots include only declared nonsecret Hub/Transformers
+settings; credential-shaped variables are excluded before reading their values.
+Explicit asset documents containing credential keys reject. Do not put tokens
+or other authentication material in an asset manifest.
 
 For Stage1, replace `initial_student` with `kind: stage1_state`, an absolute
 `path`, actual `bytes` and `sha256`. Only a complete plain tensor state or its
@@ -101,6 +105,11 @@ Before payload/model construction, every local GPU must have the explicit
 allocation budget plus reserve available. Original host/cgroup observation,
 allocator peak and driver-free reserves are checked again at complete cycles.
 OOM counter changes fail. A CPU test is not physical capacity qualification.
+The worker binds its actual CUDA-device UUID to the local physical inventory,
+then checks the same binding again before construction and at capacity checks.
+This first route requires physical index `rank % 8`; reordered, duplicated,
+unresolved or drifting device assignments reject rather than selecting another
+rank's budget. Visibility text alone is not proof of device ownership.
 
 ## Train and resume
 
@@ -124,6 +133,10 @@ resharded at this boundary; Parameter objects are not replaced. Named Adam
 moments, trainables, actual versions, per-rank RNG and data cursor go through
 the common atomic all-rank checkpoint writer. Frozen Teacher/base weights are
 reconstructed from pinned assets; temporary streamer/KV caches are rebuilt.
+The original rollout detaches Generator text projection. Its materialized Adam
+slots therefore remain at step zero with zero moments; other Generator slots
+must be at step k and Critic slots at step 5k. Admission checks named slot
+ownership, not an assumption that every Generator tensor received a gradient.
 
 To resume an interrupted incomplete target, use the **same** configuration,
 source, assets, seed, finite input horizon and topology, add

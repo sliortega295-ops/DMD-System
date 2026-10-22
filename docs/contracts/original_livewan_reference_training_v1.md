@@ -35,6 +35,11 @@ sequential RNG continuation. Finite prepared inputs do not silently recycle.
   layouts before physical model allocation; Stage1 is restricted-admitted.
 - Fresh owned world16 two-node NCCL and Gloo groups, with rank-local metadata
   failures exchanged before entering subsequent model collectives.
+- Actual owned CUDA UUID resolves uniquely to the same physical inventory entry
+  at admission and capacity checks. This route requires physical index
+  `rank % 8`; unsupported device reorderings and drift reject.
+- Runtime environment identity omits credential values and unknown Hub keys.
+  Explicit credential fields reject; declared execution controls remain bound.
 
 ## Complete-cycle state
 
@@ -43,6 +48,9 @@ moments and steps, commit versions, native cursor and per-rank RNG. It binds
 source/assets/config/precision/optimizer/topology/input identity and the fixed
 target horizon. A complete cycle k requires actual Gk/C5k/EMA0, cursor 5k and
 no pending gradients on original model or optimizer owners.
+Original detached Generator text-projection slots remain zero-step/zero-moment;
+other Generator slots are at step k, Critic slots at 5k. These checks bind the
+actual optimizer's parameter order to canonical names before accepting state.
 
 All required rank files and completion marker must exist. Hash/layout/name/
 dtype/mode/cursor/version/Adam-step mismatches reject before mutation. Loading

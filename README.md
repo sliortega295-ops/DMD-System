@@ -81,7 +81,8 @@ existing APIs retain their actual cycle and lifecycle limits. Consult the
 
 Fresh original-engine training and complete-cycle restart are separately
 available for [Wan](docs/workloads/original_wan_fresh_training.md),
-[Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md), and
+[Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md),
+[Self-Forcing](recipes/self_forcing/REFERENCE_TRAINING.md), and
 [Grid1000 H3](recipes/h3-grid-original-training.md). Their input/checkpoint
 contracts remain explicit; they do not turn all six historical two-cycle
 workers into arbitrary-length pretrained trainers.
