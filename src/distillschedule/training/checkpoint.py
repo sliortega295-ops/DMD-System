@@ -125,7 +125,7 @@ def _validate_optimizer_layout(optimizer, restored, name):
                     _validate_layout(parameter, values[field], f"{name}.{field}")
 
 
-def _stage_state(packed, state):
+def _stage_state(packed, state, *, progress=None):
     import torch
     from copy import copy
     from distillschedule.open_workload.torch_backend import unwrap_module
@@ -168,14 +168,16 @@ def _stage_state(packed, state):
             _validate_layout(value, restored[key], key)
         elif row["kind"] == "stateful" and callable(getattr(value, "validate_state_dict", None)):
             value.validate_state_dict(restored[key])
+        if row["kind"] == "stateful" and callable(getattr(value, "validate_checkpoint_progress", None)):
+            value.validate_checkpoint_progress(restored[key], progress)
     return restored, optimizers
 
 
-def unpack_state(packed, state):
+def unpack_state(packed, state, *, progress=None):
     import torch
     from distillschedule.open_workload.torch_backend import unwrap_module
     # No rank begins mutation while any rank rejects a shard/layout/optimizer.
-    restored, optimizers = distributed.checked(lambda: _stage_state(packed, state), "checkpoint state admission")
+    restored, optimizers = distributed.checked(lambda: _stage_state(packed, state, progress=progress), "checkpoint state admission")
     for key, row in packed.items():
         value = unwrap_module(state[key]) if isinstance(state[key], torch.nn.Module) else state[key]
         if row["kind"] == "module":
@@ -254,6 +256,9 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             validate = getattr(value, "validate_checkpoint_boundary", None)
             if callable(validate):
                 validate()
+            progress_hook = getattr(value, "validate_checkpoint_progress", None)
+            if callable(progress_hook):
+                progress_hook(value.state_dict(), {"cycle":cycle, "cursor":cursor, "versions":dict(versions)})
     distributed.checked(boundary, "checkpoint boundary")
     rank, world = distributed.rank_world()
     allocated = distributed.topology()
@@ -349,6 +354,6 @@ def read_checkpoint(path, *, identity):
 def restore_checkpoint(path, state, *, identity):
     payload = distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission")
     distributed.checked(lambda: validate_rng(payload["rng"]), "checkpoint RNG admission")
-    unpack_state(payload["state"], state)
+    unpack_state(payload["state"], state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
     restore_rng(payload["rng"])
     return payload

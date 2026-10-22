@@ -106,6 +106,9 @@ def construct(config, *, include_validation=False):
     _seed(config.trainer.get("seed", 0))
     components, model_source = _construct_model(config)
     algorithm, algorithm_source = load_callable(config.algorithm["factory"])
+    if components.admit_training is not None:
+        components.admit_training(state=components.state, request=config,
+                                  prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
     validation = Validation.prepare(config, components)
     identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
                 "algorithm": algorithm_source, "framework": _source(),
@@ -305,7 +308,7 @@ def _load_for_output(config, checkpoint):
     payload = distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission")
     distributed.checked(lambda: sampling.validate_progress(payload["cycle"], payload["cursor"]),
                         "output shard sampling progress admission")
-    unpack_state(payload["state"], session.state)
+    unpack_state(payload["state"], session.state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
     components.state.update({key: session.state[key] for key in components.state})
     return components, dataset, payload, identity, session
 

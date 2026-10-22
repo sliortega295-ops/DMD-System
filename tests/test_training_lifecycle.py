@@ -46,3 +46,73 @@ def test_checkpoint_complete_boundary_roundtrip_and_rejects_tampering(tmp_path):
     (checkpoint / "_SUCCESS").unlink()
     with pytest.raises(ValueError, match="complete"):
         restore_checkpoint(checkpoint, state, identity={"config": "abc"})
+
+
+class ProgressOwner:
+    def __init__(self, value=0):
+        self.value = value
+        self.loaded = False
+
+    def state_dict(self):
+        return {'value':self.value}
+
+    def validate_state_dict(self, value):
+        if set(value)!={'value'} or type(value['value']) is not int:
+            raise ValueError('bad progress owner state')
+
+    def validate_checkpoint_progress(self, value, progress):
+        if progress is None or value['value']!=progress['cycle'] or progress['cursor']!=progress['cycle']:
+            raise ValueError('inner/outer progress mismatch')
+
+    def load_state_dict(self, value):
+        self.value=value['value']
+        self.loaded=True
+
+
+def test_optional_progress_hook_stages_every_owner_before_mutation(tmp_path):
+    from distillschedule.training.checkpoint import pack_state,unpack_state,save_checkpoint
+    original = {'first':torch.tensor([3.]),'owner':ProgressOwner(2)}
+    packed = pack_state(original)
+    live = {'first':torch.tensor([9.]),'owner':ProgressOwner(0)}
+    with pytest.raises(ValueError,match='progress mismatch'):
+        unpack_state(packed,live,progress=dict(cycle=3,cursor=3,versions={}))
+    assert live['first'].item()==9 and live['owner'].value==0 and not live['owner'].loaded
+    with pytest.raises(ValueError,match='progress mismatch'):
+        save_checkpoint(tmp_path/'bad',original,identity={},cycle=3,cursor=3,versions={})
+    assert not (tmp_path/'bad').exists()
+    unpack_state(packed,live,progress=dict(cycle=2,cursor=2,versions={}))
+    assert live['first'].item()==3 and live['owner'].value==2 and live['owner'].loaded
+
+
+def test_optional_training_admission_runs_before_output_and_update(tmp_path,monkeypatch):
+    from distillschedule.training import session
+    from distillschedule.training.adapters import ModelComponents
+    from distillschedule.training.config import TrainingConfig
+    from distillschedule.examples.tiny_av import build_fixture
+    from distillschedule.data import prepare
+    raw = build_fixture(tmp_path/'fixture')
+    # Existing fixture returns its raw manifest as part of a report.
+    if isinstance(raw,dict): raw = raw['raw_manifest']
+    prepared = prepare(raw,tmp_path/'prepared')
+    config = TrainingConfig.from_dict(dict(schema_version='distillschedule.training.v1',
+        model=dict(factory='distillschedule.examples.tiny_av:build_model'),
+        algorithm=dict(factory='distillschedule.examples.tiny_av:build_algorithm'),
+        data=dict(prepared=str(prepared)),execution=dict(mode='reference'),
+        trainer=dict(cycles=1,device='cpu',output_dir=str(tmp_path/'output'))),source=tmp_path/'config.json')
+    called=[]
+    def reject(**kwargs):
+        assert set(kwargs)=={'state','request','prepared_identity','prepared_manifest'}
+        called.append(True)
+        raise ValueError('explicit admission refusal')
+    monkeypatch.setattr(session,'_construct_model',lambda config:(
+        ModelComponents(state={'value':torch.tensor(0.)},admit_training=reject),{}))
+    with pytest.raises(ValueError,match='explicit admission refusal'):
+        session.train(config)
+    assert called==[True] and not (tmp_path/'output').exists()
+
+
+def test_optional_training_admission_must_be_callable():
+    from distillschedule.training.adapters import ModelComponents
+    with pytest.raises(ValueError,match='admit_training must be callable'):
+        ModelComponents(state={'value':0},admit_training=True).validate()
+    assert ModelComponents(state={'value':0}).validate().admit_training is None

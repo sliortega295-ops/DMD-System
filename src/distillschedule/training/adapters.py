@@ -21,6 +21,7 @@ class ModelComponents:
     export: Callable | None = None
     load_export: Callable | None = None
     validate_batch: Callable | None = None
+    admit_training: Callable | None = None
 
     def validate(self):
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
@@ -33,7 +34,7 @@ class ModelComponents:
                 module = resolve_module(self.state, path)
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
-        for name in ("generate", "decode", "export", "load_export", "validate_batch"):
+        for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")

@@ -4,7 +4,7 @@ One call performs the original trainer's selectors, optional G update, full C
 rollout/update, EMA predicate and global-step increment. All loss, rollout,
 Adam/clipping and EMA math remains in the existing original helpers/owners.
 Only CPU1, resident, dense tensor-logit/final-head execution is admitted here.
-Five calls make a checkpoint boundary; this is deliberately not Program wiring.
+Five calls make a checkpoint boundary. Public Program wiring lives separately.
 """
 from __future__ import annotations
 
@@ -207,7 +207,7 @@ class HeliosStepOwner:
     """
 
     def __init__(self, *, generator, critic, ema, args, generator_scheduler, critic_scheduler,
-                 negative_prompt_embeds, noise_shape, inputs, cohort,
+                 negative_prompt_embeds, noise_shape, inputs=None, cohort=None, input_stream=None,
                  gan_base_critic_trainable_params, gan_extra_critic_trainable_params,
                  frozen_parameter_names, backend):
         import torch
@@ -242,10 +242,35 @@ class HeliosStepOwner:
         _require(len(self.noise_shape) == 5 and self.noise_shape[:2] == (1, 16)
                  and self.noise_shape[2] == args.training_config.num_critic_input_frames
                  and all(type(x) is int and x > 0 for x in self.noise_shape), "invalid native noise shape")
-        self.inputs, self.cohort, self.negative = list(inputs), cohort, negative_prompt_embeds
-        _require(isinstance(cohort, str) and cohort and self.inputs and len(self.inputs) % 5 == 0,
-                 "explicit complete five-step input cohort required")
-        self._validate_inputs()
+        self.negative = negative_prompt_embeds
+        self.input_stream = deepcopy(input_stream)
+        self._consumed = []
+        if input_stream is None:
+            self.inputs, self.cohort = list(inputs or []), cohort
+            _require(isinstance(cohort, str) and cohort and self.inputs and len(self.inputs) % 5 == 0,
+                     "explicit complete five-step input cohort required")
+            self.capacity = len(self.inputs)
+            self.schema = _SCHEMA
+            self._validate_inputs()
+        else:
+            from distillschedule.data.helios_native_inputs import ROW_SCHEMA, PRECISION
+            _require(inputs is None and cohort is None and isinstance(input_stream, dict)
+                     and input_stream.keys() == {"schema_version", "row_schema", "precision", "capacity", "cohort_policy"}
+                     and input_stream["schema_version"] == "distillschedule.helios_input_stream.v2"
+                     and input_stream["row_schema"] == ROW_SCHEMA and input_stream["precision"] == PRECISION
+                     and input_stream["cohort_policy"] == "FINITE_DISTINCT_NATIVE_SOURCES"
+                     and type(input_stream["capacity"]) is int and input_stream["capacity"] > 0
+                     and input_stream["capacity"] % 5 == 0
+                     and input_stream["capacity"] == args.training_config.max_train_steps
+                     and list(args.training_config.history_sizes) == [16, 2, 1],
+                     "explicit bounded stream-v2 descriptor required, exclusive of finite-v1 inputs/cohort")
+            self.inputs = self.cohort = None
+            self.capacity = input_stream["capacity"]
+            self.schema = "distillschedule.original_helios_step_owner.v2"
+            _require(self.negative.ndim == 3 and self.negative.shape[0] == 1
+                     and self.negative.shape[-1] == generator.module.config.text_dim
+                     and self.negative.dtype == torch.float32, "negative prompt shape/dtype changed")
+            _tensor_identity(self.negative)
         self.global_step = 0
         self._busy, self._poisoned = False, False
         self._rng = cpu_tree(rng_state())
@@ -362,11 +387,12 @@ class HeliosStepOwner:
                  and peft.lora_dropout == getattr(model_config, prefix + "lora_dropout"),
                  "actual PEFT rank/alpha/dropout differs from original role config")
 
-    def _validate_inputs(self):
+    def _validate_inputs(self, rows=None):
         import torch
         ids = []
         dtype = self.generator.module.dtype
-        for row in self.inputs:
+        rows = self.inputs if rows is None else rows
+        for row in rows:
             _require(isinstance(row, dict) and row.keys() == {"identity", "prompt_embeds", "gan_prompt_embeds",
                      "gan_vae_latents", "generator_history", "critic_history"}, "native input fields changed")
             _require(isinstance(row["identity"], str) and row["identity"], "explicit source input identity required")
@@ -389,7 +415,7 @@ class HeliosStepOwner:
                              "native GT history shape/dtype changed")
             _content(row)
         _require(len(set(ids)) == len(ids), "each native step requires a distinct source input identity")
-        _require(tuple(self.negative.shape) == tuple(self.inputs[0]["prompt_embeds"].shape)
+        _require(tuple(self.negative.shape) == tuple(rows[0]["prompt_embeds"].shape)
                  and self.negative.dtype == dtype, "negative prompt shape/dtype changed")
 
     def _live_ownership(self):
@@ -482,12 +508,14 @@ class HeliosStepOwner:
             module = importlib.import_module(name)
             dependencies[name] = dict(distribution=importlib.metadata.version(name),
                 imported_version=str(module.__version__), path=str(Path(module.__file__).resolve()))
-        return dict(schema=_SCHEMA, scope="CPU1_FULL_SOURCE_NATIVE_STEPS_NOT_PUBLIC_W3",
+        return dict(schema=self.schema, scope="CPU1_FULL_SOURCE_NATIVE_STEPS_NOT_PUBLIC_W3",
             source=reference_model_identity(backend=self.backend), config=self.config,
             native_owner_sources={name: {"path": str(path), "sha256": file_sha256(path)}
                                   for name, path in owners.items()},
             models=models, adapters=self._adapters, noise_shape=list(self.noise_shape),
-            negative=_tensor_identity(self.negative), cohort=self.cohort, inputs=_content(self.inputs),
+            negative=_tensor_identity(self.negative),
+            **(dict(cohort=self.cohort, inputs=_content(self.inputs)) if self.input_stream is None
+               else dict(input_stream=_plain(self.input_stream))),
             engines={r: {"class": _class(e), "policy": EngineClocks(e).state_dict()["policy"],
                          "optimizer": _class(e.optimizer), "scheduler": _class(e.lr_scheduler),
                          "optimizer_policy": _plain(self._optimizer_policy[r]),
@@ -544,6 +572,12 @@ class HeliosStepOwner:
         _require(all(getattr(self.native.post, k) is v for k, v in self._helpers.items()),
                  "source helper binding changed")
         self._cache_boundary()
+        if self.input_stream is not None:
+            _require(self.inputs is None and self.cohort is None
+                     and self.capacity == self.input_stream["capacity"]
+                     and self.schema == "distillschedule.original_helios_step_owner.v2",
+                     "stream-v2 capacity/mode ownership changed")
+            self._validate_consumed(self._consumed, self.global_step)
         expected = expected_clocks(self.global_step, ema_start_step=self.args.training_config.ema_start_step)
         _require(self.versions == expected, "native progress/update versions disagree with source curriculum")
         for role, engine in self._engines.items():
@@ -623,11 +657,48 @@ class HeliosStepOwner:
 
     def step(self):
         """One nonreplayable original training step; no new loss/rollout loop."""
-        import torch
+        _require(self.input_stream is None, "stream-v2 requires step_input, not finite-v1 step")
         self._validate_live()
         _require(self.global_step < len(self.inputs), "input cohort exhausted")
+        return self._step(self.inputs[self.global_step])
+
+    def step_input(self, row, *, absolute_step):
+        """One externally delivered row; validation never advances native RNG."""
+        from distillschedule.workloads.best_known.registry import fingerprint
+        _require(self.input_stream is not None, "step_input is stream-v2 only")
+        self._validate_live()
+        _require(type(absolute_step) is int and absolute_step == self.global_step
+                 and self.global_step < self.capacity, "stream-v2 absolute step/capacity exhausted or reordered")
+        self._validate_inputs([row])
+        identifier = row["identity"]
+        _require(len(identifier) == 64 and all(c in "0123456789abcdef" for c in identifier),
+                 "stream-v2 source SHA256 identity required")
+        content = fingerprint(_content({k:v for k,v in row.items() if k != "identity"}))
+        _require(all(r["identity"] != identifier and r["content_sha256"] != content for r in self._consumed),
+                 "stream-v2 source/content already consumed")
+        return self._step(cpu_tree(row), consumed=dict(identity=identifier, content_sha256=content))
+
+    @staticmethod
+    def _validate_consumed(rows, t):
+        from distillschedule.workloads.best_known.registry import fingerprint
+        _require(isinstance(rows, list) and len(rows) == t, "stream-v2 consumed count/progress changed")
+        chain = "0" * 64
+        ids, contents = set(), set()
+        for i, row in enumerate(rows):
+            _require(isinstance(row, dict) and row.keys() == {"identity", "content_sha256", "chain"}
+                     and all(isinstance(v,str) and len(v)==64 and all(c in "0123456789abcdef" for c in v)
+                             for v in row.values()), "stream-v2 consumed identity fields changed")
+            _require(row["identity"] not in ids and row["content_sha256"] not in contents,
+                     "stream-v2 repeated consumed source/content")
+            chain = fingerprint(dict(previous=chain, absolute_step=i, identity=row["identity"],
+                                     content_sha256=row["content_sha256"]))
+            _require(row["chain"] == chain, "stream-v2 consumed content chain changed")
+            ids.add(row["identity"]); contents.add(row["content_sha256"])
+
+    def _step(self, row, *, consumed=None):
+        # Shared original step body for both APIs: no second loss/rollout loop.
+        import torch
         t, c = self.global_step, self.args.training_config
-        row = self.inputs[t]
         train_generator = t % c.dfake_gen_update_ratio == 0
         use_gan = c.is_use_gan and t >= c.gan_start_step
         receipt = dict(global_step=t, input_identity=row["identity"], train_generator=train_generator,
@@ -682,20 +753,30 @@ class HeliosStepOwner:
                 if t < c.ema_start_step or train_generator:
                     self.ema.step(self.generator.module.parameters())
                 self.global_step += 1
+                if consumed is not None:
+                    from distillschedule.workloads.best_known.registry import fingerprint
+                    consumed["chain"] = fingerprint(dict(previous=self._consumed[-1]["chain"] if self._consumed else "0"*64,
+                        absolute_step=t, **consumed))
+                    self._consumed.append(consumed)
         except BaseException:
             self._poisoned = True
             raise
         finally:
             self._busy = False
-        self._validate_live()
+        try:
+            self._validate_live()
+        except BaseException:
+            self._poisoned = True
+            raise
         receipt["versions"] = self.versions
         return receipt
 
     def state_dict(self):
         self._validate_live()
-        return dict(schema=_SCHEMA, identity=deepcopy(self.identity), global_step=self.global_step,
+        return dict(schema=self.schema, identity=deepcopy(self.identity), global_step=self.global_step,
                     versions=self.versions, rng=cpu_tree(self._rng), adapters=self._adapter_state(),
-                    native={k: cpu_tree(v.state_dict()) for k, v in self._views.items()})
+                    native={k: cpu_tree(v.state_dict()) for k, v in self._views.items()},
+                    **({"consumed": deepcopy(self._consumed)} if self.input_stream is not None else {}))
 
     def validate_checkpoint_boundary(self):
         self._validate_live()
@@ -704,13 +785,17 @@ class HeliosStepOwner:
 
     def validate_state_dict(self, value):
         self._validate_live()
-        _require(isinstance(value, dict) and value.keys() == {"schema", "identity", "global_step", "versions",
-                 "rng", "adapters", "native"}, "native checkpoint fields changed")
-        _require(value["schema"] == _SCHEMA and value["identity"] == self.identity
+        fields = {"schema", "identity", "global_step", "versions", "rng", "adapters", "native"}
+        if self.input_stream is not None:
+            fields.add("consumed")
+        _require(isinstance(value, dict) and value.keys() == fields, "native checkpoint fields changed")
+        _require(value["schema"] == self.schema and value["identity"] == self.identity
                  and value["adapters"] == self._adapters, "source/config/frozen/cohort/adapter identity changed")
         t = value["global_step"]
-        _require(type(t) is int and 0 < t <= len(self.inputs) and t % 5 == 0,
+        _require(type(t) is int and 0 < t <= self.capacity and t % 5 == 0,
                  "native checkpoint cursor is not a completed cycle")
+        if self.input_stream is not None:
+            self._validate_consumed(value["consumed"], t)
         expected = expected_clocks(t, ema_start_step=self.args.training_config.ema_start_step)
         _require(value["versions"] == expected and value["native"].keys() == self._views.keys(),
                  "checkpoint progress/versions/state owners changed")
@@ -754,15 +839,32 @@ class HeliosStepOwner:
             view.load_state_dict(value["native"][key])
         self.global_step = value["global_step"]
         self._rng = cpu_tree(value["rng"])
+        if self.input_stream is not None:
+            self._consumed = deepcopy(value["consumed"])
         self._validate_live()
+
+    def validate_checkpoint_progress(self, value, progress):
+        """Common cursor counts prepared cycles, NOT the v1 native-step cursor."""
+        if self.input_stream is None:
+            return
+        self.validate_state_dict(value)
+        t = value["global_step"]
+        _require(isinstance(progress, dict) and type(progress.get("cycle")) is int
+                 and progress["cycle"] > 0 and t == 5 * progress["cycle"]
+                 and type(progress.get("cursor")) is int and progress["cursor"] == progress["cycle"]
+                 and progress.get("versions") == {"native_step": t}
+                 and type(progress["versions"]["native_step"]) is int,
+                 "stream-v2 inner/outer checkpoint progress disagrees")
 
     def save(self, path):
         """The common atomic checkpoint writer; publication only every five calls."""
+        _require(self.input_stream is None, "stream-v2 checkpoints require the public session and prepared dataset")
         return save_checkpoint(path, {"native_step": self}, identity=self.identity,
             cycle=self.global_step // 5, cursor=self.global_step, versions=self.versions)
 
     def restore(self, path):
         """Stage all native owners AND outer progress/RNG before any mutation."""
+        _require(self.input_stream is None, "stream-v2 checkpoints require the public session and prepared dataset")
         payload = read_checkpoint(path, identity=self.identity)
         _require(payload["state"].keys() == {"native_step"}, "checkpoint native state owner changed")
         from .tensor_state import decode

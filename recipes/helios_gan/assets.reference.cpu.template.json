@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.helios_cpu_reference_assets.v1",
+  "evidence_kind": "LOCAL_PRETRAINED_NATIVE_FEATURES_UNVERIFIED_QUALITY",
+  "source": {"REPLACE_WITH": "exact reference_model_identity(backend='torch-sdpa') value from this installed source"},
+  "runtime": {"REPLACE_WITH": "exact helios_public_assets.runtime_identity() value from the admitted CPU environment"},
+  "args": {"path": "/absolute/local/helios-reference/effective-args.json", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"},
+  "generator": {
+    "config": {"path": "/absolute/local/helios-reference/generator/config.json", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"},
+    "weights": [{"path": "/absolute/local/helios-reference/generator/model.safetensors", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}]
+  },
+  "critic": {
+    "config": {"path": "/absolute/local/helios-reference/critic/config.json", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"},
+    "weights": [{"path": "/absolute/local/helios-reference/critic/model.safetensors", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}]
+  },
+  "negative": {"path": "/absolute/local/helios-reference/negative.safetensors", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"},
+  "geometry": {"noise_shape": [1, 16, 9, 16, 16], "prompt_shape": [1, 2, 4]},
+  "budget": {"max_parameters": 600000, "max_loaded_bytes": 10000000}
+}

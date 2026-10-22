@@ -48,6 +48,7 @@ assert not any(name in sys.modules for name in ('torch', 'diffusers', 'lightx2v_
     completed = subprocess.run([sys.executable, "-c", script], text=True, capture_output=True)
     assert completed.returncode == 0, completed.stderr
     assert "prepare-helios-stream" in completed.stdout
+    assert "prepare-helios-gan-reference" in completed.stdout
     assert "prepare-h3-grid" in completed.stdout
     assert "prepare-livewan-inputs" in completed.stdout
 

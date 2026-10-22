@@ -24,6 +24,9 @@ def main(argv=None):
     helios.add_argument("--sources", type=Path, required=True)
     helios.add_argument("--training-config", type=Path, required=True)
     helios.add_argument("--output", type=Path, required=True)
+    reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
+    reference.add_argument("--sources", type=Path, required=True)
+    reference.add_argument("--output", type=Path, required=True)
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
@@ -46,6 +49,9 @@ def main(argv=None):
                 raise ValueError("explicit source cohort list required")
             result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
                                     args.training_config, args.output)
+        elif args.command == "prepare-helios-gan-reference":
+            from .helios_native_inputs import prepare_inputs
+            result = inspect_prepared(prepare_inputs(args.sources, args.output))
         elif args.command == "prepare-h3-grid":
             from distillschedule.training.h3_grid_inputs import prepare_inputs
             result = prepare_inputs(args.native_config, args.output)
