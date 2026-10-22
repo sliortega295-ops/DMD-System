@@ -259,10 +259,11 @@ def _train(config: TrainingConfig):
                 validation_runs += 1
                 distributed.primary(lambda last_validation=last_validation: _json(root / "validation-summary.json", last_validation),
                                     "validation summary publication")
+            metrics = distributed.checked(lambda: _training_metrics(components, outputs), "training metric collection")
             cursor += world
             row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(position.sample_index), "cursor": cursor,
                    "sample_index": position.sample_index, "epoch": position.epoch, "epoch_offset": position.epoch_offset,
-                   "metrics": _training_metrics(components, outputs), "wall_s": wall,
+                   "metrics": metrics, "wall_s": wall,
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}
@@ -364,9 +365,10 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
                    if components.decode and not latents_required else generated)
     if not _finite({}, {"generated": generated, "decoded": decoded}):
         raise ValueError("generation produced nonfinite values")
-    decoded_video(decoded, required=video_required)
     if latents_required:
         latent_outputs(generated)
+    else:
+        decoded_video(decoded, required=video_required)
     return {"generated": generated, "decoded": decoded}
 
 

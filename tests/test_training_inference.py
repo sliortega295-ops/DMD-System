@@ -454,6 +454,68 @@ def test_latent_output_requires_explicit_named_floating_schema():
             latent_outputs(bad)
 
 
+def test_export_latents_named_video_and_audio_do_not_enter_media_validation(tmp_path):
+    from distillschedule.training.config import TrainingConfig
+    from distillschedule.training.session import generate_from_export
+
+    root = tmp_path / "media"
+    build_fixture(root, samples=4)
+    prepare(root / "raw/manifest.json", root / "prepared")
+    source = tmp_path / "latent_model.py"
+    source.write_text('''
+from distillschedule.examples.tiny_av import build_model as original
+def build_model(parameters):
+    components = original(parameters)
+    original_generate = components.generate
+    def generate(state, feeds, parameters):
+        value = original_generate(state, feeds, parameters)
+        video = value[:, :3].contiguous()
+        audio = value[:, 3].mean(dim=(2, 3))
+        return {"video": video, "audio": audio, "latent_schema": {
+            "video": {"layout": "BCTHW", "shape": list(video.shape), "dtype": str(video.dtype)},
+            "audio": {"layout": "BT", "shape": list(audio.shape), "dtype": str(audio.dtype)}}}
+    def decode(generated, parameters):
+        if parameters.get("decoder") == "missing":
+            return {}
+        if parameters.get("decoder") == "wrong":
+            return {"video": generated["video"]}
+        raise AssertionError("latent generation must not invoke a decoder")
+    components.generate, components.decode = generate, decode
+    return components
+''')
+    loaded = load_training_config(root / "train.json")
+    raw = loaded.to_dict()
+    raw["model"]["factory"] = str(source) + ":build_model"
+    config = TrainingConfig.from_dict(raw, source=loaded.source)
+    trained = train(config)
+    weights = tmp_path / "weights"
+    export(config, trained["checkpoint"], weights)
+    output = tmp_path / "latents"
+    result = generate_from_export(config, weights, output,
+                                  prepared=root / "prepared/manifest.json", output_kind="latents")
+    values = torch.load(result["artifact"], weights_only=True)
+    schema = {"video": {"layout": "BCTHW", "shape": [1, 3, 2, 4, 4], "dtype": "torch.float32"},
+              "audio": {"layout": "BT", "shape": [1, 2], "dtype": "torch.float32"}}
+    assert result["output_kind"] == "latents"
+    assert result["latents"]["tensors"] == values["generated"]["latent_schema"] == schema
+    assert result["latents"]["interpretation"] == "LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY"
+    assert result["video"]["status"] == "NOT_AVAILABLE"
+    assert result["quality_validation"] == "NOT_RUN"
+    assert (output / "_SUCCESS").is_file() and not (output / "frames").exists()
+    for name in ("video", "audio"):
+        tensor = values["generated"][name]
+        assert tensor.is_floating_point() and torch.isfinite(tensor).all()
+        assert torch.equal(tensor, values["decoded"][name])
+    # The default video request retains its strict actual-decoder contract.
+    for fault in ("missing", "wrong"):
+        invalid = tmp_path / ("video-" + fault)
+        with pytest.raises(ValueError, match="actual decoder"):
+            generate_from_export(config, weights, invalid, prepared=root / "prepared/manifest.json",
+                                 parameters={"decoder": fault})
+        assert not invalid.exists()
+    assert not torch.cuda.is_initialized()
+
+
 def test_invalid_optional_projection_refuses_before_publication(tmp_path, monkeypatch):
     from distillschedule.training import session
     from distillschedule.training.adapters import InferenceProjection
