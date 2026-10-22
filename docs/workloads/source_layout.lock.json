@@ -450,6 +450,30 @@
       "source_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
       "integrated_sha256": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
       "change": "public_training_lifecycle_routes_and_package_equivalent_source_entrypoint; canonical_math_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+      "original_integrated_sha256": "d566f71ad1270aeb470fd3073b86339809085c9a49ab217aa712e44362a633c8",
+      "reviewed_source_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "integrated_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "opt_in_original_W5_lifecycle_pre_model_config_data_admission_and_actual_trainer_binding; canonical_math_and_original_benchmark_path_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/trainer.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer.py",
+      "original_integrated_sha256": "bdb3c01653fa6a15bd6578407d7aed8710c4857ff3ba6a6e99b315b1c05f7431",
+      "reviewed_source_sha256": "be0169efa8a08210b2f4a879e748f5bcf53f7069d2c4f31aa34575f55ba0caff",
+      "integrated_sha256": "be0169efa8a08210b2f4a879e748f5bcf53f7069d2c4f31aa34575f55ba0caff",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "lazy_optional_LoRA_Triton_imports_only_same_setup_branches; canonical_math_and_original_benchmark_path_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/trainer_loop.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "original_integrated_sha256": "a63e3d18a129cd3a12dd5e6601d6a3777ebb91d726b62932a4cde341c71fc17e",
+      "reviewed_source_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "integrated_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "opt_in_original_W5_complete_cycle_data_cursor_and_canonical_state_hooks_legacy_observer_unchanged; canonical_math_and_original_benchmark_path_unchanged"
     }
   }
 }

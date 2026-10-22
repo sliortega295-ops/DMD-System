@@ -60,3 +60,5 @@ artifacts/g_offload_search/**
 *.egg-info/
 build/
 dist/
+# Exact external source checkouts used only by the CPU qualification job.
+.framework-test-deps/

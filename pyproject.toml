@@ -28,6 +28,7 @@ test = ["pytest>=7", "omegaconf>=2.3"]
 # CPU qualification of licensed original Helios input/rollout helpers. This is
 # not the CUDA training environment and does not replace native-wan's pins.
 test-helios = ["diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2", "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1"]
+test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
 media = ["numpy>=1.24", "Pillow>=10"]
 train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
 native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]

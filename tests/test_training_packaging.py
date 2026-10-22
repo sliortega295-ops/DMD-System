@@ -115,6 +115,22 @@ def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_met
     assert ".[train,test,test-helios]" in commands
 
 
+def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_metadata):
+    import yaml
+    requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
+    for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"):
+        assert f'{package};extra=="test-h3"' in requirements
+    workflow = yaml.safe_load((ROOT / ".github/workflows/h3-grid-native-cpu.yml").read_text())
+    job = workflow["jobs"]["original-source-state"]
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "git submodule update --init --depth 1 third_party/lightx2v" in commands
+    sources = [step["with"] for step in job["steps"]
+               if step.get("with", {}).get("repository") == "huggingface/diffusers"]
+    assert len(sources) == 1 and sources[0]["ref"] == "9284607295a09f759aadd65ed08f48b35feea6d9"
+    assert ".[train,test,test-helios,test-h3]" in commands
+    assert "get('skipped', '0')" in commands
+
+
 @pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])
 def test_full_refactor_ci_provisions_the_tensor_and_asset_dependencies(workflow):
     import yaml
