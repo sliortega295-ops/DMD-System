@@ -8,7 +8,9 @@ from copy import deepcopy
 from contextlib import nullcontext
 import json
 from pathlib import Path
+import pickle
 import random
+import shutil
 from types import SimpleNamespace
 
 import pytest
@@ -107,6 +109,99 @@ def test_stream_metadata_tampering_and_wrong_legacy_bindings_reject(fresh_stream
     controls[0].manifest["contract"].pop(TRACE_KEY)
     with pytest.raises(ValueError, match="new Helios cohort"):
         validate_controls(HeliosCohortTask(0), controls)
+
+
+def test_fresh_stream_rejects_unsafe_pickle_without_execution(fresh_stream, tmp_path):
+    root, document = fresh_stream
+    marker = tmp_path / "pickle-executed"
+
+    class UnsupportedPayload:
+        def __reduce__(self):
+            return eval, (f"__import__('pathlib').Path({str(marker)!r}).write_text('executed')",)
+
+    payload = Path(document["cohorts"][0]["trace_bundle"]) / "rank_00/tensors.pt"
+    original = payload.read_bytes()
+    tensors = torch.load(payload, map_location="cpu", weights_only=True)
+    tensors["step/10/generator/entry_noise"] = UnsupportedPayload()
+    try:
+        torch.save(tensors, payload)
+        # Real prepared stream -> HeliosTrainingTrace -> StaticWorld16Trace ->
+        # OperationTrace.load. No substitute loader or allowlisted globals.
+        with pytest.raises(pickle.UnpicklingError, match="Unsupported global"):
+            load_stream(root / "prepared/stream.json", cycles=3, verify_rank=0)
+    finally:
+        payload.write_bytes(original)
+        assert not marker.exists(), "unsupported pickle global executed during stream admission"
+
+
+def replayed_sources(document, tmp_path, replay):
+    values = deepcopy(document["identity"]["sources"])
+    first = values[0]["samples"][0][0]
+    if replay == "seed_only":
+        values[1]["samples"] = deepcopy(values[0]["samples"])
+    else:
+        replacement = Path(first)
+        if replay in ("symlink_overlap", "copied_payload"):
+            replacement = tmp_path / "repeated-feature.pt"
+            if replay == "symlink_overlap":
+                replacement.symlink_to(first)
+            else:
+                shutil.copyfile(first, replacement)
+        values[1]["samples"][0][0] = str(replacement)
+    assert values[1]["seed"] != values[0]["seed"]
+    return [HeliosCohortSources.from_dict(value) for value in values]
+
+
+@pytest.mark.parametrize("replay", ["seed_only", "overlap", "symlink_overlap", "copied_payload"])
+def test_prepare_stream_rejects_cross_cohort_replay(fresh_stream, tmp_path, monkeypatch, replay):
+    import distillschedule.training.helios_inputs as inputs
+    root, document = fresh_stream
+    sources = replayed_sources(document, tmp_path, replay)
+
+    def unexpected_capture(*args, **kwargs):
+        raise AssertionError("repeated sources reached native capture")
+
+    monkeypatch.setattr(inputs, "capture_rank", unexpected_capture)
+    output = tmp_path / "rejected-stream"
+    with pytest.raises(ValueError, match="globally distinct feature"):
+        prepare_stream(HeliosCohortTask(0).request, sources, root / "training.yaml", output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("replay", ["seed_only", "overlap", "symlink_overlap", "copied_payload"])
+def test_load_stream_rejects_cross_cohort_replay(fresh_stream, tmp_path, replay):
+    from distillschedule.workloads.best_known.registry import file_sha256
+    from runtime.operation_trace import _manifest_hash, write_operation_trace_bundle_manifest
+    _, document = fresh_stream
+    sources = replayed_sources(document, tmp_path, replay)
+    changed = deepcopy(document)
+    changed["identity"]["sources"] = [source.to_dict() for source in sources]
+    output = tmp_path / "replayed-stream"
+    for index, entry in enumerate(changed["cohorts"]):
+        rows = changed["identity"]["inventory"][index]
+        for row, name in zip(rows, (p for names in sources[index].samples for p in names), strict=True):
+            row.update(path=str(Path(name).resolve()), sha256=file_sha256(Path(name)))
+        original = Path(entry["trace_bundle"])
+        directory = output / f"cohort-{index:04d}"
+        ranks = []
+        for rank in range(16):
+            name = f"rank_{rank:02d}"
+            destination = directory / name; destination.mkdir(parents=True)
+            manifest = json.loads((original / name / "trace.json").read_text())
+            manifest["source"]["samples"] = [row for row in rows if row["rank"] == rank]
+            manifest["trace_hash"] = _manifest_hash(manifest)
+            (destination / "trace.json").write_text(json.dumps(manifest))
+            (destination / "tensors.pt").symlink_to(original / name / "tensors.pt")
+            ranks.append({"rank": rank, "path": name, "trace_hash": manifest["trace_hash"]})
+        bundle = write_operation_trace_bundle_manifest(directory, ranks)
+        entry.update(trace_bundle=str(directory), trace_hash=bundle["bundle_hash"])
+    changed.pop("stream_sha256")
+    changed["stream_sha256"] = fingerprint(changed)
+    path = output / "stream.json"; path.write_text(json.dumps(changed))
+    # Re-sign all metadata so rejection must be freshness admission, not an
+    # unrelated stale hash/provenance failure. Tensor descriptors stay pinned.
+    with pytest.raises(ValueError, match="globally distinct feature"):
+        load_stream(path, cycles=3, verify_rank=0)
 
 
 @pytest.mark.parametrize("deferred_gate", ["payload", "immutable"])

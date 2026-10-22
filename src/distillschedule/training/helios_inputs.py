@@ -112,6 +112,19 @@ def _inventory(task, sources):
     return rows
 
 
+def _require_fresh_cohorts(sources, inventories=None):
+    # Seeds control native sampling/augmentation, never feature identity.
+    paths = {str(Path(name).resolve()) for source in sources for row in source.samples for name in row}
+    require(len(paths) == 80 * len(sources),
+            "globally distinct feature paths required across cohorts; changing seed is not fresh input",
+            path="helios.inputs")
+    if inventories is not None:
+        hashes = [row["sha256"] for rows in inventories for row in rows]
+        require(len(set(hashes)) == len(hashes) == 80 * len(sources),
+                "globally distinct feature payload hashes required; copied bytes are not fresh input",
+                path="helios.inputs")
+
+
 def _keys(step, phase):
     from runtime.static_world16_trace import _generator_keys, _critic_keys
     keys = _generator_keys(step, gan=False) if phase == "generator" else _critic_keys(step, gan=False)
@@ -188,10 +201,10 @@ def prepare_stream(request, sources, training_config, output):
     require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= 64
             and all(type(s) is HeliosCohortSources for s in sources), "2..64 typed cohorts required", path="helios.inputs")
     tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
-    require(len({fingerprint(s.to_dict()) for s in sources}) == len(sources),
-            "fixed-source repetition is not fresh training", path="helios.inputs")
+    _require_fresh_cohorts(sources)
     config = read_training_config(training_config)
     inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
+    _require_fresh_cohorts(sources, inventories)
     identity = {"request": request.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
                 "training_config_sha256": file_sha256(Path(training_config)), "source_fingerprint": source_fingerprint()}
     root = Path(output).resolve(); root.mkdir(parents=True, exist_ok=False)
@@ -229,8 +242,7 @@ def load_stream(path, *, cycles, verify_rank=None):
     require(type(cycles) is int and 2 <= cycles <= 64
             and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
             and identity["source_fingerprint"] == source_fingerprint(), "stream cycles/source changed", path="helios.inputs")
-    require(len({fingerprint(s.to_dict()) for s in sources}) == cycles,
-            "repeated source cohorts", path="helios.inputs")
+    _require_fresh_cohorts(sources, identity["inventory"])
     for index, entry in enumerate(doc["cohorts"]):
         task = HeliosCohortTask(index, request)
         require(entry["index"] == index and entry["task"] == task.to_dict()

@@ -380,7 +380,7 @@ class OperationTrace:
     def load(cls, root: str | Path, *, verify: bool = True) -> "OperationTrace":
         root = Path(root)
         manifest = json.loads((root / "trace.json").read_text())
-        tensors = torch.load(root / "tensors.pt", map_location="cpu", weights_only=False)
+        tensors = torch.load(root / "tensors.pt", map_location="cpu", weights_only=True)
         if not isinstance(tensors, dict) or not all(isinstance(k, str) for k in tensors):
             raise TypeError("tensors.pt must contain a string-keyed tensor dictionary")
         result = cls(root=root, manifest=manifest, tensors=tensors)
