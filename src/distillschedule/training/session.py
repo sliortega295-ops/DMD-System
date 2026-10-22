@@ -153,6 +153,27 @@ def _metrics(outputs):
             if isinstance(value, torch.Tensor) and value.numel() == 1}
 
 
+def _training_metrics(components, outputs):
+    """Collect original host losses without flattening control receipts or tensors.
+
+    Adapter callbacks are trusted, read-only functions of the actual outputs.
+    Explicit Python floats avoid hidden tensor coercion or new GPU readbacks.
+    """
+    import math
+
+    result = _metrics(outputs)
+    if components.collect_metrics is None:
+        return result
+    extra = components.collect_metrics(outputs)
+    if not isinstance(extra, dict) or not all(
+            isinstance(key, str) and key and type(value) is float and math.isfinite(value)
+            for key, value in extra.items()):
+        raise ValueError("adapter metric collection requires named finite Python floats")
+    if result.keys() & extra.keys():
+        raise ValueError("adapter metric names collide with existing scalar metrics")
+    return {**result, **extra}
+
+
 def _finite(state, outputs):
     import torch
 
@@ -241,7 +262,7 @@ def _train(config: TrainingConfig):
             cursor += world
             row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(position.sample_index), "cursor": cursor,
                    "sample_index": position.sample_index, "epoch": position.epoch, "epoch_offset": position.epoch_offset,
-                   "metrics": _metrics(outputs), "wall_s": wall,
+                   "metrics": _training_metrics(components, outputs), "wall_s": wall,
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}

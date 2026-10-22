@@ -25,6 +25,14 @@ callbacks remain model-owned. Keep
 immutable submodules explicitly declared; aliasing is an admitted execution
 capability, not a factory side effect.
 
+An atomic native operation may return a structured receipt rather than a scalar
+Tensor. Its optional `collect_metrics(outputs)` callback exposes the original
+losses to the common logger without changing that operation's result or update.
+Return a dictionary of nonempty metric names to finite **Python floats**; do not
+recompute losses, mutate outputs/state, consume RNG or read GPU tensor values.
+Tensor coercion, nonfinite values and collisions with ordinary scalar metrics
+are rejected. Without the callback, existing scalar-Tensor logging is unchanged.
+
 Inference does not construct an algorithm or restore optimizer/RNG state. The
 original factory receives the effective non-device parameters recorded at
 export, plus the current declared device. Its source, metadata and named module

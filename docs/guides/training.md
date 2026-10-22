@@ -208,6 +208,14 @@ last completed checkpoint. Failed partial updates are never counted complete.
 Distributed rank metrics are in `ranks/rank-NNNNN/metrics.jsonl`; the shared
 summary records all actual completed ranks rather than predicting rank counts.
 
+Model-owned atomic operations can expose their already-computed host losses
+with the optional [metric collector](extensions.md#model-and-media-adapter).
+The original Helios GAN CPU reference records one Generator loss, each of five
+ordered Critic losses and their mean. The cached-H3 CPU reference records its
+actual DMD, GAN and Critic losses. These are not new losses, quality metrics or
+numerical-equivalence claims. Collection occurs after the diagnostic workload
+timer and does not rerun a model or coerce new tensor values to the host.
+
 ## Optional periodic held-out validation
 
 Generation via `evaluate` is **not** a validation metric. A Program model may

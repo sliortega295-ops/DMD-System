@@ -195,6 +195,12 @@ def test_public_program_executes_g1_c5_with_real_original_owner(tmp_path, monkey
     assert [r['train_generator'] for r in receipts]==[i%5==0 for i in range(10)]
     assert [r['use_gan'] for r in receipts]==[i>=3 for i in range(10)]
     assert owner.versions==dict(generator=2,critic=10,ema=3)
+    metrics = [json.loads(line)['metrics'] for line in
+        (Path(config.trainer['output_dir'])/'metrics.jsonl').read_text().splitlines()]
+    for cycle, row in enumerate(metrics):
+        actual = receipts[5*cycle:5*(cycle+1)]
+        assert row['generator/loss'] == actual[0]['generator_loss']
+        assert [row[f'critic/loss_{i+1}'] for i in range(5)] == [r['critic_loss'] for r in actual]
     assert owner.inputs is None and owner.global_step==10
     assert set(owner.state_dict())=={'schema','identity','global_step','versions','rng','adapters','native','consumed'}
     assert any(torch.count_nonzero(v['exp_avg']) for v in owner.critic.optimizer.state.values())

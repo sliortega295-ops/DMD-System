@@ -29,7 +29,16 @@ def build_model(parameters):
         scope="CPU1_FP32_ORIGINAL_CACHED_AV_REFERENCE_NOT_NATIVE_WORLD16",
         evidence_kind=assets["evidence_kind"], quality_validation="NOT_RUN", claimable_speedup=False,
         portable_generator_export="NOT_IMPLEMENTED_DEPENDENT_U2", decoded_media="NOT_IMPLEMENTED_CACHED_LATENTS_ONLY")
-    return ModelComponents(state={"native_update": owner}, metadata=metadata, admit_training=admit_training).validate()
+    return ModelComponents(state={"native_update": owner}, metadata=metadata, admit_training=admit_training,
+                           collect_metrics=collect_metrics).validate()
+
+
+def collect_metrics(outputs):
+    """Expose actual original host losses, without recomputing or reading tensors."""
+    require(set(outputs) == {"h3.cached.original_update"}, "one original update receipt required for metrics")
+    row = outputs["h3.cached.original_update"]
+    return {"generator/dmd_loss": row["dmd_loss"], "generator/gan_loss": row["gan_loss"],
+            "critic/loss": row["critic_loss"]}
 
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):

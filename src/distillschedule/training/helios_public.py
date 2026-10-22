@@ -98,7 +98,20 @@ def build_model(parameters):
         owner_identity=deepcopy(owner.identity),
         evidence_kind=assets['evidence_kind'],quality_validation='NOT_RUN',claimable_speedup=False,
         portable_generator_export='NOT_IMPLEMENTED_U2')
-    return ModelComponents(state={'native_step':owner},metadata=metadata,admit_training=admit_training).validate()
+    return ModelComponents(state={'native_step':owner},metadata=metadata,admit_training=admit_training,
+                           collect_metrics=collect_metrics).validate()
+
+
+def collect_metrics(outputs):
+    """Read losses already returned by the five actual original native entries."""
+    names = [f'helios.native_step.{i}' for i in range(5)]
+    require(set(outputs) == set(names), 'complete five-step output receipt required for metrics')
+    rows = [outputs[name] for name in names]
+    generator = [row['generator_loss'] for row in rows if row['train_generator']]
+    require(len(generator) == 1, 'one actual Generator update required for cycle metrics')
+    critic = [row['critic_loss'] for row in rows]
+    return {'generator/loss': generator[0], 'critic/mean_loss': sum(critic) / 5,
+            **{f'critic/loss_{i+1}': value for i, value in enumerate(critic)}}
 
 
 def _row_schema(owner):

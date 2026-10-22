@@ -126,6 +126,9 @@ def test_public_actual_update_and_one_nonreplayable_call(tmp_path):
     assert result["final_versions"] == {"native_update": 1}
     assert state["generator_step"] == state["critic_step"] == 1
     assert state["last_metrics"]["gan_active"] is False
+    recorded = json.loads((Path(config.trainer['output_dir'])/'metrics.jsonl').read_text())['metrics']
+    assert recorded == {name: state['last_metrics'][field] for name, field in (
+        ('generator/dmd_loss', 'dmd_loss'), ('generator/gan_loss', 'gan_loss'), ('critic/loss', 'critic_loss'))}
     assert set(state["phase"]["roles"].values()) == {"student"}
     for role in ("student", "critic"):
         slots = state["optimizers"][role]["state"]
