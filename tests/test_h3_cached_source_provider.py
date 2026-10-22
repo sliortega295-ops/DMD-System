@@ -134,6 +134,33 @@ def test_changed_source_rejected_before_torch_or_model(tmp_path, target):
     ''', tmp_path, target)
 
 
+def _source_ast_digest(node):
+    # The unchanged manifest records Python3.12 AST spelling. Older supported
+    # parsers lack PEP695's empty fields; normalize only that representation,
+    # never source values, operations, nonempty type parameters or goldens.
+    for child in ast.walk(node):
+        if isinstance(child, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if "type_params" not in child._fields:
+                child._fields = (*child._fields, "type_params")
+                child.type_params = []
+    return hashlib.sha256(ast.dump(node, include_attributes=False).encode()).hexdigest()
+
+
+def test_empty_pep695_fields_do_not_change_original_source_ast_identity():
+    source = "class Layer:\n    def forward(self, x):\n        return x + 1\n"
+    node = ast.parse(source).body[0]
+    expected = _source_ast_digest(node)
+    # Python3.10/3.11 omit these empty fields that Python3.12 records.
+    for child in ast.walk(node):
+        if isinstance(child, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            child._fields = tuple(name for name in child._fields if name != "type_params")
+            if hasattr(child, "type_params"):
+                del child.type_params
+    assert _source_ast_digest(node) == expected
+    changed = ast.parse(source.replace("x + 1", "x - 1")).body[0]
+    assert _source_ast_digest(changed) != expected
+
+
 def test_manifest_pins_original_numerical_bytes_and_every_selected_ast():
     from distillschedule.reference import diffsynth_h3_cached as provider
     identity = provider.source_identity()
@@ -171,7 +198,7 @@ def test_manifest_pins_original_numerical_bytes_and_every_selected_ast():
                     if isinstance(child, ast.ImportFrom) and child.module == "dmd2_zero3":
                         assert child.level == 1
                         child.level = 0
-            digest = hashlib.sha256(ast.dump(node, include_attributes=False).encode()).hexdigest()
+            digest = _source_ast_digest(node)
             assert digest == symbol["ast_sha256"], (row["path"], symbol["symbol"])
     assert rows["h3_dmd2.py"]["symbols"][-1]["ast_sha256"] == "c88b4eac3a03b3570b2dc55b4c0a8b669f2024dd65ec06369300df1ba085f7a8"
     assert identity["files_checked"] == len(rows)
