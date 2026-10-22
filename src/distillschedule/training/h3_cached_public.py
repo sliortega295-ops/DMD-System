@@ -1,7 +1,8 @@
 """Opt-in original cached-AV W6 reference through the public Program lifecycle.
 
-One nonreplayable Call delegates one complete original update. This is neither
-the frozen distributed W6 native contract nor an export/decoded-media adapter.
+One nonreplayable Call delegates one complete original update. A separate
+Student-only projection exports full base + unmerged LoRA for cached-condition
+latent diagnostics, not decoded media or the frozen distributed W6 contract.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ def build_model(parameters):
     path, assets, config, meta_model = admit_assets(parameters)
     from distillschedule.workloads.best_known.registry import file_sha256
     from .h3_cached_owner import H3CachedOwner
+    from .h3_cached_inference import project_current_student
     # The common session owns setup seeding. Preserve an already advanced
     # caller stream through admission/meta inspection, then let the original
     # adapter/head initialization consume it naturally, without a factory reset.
@@ -28,9 +30,11 @@ def build_model(parameters):
         asset_manifest=asset_pin, owner_identity=deepcopy(owner.identity),
         scope="CPU1_FP32_ORIGINAL_CACHED_AV_REFERENCE_NOT_NATIVE_WORLD16",
         evidence_kind=assets["evidence_kind"], quality_validation="NOT_RUN", claimable_speedup=False,
-        portable_generator_export="NOT_IMPLEMENTED_DEPENDENT_U2", decoded_media="NOT_IMPLEMENTED_CACHED_LATENTS_ONLY")
+        portable_generator_export="CURRENT_FULL_BASE_UNMERGED_STUDENT_CPU1_FP32",
+        inference_generation="ORIGINAL_8_STEP_CACHED_AV_LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY",
+        decoded_media="NOT_IMPLEMENTED_CACHED_LATENTS_ONLY")
     return ModelComponents(state={"native_update": owner}, metadata=metadata, admit_training=admit_training,
-                           collect_metrics=collect_metrics).validate()
+                           collect_metrics=collect_metrics, inference_projection=project_current_student).validate()
 
 
 def collect_metrics(outputs):

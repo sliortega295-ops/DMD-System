@@ -231,7 +231,7 @@ reference factories also exercise the actual original models through the
 | Reference | Actual owners and data | Public operations and limits |
 | --- | --- | --- |
 | [Helios GAN CPU](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) | Full original transformer and true PEFT; original history19 primary/secondary producer; original G1/C5/GAN/EMA curriculum | `data prepare-helios-gan-reference`, `train`, complete-cycle common checkpoint/new-process resume; [full unmerged current-G export](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md) and explicit original zero-history native latent generation |
-| [Cached H3 AR CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Maintained licensed cached-only original H3 source; actual 8-step G1F1/LoRA64/continuous-sigma trainer/Adam; clean previous/current AV, original flat or split-packed parser | `data prepare-h3-cached-reference`, `train`, complete-cycle common checkpoint/new-process resume; no bundled AV codec or export callback |
+| [Cached H3 AR CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Maintained licensed cached-only original H3 source; actual 8-step G1F1/LoRA64/continuous-sigma trainer/Adam; clean previous/current AV, original flat or split-packed parser | `data prepare-h3-cached-reference`, `train`, complete-cycle common checkpoint/new-process resume; [current full unmerged Student export and original AV latent generation](../../recipes/h3_ar/PORTABLE_INFERENCE_CPU.md); no bundled AV codec |
 
 Both use operator-supplied, content-pinned local assets and a finite immutable
 input inventory. Missing files never become random data or model weights.

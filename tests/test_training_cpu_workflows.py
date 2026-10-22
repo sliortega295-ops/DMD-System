@@ -29,6 +29,18 @@ def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
     assert "('skipped', 'failures', 'errors')" in commands
 
 
+def test_cached_h3_ci_requires_current_student_export_and_fresh_AV_inference():
+    value = job('h3-cached-reference-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert 'tests/test_training_h3_cached_inference_cpu.py' in commands
+    assert all(name in commands for name in (
+        'test_projection_is_student_only_nonmutating_and_next_update_exact',
+        'test_common_export_actual_current_student_and_not_optimizer',
+        'test_inference_factory_is_separate_and_torch_free_at_discovery',
+        'test_fresh_process_only_export_and_NEW_conditions_no_C_Adam_old_reads[flat]',
+        'test_fresh_process_only_export_and_NEW_conditions_no_C_Adam_old_reads[packed]'))
+
+
 def test_full_original_helios_ci_requires_public_training_and_portable_current_g():
     value = job('helios-reference-model-cpu.yml')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])

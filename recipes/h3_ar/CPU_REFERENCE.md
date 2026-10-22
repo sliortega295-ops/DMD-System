@@ -135,9 +135,15 @@ parser equivalence, all-owner tamper rejection and a **new OS process** exact
 uninterrupted3 versus2+resume3 comparison across the GAN-start2 transition.
 The independent original source-provider/CPU tests remain applicable unchanged.
 
+Current **full base + unmerged Student-only export** and fresh-process original
+eight-step generation on NEW genuine cached AV conditions are documented in
+[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Use its separate
+inference factory and explicit `--output-kind latents`; the training owner has
+an export-only structure projection, not a generation callback. Video BCTHW and
+stereo audio SCT outputs are labeled LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY.
+
 Auto/manual/saved-plan execution, distributed/CUDA, epochs/shuffle/GAS,
-backend substitution, portability across dependency/source/precision changes,
-decoded-media generation and portable generator export are not admitted here.
-The generic inference projection interface exists, but this W6 adapter does
-not supply its own export/generation callback or legitimate AV decoder assets. These are cached latent training results,
-not video/audio files, pretrained quality results, GPU validation or speedups.
+backend substitution, portability across dependency/source/precision changes
+and decoded-media generation remain unadmitted. No legitimate AV decoder is
+provided. These are cached latent results, not video/audio files, pretrained
+quality results, GPU validation or speedups.
