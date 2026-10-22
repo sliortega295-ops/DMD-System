@@ -461,9 +461,23 @@ class _ReferenceOptimizer(_Optimizer):
         _require(bool(torch.isfinite(physical_tensor(moment)).all()), "reference AdamW nonfinite moment")
 
     def _steps(self, value, versions):
+        from distillschedule.open_workload.torch_backend import physical_tensor
         expected = versions[self.engine.role]
-        _require(all(slots["step"].item() == expected for slots in value["optimizer"]["state"].values()),
-                 "reference AdamW step/version mismatch")
+        saved = value["optimizer"]
+        for group, live in zip(saved["param_groups"], self.engine.optimizer.param_groups, strict=True):
+            for parameter_id, parameter in zip(group["params"], live["params"], strict=True):
+                name = self.engine.binding[id(parameter)]
+                slots = saved["state"][parameter_id]
+                # The original rollout projects text under no_grad, and its
+                # differentiable recompute reuses that detached context. Adam
+                # owns/materializes these parameters but never updates them.
+                detached = self.engine.role == "generator" and name.startswith("text_embedding.")
+                _require(slots["step"].item() == (0 if detached else expected),
+                         "reference AdamW step/version mismatch: " + name)
+                if detached:
+                    _require(all(not bool(physical_tensor(slots[key]).count_nonzero())
+                                 for key in ("exp_avg", "exp_avg_sq")),
+                             "reference detached text_embedding AdamW moment must remain zero")
 
     def state_dict(self):
         value = super().state_dict()

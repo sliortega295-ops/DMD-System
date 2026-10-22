@@ -295,7 +295,7 @@ def test_actual_loader_cursor_consumes_once_and_only_after_success(prepared, mon
     assert not torch.cuda.is_initialized()
 
 
-def _tiny_reference_bundle(sources, *, mesh):
+def _tiny_reference_bundle(sources, *, mesh, detached_projector=False):
     """Actual CPU DTensors and original LoRA/Adam, NOT native Wan/FSDP math."""
     import torch
     from torch.distributed.tensor import distribute_tensor, Shard
@@ -306,6 +306,14 @@ def _tiny_reference_bundle(sources, *, mesh):
         torch.manual_seed(72)
         generator = torch.nn.Linear(4, 4, bias=False)
         generator.weight = torch.nn.Parameter(distribute_tensor(generator.weight.detach(), mesh, [Shard(0)]))
+        if detached_projector:
+            # Wan's two-linear text projection shape pattern, with a tiny hidden
+            # dimension. These remain trainable, optimizer-owned DTensor shards.
+            generator.text_embedding = torch.nn.Sequential(
+                torch.nn.Linear(4096, 4), torch.nn.GELU(approximate="tanh"), torch.nn.Linear(4, 4))
+            for module in generator.text_embedding:
+                for name, parameter in list(module.named_parameters(recurse=False)):
+                    setattr(module, name, torch.nn.Parameter(distribute_tensor(parameter.detach(), mesh, [Shard(0)])))
         critic = torch.nn.Sequential(original(torch.nn.Linear(4, 4).to(torch.bfloat16), rank=32))
         critic.eval()
         teacher = torch.nn.Linear(4, 4, bias=False).to(torch.bfloat16)
@@ -358,6 +366,62 @@ def _tiny_update(bundle, actual):
     return x, target
 
 
+def _detached_projector_update(bundle, actual):
+    """Real production no_grad projection + CPU Adam/backward, NOT Wan math.
+
+    Only the loader/rollout outputs are shape-correct facades. The unchanged
+    prepare_rollout projects the actual trainable DTensors under no_grad; the
+    following tiny differentiable computation reuses that detached context.
+    """
+    import torch
+    import numpy as np
+    from types import SimpleNamespace
+    from torch.distributed.tensor import distribute_tensor, Replicate
+    from distillschedule.runtime import livewan_crossscale_worker as worker
+    from distillschedule.training.livewan_training import quiesce
+    x = torch.randn(2, 4).to(torch.bfloat16)
+    target = torch.randn(2, 4) + random.random() + float(np.random.random())
+    for _ in range(5):
+        bundle.critic_optimizer.zero_grad(set_to_none=True)
+        (bundle.critic(x).float() - target).square().mean().backward()
+        bundle.critic_optimizer.step(); actual["critic"] += 1
+    mesh = bundle.student.weight.device_mesh
+    context = distribute_tensor(torch.randn(worker.TEXT_SHAPE[1:]), mesh, [Replicate()])
+    latent = torch.zeros(()).expand(worker.latent_shape()[1:])
+    class ProjectionOnlyStreamer:
+        def set_text(self, context, lens):
+            self.ctx, self.ctx_lens = context, lens
+
+        def set_world(self, world):
+            assert not torch.is_grad_enabled() and world.shape[2] == 3
+
+        def rollout_record(self, count, *, generator):
+            assert not torch.is_grad_enabled()
+            block = latent.unsqueeze(0)[:, :, :worker.BLOCK_FRAMES]
+            return [block] * count, []
+    streamer = ProjectionOnlyStreamer()
+    row = SimpleNamespace(operation_key="CPU_PROJECTION_ONLY_NOT_WAN_FORWARD", world_frames=3,
+                          new_blocks=6, rope_gap=0, seeds={"rollout": 17})
+    prepared = worker.prepare_rollout(torch, row=row, streamer=streamer, student=bundle.student,
+        loader=SimpleNamespace(load=lambda row: (latent, context, 0)), device=torch.device("cpu"))
+    assert prepared.streamer is streamer and not streamer.ctx.requires_grad and streamer.ctx.grad_fn is None
+    assert all(p.requires_grad and p.grad is None for p in bundle.student.text_embedding.parameters())
+    bundle.generator_optimizer.zero_grad(set_to_none=True)
+    projected = streamer.ctx.full_tensor().mean(dim=1)
+    (torch.nn.functional.linear(projected, bundle.student.weight.full_tensor()) - target).square().mean().backward()
+    assert bundle.student.weight.grad is not None
+    assert all(p.grad is None for p in bundle.student.text_embedding.parameters())
+    bundle.generator_optimizer.step(); actual["generator"] += 1
+    quiesce(bundle)
+    return x, target, streamer.ctx.to_local().clone()
+
+
+def _generator_slots(bundle, saved):
+    return {bundle.generator_optimizer_parameter_names[id(parameter)]: saved["state"][parameter_id]
+            for live, group in zip(bundle.generator_optimizer.param_groups, saved["param_groups"], strict=True)
+            for parameter, parameter_id in zip(live["params"], group["params"], strict=True)}
+
+
 def _equal(a, b):
     import torch
     if isinstance(a, torch.Tensor): return type(b) is type(a) and a.dtype == b.dtype and torch.equal(a, b)
@@ -404,6 +468,124 @@ def test_real_cpu_dtensor_and_original_lora_adam_rng_in_place_continuation(tmp_p
         assert _equal(expected, pack_state(resumed_state)) and _equal(expected_rng, rng_state())
         assert ids == [[id(p) for g in opt.param_groups for p in g["params"]] for opt in
                        (resumed_bundle.generator_optimizer, resumed_bundle.critic_optimizer)]
+        assert not torch.cuda.is_initialized()
+    finally:
+        dist.destroy_process_group()
+
+
+def test_real_detached_projector_first_boundary_save_new_owner_rng_continuation(tmp_path, sources):
+    import torch
+    import torch.distributed as dist
+    import numpy as np
+    from torch.distributed.device_mesh import DeviceMesh
+    from distillschedule.training.checkpoint import save_checkpoint, restore_checkpoint, pack_state, unpack_state, rng_state
+    from distillschedule.open_workload.torch_backend import physical_tensor
+    actual = {"generator": 0, "critic": 0, "ema": 0}
+    dist.init_process_group("gloo", init_method="file://" + str(tmp_path / "mesh"), rank=0, world_size=1)
+    try:
+        mesh = DeviceMesh("cpu", [0], mesh_dim_names=("fsdp",))
+        bundle = _tiny_reference_bundle(sources, mesh=mesh, detached_projector=True)
+        state = _tiny_state(bundle, sources, actual)
+        projector_names = {"text_embedding.0.weight", "text_embedding.0.bias",
+                           "text_embedding.2.weight", "text_embedding.2.bias"}
+        slots = _generator_slots(bundle, bundle.generator_optimizer.state_dict())
+        assert set(slots) == projector_names | {"weight"}
+        assert all(slot["step"].item() == 0 and all(not physical_tensor(slot[k]).count_nonzero()
+                   for k in ("exp_avg", "exp_avg_sq")) for slot in slots.values())
+        projector_before = {n: p.to_local().clone() for n, p in bundle.student.text_embedding.named_parameters()}
+        random.seed(19); np.random.seed(20); torch.manual_seed(21)
+        _detached_projector_update(bundle, actual)
+        slots = _generator_slots(bundle, bundle.generator_optimizer.state_dict())
+        assert slots["weight"]["step"].item() == 1
+        assert all(physical_tensor(slots["weight"][k]).count_nonzero() for k in ("exp_avg", "exp_avg_sq"))
+        assert all(slots[n]["step"].item() == 0 and all(not physical_tensor(slots[n][k]).count_nonzero()
+                   for k in ("exp_avg", "exp_avg_sq")) for n in projector_names)
+        assert all(slot["step"].item() == 5 for slot in bundle.critic_optimizer.state.values())
+        print("CHARACTERIZED production materialize_adam_state + prepare_rollout no_grad: "
+              "G active step=1; four optimizer-owned trainable text_embedding slots step=0/moments=0; C steps=5")
+        # The outer lifecycle checks this boundary even when checkpoint_every=0.
+        for view in state.values():
+            if hasattr(view, "validate_checkpoint_boundary"):
+                view.validate_checkpoint_boundary()
+        checkpoint = save_checkpoint(tmp_path / "checkpoint", state, identity={"scope": "CPU_DETACHED_PROJECTOR_NOT_W4"},
+                                     cycle=1, cursor=5, versions=actual)
+        saved = pack_state(state)
+        reordered = deepcopy(saved)
+        saved_slots = reordered["generator.optimizer"]["value"]["optimizer"]
+        saved_slots["state"] = dict(reversed(list(saved_slots["state"].items())))
+        unpack_state(reordered, state)  # bind slots by saved IDs/live order, not state-dict iteration order
+        assert _equal(saved, pack_state(state))
+        draws = [_detached_projector_update(bundle, actual) for _ in range(2)]
+        expected, expected_rng = pack_state(state), rng_state()
+        resumed_actual = {"generator": 0, "critic": 0, "ema": 0}
+        resumed_bundle = _tiny_reference_bundle(sources, mesh=mesh, detached_projector=True)
+        resumed = _tiny_state(resumed_bundle, sources, resumed_actual, restore={"generator": 1, "critic": 5, "ema": 0})
+        def owners():
+            return ([id(obj) for obj in (resumed_bundle.student, resumed_bundle.critic, resumed_bundle.teacher,
+                                        resumed_bundle.generator_optimizer, resumed_bundle.critic_optimizer)],
+                    [[id(p) for p in model.parameters()] for model in
+                     (resumed_bundle.student, resumed_bundle.critic, resumed_bundle.teacher)],
+                    [[id(p) for g in opt.param_groups for p in g["params"]] for opt in
+                     (resumed_bundle.generator_optimizer, resumed_bundle.critic_optimizer)])
+        owned = owners()
+        restored = restore_checkpoint(checkpoint, resumed, identity={"scope": "CPU_DETACHED_PROJECTOR_NOT_W4"})
+        resumed_actual.update(restored["versions"])
+        assert _equal(saved, pack_state(resumed)) and owners() == owned
+        for expected_draw in draws:
+            assert _equal(expected_draw, _detached_projector_update(resumed_bundle, resumed_actual))
+        assert resumed_actual == {"generator": 3, "critic": 15, "ema": 0}
+        assert _equal(expected, pack_state(resumed)) and _equal(expected_rng, rng_state()) and owners() == owned
+        assert all(torch.equal(projector_before[n], p.to_local())
+                   for n, p in resumed_bundle.student.text_embedding.named_parameters())
+        assert not torch.cuda.is_initialized()
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize("change", ["projector_step", "projector_exp_avg", "projector_exp_avg_sq", "active_step"])
+@pytest.mark.parametrize("admission", ["raw", "checkpoint"])
+def test_detached_projector_bad_slots_rejected_before_weights_optimizer_rng_mutation(tmp_path, sources, change, admission):
+    import torch
+    import torch.distributed as dist
+    import numpy as np
+    from torch.distributed.device_mesh import DeviceMesh
+    from distillschedule.training.checkpoint import pack_state, unpack_state, save_checkpoint, restore_checkpoint, rng_state
+    from distillschedule.workloads.best_known.registry import file_sha256
+    dist.init_process_group("gloo", init_method="file://" + str(tmp_path / "mesh"), rank=0, world_size=1)
+    try:
+        mesh = DeviceMesh("cpu", [0], mesh_dim_names=("fsdp",))
+        actual = {"generator": 0, "critic": 0, "ema": 0}
+        bundle = _tiny_reference_bundle(sources, mesh=mesh, detached_projector=True)
+        state = _tiny_state(bundle, sources, actual)
+        _detached_projector_update(bundle, actual)
+        root = save_checkpoint(tmp_path / "checkpoint", state, identity={"scope": "CPU_DETACHED_PROJECTOR_ADMISSION"},
+                               cycle=1, cursor=5, versions=actual)
+        payload = torch.load(root / "state.pt", weights_only=True)
+        bad = payload["state"]
+        slots = _generator_slots(bundle, bad["generator.optimizer"]["value"]["optimizer"])
+        if change == "projector_step": slots["text_embedding.0.weight"]["step"].fill_(1)
+        elif change == "active_step": slots["weight"]["step"].fill_(0)
+        else: slots["text_embedding.0.weight"][change.removeprefix("projector_")]["local"].fill_(.25)
+        bad["generator.weights"]["value"]["tensors"]["weight"]["local"].add_(1)
+        torch.save(payload, root / "state.pt")
+        manifest = json.loads((root / "manifest.json").read_text())
+        manifest["files"]["state.pt"] = file_sha256(root / "state.pt")
+        (root / "manifest.json").write_text(json.dumps(manifest))
+        (root / "_SUCCESS").write_text(file_sha256(root / "manifest.json") + "\n")
+        resumed_actual = {"generator": 0, "critic": 0, "ema": 0}
+        resumed_bundle = _tiny_reference_bundle(sources, mesh=mesh, detached_projector=True)
+        resumed = _tiny_state(resumed_bundle, sources, resumed_actual, restore=manifest["versions"])
+        random.random(); np.random.random(); torch.rand(1)
+        before, rng_before = pack_state(resumed), rng_state()
+        owned = [[id(p) for g in opt.param_groups for p in g["params"]] for opt in
+                 (resumed_bundle.generator_optimizer, resumed_bundle.critic_optimizer)]
+        with pytest.raises(ValueError, match="step/version|detached.*moment"):
+            if admission == "raw": unpack_state(bad, resumed)
+            else: restore_checkpoint(root, resumed, identity=manifest["identity"])
+        assert _equal(before, pack_state(resumed)) and _equal(rng_before, rng_state())
+        assert resumed_actual == {"generator": 0, "critic": 0, "ema": 0}
+        assert owned == [[id(p) for g in opt.param_groups for p in g["params"]] for opt in
+                         (resumed_bundle.generator_optimizer, resumed_bundle.critic_optimizer)]
         assert not torch.cuda.is_initialized()
     finally:
         dist.destroy_process_group()
@@ -650,6 +832,9 @@ def test_actual_original_wan_constructor_shapes_on_meta_only(sources):
         before = torch.get_rng_state().clone()
         layouts = _meta_layouts(worker, WanModel=model.WanModel, config=SimpleNamespace(**fields))
         assert layouts["1.3B"]["patch_embedding.weight"] == [1536, 16, 1, 2, 2]
+        assert {name: shape for name, shape in layouts["1.3B"].items() if name.startswith("text_embedding.")} == {
+            "text_embedding.0.weight": [1536, 4096], "text_embedding.0.bias": [1536],
+            "text_embedding.2.weight": [1536, 1536], "text_embedding.2.bias": [1536]}
         assert layouts["1.3B"]["blocks.29.ffn.0.weight"] == [8960, 1536]
         assert layouts["14B"]["blocks.39.ffn.0.weight"] == [13824, 5120]
         assert layouts["14B"]["head.head.weight"] == [64, 5120]
