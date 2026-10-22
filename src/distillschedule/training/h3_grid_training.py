@@ -20,6 +20,7 @@ import sys
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, load_profile
 from .h3_grid_inputs import SCHEMA as INPUT, document, require, data_contract, load_inputs, validate_payloads, NativeLatentCursor
+from .environment import credential_key, nonsecret_environment_snapshot
 
 SCHEMA = "distillschedule.original_h3_grid_training.v1"
 ASSETS = "distillschedule.original_h3_grid_assets.v1"
@@ -111,10 +112,10 @@ def reference_config(value, public):
 
 
 def environment_snapshot(environment):
-    prefixes = ("H3_", "DISTILLSCHEDULE_", "NCCL_", "TORCH_", "PYTORCH_", "CUBLAS_", "CUDA_", "HF_", "TRANSFORMERS_")
+    prefixes = ("H3_", "DISTILLSCHEDULE_", "NCCL_", "TORCH_", "PYTORCH_", "CUBLAS_", "CUDA_")
     names = {"LOCAL_KERNELS", "LIGHTX2V_ROOT", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "MALLOC_ARENA_MAX",
              "LD_LIBRARY_PATH", "PYTHONPATH", "TRITON_CACHE_DIR"}
-    return {key: value for key, value in sorted(environment.items()) if key.startswith(prefixes) or key in names}
+    return nonsecret_environment_snapshot(environment, prefixes=prefixes, names=names)
 
 
 def _environment(value, config):
@@ -128,6 +129,7 @@ def _environment(value, config):
     require(value.get("H3_ADALN_GRID_MANIFEST") == config["training"]["a100"]["adaln_grid"]["manifest"]
             and bool(value.get("H3_FLASH_ATTN3_LOCAL_PATH")),
             "explicit matching Grid table and original local FA3 kernel paths required")
+    require(not any(credential_key(k) for k in value), "credentials must not be embedded in reference environment")
 
 
 def immutable_files(config, environment):

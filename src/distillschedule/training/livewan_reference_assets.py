@@ -18,6 +18,7 @@ import subprocess
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, SHA256_RE
 from distillschedule.workloads.livewan_crossscale import LIVEWAN_COMMIT, WAN21_COMMIT
+from .environment import credential_key, nonsecret_environment_snapshot
 
 SCHEMA = "distillschedule.livewan_reference_assets.v1"
 DEPENDENCIES = {"torch", "numpy", "safetensors", "diffusers", "transformers", "easydict",
@@ -77,12 +78,12 @@ def source_identity(root, *, project):
 
 def environment_snapshot(environment):
     prefixes = ("LIVEWAN_", "DISTILLSCHEDULE_", "DMD_", "NCCL_", "TORCH_", "PYTORCH_",
-                "CUDA_", "CUBLAS_", "CUDNN_", "HF_", "TRANSFORMERS_", "NSYS_", "NCU_")
+                "CUDA_", "CUBLAS_", "CUDNN_", "NSYS_", "NCU_")
     names = {"LOCAL_KERNELS", "PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD", "OMP_NUM_THREADS",
              "MKL_NUM_THREADS", "MALLOC_ARENA_MAX", "TRITON_CACHE_DIR"}
     # Test intake is never a production launch override.
-    return {k: v for k, v in sorted(environment.items()) if (k.startswith(prefixes) or k in names)
-            and k not in {"DMD_LIVEWAN_TEST_UPSTREAM", "DMD_WAN21_TEST_UPSTREAM"}}
+    return nonsecret_environment_snapshot(environment, prefixes=prefixes, names=names,
+        exclude={"DMD_LIVEWAN_TEST_UPSTREAM", "DMD_WAN21_TEST_UPSTREAM"})
 
 
 def _environment(value):
@@ -92,6 +93,7 @@ def _environment(value):
     require(not any(k.startswith(forbidden) for k in value)
             and not any(value.get(k) for k in ("LOCAL_KERNELS", "LD_PRELOAD", "PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF")),
             "reference cannot inherit benchmark/optimization/profiling/allocator overrides")
+    require(not any(credential_key(k) for k in value), "credentials must not be embedded in reference environment")
 
 
 def _payload_files(root):

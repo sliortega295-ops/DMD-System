@@ -194,6 +194,38 @@ def test_reference_assets_fail_closed(public, mutation):
         ReferenceAssets.load(value) if mutation == "hash" else asset_config(value)
 
 
+@pytest.mark.parametrize("key", ["HF_TOKEN", "TRANSFORMERS_API_KEY", "NCCL_AUTH_TOKEN"])
+def test_public_validation_rejects_credentials_embedded_in_reference_assets(public, key):
+    from distillschedule.training.native import validate_native
+    from distillschedule.training.livewan_reference_assets import asset_config
+    conf, assets, _ = public
+    value = deepcopy(assets)
+    value["runtime"]["environment"][key] = "SYNTHETIC_CREDENTIAL_NOT_REAL"
+    (conf.source.parent / "assets.json").write_text(json.dumps(value))
+    for admit in (lambda: asset_config(value), lambda: validate_native(conf)):
+        with pytest.raises(ValueError, match="credential") as caught:
+            admit()
+        assert "SYNTHETIC_CREDENTIAL_NOT_REAL" not in str(caught.value)
+
+
+def test_public_inherited_optimization_knob_is_not_hidden_by_credential_filter(public, monkeypatch):
+    from distillschedule.training.native import validate_native
+    from distillschedule.training.livewan_reference_assets import environment_snapshot
+    conf, assets, _ = public
+    monkeypatch.setenv("HF_TOKEN", "SYNTHETIC_CREDENTIAL_NOT_REAL")
+    assets["runtime"]["environment"] = environment_snapshot(os.environ)
+    serialized = json.dumps(assets)
+    assert "HF_TOKEN" not in serialized and "SYNTHETIC_CREDENTIAL_NOT_REAL" not in serialized
+    (conf.source.parent / "assets.json").write_text(serialized)
+    validate_native(conf)
+    monkeypatch.setenv("HF_TOKEN", "SYNTHETIC_ROTATED_CREDENTIAL_NOT_REAL")
+    assets["runtime"]["environment"] = environment_snapshot(os.environ)
+    assert json.dumps(assets) == serialized
+    monkeypatch.setenv("DMD_OPTIMIZE", "1")
+    with pytest.raises(ValueError, match="optimization/profiling/allocator overrides"):
+        validate_native(conf)
+
+
 def test_verified_reference_owner_derives_only_actual_native_inputs(public):
     from distillschedule.training.livewan_reference_assets import ReferenceAssets
     _, value, _ = public
