@@ -94,7 +94,12 @@ python scripts/distillctl.py data prepare-helios-gan-reference \
 
 The result is the existing immutable PreparedDataset format: one tensor-only
 five-row record per public cycle, with fixed-size identity/index tensors and
-provenance metadata. It is not W2's timestep-captured `prepare-helios-stream`.
+provenance metadata. Preparation validates the complete finite inventory before
+publication but retains only source/content metadata, then repeats the actual
+deterministic producer one five-row cycle at a time. The second pass rechecks
+all source/content descriptors. Changing a source fails atomically rather than
+publishing stale first-pass tensors; no entire training tensor inventory stays
+resident in preparation memory. It is not W2's timestep-captured `prepare-helios-stream`.
 The public model factory never opens the dataset.
 
 ## Train and resume

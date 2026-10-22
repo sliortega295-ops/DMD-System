@@ -70,3 +70,46 @@ def test_native_source_fail_closed_without_partial_publication(tmp_path,change):
     with pytest.raises(ValueError): prepare_inputs(sources,tmp_path/'rejected')
     assert not (tmp_path/'rejected').exists()
     assert not list(tmp_path.glob('.rejected.*'))
+
+
+def test_preparation_retains_at_most_two_native_cycles_not_whole_inventory(tmp_path, monkeypatch):
+    """Real producer tensors must be released between publication windows."""
+    import weakref
+    from distillschedule.training import helios_step_owner
+
+    _, sources = fixture_files(tmp_path / 'local', capacity=25)
+    original = helios_step_owner._content
+    refs = []
+    alive = []
+    def observe(value):
+        if isinstance(value, dict) and 'generator_history' in value and 'critic_history' in value:
+            refs.append(weakref.ref(value['generator_history']['gt_history_latents']))
+            alive.append(sum(ref() is not None for ref in refs))
+        return original(value)
+    monkeypatch.setattr(helios_step_owner, '_content', observe)
+    before = torch.get_rng_state().clone()
+    manifest = prepare_inputs(sources, tmp_path / 'prepared')
+    assert torch.equal(before, torch.get_rng_state())
+    assert len(PreparedDataset(manifest)) == 5
+    # One five-row cycle being published and the publisher's prior cycle can
+    # coexist. No tensors from the rest of the finite inventory may stay live.
+    assert refs and max(alive) <= 10, f'entire native tensor inventory retained: peak={max(alive)}'
+
+
+def test_source_change_between_validation_and_stream_publication_is_atomic(tmp_path, monkeypatch):
+    from distillschedule.data import preparation
+
+    _, sources = fixture_files(tmp_path / 'local', capacity=5)
+    source = json.loads(sources.read_text())
+    feature = Path(source['records'][0]['features']['path'])
+    original = preparation._publish
+    def change_then_publish(*args, **kwargs):
+        feature.write_bytes(feature.read_bytes() + b'changed after source admission')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(preparation, '_publish', change_then_publish)
+    output = tmp_path / 'prepared'
+    with pytest.raises(ValueError, match='pin changed|content changed'):
+        prepare_inputs(sources, output)
+    assert not output.exists()
+    assert not (tmp_path / '.prepared.lock').exists()
+    assert not list(tmp_path.glob('.prepared.*'))

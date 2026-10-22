@@ -125,19 +125,12 @@ def prepare_inputs(source_manifest, output):
     require(imported['sha256']==_PRODUCER_SHA
             and Path(BucketedFeatureDataset.prepare_stage1_latent.__code__.co_filename).resolve()
             == Path(value['producer']['path']), 'native producer import binding changed')
-    trees, metadata, seen_ids, seen_paths, seen_bytes, seen_content = [],[],set(),set(),set(),set()
-    for index,record in enumerate(records):
-        require(isinstance(record,dict) and set(record)=={'id','features','seed','epoch','native_index'}
-                and isinstance(record['id'],str) and record['id'] and record['id'] not in seen_ids
-                and record['native_index']==index and type(record['native_index']) is int
-                and all(type(record[k]) is int and 0<=record[k]<2**63 for k in ('seed','epoch')),
-                'native record IDs/order/seed/epoch changed')
-        source = checked_pin(record['features'])
+    def make_row(record, index):
+        # The intact producer is deterministic under its own per-record seed;
+        # publication repeats it without consuming the training RNG stream.
+        checked_pin(record['features'])
         vae,prompt = _native_feature(record,geometry,value['evidence_kind'])
         raw_content = fingerprint(_content(dict(vae_latent=vae,prompt_embed=prompt)))
-        require(str(source) not in seen_paths and record['features']['sha256'] not in seen_bytes
-                and raw_content not in seen_content, 'copied/reused native source is not fresh input')
-        seen_ids.add(record['id']); seen_paths.add(str(source)); seen_bytes.add(record['features']['sha256']); seen_content.add(raw_content)
         producer = SimpleNamespace(base_seed=record['seed'],_epoch=record['epoch'])
         primary,secondary = BucketedFeatureDataset.prepare_stage1_latent(producer,vae,index,return_secondary=True)
         def history(tensors):
@@ -149,22 +142,49 @@ def prepare_inputs(source_manifest, output):
         identifier = row_identity(source_sha256=record['features']['sha256'],content_sha256=content,absolute_step=index)
         row = dict(identity=identity_tensor(identifier),absolute_step=torch.tensor([index],dtype=torch.int64),
             source_sha256=identity_tensor(record['features']['sha256']),content_sha256=identity_tensor(content),inputs=inputs)
-        trees.append(row)
         # Section selection matches the producer's local deterministic generators.
         seed = record['seed']+record['epoch']*1000000+index
         selected = [torch.randint(0,vae.shape[0],(1,),generator=torch.Generator().manual_seed(seed+offset)).item()
                     for offset in (0,999999)]
-        metadata.append(dict(id=record['id'],absolute_step=index,source=record['features'],
+        descriptor = dict(id=record['id'],absolute_step=index,source=record['features'],
             raw_content_sha256=raw_content,identity=identifier,content_sha256=content,
-            primary_section=selected[0],secondary_section=selected[1],seed=record['seed'],epoch=record['epoch']))
+            primary_section=selected[0],secondary_section=selected[1],seed=record['seed'],epoch=record['epoch'])
+        return row, descriptor
+
+    metadata, seen_ids, seen_paths, seen_bytes, seen_content = [],set(),set(),set(),set()
+    # Validate the entire finite inventory before staging, retaining only its
+    # source/content descriptors, never every decoded tensor tree.
+    for index,record in enumerate(records):
+        require(isinstance(record,dict) and set(record)=={'id','features','seed','epoch','native_index'}
+                and isinstance(record['id'],str) and record['id'] and record['id'] not in seen_ids
+                and record['native_index']==index and type(record['native_index']) is int
+                and all(type(record[k]) is int and 0<=record[k]<2**63 for k in ('seed','epoch')),
+                'native record IDs/order/seed/epoch changed')
+        source = checked_pin(record['features'])
+        row, descriptor = make_row(record,index)
+        content = descriptor['raw_content_sha256']
+        require(str(source) not in seen_paths and record['features']['sha256'] not in seen_bytes
+                and content not in seen_content, 'copied/reused native source is not fresh input')
+        seen_ids.add(record['id']); seen_paths.add(str(source)); seen_bytes.add(record['features']['sha256']); seen_content.add(content)
+        metadata.append(descriptor)
+        del row
     rows = [dict(id=f'native-cycle-{i//5:06d}',metadata=dict(cycle=i//5,native_rows=metadata[i:i+5]))
-            for i in range(0,len(trees),5)]
+            for i in range(0,len(metadata),5)]
     provenance = dict(mode='preencoded',documents=[source_pin,source_identity(checked_pin(value['args'])),
                         source_identity(Path(value['producer']['path']))] +
                         [source_identity(Path(item['source']['path'])) for item in metadata],
         sources=[dict(id=row['id'],media={'features':source_pin}) for row in rows],encoder=None)
     prepared_metadata = dict(schema_version=SCHEMA,row_schema=ROW_SCHEMA,evidence_kind=value['evidence_kind'],
-        producer=value['producer'],precision=PRECISION,args=value['args'],geometry=geometry,native_steps=len(trees),
+        producer=value['producer'],precision=PRECISION,args=value['args'],geometry=geometry,native_steps=len(metadata),
         quality_validation='NOT_RUN',claimable_speedup=False)
-    return _publish(output,rows=rows,provenance=provenance,metadata=prepared_metadata,
-        produce=lambda record:tensor_tree({'native_rows':trees[record['metadata']['cycle']*5:record['metadata']['cycle']*5+5]}))
+
+    def produce(record):
+        cycle_rows = []
+        for expected in record['metadata']['native_rows']:
+            index = expected['absolute_step']
+            row, descriptor = make_row(records[index],index)
+            require(descriptor == expected, 'native source/content changed during preparation')
+            cycle_rows.append(row)
+        return tensor_tree({'native_rows':cycle_rows})
+
+    return _publish(output,rows=rows,provenance=provenance,metadata=prepared_metadata,produce=produce)
