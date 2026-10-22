@@ -33,6 +33,11 @@ Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORREC
 
 ## Public training configuration
 
+For fresh native cohorts without historical SSH/HF/flash/trace assets, use the
+separate [`training.reference.json`](training.reference.json) and
+[direct-reference guide](REFERENCE_TRAINING.md). This requires an actual pinned
+original Step10 G2/C10/EMA10 package; it does not invent a default checkpoint.
+
 Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle

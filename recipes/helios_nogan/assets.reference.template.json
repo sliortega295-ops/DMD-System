@@ -1,0 +1,39 @@
+{
+  "schema_version": "distillschedule.helios_reference_assets.v1",
+  "assets": {
+    "generator_model": {
+      "path": "/absolute/project/REPLACE_WITH_GENERATOR_MODEL",
+      "identity_file": "transformer_ode/config.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256"
+    },
+    "score_model": {
+      "path": "/absolute/project/REPLACE_WITH_SCORE_MODEL",
+      "identity_file": "transformer/config.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256"
+    },
+    "generator_precast": {
+      "path": "/absolute/project/REPLACE_WITH_GENERATOR_PRECAST",
+      "identity_file": "distillschedule_precast_manifest.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256"
+    },
+    "score_precast": {
+      "path": "/absolute/project/REPLACE_WITH_SCORE_PRECAST",
+      "identity_file": "distillschedule_precast_manifest.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256"
+    },
+    "logical_checkpoint": {
+      "path": "/absolute/project/REPLACE_WITH_LOGICAL_CHECKPOINT",
+      "identity_file": "manifest.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256",
+      "ema_manifest": {
+        "identity_file": "ema/sparse_ema_manifest.json",
+        "sha256": "REPLACE_WITH_ACTUAL_SPARSE_EMA_MANIFEST_SHA256"
+      }
+    },
+    "negative_prompt": {
+      "path": "/absolute/project/REPLACE_WITH_NEGATIVE_PROMPT",
+      "identity_file": "manifest.json",
+      "sha256": "REPLACE_WITH_ACTUAL_IDENTITY_FILE_SHA256"
+    }
+  }
+}

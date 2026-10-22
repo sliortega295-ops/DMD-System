@@ -47,18 +47,53 @@ def _plane(binding):
     return control_plane(binding["metadata_group"])
 
 
-def admit_original_rank(*, torch, dist, rank, args, policy):
+def owns_original_process_group():
+    binding = current_training()
+    return binding is not None and binding.get("owns_process_group") is True
+
+
+def adopt_original_process_group(*, dist):
+    """Only adopt the exact fresh group owned by the public training wrapper."""
+    if not owns_original_process_group():
+        return False
+    binding = current_training()
+    require(dist.is_initialized() and dist.group.WORLD is binding.get("process_group")
+            and dist.get_world_size() == 16 and str(dist.get_backend()) == "nccl"
+            and binding.get("metadata_group") is not None,
+            "original training process-group ownership changed", path="helios.training")
+    return True
+
+
+def checked_original_runtime(fn, label):
+    binding = current_training()
+    if binding is None or binding.get("metadata_group") is None:
+        return fn()
+    with _plane(binding):
+        return distributed.checked(fn, label)
+
+
+def admit_reference_startup(*, torch, dist, rank, args, policy):
+    """Portable opt-in only: admit before any legacy logical/trace payload IO."""
+    binding = current_training()
+    if binding is None or not binding.get("portable_reference"):
+        return None
+    admit_original_rank(torch=torch, dist=dist, rank=rank, args=args, policy=policy, seed_runtime=False)
+    return binding["startup"]
+
+
+def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
     """Called by original main BEFORE model construction, after trace admission."""
     binding = current_training()
     if binding is None:
         return
     require(dist.get_world_size() == 16,
             "reference original world16 helpers required", path="helios.training")
-    binding["metadata_group"] = dist.new_group(backend="gloo", timeout=timedelta(minutes=15))
+    if binding.get("metadata_group") is None:
+        binding["metadata_group"] = dist.new_group(backend="gloo", timeout=timedelta(minutes=15))
     with _plane(binding):
         def local_admission():
             from distillschedule.search.helios_implementation import current_implementation
-            from .helios_worker import _OFF, immutable_assets
+            from .helios_worker import _OFF, immutable_assets, load_reference_bootstrap
             require(args.variant == "no-gan" and args.timing_mode
                     and not args.profile_mode and not args.profile_diagnostics,
                     "reference original world16 helpers required", path="helios.training")
@@ -84,15 +119,40 @@ def admit_original_rank(*, torch, dist, rank, args, policy):
             require(stream["stream_sha256"] == binding["identity"]["stream_sha256"],
                     "stream changed during worker admission", path="helios.training")
             identity = {**binding["identity"], "verified_immutable_assets": immutable_assets(binding["assets"])}
+            startup = None
+            if binding.get("portable_reference"):
+                from runtime.gst_pool_contract import NegativePromptAsset
+                from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries, chunked
+                logical, _ = load_reference_bootstrap(binding["assets"], verify_payloads=False)
+                first = stream["cohorts"][0]
+                rows = binding["assets"]["assets"]
+                require(all(Path(getattr(args, option)).resolve() == Path(rows[role]["path"]).resolve()
+                    for role, option in (("generator_model","generator_root"), ("score_model","score_root"),
+                        ("generator_precast","precast_generator_root"), ("score_precast","precast_score_root"),
+                        ("negative_prompt","negative_prompt"))),
+                    "direct reference model/negative asset binding changed", path="helios.training")
+                require(args.expected_logical_hash == logical.manifest_hash == identity["bootstrap_logical_hash"]
+                        and args.expected_trace_hash == first["trace_hash"] == identity["bootstrap_trace_hash"]
+                        and args.logical_package.resolve() == Path(binding["assets"]["assets"]["logical_checkpoint"]["path"]).resolve()
+                        and args.trace_bundle.resolve() == Path(first["trace_bundle"]).resolve(),
+                        "direct reference bootstrap/startup binding changed", path="helios.training")
+                trace = load_cohort(HeliosCohortTask(0), first["trace_bundle"], expected_hash=first["trace_hash"])
+                controls = [trace.load_critic_entry(rank=rank, step=step, device="cpu") for step in trace.logical_steps]
+                for group in chunked(controls, policy.rollout_batch_size):
+                    validate_rollout_entries(group)
+                negative = NegativePromptAsset.load(binding["assets"]["assets"]["negative_prompt"]["path"])
+                startup = {"logical":logical, "trace":trace, "request":trace.task.request, "negative":negative}
             checkpoint_policy = {"schema_version": "distillschedule.helios_training_checkpoint_policy.v1",
                                  "identity_sha256": fingerprint(identity)}
-            return stream, identity, checkpoint_policy
+            return stream, identity, checkpoint_policy, startup
 
-        stream, identity, checkpoint_policy = distributed.checked(
+        stream, identity, checkpoint_policy, startup = distributed.checked(
             local_admission, "Helios reference input/asset admission")
         # Publish only collectively admitted, actually verified identities;
         # neither identity agreement nor restart may use unverified asset pins.
         binding.update(stream=stream, identity=identity, checkpoint_policy=checkpoint_policy)
+        if startup is not None:
+            binding["startup"] = startup
         distributed.admit_run_controls(binding["config"])
         peers = distributed.gather({"identity": binding["identity"], "policy": binding["checkpoint_policy"]})
         require(all(item == peers[0] for item in peers), "rank source/stream/reference differs", path="helios.training")
@@ -102,6 +162,14 @@ def admit_original_rank(*, torch, dist, rank, args, policy):
             header = distributed.checked(lambda: read_manifest(resume, identity=binding["identity"]),
                                          "Helios restart metadata")
             validate_progress(header, binding)
+    if seed_runtime:
+        seed_original_runtime(torch=torch, rank=rank)
+
+
+def seed_original_runtime(*, torch, rank):
+    """Keep the original seed keys and original post-dependency setup point."""
+    binding = current_training()
+    require(binding is not None, "original training scope missing", path="helios.training")
     # New input sampling is already explicit in the stream. The runtime stream
     # is separate and rank-qualified; restart later restores its exact state.
     seed = int(fingerprint({"stream": binding["stream"]["stream_sha256"], "rank": rank,

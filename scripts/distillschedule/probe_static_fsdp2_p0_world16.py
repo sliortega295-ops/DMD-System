@@ -1301,7 +1301,11 @@ def main() -> int:
             args.elide_official_generator_free_memory
         ),
     )
-    dist.init_process_group("nccl")
+    from distillschedule.training.helios_lifecycle import (
+        adopt_original_process_group, owns_original_process_group,
+    )
+    if not adopt_original_process_group(dist=dist):
+        dist.init_process_group("nccl")
     rank = dist.get_rank()
     world = dist.get_world_size()
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -1391,6 +1395,12 @@ def main() -> int:
         },
     }
     try:
+        from distillschedule.training.helios_lifecycle import (
+            admit_reference_startup, checked_original_runtime,
+        )
+        training_startup = admit_reference_startup(
+            torch=torch, dist=dist, rank=rank, args=args, policy=policy,
+        )
         critic_scalar_logs = install_critic_scalar_log_elision(
             enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
         )
@@ -1402,8 +1412,14 @@ def main() -> int:
             )
         )
         result["generator_free_memory"] = generator_free_memory
-        result["attention_backend"] = _attention_backend_receipt(
-            args.attention_backend
+        def attention_admission():
+            if training_startup is not None:
+                from runtime.critic_pool_helios import configure_offline_helios
+                configure_offline_helios()
+            return _attention_backend_receipt(args.attention_backend)
+
+        result["attention_backend"] = checked_original_runtime(
+            attention_admission, "Helios original attention/dependency admission",
         )
         contract = contract_for_variant(args.variant)
         nsys_range = StaticFSDP2Full5NsightRange.from_env(
@@ -1424,31 +1440,35 @@ def main() -> int:
         )
         if args.profile_mode and not nsys_range.enabled:
             raise ValueError("profile mode requires the exact Nsight API range")
-        logical = (
-            LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
-            if args.variant == "gan"
-            else LogicalCheckpointPackage.load(args.logical_package)
-        )
-        if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
-            raise ValueError("logical checkpoint identity changed")
-        from distillschedule.search.helios_implementation import current_implementation
-        helios_implementation = current_implementation()
-        helios_request = helios_implementation.request if helios_implementation is not None else None
-        args.original_helios_request = helios_request
-        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant, request=helios_request)
-        if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
-            raise ValueError("trace bundle identity changed")
-        helios_native_grid = (helios_request.validate_native_stage_grids(trace._control[rank])
-                              if helios_request is not None else None)
-        control_entries = [
-            trace.load_critic_entry(rank=rank, step=step, device="cpu")
-            for step in contract.logical_steps
-        ]
-        from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
+        if training_startup is None:
+            logical = (
+                LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
+                if args.variant == "gan"
+                else LogicalCheckpointPackage.load(args.logical_package)
+            )
+            if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
+                raise ValueError("logical checkpoint identity changed")
+            from distillschedule.search.helios_implementation import current_implementation
+            helios_implementation = current_implementation()
+            helios_request = helios_implementation.request if helios_implementation is not None else None
+            trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant, request=helios_request)
+            if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
+                raise ValueError("trace bundle identity changed")
+            helios_native_grid = (helios_request.validate_native_stage_grids(trace._control[rank])
+                                  if helios_request is not None else None)
+            control_entries = [
+                trace.load_critic_entry(rank=rank, step=step, device="cpu")
+                for step in contract.logical_steps
+            ]
+            from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
 
-        for group in chunked(control_entries, policy.rollout_batch_size):
-            validate_rollout_entries(group)
-        del control_entries
+            for group in chunked(control_entries, policy.rollout_batch_size):
+                validate_rollout_entries(group)
+            del control_entries
+        else:
+            logical, trace, helios_request = (training_startup[key] for key in ("logical", "trace", "request"))
+            helios_native_grid = {"source":"admitted_fresh_training_cohort", "task":trace.task.to_dict()}
+        args.original_helios_request = helios_request
         result["contract"] = base.dataclasses_asdict(contract)
         result["identities"] = {
             "logical_manifest_hash": logical.manifest_hash,
@@ -1464,11 +1484,20 @@ def main() -> int:
             base._atomic_json(output, result)
             dist.barrier()
             return 0
-        from distillschedule.training.helios_lifecycle import admit_original_rank, current_training
-        admit_original_rank(torch=torch, dist=dist, rank=rank, args=args, policy=policy)
+        from distillschedule.training.helios_lifecycle import (
+            admit_original_rank, current_training, seed_original_runtime,
+        )
+        if training_startup is None:
+            admit_original_rank(torch=torch, dist=dist, rank=rank, args=args, policy=policy)
+        else:
+            checked_original_runtime(
+                lambda: seed_original_runtime(torch=torch, rank=rank), "Helios original runtime RNG",
+            )
         if args.variant == "gan" and args.gan_config is None:
             raise ValueError("GAN variant requires --gan-config")
-        negative = NegativePromptAsset.load(args.negative_prompt).embedding.to(
+        negative_asset = (NegativePromptAsset.load(args.negative_prompt)
+                          if training_startup is None else training_startup["negative"])
+        negative = negative_asset.embedding.to(
             device=device, dtype=torch.bfloat16
         )
         cfg = load_official_config(args.gan_config) if args.variant == "gan" else None
@@ -1856,7 +1885,7 @@ def main() -> int:
         base._atomic_json(output, result)
         raise
     finally:
-        if dist.is_initialized():
+        if dist.is_initialized() and not owns_original_process_group():
             try:
                 dist.destroy_process_group()
             except BaseException:

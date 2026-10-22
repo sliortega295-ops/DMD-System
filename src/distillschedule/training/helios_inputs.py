@@ -290,10 +290,13 @@ def load_cohort(task, root, *, expected_hash):
         directory = resolve_rank_trace_root(root, rank).resolve()
         require(root in directory.parents, "rank path escaped cohort", path="helios.inputs")
         controls[rank] = OperationTrace(root=directory, manifest=json.loads((directory/"trace.json").read_text()), tensors={})
-    validate_controls(task, controls)
+    rank_validation = validate_controls(task, controls)
     obj = HeliosTrainingTrace.__new__(HeliosTrainingTrace)
     obj.task, obj.root, obj.variant, obj.gan, obj.request = task, root, "no-gan", False, None
     obj.logical_steps, obj.bundle_hash = task.source_steps, expected_hash
+    obj.rank_control_validation = rank_validation
+    obj.binding_hash = fingerprint({"schema_version":"distillschedule.helios_training_trace_binding.v1",
+        "task":task.to_dict(), "bundle_hash":expected_hash, "rank_slots":list(range(16))})
     obj._control, obj._loaded = controls, {}
     # Unchanged legacy geometry/branch/rank validator, on the explicitly NEW
     # cohort object. StaticWorld16Trace.__init__ and its fixed ABI stay intact.

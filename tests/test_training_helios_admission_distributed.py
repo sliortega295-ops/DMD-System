@@ -22,29 +22,7 @@ from test_training_helios_original import fresh_stream as fresh_stream
 from test_training_helios_stream import config
 
 
-@pytest.fixture(scope="module")
-def frozen_assets(tmp_path_factory):
-    """Real tiny pre-cast/negative artifacts, not pretrained model evidence."""
-    from safetensors.torch import save_file
-    from runtime.precast_checkpoint import convert_pretrained_safetensors
-    from runtime.gst_pool_contract import write_negative_prompt_asset
-    root = tmp_path_factory.mktemp("helios-admission-assets")
-    assets = {"assets": {}}
-    for role, subfolder in (("generator", "transformer_ode"), ("score", "transformer")):
-        model = root / role
-        source = model / subfolder; source.mkdir(parents=True)
-        (source / "config.json").write_text('{"scope":"CPU_ASSET_IDENTITY_ONLY"}')
-        save_file({"weight": torch.ones(2, 2)}, str(source / "model.safetensors"))
-        (source / "diffusion_pytorch_model.safetensors.index.json").write_text(json.dumps({
-            "metadata": {"total_size": 16}, "weight_map": {"weight": "model.safetensors"}}))
-        precast = root / (role + "-precast")
-        convert_pretrained_safetensors(source, precast, target_dtype=torch.bfloat16)
-        assets["assets"][role + "_model"] = {"path": str(model)}
-        assets["assets"][role + "_precast"] = {"path": str(precast)}
-    negative = root / "negative"
-    write_negative_prompt_asset(negative, embedding=torch.zeros(1, 512, 4096, dtype=torch.bfloat16), model_root=root)
-    assets["assets"]["negative_prompt"] = {"path": str(negative)}
-    return assets
+from helios_reference_fixtures import frozen_assets as frozen_assets
 
 
 def _launcher_metadata(rank):

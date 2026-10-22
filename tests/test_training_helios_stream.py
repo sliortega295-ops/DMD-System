@@ -25,6 +25,12 @@ def test_versioned_w2_reference_options_do_not_widen_fixed_measurements(tmp_path
     conf = config(tmp_path)
     assert _options(conf, "W2") == "reference"
     described = describe_native(conf)
+    assert described["capabilities"]["modes"] == ["reference"]
+    assert described["source"]["selected_plan_is_authoritative"] is False
+    assert "no node reservation/launch" in described["launch"]
+    assert described["capabilities"]["bootstrap"] == {
+        "global_step":10, "versions":{"generator":2,"critic":10,"ema":10},
+        "cold_start_supported":False, "asset_contract":"distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"}
     assert described["capabilities"]["resume"]["supported"] is True
     assert described["capabilities"]["generate"]["supported"] is False
     assert described["capabilities"]["export"]["supported"] is False

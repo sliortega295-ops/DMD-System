@@ -78,6 +78,9 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
         result["capabilities"].update(modes=["reference"],
+            bootstrap=dict(global_step=10, versions=dict(generator=2, critic=10, ema=10),
+                cold_start_supported=False,
+                asset_contract="distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"),
             cycles=dict(min=2, max=64, fresh_inputs="original_helios_cohort_stream.v1",
                         scope="five actual step-qualified per-rank source features per cohort"),
             checkpoint=dict(supported=True, scope="original G/C trainables, Adam, scheduler, EMA, clocks and per-rank RNG",
@@ -447,6 +450,11 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _helios_stream(config, _workload(config)) and not dry_run:
+        # All rank-local source/asset/stream metadata belongs under the fresh
+        # training wrapper's owned Gloo plane, before entering original P0.
+        from .helios_worker import run_reference
+        return run_reference(config, admit=lambda: _admit(config))
     if _h3_grid_training(config, _workload(config)) and not dry_run:
         # This lifecycle enters a metadata plane before rank-local admission or
         # model imports. A bad source/input on one rank must fail its peers too.
@@ -461,9 +469,6 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
     if workload == "W1":
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
-    if _helios_stream(config, workload):
-        from .helios_worker import run_reference
-        return run_reference(config, admitted, source)
     if workload == "W6":
         from distillschedule.strategies.h3_ar_cli import main
         return main(admitted["argv"])

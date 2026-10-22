@@ -5,6 +5,7 @@ Only GPU telemetry is disabled. Dataset/history/noise/scheduler, rollout, DMD,
 denoising loss, dispatch, optimizer, EMA recurrence and checkpoint code are real.
 """
 from copy import deepcopy
+from contextlib import nullcontext
 import json
 from pathlib import Path
 import random
@@ -17,6 +18,8 @@ from distillschedule.training.helios_inputs import (
     HeliosCohortTask, HeliosCohortSources, prepare_stream, load_stream, load_cohort,
 )
 from distillschedule.workloads.best_known.registry import repository_root, fingerprint
+from helios_reference_fixtures import (original_logical as original_logical,
+    frozen_assets as frozen_assets, portable_asset_document)
 
 
 @pytest.fixture(scope="module")
@@ -159,18 +162,22 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
         seen.append(binding["identity"])
         return 23
     monkeypatch.setattr(worker, "_backend", lambda: SimpleNamespace(main=entrypoint))
+    # This source-to-entrypoint test does not execute the original worker or
+    # resource launcher. Real two-rank public/P0 admission is covered separately.
+    monkeypatch.setattr(worker, "reference_process_group", lambda: nullcontext({}))
     assert native.run_native(conf) == 23
     assert len(seen) == 1 and current_training() is None
     assert torch.cuda.is_initialized() is False
 
 
 @pytest.fixture
-def original_cpu_engines(tmp_path, monkeypatch):
+def original_cpu_engines(tmp_path, monkeypatch, original_logical, frozen_assets):
     import torch.distributed as dist
     from torch.distributed.device_mesh import init_device_mesh
     from torch.distributed.tensor import distribute_tensor, Replicate
-    from distillschedule.runtime.fsdp2_static import FSDP2EngineAdapter, FSDP2ShardEMA
-    from distillschedule.training.helios_worker import _backend
+    from distillschedule.runtime.fsdp2_static import build_fsdp2_engine, FSDP2ShardEMA
+    from distillschedule.training.helios_worker import _backend, load_reference_bootstrap
+    from runtime.critic_pool_checkpoint import load_logical_master_into_trainables
     require_clean = not dist.is_initialized()
     assert require_clean
     dist.init_process_group("gloo", init_method="file://" + str(tmp_path / "rendezvous"), rank=0, world_size=1)
@@ -182,11 +189,13 @@ def original_cpu_engines(tmp_path, monkeypatch):
     for name in ("memory_allocated", "memory_reserved", "max_memory_allocated", "max_memory_reserved"):
         monkeypatch.setattr(torch.cuda, name, lambda *a, **kw: 0)
     monkeypatch.setattr(torch.cuda, "mem_get_info", lambda *a, **kw: (2**40,2**40))
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: "cpu")
+    package, _ = load_reference_bootstrap(portable_asset_document(frozen_assets, original_logical))
 
     class ScalarRoot(torch.nn.Module):
         def __init__(self):
             super().__init__()
-            self.weight = torch.nn.Parameter(distribute_tensor(torch.tensor([.2]), mesh, [Replicate()]))
+            self.weight = torch.nn.Parameter(torch.zeros(1))
             self.register_buffer("base", torch.tensor(.15))
             self.adapters_enabled = True
 
@@ -202,21 +211,24 @@ def original_cpu_engines(tmp_path, monkeypatch):
                      ).to(hidden_states.dtype),)
 
     def build():
-        def engine(step):
+        def engine(role):
             model = ScalarRoot()
-            optimizer = torch.optim.AdamW(model.parameters(), lr=.001, betas=(0., .999))
-            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _:1.)
-            scheduler.last_epoch = step
-            return FSDP2EngineAdapter(model, optimizer, scheduler, physical_step=step)
-        g, c = engine(2), engine(10)
-        # CPU construction harness only. The actual FSDP2ShardEMA.step/get_decay
-        # methods own every recurrence, over an actual CPU DTensor local shard.
-        ema = FSDP2ShardEMA.__new__(FSDP2ShardEMA)
-        ema._names, ema._parameters = ["weight"], [g.module.weight]
-        ema._shadows = [g.module.weight.to_local().detach().clone()]
-        ema.decay, ema.min_decay, ema.update_after_step = .99, 0., 0
-        ema.optimization_step, ema.cur_decay_value = 10, None
-        ema.device, ema.nvtx_enabled, ema.last_transfer_bytes = "cpu", False, 0
+            with torch.no_grad():
+                load_logical_master_into_trainables(model, package, component=role, verify_payload_sha256=True)
+            model.weight = torch.nn.Parameter(distribute_tensor(model.weight.detach(), mesh, [Replicate()]))
+            return build_fsdp2_engine(module=model, package=package, component=role,
+                lr=2e-6 if role == "generator" else 4e-7, betas=(0., .999), eps=1e-8, weight_decay=1e-3)[0]
+        g, c = engine("generator"), engine("critic")
+        for owned, step in ((g,2), (c,10)):
+            assert owned.global_steps == owned.lr_scheduler.last_epoch == step
+            adam = owned.optimizer.state[owned.module.weight]
+            assert adam["step"].item() == step
+            assert torch.equal(adam["exp_avg"].to_local(), torch.tensor([.03]))
+            assert torch.equal(adam["exp_avg_sq"].to_local(), torch.tensor([.004]))
+        # Actual original master/Adam/scheduler/EMA restoration, on a CPU
+        # DTensor tiny owner. No model-construction or CUDA/FSDP capacity claim.
+        ema = FSDP2ShardEMA.load_from_logical(g.module, package.root, device="cpu")
+        assert ema.optimization_step == 10 and ema.decay == .99 and ema.update_after_step == 750
         return g, c, ema
     try:
         yield _backend().impl, build
@@ -224,7 +236,8 @@ def original_cpu_engines(tmp_path, monkeypatch):
         dist.destroy_process_group()
 
 
-def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stream, original_cpu_engines, tmp_path):
+def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stream, original_cpu_engines,
+        original_logical, frozen_assets, tmp_path):
     from distillschedule.training.helios_lifecycle import execute_cycles, expected_versions
     from distillschedule.training.native_state import engine_state
     from distillschedule.training.checkpoint import pack_state, rng_state
@@ -235,7 +248,11 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     _, stream = fresh_stream
     p0, build = original_cpu_engines
     args = SimpleNamespace(timing_mode=True, profile_mode=False, profile_diagnostics=False, ema_device="cpu")
-    identity = {"proof": "CPU_ORIGINAL_HELPERS_NOT_PRETRAINED_OR_GPU", "stream": stream["stream_sha256"]}
+    from distillschedule.training.helios_worker import immutable_assets
+    identity = {"proof": "CPU_ORIGINAL_HELPERS_NOT_PRETRAINED_OR_GPU", "stream": stream["stream_sha256"],
+        "assets":portable_asset_document(frozen_assets, original_logical),
+        "verified_immutable_assets":immutable_assets(portable_asset_document(frozen_assets, original_logical)),
+        "bootstrap_logical_hash": json.loads((original_logical / "manifest.json").read_text())["manifest_hash"]}
     def run(engines, destination, *, every=0, resume=None, progress=None):
         conf = config(destination)
         raw = conf.to_dict(); raw["trainer"].update(output_dir=str(destination), checkpoint_every=every)
@@ -281,7 +298,15 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     # restart. Validate before any actual owned tensor or clock is changed.
     from distillschedule.workloads.best_known.registry import file_sha256
     manifest = checkpoint / "manifest.json"
-    changed = json.loads(manifest.read_text()); changed["versions"]["ema"] -= 1
+    original_header = json.loads(manifest.read_text())
+    changed = deepcopy(original_header); changed["identity"]["bootstrap_logical_hash"] = "foreign-bootstrap"
+    manifest.write_text(json.dumps(changed)); (checkpoint / "_SUCCESS").write_text(file_sha256(manifest)+"\n")
+    fresh = build()
+    before_state = pack_state(engine_state({"generator":fresh[0], "critic":fresh[1]}, ema=fresh[2]))
+    with pytest.raises(ValueError, match="checkpoint identity changed"):
+        run(fresh, tmp_path / "foreign-resume", resume=checkpoint)
+    assert equal(before_state, pack_state(engine_state({"generator":fresh[0], "critic":fresh[1]}, ema=fresh[2])))
+    changed = deepcopy(original_header); changed["versions"]["ema"] -= 1
     manifest.write_text(json.dumps(changed))
     (checkpoint / "_SUCCESS").write_text(file_sha256(manifest) + "\n")
     fresh = build()
