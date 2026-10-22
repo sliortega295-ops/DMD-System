@@ -1,0 +1,85 @@
+{
+  "schema_version": "distillschedule.original_livewan_reference_cpu.v1",
+  "status": "PASS_CPU_SOURCE_OWNER_REFERENCE_CONTRACTS_ONLY",
+  "source_parent": "74e18d9702c3be72fec87f8cb1a196b321c9df61",
+  "source_files": {
+    "src/distillschedule/training/distributed.py": "7cfd886436dea9e5b147463877548e19757be50e7f84e49916fe4201a783fcd3",
+    "src/distillschedule/training/helios_worker.py": "043d49ad1ad668210fde0e2865697201201d673a48464b2d6b382a5494888efc",
+    "src/distillschedule/training/livewan_inputs.py": "6d53bca4df2095d67784e6d6d95bb3edcc5e9c00d8a5d5f3aacfe8255a0a6933",
+    "src/distillschedule/training/livewan_state.py": "01a831391c3fee77ac1270290f9ddbfdba378a2772a5177d6035cc389861186d",
+    "src/distillschedule/training/native.py": "72f5b90bcfd86ad521071050694c7deb411f79af54c2d353450f7b170607b2d1",
+    "src/distillschedule/training/livewan_reference_assets.py": "1c250c12acf44980420f46c49b4b00c6cb326b1b94a3843c4d06fd108f827f03",
+    "src/distillschedule/training/livewan_training.py": "5cd999035cab3f5da86189fb5719bdecd1d351b410f54cc8db156ca4f597b4ac",
+    "tests/test_training_livewan_reference.py": "c6d318f250c93d3a194f35f1b336359da8f5e702f6d6196f7316b38a9b89b913",
+    "tests/test_training_livewan_reference_distributed.py": "9f58fd9e0f931d594eac2fca3bdbb81120222385cd055422abae1dd9c29e3607"
+  },
+  "runtime": {
+    "python": "3.12.3",
+    "torch": "2.14.0+cpu",
+    "cuda_initialized": false,
+    "gpu_execution": "NOT_RUN"
+  },
+  "verification": [
+    {
+      "scope": "266 integrated tests before behavior-preserving lint cleanup",
+      "tests": 266,
+      "passed": 266,
+      "skipped": 0,
+      "junit_sha256": "fe59df5711b9335a1cc09253cb6b4a962a19b4dd41bb669782cc8c7075736d02",
+      "log_sha256": "f273e9fd51dfe999fe5d8b8d375fb85a0cf87d4ef3cc96922ba7a3cccfd3b8a5"
+    },
+    {
+      "scope": "final 121 actual-source owner/reference/Gloo and adjacent state regressions",
+      "tests": 121,
+      "passed": 121,
+      "skipped": 0,
+      "junit_sha256": "8495155c982b93bbdbffe17bfe4c37d4e3615d1b5771b8d74927e3b37dff70ac",
+      "log_sha256": "edc0ba475f7c9981753d77bcc3ea2904e0175bf7eff7a233390fd241fce4b645"
+    }
+  ],
+  "worker_proof": {
+    "tests": 226,
+    "skipped": 0,
+    "evidence_manifest_sha256": "30197c23fb6c19ba3691e0797adb374cc7e339014d9ae4e1df1df1558f99906d",
+    "red": "four missing public route, lazy description, typed assets owner and reference state factory failures; unrelated setup error separately preserved"
+  },
+  "simplify": {
+    "reuse": {
+      "findings": 0
+    },
+    "quality": {
+      "findings": 0
+    },
+    "efficiency": {
+      "applied": 1,
+      "change": "avoid duplicate source/parameter snapshot while retaining identical module-mode comparison and all existing validation"
+    }
+  },
+  "boundaries": {
+    "actual_cpu": [
+      "original TeacherLatents/InputLoader successful cursor consumption",
+      "original LoRA/Adam in-place continuation and RNG",
+      "CPU DTensor checkpoint serialization",
+      "original Wan1.3B/14B meta constructors",
+      "real two-rank Gloo failure exchange"
+    ],
+    "dispatch_fixture": [
+      "outer native helper dispatch with unavailable CUDA/model/math/resource surfaces explicitly facaded"
+    ],
+    "not_run": [
+      "pretrained forward/backward",
+      "world16 CUDA/NCCL/FSDP2 resume",
+      "physical capacity",
+      "cross-reference numerics",
+      "quality",
+      "performance"
+    ],
+    "not_implemented": [
+      "fresh optimized C51 physical transport drain/shadow/two-slot restart",
+      "unified native VAE generation/export"
+    ]
+  },
+  "original_worker_source_preserved": true,
+  "canonical_plan_and_import_map_preserved": true,
+  "speedup_claim": false
+}

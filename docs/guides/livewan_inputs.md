@@ -1,10 +1,12 @@
-# Original LiveWan finite fresh inputs (data consumer only)
+# Original LiveWan finite fresh inputs
 
 `original_livewan_teacher_cohorts.v1` admits the actual pinned LiveWan
 `TeacherLatents` format and routes it through the existing worker's real
 `InputLoader`. It is **not** a fresh C51 training command, a model checkpoint,
-or proof of pretrained quality. Public W4 training explicitly rejects this
-input kind until its native complete-cycle lifecycle seam is implemented.
+or proof of pretrained quality. A separate opt-in
+[original reference lifecycle](../../recipes/self_forcing/REFERENCE_TRAINING.md)
+now consumes this input kind for finite complete-cycle training and restart;
+the optimized C51 pipeline's fresh-training/restart route remains unavailable.
 The selected C51 two-cycle binding and historical `FormalTrace` semantics,
 including the default historical prefix behavior, are unchanged. A historical
 50-cycle reused trace is not fresh input.
@@ -17,7 +19,9 @@ original LoRA source, frozen-base receipt, named trainables and fixed native
 AdamW policy, preserving Parameter objects, gradient views and hooks. These are
 state views, **not** a pipeline checkpoint command: they do not establish input
 consumption, complete outstanding transfers, reconstruct shadows or supply
-physical cycle/version admission. The public fresh-training guard remains.
+physical cycle/version admission. The distinct reference state factory binds
+actual world16 Generator DTensors and replicated Critic owners; it does not
+relax this resident factory or supply C51 physical drain/recovery.
 The [CPU state-owner receipt](../../artifacts/framework/20261021/original_livewan_state_cpu.json)
 separates tiny original-LoRA/Adam continuation from untested full-model and
 distributed behavior.

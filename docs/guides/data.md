@@ -233,7 +233,7 @@ operator-supplied native features rather than applying the tiny media encoder:
 | --- | --- | --- |
 | W1 | `distillctl workloads native prepare-stream` | Original per-rank Wan features and explicit cohort seeds; original capture/data helpers |
 | W2 | `distillctl data prepare-helios-stream --sources ... --training-config ... --output ...` | Five actual source steps per world16 cohort, original dataset/history/noise helpers; CPU preparation, no model initialization |
-| W4 data only | [`training.livewan_inputs.prepare_inputs`](livewan_inputs.md) | Source-qualified original TeacherLatents, 80 distinct records per cohort and actual worker InputLoader; fresh public C51 training/restart remains unsupported |
+| W4 native teacher cohorts | [`data.livewan_inputs.prepare_inputs`](livewan_inputs.md) | Source-qualified original TeacherLatents, 80 distinct records per cohort and actual worker InputLoader; explicit original reference training/restart supported, fresh C51 pipeline restart unavailable |
 | W5 | `distillctl data prepare-h3-grid --native-config ... --output ...` | Content inventory of already encoded original JSONL conditions; no latent generation or model import |
 
 Use the [Wan stream guide](../workloads/original_wan_fresh_training.md),

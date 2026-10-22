@@ -71,6 +71,48 @@ def topology():
 
 
 @contextmanager
+def world16_reference_process_group(label):
+    """Exact two-node original-reference NCCL owner and separate Gloo plane.
+
+    Shared by W2 and W4; neither lifecycle borrows an embedding application's
+    groups. This does not reserve devices, nodes, or change launcher settings.
+    """
+    import torch
+    import torch.distributed as dist
+    from distillschedule.core.contracts import require
+    from distillschedule.open_workload.replicated import control_plane
+    def check(ok, message):
+        require(ok, message, path=label + ".training")
+    names = ("WORLD_SIZE", "RANK", "LOCAL_RANK", "LOCAL_WORLD_SIZE", "GROUP_RANK")
+    check(all(os.environ.get(k, "").isdigit() for k in names), "explicit torchrun ranks required")
+    world, rank, local, local_world, node = (int(os.environ[k]) for k in names)
+    check(world == 16 and local_world == 8 and 0 <= rank < 16 and local == rank % 8 and node == rank // 8,
+          f"{label} requires two nodes of eight ranks")
+    check(not dist.is_initialized(), f"{label} training owns its process group; do not enter on an embedding group")
+    check(torch.cuda.is_available() and dist.is_gloo_available(), "original CUDA/NCCL plus Gloo metadata required")
+    torch.cuda.set_device(local)
+    metadata = None
+    dist.init_process_group("nccl", timeout=timedelta(minutes=15))
+    try:
+        check(dist.get_world_size() == world and dist.get_rank() == rank and str(dist.get_backend()) == "nccl",
+              f"initialized {label} rank group differs")
+        metadata = dist.new_group(backend="gloo", timeout=timedelta(minutes=15))
+        with control_plane(metadata):
+            from distillschedule.open_workload.topology import discover
+            allocated = discover()
+            check(allocated["node_groups"] == [list(range(8)), list(range(8, 16))]
+                  and not allocated["logical_nodes_on_one_host"], "actual original two-node topology differs")
+            yield {"metadata_group": metadata, "process_group": dist.group.WORLD, "owns_process_group": True}
+    finally:
+        try:
+            if metadata is not None and dist.is_initialized():
+                dist.destroy_process_group(metadata)
+        finally:
+            if dist.is_initialized():
+                dist.destroy_process_group()
+
+
+@contextmanager
 def context(config):
     import torch
     import torch.distributed as dist

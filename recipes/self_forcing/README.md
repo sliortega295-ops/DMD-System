@@ -37,3 +37,10 @@ Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
 operations. This binding does not replace the original protocol or certify GPU execution.
+
+For reference-first finite training rather than selected C51 replay, use
+[`training.reference.json`](training.reference.json) and the
+[original reference guide](REFERENCE_TRAINING.md). This separately versioned
+2..64-cycle route uses genuine zero-step assets, original model/update owners,
+fresh TeacherLatents cohorts and complete-cycle same-topology restart. It is
+not a C51 pipeline checkpoint implementation and has CPU/source evidence only.

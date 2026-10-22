@@ -98,6 +98,22 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
             resume=dict(supported=True, scope="versioned complete-cycle checkpoint; exact same source/input/config/horizon/topology",
                         verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"))
+    if _livewan_reference(config, workload):
+        result.update(native_api="distillschedule.training.livewan_training:run_reference",
+                      algorithm="original_self_forcing_reference.v1",
+                      launch="enter on each fresh world16 torchrun rank; owns two-node NCCL/Gloo groups; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["reference"],
+            bootstrap=dict(versions=dict(generator=0, critic=0, ema=0), cold_start_supported=True,
+                           asset_contract="distillschedule.livewan_reference_assets.v1"),
+            placement=dict(generator="world16 FSDP2 FP32", teacher="world16 FSDP2 frozen BF16",
+                           critic="replicated FP32 LoRA32 with frozen BF16 base"),
+            cycles=dict(min=2, max=64, fresh_inputs="original_livewan_teacher_cohorts.v1",
+                        scope="finite five actual successful original InputLoader loads per rank per G1/C5/EMA0 cycle"),
+            checkpoint=dict(supported=True, scope="actual G/C trainables and named Adam, data cursor, actual versions and per-rank RNG; frozen bases reconstructed",
+                            verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; CUDA_NATIVE_TRAINING_NOT_RUN"),
+            resume=dict(supported=True, scope="versioned incomplete-target complete-cycle reference boundary; exact source/assets/input/horizon/precision/optimizer/topology",
+                        verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; NOT_C51_PIPELINE_RESTART"))
     return result
 
 
@@ -107,6 +123,10 @@ def _helios_stream(config, workload):
 
 def _h3_grid_training(config, workload):
     return workload == "W5" and config.data.get("input_kind") == "original_h3_grid_latent_dataset.v1"
+
+
+def _livewan_reference(config, workload):
+    return workload == "W4" and config.data.get("input_kind") == "original_livewan_teacher_cohorts.v1"
 
 
 def _path(config, section, key, *, required=True):
@@ -154,15 +174,24 @@ def _options(config, workload):
         _require(not set(getattr(config, section)) - allowed,
                  f"unsupported {section} fields: {sorted(set(getattr(config, section)) - allowed)}; "
                  "original shape/math belong in execution.task")
-    _require(not config.algorithm.get("name") or config.algorithm["name"] == _FAMILIES[workload][0],
+    _require(not config.algorithm.get("name") or config.algorithm["name"] == (
+        "original_self_forcing_reference.v1" if _livewan_reference(config, workload) else _FAMILIES[workload][0]),
              "algorithm.name does not match the original workload")
-    _require(not (workload == "W4" and config.data.get("input_kind") == "original_livewan_teacher_cohorts.v1"),
-             "W4 fresh inputs are usable by the native InputLoader only; the C51 fresh-training lifecycle "
-             "and drained complete-cycle restart seam are not implemented")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
-    _require(_h3_grid_training(config, workload) or "seed" not in config.trainer,
+    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    if _livewan_reference(config, workload):
+        _require(config.execution.get("mode") == "reference"
+                 and not any(k in config.execution for k in ("plan", "implementation", "transport")),
+                 "W4 fresh C51 lifecycle remains unavailable; fresh training supports explicit reference only; "
+                 "C51/manual/optimized plans are not substituted")
+        _require(bool(config.execution.get("capacity_policy")), "W4 reference requires an explicit supported capacity_policy")
+        _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared")),
+                 "W4 reference requires its explicit finite native teacher inputs, not benchmark replay")
+        _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
+                 "W4 reference requires cycles 2..64 and explicit seed/checkpoint_every")
+        return "reference"
     if _h3_grid_training(config, workload):
         _require(config.execution.get("mode", "reference") == "reference"
                  and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
@@ -392,7 +421,7 @@ def _admit(config):
     mode = _options(config, workload)
     source = _source(config)
     paths = {key: _path(config, "execution", key, required=(key in ("task", "assets")
-               or key == "plan" and mode == "plan" or key == "capacity_policy" and workload == "W6"))
+               or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload))))
              for key in ("task", "assets", "plan", "capacity_policy", "transport")}
     if workload == "W1" and mode != "plan":
         paths["implementation"] = _path(config, "execution", "implementation")
@@ -411,6 +440,9 @@ def _admit(config):
         admitted = admit_reference(config, task_value, assets_value, paths)
     elif _h3_grid_training(config, workload):
         from .h3_grid_training import admit_reference
+        admitted = admit_reference(config, task_value, assets_value, paths)
+    elif _livewan_reference(config, workload):
+        from .livewan_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
     elif workload == "W6":
         admitted = _h3_ar(config, mode, task_value, assets_value, paths)
@@ -431,7 +463,9 @@ def _report(config, workload, source, paths, admitted):
                   validation_scope=admitted["validation_scope"], output_dir=str(paths["output"]),
                   native_physical_admission="REQUIRED_ON_ORIGINAL_WORKER_BEFORE_MODEL_CONSTRUCTION",
                   native_completion="NOT_RUN; process success alone is not numerical parity")
-    if "argv" in admitted:
+    if _livewan_reference(config, workload):
+        result["hardware"] = admitted["hardware"]
+    elif "argv" in admitted:
         result["native_argv"] = admitted["argv"]
         result["hardware"] = dict(world_size=16, nodes=2, gpus_per_node=8,
                                   current_runtime="NOT_PROBED_BY_CPU_DOCTOR")
@@ -453,6 +487,9 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _livewan_reference(config, _workload(config)) and not dry_run:
+        from .livewan_training import run_reference
+        return run_reference(config, admit=lambda: _admit(config))
     if _helios_stream(config, _workload(config)) and not dry_run:
         # All rank-local source/asset/stream metadata belongs under the fresh
         # training wrapper's owned Gloo plane, before entering original P0.

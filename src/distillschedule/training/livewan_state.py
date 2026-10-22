@@ -1,8 +1,9 @@
-"""Serialization views over actual resident C51 ModelBundle G/C state owners.
+"""Serialization views over actual ModelBundle owners, not training engines.
 
 These are not engines, clocks, a training loop, or physical checkpoint admission.
 The local boundary check does NOT drain transport, acknowledge input consumption,
-or reconstruct critic shadows. Public fresh W4 training remains unavailable.
+or reconstruct critic shadows. The separate reference factory below is NOT a
+relaxation of resident split-pool admission or a C51 pipeline restart seam.
 Native asset loaders reconstruct frozen bases/teacher; their admitted receipts
 are bound here, not their model-sized weights. Outer checkpoint identity must
 add the native contract, operators, inputs, horizon/window and physical topology.
@@ -276,8 +277,12 @@ class _Optimizer(OptimizerState):
             for parameter, parameter_id in zip(live["params"], group["params"]):
                 for name in ("exp_avg", "exp_avg_sq"):
                     moment = saved["state"][parameter_id][name]
-                    _require(type(moment) is torch.Tensor and moment.layout == torch.strided
-                             and moment.stride() == parameter.stride(), "AdamW moment storage layout changed")
+                    self._moment_layout(parameter, moment)
+
+    def _moment_layout(self, parameter, moment):
+        import torch
+        _require(type(moment) is torch.Tensor and moment.layout == torch.strided
+                 and moment.stride() == parameter.stride(), "AdamW moment storage layout changed")
 
     def state_dict(self):
         value = {**super().state_dict(), "identity": deepcopy(self.engine.identity)}
@@ -308,3 +313,194 @@ def model_bundle_state(bundle, *, source_root):
     source = _source(source_root)
     role = _ResidentRole(bundle, active[0][0], source, _reference_lora(source))
     return {role.role + ".weights": _Weights(role), role.role + ".optimizer": _Optimizer(role)}
+
+
+class _ReferenceRole(_ResidentRole):
+    """All-role reference serialization view; private mesh-level CPU test seam.
+
+    The public factory separately enforces physical world16 CUDA/NCCL. This
+    view can also qualify serialization on a genuine tiny CPU DeviceMesh; that
+    is explicitly not FSDP2 execution or a physical W4 topology proof.
+    """
+    def __init__(self, bundle, role, source, original_lora, versions, restore_versions=None):
+        self.versions, self.restore_versions = versions, restore_versions
+        self.teacher = bundle.teacher
+        self.teacher_parameters = [(n, id(p)) for n, p in self.teacher.named_parameters()]
+        self.owners = (bundle.generator_group, bundle.score_group, bundle.critic_group)
+        super().__init__(bundle, role, source, original_lora)
+
+    def _base(self):
+        metadata = self.bundle.metadata.get(self.module_field)
+        placement = "world16_fsdp2_keep_unsharded" if self.role == "generator" else "gpu_resident_replica"
+        _require(isinstance(metadata, dict) and metadata.get("placement") == placement,
+                 "reference G FSDP2/C replicated placement changed")
+        if self.role == "generator":
+            value = metadata.get("state")
+            _require(isinstance(value, dict) and value.get("kind") in {"base_weights", "stage1_state"},
+                     "missing admitted reference Student receipt")
+        else:
+            value = {"kind": "critic_base", "sha256": metadata.get("base_sha256")}
+            _require(metadata.get("lora_rank") == LORA_RANK, "reference critic LoRA rank changed")
+        _require(isinstance(value.get("sha256"), str) and SHA256_RE.fullmatch(value["sha256"]),
+                 "missing admitted reference base identity")
+        return deepcopy(value)
+
+    def _lora(self):
+        result = super()._lora()
+        _require(all(item["operator"] == "original" and item["forward_sha256"] == _source_sha256(self.original_lora.forward)
+                     for item in result.values()), "reference forbids optimized/patched LoRA implementations")
+        return result
+
+    def _identity(self):
+        import torch
+        from torch.distributed.tensor import DTensor, Shard
+        from .tensor_state import layout
+        from distillschedule.runtime.livewan_crossscale_worker import _bind_trajectory_optimizer_parameter_names, _trajectory_livewan_state_name
+        bundle, metadata = self.bundle, self.bundle.metadata
+        _require(bundle.student.training and not bundle.critic.training and not self.teacher.training,
+                 "reference original Generator/Critic/Teacher train/eval policy changed")
+        ranks = metadata.get("generator_ranks")
+        _require(isinstance(ranks, list) and ranks == list(range(len(ranks))) and ranks
+                 and metadata.get("score_ranks") == metadata.get("critic_ranks") == ranks
+                 and (bundle.generator_group_size, bundle.score_group_size, bundle.critic_group_size) == (len(ranks),) * 3,
+                 "reference all-role topology changed")
+        _require(getattr(bundle, self.module_field) is self.module
+                 and getattr(bundle, self.role + "_optimizer") is self.optimizer
+                 and bundle.teacher is self.teacher
+                 and [(n, id(p)) for n, p in self.teacher.named_parameters()] == self.teacher_parameters
+                 and all(a is b for a, b in zip(self.owners, (bundle.generator_group, bundle.score_group, bundle.critic_group))),
+                 "reference native owner changed")
+        _require(bundle.critic_shadow is None and not bundle.critic_shadow_lora_params
+                 and all(getattr(bundle, name) is None for name in ("critic_gradient_reducer", "score_local_group",
+                     "score_leader_group", "runahead_host_group", "critic_shadow_sync_group"))
+                 and not bundle.score_local_ranks and not bundle.score_leader_ranks,
+                 "reference acquired a pipeline/reducer/shadow owner")
+        named = list(self.module.named_parameters(remove_duplicate=False))
+        _require([(n, id(p)) for n, p in named] == self.parameters and len({id(p) for _, p in named}) == len(named)
+                 and [[id(p) for p in g["params"]] for g in self.optimizer.param_groups] == self.groups,
+                 "reference named parameter/Adam ownership changed (reshard before snapshot)")
+        trainables = {id(p) for _, p in named if p.requires_grad}
+        _require(trainables and all(p.dtype == torch.float32 for _, p in named if p.requires_grad),
+                 "reference trainables must retain FP32")
+        names = _bind_trajectory_optimizer_parameter_names(named_parameters=named, optimizer=self.optimizer,
+                                                           expected_parameter_ids=trainables)
+        _require(names == self.binding == getattr(bundle, self.binding_field)
+                 and all(names[id(p)] == _trajectory_livewan_state_name(n) for n, p in named if id(p) in names),
+                 "reference construction-time canonical name binding changed")
+        def sharded(parameter, dtype):
+            return (isinstance(parameter, DTensor) and parameter.dtype == dtype
+                    and parameter.device_mesh.mesh.tolist() == ranks and parameter.device_mesh.ndim == 1
+                    and len(parameter.placements) == 1 and isinstance(parameter.placements[0], Shard)
+                    and parameter.placements[0].dim == 0)
+        teacher_named = list(self.teacher.named_parameters())
+        _require(teacher_named and not self.teacher.training and all(not p.requires_grad and sharded(p, torch.bfloat16)
+                 for _, p in teacher_named), "reference Teacher must be frozen BF16 FSDP2 shards")
+        _require(metadata.get("teacher", {}).get("placement") == "fsdp2_group16_reshard"
+                 and metadata["teacher"].get("mesh_ranks") == ranks,
+                 "reference Teacher construction receipt changed")
+        if self.role == "generator":
+            _require(len(trainables) == len(named) and all(sharded(p, torch.float32) for _, p in named),
+                     "reference Generator must own every original FP32 DTensor shard")
+        else:
+            _require(all(type(p) is torch.nn.Parameter and p.layout == torch.strided for _, p in named)
+                     and trainables == {id(p) for p in bundle.critic_lora_params}
+                     and all(p.dtype == torch.bfloat16 for _, p in named if not p.requires_grad),
+                     "reference critic must own replicated FP32 LoRA/BF16 frozen parameters")
+        return {"role": self.role, "source": _source(self.source["root"]), "base": self._base(),
+                "model_class": _class(self.module), "lora": self._lora(), "optimizer_options": self._options(),
+                "ranks": ranks, "teacher": [{"name": n, "layout": layout(p)} for n, p in teacher_named],
+                "parameters": [{"name": n, "shape": list(p.shape), "dtype": str(p.dtype), "requires_grad": p.requires_grad,
+                                **({"dtensor": layout(p)} if isinstance(p, DTensor) else {"stride": list(p.stride())})}
+                               for n, p in named],
+                "buffers": [{"name": n, "shape": list(p.shape), "dtype": str(p.dtype)} for n, p in self.module.named_buffers()]}
+
+    def validate_checkpoint_boundary(self):
+        self.validate()
+        cycle = self.versions.get("generator")
+        _require(type(cycle) is int and 0 <= cycle <= 64 and self.versions == {"generator": cycle, "critic": 5 * cycle, "ema": 0}
+                 and all(type(v) is int for v in self.versions.values()), "reference actual Gk/C5k/EMA0 versions changed")
+        _require(all(p.grad is None for model in (self.bundle.student, self.bundle.critic, self.teacher)
+                     for p in model.parameters()) and all(p.grad is None for group in self.optimizer.param_groups for p in group["params"]),
+                 "reference native owner has unconsumed gradients")
+        _ReferenceOptimizer(self).state_dict()
+
+
+class _ReferenceWeights(_Weights):
+    def validate_state_dict(self, value):
+        import torch
+        from distillschedule.open_workload.torch_backend import physical_tensor, unwrap_module
+        super().validate_state_dict(value)
+        model = unwrap_module(self.engine.module)
+        _require(value["training"] == {name: module.training for name, module in model.named_modules()},
+                 "reference original module training modes changed")
+        _require(all(bool(torch.isfinite(physical_tensor(t)).all()) for t in
+                     (*value["tensors"].values(), *value["buffers"].values())),
+                 "reference checkpoint has nonfinite weights/buffers")
+
+
+class _ReferenceOptimizer(_Optimizer):
+    def _admit(self, value):
+        import torch
+        from distillschedule.open_workload.torch_backend import physical_tensor
+        super()._admit(value)
+        _require(all(slots["step"].device.type == "cpu" and slots["step"].layout == torch.strided
+                     and bool((physical_tensor(slots["exp_avg_sq"]) >= 0).all())
+                     for slots in value["optimizer"]["state"].values()),
+                 "reference AdamW scalar device or negative second moment changed")
+
+    def _moment_layout(self, parameter, moment):
+        import torch
+        from torch.distributed.tensor import DTensor
+        from .tensor_state import layout
+        from distillschedule.open_workload.torch_backend import physical_tensor
+        if isinstance(parameter, DTensor):
+            _require(isinstance(moment, DTensor) and layout(moment) == layout(parameter),
+                     "reference AdamW DTensor moment layout changed")
+        else:
+            super()._moment_layout(parameter, moment)
+        _require(bool(torch.isfinite(physical_tensor(moment)).all()), "reference AdamW nonfinite moment")
+
+    def _steps(self, value, versions):
+        expected = versions[self.engine.role]
+        _require(all(slots["step"].item() == expected for slots in value["optimizer"]["state"].values()),
+                 "reference AdamW step/version mismatch")
+
+    def state_dict(self):
+        value = super().state_dict()
+        self._steps(value, self.engine.versions)
+        return value
+
+    def _stage(self, value):
+        self._admit(value)
+        self._steps(value, self.engine.restore_versions if self.engine.restore_versions is not None else self.engine.versions)
+        return OptimizerState._stage(self, value)
+
+
+def reference_model_bundle_state(bundle, *, source_root, versions, restore_versions=None):
+    """Named in-place native views for ORIGINAL world16 baseline, NOT C51."""
+    import torch
+    import torch.distributed as dist
+    from distillschedule.runtime.livewan_crossscale_worker import ModelBundle
+    _require(type(bundle) is ModelBundle and isinstance(bundle.student, torch.nn.Module)
+             and isinstance(bundle.critic, torch.nn.Module) and isinstance(bundle.teacher, torch.nn.Module)
+             and type(bundle.generator_optimizer) is type(bundle.critic_optimizer) is torch.optim.AdamW,
+             "actual all-role ModelBundle/AdamW owners required")
+    _require(dist.is_initialized() and dist.get_world_size() == 16 and str(dist.get_backend()) == "nccl"
+             and bundle.metadata.get("generator_ranks") == list(range(16)),
+             "reference factory requires actual world16 NCCL owners")
+    _require(all(group is not None and str(dist.get_backend(group)) == "nccl"
+                 and dist.get_world_size(group) == 16 and dist.get_process_group_ranks(group) == list(range(16))
+                 for group in (bundle.generator_group, bundle.score_group, bundle.critic_group)),
+             "reference actual role groups must all cover world16 NCCL")
+    from torch.distributed.tensor import DTensor
+    _require(all(isinstance(p, DTensor) and p.device.type == "cuda" and p.device_mesh.device_type == "cuda"
+                 for module in (bundle.student, bundle.teacher) for p in module.parameters())
+             and all(p.device.type == "cuda" for p in bundle.critic.parameters()),
+             "reference physical owners must retain actual CUDA placement")
+    source = _source(source_root)
+    original = _reference_lora(source)
+    state = {}
+    for name in ("generator", "critic"):
+        role = _ReferenceRole(bundle, name, source, original, versions, restore_versions)
+        state.update({name + ".weights": _ReferenceWeights(role), name + ".optimizer": _ReferenceOptimizer(role)})
+    return state

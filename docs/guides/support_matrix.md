@@ -10,7 +10,7 @@ not throughput or pretrained-model quality.
 | W1 Wan | Original rank-qualified trace or explicit fresh cohort stream | Original FSDP/Resident capability and saved plan | 2..64 fresh cohorts with explicit reference/manual/plan; literal incumbent bundle remains fixed-trace/two-cycle | Fresh stream only, complete cycle/same topology: original engine weights, named Adam, scheduler, EMA, clocks, input cursor and owned RNG; all-rank atomic shards | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering and real Adam/engine-state restart on scalar fixtures; pretrained/GPU restart NOT_RUN |
 | W2 Helios No-GAN | Original encoded assets/request, or explicit fresh cohort stream | Existing source-bound selected plan; separate direct FSDP2/SDPA reference path | Selected plan: two cycles. Direct reference: 2..64 fresh cohorts from an explicitly supplied original Step10 G2/C10/EMA10 checkpoint | Direct reference stream only: complete cycle/same topology, original G/C Adam, schedulers, EMA, versions, cursor and RNG | Native upstream tools, not unified callbacks | Not exposed by native binding | Actual licensed input/update/state helpers on tiny CPU DTensor owners; real two-process Gloo public-to-P0 admission. Pretrained CUDA/FSDP restart NOT_RUN |
 | W3 Helios GAN | Original GAN/ODE/text assets/request | Actual selected native plan | Existing two-cycle native API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
-| W4 Self-Forcing | Original C51 continuous-sigma inputs; separate original-format finite teacher-cohort preparation/consumer | Actual selected C51 role-pool native plan | Existing two-cycle training API; fresh data consumer is not a trainer | Logical fresh-input cursor serializes through the existing state API; no native model/pipeline restart | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering plus actual pinned TeacherLatents to production InputLoader and logical cursor; physical pipeline/restart NOT_RUN |
+| W4 Self-Forcing | Original C51 continuous-sigma inputs; separate original-format finite teacher cohorts | Selected C51 role-pool plan; separate world16 FSDP2 G/Teacher plus replicated Critic reference | Selected: two cycles. Explicit reference: 2..64 fresh G1/C5/EMA0 cycles, genuine zero-step initialization | Reference only: actual G/C trainables and named Adam, input cursor, versions, per-rank RNG; all-rank atomic complete-cycle/same-topology. C51 physical pipeline restart unavailable | Native upstream tools, not unified callbacks | Not exposed by native binding | Original input/LoRA/Adam/CPU DTensor, actual meta constructors and Gloo failure tests; outer-loop dispatch fixture is not pretrained/CUDA proof |
 | W5 full-sequence H3 | LightX2V native AV assets; Grid1000 explicitly approximate. Separate fresh cached-condition inventory | Existing selected FSDP2/cache policy; separate explicit original reference config, with optional optimized paths OFF | Selected plan: two cycles. Original reference: 2..64 finite fresh-data G1/F5 cycles | Original reference only: complete cycle/same topology, real two-LoRA Adam/schedulers, versions, deterministic sampler cursor and RNG; EMA0 | Native upstream tools, not unified callbacks | Not exposed by native binding | Actual original Grid loop/data/Adam on tiny CPU construction fixtures, real Gloo failure and restart tests. Pretrained runtime/capacity/numerics NOT_RUN; optimized backward FAIL unchanged |
 | W6 original H3 AR | Original DiffSynth previous/current AV, rank-qualified locks | Original ZeRO-3 reference/manual/selected plan | Existing two-update API | Not exposed by native binding | Native upstream tools, not unified callbacks | Not exposed by native binding | CPU source/contract/lowering |
 
@@ -30,8 +30,10 @@ W2's [direct reference lifecycle](../../recipes/helios_nogan/REFERENCE_TRAINING.
 and W5's [original Grid lifecycle](../../recipes/h3-grid-original-training.md)
 are separately versioned opt-in routes. They do not widen the selected-plan
 worker's two-cycle contract, turn arbitrary historical evidence into restart
-state, or promote a failed optimized candidate. W3/W4/W6 still retain their
-bounded native lifecycle here. The archived Helios full trainer's additional
+state, or promote a failed optimized candidate. W4 additionally has a separately
+versioned [original reference lifecycle](../../recipes/self_forcing/REFERENCE_TRAINING.md),
+not a change to its bounded C51 worker. W3/W6 still retain their bounded
+native lifecycle here. The archived Helios full trainer's additional
 save/validation hooks are preserved, not asserted to be exposed by this adapter.
 
 W4's [finite original input owner](livewan_inputs.md) is independently usable
@@ -39,7 +41,10 @@ through `distillctl data prepare-livewan-inputs`. Its source-qualified original
 dataset, independent record/prompt identity and logical cursor are CPU-verified;
 the [receipt](../../artifacts/framework/20261021/original_livewan_inputs_cpu.json)
 does not qualify C51 physical two-wave consumption, pipeline drain or model
-checkpoint/resume. Public fresh W4 training still rejects that input kind.
+checkpoint/resume. The reference route's
+[separate CPU receipt](../../artifacts/framework/20261021/original_livewan_reference_cpu.json)
+qualifies actual state-owner/input contracts, not pretrained execution or C51
+transport drain, shadow reconstruction and physical two-slot recovery.
 
 The generic media preparer supplies decode/import/provenance; each production
 model still supplies the appropriate native VAE, text and audio encoder. The

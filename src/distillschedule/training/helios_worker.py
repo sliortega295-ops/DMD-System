@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import importlib.util
 from contextlib import contextmanager
-from datetime import timedelta
 import json
 import os
 from pathlib import Path
@@ -147,34 +146,9 @@ def immutable_assets(assets):
 @contextmanager
 def reference_process_group():
     """Own fresh NCCL/Gloo groups; never borrow or destroy a caller's group."""
-    import torch
-    import torch.distributed as dist
-    from distillschedule.open_workload.replicated import control_plane
-    names = ("WORLD_SIZE", "RANK", "LOCAL_RANK", "LOCAL_WORLD_SIZE", "GROUP_RANK")
-    require(all(os.environ.get(k, "").isdigit() for k in names), "explicit torchrun ranks required", path="helios.training")
-    world, rank, local, local_world, node = (int(os.environ[k]) for k in names)
-    require(world == 16 and local_world == 8 and 0 <= rank < 16 and local == rank % 8 and node == rank // 8,
-            "W2 requires two nodes of eight ranks", path="helios.training")
-    require(not dist.is_initialized(), "W2 training owns its process group; do not enter on an embedding group", path="helios.training")
-    require(torch.cuda.is_available() and dist.is_gloo_available(), "original CUDA/NCCL plus Gloo metadata required", path="helios.training")
-    torch.cuda.set_device(local)
-    metadata = None
-    dist.init_process_group("nccl", timeout=timedelta(minutes=15))
-    try:
-        require(dist.get_world_size() == world and dist.get_rank() == rank and str(dist.get_backend()) == "nccl",
-                "initialized W2 rank group differs", path="helios.training")
-        metadata = dist.new_group(backend="gloo", timeout=timedelta(minutes=15))
-        with control_plane(metadata):
-            from distillschedule.open_workload.topology import discover
-            allocated = discover()
-            require(allocated["node_groups"] == [list(range(8)), list(range(8,16))]
-                    and not allocated["logical_nodes_on_one_host"], "actual original two-node topology differs", path="helios.training")
-            yield {"metadata_group":metadata, "process_group":dist.group.WORLD, "owns_process_group":True}
-    finally:
-        if dist.is_initialized():
-            if metadata is not None:
-                dist.destroy_process_group(metadata)
-            dist.destroy_process_group()
+    from .distributed import world16_reference_process_group
+    with world16_reference_process_group("W2") as ownership:
+        yield ownership
 
 
 def run_reference(config, admitted=None, source=None, *, admit=None):

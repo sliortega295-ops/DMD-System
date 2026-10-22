@@ -65,6 +65,14 @@ class NativeTeacherInputs:
     def records(self):
         return deepcopy(self._document["records"])
 
+    def row(self, logical_step, logical_slot):
+        """Exact native operation address, never cycling or consuming a record."""
+        require(type(logical_step) is int and 0 <= logical_step < self.steps
+                and type(logical_slot) is int and 0 <= logical_slot < self.global_batch,
+                "finite native row address outside admitted horizon/topology")
+        self._unchanged()
+        return self.rows[logical_step * self.global_batch + logical_slot]
+
     def _unchanged(self):
         require(self.path.is_file() and file_sha256(self.path) == self._manifest_sha256,
                 "prepared manifest hash changed")
