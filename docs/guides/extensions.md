@@ -4,6 +4,13 @@ Start with [the runnable external model template](../../examples/framework/newmo
 and [its tutorial](../../examples/framework/README.md). It is a new architecture
 outside W1-W6 and runs without a new solver branch or workload-name condition.
 
+Local `adapter.py:callable` plugins compile the source bytes bound by their
+receipt, rather than reading or writing Python bytecode caches. A failed local
+import removes its own partial module and preserves any prior module binding.
+Package `module:callable` references retain normal Python import semantics.
+Adapters are trusted Python code, not sandboxed input; pin their dependencies
+and do not load an untrusted encoder, model or workflow plugin.
+
 ## Model and media adapter
 
 A configured model factory receives a parameter mapping and returns
