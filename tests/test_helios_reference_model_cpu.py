@@ -418,6 +418,7 @@ def test_full_class_true_peft_original_critic_helper_adam_and_restart(tmp_path):
     import torch
     from peft import LoraConfig
     from distillschedule.runtime.fsdp2_static import FSDP2EngineAdapter
+    from distillschedule.strategies.wan_capture import native_primitives
     from distillschedule.training.checkpoint import save_checkpoint, restore_checkpoint, pack_state, rng_state
     from test_training_helios_gan_state import original, _update, _state, _assert_moments
     from test_training_end_to_end import equal
@@ -425,6 +426,9 @@ def test_full_class_true_peft_original_critic_helper_adam_and_restart(tmp_path):
     # The whole transformer and its GAN head come from the public provider,
     # never the tiny construction or extracted head in that older fixture.
     native_before = {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
+    # This separate 0.37 group opts in before the older fixture's ordinary
+    # imports, so subsequent public owners reuse source-admitted helpers.
+    native_primitives(source_only=True)
     original = original.__wrapped__()
     native_after = {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
     assert all(native_after[k] is v for k, v in native_before.items())
