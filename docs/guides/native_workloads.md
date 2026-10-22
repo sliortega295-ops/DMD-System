@@ -217,10 +217,37 @@ Tests exercise the full tiny FP32 CPU flow/GAN backward, real PEFT and original
 critic-loss Adam/restart through existing state helpers, and normal
 `save_pretrained`/`from_pretrained` in fresh processes. Nonzero-output fixtures
 are explicitly deterministic random weights, **not pretrained checkpoints**.
-This is a model/backend source proof, not an enabled public W3 lifecycle,
+The subsequent CPU Program reference owns the full original W3 lifecycle as
+described below. Neither that proof nor this model provider establishes
 pretrained generation/quality, world16/FSDP equivalence, GPU validation or a
-performance result. W3's lifecycle and historical REVIEW boundaries below stay
-unchanged.
+performance result. Historical native REVIEW boundaries stay unchanged.
+
+## Separate actual-original CPU Program references
+
+The bounded native benchmark adapters above remain unchanged. Two explicit
+reference factories also exercise the actual original models through the
+**existing Program/common lifecycle**, not a substituted generic DMD algorithm:
+
+| Reference | Actual owners and data | Public operations and limits |
+| --- | --- | --- |
+| [Helios GAN CPU](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) | Full original transformer and true PEFT; original history19 primary/secondary producer; original G1/C5/GAN/EMA curriculum | `data prepare-helios-gan-reference`, `train`, complete-cycle common checkpoint/new-process resume; [full unmerged current-G export](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md) and explicit original zero-history native latent generation |
+| [Cached H3 AR CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Maintained licensed cached-only original H3 source; actual 8-step G1F1/LoRA64/continuous-sigma trainer/Adam; clean previous/current AV, original flat or split-packed parser | `data prepare-h3-cached-reference`, `train`, complete-cycle common checkpoint/new-process resume; no bundled AV codec or export callback |
+
+Both use operator-supplied, content-pinned local assets and a finite immutable
+input inventory. Missing files never become random data or model weights.
+Tests explicitly label their tiny deterministic fixture checkpoints as
+**not pretrained or quality evidence**. Runtime FP32/CPU1, exact source and
+native algorithm/config/update/curriculum boundaries are part of admission.
+These routes reject distributed, auto/manual/plan or silently recycled epochs
+that they do not implement. Their source/CPU evidence does not qualify a new
+world16 strategy or change historical numerical REVIEW/FAIL records.
+
+W6's cached-only source closure is included with its original license and
+per-file origins/AST identities. It is an explicitly maintained derivative,
+not a claim that the partial historical archive was a full installable
+DiffSynth distribution. Full-SFT loaders, VAE/text/audio codecs and control
+branches are not invented or silently stubbed. Discovery still imports no
+model or CUDA. Use the separate dependency groups in the linked guides.
 
 ## Lifecycle and evidence are not interchangeable
 

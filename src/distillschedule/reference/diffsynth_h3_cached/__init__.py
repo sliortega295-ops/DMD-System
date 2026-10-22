@@ -23,7 +23,7 @@ from types import ModuleType, SimpleNamespace
 
 
 _ROOT = Path(__file__).resolve().parent
-_MANIFEST_SHA256 = "fe646015b2d86788731462d272d50a5a3294b1ecba86f34e5129af72f64e2cc6"
+_MANIFEST_SHA256 = "527591fce99ba50753db9e148b9bc07029c04ebd417c0e262bbf6d6211234089"
 _NAMESPACE = __name__
 _LOCK = RLock()
 _importing = False

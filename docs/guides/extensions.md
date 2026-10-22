@@ -167,3 +167,28 @@ to training checkpoints. A plugin is trusted Python code, not a sandbox.
 
 CPU tiny tests prove interface/lifecycle behavior. Model quality, real large
 model execution and hardware-specific correctness require their own evidence.
+
+## Projection of an owned training model for inference
+
+An atomic native training owner need not expose optimizers or Teacher/Critic
+models to inference. Optional `ModelComponents.inference_projection` receives
+`(restored_components, effective_training_parameters)` and returns a validated
+`InferenceProjection(components, factory, parameters)`. It is an export-only
+view of current owned modules, not another model initialization or update.
+Do not mutate the training owner, merge/round LoRA weights, replace current G
+with EMA or capture a mutable owner in a callback. The common exporter retains
+its safe named-module schema and strict source, metadata, layout, finite-value
+and file-hash binding; training identity is separate provenance.
+
+The inference-only factory constructs the declared original architecture and
+strictly restores the **entire** exported state before forward. Missing keys
+must not fall back to initialized/base/Hub weights. Do not bind metadata to live
+random initial parameter values or old payload locations. Native nonpersistent
+buffers must still be initialized by the model's actual constructor.
+
+`generate --output-kind latents` is an explicit opt-in when no real decoder
+exists. Return named nonempty finite floating tensors and `latent_schema`
+with each tensor's exact `layout`, `shape`, and Torch `dtype`. The default
+`video` path remains decoded THWC uint8 media and refuses a fake decoder.
+A latent diagnostic is not a generated video or a quality metric. See the
+[actual original current-G example](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md).

@@ -83,7 +83,10 @@ Fresh original-engine training and complete-cycle restart are separately
 available for [Wan](docs/workloads/original_wan_fresh_training.md),
 [Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md),
 [Self-Forcing](recipes/self_forcing/REFERENCE_TRAINING.md), and
-[Grid1000 H3](recipes/h3-grid-original-training.md). Their input/checkpoint
+[Grid1000 H3](recipes/h3-grid-original-training.md). Separately versioned CPU
+Program references connect the actual original [Helios GAN model and trainer](recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
+and [cached previous/current H3 AR source](recipes/h3_ar/CPU_REFERENCE.md),
+including real gradients and safe fresh-process continuation. Their input/checkpoint
 contracts remain explicit; they do not turn all six historical two-cycle
 workers into arbitrary-length pretrained trainers.
 
@@ -174,10 +177,21 @@ python -m pytest -q tests/test_helios_reference_model_cpu.py
 Its [dedicated workflow](.github/workflows/helios-reference-model-cpu.yml) uses
 minimum Torch 2.10 CPU on Python 3.10/3.12 and requires the actual full-source
 flow/GAN, fresh-process model save/load, and true PEFT/original-helper restart
-tests without skips. This file intentionally stays outside the existing
-`test_training_*.py` helper group. Tiny FP32 CPU model/backend proof does not
-enable a complete public W3 lifecycle or qualify pretrained, CUDA or performance
-behavior.
+tests without skips. That dedicated dependency lane also requires the actual
+original public W3 data, both GAN backward policies, checkpoint continuation
+and portable current-G tests. The general 0.34 helper lane is not repinned.
+CPU full-class execution does not qualify pretrained, CUDA or performance behavior.
+
+The independent `.[train,test,h3-cached-reference]` extra admits only the
+[licensed cached-AV source derivative](recipes/h3_ar/CPU_REFERENCE.md), not a
+complete DiffSynth/SFT distribution. Its [dedicated CPU workflow](.github/workflows/h3-cached-reference-cpu.yml)
+requires original source, actual H3/LoRA/Adam updates and both flat/packed
+fresh-process continuation proofs without skips. No model weights are bundled.
+
+For original Helios G, [portable export and explicit native latent generation](recipes/helios_gan/PORTABLE_INFERENCE_CPU.md)
+use the common inference interface after removing old training data and
+checkpoints. Without a real decoder, default video generation still refuses;
+latent diagnostics are never relabeled as generated videos.
 
 ## Organization
 

@@ -38,3 +38,11 @@ Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
 operations. This binding does not replace the original protocol or certify GPU execution.
+
+
+The separate [actual-original cached-AV CPU reference](CPU_REFERENCE.md)
+provides finite fresh-cache training and safe complete-cycle/new-process
+recovery through the public Program lifecycle. It uses the maintained licensed
+cached-only source, not the incomplete full-SFT archive, and does not alter the
+native two-update ZeRO-3/selected-plan contract. No VAE/decoder, pretrained,
+GPU, quality or performance claim follows from that local tiny-model proof.

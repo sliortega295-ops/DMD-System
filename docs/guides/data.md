@@ -251,3 +251,25 @@ their original shapes/precision/RNG/sample contracts. Missing assets and
 unsupported branches reject; they are not resampled or replaced with random
 tensors. Preparation alone does not establish model compatibility, quality,
 CUDA capacity or numerical equivalence.
+
+## Actual-original CPU reference preparation
+
+The separate W3/W6 CPU Program factories use the **common PreparedDataset
+container**, with native content and producer-specific metadata. They do not
+replace the distributed native input ABIs above:
+
+- [W3 history19](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md):
+  `data prepare-helios-gan-reference` calls the actual original producer;
+  five primary/secondary rows form one G1/C5 cycle. No DMD noise/timesteps or
+  generated rollouts are synthesized by preparation.
+- [W6 cached AV](../../recipes/h3_ar/CPU_REFERENCE.md):
+  `data prepare-h3-cached-reference` validates the original flat/split-packed
+  previous/current AV cache and proves exact parser equivalence of its
+  tensor-only representation. Preparation streams one source at a time.
+- [Portable original Helios G](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md):
+  `data import` accepts new native `prompt_embeds` with exact declared geometry;
+  it needs no unused five-row training cycle and supplies no fake text encoder.
+
+These are opt-in local CPU references. Sources, shapes, precision and evidence
+labels remain explicit, and the production recipes never invoke the statistics
+encoder from the tiny media example.

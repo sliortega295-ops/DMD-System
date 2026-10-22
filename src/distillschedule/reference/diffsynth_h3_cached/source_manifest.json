@@ -89,13 +89,14 @@
     },
     {
       "allowed_transformations": [
-        "new explicit namespace/backend import admission"
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
       ],
-      "bytes": 174,
+      "bytes": 195,
       "kind": "maintained_import_bridge",
       "origins": [],
       "path": "core/attention/__init__.py",
-      "sha256": "d0da20dff614d267300bf2a25a0fc990854eaedbfb4d57369e70f505345d36bb",
+      "sha256": "20d627b00d53a3acaca1c1e1bcfd0d0a5a83cca4ed73ed5bca94163724f99293",
       "symbols": []
     },
     {
@@ -207,13 +208,14 @@
     },
     {
       "allowed_transformations": [
-        "new explicit namespace/backend import admission"
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
       ],
-      "bytes": 194,
+      "bytes": 225,
       "kind": "maintained_import_bridge",
       "origins": [],
       "path": "core/gradient/__init__.py",
-      "sha256": "33d619edf0d764dbd87deb80f7de361d465a7b86a090a4d322df621464e0b0d5",
+      "sha256": "5fce710c5870c9fbb1bd85818a487fe25d8f059115519454cca0affaafe4b30e",
       "symbols": []
     },
     {
@@ -262,13 +264,14 @@
     },
     {
       "allowed_transformations": [
-        "new explicit namespace/backend import admission"
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
       ],
-      "bytes": 175,
+      "bytes": 197,
       "kind": "maintained_import_bridge",
       "origins": [],
       "path": "diffusion/__init__.py",
-      "sha256": "d8a2ea68a1c21487f7bf2d99f7c086f807ce8641f0365ac398e0ebeafa9c5bbd",
+      "sha256": "8cac555db4e75786c3e0442252180442bc308c78700b4a5f54a5ba1f00ec1ebe",
       "symbols": []
     },
     {
@@ -645,9 +648,10 @@
     {
       "allowed_transformations": [
         "static definition relocation with explicit dependency imports",
-        "postponed annotations; no phantom MiniMaxH3Pipeline class"
+        "postponed annotations; no phantom MiniMaxH3Pipeline class",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
       ],
-      "bytes": 20875,
+      "bytes": 20944,
       "kind": "selected_definition_derivative",
       "origins": [
         {
@@ -657,7 +661,7 @@
         }
       ],
       "path": "packing.py",
-      "sha256": "f3609fcbcce66cd53af7f6f4d7bb0d712426dc8c782e22894baecdc08732fb68",
+      "sha256": "72100266c67de235545926e7f7c3e9098e0c5b257e62b7ef8f0864847b89424a",
       "symbols": [
         {
           "ast_sha256": "5b404e5a684a958f9c064378a0dd6e238ec5b673d0cf4a0267736c3384a35dc9",
@@ -734,9 +738,10 @@
     {
       "allowed_transformations": [
         "static definition relocation with explicit dependency imports",
-        "save_checkpoint optional ZeRO3 import made relative"
+        "save_checkpoint optional ZeRO3 import made relative",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
       ],
-      "bytes": 13138,
+      "bytes": 13273,
       "kind": "selected_definition_derivative",
       "origins": [
         {
@@ -746,7 +751,7 @@
         }
       ],
       "path": "training_api.py",
-      "sha256": "ea44974c98fa1570ed5b526b4a0f7925879c4aa594638ceb1d8fa38b39d439ca",
+      "sha256": "f38e437752c372d4b6f7caeb7cc9c29b67b71de8024b2329cc1356dc328dc3df",
       "symbols": [
         {
           "ast_sha256": "2be08a3e6fdfdf01680bd774fa00c33d4eda373f52935673935c44b5c38089f6",

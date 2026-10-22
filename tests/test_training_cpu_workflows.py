@@ -1,0 +1,51 @@
+"""Dependency-separated CI must actually execute the native CPU proofs."""
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def job(name):
+    workflow = yaml.safe_load((ROOT / '.github/workflows' / name).read_text())
+    assert workflow['permissions'] == {'contents': 'read'}
+    assert len(workflow['jobs']) == 1
+    return next(iter(workflow['jobs'].values()))
+
+
+def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
+    value = job('h3-cached-reference-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert "'.[train,test,h3-cached-reference]'" in commands
+    assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
+    assert all(name in commands for name in (
+        'tests/test_h3_cached_source_provider.py', 'tests/test_h3_cached_original_cpu.py',
+        'tests/test_data_h3_cached_inputs.py', 'tests/test_training_h3_cached_public_cpu.py',
+        'test_common_checkpoint_fresh_os_process_exact_gan_transition[False]',
+        'test_common_checkpoint_fresh_os_process_exact_gan_transition[True]'))
+    assert 'test-helios' not in commands and 'native-wan' not in commands
+    assert value['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert value['strategy']['matrix']['python'] == ['3.10', '3.12']
+    assert "('skipped', 'failures', 'errors')" in commands
+
+
+def test_full_original_helios_ci_requires_public_training_and_portable_current_g():
+    value = job('helios-reference-model-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert "'.[train,test,test-helios-model]'" in commands
+    assert value['env']['HELIOS_PUBLIC_REQUIRE_STACK'] == '1'
+    assert all(name in commands for name in (
+        'tests/test_training_helios_public_cpu.py', 'tests/test_data_helios_native_inputs.py',
+        'tests/test_training_helios_public_inference_cpu.py',
+        'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
+        'test_public_fresh_os_process_four_vs_three_resume_exact[False]',
+        'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt'))
+    assert 'native-wan' not in commands
+    assert "('skipped', 'failures', 'errors')" in commands
+
+
+def test_original_helper_ci_is_not_silently_repinned_to_full_model_extra():
+    value = job('framework-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert "'.[train,test,test-helios]'" in commands
+    assert 'test-helios-model' not in commands and 'native-wan' not in commands

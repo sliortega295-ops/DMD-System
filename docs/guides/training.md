@@ -346,3 +346,19 @@ other quality validation remain **NOT_RUN**.
 Custom formats require paired `export` and explicit `load_export` callbacks;
 see [the extension contract](extensions.md). The framework never infers a loader
 from a filename or treats custom bytes as a resumable checkpoint.
+
+### Inference-only projections and native latent diagnostics
+
+Adapters with atomic training state can project the restored **current** model
+into a separately source-bound inference factory, through the optional
+`InferenceProjection` hook. Portable generation uses the full unmerged
+exported weights, not optimizer/checkpoint state or original training data.
+The [Helios CPU example](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md)
+uses actual original native rollout on new prompt tensors in a new process.
+
+For a model without an admitted real media decoder, explicitly use
+`distillctl generate ... --output-kind latents`. The artifact records named
+finite tensors, exact layout/shape/dtype and
+`LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY`; it writes no pretend RGB frames.
+The default remains `--output-kind video` and still requires a real decoder.
+Exported weights never become a resumable training checkpoint.

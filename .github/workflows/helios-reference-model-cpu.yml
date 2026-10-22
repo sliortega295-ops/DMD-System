@@ -6,6 +6,9 @@ on:
       - 'third_party/helios_compat/**'
       - 'tests/test_helios_reference_model_cpu.py'
       - 'tests/test_helios_step_owner_cpu.py'
+      - 'tests/test_training_helios_public_cpu.py'
+      - 'tests/test_training_helios_public_inference_cpu.py'
+      - 'tests/test_data_helios_native_inputs.py'
       - 'tests/test_training_helios_gan_state.py'
       - 'tests/test_training_end_to_end.py'
       - 'pyproject.toml'
@@ -30,6 +33,7 @@ jobs:
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       PYTHONDONTWRITEBYTECODE: '1'
+      HELIOS_PUBLIC_REQUIRE_STACK: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,7 +46,7 @@ jobs:
       - name: Separate full-model dependencies; leave 0.34 helper and 0.35 Wan pins alone
         run: python -m pip install -e '.[train,test,test-helios-model]'
       - name: Full original class and original G/C/EMA owners with fresh-process continuation
-        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py --junitxml=helios-reference-model-cpu.xml
+        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py --junitxml=helios-reference-model-cpu.xml
       - name: Require the full-source proofs without skips
         run: |
           python - <<'PY'
@@ -56,6 +60,10 @@ jobs:
           names = {case.get('name') for case in cases}
           required = {
               'test_reference_model_source_discovery_needs_no_torch_or_model_import',
+              'test_original_history19_native_producer_mapping_and_tensor_only_delivery',
+              'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
+              'test_public_fresh_os_process_four_vs_three_resume_exact[False]',
+              'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt',
               'test_full_original_class_dense_flow_and_original_gan_head_backward',
               'test_dense_backend_is_original_sdpa_math_and_rejects_varlen',
               'test_normal_model_save_pretrained_and_fresh_process_from_pretrained[False]',

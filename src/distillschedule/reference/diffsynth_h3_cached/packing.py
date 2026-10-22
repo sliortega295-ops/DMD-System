@@ -245,7 +245,7 @@ class MiniMaxH3Unit_PackedSequenceBuilder(PipelineUnit):
             "seq_len": seq_len,
         }
 
-    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latents, audio_latents, text_token_tags=None, keyframe_cond_anchor=None, keyframe_indices=None, ref_blocks=None):
+    def process(self, pipe: MiniMaxH3Pipeline, prompt_embeds, video_latents, audio_latents, text_token_tags=None, keyframe_cond_anchor=None, keyframe_indices=None, ref_blocks=None):  # noqa: F821 - full-SFT pipeline is outside the cached-only closure
         text_len = prompt_embeds.shape[0]
         video_latent_t, latent_h, latent_w = video_latents.shape[2:]
         audio_latent_t = audio_latents.shape[-1]
