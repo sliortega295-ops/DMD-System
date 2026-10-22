@@ -98,6 +98,42 @@ def capacity_document():
             "gpu_reserve_bytes": 2 << 30, "host_reserve_bytes": 64 << 30}
 
 
+class _CpuCudaUuid:
+    """Torch _CUuuid-shaped identity ONLY; never an actual CUDA probe."""
+    def __init__(self, text):
+        import uuid
+        self.bytes = uuid.UUID(text).bytes
+        self.text = text
+
+    def __str__(self):
+        return self.text
+
+
+def _device_facades(rank=0, *, owned_device=None):
+    """Synthetic CUDA identity/driver inventory, NOT physical capacity proof."""
+    from types import SimpleNamespace
+    import uuid
+    node, local = divmod(rank, 8)
+    identities = [str(uuid.UUID(int=node * 8 + i + 1)) for i in range(8)]
+    properties = SimpleNamespace(uuid=_CpuCudaUuid(identities[local if owned_device is None else owned_device]))
+    row = {"gpus": [{"device": i, "uuid": "GPU-" + identities[i], "free_bytes": 75 << 30}
+                    for i in range(8)], "cgroup_events": {"oom": 0, "oom_kill": 0}}
+    observer = SimpleNamespace(rows=[], errors=[])
+    observer.sample = lambda: observer.rows.append(deepcopy(row))
+    def get_properties(device):
+        assert type(device) is int and device == local
+        return properties
+    facade = SimpleNamespace(cuda=SimpleNamespace(current_device=lambda: local,
+        get_device_properties=get_properties, max_memory_allocated=lambda: 0))
+    return facade, observer, row
+
+
+def _device_binding_records():
+    """Run the real local producer for every SYNTHETIC world16 rank."""
+    from distillschedule.training.livewan_training import _device_binding
+    return [_device_binding(*_device_facades(rank)[:2], rank=rank) for rank in range(16)]
+
+
 def asset_document(root, sources):
     """Real safetensors bytes, deliberately TINY inventories, not Wan weights."""
     import torch
@@ -744,7 +780,8 @@ def test_saved_cursor_rank_and_versions_cross_state_admission_is_premutation(tmp
         dist.destroy_process_group()
 
 
-def test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads(public, sources, monkeypatch):
+@pytest.mark.parametrize("device_drift", [False, True])
+def test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads(public, sources, monkeypatch, device_drift):
     """DISPATCH ONLY: real helper loop/input/LoRA/Adam, synthetic unavailable Wan math.
 
     This deliberately does NOT qualify original CUDA forward/backward, world16,
@@ -757,6 +794,7 @@ def test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads(pub
     from torch.distributed.device_mesh import DeviceMesh
     from distillschedule.runtime import livewan_crossscale_worker as worker, livewan_geometry, livewan_cuda_setup
     from distillschedule.search.livewan_request import LiveWanRequest
+    from distillschedule.search import resources
     from distillschedule.training import livewan_training as training, livewan_state
     conf, assets, inputs = public
     admitted = training.admit_reference(conf, LiveWanRequest().to_dict(), assets,
@@ -810,13 +848,33 @@ def test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads(pub
         monkeypatch.setattr(training, "_backend", lambda admitted: worker)
         monkeypatch.setattr(training, "_admit_model_layout", lambda *a: {"scope": "CPU_DISPATCH_ONLY_NOT_NATIVE_MODEL_LAYOUT"})
         monkeypatch.setattr(training, "admit_runtime", lambda assets: {"scope": "CPU_DISPATCH_ONLY"})
-        monkeypatch.setattr(training, "_capacity", lambda *a, **k: {"oom": 0, "oom_kill": 0})
+        # Explicit unavailable CUDA/telemetry/topology facades. Keep the REAL
+        # binding producer, collective validation and capacity consumer active.
+        facade, observer, _ = _device_facades()
+        current = [0]
+        monkeypatch.setattr(torch.cuda, "current_device", lambda: current[0])
+        monkeypatch.setattr(torch.cuda, "get_device_properties", facade.cuda.get_device_properties)
+        monkeypatch.setattr(torch.cuda, "max_memory_allocated", facade.cuda.max_memory_allocated)
+        monkeypatch.setattr(resources, "ResourceObserver", lambda *a, **k: observer)
+        synthetic_bindings = _device_binding_records()
+        gather = training.distributed.gather
+        monkeypatch.setattr(training.distributed, "gather", lambda value:
+            [value, *deepcopy(synthetic_bindings[1:])] if type(value) is dict and "physical_inventory" in value else gather(value))
         monkeypatch.setattr(livewan_geometry, "install_geometry", lambda *a, **k: events.append("geometry_dispatch_only"))
-        monkeypatch.setattr(livewan_cuda_setup, "materialize_blas_handles", lambda *a, **k: None)
+        def library_setup(*args, **kwargs):
+            if device_drift:
+                current[0] = 1
+        monkeypatch.setattr(livewan_cuda_setup, "materialize_blas_handles", library_setup)
         monkeypatch.setattr(livewan_state, "reference_model_bundle_state", lambda bundle, *, versions, restore_versions, **k:
                             _tiny_state(bundle, sources, versions, restore_versions))
         output = Path(conf.trainer["output_dir"])
         token = training._reserve_output(output)
+        if device_drift:
+            with pytest.raises(ValueError, match="owned CUDA device|binding"):
+                training._run(conf, admitted, identity, output, token)
+            assert "build_models" not in events and not any(isinstance(e, tuple) for e in events)
+            assert not (output / "ranks/rank-00000.json").exists() and not torch.cuda.is_initialized()
+            return
         assert training._run(conf, admitted, identity, output, token) == 0
         assert events.count("build_models") == events.count("streamers") == events.count("score_context") == 1
         assert [e for e in events if isinstance(e, tuple)] == [("actual_baseline", 0), ("actual_baseline", 5), ("actual_baseline", 10)]
@@ -825,6 +883,8 @@ def test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads(pub
         assert receipt["versions"] == {"generator": 3, "critic": 15, "ema": 0} and len(receipt["metrics"]) == 3
         assert len({r["record_id"] for metric in receipt["metrics"] for r in metric["inputs"]}) == 15
         assert len(list((output / "checkpoints").glob("cycle-*/_SUCCESS"))) == 3
+        assert receipt["physical_device_binding"] == synthetic_bindings[0]
+        assert len(receipt["capacity_samples"]) >= 5
         assert not receipt["claimable_speedup"] and not torch.cuda.is_initialized()
     finally:
         dist.destroy_process_group()
@@ -902,23 +962,159 @@ def test_real_safetensors_header_gate_is_preallocation_and_hash_valid(public, mu
 @pytest.mark.parametrize("mutation", [None, "available", "reserve", "allocator", "oom", "common_failure"])
 def test_reference_capacity_wrapper_preserves_exact_budget_reserve_and_oom_policy(mutation):
     """CPU unit gate only: telemetry values are explicit facades, NOT capacity."""
-    from types import SimpleNamespace
-    from distillschedule.training.livewan_training import _capacity
+    from distillschedule.training.livewan_training import _capacity, _device_binding
     policy = capacity_document(); prior = deepcopy(policy)
-    row = {"gpus": [{"device": rank, "free_bytes": 75 << 30} for rank in range(8)],
-           "cgroup_events": {"oom": 0, "oom_kill": 0}}
-    observer = SimpleNamespace(rows=[row], errors=[], sample=lambda: None)
+    facade, observer, row = _device_facades()
+    binding = _device_binding(facade, observer, rank=0)
     initial = None
     if mutation == "available": row["gpus"][7]["free_bytes"] = 71 << 30
     elif mutation == "reserve": row["gpus"][7]["free_bytes"] = 1 << 30; initial = {"oom": 0, "oom_kill": 0}
     elif mutation == "oom": initial = {"oom": 0, "oom_kill": 0}; row["cgroup_events"]["oom"] = 1
     elif mutation == "common_failure": observer.errors.append("explicit common host/driver gate failure")
-    facade = SimpleNamespace(cuda=SimpleNamespace(max_memory_allocated=lambda: 71 << 30 if mutation == "allocator" else 0))
+    facade.cuda.max_memory_allocated = lambda: 71 << 30 if mutation == "allocator" else 0
     if mutation:
-        with pytest.raises(ValueError): _capacity(facade, observer, policy, rank=0, initial=initial)
+        with pytest.raises(ValueError): _capacity(facade, observer, policy, rank=0, binding=binding, initial=initial)
     else:
-        assert _capacity(facade, observer, policy, rank=0) == {"oom": 0, "oom_kill": 0}
+        assert _capacity(facade, observer, policy, rank=0, binding=binding) == {"oom": 0, "oom_kill": 0}
     assert policy == prior
+
+
+def test_unbound_capacity_never_admits_reordered_cuda_with_unequal_budgets_and_free_memory():
+    """CPU control reproduction of the review, NOT a CUDA capacity result."""
+    from distillschedule.training.livewan_training import _capacity
+    policy = capacity_document()
+    policy["memory_limits"].update({str(r): 10 << 30 for r in range(1, 16)})
+    facade, observer, row = _device_facades(owned_device=7)
+    row["gpus"][7]["free_bytes"] = 15 << 30
+    assert row["gpus"][0]["free_bytes"] >= policy["memory_limits"]["0"] + policy["gpu_reserve_bytes"]
+    assert row["gpus"][7]["free_bytes"] < policy["memory_limits"]["0"] + policy["gpu_reserve_bytes"]
+    with pytest.raises(ValueError, match="binding|physical.*policy"):
+        _capacity(facade, observer, policy, rank=0)
+
+
+@pytest.mark.parametrize("rank", [0, 7, 11, 15])
+def test_owned_device_binding_uses_actual_properties_not_visibility_text(monkeypatch, rank):
+    from distillschedule.training import livewan_training as training
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "7,6,5,4,3,2,1,0")  # contradictory text is not identity
+    facade, observer, row = _device_facades(rank)
+    local = rank % 8
+    properties = facade.cuda.get_device_properties(local)
+    properties.uuid.text = properties.uuid.text.upper()
+    row["gpus"][local]["uuid"] = row["gpus"][local]["uuid"].lower()
+    records = _device_binding_records()
+    monkeypatch.setattr(training.distributed, "gather", lambda value: [*records[:rank], value, *records[rank + 1:]])
+    binding = training._bind_devices(facade, observer, rank=rank)
+    assert len(properties.uuid.bytes) == 16
+    assert binding == records[rank] and binding["cuda_device"] == binding["physical_device"] == local
+    assert binding["uuid"] == str(properties.uuid).lower() and binding["physical_inventory"][str(local)] == binding["uuid"]
+    assert training._capacity(facade, observer, capacity_document(), rank=rank, binding=binding) == {"oom": 0, "oom_kill": 0}
+
+
+@pytest.mark.parametrize("mutation", ["reversed", "missing_property", "unknown_owned", "mig_owned", "nil_owned",
+    "unobserved", "missing_inventory", "duplicate_index", "duplicate_uuid", "missing_uuid", "unknown_uuid", "mig_uuid",
+    "current_device"])
+def test_device_binding_rejects_unresolved_or_unsupported_owned_identity(monkeypatch, mutation):
+    from distillschedule.training import livewan_training as training
+    records = _device_binding_records()
+    facade, observer, row = _device_facades(owned_device=7 if mutation == "reversed" else None)
+    properties = facade.cuda.get_device_properties(0)
+    if mutation == "missing_property": del properties.uuid
+    elif mutation == "unknown_owned": properties.uuid = "unknown"
+    elif mutation == "mig_owned": properties.uuid = "MIG-GPU-" + records[0]["uuid"] + "/1/0"
+    elif mutation == "nil_owned": properties.uuid = "00000000-0000-0000-0000-000000000000"
+    elif mutation == "unobserved": properties.uuid = "00000000-0000-0000-0000-000000000099"
+    elif mutation == "missing_inventory": row["gpus"].pop()
+    elif mutation == "duplicate_index": row["gpus"][7]["device"] = 6
+    elif mutation == "duplicate_uuid": row["gpus"][7]["uuid"] = row["gpus"][0]["uuid"]
+    elif mutation == "missing_uuid": del row["gpus"][0]["uuid"]
+    elif mutation == "unknown_uuid": row["gpus"][0]["uuid"] = "N/A"
+    elif mutation == "mig_uuid": row["gpus"][0]["uuid"] = "MIG-" + records[0]["uuid"]
+    elif mutation == "current_device": facade.cuda.current_device = lambda: 1
+    monkeypatch.setattr(training.distributed, "gather", lambda value: [value, *records[1:]])
+    with pytest.raises((ValueError, AttributeError, KeyError)):
+        training._bind_devices(facade, observer, rank=0)
+
+
+@pytest.mark.parametrize("mutation", ["missing_rank", "duplicate_rank", "duplicate_owner", "inventory_disagreement", "cross_node_duplicate"])
+def test_collective_device_binding_requires_complete_unambiguous_physical_ownership(mutation):
+    from distillschedule.training.livewan_training import _admit_device_bindings
+    records = _device_binding_records()
+    if mutation == "missing_rank": records.pop()
+    elif mutation == "duplicate_rank": records[-1] = deepcopy(records[0])
+    elif mutation == "duplicate_owner":
+        records[1].update(uuid=records[0]["uuid"], physical_device=0)
+    elif mutation == "inventory_disagreement": records[1]["physical_inventory"]["7"] = "00000000-0000-0000-0000-000000000099"
+    elif mutation == "cross_node_duplicate":
+        for record in records[8:]: record["physical_inventory"]["0"] = records[0]["uuid"]
+        records[8]["uuid"] = records[0]["uuid"]
+    with pytest.raises(ValueError):
+        _admit_device_bindings(records)
+
+
+@pytest.mark.parametrize("mutation", ["ordinal", "uuid", "inventory", "missing_binding"])
+def test_capacity_rechecks_verified_binding_before_using_rank_budget(mutation):
+    from distillschedule.training.livewan_training import _capacity, _device_binding
+    facade, observer, row = _device_facades()
+    binding = _device_binding(facade, observer, rank=0)
+    if mutation == "ordinal": facade.cuda.current_device = lambda: 1
+    elif mutation == "uuid": facade.cuda.get_device_properties(0).uuid = "00000000-0000-0000-0000-000000000002"
+    elif mutation == "inventory": row["gpus"][7]["uuid"] = "GPU-00000000-0000-0000-0000-000000000099"
+    else: binding = None
+    with pytest.raises(ValueError, match="binding|owned CUDA device"):
+        _capacity(facade, observer, capacity_document(), rank=0, binding=binding)
+
+
+def test_real_driver_observer_producer_feeds_owned_binding_and_capacity_consumer(tmp_path, monkeypatch):
+    """Real CSV/observer/binding/policy chain, SYNTHETIC CUDA and cgroup data."""
+    from distillschedule.search import resources
+    from distillschedule.training import livewan_training as training
+    facade, _, row = _device_facades()
+    policy = capacity_document(); prior = deepcopy(policy)
+    (tmp_path / "memory.current").write_text("0\n")
+    (tmp_path / "memory.peak").write_text("0\n")
+    (tmp_path / "memory.events").write_text("oom 0\noom_kill 0\n")
+    monkeypatch.setattr(resources, "_capacity_observation", lambda: (tmp_path, {"effective_host_limit_bytes": 900 << 30}))
+    def driver_query(command, **kwargs):
+        assert command == ["nvidia-smi", "--query-gpu=index,uuid,memory.total,memory.free", "--format=csv,noheader,nounits"]
+        return "\n".join(f'{gpu["device"]}, {gpu["uuid"]}, 81920, {gpu["free_bytes"] >> 20}' for gpu in row["gpus"])
+    monkeypatch.setattr(resources.subprocess, "check_output", driver_query)
+    observer = resources.ResourceObserver(tmp_path / "not-published.json", "CPU_SYNTHETIC_DRIVER_ONLY", 0, capacity_policy=policy)
+    records = _device_binding_records()
+    monkeypatch.setattr(training.distributed, "gather", lambda value: [value, *records[1:]])
+    binding = training._bind_devices(facade, observer, rank=0)
+    assert binding == records[0] and observer.rows[0]["gpus"][0]["uuid"] == row["gpus"][0]["uuid"]
+    assert training._capacity(facade, observer, policy, rank=0, binding=binding) == {"oom": 0, "oom_kill": 0}
+    row["gpus"][0]["free_bytes"] = 71 << 30
+    with pytest.raises(ValueError, match="available GPU memory"):
+        training._capacity(facade, observer, policy, rank=0, binding=binding)
+    assert policy == prior and len(observer.rows) == 3 and not observer.errors
+
+
+@pytest.mark.parametrize("mutation", ["reordered", "missing_uuid"])
+def test_unsupported_device_binding_fails_before_any_reference_payload_or_model(tmp_path, monkeypatch, mutation):
+    import torch
+    from distillschedule.search import resources
+    from distillschedule.training import livewan_training as training
+    facade, observer, row = _device_facades(owned_device=7 if mutation == "reordered" else None)
+    policy = capacity_document()
+    policy["memory_limits"].update({str(r): 10 << 30 for r in range(1, 16)})
+    row["gpus"][7]["free_bytes"] = 15 << 30
+    if mutation == "missing_uuid": del row["gpus"][0]["uuid"]
+    reached = []
+    def forbidden(*args, **kwargs):
+        reached.append("payload_or_model")
+        raise AssertionError("reference payload/model must not be reached")
+    records = _device_binding_records()
+    monkeypatch.setenv("LOCAL_RANK", "0")
+    monkeypatch.setattr(training, "admit_runtime", lambda assets: {"scope": "CPU_DISPATCH_ONLY"})
+    monkeypatch.setattr(resources, "ResourceObserver", lambda *a, **k: observer)
+    for name in ("current_device", "get_device_properties", "max_memory_allocated"):
+        monkeypatch.setattr(torch.cuda, name, getattr(facade.cuda, name))
+    monkeypatch.setattr(training.distributed, "gather", lambda value: [value, *records[1:]])
+    monkeypatch.setattr(training.ReferenceAssets, "load", forbidden)
+    with pytest.raises((ValueError, KeyError)):
+        training._run(None, {"assets": {}, "capacity_policy": policy}, {}, tmp_path, "unused")
+    assert reached == [] and not torch.cuda.is_initialized()
 
 
 def test_reference_failure_receipt_preserves_late_unowned_and_prior_owned_progress(tmp_path):
@@ -932,8 +1128,10 @@ def test_reference_failure_receipt_preserves_late_unowned_and_prior_owned_progre
         _receipt(output, "this-invocation", {"status": "FAIL"})
     assert path.read_bytes() == sentinel
     path.unlink()  # fixture only; production never deletes an unowned receipt
-    _receipt(output, "this-invocation", {"status": "PARTIAL", "completed_cycles": 2})
+    binding = _device_binding_records()[0]
+    _receipt(output, "this-invocation", {"status": "PARTIAL", "completed_cycles": 2, "physical_device_binding": binding})
     _receipt(output, "this-invocation", {"status": "FAIL", "error": "native boundary failed"})
     value = json.loads(path.read_text())
     assert value["last_complete_progress"]["completed_cycles"] == 2
+    assert value["last_complete_progress"]["physical_device_binding"] == binding
     assert value["error"] == "native boundary failed"

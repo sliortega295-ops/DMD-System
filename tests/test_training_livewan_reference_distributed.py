@@ -12,7 +12,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 
 from test_training_livewan_reference import (  # actual original-source/native-input fixtures
-    sources as sources, prepared as prepared, public as public,
+    sources as sources, prepared as prepared, public as public, capacity_document, _device_facades,
 )
 
 
@@ -111,3 +111,51 @@ def test_reference_process_owner_rejects_caller_group_without_destroying_it(tmp_
         assert dist.is_initialized()
     finally:
         dist.destroy_process_group()
+
+
+def _device_probe_failure_worker(rank, rendezvous, root):
+    """REAL Gloo error exchange; synthetic CUDA UUID probe, no physical proof."""
+    from distillschedule.training import livewan_training as training
+    from distillschedule.search import resources
+    from distillschedule.open_workload.replicated import control_plane
+    torch.set_num_threads(1)
+    os.environ.update(WORLD_SIZE="2", RANK=str(rank), LOCAL_RANK=str(rank))
+    dist.init_process_group("gloo", init_method="file://" + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=30))
+    group = dist.new_group(backend="gloo", timeout=timedelta(seconds=30))
+    facade, observer, _ = _device_facades(rank)
+    if rank == 1:
+        def failed_properties(device):
+            raise RuntimeError("CPU_SYNTHETIC_OWNED_UUID_PROBE_FAILURE")
+        facade.cuda.get_device_properties = failed_properties
+    for name in ("current_device", "get_device_properties", "max_memory_allocated"):
+        setattr(torch.cuda, name, getattr(facade.cuda, name))
+    resources.ResourceObserver = lambda *a, **k: observer
+    training.admit_runtime = lambda assets: {"scope": "CPU_DISPATCH_ONLY"}
+    reached = []
+    def forbidden(*args, **kwargs):
+        reached.append("payload_or_model")
+        raise AssertionError("CPU_DISPATCH_ONLY_UNSAFE_PAYLOAD_BOUNDARY")
+    training.ReferenceAssets.load = forbidden
+    error = None
+    try:
+        with control_plane(group):
+            try:
+                training._run(None, {"assets": {}, "capacity_policy": capacity_document()}, {}, Path(root), "unused")
+            except Exception as exc:
+                error = str(exc)
+        reports = [None, None]
+        dist.all_gather_object(reports, {"error": error, "reached": reached})
+        assert reports[0]["error"] == reports[1]["error"], reports
+        assert all(not report["reached"] and "CPU_SYNTHETIC_OWNED_UUID_PROBE_FAILURE" in report["error"]
+                   and "rank failures [None," in report["error"] for report in reports), reports
+        value = torch.tensor(rank + 1); dist.all_reduce(value)
+        assert value.item() == 3 and not torch.cuda.is_initialized()
+        (Path(root) / f"device-probe-{rank}.json").write_text(json.dumps(reports[rank]))
+    finally:
+        dist.destroy_process_group(group)
+        dist.destroy_process_group()
+
+
+def test_rank_local_owned_uuid_probe_failure_returns_to_real_gloo_peer_before_payload(tmp_path):
+    mp.spawn(_device_probe_failure_worker, args=(str(tmp_path / "device-rendezvous"), str(tmp_path)), nprocs=2, join=True)

@@ -312,10 +312,72 @@ def _rng_identity():
     return result
 
 
-def _capacity(torch, observer, policy, *, rank, initial=None):
-    """Unchanged common host/driver limits plus real allocator/OOM boundaries."""
+def _gpu_uuid(value):
+    """Canonical full-device UUID only; unresolved/MIG identities fail closed."""
+    text = str(value).lower()
+    if text.startswith("gpu-"):
+        text = text[4:]
+    try:
+        parsed = uuid.UUID(text)
+    except ValueError:
+        raise ValueError("unknown/MIG/unresolved GPU UUID") from None
+    require(str(parsed) == text and parsed.int != 0, "unknown/MIG/unresolved GPU UUID")
+    return text
+
+
+def _cuda_device_identity(torch, *, rank):
+    require(type(rank) is int and 0 <= rank < 16, "invalid reference device owner rank")
+    current = torch.cuda.current_device()
+    require(type(current) is int and current == rank % 8, "owned CUDA device differs from admitted local rank")
+    # Torch 2.10 exposes the actual device properties' _CUuuid.__str__. Never
+    # infer physical identity from visibility text or the logical CUDA ordinal.
+    return {"cuda_device": current, "uuid": _gpu_uuid(getattr(torch.cuda.get_device_properties(current), "uuid", None))}
+
+
+def _device_binding(torch, observer, *, rank):
+    """Local probe only: safe inside checked(), with no nested collectives."""
     observer.sample()
     require(not observer.errors and observer.rows, "common capacity admission failed: " + "; ".join(observer.errors))
+    gpus = observer.rows[-1]["gpus"]
+    require(type(gpus) is list and len(gpus) == 8
+            and all(type(gpu) is dict and type(gpu.get("device")) is int for gpu in gpus)
+            and {gpu["device"] for gpu in gpus} == set(range(8)), "missing/ambiguous physical GPU inventory")
+    inventory = {str(gpu["device"]): _gpu_uuid(gpu.get("uuid")) for gpu in gpus}
+    require(len(set(inventory.values())) == 8, "duplicate physical GPU UUID inventory")
+    owned = _cuda_device_identity(torch, rank=rank)
+    matches = [int(device) for device, identity in inventory.items() if identity == owned["uuid"]]
+    require(len(matches) == 1, "owned CUDA device UUID is unresolved in physical GPU inventory")
+    return {"rank": rank, "node_rank": rank // 8, **owned, "physical_device": matches[0], "physical_inventory": inventory}
+
+
+def _admit_device_bindings(rows):
+    require(type(rows) is list and len(rows) == 16
+            and all(type(row) is dict and type(row.get("rank")) is int and row["rank"] == rank
+                    for rank, row in enumerate(rows)), "missing/duplicate reference rank device bindings")
+    require(all(row["node_rank"] == row["rank"] // 8 and row["cuda_device"] == row["rank"] % 8
+                and row["physical_device"] == row["rank"] % 8
+                and row["physical_inventory"].get(str(row["physical_device"])) == row["uuid"] for row in rows),
+            "owned CUDA binding differs from existing physical-index capacity policy; reordered visibility is unsupported")
+    require(len({row["uuid"] for row in rows}) == 16, "duplicate owned CUDA device UUID bindings")
+    for node in range(2):
+        group = rows[node * 8:(node + 1) * 8]
+        require(all(row["physical_inventory"] == group[0]["physical_inventory"] for row in group),
+                "ranks disagree on physical GPU UUID inventory")
+
+
+def _bind_devices(torch, observer, *, rank):
+    binding = distributed.checked(lambda: _device_binding(torch, observer, rank=rank),
+                                  "W4 owned CUDA UUID/physical inventory probe")
+    rows = distributed.gather(binding)
+    distributed.checked(lambda: _admit_device_bindings(rows), "W4 reference physical device ownership/policy admission")
+    return binding
+
+
+def _capacity(torch, observer, policy, *, rank, binding=None, initial=None):
+    """Unchanged limits, admitted physical ownership and real allocator/OOM boundaries."""
+    observed = _device_binding(torch, observer, rank=rank)
+    require(binding is not None and observed == binding and binding["physical_device"] == rank % 8,
+            "owned CUDA/physical inventory binding changed or was not collectively admitted")
     row = observer.rows[-1]
     for gpu in row["gpus"]:
         reserve = policy["gpu_reserve_bytes"]
@@ -410,7 +472,8 @@ def _run(config, admitted, identity, output, token):
     runtime = distributed.checked(lambda: admit_runtime(admitted["assets"]), "W4 reference dependency/environment/backend controls")
     observer = ResourceObserver(output / "capacity" / f"rank-{rank:05d}.json", "original-W4-reference", rank // 8,
                                 capacity_policy=admitted["capacity_policy"])
-    initial_oom = distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank),
+    device_binding = _bind_devices(torch, observer, rank=rank)
+    initial_oom = distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank, binding=device_binding),
                                       "W4 reference pre-payload physical capacity/reserve admission")
     owner = distributed.checked(lambda: ReferenceAssets.load(admitted["assets"]), "W4 reference all frozen/Stage1 payload admission")
     resume = config.trainer.get("resume_from")
@@ -424,7 +487,8 @@ def _run(config, admitted, identity, output, token):
         "W4 actual InputLoader immutable identity")
     cursor = NativeTeacherCursor(loader, rank=rank)
     consuming = CursorLoader(loader, cursor)
-    distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank, initial=initial_oom),
+    distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank,
+                        binding=device_binding, initial=initial_oom),
                         "W4 reference pre-model physical capacity/reserve admission")
     worker = distributed.checked(lambda: _backend(admitted), "W4 original import origin/FlashAttention2 admission")
     distributed.checked(lambda: admit_runtime(admitted["assets"]), "W4 effective controls unchanged across original imports")
@@ -434,6 +498,9 @@ def _run(config, admitted, identity, output, token):
     distributed.checked(lambda: install_geometry(LiveWanRequest(), plan_sha256=fingerprint(identity)), "W4 immutable reference geometry")
     from distillschedule.runtime.livewan_cuda_setup import materialize_blas_handles
     distributed.checked(lambda: materialize_blas_handles(torch, device), "W4 original CUDA library initialization")
+    distributed.checked(lambda: require(_cuda_device_identity(torch, rank=rank)
+        == {key: device_binding[key] for key in ("cuda_device", "uuid")}, "owned CUDA device binding changed before model construction"),
+        "W4 owned CUDA device unchanged across original imports/setup")
     # Setup imports may draw RNG; seed immediately before the original builder.
     random.seed(config.trainer["seed"] + rank)
     torch.manual_seed(config.trainer["seed"] + rank)
@@ -475,7 +542,8 @@ def _run(config, admitted, identity, output, token):
         require(all(v == versions(cycle + 1) for v in observed), "actual native commit versions disagree across ranks")
         metric = distributed.checked(lambda: _cycle_metrics(evidence, consuming.consumed, actual, cycle + 1),
                                      "W4 bounded actual loss/norm/input evidence")
-        distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank, initial=initial_oom),
+        distributed.checked(lambda: _capacity(torch, observer, admitted["capacity_policy"], rank=rank,
+                            binding=device_binding, initial=initial_oom),
                             "W4 reference complete-cycle capacity/reserve/OOM admission")
         metrics.append(metric)
         cadence = config.trainer["checkpoint_every"]
@@ -486,6 +554,7 @@ def _run(config, admitted, identity, output, token):
             "status": "COMPLETED" if cycle + 1 == config.trainer["cycles"] else "PARTIAL", "rank": rank,
             "identity": identity, "completed_cycles": cycle + 1, "next_input_cursor": cursor.cursor,
             "versions": dict(actual), "metrics": metrics, "capacity_samples": observer.rows,
+            "physical_device_binding": device_binding,
             "runtime": runtime, "original_runtime_origins": origins,
             "native_parameter_layout_sha256": native_layouts,
             "numerical_cross_reference": "NOT_RUN", "claimable_speedup": False,
