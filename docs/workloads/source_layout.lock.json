@@ -126,10 +126,10 @@
     "src/distillschedule/runtime/livewan_crossscale_worker.py": {
       "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "original_integrated_sha256": "9b33e0ec3872cdf5403ddb062504db3714c99785d86bddc55df9002bf050c31c",
-      "reviewed_source_sha256": "a3fa222b638f2202ef9a7a775605fa26a2c1de1d8f29217a1f74ff07a32ec96f",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "a3fa222b638f2202ef9a7a775605fa26a2c1de1d8f29217a1f74ff07a32ec96f",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "aa5c4caf48b4ef363a3b39a8e77f131b0b6b2b11494b7d1369b847b01b62100e",
+      "source_commit": "ef4e1cb111c7e4692adc02ea84367197293eb5df",
+      "integrated_sha256": "aa5c4caf48b4ef363a3b39a8e77f131b0b6b2b11494b7d1369b847b01b62100e",
+      "change": "opt_in_original_W4_finite_teacher_data_InputLoader_only; frozen_FormalTrace_prefix_math_and_cycle_contract_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:a3fa222b638f2202ef9a7a775605fa26a2c1de1d8f29217a1f74ff07a32ec96f; current_branch_integration_or_cli_discovery"
     },
     "scripts/distillschedule/check_best_known_integration.py": {
       "target": "scripts/distillschedule/check_best_known_integration.py",
