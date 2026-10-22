@@ -96,6 +96,13 @@ remain unchanged and unqualified by this CPU-only follow-up.
 
 ## Remaining production-native boundaries
 
+This section records the original native-adapter scope of this dated receipt.
+Later [W3 CPU Program training](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
+and [W6 cached-source training](../../recipes/h3_ar/CPU_REFERENCE.md) add separate
+local references. The current [capability matrix](../guides/support_matrix.md)
+distinguishes those paths; this historical receipt is not rewritten as new GPU evidence.
+
+
 All six recipes still retain their individual algorithms and actual selected
 execution binding. W1/W2/W5 expose their documented opt-in native reference
 continuation. The later [W4 reference follow-up](FRAMEWORK_LIVEWAN_REFERENCE_20261021.md)

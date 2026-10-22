@@ -166,11 +166,13 @@ not a combined `test-helios,native-wan` install. Neither group replaces a
 model-native CUDA environment or downloads model weights.
 
 The [full-original Helios model provider](docs/guides/native_workloads.md#explicit-full-original-helios-model-reference)
-has its own Diffusers 0.37.1 CPU group, separate from both pins above:
+has its own public `helios-reference` Diffusers0.37.1 runtime, separate from
+both pins above. Public training needs `.[train,helios-reference]`, not pytest.
+Its source-qualified CPU tests add `test` independently:
 
 ```sh
 # Use a separate environment, not the 0.34 helper or 0.35 Wan environment.
-python -m pip install -e '.[train,test,test-helios-model]'
+python -m pip install -e '.[train,test,helios-reference]'
 python -m pytest -q tests/test_helios_reference_model_cpu.py
 ```
 

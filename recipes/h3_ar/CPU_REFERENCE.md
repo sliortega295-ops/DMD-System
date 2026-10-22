@@ -138,6 +138,6 @@ The independent original source-provider/CPU tests remain applicable unchanged.
 Auto/manual/saved-plan execution, distributed/CUDA, epochs/shuffle/GAS,
 backend substitution, portability across dependency/source/precision changes,
 decoded-media generation and portable generator export are not admitted here.
-Export/generation depends on the separate generic inference projection unit
-and legitimate AV decoder assets. These are cached latent training results,
+The generic inference projection interface exists, but this W6 adapter does
+not supply its own export/generation callback or legitimate AV decoder assets. These are cached latent training results,
 not video/audio files, pretrained quality results, GPU validation or speedups.

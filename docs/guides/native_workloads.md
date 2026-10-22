@@ -193,8 +193,8 @@ identity = reference_model_identity(backend="torch-sdpa")  # No Torch/model impo
 HeliosTransformer3DModel = load_reference_model_class(backend="torch-sdpa")
 ```
 
-Use a source checkout and the separate `[train,test,test-helios-model]` CPU-test
-dependencies for `tests/test_helios_reference_model_cpu.py`. Its Diffusers
+Use a source checkout and the separate `[train,helios-reference]` public
+runtime; add `[test]` for `tests/test_helios_reference_model_cpu.py`. Its Diffusers
 0.37.1 pin does **not** replace `test-helios`'s 0.34.0 or `native-wan`'s 0.35.2;
 these are separate environments, not extras to combine.
 

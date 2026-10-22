@@ -15,6 +15,12 @@ modes, epochs/shuffling, periodic validation and replay are not admitted
 here. Portable current-G native latent inference uses the separate
 [inference-only projection](PORTABLE_INFERENCE_CPU.md). Existing W2 and native W3 configurations are unchanged.
 
+Install the separate public runtime with `python -m pip install -e '.[train,helios-reference]'`.
+It includes the actual original Args/config dependencies; pytest and the
+`test` extra are not required for public training. Do not combine its Diffusers
+0.37.1 environment with the helper0.34 or native-Wan0.35 groups. Dedicated CI
+adds tests independently and keeps the qualification alias identical.
+
 ## Supply local assets, never a fallback model
 
 Copy the two `*.reference.cpu.template.json` manifests into your project and

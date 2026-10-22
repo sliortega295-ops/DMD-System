@@ -117,6 +117,20 @@ def test_cached_h3_reference_has_its_own_small_dependency_closure(wheel_metadata
         assert f'{package};extra=="h3-cached-reference"' in requirements
 
 
+
+def test_public_helios_reference_extra_has_its_own_complete_runtime(wheel_metadata):
+    from packaging.requirements import Requirement
+    requirements = [Requirement(value) for value in wheel_metadata.get_all("Requires-Dist")]
+    def extra(name):
+        return {str(Requirement(str(value).split(";", 1)[0])).replace(" ", "")
+                for value in requirements if value.marker and value.marker.evaluate({"extra": name})}
+    public = extra("helios-reference")
+    assert {"torch>=2.10", "omegaconf>=2.3", "diffusers==0.37.1", "peft==0.17.1",
+            "transformers==4.51.3", "httpx==0.28.1", "safetensors>=0.4"} <= public
+    assert public == extra("test-helios-model"), "qualification must use the public runtime, not hidden test-only deps"
+    assert not any(Requirement(value).name in {"pytest", "triton", "kernels"} for value in public)
+
+
 def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
     for extra in ("native", "native-wan"):
