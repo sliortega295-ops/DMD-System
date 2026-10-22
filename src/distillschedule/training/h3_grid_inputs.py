@@ -109,6 +109,13 @@ def validate_payloads(inventory):
     """
     import torch
     from lightx2v_train.data.video_dataset import LatentDataset
+    # The pinned dataset uses unrestricted condition loading. Admit every
+    # content-pinned archive with the restricted loader before any native read;
+    # unsupported globals must reject without retrying unrestricted loading.
+    for expected in inventory["rows"]:
+        path = Path(expected["condition_path"])
+        require(file_sha256(path) == expected["sha256"], "cached condition changed before model construction")
+        torch.load(path, map_location="cpu", weights_only=True)
     dataset = LatentDataset(inventory["metadata"]["path"])
     require(len(dataset) == len(inventory["rows"]) and dataset.negative_condition is None,
             "actual original cached dataset inventory changed")
@@ -174,7 +181,9 @@ class NativeLatentCursor:
         try:
             self.iterator = iter(loader)
             for _ in range(6 * cycle):
-                next(self)
+                # Construction/seek is already inside the lifecycle's
+                # distributed.checked; do not nest metadata collectives.
+                self._next_local()
         finally:
             if saved is not None:
                 restore_rng(saved)
@@ -185,12 +194,18 @@ class NativeLatentCursor:
     def __next__(self):
         if self.cursor >= self.limit:
             raise StopIteration
+        from . import distributed
+        return distributed.checked(self._next_local, "H3 original native next-sample consumption")
+
+    def _next_local(self):
         expected = self.inventory["rows"][self.order[self.cursor]]
         require(file_sha256(Path(expected["condition_path"])) == expected["sha256"],
                 "cached condition changed before native next-sample consumption")
         sample = next(self.iterator)
+        paths = sample["meta"]["condition_path"]
         require(sample["meta"]["id"] == [expected["record"]["id"]]
-                and sample["meta"]["condition_path"] == [expected["condition_path"]],
+                and isinstance(paths, list) and len(paths) == 1
+                and Path(paths[0]).resolve() == Path(expected["condition_path"]),
                 "original dataloader returned a different next sample")
         self.cursor += 1
         return sample

@@ -106,26 +106,86 @@ def real_loader(native, monkeypatch):
     return DataLoader(dataset, batch_size=1, sampler=sampler, num_workers=0, pin_memory=False)
 
 
+@pytest.mark.parametrize("path_kind", ["absolute", "parent_relative", "symlink"])
 def test_original_dataloader_resume_seek_preserves_restored_torch_rng(
-        tmp_path, original_source, cached_data, monkeypatch):
+        tmp_path, original_source, cached_data, monkeypatch, path_kind):
     import torch
     from distillschedule.training.h3_grid_inputs import NativeLatentCursor, prepare_inputs, load_inputs
     config_path, native, rows = cached_data
+    metadata = Path(native["data"]["train"]["data_path"])
+    if path_kind == "parent_relative":
+        metadata = tmp_path / "metadata" / "samples.jsonl"
+        metadata.parent.mkdir()
+        for row in rows:
+            row["condition_path"] = "../" + Path(row["condition_path"]).name
+    elif path_kind == "symlink":
+        links = tmp_path / "condition-links"
+        links.mkdir()
+        for row in rows:
+            target = Path(row["condition_path"])
+            alias = links / target.name
+            alias.symlink_to(target)
+            row["condition_path"] = str(alias)
+    metadata.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    native["data"]["train"]["data_path"] = str(metadata)
+    config_path.write_text(json.dumps(native))
+    metadata_bytes = metadata.read_bytes()
     inventory = prepare_inputs(config_path, tmp_path / "inputs.json")
     assert load_inputs(tmp_path / "inputs.json", config_path=config_path, cycles=3) == inventory
     loader = real_loader(native, monkeypatch)
     order = list(loader.sampler)
     torch.manual_seed(401)
+    original_iterator = iter(real_loader(native, monkeypatch))
+    original_rng = torch.get_rng_state().clone()
+    original_sample = next(original_iterator)
+    torch.manual_seed(401)
     fresh = NativeLatentCursor(loader, inventory, cycle=0, resume=False)
-    prefix = [next(fresh)["meta"]["id"][0] for _ in range(6)]
+    assert torch.equal(torch.get_rng_state(), original_rng)
+    first = next(fresh)
+    assert first["meta"] == original_sample["meta"]
+    prefix = [first["meta"]["id"][0]] + [next(fresh)["meta"]["id"][0] for _ in range(5)]
     assert prefix == [rows[i]["id"] for i in order[:6]]
     saved_rng = torch.get_rng_state().clone()
     following = next(fresh)
     torch.set_rng_state(saved_rng)
     resumed = NativeLatentCursor(real_loader(native, monkeypatch), inventory, cycle=1, resume=True)
     assert torch.equal(torch.get_rng_state(), saved_rng)
-    assert next(resumed)["meta"]["id"] == following["meta"]["id"]
+    assert next(resumed)["meta"] == following["meta"]
     assert resumed.cursor == 7 and resumed.epoch == 0
+    # Canonical comparison must not rewrite the metadata or the native sample.
+    native_path = Path(rows[order[6]]["condition_path"])
+    if not native_path.is_absolute():
+        native_path = metadata.parent / native_path
+    assert following["meta"]["condition_path"] == [str(native_path)]
+    assert metadata.read_bytes() == metadata_bytes
+    assert load_inputs(tmp_path / "inputs.json", config_path=config_path, cycles=3) == inventory
+    assert not torch.cuda.is_initialized()
+
+
+def test_native_cursor_resume_seek_does_not_nest_collective_admission(
+        tmp_path, original_source, cached_data, monkeypatch):
+    from distillschedule.training import distributed
+    from distillschedule.training.h3_grid_inputs import NativeLatentCursor, prepare_inputs
+    config_path, native, _ = cached_data
+    inventory = prepare_inputs(config_path, tmp_path / "inputs.json")
+    checked = distributed.checked
+    labels = []
+    active = False
+    def observed(fn, label):
+        nonlocal active
+        assert not active, "constructor resume seeking nested a collective check"
+        labels.append(label)
+        active = True
+        try:
+            return checked(fn, label)
+        finally:
+            active = False
+    monkeypatch.setattr(distributed, "checked", observed)
+    cursor = distributed.checked(lambda: NativeLatentCursor(
+        real_loader(native, None), inventory, cycle=1, resume=True), "constructor admission")
+    assert labels == ["constructor admission"] and cursor.cursor == 6
+    next(cursor)
+    assert len(labels) == 2 and cursor.cursor == 7
 
 
 def test_native_next_sample_rechecks_pinned_payload_before_consumption(
@@ -392,6 +452,65 @@ def test_worker_rejects_renamed_fixed_trace_payloads_as_fresh_rows(tmp_path, ori
     changed = prepare_inputs(cached_data[0], tmp_path / "renamed-inputs.json")
     with pytest.raises(ValueError, match="duplicate cached condition"):
         validate_payloads(changed)
+
+
+def test_original_cached_conditions_are_safely_admitted_before_upstream_unpickling(
+        tmp_path, original_source, cached_data, monkeypatch):
+    import torch
+    from distillschedule.training.checkpoint import rng_state
+    from distillschedule.training.h3_grid_inputs import validate_payloads
+    from test_training_end_to_end import equal
+    _, inventory, _ = tiny_config(tmp_path, cached_data)
+    metadata = Path(inventory["metadata"]["path"]).read_bytes()
+    before = rng_state()
+    real_load = torch.load
+    calls = []
+    def observed(path, *args, **kwargs):
+        calls.append((str(Path(path).resolve()), kwargs.get("map_location"), kwargs.get("weights_only")))
+        return real_load(path, *args, **kwargs)
+    monkeypatch.setattr(torch, "load", observed)
+    assert len(validate_payloads(inventory)) == 64
+    paths = [row["condition_path"] for row in inventory["rows"]]
+    assert calls == [(path, "cpu", True) for path in paths] + [(path, "cpu", False) for path in paths]
+    assert equal(before, rng_state())
+    assert Path(inventory["metadata"]["path"]).read_bytes() == metadata
+    assert not torch.cuda.is_initialized()
+
+
+def test_original_cached_condition_rejects_executable_pickle_before_any_native_read(
+        tmp_path, original_source, cached_data, monkeypatch):
+    import pickle
+    import torch
+    from distillschedule.training.h3_grid_inputs import prepare_inputs, validate_payloads
+    from lightx2v_train.data.video_dataset import LatentDataset
+    _, inventory, _ = tiny_config(tmp_path, cached_data)
+    marker = tmp_path / "UNSAFE_CONDITION_EXECUTED"
+    class ExecutableCondition:
+        def __reduce__(self):
+            return eval, (f"__import__('pathlib').Path({str(marker)!r}).write_text('executed')",)
+    # The last archive is content-pinned just like an ordinary supplied payload.
+    # Keeping valid tensors at its positive key makes an unrestricted native
+    # load otherwise succeed and proves the extra object cannot be ignored.
+    path = inventory["rows"][-1]["condition_path"]
+    value = torch.load(path, weights_only=True)
+    value["unsupported"] = ExecutableCondition()
+    torch.save(value, path)
+    inventory = prepare_inputs(cached_data[0], tmp_path / "executable-inputs.json")
+    real_getitem = LatentDataset.__getitem__
+    reads = []
+    def observed(dataset, index):
+        reads.append(index)
+        return real_getitem(dataset, index)
+    monkeypatch.setattr(LatentDataset, "__getitem__", observed)
+    error = None
+    try:
+        validate_payloads(inventory)
+    except Exception as caught:
+        error = caught
+    assert not marker.exists(), "the supplied condition executed before admission"
+    assert reads == [], "upstream unpickled conditions before restricted archive admission"
+    assert isinstance(error, pickle.UnpicklingError) and "Unsupported global" in str(error)
+    assert not torch.cuda.is_initialized()
 
 
 @pytest.mark.parametrize("kind", ["dtype", "shape", "tags", "positive"])
