@@ -467,13 +467,16 @@ class FSDP2EngineAdapter:
         physical_step: int,
         global_batch: int = 16,
         gradient_clip: float = 1.0,
+        dp_world_size: int = 16,
     ) -> None:
+        if type(dp_world_size) is not int or dp_world_size < 1:
+            raise ValueError("FSDP2 engine dp_world_size must be an explicit positive integer")
         self.module = module
         self.optimizer = optimizer
         self.lr_scheduler = scheduler
         self.global_steps = int(physical_step)
         self.global_samples = int(physical_step) * int(global_batch)
-        self.dp_world_size = 16
+        self.dp_world_size = dp_world_size
         self._global_batch = int(global_batch)
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
