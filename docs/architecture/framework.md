@@ -74,7 +74,10 @@ existing allocated distributed Program interface when an explicit torchrun
 group is supplied. Resident/DDP/FSDP2/HSDP layouts persist across cycles;
 same-topology restart restores local shards into the same live parameter
 objects. Role-pool interfaces retain their separate admission. Six native recipes preserve their
-original distributed contracts and bounded update counts. See the
+original distributed contracts. W1/W2/W5 add explicitly versioned fresh-input,
+original-engine continuation; selected benchmark bindings remain bounded.
+These paths reuse the same complete-cycle checkpoint/state machinery, not
+another DMD loop or solver. See the
 [support matrix](../guides/support_matrix.md); source/CPU integration does not
 constitute new CUDA validation.
 

@@ -37,3 +37,9 @@ Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
 operations. This binding does not replace the original protocol or certify GPU execution.
+
+For finite fresh-data training and complete-cycle restart without a selected
+benchmark plan, use the separate [original Grid1000 reference lifecycle](../h3-grid-original-training.md).
+It retains the existing trainer and Grid objective, requires an explicit original
+config and qualified assets, and keeps optional optimized paths OFF. CPU source
+and restart mechanics do not promote the historical optimized numerical FAIL.

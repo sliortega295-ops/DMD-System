@@ -51,8 +51,16 @@ The first data scope is deliberately narrow:
   construction retains upstream's RNG draw; resumed iterator construction and
   seek preserve the restored Python/NumPy/Torch/current-device CUDA RNG.
 
-Inventory already supplied data through the Python API (it neither downloads
-nor generates model/data payloads):
+Inventory already supplied data through the common data command (it neither
+downloads nor generates model/data payloads):
+
+```sh
+distillctl data prepare-h3-grid \
+  --native-config /srv/project/configs/original-grid.json \
+  --output /srv/project/configs/grid-inputs.json
+```
+
+The same producer is available through Python:
 
 ```python
 from distillschedule.training.h3_grid_inputs import prepare_inputs

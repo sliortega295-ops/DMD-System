@@ -44,15 +44,16 @@ passed. A source/layout change requires new source-bound admission and costs.
 | Recipe | Original algorithm | Real API | Admitted cycle count |
 | --- | --- | --- | --- |
 | [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..64 fresh cohorts with a compatible saved policy or explicit manual/reference strategy; literal incumbent bundle remains fixed-trace/two-cycle |
-| [W2](../../recipes/helios_nogan/training.json) | Helios14B hierarchical AR, G1/C5/EMA5 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
+| [W2 selected](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Selected: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Selected: 2. Direct reference: 2..64 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
 | [W3](../../recipes/helios_gan/training.json) | Helios14B DMD + GAN-G/GAN-D, G1/C5/EMA1 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
 | [W4](../../recipes/self_forcing/training.json) | C51 Self-Forcing, continuous sigma, G1/C5/EMA0 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
-| [W5](../../recipes/h3_fullseq/training.json) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
+| [W5 selected](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-grid-original-training.md) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | Selected: `search.execution.run_plan`; original reference: `grid_entrypoint` and original Grid trainer | Selected: 2. Original reference: 2..64 finite cached-condition cycles |
 | [W6](../../recipes/h3_ar/training.json) | Original DiffSynth previous+current AV, continuous sigma, 8-step, G1/F1, LoRA64, ZeRO-3 | `strategies.h3_ar_cli.main` -> `h3_ar_worker.run_worker` | Exactly 2 native updates |
 
-These are integrations of existing bounded native APIs, **not** six arbitrary
-long-training engines. A request for 100 cycles on a two-update native runtime
-is rejected, never silently executed as two. Unsupported shapes or protocol
+These are integrations of original native owners, **not** six arbitrary
+long-training engines. Fresh-stream support is explicit for W1/W2/W5;
+W3/W4/W6 retain bounded native APIs. A request for 100 cycles on a two-update
+runtime is rejected, never silently executed as two. Unsupported shapes or protocol
 fields reject through the original typed task/request validators. W5 is not a
 continuous-sigma variant, and W6 is never dispatched through W5 Grid1000.
 
@@ -75,7 +76,13 @@ fall back to ZeRO-2, or launch nodes for them. Follow the original
 [Wan runbook](../runbooks/wan_compute_state_planning_v1.md) and
 [W6 runbook](../runbooks/original_h3_ar_native.md).
 
-For W2-W5, this training front door accepts saved-plan mode only. To run a
+W2 also has a [direct reference recipe](../../recipes/helios_nogan/REFERENCE_TRAINING.md)
+without a historical trace or node manifest; W5 has an [original-config reference
+lifecycle](../../recipes/h3-grid-original-training.md). Neither route inherits a
+measured winner. Both require their own qualified original assets and data,
+and execute inside an operator-owned world16 allocation, not a shell launcher.
+
+The other W2-W5 bindings accept saved-plan mode only. To run their corresponding
 reference first, explicitly resolve the intended generated reference candidate
 through the existing [native calibration workflow](../runbooks/native_planner_workflow.md),
 then provide its source-bound resolved receipt for W2/W3/W5. W4's public C51
@@ -102,7 +109,7 @@ of mesh, retention, precision and kernel policy for every workload.
 | --- | --- |
 | `model.workload` | W1-W6; not a best-profile ID or an arbitrary model factory |
 | `execution.task` | Original Wan/H3-AR task JSON (W1/W6), `OriginalHeliosRequest` (W2/W3), `LiveWanRequest` (W4), or `H3Request` (W5) |
-| `execution.assets` | Exact native asset JSON; W2-W5 must be byte-equivalent as JSON to the saved plan's `asset_config`, including correctness receipts and node/Python paths |
+| `execution.assets` | Exact native asset JSON; selected W2-W5 must be byte-equivalent as JSON to the saved plan's `asset_config`. W2/W5 direct references use their separately documented asset schemas, not that dispatcher manifest |
 | `execution.plan` | Selected source-bound native plan for plan mode; omitted for explicit reference/manual mode |
 | `execution.implementation` | Explicit Wan strategy JSON path or W6 `zero3-native` / `zero3-ap` enum; reference/manual only |
 | `execution.capacity_policy` | W6's existing common host/GPU capacity-policy JSON; must equal the saved plan in plan mode |
@@ -110,7 +117,7 @@ of mesh, retention, precision and kernel policy for every workload.
 | `execution.expected_head` | Optional exact source HEAD assertion; saved-plan source checks are always mandatory |
 | `trainer.output_dir` | Explicit project output directory; existing native ownership/non-overwrite rules remain active |
 | `trainer.cycles` | Actual supported native count, checked against selected contract; not a timing normalization |
-| `trainer.checkpoint_every` | W1 fresh streams: opt-in positive interval; all other native paths require `0` |
+| `trainer.checkpoint_every` | W1/W2/W5 explicit fresh-input lifecycles: supported at complete cycles; all selected benchmark bindings still require `0` |
 
 For W2-W5, extract `asset_config` from the plan you actually compiled; do not
 edit a path in a saved receipt to make it fit another machine. Asset locations
@@ -132,10 +139,26 @@ This is not the generic PreparedDataset manifest. To deliberately replay a
 fixed trace, omit `prepared` and `input_kind` and explicitly set
 `data.replay_fixed_trace: true`; that is replay evidence, not fresh-data training.
 
-W2-W6 data is qualified inside native assets; a generic `data.prepared` is
-rejected rather than ignored. Native RNG is bound by the source/bootstrap/
-prepared trace: `trainer.seed` overrides are rejected. Reprepare inputs and
-their plan to change RNG or geometry.
+W2 direct training requires `data.input_kind: original_helios_cohort_stream.v1`
+and its prepared `stream.json`. The source inventory contains five real
+step/rank-qualified feature sets per cohort, not a recycled benchmark trace.
+Its [portable asset template](../../recipes/helios_nogan/assets.reference.template.json)
+pins only used model/pre-cast/bootstrap/negative roles, including the actual
+EMA manifest. The original Step10 optimizer/EMA boundary remains mandatory;
+cold-start Step0 and arbitrary checkpoint versions are not supported.
+
+W5 original training requires `data.input_kind: original_h3_grid_latent_dataset.v1`
+and an inventory of genuine original cached conditions. The fully resolved
+native config, source/dependency identities, target horizon and data order are
+explicit. `trainer.seed` must equal the supplied original config. This is still
+the Grid1000 **approximate** objective, not continuous sigma.
+
+Other W2-W6 data remains qualified inside native assets; generic prepared data
+is rejected rather than ignored. Except for W5's explicit original-config
+binding, native RNG is bound by the source/bootstrap/prepared trace and
+`trainer.seed` overrides reject. Reprepare inputs and the matching policy to
+change RNG or geometry. Native feature inventories are not the generic
+PreparedDataset format and do not use the tiny statistics encoder.
 
 W6's v2 rank-input contract additionally pins original per-rank cache paths,
 parser/source hashes and shape metadata, including rank 6's native audio94.
@@ -171,9 +194,19 @@ the original compute timer. A failed write is not a valid checkpoint.
 CPU tests exercise original dispatch/cursor logic and actual engine/Adam
 restart on scalar fixtures; real pretrained Wan/CUDA restart remains NOT_RUN.
 
-W2-W6 do not yet expose complete restart through this binding. Native
-generation, decoding and portable inference export also remain unavailable
-here. Unsupported lifecycle requests fail instead of silently being ignored.
+W2's direct reference and W5's original-config reference also expose atomic
+complete-cycle restart over actual original owners. Their guides specify
+distinct fixed-horizon/data/topology restrictions; do not apply W1's CLI
+target-extension example to them. Both start metadata admission before model
+construction and reject a borrowed application process group. Tests exercise
+real original helpers, persistent CPU optimizer owners and real Gloo control
+collectives; topology/CUDA/model-construction fixtures are explicitly synthetic,
+not world16 GPU evidence.
+
+W3/W4/W6 and selected benchmark bindings do not yet expose complete restart
+through this front door. Native generation, decoding and portable inference
+export also remain unavailable here. Unsupported requests fail instead of
+silently being ignored.
 W1's existing final writer saves trainable/Adam/EMA **evidence** automatically
 outside native timers (`wan_worker.save_final_state`); it is not a complete RNG/
 distributed restart checkpoint. W2-W6 sampled state/fingerprint JSON is not a

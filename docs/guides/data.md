@@ -222,3 +222,24 @@ No incomplete staging directory is a valid prepared dataset.
 Validation proves local bytes and tensor structure, not model compatibility,
 native VAE numerical parity, training convergence, or GPU performance. Those
 require the corresponding model/training evidence.
+
+## Original native input preparation
+
+Native workloads keep their own input semantics; their manifests are not the
+generic `PreparedDataset` format. These commands inventory or prepare actual
+operator-supplied native features rather than applying the tiny media encoder:
+
+| Workload | Producer | Input and boundary |
+| --- | --- | --- |
+| W1 | `distillctl workloads native prepare-stream` | Original per-rank Wan features and explicit cohort seeds; original capture/data helpers |
+| W2 | `distillctl data prepare-helios-stream --sources ... --training-config ... --output ...` | Five actual source steps per world16 cohort, original dataset/history/noise helpers; CPU preparation, no model initialization |
+| W5 | `distillctl data prepare-h3-grid --native-config ... --output ...` | Content inventory of already encoded original JSONL conditions; no latent generation or model import |
+
+Use the [Wan stream guide](../workloads/original_wan_fresh_training.md),
+[W2 reference inputs](../../recipes/helios_nogan/REFERENCE_TRAINING.md) and
+[W5 original inputs](../../recipes/h3-grid-original-training.md) for exact
+schemas and runtime admission. Supplied records must be genuine and satisfy
+their original shapes/precision/RNG/sample contracts. Missing assets and
+unsupported branches reject; they are not resampled or replaced with random
+tensors. Preparation alone does not establish model compatibility, quality,
+CUDA capacity or numerical equivalence.

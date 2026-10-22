@@ -1,5 +1,10 @@
 # Public framework: implementation and CPU acceptance
 
+**Source-scoped snapshot:** the suites and native limits below describe the
+commits named in this report, not every later commit on the integration branch.
+The subsequent [original W2/W5 lifecycle acceptance](FRAMEWORK_NATIVE_LIFECYCLE_20261021.md)
+adds separately versioned reference training and restart for those two workloads.
+
 DMD-System provides a common data, training and inference lifecycle on its
 existing Program, execution graph and measured planner. This report separates
 that exercised framework from each original pretrained-model adapter. It

@@ -79,6 +79,13 @@ existing APIs retain their actual cycle and lifecycle limits. Consult the
 [native guide](docs/guides/native_workloads.md) and
 [support matrix](docs/guides/support_matrix.md).
 
+Fresh original-engine training and complete-cycle restart are separately
+available for [Wan](docs/workloads/original_wan_fresh_training.md),
+[Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md), and
+[Grid1000 H3](recipes/h3-grid-original-training.md). Their input/checkpoint
+contracts remain explicit; they do not turn all six historical two-cycle
+workers into arbitrary-length pretrained trainers.
+
 ```sh
 distillctl workloads describe --workload W4
 distillctl workloads describe --workload W6 --hardware h100
@@ -139,6 +146,15 @@ inputs after removing the original training data and checkpoints. Hardware-quali
 records remain in the [source index](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md)
 and [H100 index](docs/status/H100_SOURCE_SNAPSHOT_20261019.md); this integration
 does not remeasure large-model performance or quality.
+
+Original-helper CPU tests have separate optional dependencies from the public
+tiny example and native CUDA environments. On Linux x86-64,
+`.[train,test,test-helios]` qualifies the licensed Helios helpers, including real
+`kernels`/Triton imports without compiling or launching a kernel. The dedicated
+[H3 CPU workflow](.github/workflows/h3-grid-native-cpu.yml) also reads exact
+LightX2V/Diffusers source commits and installs `test-h3`; it is not a model
+download or an installation recipe for a CUDA cluster. Those native runtimes
+must still pass their own pinned source/backend/dependency checks.
 
 ## Organization
 
