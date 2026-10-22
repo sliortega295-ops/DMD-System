@@ -645,7 +645,7 @@ class HeliosStepOwner:
                 if train_generator:
                     if use_gan:
                         for name, p in self.critic.module.named_parameters():
-                            if name in self.base | self.extra:
+                            if name in self.base or name in self.extra:
                                 p.requires_grad = False
                     kwargs = self._kwargs(role="generator", row=row, use_gt=use_gt, use_gan=use_gan, sections=sections)
                     # Preserve the trainer's entry draw even though run_generator
@@ -662,7 +662,7 @@ class HeliosStepOwner:
                     receipt.update(generator_loss=loss.detach().item(), generator_logs=_content(logs))
                 if use_gan:
                     for name, p in self.critic.module.named_parameters():
-                        if name in self.base | self.extra:
+                        if name in self.base or name in self.extra:
                             p.requires_grad = True
                 kwargs = self._kwargs(role="critic", row=row, use_gt=use_gt, use_gan=use_gan, sections=sections)
                 kwargs["noise"] = torch.randn(self.noise_shape, dtype=self.critic.module.dtype)
