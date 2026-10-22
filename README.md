@@ -143,6 +143,11 @@ distillctl workloads verify-catalog --repo-root .
 python scripts/distillschedule/check_best_known_integration.py
 ```
 
+The [current framework acceptance and limits](docs/status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md)
+cover the common lifecycle and all six distinct reference integrations, including
+the actual original Helios GAN and cached-H3 CPU paths. Earlier dated reports
+remain source-scoped history, not the current capability inventory.
+
 CPU checks cover actual media, real autograd, optimizer state, fresh-process
 restart, selected-plan execution and an external model. Installed-wheel
 acceptance also generates decoded frames from exported weights on genuinely new

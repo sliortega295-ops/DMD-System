@@ -6,7 +6,8 @@
   [data preparation](guides/data.md), [new-model extension](guides/extensions.md),
   [native integration](guides/native_workloads.md), and [support matrix](guides/support_matrix.md).
 - [Complete offline media-to-training example](../examples/framework/README.md).
-- [Framework CPU acceptance and remaining native limits](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
+- [Current framework and original-model CPU acceptance](status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md).
+- [Earlier source-scoped framework acceptance](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
 - [Original W2/W5 reference lifecycle and CPU evidence](status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md).
 - [Original W4 reference lifecycle and reviewed CPU boundaries](status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md).
 - [Six workload guides](../recipes/README.md) and `distillctl workloads list`.
