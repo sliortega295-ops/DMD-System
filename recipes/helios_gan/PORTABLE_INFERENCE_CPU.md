@@ -28,8 +28,12 @@ prepared/raw training data, initial base-weight files, negative-teacher
 conditioning, training Args JSON, restart checkpoints and run directories may
 be unavailable. This is **not** a self-contained Python executable: the pinned
 original source package, public provider/backend and compatible installed
-runtime dependencies are still required. Inference identity pins their
-**content**, not old absolute source/dependency/base/dataset paths. Installed
+runtime dependencies are still required. The current original Helios provider
+requires an **editable DMD-System checkout** with its admitted original helper
+tree; the lightweight framework wheel alone is not this native source bundle.
+That checkout may be relocated independently of the old training payloads.
+Inference identity pins source **content**, not old absolute
+source/dependency/base/dataset paths. Installed
 relocation is distinct from same-topology training restart.
 
 ## New prompt inputs, not five unused training rows

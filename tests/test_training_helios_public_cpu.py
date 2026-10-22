@@ -559,3 +559,25 @@ def test_output_loader_uses_staged_outer_progress_hook_before_restore(public_che
         session.export(config,target,tmp_path/'export-refused')
     assert equal(snapshots[0],pack_state(owned[0]))
     assert not (tmp_path/'export-refused').exists()
+
+
+def test_local_base_checks_each_weight_without_rebuilding_state_per_tensor(tmp_path, monkeypatch):
+    from distillschedule.training.helios_public_assets import load_base
+    from distillschedule.adapters.helios.reference_model import load_reference_model_class
+
+    asset_path, _ = fixture_files(tmp_path / 'local', capacity=5)
+    assets = json.loads(asset_path.read_text())
+    cls = load_reference_model_class(backend='torch-sdpa')
+    original = cls.state_dict
+    calls = []
+    def record(self, *args, **kwargs):
+        calls.append(id(self))
+        return original(self, *args, **kwargs)
+    monkeypatch.setattr(cls, 'state_dict', record)
+    model = load_base(cls, assets['generator'], evidence_kind=FIXTURE,
+                      remaining_parameters=assets['budget']['max_parameters'])
+    # Layout admission and the final complete value check each need one map;
+    # the pinned original constructor has no state-dict hooks or side effects.
+    assert len(calls) == 2
+    assert all(not m._state_dict_hooks and not m._state_dict_pre_hooks for m in model.modules())
+    assert all(t.device.type == 'cpu' and t.isfinite().all() for t in model.parameters())

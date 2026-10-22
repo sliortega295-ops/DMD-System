@@ -202,7 +202,8 @@ def load_base(cls, spec, *, evidence_kind, remaining_parameters):
     model.rope = rope
     require(all(t.device.type=='cpu' and t.dtype==torch.float32 and t.isfinite().all().item()
                 for t in [*model.parameters(),*model.buffers()]), 'meta/uninitialized/nonfinite model tensors remain')
-    require(all(torch.equal(model.state_dict()[name],tensor) for name,tensor in weights.items()),
+    materialized = model.state_dict()
+    require(all(torch.equal(materialized[name],tensor) for name,tensor in weights.items()),
             'base tensor values changed during original buffer initialization')
     for pin in [spec['config'],*spec['weights']]:
         checked_pin(pin)
