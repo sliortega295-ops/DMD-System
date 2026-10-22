@@ -65,7 +65,7 @@ def runtime_identity():
 def read_args(pin):
     from omegaconf import OmegaConf
     from distillschedule.strategies.wan_capture import native_primitives
-    native_primitives()
+    native_primitives(source_only=True)
     from helios.utils.train_config import Args
     value = read_json(checked_pin(pin))
     args = OmegaConf.merge(OmegaConf.structured(Args), value)

@@ -149,7 +149,7 @@ import inspect
 constructor=inspect.unwrap(cls.__init__).__code__;models=[];calls=[];dit=[]
 config=load_training_config(root/'inference.json')
 from distillschedule.strategies.wan_capture import native_primitives
-native=native_primitives();original=native.post.run_generator
+native=native_primitives(source_only=True);original=native.post.run_generator
 load=session.load_callable
 
 def only_model(reference):

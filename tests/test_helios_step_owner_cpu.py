@@ -33,7 +33,7 @@ def equal(a, b):
 
 def _config():
     from distillschedule.strategies.wan_capture import native_primitives
-    native_primitives()
+    native_primitives(source_only=True)
     from helios.utils.train_config import Args
     from omegaconf import OmegaConf
     args = OmegaConf.structured(Args)
@@ -145,6 +145,172 @@ def _build(*, seed=71, horizon=20, mutate=None, edit_owners=None):
         gan_base_critic_trainable_params=base, gan_extra_critic_trainable_params=extra,
         frozen_parameter_names={n for n, p in c.module.named_parameters() if not p.requires_grad},
         backend='torch-sdpa')
+
+
+
+@pytest.mark.parametrize('entry', ['owner', 'inference'])
+@pytest.mark.parametrize('invalidation', ['timestamp', 'unchecked-hash'])
+def test_public_helpers_execute_source_not_stale_original_filename_bytecode(tmp_path, entry, invalidation):
+    script = r"""
+from pathlib import Path
+import hashlib, importlib.util, shutil, sys
+from importlib._bootstrap_external import _code_to_timestamp_pyc, _code_to_hash_pyc
+import torch
+import test_helios_step_owner_cpu as fixture
+from distillschedule.workloads.best_known import registry
+from distillschedule.adapters.helios import reference_model as provider
+from distillschedule.strategies import wan_capture
+root, entry, invalidation = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+original = registry.repository_root()
+shutil.copytree(original/'third_party/helios_compat', root/'third_party/helios_compat',
+                ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+registry.repository_root = provider.repository_root = wan_capture.repository_root = fixture.repository_root = lambda: root
+source = root/'third_party/helios_compat/source/helios/utils/utils_helios_post.py'
+content, stat = source.read_bytes(), source.stat()
+needle = b'return torch.mean(F.softplus(logit * label).float())'
+assert content.count(needle) == 1
+altered = content.replace(needle, b'return 7.0 + torch.mean(F.softplus(logit * label).float())')
+code = compile(altered + b'\nDMD_STALE_BYTECODE_SENTINEL = True\n', str(source), 'exec')
+payload = (_code_to_timestamp_pyc(code, int(stat.st_mtime), len(content))
+           if invalidation == 'timestamp' else
+           _code_to_hash_pyc(code, importlib.util.source_hash(content), checked=False))
+cache = Path(importlib.util.cache_from_source(str(source)))
+cache.parent.mkdir(parents=True, exist_ok=True); cache.write_bytes(payload)
+if entry == 'owner':
+    owner = fixture._build(horizon=5)
+    native = owner.native
+else:
+    from distillschedule.training.helios_inference import content_identity
+    content_identity()
+    native = wan_capture.native_primitives()
+assert Path(native.post.cal_gan_loss.__code__.co_filename).resolve() == source.resolve()
+expected = torch.nn.functional.softplus(torch.zeros(1)).mean()
+assert torch.equal(native.post.cal_gan_loss(torch.zeros(1)), expected), \
+    'verified original source hashes accepted stale finite numerical loss bytecode with original co_filename'
+assert not getattr(native.post, 'DMD_STALE_BYTECODE_SENTINEL', False)
+assert source.read_bytes() == content and cache.read_bytes() == payload
+assert provider.reference_model_identity(backend='torch-sdpa')['source']['files_checked'] == 83
+if entry == 'owner':
+    from distillschedule.adapters.helios import reference_helpers
+    digest = hashlib.sha256(Path(reference_helpers.__file__).read_bytes()).hexdigest()
+    assert owner.identity['helpers']['provider_sha256'] == digest
+    assert owner.identity['native_owner_sources']['helper_provider']['sha256'] == digest
+    receipts = fixture._cycle(owner)
+    assert owner.versions == dict(generator=1, critic=5, ema=2)
+    assert [r['use_gan'] for r in receipts] == [False, False, False, True, True]
+assert not torch.cuda.is_initialized()
+print('SOURCE_ONLY_ORIGINAL_HELPER_CLOSURE_PASS')
+"""
+    process = subprocess.run([sys.executable, '-c', script, str(tmp_path), entry, invalidation],
+        cwd=repository_root(), env=dict(os.environ), text=True, capture_output=True, timeout=180)
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert 'SOURCE_ONLY_ORIGINAL_HELPER_CLOSURE_PASS' in process.stdout
+
+
+@pytest.mark.parametrize('preload', ['legacy', 'foreign'])
+def test_public_helper_admission_refuses_preloaded_unadmitted_namespace(preload):
+    script = r"""
+import sys
+from pathlib import Path
+from types import ModuleType
+from distillschedule.strategies.wan_capture import native_primitives
+from distillschedule.adapters.helios import reference_helpers as provider
+if sys.argv[1] == 'legacy':
+    # Even the right source path is not proof of source-only execution.
+    native_primitives()
+else:
+    source = provider.reference_helper_identity(backend='torch-sdpa')['source']
+    name = 'helios.utils.utils_helios_post'
+    module = ModuleType(name)
+    module.__file__ = str(Path(source['transformer_path']).parents[1]/'utils/utils_helios_post.py')
+    exec(compile('def cal_gan_loss(logit, label=1): return 7.0', module.__file__, 'exec'), vars(module))
+    sys.modules[name] = module
+before = provider._cached_modules()
+for action in (lambda: provider.reference_helper_identity(backend='torch-sdpa'),
+               lambda: native_primitives(source_only=True)):
+    try: action()
+    except ValueError as error: assert 'unadmitted' in str(error) and 'cache' in str(error)
+    else: raise AssertionError('preloaded unadmitted helper namespace was accepted')
+    assert provider._cached_modules() == before
+assert provider._loaded_modules is None
+"""
+    process = subprocess.run([sys.executable, '-c', script, preload], cwd=repository_root(),
+        env=dict(os.environ), text=True, capture_output=True, timeout=120)
+    assert process.returncode == 0, process.stdout + process.stderr
+
+
+def test_public_helper_failed_admission_cleans_only_own_namespace_and_retries():
+    script = r"""
+import importlib.abc, sys
+from distillschedule.strategies.wan_capture import native_primitives
+from distillschedule.adapters.helios import reference_helpers as provider
+class UnrelatedFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, *args, **kwargs): return None
+unrelated = UnrelatedFinder(); sys.meta_path.insert(0, unrelated)
+validate = provider._validate_modules
+def reject(*args):
+    validate(*args)
+    raise ValueError('explicit post-import admission failure')
+provider._validate_modules = reject
+try: native_primitives(source_only=True)
+except ValueError as error: assert 'explicit post-import' in str(error)
+else: raise AssertionError('post-import validation did not run')
+assert not provider._cached_modules() and provider._loaded_modules is None
+assert provider._loaded_bindings is None and sys.meta_path.count(unrelated) == 1
+assert not any(type(f).__module__ == provider.__name__ for f in sys.meta_path)
+provider._validate_modules = validate
+native = native_primitives(source_only=True)
+identity = provider.reference_helper_identity(backend='torch-sdpa')
+assert len(identity['modules']) == 11 and len(identity['provider_sha256']) == 64
+native.history.prepare_stage1_clean_input_from_latents = lambda *a: None
+try: native_primitives(source_only=True)
+except ValueError as error: assert 'live numerical binding' in str(error)
+else: raise AssertionError('changed transitive helper binding was accepted')
+assert sys.meta_path.count(unrelated) == 1 and not sys.modules['torch'].cuda.is_initialized()
+"""
+    process = subprocess.run([sys.executable, '-c', script], cwd=repository_root(),
+        env=dict(os.environ), text=True, capture_output=True, timeout=120)
+    assert process.returncode == 0, process.stdout + process.stderr
+
+
+@pytest.mark.parametrize('role', ['generator', 'critic'])
+def test_original_owner_construction_rejects_nonfinite_deterministic_buffers(role):
+    engines = {}
+    def corrupt(generator, critic):
+        engines.update(generator=generator, critic=critic)
+        buffer = dict(engines[role].module.named_buffers())['rope.freqs_base_t']
+        buffer.flatten()[0] = float('nan')
+    with pytest.raises(ValueError, match='finite detached CPU'):
+        _build(horizon=5, edit_owners=corrupt)
+    assert all(engine.global_steps == engine.step_calls == 0 and not engine.optimizer.state
+               for engine in engines.values())
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('role', ['generator', 'critic'])
+@pytest.mark.parametrize('corruption', ['nan', 'finite'])
+def test_live_deterministic_rotary_buffers_refuse_without_mutation(tmp_path, completed_state, role, corruption):
+    owner = _build()
+    buffer = dict(getattr(owner, role).module.named_buffers())['rope.freqs_base_t']
+    buffer.flatten()[0] = float('nan') if corruption == 'nan' else buffer.flatten()[0] + 1
+    # Compare raw storage bytes, including the NaN payload; do not call guarded
+    # state_dict or treat NaN equality as proof of unchanged state.
+    def bits(value):
+        if isinstance(value, torch.Tensor):
+            return (str(value.dtype), tuple(value.shape), value.detach().contiguous().reshape(-1).view(torch.uint8).numpy().tobytes())
+        if isinstance(value, dict):
+            return {key: bits(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [bits(item) for item in value]
+        return value
+    before = bits(_raw(owner))
+    for action in (owner.step, owner.state_dict, lambda: owner.load_state_dict(completed_state),
+                   lambda: owner.save(tmp_path/'refused')):
+        with pytest.raises(ValueError):
+            action()
+        assert bits(_raw(owner)) == before
+        assert not owner._busy and not owner._poisoned
+    assert not (tmp_path/'refused').exists()
 
 
 def test_original_owner_runs_five_atomic_steps_with_real_g_and_all_five_c_rollouts():

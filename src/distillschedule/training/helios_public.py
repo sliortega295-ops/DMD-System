@@ -66,7 +66,7 @@ def build_model(parameters):
         if c.gradient_checkpointing:
             model.enable_gradient_checkpointing()
         rate = c.critic_learning_rate if critic else c.learning_rate
-        optimizer = native_primitives().base.get_optimizer(args,SimpleNamespace(print=lambda *a,**kw:None),
+        optimizer = native_primitives(source_only=True).base.get_optimizer(args,SimpleNamespace(print=lambda *a,**kw:None),
             [{'params':[p for p in model.parameters() if p.requires_grad], 'lr':rate}],use_deepspeed=False)
         scheduler = get_scheduler(c.lr_scheduler,optimizer=optimizer,num_warmup_steps=c.lr_warmup_steps,
             num_training_steps=c.max_train_steps,num_cycles=c.lr_num_cycles,power=c.lr_power)
@@ -81,7 +81,7 @@ def build_model(parameters):
     ema = SparseShardEMA(g.module.named_parameters(),decay=c.ema_decay,update_after_step=c.ema_start_step,
                         base_model=assets['generator']['weights'][0]['sha256'])
     def noise_scheduler():
-        return native_primitives().scheduler(shift=c.stage2_timestep_shift,stages=c.stage2_num_stages,
+        return native_primitives(source_only=True).scheduler(shift=c.stage2_timestep_shift,stages=c.stage2_num_stages,
             stage_range=list(c.stage2_stage_range),gamma=c.stage2_scheduler_gamma)
     negative = load_file(checked_pin(assets['negative']),device='cpu')['negative_prompt_embeds']
     require(negative.isfinite().all().item(), 'nonfinite negative conditioning')

@@ -24,8 +24,11 @@ from .wan_inputs import WanInputSources, load_feature, preflight_sources
 from .wan_task import OriginalWanTask, TRACE_KEY
 
 
-def native_primitives():
+def native_primitives(*, source_only=False):
     """Import actual vendored helpers, without constructing models or CUDA state."""
+    if source_only:
+        from distillschedule.adapters.helios.reference_helpers import load_reference_primitives
+        return load_reference_primitives(backend='torch-sdpa')
     source = repository_root() / 'third_party/helios_compat/source'
     if str(source) not in sys.path:
         sys.path.insert(0, str(source))

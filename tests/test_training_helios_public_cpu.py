@@ -343,7 +343,9 @@ def public_checkpoint(tmp_path_factory):
 
 
 @pytest.mark.parametrize('change',['inner_step','inner_versions','consumed_count','consumed_chain',
-                                  'outer_cycle','outer_cursor','outer_versions','topology'])
+                                  'outer_cycle','outer_cursor','outer_versions','topology',
+                                  'generator_buffer_nan','generator_buffer_finite',
+                                  'critic_buffer_nan','critic_buffer_finite'])
 def test_rehashed_common_checkpoint_rejects_before_live_mutation(public_checkpoint,tmp_path,change):
     import shutil
     from distillschedule.training.checkpoint import restore_checkpoint
@@ -362,6 +364,10 @@ def test_rehashed_common_checkpoint_rejects_before_live_mutation(public_checkpoi
     elif change=='outer_cursor': payload['cursor']=manifest['cursor']=5
     elif change=='outer_versions': payload['versions']=manifest['versions']=dict(native_step=10)
     elif change=='topology': manifest['topology']={'world_size':2}
+    elif '_buffer_' in change:
+        role,corruption=change.split('_buffer_')
+        buffer=value['native'][role+'.weights']['buffers']['rope.freqs_base_t']
+        buffer.flatten()[0]=float('nan') if corruption=='nan' else buffer.flatten()[0]+1
     payload['state']['native_step']['value']=pack(value)
     torch.save(payload,checkpoint/'state.pt')
     manifest['files']['state.pt']=file_sha256(checkpoint/'state.pt')

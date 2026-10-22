@@ -222,7 +222,7 @@ class HeliosStepOwner:
         self.config = OmegaConf.to_container(args, resolve=True)
         self._validate_config()
         self._validate_topology()
-        self.native = native_primitives()
+        self.native = native_primitives(source_only=True)
         self.provider_identity = reference_model_identity(backend=backend)
         self.backend = backend
         cls = load_reference_model_class(backend=backend)
@@ -485,11 +485,12 @@ class HeliosStepOwner:
     def _identity(self):
         import torch
         from distillschedule.adapters.helios.reference_model import reference_model_identity
+        from distillschedule.adapters.helios.reference_helpers import reference_helper_identity
         models = {}
         for role, engine in self._engines.items():
             model, selected, _ = _named(engine)
             models[role] = dict(class_name=_class(model), config=_plain(dict(model.config)),
-                trainables=list(selected), frozen={n: _tensor_identity(p.detach()) for n, p in
+                trainables=list(selected), buffers=_content(dict(model.named_buffers())), frozen={n: _tensor_identity(p.detach()) for n, p in
                     model.named_parameters() if n not in selected},
                 layouts={n: {"shape": list(p.shape), "dtype": str(p.dtype)} for n, p in model.named_parameters()})
         from distillschedule.workloads.best_known.registry import file_sha256
@@ -502,6 +503,7 @@ class HeliosStepOwner:
                   "checkpoint": Path(inspect.getfile(save_checkpoint)),
                   "tensor_state": Path(inspect.getfile(decode)),
                   "model_provider": Path(inspect.getfile(reference_model_identity)),
+                  "helper_provider": Path(inspect.getfile(reference_helper_identity)),
                   "call_binding": Path(inspect.getfile(common_official_call))}
         dependencies = {}
         for name in ("torch", "diffusers", "peft", "numpy", "omegaconf", "transformers"):
@@ -509,7 +511,8 @@ class HeliosStepOwner:
             dependencies[name] = dict(distribution=importlib.metadata.version(name),
                 imported_version=str(module.__version__), path=str(Path(module.__file__).resolve()))
         return dict(schema=self.schema, scope="CPU1_FULL_SOURCE_NATIVE_STEPS_NOT_PUBLIC_W3",
-            source=reference_model_identity(backend=self.backend), config=self.config,
+            source=reference_model_identity(backend=self.backend),
+            helpers=reference_helper_identity(backend=self.backend), config=self.config,
             native_owner_sources={name: {"path": str(path), "sha256": file_sha256(path)}
                                   for name, path in owners.items()},
             models=models, adapters=self._adapters, noise_shape=list(self.noise_shape),
@@ -825,6 +828,8 @@ class HeliosStepOwner:
             weights = value["native"][role + ".weights"]
             _require(all(x.isfinite().all().item() for x in weights["tensors"].values()),
                      "checkpoint nonfinite trainables")
+            _require(_content(weights["buffers"]) == self.identity["models"][role]["buffers"],
+                     "checkpoint deterministic model buffer content changed")
             _require("num_inference_steps" in value["native"][role + ".noise_scheduler"]["state"],
                      "checkpoint lacks a completed original rollout scheduler")
         _require(value["native"]["ema"]["optimization_step"] == expected["ema"],

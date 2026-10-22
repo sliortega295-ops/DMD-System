@@ -21,6 +21,13 @@ It includes the actual original Args/config dependencies; pytest and the
 0.37.1 environment with the helper0.34 or native-Wan0.35 groups. Dedicated CI
 adds tests independently and keeps the qualification alias identical.
 
+Run this reference in a fresh Python process. Its original `helios` helper
+closure is loaded from manifest-pinned source, not cached bytecode, and its
+bindings are checked again before use. An already imported legacy or foreign
+`helios` namespace is refused rather than replaced underneath another owner.
+The legacy 0.34 helper entry retains its ordinary import behavior; do not mix
+the two entry adapters inside one process.
+
 ## Supply local assets, never a fallback model
 
 Copy the two `*.reference.cpu.template.json` manifests into your project and

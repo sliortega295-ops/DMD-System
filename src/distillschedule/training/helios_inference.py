@@ -32,6 +32,7 @@ def _json(value):
 def content_identity():
     """Re-admit actual source/runtime bytes, deliberately excluding locations."""
     from distillschedule.adapters.helios.reference_model import reference_model_identity
+    from distillschedule.adapters.helios.reference_helpers import reference_helper_identity
     from distillschedule.strategies.wan_capture import native_primitives
     from runtime.gan_rolephase_official import common_official_call
 
@@ -39,9 +40,9 @@ def content_identity():
     model = {**model, 'source': {k:v for k,v in model['source'].items()
                                if k not in ('transformer_path', 'manifest_path')},
              'backend': {k:v for k,v in model['backend'].items() if k != 'path'}}
-    native = native_primitives()
+    native = native_primitives(source_only=True)
     return dict(model=model, helpers={name: file_sha256(Path(inspect.getfile(function))) for name,function in
-        (('run_generator', native.post.run_generator), ('history', native.history.prepare_stage1_clean_input_from_latents),
+        (('helper_provider', reference_helper_identity), ('run_generator', native.post.run_generator), ('history', native.history.prepare_stage1_clean_input_from_latents),
          ('schedule_shift', native.base.apply_schedule_shift), ('scheduler', native.scheduler),
          ('official_call_binding', common_official_call), ('model_provider', reference_model_identity),
          ('native_import_adapter', native_primitives))})
@@ -248,7 +249,7 @@ def generate(state, feeds, parameters):
             and bool(prompt.isfinite().all()), 'native inference prompt layout/dtype/finiteness changed')
     require(not generator.training and not generator.gradient_checkpointing
             and all(not t.requires_grad for t in generator.parameters()), 'inference G must be separately frozen with checkpointing off')
-    native = native_primitives()
+    native = native_primitives(source_only=True)
     # Original run_generator draws actual noise; this tensor supplies its exact
     # admitted native geometry/dtype, not fabricated GT history or a recurrence.
     noise = torch.zeros(p['geometry']['noise_shape'], dtype=torch.float32, device='cpu')
