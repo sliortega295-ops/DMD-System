@@ -195,8 +195,10 @@ def test_actual_original_helper_characterization_and_generic_guard(original, tmp
 
 
 @pytest.mark.parametrize("separate", [True, False])
-def test_original_gan_checkpoint_fresh_owner_next_update_exact(original, tmp_path, separate):
+@pytest.mark.parametrize("gradient_clip", [1., 1e-5])
+def test_original_gan_checkpoint_fresh_owner_next_update_exact(original, tmp_path, separate, gradient_clip):
     control = _owner(original)
+    control.engine._gradient_clip = gradient_clip
     state = _state(control, separate)
     mid_update_rejections = []
 
@@ -226,6 +228,7 @@ def test_original_gan_checkpoint_fresh_owner_next_update_exact(original, tmp_pat
     # New owner has genuinely different live trainables. Restore must not
     # replace Parameters, their hooks, or attached zero-gradient views.
     fresh = _owner(original, seed=999)
+    fresh.engine._gradient_clip = gradient_clip
     fresh_state = _state(fresh, separate)
     parameters = dict(fresh.model.named_parameters())
     hook_calls = []

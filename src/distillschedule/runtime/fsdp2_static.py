@@ -13,7 +13,7 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 
 @dataclasses.dataclass(frozen=True)
@@ -487,12 +487,14 @@ class FSDP2EngineAdapter:
 
     def step(self) -> None:
         torch = _torch()
-        trainables = [
-            parameter for parameter in self.module.parameters() if parameter.requires_grad
+        # Phase masks may disable a parameter after its gradient accumulated.
+        # Clip the optimizer's actual ownership, in parameter-group order.
+        parameters = [
+            parameter for group in self.optimizer.param_groups for parameter in group["params"]
         ]
-        if not trainables:
-            raise RuntimeError("FSDP2 engine has no trainable parameters")
-        clip_norm = torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if not parameters:
+            raise RuntimeError("FSDP2 engine optimizer has no parameters")
+        clip_norm = torch.nn.utils.clip_grad_norm_(parameters, self._gradient_clip)
         if getattr(self, "_trajectory_capture_grad_norm", False):
             norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
             self.last_gradient_norm = float(norm.detach().float().cpu())
