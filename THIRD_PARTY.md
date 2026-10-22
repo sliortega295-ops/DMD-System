@@ -8,6 +8,7 @@ ownership, not permission to redistribute model weights or datasets.
 | --- | --- |
 | Recovered Helios compatibility source | [Notices](third_party/helios_compat/NOTICE) and included upstream license; contains explicitly recorded compatibility changes |
 | MiniMax H3 compatibility | Preserve the license files in the H3 component and corresponding upstream/model distribution |
+| Maintained DiffSynth H3 cached-AV source derivative | [Retained Apache-2.0 license](licenses/diffsynth-h3-cached/LICENSE.Apache-2.0), [origins and changes](licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md); packaged symbol/source manifest in the explicit `distillschedule.reference.diffsynth_h3_cached` namespace; not a complete upstream distribution or model/data grant |
 | LightX2V | Git submodule in [`.gitmodules`](.gitmodules); upstream license and pinned revision |
 | LiveWan | Git submodule in [`.gitmodules`](.gitmodules); upstream license and pinned revision |
 | Wan2.1 | Git submodule in [`.gitmodules`](.gitmodules); upstream license and pinned revision |

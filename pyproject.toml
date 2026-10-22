@@ -16,6 +16,8 @@ license-files = [
     "third_party/helios_compat/NOTICE",
     "third_party/helios_compat/LICENSE.txt",
     "third_party/licenses/H3-DMD-for-A100-LICENSE",
+    "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0",
+    "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md",
 ]
 authors = [{name = "DistillSchedule contributors"}]
 dependencies = []
@@ -42,6 +44,8 @@ test-helios-model = [
     "httpx==0.28.1", "safetensors>=0.4",
 ]
 test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
+# Maintained cached-only source reference, independent of full-SFT/native H3.
+h3-cached-reference = ["torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"]
 media = ["numpy>=1.24", "Pillow>=10"]
 train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
 native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]
@@ -59,3 +63,4 @@ include = ["distillschedule*", "runtime*"]
 
 [tool.setuptools.package-data]
 "distillschedule.workloads" = ["catalog.json"]
+"distillschedule.reference.diffsynth_h3_cached" = ["source_manifest.json"]

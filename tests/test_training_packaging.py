@@ -15,10 +15,12 @@ ROOT = Path(__file__).resolve().parents[1]
 LICENSE_SHA256 = {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "NOTICE": "9247ab500279666c898a4ac7e943989ea8c4316c3211d7fda88ed5a28151366b",
-    "THIRD_PARTY.md": "b688c5e7b7084bb8fef5547b2fab2f3b381844b3ebcdc0cfd190d1cb53654e18",
+    "THIRD_PARTY.md": "ccad27b7badea5d6f8bd37b8b08164dd603a27e8fbab30d8ded4c5a2b2347eb6",
     "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
     "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
+    "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0": "d43b96112d60d83595395649e61c6bc215f568052a979320489556c6c1262eb1",
+    "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md": "ebdee8bac7e36ed9b18d5d323c12c7b98bad5ab5de3dede4b2679cba688cf4c1",
 }
 
 
@@ -97,6 +99,22 @@ def test_train_extra_declares_the_public_fsdp_api_minimum(wheel_metadata):
     assert wheel_metadata["Requires-Python"] == ">=3.10"
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
     assert 'torch>=2.10;extra=="train"' in requirements
+
+
+def test_wheel_includes_cached_h3_source_manifest_and_unchanged_numerical_files(framework_wheel):
+    package = "distillschedule/reference/diffsynth_h3_cached/"
+    with zipfile.ZipFile(framework_wheel) as wheel:
+        manifest = json.loads(wheel.read(package + "source_manifest.json"))
+        assert manifest["scope"] == "MAINTAINED_CACHED_AV_DERIVATIVE_CPU_SOURCE_ONLY"
+        for row in manifest["files"]:
+            assert hashlib.sha256(wheel.read(package + row["path"])).hexdigest() == row["sha256"]
+        assert package + "__init__.py" in wheel.namelist()
+
+
+def test_cached_h3_reference_has_its_own_small_dependency_closure(wheel_metadata):
+    requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
+    for package in ("torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"):
+        assert f'{package};extra=="h3-cached-reference"' in requirements
 
 
 def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
