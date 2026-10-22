@@ -476,6 +476,8 @@ def test_original_owner_ci_covers_source_pins_and_historical_context():
         "test_real_driver_observer_producer_feeds_owned_binding_and_capacity_consumer",
         "test_rank_local_owned_uuid_probe_failure_returns_to_real_gloo_peer_before_payload",
         "test_token_rotation_does_not_change_checkpoint_identity[livewan_reference_assets]",
+        "test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[False]",
+        "test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[True]",
     ):
         assert name in runs
 

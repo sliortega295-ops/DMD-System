@@ -84,7 +84,8 @@ jobs:
                   'test_hash_valid_wrong_adam_step_checkpoint_rejects_before_weights_rng_mutation',
                   'test_saved_cursor_rank_and_versions_cross_state_admission_is_premutation',
                   'test_actual_loader_cursor_consumes_once_and_only_after_success',
-                  'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads'} <= names
+                  'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[False]',
+                  'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[True]'} <= names
           assert sum(name.startswith('test_public_rank_local_preflight_failure_never_hangs_peer_or_constructs_model[')
                      for name in names) == 8
           assert sum(name.startswith('test_malicious_archive_refused_before_original_unsafe_loading[')

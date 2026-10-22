@@ -8,6 +8,7 @@
 - [Complete offline media-to-training example](../examples/framework/README.md).
 - [Framework CPU acceptance and remaining native limits](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
 - [Original W2/W5 reference lifecycle and CPU evidence](status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md).
+- [Original W4 reference lifecycle and reviewed CPU boundaries](status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md).
 - [Six workload guides](../recipes/README.md) and `distillctl workloads list`.
 - [Shared native planning](runbooks/native_planner_workflow.md), [Wan compute/state](runbooks/wan_compute_state_planning_v1.md), [LiveWan C51](runbooks/livewan_c51_planner_v1.md), [original H3 AR](runbooks/original_h3_ar_native.md).
 - [Open workload Program](workloads/open_workload_program.md) and [role pools](workloads/open_role_pools.md).
