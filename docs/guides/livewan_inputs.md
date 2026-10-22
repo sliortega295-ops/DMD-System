@@ -8,6 +8,8 @@ input kind until its native complete-cycle lifecycle seam is implemented.
 The selected C51 two-cycle binding and historical `FormalTrace` semantics,
 including the default historical prefix behavior, are unchanged. A historical
 50-cycle reused trace is not fresh input.
+The immutable semantics are specified in the
+[versioned input contract](../contracts/original_livewan_teacher_cohorts_v1.md).
 
 ## Supplied assets and preparation
 
@@ -30,8 +32,18 @@ resampling or dtype repair is performed. The original prompt bundle requires
 bindings are hashed. Multiple genuine samples may share a `prompt_idx`;
 their record/dataset identities remain independent of that prompt index.
 
+```bash
+distillctl data prepare-livewan-inputs \
+  --data-root /ABSOLUTE/PATH/teacher --prompts /ABSOLUTE/PATH/prompts.pt \
+  --source-root /ABSOLUTE/PATH/qualified-livewan \
+  --cycles 2 --seed 20260830 \
+  --output /ABSOLUTE/PATH/prepared/livewan-inputs.json
+```
+
+The equivalent Python preparation API is in the data layer:
+
 ```python
-from distillschedule.training.livewan_inputs import prepare_inputs
+from distillschedule.data.livewan_inputs import prepare_inputs
 
 prepare_inputs(
     "/ABSOLUTE/PATH/teacher", "/ABSOLUTE/PATH/prompts.pt",
@@ -41,13 +53,17 @@ prepare_inputs(
 )
 ```
 
-This writes a new immutable manifest, never overwriting an existing one.
-Failed admission does not publish a valid output. All archives first pass
+This publishes complete, fsynced manifest bytes atomically, never overwriting
+an existing file. Failed admission or serialization leaves no partial final
+manifest, so a clean retry can use the same output path. All archives first pass
 `torch.load(weights_only=True)` before any original dataset load; unsupported
 pickle globals reject without an unrestricted fallback. File and semantic
 latent hashes reject missing/changed files, repeated paths, copied archives
 and reserialized copies of the same latents. Keep admitted source/archives
 immutable while consuming them; file hashes are rechecked at each read.
+The original dataset reads only admitted canonical record paths; retargeting a
+directory-entry symlink does not redirect its later unrestricted read. This is
+not a sandbox against concurrent writers replacing admitted files themselves.
 Generation provenance and pretrained quality cannot be inferred from an
 archive's format or hashes. For CPU fixture use, set
 `evidence_kind="CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"` explicitly.

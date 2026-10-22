@@ -49,6 +49,7 @@ assert not any(name in sys.modules for name in ('torch', 'diffusers', 'lightx2v_
     assert completed.returncode == 0, completed.stderr
     assert "prepare-helios-stream" in completed.stdout
     assert "prepare-h3-grid" in completed.stdout
+    assert "prepare-livewan-inputs" in completed.stdout
 
 
 def test_original_grid_inventory_cli_does_not_decode_or_change_native_data(tmp_path, cached_data, capsys):

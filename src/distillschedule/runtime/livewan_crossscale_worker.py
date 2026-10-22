@@ -2081,6 +2081,7 @@ class InputLoader:
             self.inputs = NativeTeacherInputs(prepared)
             self.trace = self.inputs
             self.prompts = self.inputs.prompts
+            self.context_from_trace = self.inputs.context
             return
         _require(trace is not None, "historical InputLoader requires an explicit FormalTrace")
         self.trace = trace
@@ -2119,8 +2120,6 @@ class InputLoader:
     def context_from_trace(self, row: OperationTraceRow, *, device: Any) -> Any:
         """Replay the exact prompt tensor without cross-node context P2P."""
 
-        if self.inputs is not None:
-            return self.inputs.context(row, device=device)
         context = self.prompts["pos"][row.dataset_index].float()
         _require(
             tuple(context.shape) == TEXT_SHAPE[1:],

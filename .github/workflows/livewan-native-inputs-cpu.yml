@@ -2,8 +2,17 @@ name: original-livewan-inputs-cpu
 on:
   pull_request:
     paths:
+      - '.gitmodules'
+      - 'third_party/livewan'
+      - 'src/distillschedule/data/**'
       - 'src/distillschedule/training/**'
       - 'src/distillschedule/runtime/livewan_crossscale_worker.py'
+      - 'src/distillschedule/runtime/livewan_context_staging.py'
+      - 'src/distillschedule/search/livewan_request.py'
+      - 'src/distillschedule/workloads/livewan_crossscale.py'
+      - 'src/distillschedule/workloads/best_known/registry.py'
+      - 'tests/test_data_cli.py'
+      - 'tests/test_refactor_livewan_context_staging.py'
       - 'tests/test_training_livewan_inputs.py'
       - 'pyproject.toml'
       - '.github/workflows/livewan-native-inputs-cpu.yml'
@@ -38,7 +47,7 @@ jobs:
       - name: Install CPU data and checkpoint dependencies
         run: python -m pip install -e '.[train,test]'
       - name: Actual TeacherLatents to native InputLoader and data cursor
-        run: python -m pytest -q tests/test_training_livewan_inputs.py --junitxml=livewan-inputs-cpu.xml
+        run: python -m pytest -q tests/test_training_livewan_inputs.py tests/test_refactor_livewan_context_staging.py --junitxml=livewan-inputs-cpu.xml
       - name: Require actual-source execution, not a skipped qualification
         run: |
           python - <<'PY'
@@ -49,6 +58,9 @@ jobs:
           names = {case.get('name') for case in cases}
           assert {'test_actual_original_and_real_input_loader_roundtrip',
                   'test_complete_cohorts_rank_cursor_checkpoint_seek_and_rng',
+                  'test_public_original_teacher_preparation_reaches_real_native_loader',
+                  'test_native_original_read_uses_admitted_path_after_symlink_retarget',
+                  'test_original_input_source_identity_is_exact_and_mismatch_fails',
                   'test_historical_default_prefix_behavior_is_unchanged'} <= names
           assert sum(name.startswith('test_malicious_archive_refused_before_original_unsafe_loading[')
                      for name in names) == 2

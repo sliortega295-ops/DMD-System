@@ -59,7 +59,7 @@ def sample(index):
 @pytest.mark.parametrize("layout", ["contiguous", "strided", "expanded"])
 def test_native_tensor_hash_matches_original_byte_serialization(layout):
     import hashlib
-    from distillschedule.training.livewan_inputs import _tensor_hash
+    from distillschedule.data.livewan_inputs import _tensor_hash
     value = torch.arange(24, dtype=torch.float16).reshape(4, 6)
     if layout == "strided":
         value = value[:, ::2]
@@ -82,7 +82,7 @@ def local_corpus(corpus, tmp_path):
 
 
 def prepare(data, prompts, output, source):
-    from distillschedule.training.livewan_inputs import prepare_inputs
+    from distillschedule.data.livewan_inputs import prepare_inputs
     return prepare_inputs(data, prompts, output, source_root=source, cycles=2, seed=20260830,
                           evidence_kind="CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED")
 
@@ -136,6 +136,7 @@ def test_actual_original_and_real_input_loader_roundtrip(original_source, corpus
     assert all(torch.equal(a, b) for a, b in zip(actual[:2], expected[:2]))
     assert torch.equal(loader.context_from_trace(row, device="cpu")[0], expected[1])
     assert tuple(loader.negative.shape) == (1, 512, 4096)
+    assert torch.equal(loader.negative, torch.load(prompts, weights_only=True)["neg"].float())
     cursor = NativeTeacherCursor(loader, rank=row.logical_slot)
     cursor.seek(row.cycle_index)
     assert cursor.peek().cycle_index == row.cycle_index
@@ -364,9 +365,115 @@ class UnsafeArchive:
         return os.system, (f"touch {self.marker}",)
 
 
+def test_native_original_read_uses_admitted_path_after_symlink_retarget(original_source, local_corpus, tmp_path):
+    data, prompts = local_corpus
+    alias = data / "sample-0003.pt"
+    admitted = tmp_path / "admitted-record.pt"
+    alias.rename(admitted)
+    alias.symlink_to(admitted)
+    manifest = tmp_path / "inputs.json"
+    prepare(data, prompts, manifest, original_source)
+    loader = InputLoader(torch=torch, input_kind=KIND, prepared=manifest)
+    row = next(r for r in loader.inputs.rows if r.dataset_index == 3)
+    marker = tmp_path / "UNADMITTED_ARCHIVE_EXECUTED"
+    replacement = tmp_path / "unadmitted.pt"
+    torch.save(UnsafeArchive(marker), replacement)
+    alias.unlink()
+    alias.symlink_to(replacement)
+    try:
+        latent, _, prompt = loader.load(row)
+    except (TypeError, ValueError):
+        assert not marker.exists(), "unadmitted alias target was unpickled"
+        raise
+    assert not marker.exists()
+    assert prompt == 1 and latent[0, 0, 0, 0].item() == 3 / 128
+    assert isinstance(loader.inputs.dataset.files, tuple)
+
+
+def test_failed_manifest_write_leaves_no_partial_output_and_can_retry(original_source, corpus, tmp_path, monkeypatch):
+    data, prompts = corpus
+    output = tmp_path / "inputs.json"
+    def interrupted(value, handle, **kwargs):
+        handle.write('{"partial":')
+        raise OSError("injected disk write failure")
+    with monkeypatch.context() as patch:
+        patch.setattr(json, "dump", interrupted)
+        with pytest.raises(OSError, match="injected disk"):
+            prepare(data, prompts, output, original_source)
+    assert not output.exists(), "partial final manifest prevents a clean retry"
+    assert not list(tmp_path.glob(".inputs.json.*"))
+    value = prepare(data, prompts, output, original_source)
+    assert json.loads(output.read_text()) == value
+    before = output.read_bytes()
+    with pytest.raises(FileExistsError):
+        prepare(data, prompts, output, original_source)
+    assert output.read_bytes() == before
+    assert not list(tmp_path.glob(".inputs.json.*"))
+
+
+def test_public_original_teacher_preparation_reaches_real_native_loader(original_source, corpus, tmp_path, capsys):
+    from distillschedule.data.cli import main
+    data, prompts = corpus
+    output = tmp_path / "inputs.json"
+    assert main(["prepare-livewan-inputs", "--data-root", str(data), "--prompts", str(prompts),
+                 "--source-root", str(original_source), "--cycles", "2", "--seed", "20260830",
+                 "--evidence-kind", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED",
+                 "--output", str(output)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    loader = InputLoader(torch=torch, input_kind=KIND, prepared=output)
+    assert result["input_sha256"] == loader.inputs.input_sha256
+    assert loader.load(loader.inputs.rows[0])[2] == loader.inputs.rows[0].prompt_idx
+    assert not torch.cuda.is_initialized()
+
+
+def test_single_complete_cohort_preserves_native_keys_rng_and_exhaustion(original_source, local_corpus, tmp_path):
+    from distillschedule.data.livewan_inputs import prepare_inputs
+    from distillschedule.training.livewan_inputs import NativeTeacherCursor
+    from tools.assets.build_livewan_crossscale_trace import derived_seed
+    data, prompts = local_corpus
+    for path in sorted(data.glob("*.pt"))[80:]:
+        path.unlink()
+    output = tmp_path / "one-cycle.json"
+    rng, py_rng = torch.get_rng_state().clone(), random.getstate()
+    value = prepare_inputs(data, prompts, output, source_root=original_source, cycles=1, seed=20260830,
+                           evidence_kind="CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED")
+    loader = InputLoader(torch=torch, input_kind=KIND, prepared=output)
+    assert len(value["rows"]) == 80
+    for row in loader.inputs.rows:
+        assert row.operation_key == f"step={row.logical_step}/slot={row.logical_slot}"
+        assert all(row.seeds[key] == derived_seed(20260830, row.operation_key, key) for key in row.seeds)
+    cursor = NativeTeacherCursor(loader, rank=3)
+    checks = []
+    unchanged = loader.inputs._unchanged
+    def observed():
+        checks.append(True)
+        unchanged()
+    loader.inputs._unchanged = observed
+    assert [next(cursor)[0].logical_step for _ in range(5)] == list(range(5))
+    assert len(checks) == 10  # each original read remains bracketed; no extra cursor pre-scan
+    assert cursor.state_dict()["next_operation_key"] is None
+    with pytest.raises(StopIteration):
+        next(cursor)
+    assert torch.equal(rng, torch.get_rng_state()) and py_rng == random.getstate()
+
+
+def test_original_owner_ci_covers_source_pins_and_historical_context():
+    import fnmatch
+    import yaml
+    root = Path(__file__).resolve().parents[1]
+    workflow = yaml.load((root / ".github/workflows/livewan-native-inputs-cpu.yml").read_text(), Loader=yaml.BaseLoader)
+    patterns = workflow["on"]["pull_request"]["paths"]
+    for changed in ("third_party/livewan", ".gitmodules", "src/distillschedule/workloads/livewan_crossscale.py",
+                    "src/distillschedule/search/livewan_request.py", "src/distillschedule/workloads/best_known/registry.py",
+                    "src/distillschedule/data/livewan_inputs.py", "tests/test_refactor_livewan_context_staging.py"):
+        assert any(fnmatch.fnmatchcase(changed, pattern) for pattern in patterns), changed
+    runs = "\n".join(step.get("run", "") for step in workflow["jobs"]["original-data-owner"]["steps"])
+    assert "tests/test_refactor_livewan_context_staging.py" in runs
+
+
 @pytest.mark.parametrize("archive", ["record", "prompts"])
 def test_malicious_archive_refused_before_original_unsafe_loading(original_source, local_corpus, tmp_path, archive, monkeypatch):
-    from distillschedule.training import livewan_inputs
+    from distillschedule.data import livewan_inputs
     data, prompts = local_corpus
     marker = tmp_path / "MUST_NOT_EXIST"
     target = prompts if archive == "prompts" else data / "sample-0000.pt"

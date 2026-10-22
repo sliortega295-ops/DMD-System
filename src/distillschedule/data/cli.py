@@ -27,6 +27,15 @@ def main(argv=None):
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
+    livewan = sub.add_parser("prepare-livewan-inputs", help="admit finite original W4 teacher inputs; not a training command")
+    livewan.add_argument("--data-root", type=Path, required=True)
+    livewan.add_argument("--prompts", type=Path, required=True)
+    livewan.add_argument("--source-root", type=Path, required=True)
+    livewan.add_argument("--cycles", type=int, required=True)
+    livewan.add_argument("--seed", type=int, required=True)
+    livewan.add_argument("--output", type=Path, required=True)
+    livewan.add_argument("--evidence-kind", default="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY",
+                         choices=("NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"))
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare-helios-stream":
@@ -40,6 +49,10 @@ def main(argv=None):
         elif args.command == "prepare-h3-grid":
             from distillschedule.training.h3_grid_inputs import prepare_inputs
             result = prepare_inputs(args.native_config, args.output)
+        elif args.command == "prepare-livewan-inputs":
+            from .livewan_inputs import prepare_inputs
+            result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
+                                    cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
         elif args.command == "prepare":
             result = inspect_prepared(prepare(args.manifest, args.output))
         elif args.command == "import":
