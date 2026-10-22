@@ -78,10 +78,10 @@
     "src/distillschedule/runtime/fsdp2_static.py": {
       "target": "src/distillschedule/runtime/fsdp2_static.py",
       "original_integrated_sha256": "c7b8b5eca9a591f6d548984cc557ecca8aadecb69e842eb902ed4dd9243e5aca",
-      "reviewed_source_sha256": "f9af12208185d9891f94e107fbfe7b0fc12c750115d82d9d9f0b4cda8757e4ff",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "f9af12208185d9891f94e107fbfe7b0fc12c750115d82d9d9f0b4cda8757e4ff",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+      "source_commit": "0b93933107f4762b5d2cb29867eb749b4cb67a5d",
+      "integrated_sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+      "change": "optimizer_owned_gradient_clipping_across_original_GAN_phase_flags_and_explicit_dp_world_size_metadata_default16_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:f9af12208185d9891f94e107fbfe7b0fc12c750115d82d9d9f0b4cda8757e4ff; original_import_receipt_preserved; CPU1_native_owner_not_world16_GPU_validation"
     },
     "src/distillschedule/runtime/helios_lora_epilogue.py": {
       "target": "src/distillschedule/runtime/helios_lora_epilogue.py",
