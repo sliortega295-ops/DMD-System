@@ -162,6 +162,23 @@ extra pins 0.34.0. Use separate qualified environments/overlays for those groups
 not a combined `test-helios,native-wan` install. Neither group replaces a
 model-native CUDA environment or downloads model weights.
 
+The [full-original Helios model provider](docs/guides/native_workloads.md#explicit-full-original-helios-model-reference)
+has its own Diffusers 0.37.1 CPU group, separate from both pins above:
+
+```sh
+# Use a separate environment, not the 0.34 helper or 0.35 Wan environment.
+python -m pip install -e '.[train,test,test-helios-model]'
+python -m pytest -q tests/test_helios_reference_model_cpu.py
+```
+
+Its [dedicated workflow](.github/workflows/helios-reference-model-cpu.yml) uses
+minimum Torch 2.10 CPU on Python 3.10/3.12 and requires the actual full-source
+flow/GAN, fresh-process model save/load, and true PEFT/original-helper restart
+tests without skips. This file intentionally stays outside the existing
+`test_training_*.py` helper group. Tiny FP32 CPU model/backend proof does not
+enable a complete public W3 lifecycle or qualify pretrained, CUDA or performance
+behavior.
+
 ## Organization
 
 ```text

@@ -179,6 +179,45 @@ The public template has no personal/site paths, but **does not make arbitrary
 W6 cache relocation valid**. A relocation needs a new reviewed versioned input
 contract and matched admission; do not crop, pad or rewrite historical locks.
 
+## Explicit full-original Helios model reference
+
+The separate model provider imports the **whole unchanged original**
+`HeliosTransformer3DModel`, not an extracted head or a stand-in model:
+
+```python
+from distillschedule.adapters.helios.reference_model import (
+    load_reference_model_class, reference_model_identity,
+)
+
+identity = reference_model_identity(backend="torch-sdpa")  # No Torch/model import.
+HeliosTransformer3DModel = load_reference_model_class(backend="torch-sdpa")
+```
+
+Use a source checkout and the separate `[train,test,test-helios-model]` CPU-test
+dependencies for `tests/test_helios_reference_model_cpu.py`. Its Diffusers
+0.37.1 pin does **not** replace `test-helios`'s 0.34.0 or `native-wan`'s 0.35.2;
+these are separate environments, not extras to combine.
+
+Both APIs recheck all 83 frozen source files, the pinned manifest, maintained
+backend bytes, and any admitted private import cache. The identity includes the
+full transformer path/SHA256, original source-tree identity, actual private
+namespace and backend path/SHA256. The original file is loaded by normal Python
+package imports under `distillschedule.adapters.helios._reference.modules`.
+Native `helios.*` imports, CUDA dispatch and benchmark APIs are not replaced.
+Only explicitly requested `torch-sdpa` is admitted, using the original dense
+SDPA fallback expression; NaViT/varlen execution raises rather than falling
+back. Source discovery does not import Torch or construct a model. Class loading
+does not construct models, fetch weights, or create optimizers.
+
+Tests exercise the full tiny FP32 CPU flow/GAN backward, real PEFT and original
+critic-loss Adam/restart through existing state helpers, and normal
+`save_pretrained`/`from_pretrained` in fresh processes. Nonzero-output fixtures
+are explicitly deterministic random weights, **not pretrained checkpoints**.
+This is a model/backend source proof, not an enabled public W3 lifecycle,
+pretrained generation/quality, world16/FSDP equivalence, GPU validation or a
+performance result. W3's lifecycle and historical REVIEW boundaries below stay
+unchanged.
+
 ## Lifecycle and evidence are not interchangeable
 
 W1 fresh cohort streams can opt into periodic complete-cycle restart:

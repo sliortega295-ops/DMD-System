@@ -36,6 +36,13 @@ not a change to its bounded C51 worker. W3/W6 still retain their bounded
 native lifecycle here. The archived Helios full trainer's additional
 save/validation hooks are preserved, not asserted to be exposed by this adapter.
 
+The separate [full-original Helios model provider](native_workloads.md#explicit-full-original-helios-model-reference)
+has tiny FP32 CPU full-class dense-SDPA flow/GAN/PEFT/Adam and model-serialization
+tests. It reuses the unchanged original transformer in a private namespace and
+rejects unsupported NaViT/varlen execution. That model/backend proof does not
+enable W3's public continuous training/restart, or establish pretrained quality,
+CUDA/FSDP/world16 correctness or performance; the W3 table entry remains bounded.
+
 W4's [finite original input owner](livewan_inputs.md) is independently usable
 through `distillctl data prepare-livewan-inputs`. Its source-qualified original
 dataset, independent record/prompt identity and logical cursor are CPU-verified;
