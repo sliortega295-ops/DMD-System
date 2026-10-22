@@ -156,6 +156,11 @@ LightX2V/Diffusers source commits and installs `test-h3`; it is not a model
 download or an installation recipe for a CUDA cluster. Those native runtimes
 must still pass their own pinned source/backend/dependency checks.
 
+The separate `native-wan` tests require Diffusers 0.35.2; the Helios CPU helper
+extra pins 0.34.0. Use separate qualified environments/overlays for those groups,
+not a combined `test-helios,native-wan` install. Neither group replaces a
+model-native CUDA environment or downloads model weights.
+
 ## Organization
 
 ```text

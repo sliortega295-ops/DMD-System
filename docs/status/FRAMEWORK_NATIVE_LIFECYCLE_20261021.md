@@ -56,11 +56,43 @@ restrictions rather than extrapolating a different workload's options.
 
 Tests ran on existing Python 3.12/Torch 2.14.0+cpu. Actual original SDPA helper
 imports use real pinned `kernels`/Triton dependencies in a disposable CPU overlay;
-no substitute packages, kernel compilation or GPU launches. Minimum Torch2.10
+no substitute packages, kernel compilation or GPU launches. Minimum Torch 2.10
 CI separately requires the actual W2 startup and restart tests to execute, not
 skip. The dedicated W5 CI reads the exact upstream sources and rejects skipped
 original-source tests. A workflow definition is not a completed CI result;
 consult the exact PR commit's checks.
+
+## Reviewed follow-up and final CPU regression
+
+The [reviewed CPU receipt](../../artifacts/framework/20261021/native_lifecycle_reviewed_cpu.json)
+pins behavior HEAD `dc67c0b02c123c40147fe260fe632f23bccd6ed7`. All seven
+independently validated review findings have proof-first regressions and fixes.
+New input paths restrict tensor archive deserialization before original owners
+read values. W2 rejects repeated sources independently of augmentation seed;
+W5 resolves path aliases and exchanges next-sample failures on the metadata
+plane before model work. W2 preserves old rank receipts on refusal and releases
+copied restart payloads before resumed computation. EMA admission holds only
+one full CPU shard at a time. None changes the native training mathematics.
+
+| Final source-scoped check | Observed result |
+| --- | --- |
+| Refactor regression | 2153 passed, 85 skipped, 20 passing subtests |
+| Native Wan architecture/strategy regression | 173 passed, zero skips, using its separate Diffusers 0.35.2/PEFT 0.17.1 overlay |
+| Framework, data, open-workload and organization | 662 passed, two genuine CUDA-only skips |
+| Changed-source static checks | 24 Python files pass F/E9; checked compilation and 17 shell scripts pass |
+
+Earlier mismatched helper-environment and harness-setup failures remain archived;
+no assertions, goldens, tolerances or skips were changed to obtain these outcomes.
+Helios helper tests use Diffusers 0.34.0 separately from native Wan's 0.35.2.
+Minimum Torch 2.10 CI is a separate exact-commit result, not inferred from these
+Torch 2.14 CPU runs. The external peer returned no authenticated review; the
+local adversarial fallback completed, and no cross-model corroboration is claimed.
+
+Output admission is an entry-time ownership check, not an atomic reservation
+against another job. Each invocation still needs a unique operator-owned output
+directory. Restricted input admission does not sandbox concurrent modifications
+of the underlying filesystem. Pretrained CUDA/NCCL/FSDP and host-capacity gates
+remain unchanged and unqualified by this CPU-only follow-up.
 
 ## Remaining production-native boundaries
 
