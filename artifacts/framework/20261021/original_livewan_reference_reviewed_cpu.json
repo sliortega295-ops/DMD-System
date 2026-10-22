@@ -1,0 +1,152 @@
+{
+  "schema_version": "distillschedule.original_livewan_reference_reviewed_cpu.v1",
+  "status": "PASS_REVIEWED_CPU_SOURCE_AND_OWNER_CONTRACT_ONLY",
+  "behavior_head": "b1adad4d93dce73bc49aeab0d9cc434fb90fdb61",
+  "full_acceptance_head": "0934c61c2666c6365a3d8fa7240dfff868f10282",
+  "metadata_followup_head": "fc2733f201ae7d0f3d9d5b7c738cbe5df13774e6",
+  "metadata_followup": "CI required-case parametrization and guide links only; production training file bytes identical to full acceptance",
+  "source_files": {
+    "src/distillschedule/training/distributed.py": "7cfd886436dea9e5b147463877548e19757be50e7f84e49916fe4201a783fcd3",
+    "src/distillschedule/training/environment.py": "5dcf8420a3cfba05baae869a62b1686a9c798de3880d58ac5f255b19e7a74e51",
+    "src/distillschedule/training/livewan_inputs.py": "6d53bca4df2095d67784e6d6d95bb3edcc5e9c00d8a5d5f3aacfe8255a0a6933",
+    "src/distillschedule/training/livewan_reference_assets.py": "423df01afde80de40f300a0ba330dc24fdbc4c7986d3d89df32146916e55b734",
+    "src/distillschedule/training/livewan_state.py": "5c0612819fd79a2c04698ce92baa8147eccdac24f716833190e0692abad93619",
+    "src/distillschedule/training/livewan_training.py": "6cb634cc5fbadc3542871eb84d29e15792a7cd849543ab6949b90770741efcaa",
+    "src/distillschedule/training/native.py": "72f5b90bcfd86ad521071050694c7deb411f79af54c2d353450f7b170607b2d1",
+    "src/distillschedule/training/native_state.py": "07aa59d7fd477b8af9da9e0aba39b9070ea5cd36681f38a44bbf6ed8ca93e0b9"
+  },
+  "verification": {
+    "whole_cpu": {
+      "refactor": {
+        "tests": 2258,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 85,
+        "junit_sha256": "8b7edb2a09cca597009a528a5f24cbbcbb3d5443ebb55572df75b8f9d04a3431"
+      },
+      "native-wan": {
+        "tests": 173,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "junit_sha256": "f31b0c02cfd75f3ea944be67af4c9fa14ca00a496c5878fa955aaf020b8e5c83"
+      },
+      "framework": {
+        "tests": 779,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2,
+        "junit_sha256": "0020ac419d567deea795977e9ed87a08b5ddca59946b239ab54a708e530a90b1"
+      },
+      "w4-reference": {
+        "tests": 115,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "junit_sha256": "11cb44285a33a022a217b42fef4c0b324589bb9edcddf5fa4b96d0235715cefd"
+      }
+    },
+    "torch210_original_w4": {
+      "tests": 244,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "2c364b57a071353d7e7ac1d14ce9c0103fabbfb5e445f169beae38a42d25bdf8"
+    },
+    "ci_required_cases": {
+      "status": "PASS_ON_ACTUAL_TORCH210_JUNIT",
+      "includes_both_device_binding_cases": true,
+      "pre_fix_failure_preserved": true
+    },
+    "lint": {
+      "status": "PASS",
+      "python_files": 16,
+      "shell_scripts": 51,
+      "historical_import_map": "UNCHANGED"
+    }
+  },
+  "runtimes": [
+    {
+      "python": "3.12.3",
+      "torch": "2.14.0+cpu",
+      "scope": "whole scoped acceptance with separate Helios/Wan dependency overlays"
+    },
+    {
+      "python": "3.12.3",
+      "torch": "2.10.0+cpu",
+      "scope": "isolated official CPU wheel and existing host/nativeWan dependencies;244 original W4 CPU tests, no skips"
+    }
+  ],
+  "code_review": {
+    "status": "complete",
+    "run_id": "20261021-223539-969dabdf",
+    "reviewed_head": "de2edcd7f7f21ea6c9961761d7edbf6e37987103",
+    "original_verdict": "Not ready; original review artifact retained unchanged",
+    "caller_fix_closure": "ALL_3_APPLIED_AND_PARENT_VERIFIED",
+    "fixes": [
+      {
+        "finding": 1,
+        "commit": "f64c2348657363d26c32369f66ee20b6b0507256",
+        "mechanism": "original detached Generator text-projector Adam slots stay step0/zero moments"
+      },
+      {
+        "finding": 2,
+        "commit": "5373ee240772ab355ec9d5e31ae187b201f9e07a",
+        "mechanism": "nonsecret environment allowlist and explicit credential-key refusal; same known H3 issue fixed separately"
+      },
+      {
+        "finding": 3,
+        "commit": "b1adad4d93dce73bc49aeab0d9cc434fb90fdb61",
+        "mechanism": "real owned CUDA UUID-to-physical policy binding; CPU observer/Gloo tests, actual CUDA NOT_RUN"
+      }
+    ],
+    "remaining_actionable_review_findings": [],
+    "cross_model_corroboration": false
+  },
+  "known_hosted_ci_residual": {
+    "head": "1898fd631bd56314a0f10a371de184e1aeccc07d",
+    "failed_jobs": [
+      119618398108,
+      119618398690
+    ],
+    "failure": "CPU HSDP[1-4] spawn child SIGABRT at native shutdown",
+    "diagnosis": "UNRESOLVED. No abort in bounded local exact2.10 or2.14 reproduction; no cleanup patch, retry, assertion/skip/start-method or tolerance change. No root cause or fixed/flake claim.",
+    "local_torch210_broader": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2,
+      "junit_sha256": "576b388303ebd3404226ed3473a816351be71ad2d7d37590a928c277d0a158c6"
+    },
+    "exact_new_head_hosted_ci": "NOT_RUN_AT_RECEIPT_CREATION"
+  },
+  "boundaries": {
+    "actual_cpu": [
+      "pinned original TeacherLatents/InputLoader and consumed logical cursor",
+      "original LoRA, Adam, CPU DTensor state, hooks, RNG and same-owner continuation",
+      "detached text-projector valid zero-step state and malformed-slot refusal",
+      "real two-process Gloo failure exchange",
+      "original Wan1.3B/14B constructors on meta tensors"
+    ],
+    "synthetic_only": [
+      "outer CUDA/model/math/physical-observer boundaries and UUID inventory facades"
+    ],
+    "not_run": [
+      "pretrained native forward/backward",
+      "world16 CUDA/NCCL/FSDP2 restart",
+      "actual CUDA UUID/capacity",
+      "cross-reference numerical equivalence",
+      "quality",
+      "performance"
+    ],
+    "not_implemented": [
+      "fresh optimized C51 transport drain/shadow/two-slot restart",
+      "unified native VAE generation/export"
+    ]
+  },
+  "gpu_execution": "NOT_RUN",
+  "ssh_connections": 0,
+  "speedup_claim": false,
+  "main_modified": false,
+  "historical_review_or_fail_upgraded": false
+}
