@@ -142,6 +142,130 @@ def test_public_actual_update_and_one_nonreplayable_call(tmp_path):
     assert original().dmd2.DMD2Config().gan_start_step == 500
 
 
+def test_public_partial_critic_commit_poison_retains_previous_complete_cycle(tmp_path, monkeypatch):
+    from distillschedule.data.h3_cached_inputs import prepare_inputs
+    from distillschedule.training import session
+    from distillschedule.training.checkpoint import cpu_tree, rng_state, save_checkpoint
+    assets, sources = make_case(tmp_path, gan_start=500, count=2)
+    prepared = prepare_inputs(sources, tmp_path / "prepared")
+    root = tmp_path / "run"
+    config = request(root, assets, prepared, 2)
+    checkpoint = root / "checkpoints/cycle-000001"
+    construct, owners, observed = session.construct, [], {}
+
+    def capture_owner(*args, **kwargs):
+        result = construct(*args, **kwargs)
+        owners.append(result[0].state["native_update"])
+        observed["constructed"] = result[:3]
+        observed["caller_rng"] = cpu_tree(rng_state())
+        return result
+
+    monkeypatch.setattr(session, "construct", capture_owner)
+
+    def trace_boundary(frame, event, arg):
+        if (owners and frame.f_code is type(owners[0]).update.__code__
+                and frame.f_locals.get("self") is owners[0] and frame.f_locals.get("cycle") == 1):
+            if event == "call":
+                observed["outer_rng"] = cpu_tree(rng_state())
+                observed["complete"] = owners[0].state_dict()
+                observed["row"] = deepcopy(frame.f_locals["row"])
+                observed["checkpoint_bytes"] = {str(p.relative_to(checkpoint)): p.read_bytes()
+                    for p in checkpoint.rglob("*") if p.is_file()}
+            elif event == "return":
+                # Observe the owner's finally BEFORE the Program RNG scope also
+                # unwinds, so that scope cannot mask a missing native restore.
+                observed["restored_outer_rng"] = cpu_tree(rng_state())
+                observed["returned_flags"] = (owners[0]._busy, owners[0]._poisoned)
+            return trace_boundary
+        return None
+
+    step_code = original().training.optimizer_step.__code__
+
+    def fail_at_original_student_step(frame, event, arg):
+        if (event == "call" and frame.f_code is step_code and owners
+                and frame.f_locals.get("optimizers") is owners[0].optimizers
+                and frame.f_locals.get("role") == "student" and owners[0].cycle == 1):
+            owner = owners[0]
+            observed["partial_clocks"] = (owner.cycle, owner.trainer.critic_step)
+            observed["partial_optimizers"] = {role: owner._optimizer_value(role) for role in owner.optimizers}
+            observed["partial_adapters"] = owner.api.training.adapter_state(owner.adapter)
+            observed["native_rng"] = cpu_tree(rng_state())
+            observed["busy_at_failure"] = owner._busy
+            raise RuntimeError("explicit original student-step failure after critic commit")
+
+    previous_trace, previous_profile = sys.gettrace(), sys.getprofile()
+    try:
+        # No source-qualified callable, optimizer or numerical hook is replaced.
+        # The profile exception is at the actual original optimizer entry, after
+        # its critic backward/clip/Adam commit but before the student backward.
+        sys.settrace(trace_boundary)
+        sys.setprofile(fail_at_original_student_step)
+        with pytest.raises(RuntimeError, match="explicit original student-step failure"):
+            session.train(config)
+    finally:
+        sys.setprofile(previous_profile)
+        sys.settrace(previous_trace)
+
+    assert len(owners) == 1
+    owner = owners[0]
+    complete = observed["complete"]
+    assert complete["generator_step"] == complete["critic_step"] == 1
+    assert owner.config.num_inference_steps == 8 and owner.config.critic_updates == 1
+    assert owner.config.lora_rank == owner.config.lora_alpha == 64
+    assert owner.config.gan_start_step == 500 and complete["last_metrics"]["gan_active"] is False
+    assert observed["partial_clocks"] == (1, 2) == (owner.cycle, owner.trainer.critic_step)
+    assert observed["busy_at_failure"] and observed["returned_flags"] == (False, True)
+    assert owner._poisoned and not owner._busy
+    equal_tree(observed["outer_rng"], observed["restored_outer_rng"])
+    equal_tree(observed["caller_rng"], rng_state())
+    equal_tree(observed["native_rng"], owner._rng)
+    assert not torch.equal(complete["rng"]["torch"], owner._rng["torch"])
+    equal_tree(complete["consumed"], owner._consumed)
+    equal_tree(complete["last_metrics"], owner._last_metrics)
+    partial = observed["partial_optimizers"]
+    equal_tree(complete["optimizers"]["student"], partial["student"])
+    for role in owner.optimizers:
+        equal_tree(partial[role], owner._optimizer_value(role))
+    critic_before, critic_after = complete["optimizers"]["critic"]["state"], partial["critic"]["state"]
+    assert critic_before.keys() == critic_after.keys() and critic_after
+    assert all(critic_before[name]["step"].item() == 1 and slot["step"].item() == 2
+               for name, slot in critic_after.items())
+    for moment in ("exp_avg", "exp_avg_sq"):
+        assert any(not torch.equal(critic_before[name][moment], slot[moment])
+                   for name, slot in critic_after.items())
+    for name, value in complete["adapters"].items():
+        if ".student." in name:
+            equal_tree(value, observed["partial_adapters"][name])
+    assert any(not torch.equal(value, observed["partial_adapters"][name])
+               for name, value in complete["adapters"].items() if ".fake_score." in name)
+
+    with pytest.raises(ValueError, match="poisoned"):
+        session.build_cycle(config, *observed["constructed"], cycle=1, cursor=1)
+    with pytest.raises(ValueError, match="poisoned"):
+        owner.update(observed["row"], cycle=1)
+    with pytest.raises(ValueError, match="poisoned"):
+        owner.state_dict()
+    with pytest.raises(ValueError, match="poisoned"):
+        save_checkpoint(root / "checkpoints/cycle-000002", {"native_update": owner}, identity={},
+                        cycle=2, cursor=2, versions={"native_update": 2})
+    equal_tree(observed["caller_rng"], rng_state())
+    failure = json.loads((root / "failure.json").read_text())
+    assert failure["status"] == "FAILED" and "explicit original student-step failure" in failure["error"]
+    assert failure["completed_cycles_this_process"] == failure["cursor"] == 1
+    assert Path(failure["last_complete_checkpoint"]) == checkpoint
+    assert observed["checkpoint_bytes"] and observed["checkpoint_bytes"] == {
+        str(p.relative_to(checkpoint)): p.read_bytes() for p in checkpoint.rglob("*") if p.is_file()}
+    identity = json.loads((root / "identity.json").read_text())
+    payload, saved = read_owner(checkpoint, identity)
+    assert payload["cycle"] == payload["cursor"] == 1 and payload["versions"] == {"native_update": 1}
+    equal_tree(complete, saved)
+    rows = [json.loads(line) for line in (root / "metrics.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["cycle"] == rows[0]["cursor"] == 1
+    assert list((root / "checkpoints").iterdir()) == [checkpoint]
+    assert not (root / "summary.json").exists()
+    assert not torch.cuda.is_initialized()
+
+
 def resume_worker(root):
     from distillschedule.training.session import train
     root = Path(root)
