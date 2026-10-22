@@ -27,6 +27,9 @@ def main(argv=None):
     reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
     reference.add_argument("--sources", type=Path, required=True)
     reference.add_argument("--output", type=Path, required=True)
+    cached = sub.add_parser("prepare-h3-cached-reference", help="prepare original W6 cached AV CPU reference; no decoding/download")
+    cached.add_argument("--sources", type=Path, required=True)
+    cached.add_argument("--output", type=Path, required=True)
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
@@ -55,6 +58,9 @@ def main(argv=None):
         elif args.command == "prepare-h3-grid":
             from distillschedule.training.h3_grid_inputs import prepare_inputs
             result = prepare_inputs(args.native_config, args.output)
+        elif args.command == "prepare-h3-cached-reference":
+            from .h3_cached_inputs import prepare_inputs
+            result = inspect_prepared(prepare_inputs(args.sources, args.output))
         elif args.command == "prepare-livewan-inputs":
             from .livewan_inputs import prepare_inputs
             result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,

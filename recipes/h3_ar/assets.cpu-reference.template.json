@@ -1,0 +1,56 @@
+{
+  "schema_version": "distillschedule.h3_cached_cpu_assets.v1",
+  "evidence_kind": "FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY",
+  "backend": "torch-dense-cpu",
+  "precision": "CPU_FP32_NO_CAST",
+  "protocol": "CANONICAL_GAN500",
+  "source": {},
+  "runtime": {},
+  "base": {
+    "config": {"path": "/ABSOLUTE/LOCAL/architecture.json", "bytes": 1, "sha256": "REPLACE_WITH_ACTUAL_SHA256"},
+    "weights": [
+      {"path": "/ABSOLUTE/LOCAL/full-base.safetensors", "bytes": 1, "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+    ]
+  },
+  "dmd_config": {
+    "num_inference_steps": 8,
+    "video_shift": 2.22,
+    "audio_shift": 2.22,
+    "critic_updates": 1,
+    "student_learning_rate": 0.00001,
+    "fake_score_learning_rate": 0.00001,
+    "discriminator_learning_rate": 0.0000004,
+    "weight_decay": 0.01,
+    "lora_rank": 64,
+    "lora_alpha": 64,
+    "lora_targets": "attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2",
+    "audio_loss_weight": 0.5,
+    "dmd_loss_weight": 1.0,
+    "sigma_min": 0.02,
+    "sigma_max": 0.98,
+    "score_normalization_eps": 0.00001,
+    "teacher_cfg_scale": 1.0,
+    "adversarial_enabled": true,
+    "gan_start_step": 500,
+    "generator_loss_weight": 0.05,
+    "discriminator_loss_weight": 0.01,
+    "hidden_channels": 8,
+    "num_layers": 2,
+    "max_grad_norm": 1.0,
+    "critic_max_grad_norm": 10.0,
+    "gradient_checkpointing": true
+  },
+  "geometry": {
+    "video_shape": [1, 24, 2, 4, 4],
+    "audio_shape": [2, 32, 3],
+    "prompt_shape": [3, 5120],
+    "reference_video_shape": [1, 24, 3, 4, 4],
+    "reference_audio_shape": [2, 32, 5]
+  },
+  "budget": {
+    "max_parameters": 2000000,
+    "max_loaded_bytes": 32000000,
+    "max_cycles": 4,
+    "max_input_elements": 100000
+  }
+}
