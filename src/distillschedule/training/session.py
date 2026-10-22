@@ -28,6 +28,7 @@ from .checkpoint import (
 from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy, cycle_structure
+from .sampling import ProgramSampling
 from .validation import Validation, admit_scope
 
 
@@ -118,6 +119,7 @@ def construct(config, *, include_validation=False):
 
 
 def build_cycle(config, components, dataset, algorithm, *, cycle, cursor, versions=None):
+    """Build from a physical manifest index; training resolves sampling first."""
     import torch
 
     from distillschedule.open_workload.torch_backend import Workload
@@ -171,8 +173,9 @@ def _train(config: TrainingConfig):
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
-    if config.trainer["cycles"] * world > len(dataset):
-        raise ValueError("trainer.cycles exceeds prepared samples; explicit dataset progression is required")
+    sampling = ProgramSampling(config.data.get("sampling"), size=len(dataset),
+                               seed=config.trainer.get("seed", 0), world_size=world)
+    sampling.admit_cycles(config.trainer["cycles"])
     start_cycle = cursor = 0
     versions = None
     policy = CyclePolicy(config.execution)
@@ -180,16 +183,19 @@ def _train(config: TrainingConfig):
         # Build the original declared state shape before restoring modules,
         # optimizer/scheduler state, history and the exact next data position.
         workload = distributed.checked(lambda: build_cycle(
-            config, components, dataset, algorithm, cycle=0, cursor=rank), "resume cycle construction")
+            config, components, dataset, algorithm, cycle=0,
+            cursor=sampling.position(rank).sample_index), "resume cycle construction")
         metadata = distributed.checked(lambda: read_manifest(config.trainer["resume_from"], identity=identity),
                                        "checkpoint reading")
+        distributed.checked(lambda: sampling.validate_progress(metadata["cycle"], metadata["cursor"]),
+                            "checkpoint sampling progress admission")
         policy.restore(metadata["policy"])
         del metadata
         session = policy.prepare_resume(workload)
         restored = restore_checkpoint(config.trainer["resume_from"], session.state, identity=identity)
         start_cycle, cursor, versions = restored["cycle"], restored["cursor"], restored["versions"]
-        if cursor != start_cycle * world:
-            raise ValueError("checkpoint data cursor does not match complete rank-strided cycles")
+        distributed.checked(lambda: sampling.validate_progress(start_cycle, cursor),
+                            "restored sampling progress admission")
         components.state.update({key: session.state[key] for key in components.state})
         del restored
     if start_cycle >= config.trainer["cycles"]:
@@ -207,8 +213,9 @@ def _train(config: TrainingConfig):
     latest = Path(config.trainer["resume_from"]).resolve() if config.trainer.get("resume_from") else None
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
+            position = sampling.position(cursor + rank)
             workload = distributed.checked(lambda: build_cycle(
-                config, components, dataset, algorithm, cycle=cycle, cursor=cursor + rank,
+                config, components, dataset, algorithm, cycle=cycle, cursor=position.sample_index,
                 versions=versions), "cycle construction")
             started = time.perf_counter()
             session, outputs = policy.run(workload, root)
@@ -228,9 +235,9 @@ def _train(config: TrainingConfig):
                 validation_runs += 1
                 distributed.primary(lambda last_validation=last_validation: _json(root / "validation-summary.json", last_validation),
                                     "validation summary publication")
-            index = cursor + rank
             cursor += world
-            row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(index), "cursor": cursor,
+            row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(position.sample_index), "cursor": cursor,
+                   "sample_index": position.sample_index, "epoch": position.epoch, "epoch_offset": position.epoch_offset,
                    "metrics": _metrics(outputs), "wall_s": wall,
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
@@ -255,6 +262,7 @@ def _train(config: TrainingConfig):
                                              "COMPLETED_ADAPTER_METRICS" if validation_runs else "NOT_DUE"),
                                  "runs_this_process": validation_runs, "last": last_validation},
                   "checkpoint": str(latest) if latest else None, "identity": identity,
+                  "sampling": sampling.describe(),
                   "world_size": world, "rank_count": len(rank_results), "ranks": rank_results,
                   "policy": policy.bound, "gpu_execution": session.receipt["gpu_execution"]}
         distributed.primary(lambda: _json(root / "summary.json", result), "training summary publication")
@@ -274,12 +282,17 @@ def _load_for_output(config, checkpoint):
     components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "output construction")
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on checkpoint output configuration, source or dataset")
-    rank, _ = distributed.rank_world()
-    workload = distributed.checked(lambda: build_cycle(config, components, dataset, algorithm, cycle=0, cursor=rank),
+    rank, world = distributed.rank_world()
+    sampling = ProgramSampling(config.data.get("sampling"), size=len(dataset),
+                               seed=config.trainer.get("seed", 0), world_size=world)
+    workload = distributed.checked(lambda: build_cycle(config, components, dataset, algorithm, cycle=0,
+                                                      cursor=sampling.position(rank).sample_index),
                                    "output workload construction")
     metadata = distributed.checked(lambda: read_manifest(checkpoint, identity=identity), "output checkpoint reading")
     if any(row != digest(metadata) for row in distributed.gather(digest(metadata))):
         raise ValueError("ranks disagree on output checkpoint manifest or progress")
+    distributed.checked(lambda: sampling.validate_progress(metadata["cycle"], metadata["cursor"]),
+                        "output sampling progress admission")
     policy = CyclePolicy(config.execution)
     distributed.checked(lambda: policy.restore(metadata["policy"]), "output policy admission")
     def structure_admission():
@@ -290,6 +303,8 @@ def _load_for_output(config, checkpoint):
     # Reuse the persistent Program lifecycle, without executing a train update.
     session = policy.prepare_resume(workload)
     payload = distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission")
+    distributed.checked(lambda: sampling.validate_progress(payload["cycle"], payload["cursor"]),
+                        "output shard sampling progress admission")
     unpack_state(payload["state"], session.state)
     components.state.update({key: session.state[key] for key in components.state})
     return components, dataset, payload, identity, session

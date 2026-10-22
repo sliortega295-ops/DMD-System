@@ -32,11 +32,50 @@ distillctl train train.json --dry-run
 distillctl train train.json
 ```
 
-The Program adapter requires enough prepared records for the requested total
-cycles. It reads the declared order without implicit recycling, resizing or
-sample substitution. Algorithms may use all modalities and nested native
-feature trees in a record. They retain responsibility for distinguishing
+By default, the Program adapter requires enough prepared records for the
+requested total cycles. It reads manifest order without implicit recycling,
+resizing or sample substitution. Algorithms may use all modalities and nested
+native feature trees in a record. They retain responsibility for distinguishing
 Student samples, Fake samples and previous/current history.
+
+## Explicit Program data sampling
+
+To train beyond one pass over prepared records, opt in explicitly in the normal
+five-section request:
+
+```json
+{"data": {"prepared":"prepared/manifest.json",
+          "sampling":{"kind":"epochs", "shuffle":true}}}
+```
+
+`data.sampling` accepts exactly `kind` (`finite` or `epochs`) and an explicit
+boolean `shuffle`. Omitting the whole field retains finite, unshuffled manifest
+order and does not insert a default into configuration identity. Explicit
+`finite` requires `shuffle:false`; it still rejects targets exceeding available
+records. Original-native recipes reject this Program-only option; their six
+input contracts and original sampling semantics are unchanged.
+
+`epochs` traverses every physical record exactly once per full epoch. With
+`shuffle:false`, each epoch is manifest order. With `shuffle:true`, the stable
+`sha256-sort-v1` algorithm orders record indexes by a versioned hash of
+`trainer.seed`, the zero-based epoch and manifest index, breaking ties by index.
+It consumes no Python, NumPy, Torch or CUDA training RNG; only the current
+epoch's permutation is cached. It never changes prepared records, shapes,
+batching, model noise generation or algorithm update semantics.
+
+Distributed training uses the same fixed rank-strided cohorts over that order.
+In epoch mode, dataset length must be divisible by the **actual world size**;
+there is no padding, dropped tail or incomplete rank cohort. A target may end
+partway through its final epoch after any complete cohort. The checkpoint cursor
+remains total consumed records, exactly `completed_cycles × world_size`, not a
+wrapped index. The policy, seed, dataset and framework algorithm identity plus
+that cursor reconstruct the exact next records in a fresh process; no separate
+mutable sampler state is saved. Changed policy, seed or dataset cannot resume
+the old checkpoint. Summary receipts identify the policy and ordering algorithm.
+
+`PreparedDataset.sample(index)` and `build_cycle` continue to accept physical
+manifest indexes. In particular, generation/evaluation `--sample-index` is never
+interpreted as a shuffled position or epoch cursor.
 
 ## Explicit or automatic strategy
 
@@ -66,7 +105,8 @@ The initial full-state gate remains mandatory. The selected plan, effective
 policy, operation order and update versions are written beside the run.
 Timing is diagnostic training wall time, not a new performance result.
 
-For replay from the same initial model and prepared input, use
+For replay from the same initial model and prepared input (including the
+sampling policy and seed that select its first record), use
 `{"mode":"plan","plan":"path/to/selected-plan.json"}`. Changed model,
 input, source or calibration hashes reject through the original planner.
 
@@ -122,9 +162,11 @@ Set these fields explicitly for a CPU functional run:
 ```
 
 These are fragments of the normal five-section request, not a separate config
-format. Supply at least `cycles × world_size` records; at global cursor `k`,
-rank `r` consumes record `k+r`, then the cursor advances by `world_size`. No
-padding, recycling or dropping an incomplete rank cohort is permitted.
+format. By default, supply at least `cycles × world_size` records; at global
+cursor `k`, rank `r` consumes manifest record `k+r`, then the cursor advances by
+`world_size`. Explicit epoch sampling instead resolves that logical position
+through the policy described above. No padding or dropping an incomplete rank
+cohort is permitted, and reuse requires the explicit epoch opt-in.
 
 Before any model factory, restart branch or output creation, ranks must agree
 on the total target cycles, checkpoint frequency, resolved shared output root
@@ -157,8 +199,10 @@ not implied by those tests.
 ## Run artifacts
 
 `resolved-config.json` and `identity.json` identify the request. `metrics.jsonl`
-records cycle, sample, scalar outputs, finite state, actual operations, logical
-versions and policy hash. `summary.json` records completion and the latest
+records cycle, actual sample ID and physical `sample_index`, zero-based `epoch`
+and global `epoch_offset`, total consumed-record `cursor`, scalar outputs,
+finite state, actual operations, logical versions and policy hash. `summary.json`
+records completion, sampling policy/algorithm and the latest
 complete checkpoint. An interrupted/failed run retains `failure.json` and its
 last completed checkpoint. Failed partial updates are never counted complete.
 Distributed rank metrics are in `ranks/rank-NNNNN/metrics.jsonl`; the shared

@@ -210,6 +210,13 @@ shuffle, distributed sharding, batching, and sample reuse are explicit trainer
 policies, not hidden dataset behavior. `identity` binds the exact manifest bytes
 and actual feature-file content; opened readers recheck hashes on access.
 
+The Program trainer defaults to finite manifest-order exhaustion. Its optional
+[`data.sampling` policy](training.md#explicit-program-data-sampling) explicitly
+enables full epochs, with optional deterministic seed-bound shuffling and fixed
+rank-strided cohorts. This does not change the dataset API: inspection,
+`sample(index)` and evaluation/generation indexes still refer to physical
+manifest records. Original-native input formats do not accept this policy.
+
 Publication uses an exclusive sibling lock and a temporary sibling directory.
 All tensors and the complete manifest are validated before the directory is
 atomically renamed into place. Existing output directories are never

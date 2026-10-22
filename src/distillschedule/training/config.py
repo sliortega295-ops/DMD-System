@@ -11,6 +11,7 @@ from distillschedule.core.config import load_document
 from distillschedule.workloads.best_known.registry import fingerprint as digest
 
 from .plugins import resolve_reference
+from .sampling import sampling_policy
 
 SCHEMA = "distillschedule.training.v1"
 
@@ -53,7 +54,7 @@ class TrainingConfig:
             raise ValueError("checkpoint_every must be a nonnegative integer")
         if execution.get("adapter", "program") == "program":
             allowed = {
-                "model": {"factory", "parameters"}, "data": {"prepared", "sharding", "validation_prepared"},
+                "model": {"factory", "parameters"}, "data": {"prepared", "sharding", "validation_prepared", "sampling"},
                 "algorithm": {"factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
                               "max_candidates", "samples", "max_program_runs", "max_states"},
@@ -79,6 +80,8 @@ class TrainingConfig:
                 raise ValueError("data.prepared is required; prepare raw media before training")
             if parts["data"].get("sharding", "single") not in ("single", "rank_strided"):
                 raise ValueError("data.sharding must be single or rank_strided")
+            if "sampling" in parts["data"]:
+                parts["data"]["sampling"] = sampling_policy(parts["data"]["sampling"])
             if ("validation" in trainer) != ("validation_prepared" in parts["data"]):
                 raise ValueError("trainer.validation and data.validation_prepared must be supplied together")
             if "validation" in trainer:
@@ -112,6 +115,8 @@ class TrainingConfig:
                         or distributed.get("timeout_seconds", 180) <= 0):
                     raise ValueError("trainer.distributed requires an explicit gloo/nccl backend and positive timeout")
         else:
+            if "sampling" in parts["data"]:
+                raise ValueError("data.sampling is supported only by the Program adapter")
             if "validation" in trainer or "validation_prepared" in parts["data"]:
                 raise ValueError("periodic validation is supported only by the Program adapter")
             if parts["model"].get("workload") not in tuple(f"W{i}" for i in range(1, 7)):
