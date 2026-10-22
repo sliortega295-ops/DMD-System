@@ -71,10 +71,12 @@ class CriticPhaseWeights(TrainableWeights):
         self.state_dict()  # Fail closed at binding, including a post-update owner.
 
     def _phase(self, flags):
-        ready = {n: n not in self.frozen for n in self.parameters}
+        frozen = set(self.frozen)
+        ready = {n: n not in frozen for n in self.parameters}
         if flags == ready:
             return "ready"
-        complete = {n: n in self.extra for n in self.parameters}
+        extra = set(self.extra)
+        complete = {n: n in extra for n in self.parameters}
         if self.separate and flags == complete:
             return "separate_gan_complete"
         raise ValueError("original Helios GAN critic state: illegal critic trainability phase")
