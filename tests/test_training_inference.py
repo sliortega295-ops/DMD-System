@@ -428,3 +428,77 @@ def test_export_write_failure_cannot_publish_completion_marker(tmp_path, monkeyp
         export(config, checkpoint, output)
     assert not output.exists()
     assert not list(tmp_path.glob(".export.tmp-*"))
+
+
+def test_projection_contract_is_explicit_and_finite():
+    from distillschedule.training.adapters import InferenceProjection, ModelComponents
+    original = ModelComponents(state={'training-only': object()})
+    assert original.inference_projection is None
+    projected = ModelComponents(state={'generator': torch.nn.Linear(2, 1)})
+    assert InferenceProjection(projected, 'some.module:factory', {'seed': 3}).validate().components is projected
+    with pytest.raises(ValueError, match='finite JSON'):
+        InferenceProjection(projected, 'some.module:factory', {'bad': float('nan')}).validate()
+
+
+def test_latent_output_requires_explicit_named_floating_schema():
+    from distillschedule.training.inference import latent_outputs
+    value = {'latents': torch.ones(1, 2, 3), 'latent_schema': {
+        'latents': {'layout': 'BCT', 'shape': [1, 2, 3], 'dtype': 'torch.float32'}}}
+    assert latent_outputs(value)['latents']['layout'] == 'BCT'
+    for bad in ({}, {'latents': value['latents']},
+                {**value, 'latents': torch.ones(1, 2, 3, dtype=torch.int64)},
+                {**value, 'latents': torch.full((1, 2, 3), float('nan'))},
+                {**value, 'latent_schema': {'latents': {'layout': '', 'shape': [1,2,3], 'dtype':'torch.float32'}}},
+                {**value, 'latent_schema': {'latents': {'layout': 'BCT', 'shape': [True,2,3], 'dtype':'torch.float32'}}}):
+        with pytest.raises(ValueError, match='latent'):
+            latent_outputs(bad)
+
+
+def test_invalid_optional_projection_refuses_before_publication(tmp_path, monkeypatch):
+    from distillschedule.training import session
+    from distillschedule.training.adapters import InferenceProjection
+    root, config, _ = _export_fixture(tmp_path)
+    original = session._load_for_output
+    for fault in ('wrong-value', 'nonfinite-parameters'):
+        def load(*args, **kwargs):
+            result = original(*args, **kwargs)
+            components = result[0]
+            def project(current, parameters):
+                assert current is components
+                if fault == 'wrong-value':
+                    return current
+                return InferenceProjection(current, config.model['factory'], {'invalid': float('nan')})
+            components.inference_projection = project
+            return result
+        monkeypatch.setattr(session, '_load_for_output', load)
+        output = tmp_path / fault
+        with pytest.raises(ValueError, match='InferenceProjection|finite JSON'):
+            session.export(config, root / 'run/checkpoints/cycle-000004', output)
+        assert not output.exists() and not list(tmp_path.glob('.' + fault + '.tmp-*'))
+    with pytest.raises(ValueError, match='inference_projection must be callable'):
+        from distillschedule.training.adapters import ModelComponents
+        ModelComponents(state={'owner':object()}, inference_projection=True).validate()
+
+
+def test_projection_uses_effective_session_seed_when_omitted(tmp_path, monkeypatch):
+    from distillschedule.training import session
+    from distillschedule.training.adapters import InferenceProjection
+    root, config, _ = _export_fixture(tmp_path)
+    original = session._load_for_output
+    def load(*args, **kwargs):
+        result = original(*args, **kwargs)
+        components = result[0]
+        def project(current, parameters):
+            # As with ordinary factory parameters, an omitted seed uses the
+            # session default. Explicit projection seeds remain authoritative.
+            return InferenceProjection(current, config.model['factory'],
+                                       {key:value for key,value in parameters.items() if key != 'seed'})
+        components.inference_projection = project
+        return result
+    monkeypatch.setattr(session, '_load_for_output', load)
+    projected = tmp_path / 'projected'
+    manifest = session.export(config, root / 'run/checkpoints/cycle-000004', projected)
+    assert manifest['model']['parameters']['seed'] == config.trainer['seed']
+    generated = session.generate_from_export(config, projected, tmp_path / 'generated',
+                                             prepared=root / 'prepared/manifest.json')
+    assert generated['video']['layout'] == 'THWC'

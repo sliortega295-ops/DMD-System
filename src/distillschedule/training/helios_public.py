@@ -2,7 +2,7 @@
 
 CPU1 FP32 resident reference only. This module constructs declared owners and
 FIVE nonreplayable calls, not a trainer, alternate loss, rollout, or solver.
-Portable Generator projection/export is a separate, not-yet-implemented unit.
+Portable current-Generator export uses a separate inference-only projection.
 """
 from __future__ import annotations
 from copy import deepcopy
@@ -97,9 +97,10 @@ def build_model(parameters):
         assets=deepcopy(assets),asset_manifest=dict(path=str(path),bytes=path.stat().st_size,sha256=file_sha256(path)),
         owner_identity=deepcopy(owner.identity),
         evidence_kind=assets['evidence_kind'],quality_validation='NOT_RUN',claimable_speedup=False,
-        portable_generator_export='NOT_IMPLEMENTED_U2')
+        portable_generator_export='CURRENT_FULL_UNMERGED_NATIVE_LATENT_DIAGNOSTIC')
+    from .helios_inference import project_current_generator
     return ModelComponents(state={'native_step':owner},metadata=metadata,admit_training=admit_training,
-                           collect_metrics=collect_metrics).validate()
+                           collect_metrics=collect_metrics, inference_projection=project_current_generator).validate()
 
 
 def collect_metrics(outputs):

@@ -16,7 +16,7 @@ from pathlib import Path
 from distillschedule.workloads.best_known.registry import file_sha256
 
 from . import distributed
-from .adapters import ModelComponents
+from .adapters import InferenceProjection, ModelComponents
 from .checkpoint import (
     cpu_tree,
     read_checkpoint,
@@ -343,11 +343,11 @@ def _generation_parameters(parameters):
         raise ValueError("generation parameters must be finite JSON values") from exc
 
 
-def _generate_values(config, components, feeds, parameters, *, video_required=False):
+def _generate_values(config, components, feeds, parameters, *, video_required=False, latents_required=False):
     import torch
     from torch.utils._pytree import tree_map
 
-    from .inference import decoded_video
+    from .inference import decoded_video, latent_outputs
     if components.generate is None:
         raise ValueError("model adapter does not implement generation")
     for value in components.state.values():
@@ -360,10 +360,13 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
     _seed(config.trainer.get("seed", 0))
     with torch.no_grad():
         generated = components.generate(components.state, feeds, dict(parameters or {}))
-        decoded = components.decode(generated, dict(parameters or {})) if components.decode else generated
+        decoded = (components.decode(generated, dict(parameters or {}))
+                   if components.decode and not latents_required else generated)
     if not _finite({}, {"generated": generated, "decoded": decoded}):
         raise ValueError("generation produced nonfinite values")
     decoded_video(decoded, required=video_required)
+    if latents_required:
+        latent_outputs(generated)
     return {"generated": generated, "decoded": decoded}
 
 
@@ -418,16 +421,31 @@ def export(config, checkpoint, output):
         from .inference import publish_export
         components, _, payload, identity, _session = _load_for_output(config, checkpoint)
         parameters = {key: value for key, value in _model_parameters(config).items() if key != "device"}
-        return publish_export(components, output, model={"factory": config.model["factory"],
-            "source": identity["model"], "parameters": parameters, "metadata": dict(components.metadata)},
+        factory, source = config.model["factory"], identity["model"]
+        if components.inference_projection is not None:
+            def project():
+                value = components.inference_projection(components, dict(parameters))
+                if not isinstance(value, InferenceProjection):
+                    raise ValueError("inference_projection must return InferenceProjection")
+                return value.validate()
+            projection = distributed.checked(project, "inference projection admission")
+            _, source = distributed.checked(lambda: load_callable(projection.factory), "inference factory source admission")
+            components, factory = projection.components, projection.factory
+            parameters = _generation_parameters(projection.parameters)
+            parameters.setdefault("seed", config.trainer.get("seed", 0))
+            identity = {"model": source, "model_metadata": dict(components.metadata), "training_provenance": identity}
+        return publish_export(components, output, model={"factory": factory,
+            "source": source, "parameters": parameters, "metadata": dict(components.metadata)},
             identity=identity, cycle=payload["cycle"])
 
 
-def generate_from_export(config, weights_dir, output, *, prepared, sample_index=0, parameters=None):
+def generate_from_export(config, weights_dir, output, *, prepared, sample_index=0, parameters=None, output_kind="video"):
     """Generate on new prepared inputs, without training data, algorithm or RNG state."""
     from distillschedule.data import PreparedDataset
 
     from .inference import read_export, restore_modules, write_generation
+    if output_kind not in ("video", "latents"):
+        raise ValueError("output_kind must be video or explicit diagnostic latents")
     if distributed.rank_world()[1] != 1 or int(os.environ.get("WORLD_SIZE", "1")) != 1:
         raise ValueError("portable export generation is single-process; distributed checkpoint evaluation uses evaluate")
     if config.execution.get("adapter", "program") != "program":
@@ -448,7 +466,8 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     if digest(dict(components.metadata)) != digest(model["metadata"]):
         raise ValueError("export model metadata changed")
     restore_modules(components, root, manifest)
-    values = cpu_tree(_generate_values(config, components, feeds, parameters, video_required=True))
+    values = cpu_tree(_generate_values(config, components, feeds, parameters,
+                                      video_required=output_kind == "video", latents_required=output_kind == "latents"))
     _, current = read_export(root)
     if digest(current) != digest(manifest):
         raise ValueError("export manifest changed during generation")
@@ -460,6 +479,6 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
         "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
         "loaded_factory": model_source,
         "export_manifest_sha256": file_sha256(root / "export.json"),
-        "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]})
+        "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
     (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
     return result

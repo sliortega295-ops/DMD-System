@@ -11,8 +11,9 @@ physical/global batch 1, accumulation 1, fixed native ratio 5, one latent sectio
 original GT history `[16,2,1]`, final GAN head, no GAN hooks/cache. Both original
 separate-gradient policies are identity-bound. The engine adapter's name does
 not imply FSDP wrapping. CUDA, distributed training, auto/manual/saved-plan
-modes, epochs/shuffling, periodic validation, replay and portable export are
-not admitted here. Existing W2 and native W3 configurations are unchanged.
+modes, epochs/shuffling, periodic validation and replay are not admitted
+here. Portable current-G native latent inference uses the separate
+[inference-only projection](PORTABLE_INFERENCE_CPU.md). Existing W2 and native W3 configurations are unchanged.
 
 ## Supply local assets, never a fallback model
 
@@ -149,8 +150,10 @@ pretrained/media quality, decoded video, GPU/world16 execution and performance
 are separate evidence levels. Quality validation remains `NOT_RUN`; no speedup
 is claimed.
 
-**U2 is not implemented here.** A training checkpoint intentionally omits full
-frozen G/C tensors. It reconstructs them from pinned local assets on restart.
-A future separate current-G projection will provide self-contained inference
-weights without C/Adam/training data; the current factory is not a portable
-inference loader and no fake VAE/video is supplied.
+A training checkpoint intentionally omits full frozen G/C tensors and
+reconstructs them from pinned local assets on restart. The separate
+[current-G export](PORTABLE_INFERENCE_CPU.md) provides full unmerged inference
+weights without C/Adam/training data, through the existing export lifecycle.
+The training factory itself is not the portable inference loader; the
+inference-only factory supplies original native latent diagnostics, not a
+fake VAE/video or quality claim.

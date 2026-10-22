@@ -65,6 +65,8 @@ def main(argv=None):
         elif name == "generate":
             p.add_argument("--weights", type=Path, required=True)
             p.add_argument("--prepared", type=Path, required=True)
+            p.add_argument("--output-kind", choices=("video", "latents"), default="video",
+                           help="video requires a real decoder; latents is an explicit native diagnostic")
         else:
             p.add_argument("--checkpoint", type=Path, required=True)
         if name in ("evaluate", "generate"):
@@ -100,7 +102,8 @@ def main(argv=None):
             from .session import evaluate, export, generate_from_export
             if args.command == "generate":
                 result = generate_from_export(config, args.weights, args.output,
-                                              prepared=args.prepared, sample_index=args.sample_index)
+                                              prepared=args.prepared, sample_index=args.sample_index,
+                                              output_kind=args.output_kind)
             elif args.command == "evaluate":
                 result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index)
             else:

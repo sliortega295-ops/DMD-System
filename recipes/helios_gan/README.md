@@ -37,3 +37,7 @@ Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
 operations. This binding does not replace the original protocol or certify GPU execution.
+
+Portable current-Generator CPU export and explicit native latent diagnostics:
+[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Default generation still
+requires a real decoder; this recipe supplies no decoded-video or quality claim.

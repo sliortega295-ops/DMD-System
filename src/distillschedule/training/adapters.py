@@ -23,6 +23,7 @@ class ModelComponents:
     validate_batch: Callable | None = None
     admit_training: Callable | None = None
     collect_metrics: Callable | None = None
+    inference_projection: Callable | None = None
 
     def validate(self):
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
@@ -35,8 +36,46 @@ class ModelComponents:
                 module = resolve_module(self.state, path)
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
-        for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training", "collect_metrics"):
+        for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training", "collect_metrics",
+                     "inference_projection"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")
+        return self
+
+
+@dataclass(frozen=True)
+class InferenceProjection:
+    """Optional export-only view of a RESTORED model's current owned modules.
+
+    ``inference_projection(components, effective_training_parameters)`` must
+    not mutate the training owner. The caller resolves the new factory source;
+    ordinary named-module export and strict inference identity still apply.
+    """
+    components: ModelComponents
+    factory: str
+    parameters: Mapping[str, Any]
+
+    def validate(self):
+        import json
+        from .plugins import resolve_reference
+
+        if not isinstance(self.components, ModelComponents):
+            raise ValueError("inference projection must return ModelComponents")
+        self.components.validate()
+        from pathlib import Path
+        if not isinstance(self.factory, str) or resolve_reference(self.factory, Path.cwd()) != self.factory:
+            raise ValueError("inference projection needs an explicit resolved factory reference")
+        def keys(value):
+            if isinstance(value, Mapping):
+                return all(isinstance(key, str) and keys(item) for key, item in value.items())
+            if isinstance(value, (list, tuple)):
+                return all(keys(item) for item in value)
+            return True
+        try:
+            if not isinstance(self.parameters, Mapping) or not keys(self.parameters) or "device" in self.parameters:
+                raise ValueError("invalid projection parameters")
+            json.dumps(dict(self.parameters), allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("inference projection parameters must be finite JSON without device") from exc
         return self

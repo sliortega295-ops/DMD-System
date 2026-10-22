@@ -79,6 +79,14 @@ def modules(state):
     return {name: unwrap_module(value) for name, value in sorted(state.items()) if isinstance(value, torch.nn.Module)}
 
 
+def _finite_weights(weights):
+    import torch
+    from torch.utils._pytree import tree_leaves
+    _require(all(bool(torch.isfinite(tensor).all()) for tensor in tree_leaves(weights)
+                 if isinstance(tensor, torch.Tensor) and (tensor.is_floating_point() or tensor.is_complex())),
+             "export contains nonfinite module weights")
+
+
 def module_layout(state):
     import torch
     from torch.distributed.fsdp import FSDPModule
@@ -123,6 +131,7 @@ def publish_export(components, output, *, model, identity, cycle):
     distributed.primary(create, "inference export staging")
     def publish():
         if components.export is None:
+            _finite_weights(weights)
             torch.save(weights, staging / "weights.pt")
             metadata = {"format": "torch_state_dicts", "roles": sorted(weights)}
         else:
@@ -224,6 +233,7 @@ def restore_modules(components, root, manifest):
     _require(isinstance(weights, dict) and set(weights) == set(models), "export module names changed")
     for name, module in models.items():
         _require(_tree_layout(weights[name]) == _tree_layout(module.state_dict()), f"export module state layout changed: {name}")
+    _finite_weights(weights)
     for name, module in models.items():
         module.load_state_dict(weights[name], strict=True)
 
@@ -242,10 +252,37 @@ def decoded_video(decoded, *, required=True):
     return video
 
 
-def write_generation(root, values, *, metadata):
+def latent_outputs(generated):
+    """Explicit named floating tensors and exact declared layouts, not media.
+
+    Adapters return ``{name: Tensor, ..., 'latent_schema': {name: spec, ...}}``.
+    Each spec declares layout axes, shape and Torch dtype; no decoder is guessed.
+    """
+    import torch
+    schema = generated.get("latent_schema") if isinstance(generated, dict) else None
+    _require(isinstance(schema, dict) and schema and set(generated) == set(schema) | {"latent_schema"},
+             "latent diagnostic needs nonempty explicitly named tensors and latent_schema")
+    for name, spec in schema.items():
+        tensor = generated[name]
+        _require(isinstance(name, str) and bool(name.strip()) and name != "latent_schema"
+                 and isinstance(tensor, torch.Tensor) and tensor.layout == torch.strided
+                 and tensor.is_floating_point() and tensor.numel() > 0 and bool(torch.isfinite(tensor).all()),
+                 "latent diagnostic needs finite nonempty named floating tensors")
+        _require(isinstance(spec, dict) and set(spec) == {"layout", "shape", "dtype"}
+                 and isinstance(spec["layout"], str) and spec["layout"].isascii()
+                 and spec["layout"].isalpha() and spec["layout"].isupper()
+                 and len(spec["layout"]) == tensor.ndim and len(set(spec["layout"])) == tensor.ndim
+                 and isinstance(spec["shape"], list) and all(type(n) is int and n > 0 for n in spec["shape"])
+                 and spec["shape"] == list(tensor.shape) and spec["dtype"] == str(tensor.dtype),
+                 "latent diagnostic layout/shape/dtype declaration disagrees with tensors")
+    return schema
+
+
+def write_generation(root, values, *, metadata, output_kind=None):
     """Write one already-validated, CPU-materialized sample, without resampling."""
     import torch
-    video = decoded_video(values["decoded"], required=False)
+    latents = latent_outputs(values["generated"]) if output_kind == "latents" else None
+    video = None if latents is not None else decoded_video(values["decoded"], required=False)
     if video is not None:
         from PIL import Image
         frames = root / "frames"
@@ -259,5 +296,9 @@ def write_generation(root, values, *, metadata):
     torch.save(values, root / "generation.pt")
     result = {**metadata, "video": video_metadata,
               "artifact": str(root / "generation.pt"), "quality_validation": "NOT_RUN"}
+    if latents is not None:
+        result["output_kind"] = "latents"
+        result["latents"] = {"schema_version": "distillschedule.latent_outputs.v1", "tensors": latents,
+                             "interpretation": "LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY"}
     _json(root / "generation.json", result)
     return result
