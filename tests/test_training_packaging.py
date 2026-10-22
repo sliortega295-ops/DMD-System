@@ -107,12 +107,28 @@ def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
 
 def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_metadata):
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
-    for package in ("diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1", "ftfy==6.3.1"):
+    for package in ("diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1", "ftfy==6.3.1", "kernels==0.9.0"):
         assert f'{package};extra=="test-helios"' in requirements
+    from packaging.requirements import Requirement
+    triton = [Requirement(value) for value in wheel_metadata.get_all("Requires-Dist")
+              if Requirement(value).name == "triton"]
+    assert len(triton) == 1 and str(triton[0].specifier) == "==3.6.0"
+    assert triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Linux", "platform_machine": "x86_64"})
+    assert not triton[0].marker.evaluate({"extra": "train", "platform_system": "Linux", "platform_machine": "x86_64"})
+    assert not triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Darwin", "platform_machine": "arm64"})
     import yaml
     workflow = yaml.safe_load((ROOT / ".github/workflows/framework-cpu.yml").read_text())
     commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["lifecycle"]["steps"])
     assert ".[train,test,test-helios]" in commands
+
+
+def test_original_helios_ci_requires_actual_public_admission_and_restart():
+    import yaml
+    workflow = yaml.safe_load((ROOT / ".github/workflows/framework-cpu.yml").read_text())
+    commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["lifecycle"]["steps"])
+    assert "test_actual_original_helpers_three_cycles_checkpoint_resume_equal" in commands
+    assert "test_public_to_original_p0_collectively_admits_before_model" in commands
+    assert "find('skipped')" in commands
 
 
 def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_metadata):

@@ -17,7 +17,7 @@ permissions:
 jobs:
   lifecycle:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +39,18 @@ jobs:
           TRANSFORMERS_OFFLINE: '1'
           OMP_NUM_THREADS: '1'
         run: python -m pytest -q tests/test_data_*.py tests/test_training_*.py tests/test_open_workload_*.py --junitxml=framework-cpu.xml
+      - name: Require original Helios startup and persistent state proof
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = list(ET.parse('framework-cpu.xml').getroot().iter('testcase'))
+          restart = [case for case in cases if case.get('name') ==
+                     'test_actual_original_helpers_three_cycles_checkpoint_resume_equal']
+          startup = [case for case in cases if case.get('name', '').startswith(
+                     'test_public_to_original_p0_collectively_admits_before_model[')]
+          assert len(restart) == 1 and len(startup) == 13
+          assert all(case.find('skipped') is None for case in restart + startup)
+          PY
       - name: Installed wheel outside the checkout
         run: python scripts/check_framework_install.py --output installed-framework.json
       - name: Lightweight wheel and original source admission

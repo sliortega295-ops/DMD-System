@@ -27,7 +27,13 @@ profiling = ["matplotlib>=3.7", "numpy>=1.24"]
 test = ["pytest>=7", "omegaconf>=2.3"]
 # CPU qualification of licensed original Helios input/rollout helpers. This is
 # not the CUDA training environment and does not replace native-wan's pins.
-test-helios = ["diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2", "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1"]
+test-helios = [
+    "diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "kernels==0.9.0",
+    # The licensed original SDPA receipt imports JIT definitions, but these
+    # Linux/x86 CPU tests never compile or launch them. Not a public train dep.
+    "triton==3.6.0; platform_system == 'Linux' and platform_machine == 'x86_64'",
+]
 test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
 media = ["numpy>=1.24", "Pillow>=10"]
 train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
