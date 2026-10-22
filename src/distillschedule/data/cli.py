@@ -20,9 +20,27 @@ def main(argv=None):
             command.add_argument("--output", type=Path, required=True)
         if name == "validate":
             command.add_argument("--sources", action="store_true", help="also verify original media and encoder source")
+    helios = sub.add_parser("prepare-helios-stream", help="prepare explicit original W2 feature cohorts on CPU")
+    helios.add_argument("--sources", type=Path, required=True)
+    helios.add_argument("--training-config", type=Path, required=True)
+    helios.add_argument("--output", type=Path, required=True)
+    grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
+    grid.add_argument("--native-config", type=Path, required=True)
+    grid.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.command == "prepare":
+        if args.command == "prepare-helios-stream":
+            from distillschedule.search.helios_request import OriginalHeliosRequest
+            from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
+            values = json.loads(args.sources.read_text())
+            if not isinstance(values, list):
+                raise ValueError("explicit source cohort list required")
+            result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
+                                    args.training_config, args.output)
+        elif args.command == "prepare-h3-grid":
+            from distillschedule.training.h3_grid_inputs import prepare_inputs
+            result = prepare_inputs(args.native_config, args.output)
+        elif args.command == "prepare":
             result = inspect_prepared(prepare(args.manifest, args.output))
         elif args.command == "import":
             result = inspect_prepared(import_preencoded(args.manifest, args.output))

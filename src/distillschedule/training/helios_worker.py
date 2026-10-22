@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 from pathlib import Path
 import sys
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import repository_root, load_profile, load_assets, verify_assets, file_sha256
-from .helios_inputs import HeliosCohortTask, HeliosCohortSources, load_stream, source_fingerprint
+from .helios_inputs import HeliosCohortTask, load_stream, source_fingerprint
 
 _OFF = ("pack-real-score-pair", "generator-nograd-lora-fused-epilogue", "all-role-lora-scale1-add",
     "optimizer-dispatch-warmup", "generator-nograd-residual-fusion", "exact-grad-residual-fusion",
@@ -143,17 +142,6 @@ def run_reference(config, admitted, source):
 
 
 def prepare_main(argv=None):
-    import argparse
-    from distillschedule.search.helios_request import OriginalHeliosRequest
-    from .helios_inputs import prepare_stream
-    parser = argparse.ArgumentParser(prog="distillctl data prepare-helios-stream")
-    parser.add_argument("--sources", type=Path, required=True, help="JSON list of explicit five-step rank16 cohorts")
-    parser.add_argument("--training-config", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args(argv)
-    values = json.loads(args.sources.read_text())
-    require(isinstance(values, list), "explicit source cohort list required", path="helios.inputs")
-    result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
-                            args.training_config, args.output)
-    print(json.dumps(result, indent=2, sort_keys=True))
-    return 0
+    """Compatibility entry; the discoverable public data command owns parsing."""
+    from distillschedule.data.cli import main
+    return main(["prepare-helios-stream", *(sys.argv[1:] if argv is None else argv)])
