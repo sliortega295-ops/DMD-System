@@ -66,6 +66,12 @@ jobs:
               'test_fresh_process_checkpoint_exact_next_cycle_all_original_owners',
               'test_full_owner_nonseparate_gan_policy_runs_full_c_and_restores_exactly',
               'test_legitimate_cold_zero_dmd_gradient_is_not_rejected_or_replaced',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[timestamp-transformer]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[timestamp-backend]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[unchecked-hash-transformer]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[unchecked-hash-backend]',
+              'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[source]',
+              'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[namespace]',
           }
           assert required <= names, f'missing full-source proofs: {sorted(required - names)}'
           PY

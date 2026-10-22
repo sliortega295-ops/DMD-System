@@ -18,6 +18,104 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize("target", ["transformer", "backend"])
+@pytest.mark.parametrize("invalidation", ["timestamp", "unchecked-hash"])
+def test_reference_import_uses_verified_source_not_stale_bytecode(tmp_path, target, invalidation):
+    _fresh(r'''
+        from pathlib import Path
+        import hashlib
+        import importlib.abc
+        import importlib.util
+        from importlib._bootstrap_external import _code_to_timestamp_pyc, _code_to_hash_pyc
+        import shutil
+        import sys
+        from distillschedule.adapters import helios
+        from distillschedule.adapters.helios import reference_model as provider
+        from distillschedule.workloads.best_known import registry
+
+        original = registry.repository_root()
+        root, target, invalidation = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+        shutil.copytree(original / 'third_party/helios_compat', root / 'third_party/helios_compat',
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+        private = root / 'adapter/_reference'
+        shutil.copytree(provider._REFERENCE_PATH, private,
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+        # This process-local relocation avoids seeding any canonical cache.
+        helios.__path__.insert(0, str(private.parent))
+        registry.repository_root = provider.repository_root = lambda: root
+        provider._REFERENCE_PATH = private
+        provider._BACKEND_PATH = private / 'modules/helios_kernels.py'
+        source = (root / 'third_party/helios_compat/source/helios/modules/transformer_helios.py'
+                  if target == 'transformer' else provider._BACKEND_PATH)
+        content, stats = source.read_bytes(), source.stat()
+        code = compile(content + b'\nDMD_STALE_BYTECODE_SENTINEL = True\n', str(source), 'exec')
+        payload = (_code_to_timestamp_pyc(code, int(stats.st_mtime), len(content))
+                   if invalidation == 'timestamp' else
+                   _code_to_hash_pyc(code, importlib.util.source_hash(content), checked=False))
+        cache = Path(importlib.util.cache_from_source(str(source)))
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(payload)
+        class UnrelatedFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, *args, **kwargs):
+                return None
+        unrelated = UnrelatedFinder()
+        sys.meta_path.insert(0, unrelated)
+        before = provider.reference_model_identity(backend='torch-sdpa')
+        cls = provider.load_reference_model_class(backend='torch-sdpa')
+        module_name = cls.__module__ if target == 'transformer' else before['backend']['module']
+        assert not getattr(sys.modules[module_name], 'DMD_STALE_BYTECODE_SENTINEL', False), \
+            'source hashes passed but a different compiled payload executed'
+        assert before['source']['files_checked'] == 83 and content == source.read_bytes()
+        assert cache.read_bytes() == payload, 'provider must neither use nor rewrite caller bytecode'
+        assert sys.meta_path.count(unrelated) == 1
+        assert not any(type(finder).__module__ == provider.__name__ for finder in sys.meta_path)
+        assert provider.reference_model_identity(backend='torch-sdpa') == before
+        assert not sys.modules['torch'].cuda.is_initialized()
+    ''', tmp_path, target, invalidation)
+
+
+@pytest.mark.parametrize("failure", ["source", "namespace"])
+def test_post_import_validation_failure_cleans_private_namespace_and_can_retry(failure):
+    _fresh(r'''
+        import sys
+        from distillschedule.adapters import helios
+        from distillschedule.adapters.helios import reference_model as provider
+        native = {name: module for name, module in sys.modules.items()
+                  if name == 'helios' or name.startswith('helios.')}
+        original_source, original_validate = provider._source_identity, provider._validate_modules
+        if sys.argv[1] == 'source':
+            calls = 0
+            def reject_source():
+                global calls
+                calls += 1
+                source = original_source()
+                if calls == 2:
+                    source['content_tree_sha256'] = '0' * 64
+                return source
+            provider._source_identity = reject_source
+        else:
+            def reject_namespace(*args):
+                original_validate(*args)
+                raise ValueError('explicit post-import namespace rejection')
+            provider._validate_modules = reject_namespace
+        try:
+            provider.load_reference_model_class(backend='torch-sdpa')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('post-import validation was not reached')
+        assert not provider._cached_modules() and provider._loaded_modules is None
+        assert provider._loaded_objects is None and not hasattr(helios, '_reference')
+        assert not any(type(finder).__module__ == provider.__name__ for finder in sys.meta_path)
+        provider._source_identity, provider._validate_modules = original_source, original_validate
+        cls = provider.load_reference_model_class(backend='torch-sdpa')
+        assert cls is provider.load_reference_model_class(backend='torch-sdpa')
+        assert native == {name: module for name, module in sys.modules.items()
+                          if name == 'helios' or name.startswith('helios.')}
+        assert not sys.modules['torch'].cuda.is_initialized()
+    ''', failure)
+
+
 def _fresh(code, *arguments):
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", HF_HUB_OFFLINE="1",
                TRANSFORMERS_OFFLINE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")

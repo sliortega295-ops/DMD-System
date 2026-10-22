@@ -7,7 +7,12 @@ or an admission of any native optimized/CUDA attention backend.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+import hashlib
 import importlib
+import importlib.util
+from importlib.abc import MetaPathFinder
+from importlib.machinery import SourceFileLoader
 import json
 from pathlib import Path
 import sys
@@ -64,11 +69,61 @@ def _cached_modules():
             if name == _NAMESPACE or name.startswith(_NAMESPACE + ".")}
 
 
+def _module_paths(source):
+    return {_NAMESPACE: _REFERENCE_PATH / "__init__.py",
+            _NAMESPACE + ".modules": _REFERENCE_PATH / "modules/__init__.py",
+            _BACKEND_MODULE: _BACKEND_PATH, _MODEL_MODULE: Path(source["transformer_path"])}
+
+
+class _SourceOnlyLoader(SourceFileLoader):
+    """Normal module execution, but compile admitted source, never cached code."""
+
+    def __init__(self, name, path, sha256):
+        super().__init__(name, str(path))
+        self.source_sha256 = sha256
+
+    def get_code(self, fullname):
+        data = self.get_data(self.path)
+        _require(fullname == self.name and hashlib.sha256(data).hexdigest() == self.source_sha256,
+                 f"Helios reference import source changed: {fullname}")
+        # The regular loader may accept timestamp-valid or unchecked-hash .pyc
+        # with different code despite a valid source-file digest. Bypass only
+        # that bytecode path; preserve the normal spec/module/package protocol.
+        return self.source_to_code(data, self.path)
+
+
+class _ReferenceSourceFinder(MetaPathFinder):
+    def __init__(self, source):
+        paths = _module_paths(source)
+        self.sources = {name: (path, file_sha256(path)) for name, path in paths.items()}
+        self.sources[_MODEL_MODULE] = (paths[_MODEL_MODULE], source["transformer_sha256"])
+        self.sources[_BACKEND_MODULE] = (paths[_BACKEND_MODULE], _BACKEND_SHA256)
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname != _NAMESPACE and not fullname.startswith(_NAMESPACE + "."):
+            return None
+        _require(fullname in self.sources, f"unadmitted Helios reference import: {fullname}")
+        source, sha256 = self.sources[fullname]
+        options = {"submodule_search_locations": [str(source.parent)]} if source.name == "__init__.py" else {}
+        return importlib.util.spec_from_file_location(fullname, source,
+            loader=_SourceOnlyLoader(fullname, source, sha256), **options)
+
+
+@contextmanager
+def _source_imports(source):
+    finder = _ReferenceSourceFinder(source)
+    sys.meta_path.insert(0, finder)
+    try:
+        yield
+    finally:
+        # Remove only our exact temporary hook, not other importers installed
+        # by dependencies or another thread during the normal model import.
+        sys.meta_path[:] = [entry for entry in sys.meta_path if entry is not finder]
+
+
 def _validate_modules(modules, objects, source):
     transformer = Path(source["transformer_path"])
-    expected = {_NAMESPACE: _REFERENCE_PATH / "__init__.py",
-                _NAMESPACE + ".modules": _REFERENCE_PATH / "modules/__init__.py",
-                _BACKEND_MODULE: _BACKEND_PATH, _MODEL_MODULE: transformer}
+    expected = _module_paths(source)
     _require(set(modules) == set(expected) and _cached_modules() == modules,
              "Helios reference namespace cache changed")
     for name, path in expected.items():
@@ -149,17 +204,18 @@ def load_reference_model_class(*, backend: str) -> type:
         identity = _admit(backend)
         if _loaded_modules is None:
             try:
-                model = importlib.import_module(_MODEL_MODULE)
-                backend_module = sys.modules[_BACKEND_MODULE]
-                modules = _cached_modules()
-                objects = {"class": model.HeliosTransformer3DModel,
-                           "forward": model.HeliosTransformer3DModel.forward,
-                           "attention": backend_module.attn_varlen_func,
-                           "navit": backend_module.create_navit_attention_masks}
-                source = _source_identity()
-                _require(source == identity["source"] and file_sha256(_BACKEND_PATH) == _BACKEND_SHA256,
-                         "Helios reference source/backend identity changed during import")
-                _validate_modules(modules, objects, source)
+                with _source_imports(identity["source"]):
+                    model = importlib.import_module(_MODEL_MODULE)
+                    backend_module = sys.modules[_BACKEND_MODULE]
+                    modules = _cached_modules()
+                    objects = {"class": model.HeliosTransformer3DModel,
+                               "forward": model.HeliosTransformer3DModel.forward,
+                               "attention": backend_module.attn_varlen_func,
+                               "navit": backend_module.create_navit_attention_masks}
+                    source = _source_identity()
+                    _require(source == identity["source"] and file_sha256(_BACKEND_PATH) == _BACKEND_SHA256,
+                             "Helios reference source/backend identity changed during import")
+                    _validate_modules(modules, objects, source)
             except BaseException:
                 _discard_failed_import()
                 raise

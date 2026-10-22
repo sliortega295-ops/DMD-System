@@ -203,6 +203,10 @@ backend bytes, and any admitted private import cache. The identity includes the
 full transformer path/SHA256, original source-tree identity, actual private
 namespace and backend path/SHA256. The original file is loaded by normal Python
 package imports under `distillschedule.adapters.helios._reference.modules`.
+The four private modules compile their admitted source bytes directly: existing
+timestamp-valid or unchecked-hash bytecode is neither executed nor rewritten.
+The scoped importer is removed on success or failure; failed admission removes
+only the new private namespace and permits a clean retry.
 Native `helios.*` imports, CUDA dispatch and benchmark APIs are not replaced.
 Only explicitly requested `torch-sdpa` is admitted, using the original dense
 SDPA fallback expression; NaViT/varlen execution raises rather than falling
