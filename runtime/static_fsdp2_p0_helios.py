@@ -23,7 +23,9 @@ from runtime.operation_trace import tensor_sha256
 from runtime.rollout_trace import ForceNoGradCalls, LightweightNestedCallAudit, NestedCallTracer
 
 
-def _memory_snapshot(device: torch.device) -> dict[str, float]:
+def _memory_snapshot(device: torch.device, *, cpu_reference: bool = False):
+    if cpu_reference:
+        return {"status": "NOT_APPLICABLE_CPU_REFERENCE", "allocator": None, "timing": None}
     free, total = torch.cuda.mem_get_info(device)
     gib = float(2**30)
     return {
@@ -65,6 +67,12 @@ def run_generator_trace_rollout_batch(
     loaded = make_batched_loaded_entry(tuple(loaded_entries))
     from distillschedule.runtime.rollout_geometry import rollout_geometry
     geometry = rollout_geometry(loaded.operation_trace)
+    cpu_reference = False
+    if torch.device(device).type != "cuda":
+        from distillschedule.data.wan_reference_inputs import cpu_telemetry
+        cpu_reference = cpu_telemetry(device, loaded.operation_trace)
+        if detailed_profile:
+            raise ValueError("CUDA detailed profiling is unavailable for CPU reference")
     tensors = loaded.tensors
     validation = loaded.operation_trace.validation
     expected_call_count = int(validation["call_count"])
@@ -133,7 +141,7 @@ def run_generator_trace_rollout_batch(
     physical_call = ForceNoGradCalls(tracer)
     model.enable_adapters()
     model.train()
-    if not clean_runtime:
+    if not clean_runtime and not cpu_reference:
         torch.cuda.reset_peak_memory_stats(device)
     with generator_nograd_cross_kv_cache_scope(
         model,
@@ -193,7 +201,7 @@ def run_generator_trace_rollout_batch(
             operation_trace=loaded.operation_trace,
             trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
         )
-    if synchronize_after_rollout and not clean_runtime:
+    if synchronize_after_rollout and not clean_runtime and not cpu_reference:
         torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
     if list(generated_x0.shape) != [batch_size, *geometry.latent_shape[1:]]:
@@ -250,7 +258,7 @@ def run_generator_trace_rollout_batch(
             logical_rollouts=batch_size,
             batch_size=batch_size,
         ),
-        "memory": _memory_snapshot(device),
+        "memory": _memory_snapshot(device, cpu_reference=cpu_reference),
         "cross_kv_cache": cross_kv_cache,
         "static_context_cache": static_context_cache,
     }

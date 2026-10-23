@@ -1,8 +1,6 @@
 """Run existing Generator helper with tensor fixtures, not a replacement trainer."""
-import copy
 import sys
 from types import SimpleNamespace as NS, ModuleType
-from unittest.mock import patch
 import pytest
 
 torch=pytest.importorskip('torch')
@@ -12,6 +10,7 @@ from distillschedule.strategies.wan_task import OriginalWanTask,TRACE_KEY
 @pytest.mark.parametrize('h,w,frames,horizon',[(384,640,33,(2,2,2)),(64,128,5,(4,8,4))])
 def test_original_generator_passes_actual_geometry_and_stage_horizons(monkeypatch,h,w,frames,horizon):
     import runtime.gst_pool_helios as module
+    from distillschedule.data import wan_reference_inputs
     task=OriginalWanTask(video_height=h,video_width=w,video_frames=frames,stage2_inference_steps=horizon)
     captured={};parameter=torch.nn.Parameter(torch.tensor(0.25))
     class Audit:
@@ -28,9 +27,14 @@ def test_original_generator_passes_actual_geometry_and_stage_horizons(monkeypatc
     monkeypatch.setitem(sys.modules,scheduler.__name__,scheduler)
     monkeypatch.setitem(sys.modules,utils.__name__,utils)
     monkeypatch.setattr(module,'LightweightNestedCallAudit',Audit)
-    monkeypatch.setattr(module,'_memory_snapshot',lambda device:{})
+    monkeypatch.setattr(module,'_memory_snapshot',lambda device,*,cpu_reference=False:{})
     controls=dict(call_count=3,pyramid_stage_call_sequence=[dict(stage=i,call_count=1) for i in range(3)])
     trace=NS(manifest={'contract':{TRACE_KEY:task.to_dict()}},operation=lambda key:dict(control=controls),trace_hash='fixture')
+    # This fake trace covers geometry dispatch, not production CPU admission.
+    def fixture_cpu_telemetry(device,operation_trace):
+        assert torch.device(device).type=='cpu' and operation_trace is trace
+        return True
+    monkeypatch.setattr(wan_reference_inputs,'cpu_telemetry',fixture_cpu_telemetry)
     names=('entry_noise','indices_hidden_states','indices_history_short','indices_history_mid',
            'indices_history_long','history_short','history_mid','history_long','continuous_history','text_embedding')
     entry=NS(tensors={name:torch.zeros(1) for name in names},operation_trace=trace,

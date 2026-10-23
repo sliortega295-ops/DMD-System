@@ -1,0 +1,16 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "factory": "distillschedule.training.wan_inference:build_inference_model",
+    "parameters": "COPY_EXACT_model.parameters_FROM_export.json_NO_TRAINING_PATHS"
+  },
+  "algorithm": {"factory": "distillschedule.training.wan_inference:refuse_training"},
+  "data": {"prepared": "/ABSOLUTE/LOCAL/NEW-PROMPTS/prepared/manifest.json"},
+  "execution": {"adapter": "program", "mode": "reference"},
+  "trainer": {
+    "cycles": 1,
+    "seed": 729,
+    "device": "cpu",
+    "output_dir": "/ABSOLUTE/LOCAL/W1/inference-not-training"
+  }
+}

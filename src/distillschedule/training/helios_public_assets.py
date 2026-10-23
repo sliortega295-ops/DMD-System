@@ -74,7 +74,7 @@ def read_args(pin):
     return args
 
 
-def inspect_safe(pin, *, evidence_kind):
+def inspect_safe(pin, *, evidence_kind, precision='FP32'):
     from safetensors import safe_open, SafetensorError
     path = checked_pin(pin)
     require(path.suffix == '.safetensors', 'safe local safetensors weights required')
@@ -85,7 +85,13 @@ def inspect_safe(pin, *, evidence_kind):
             result = {}
             for name in handle.keys():
                 view = handle.get_slice(name)
-                require(view.get_dtype() == 'F32', 'CPU reference weights must already be FP32')
+                if precision == 'FP32':
+                    require(view.get_dtype() == 'F32', 'CPU reference weights must already be FP32')
+                else:
+                    require(precision == 'WAN_NATIVE_MIXED_BF16', 'unsupported explicit precision contract')
+                    from runtime.precast_checkpoint import HELIOS_KEEP_IN_FP32_MODULES
+                    expected = 'F32' if any(k in name for k in HELIOS_KEEP_IN_FP32_MODULES) else 'BF16'
+                    require(view.get_dtype() == expected, 'native Wan base precision changed: ' + name)
                 result[name] = tuple(view.get_shape())
     except SafetensorError as exc:
         raise ValueError('invalid safe local weight file: ' + str(path)) from exc
@@ -155,7 +161,7 @@ def admit_assets(parameters):
     return path, value, args
 
 
-def load_base(cls, spec, *, evidence_kind, remaining_parameters):
+def load_base(cls, spec, *, evidence_kind, remaining_parameters, precision='FP32'):
     import torch
     from safetensors.torch import load_file
     config_path = checked_pin(spec['config'])
@@ -169,7 +175,7 @@ def load_base(cls, spec, *, evidence_kind, remaining_parameters):
     require(sum(p.numel() for p in model.parameters()) <= remaining_parameters, 'CPU architecture parameter budget exceeded')
     paths, shapes = [], {}
     for pin in spec['weights']:
-        path, layout = inspect_safe(pin, evidence_kind=evidence_kind)
+        path, layout = inspect_safe(pin, evidence_kind=evidence_kind, precision=precision)
         require(not shapes.keys() & layout.keys(), 'duplicate base keys')
         paths.append(path)
         shapes.update(layout)
@@ -178,7 +184,7 @@ def load_base(cls, spec, *, evidence_kind, remaining_parameters):
     weights = {}
     for path in paths:
         weights.update(load_file(path, device='cpu'))
-    require(all(t.dtype==torch.float32 and t.isfinite().all().item() for t in weights.values()), 'nonfinite base weights')
+    require(all(t.isfinite().all().item() for t in weights.values()), 'nonfinite base weights')
     # Strict assignment materializes only the admitted base tensors. to_empty
     # would ALSO erase nonpersistent native RoPE buffers, absent from the file.
     nonpersistent = {name:t for name,t in model.named_buffers() if name not in expected}
@@ -200,8 +206,11 @@ def load_base(cls, spec, *, evidence_kind, remaining_parameters):
             {name:(tuple(t.shape),t.dtype) for name,t in rope_buffers.items()},
             'original nonpersistent buffer layout/dtype changed')
     model.rope = rope
-    require(all(t.device.type=='cpu' and t.dtype==torch.float32 and t.isfinite().all().item()
+    require(all(t.device.type=='cpu' and t.isfinite().all().item()
                 for t in [*model.parameters(),*model.buffers()]), 'meta/uninitialized/nonfinite model tensors remain')
+    if precision == 'FP32':
+        require(all(t.dtype==torch.float32 for t in [*model.parameters(),*model.buffers()]),
+                'CPU reference weights must already be FP32')
     materialized = model.state_dict()
     require(all(torch.equal(materialized[name],tensor) for name,tensor in weights.items()),
             'base tensor values changed during original buffer initialization')

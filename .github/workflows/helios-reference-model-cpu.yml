@@ -8,6 +8,11 @@ on:
       - 'tests/test_helios_step_owner_cpu.py'
       - 'tests/test_training_helios_public_cpu.py'
       - 'tests/test_training_helios_public_inference_cpu.py'
+      - 'tests/test_training_wan_public_cpu.py'
+      - 'tests/test_training_wan_inference_cpu.py'
+      - 'runtime/gst_pool_helios.py'
+      - 'runtime/static_fsdp2_p0_helios.py'
+      - 'scripts/distillschedule/probe_static_fsdp2_p0_world16.py'
       - 'tests/test_data_helios_native_inputs.py'
       - 'tests/test_training_helios_gan_state.py'
       - 'tests/test_training_end_to_end.py'
@@ -20,13 +25,13 @@ permissions:
 jobs:
   original-full-model:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         python: ['3.10', '3.12']
     env:
-      PYTHONPATH: 'src:.'
+      PYTHONPATH: 'src:.:tests'
       CUDA_VISIBLE_DEVICES: ''
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
@@ -34,6 +39,7 @@ jobs:
       MKL_NUM_THREADS: '1'
       PYTHONDONTWRITEBYTECODE: '1'
       HELIOS_PUBLIC_REQUIRE_STACK: '1'
+      WAN_PUBLIC_REQUIRE_STACK: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +52,7 @@ jobs:
       - name: Separate full-model dependencies; leave 0.34 helper and 0.35 Wan pins alone
         run: python -m pip install -e '.[train,test,test-helios-model]'
       - name: Full original class and original G/C/EMA owners with fresh-process continuation
-        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py --junitxml=helios-reference-model-cpu.xml
+        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py --junitxml=helios-reference-model-cpu.xml
       - name: Require the full-source proofs without skips
         run: |
           python - <<'PY'
@@ -80,6 +86,10 @@ jobs:
               'test_reference_import_uses_verified_source_not_stale_bytecode[unchecked-hash-backend]',
               'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[source]',
               'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[namespace]',
+              'test_real_original_bf16_program_two_distinct_cohorts',
+              'test_fresh_os_process_full4_vs3_plus_exact_restart',
+              'test_partial_cycle_poison_and_safe_all_owner_restore',
+              'test_fresh_process_new_prompt_only_no_old_assets_training_or_optimizer',
           }
           assert required <= names, f'missing full-source proofs: {sorted(required - names)}'
           PY

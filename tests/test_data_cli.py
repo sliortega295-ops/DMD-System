@@ -49,6 +49,8 @@ assert not any(name in sys.modules for name in ('torch', 'diffusers', 'lightx2v_
     assert completed.returncode == 0, completed.stderr
     assert "prepare-helios-stream" in completed.stdout
     assert "prepare-helios-gan-reference" in completed.stdout
+    assert "prepare-wan-reference" in completed.stdout
+    assert "prepare-h3-cached-reference" in completed.stdout
     assert "prepare-h3-grid" in completed.stdout
     assert "prepare-livewan-inputs" in completed.stdout
 

@@ -635,6 +635,10 @@ def _precompute_critic_rollouts(
     runtime_cache: dict[str, Any] | None = None,
     entry_outputs: dict[int, Any] | None = None,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]], dict[str, Any]]:
+    cpu_reference = False
+    if torch.device(device).type != "cuda":
+        from distillschedule.data.wan_reference_inputs import cpu_telemetry
+        cpu_reference = cpu_telemetry(device, trace)
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
     with generator_nograd_persistent_unshard_scope(
@@ -690,12 +694,11 @@ def _precompute_critic_rollouts(
             persistence["rollout_memory"].append(
                 {
                     "batch_index": batch_index,
-                    "allocated_bytes": int(torch.cuda.memory_allocated(device)),
-                    "reserved_bytes": int(torch.cuda.memory_reserved(device)),
-                    "max_allocated_bytes": int(
-                        torch.cuda.max_memory_allocated(device)
-                    ),
-                    "max_reserved_bytes": int(torch.cuda.max_memory_reserved(device)),
+                    **({"status": "NOT_APPLICABLE_CPU_REFERENCE"} if cpu_reference else {}),
+                    "allocated_bytes": (None if cpu_reference else int(torch.cuda.memory_allocated(device))),
+                    "reserved_bytes": (None if cpu_reference else int(torch.cuda.memory_reserved(device))),
+                    "max_allocated_bytes": (None if cpu_reference else int(torch.cuda.max_memory_allocated(device))),
+                    "max_reserved_bytes": (None if cpu_reference else int(torch.cuda.max_memory_reserved(device))),
                 }
             )
             parity_rows: list[dict[str, Any]] = []

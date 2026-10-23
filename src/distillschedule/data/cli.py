@@ -27,6 +27,9 @@ def main(argv=None):
     reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
     reference.add_argument("--sources", type=Path, required=True)
     reference.add_argument("--output", type=Path, required=True)
+    wan = sub.add_parser("prepare-wan-reference", help="prepare original captured W1 CPU1 per-sample reference; not world16 execution")
+    wan.add_argument("--sources", type=Path, required=True)
+    wan.add_argument("--output", type=Path, required=True)
     cached = sub.add_parser("prepare-h3-cached-reference", help="prepare original W6 cached AV CPU reference; no decoding/download")
     cached.add_argument("--sources", type=Path, required=True)
     cached.add_argument("--output", type=Path, required=True)
@@ -54,6 +57,9 @@ def main(argv=None):
                                     args.training_config, args.output)
         elif args.command == "prepare-helios-gan-reference":
             from .helios_native_inputs import prepare_inputs
+            result = inspect_prepared(prepare_inputs(args.sources, args.output))
+        elif args.command == "prepare-wan-reference":
+            from .wan_reference_inputs import prepare_inputs
             result = inspect_prepared(prepare_inputs(args.sources, args.output))
         elif args.command == "prepare-h3-grid":
             from distillschedule.training.h3_grid_inputs import prepare_inputs

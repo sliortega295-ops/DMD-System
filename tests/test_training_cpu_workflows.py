@@ -46,6 +46,7 @@ def test_full_original_helios_ci_requires_public_training_and_portable_current_g
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,test-helios-model]'" in commands
     assert value['env']['HELIOS_PUBLIC_REQUIRE_STACK'] == '1'
+    assert 'tests' in value['env']['PYTHONPATH'].split(':')
     assert all(name in commands for name in (
         'tests/test_training_helios_public_cpu.py', 'tests/test_data_helios_native_inputs.py',
         'tests/test_training_helios_public_inference_cpu.py',
@@ -61,3 +62,17 @@ def test_original_helper_ci_is_not_silently_repinned_to_full_model_extra():
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,test-helios]'" in commands
     assert 'test-helios-model' not in commands and 'native-wan' not in commands
+
+
+def test_original_wan_ci_requires_mixed_precision_update_restart_and_current_g():
+    value = job('helios-reference-model-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert value['env']['WAN_PUBLIC_REQUIRE_STACK'] == '1'
+    assert all(name in commands for name in (
+        'tests/test_training_wan_public_cpu.py',
+        'tests/test_training_wan_inference_cpu.py',
+        'test_real_original_bf16_program_two_distinct_cohorts',
+        'test_fresh_os_process_full4_vs3_plus_exact_restart',
+        'test_partial_cycle_poison_and_safe_all_owner_restore',
+        'test_fresh_process_new_prompt_only_no_old_assets_training_or_optimizer'))
+    assert "('skipped', 'failures', 'errors')" in commands

@@ -11,7 +11,7 @@ from types import SimpleNamespace as NS
 import pytest
 
 from distillschedule.search.wan_candidate_bundle import (
-    ASSETS, CAPABILITIES, FORBIDDEN, INCUMBENT, INCUMBENT_ID, OFF, WanCandidateBundle)
+    ASSETS, CAPABILITIES, FORBIDDEN, INCUMBENT, OFF, WanCandidateBundle)
 from distillschedule.search.wan_implementation import WanImplementation, PRECISION, current_implementation
 from distillschedule.search.registry import get_candidate, candidate_profile
 from distillschedule.strategies.wan_task import OriginalWanTask
@@ -221,7 +221,9 @@ def test_actual_native_rollout_dispatch_routes_controller_and_always_ends_scope(
         if failure:raise RuntimeError('injected rollout failure')
         return ('opaque detached B1',),{}
     ns=dict(PACKED_SCORE_MEAN_REL_TOLERANCE=1e-5,chunked=lambda steps,n:[steps], generator_nograd_persistent_unshard_scope=persistence,
-        run_generator_trace_rollout_batch=run, torch=NS(cuda=NS(**{name:lambda device:0 for name in
+        # This is only the dispatch/finally facade, never a CUDA admission or
+        # allocation proof. Model work and telemetry are intentionally absent.
+        run_generator_trace_rollout_batch=run, torch=NS(device=lambda value:NS(type='cuda'),cuda=NS(**{name:lambda device:0 for name in
             ('memory_allocated','memory_reserved','max_memory_allocated','max_memory_reserved')})))
     exec(code,ns)
     args=dict(rank=0,steps=(10,),device='CPU_HANDLER_ONLY',generator_engine=engine,

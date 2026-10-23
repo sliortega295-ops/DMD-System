@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "factory": "distillschedule.training.wan_public:build_model",
+    "parameters": {"asset_manifest": "/ABSOLUTE/LOCAL/W1/assets.json"}
+  },
+  "algorithm": {"factory": "distillschedule.training.wan_public:build_algorithm"},
+  "data": {
+    "prepared": "/ABSOLUTE/LOCAL/W1/prepared/manifest.json",
+    "sampling": {"kind": "finite", "shuffle": false}
+  },
+  "execution": {"adapter": "program", "mode": "reference"},
+  "trainer": {
+    "cycles": 2,
+    "seed": 773,
+    "device": "cpu",
+    "output_dir": "/ABSOLUTE/LOCAL/W1/training",
+    "checkpoint_every": 1
+  }
+}

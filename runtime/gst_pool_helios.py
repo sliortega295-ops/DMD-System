@@ -23,7 +23,9 @@ def _module(value: Any) -> torch.nn.Module:
     return module
 
 
-def _memory_snapshot(device: torch.device) -> dict[str, float]:
+def _memory_snapshot(device: torch.device, *, cpu_reference: bool = False):
+    if cpu_reference:
+        return {"status": "NOT_APPLICABLE_CPU_REFERENCE", "allocator": None, "timing": None}
     free, total = torch.cuda.mem_get_info(device)
     gib = float(2**30)
     return {
@@ -55,6 +57,12 @@ def run_generator_update_trace_rollout(
 
     from distillschedule.runtime.rollout_geometry import rollout_geometry
     geometry = rollout_geometry(entry.operation_trace)
+    cpu_reference = False
+    if torch.device(device).type != "cuda":
+        from distillschedule.data.wan_reference_inputs import cpu_telemetry
+        cpu_reference = cpu_telemetry(device, entry.operation_trace)
+        if detailed_profile:
+            raise ValueError("CUDA detailed profiling is unavailable for CPU reference")
     tensors = entry.tensors
     operation = entry.operation_trace.operation(entry.rollout_operation)
     control = operation["control"]
@@ -120,9 +128,9 @@ def run_generator_update_trace_rollout(
     model = _module(engine)
     model.enable_adapters()
     model.train()
-    if empty_cache_before_rollout and not clean_runtime:
+    if empty_cache_before_rollout and not clean_runtime and not cpu_reference:
         torch.cuda.empty_cache()
-    if not clean_runtime:
+    if not clean_runtime and not cpu_reference:
         torch.cuda.reset_peak_memory_stats(device)
     (
         generated_x0,
@@ -168,7 +176,7 @@ def run_generator_update_trace_rollout(
         operation_trace=entry.operation_trace,
         trace_prefix=f"step/{entry.logical_step}/generator",
     )
-    if synchronize_after_rollout and not clean_runtime:
+    if synchronize_after_rollout and not clean_runtime and not cpu_reference:
         torch.cuda.synchronize(device)
     if list(generated_x0.shape) != list(geometry.latent_shape):
         raise AssertionError("Generator returned a reduced or malformed x0")
@@ -239,7 +247,7 @@ def run_generator_update_trace_rollout(
             if collect_diagnostics
             else "omitted_in_clean_profile"
         ),
-        "memory": _memory_snapshot(device),
+        "memory": _memory_snapshot(device, cpu_reference=cpu_reference),
     }
 
 

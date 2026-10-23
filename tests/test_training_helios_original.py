@@ -281,6 +281,11 @@ def original_cpu_engines(tmp_path, monkeypatch, original_logical, frozen_assets)
     mesh = init_device_mesh("cpu", (1,), mesh_dim_names=("cpu-proof",))
     # P0 helpers contain GPU telemetry even for real CPU tensors. These are
     # deliberately NOT evidence of real allocator/fences/capacity/admission.
+    from distillschedule.data import wan_reference_inputs
+    # This legacy ScalarRoot fixture keeps its existing mocked CUDA-telemetry
+    # route. It is NOT the admitted full-model W1 CPU reference and must not
+    # widen that production trace gate merely to run scalar state tests.
+    monkeypatch.setattr(wan_reference_inputs, "cpu_telemetry", lambda *a, **kw: False)
     for name in ("synchronize", "reset_peak_memory_stats", "empty_cache"):
         monkeypatch.setattr(torch.cuda, name, lambda *a, **kw: None)
     for name in ("memory_allocated", "memory_reserved", "max_memory_allocated", "max_memory_reserved"):
