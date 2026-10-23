@@ -114,6 +114,18 @@ for _name, _module, _model_id, _revision in (
                 'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 
 
+register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build_model',
+    capabilities=('video', 'flow', 'lora', 'dmd_flow_v1'),
+    description='Pinned native Wan2.2 TI2V-5B T2V only, CPU1 FP32 B1 local safe assets; common flow DMD',
+    source=dict(model_id='Wan-AI/Wan2.2-TI2V-5B-Diffusers',
+        revision='b8fff7315c768468a5333511427288870b2e9635', license='Apache-2.0'),
+    validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
+    compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
+        devices=['cpu'], distributed=False, precision='FP32', batch_size=1,
+        model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
+            'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
+
+
 def validate_compatibility(model, algorithm, trainer):
     """Optional declarative preconstruction contract; unknown plugins stay open.
 

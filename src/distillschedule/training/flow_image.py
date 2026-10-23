@@ -133,13 +133,17 @@ def _parameter_alias_groups(model, layout):
     return groups + [{key} for key in layout.keys() - covered]
 
 
-def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
+def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config_transform=None):
     import safetensors
     from safetensors.torch import load_file
     require(dtype_policy in ('strict_fp32', 'bf16_or_fp32_to_fp32'), 'unknown storage dtype policy')
     permitted_float = ('F32',) if dtype_policy == 'strict_fp32' else ('F32', 'BF16')
     config = json_object(root / 'config.json')
-    model = shell(cls, config).float()
+    # Trusted family-owned normalization of audited historical serialization
+    # fields only. Preserve/return raw config bytes and their asset identity;
+    # ordinary callers retain the exact fail-closed constructor-field contract.
+    effective_config = config if config_transform is None else config_transform(deepcopy(config))
+    model = shell(cls, effective_config).float()
     require(0 < sum(p.numel() for p in model.parameters()) <= max_parameters,
             'native model exceeds explicit CPU parameter budget')
     layout = model.state_dict()
@@ -209,7 +213,7 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
             'incomplete native weights; random fallback forbidden')
     # Native nonpersistent RoPE caches must be initialized by the actual CPU
     # constructor, not left on meta or approximated/reimplemented here.
-    native_config = architecture(cls, config)
+    native_config = architecture(cls, effective_config)
     with torch.device('cpu'):
         model = (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
     require({frozenset(group) for group in _parameter_alias_groups(model, model.state_dict())}
