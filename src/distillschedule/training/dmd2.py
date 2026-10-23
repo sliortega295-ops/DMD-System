@@ -25,5 +25,5 @@ def build_dmd2(components, feeds, parameters, cycle, seed):
     return Workload(program=Program((call,), initial_versions={'native_cycle': cycle},
         feeds=tuple(sorted(feeds)), outputs=(call.id,)), bindings={'official_dmd2_cycle': native_cycle},
         state=components.state, feeds=feeds, seed=seed,
-        identity_extra={'scope': 'OFFICIAL_DMD2_NATIVE_FP32_CPU1', 'ratio': owner.ratio,
+        identity_extra={'scope': 'OFFICIAL_DMD2_NATIVE_FP32_SINGLE_DEVICE', 'ratio': owner.ratio,
                         'upstream': owner.source.identity})

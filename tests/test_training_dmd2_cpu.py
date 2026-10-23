@@ -99,7 +99,7 @@ def _oracle(owner, feeds, source_root):
     """Run the source's own trainer statements, independently of owner.run."""
     snapshots, norms, caches, gradients = [], [], [], []
     class Accelerator:
-        device = torch.device('cpu')
+        device = owner.model.accelerator.device
 
         def backward(self, loss):
             loss.backward()
@@ -138,7 +138,8 @@ def _oracle(owner, feeds, source_root):
         snapshots.append({name: float(value.detach()) for name, value in {
             **values['generator_loss_dict'], **values['guidance_loss_dict']}.items()})
     hook.remove()
-    return dict(losses=snapshots, caches=caches, gradients=gradients, norms=norms, rng=rng_state())
+    return dict(losses=snapshots, caches=caches, gradients=gradients, norms=norms,
+                rng=rng_state(device=owner.model.accelerator.device))
 
 
 def test_direct_source_native_iterations_match_owner_losses_gradients_cache_and_clocks(fixture_assets, source_root):

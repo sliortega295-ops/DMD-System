@@ -44,10 +44,18 @@ def _append_json(path, value):
         stream.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
 
 
-def _seed(seed):
+def _seed(seed, *, device=None):
     import torch
     random.seed(seed)
-    torch.manual_seed(seed)
+    if device is None:
+        torch.manual_seed(seed)
+    else:
+        # Explicit placement must not seed every visible CUDA generator.
+        torch.random.default_generator.manual_seed(seed)
+        owned = torch.device(device)
+        if owned.type == "cuda":
+            with torch.cuda.device(owned):
+                torch.cuda.manual_seed(seed)
     try:
         import numpy as np
         np.random.seed(seed % 2**32)
@@ -102,7 +110,7 @@ def _same_factory(current, original):
 
 def construct(config, *, include_validation=False):
     dataset = training_data(config, world_size=distributed.rank_world()[1])
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config)
     algorithm, algorithm_source = load_callable(config.algorithm["factory"])
     if components.admit_training is not None:
@@ -359,7 +367,7 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
                      if isinstance(value, torch.Tensor) else value, feeds)
     # This runtime noise seed is independent of factory initialization/defaults
     # and of RNG consumed while assembling the checkpoint's training workload.
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     with torch.no_grad():
         generated = components.generate(components.state, feeds, dict(parameters or {}))
         decoded = (components.decode(generated, dict(parameters or {}))
@@ -483,7 +491,7 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     if type(sample_index) is not int or not 0 <= sample_index < len(dataset):
         raise ValueError("generation sample index out of range")
     feeds, sample_id = dataset.sample(sample_index), dataset.sample_id(sample_index)
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config, source=model["source"])
     if digest(dict(components.metadata)) != digest(model["metadata"]):
         raise ValueError("export model metadata changed")

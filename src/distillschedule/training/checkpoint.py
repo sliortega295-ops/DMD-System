@@ -196,14 +196,15 @@ def unpack_state(packed, state, *, progress=None):
             state[key] = deepcopy(restored[key])
 
 
-def rng_state():
+def rng_state(*, device=None):
     import torch
     result = {"python": random.getstate(), "torch": torch.get_rng_state()}
-    if torch.cuda.is_initialized():
+    owned = torch.device(device) if device is not None else None
+    if (owned is not None and owned.type == "cuda") or (owned is None and torch.cuda.is_initialized()):
         # The execution ABI owns one device per rank. Querying all visible
         # devices can initialize unrelated CUDA contexts and consume their HBM.
-        device = torch.cuda.current_device()
-        result["cuda"] = {"device": device, "state": torch.cuda.get_rng_state(device)}
+        index = owned.index if owned is not None and owned.index is not None else torch.cuda.current_device()
+        result["cuda"] = {"device": index, "state": torch.cuda.get_rng_state(index)}
     try:
         import numpy as np
         name, values, position, gauss, cached = np.random.get_state()

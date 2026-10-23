@@ -59,10 +59,17 @@ real Program new-process restart, and inference-only current-G/CLIP/VAE export
 on new prompt inputs after removal of training/base assets. The original GAN
 heads are tested separately, not claimed as tiny full-GAN end-to-end training.
 CPU integration is not pretrained quality, CUDA, or distributed validation.
+The shared [single-device CUDA FP32 reference source path](../dmd2_sd15/README.md#cpu-starter-and-evidence-boundary)
+also places SDXL's actual dual CLIP, time IDs, denoising schedule and restored
+optimizer moments on the selected device. Its optional actual tiny CUDA
+lifecycle tests are NOT_RUN on CPU-only Torch. No AMP, distributed, capacity,
+pretrained-quality or full-GAN GPU result is implied.
 
 The shared [native UNet checkpoint policy](../dmd2_sd15/README.md#optional-native-unet-checkpoint-policy)
 also applies to SDXL's actual generator/fake UNets, including backward-simulation
 prefixes and native non-G disable/re-enable turns. It changes no denoising
 schedule, conditioning, update ratio, optimizer or RNG semantics. The same
 manual/auto/saved-plan admission and first-postrestart paired reference gate
-apply; Teacher, dual CLIP and VAE remain outside the option.
+apply **on the qualified CPU FP32 stack only**; Teacher, dual CLIP and VAE remain
+outside the option. CUDA optimized trials are rejected until capacity-bounded
+resident snapshot/restore also covers frozen state and CPU staging.

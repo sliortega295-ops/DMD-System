@@ -114,7 +114,15 @@ same `distillctl`, Program, checkpoint and export interfaces.
 | LTX-2.5 | Actual bounded native AV Transformer, Gemma4/connectors and native AV codecs; generic explicit G1/F5 flow DMD, full or separate LoRA | Actual raw media/prompts/exact native features; original-format tiny safetensors import; clock-aware exact recovery; current-G new-input AV decode | Full monolithic 22B pipeline, native architectures outside the documented CPU bounds, GPU/distributed/quality/performance |
 
 For DMD2 only, an actual scoped UNet checkpoint capability has real effects and
-same-source reference/manual/auto/saved-plan + resumed-cycle parity. Other
+same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
+qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source
+path now includes native tensor/RNG/Adam ownership, host-state restore and
+current-G export/reload placement, but **actual CUDA lifecycle, capacity,
+pretrained quality and performance remain NOT_RUN**. Optional actual tiny CUDA
+tests skip honestly on CPU-only Torch. CUDA auto/plan/owner-selected trials and
+whole-owner copying fail closed until budgeted resident snapshot/restore covers
+frozen roles, optimizer, comparison and CPU staging. This does not complete
+distributed/AMP owner support or the plan's GPU acceptance gates. Other
 physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
 working on opaque native owners. See [model families](model_families.md),

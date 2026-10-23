@@ -5,6 +5,7 @@ Both factories instantiate its actual SDUniModel/SDGuidance numerical classes.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -81,6 +82,54 @@ class _LocalAccelerator:
         return model
 
 
+def _execution_device(value):
+    import torch
+    require(isinstance(value, str), 'device must be cpu or a single CUDA device')
+    try:
+        device = torch.device(value)
+    except (RuntimeError, ValueError) as error:
+        raise ValueError('official DMD2: invalid device') from error
+    require(device.type in ('cpu', 'cuda') and (device.type != 'cpu' or device.index is None),
+            'device must be cpu or a single CUDA device')
+    if device.type == 'cuda':
+        require(torch.cuda.is_available(), 'requested CUDA device is unavailable')
+        index = device.index if device.index is not None else torch.cuda.current_device()
+        require(0 <= index < torch.cuda.device_count(), 'requested CUDA device index is unavailable')
+        device = torch.device('cuda', index)
+    return device
+
+
+def _device_scope(device):
+    import torch
+    return torch.cuda.device(device) if device.type == 'cuda' else nullcontext()
+
+
+@contextmanager
+def _construction_rng(device, seed):
+    """Initialize only the owned generators, leaving caller/unowned RNG intact."""
+    from .checkpoint import rng_state, restore_rng
+    from .session import _seed
+    with _device_scope(device):
+        outer = rng_state(device=device)
+        try:
+            _seed(seed, device=device)
+            yield
+        finally:
+            restore_rng(outer)
+
+
+def _place_native_tensors(model, device):
+    """Module.to does not place the upstream scheduler or plain conditions."""
+    import torch
+    model.to(device)
+    for owner in (model, model.noise_scheduler):
+        for name, value in vars(owner).copy().items():
+            if isinstance(value, torch.Tensor):
+                setattr(owner, name, value.to(device))
+    # All three are the same original schedule, not independently mutable copies.
+    model.alphas_cumprod = model.noise_scheduler.alphas_cumprod = model.guidance_model.alphas_cumprod
+
+
 def _arguments(parameters, *, sdxl):
     import torch
     require(isinstance(parameters, dict) and set(parameters) <= {
@@ -88,9 +137,7 @@ def _arguments(parameters, *, sdxl):
         'unknown model parameters')
     require(isinstance(parameters.get('source_root'), str)
             and isinstance(parameters.get('model_id'), str), 'source_root and local model_id required')
-    # The current generic atomic-stateful owner is deliberately CPU1/FP32.
-    # GPU, AMP and distributed execution need a separately validated placement ABI.
-    require(parameters.get('device', 'cpu') == 'cpu', 'this validated owner requires CPU1/FP32')
+    _execution_device(parameters.get('device', 'cpu'))
     require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid model RNG seed')
@@ -154,17 +201,22 @@ def _arguments(parameters, *, sdxl):
 
 
 def _build(parameters, *, sdxl):
+    args = _arguments(parameters, sdxl=sdxl)
+    device = _execution_device(parameters.get('device', 'cpu'))
+    with _construction_rng(device, parameters.get('seed', 0)):
+        return _build_placed(parameters, args, device, sdxl=sdxl)
+
+
+def _build_placed(parameters, args, device, *, sdxl):
     import torch
     from transformers import CLIPTokenizer
     from distillschedule.data.sd_inputs import preprocessing_assets
     from .dmd2_owner import DMD2Owner
-    args = _arguments(parameters, sdxl=sdxl)
-    from .session import _seed
-    _seed(parameters.get('seed', 0))
     api = original(parameters['source_root'])
     bundle = local_bundle_identity(args.model_id, sdxl=sdxl)
-    accelerator = _LocalAccelerator(torch.device('cpu'))
-    model = api.unified.SDUniModel(args, accelerator).to(accelerator.device)
+    accelerator = _LocalAccelerator(device)
+    model = api.unified.SDUniModel(args, accelerator)
+    _place_native_tensors(model, device)
     require(model.guidance_model.scheduler.config.prediction_type == 'epsilon'
             and model.guidance_model.scheduler.config.num_train_timesteps == 1000,
             'local scheduler must use the original 1000-step epsilon convention')
@@ -187,15 +239,18 @@ def _build(parameters, *, sdxl):
         ids = tokenizer([''], max_length=tokenizer.model_max_length, return_tensors='pt',
                         padding='max_length', truncation=True).input_ids
         with torch.no_grad():
-            uncond = model.text_encoder(ids)[0].detach()
+            uncond = model.text_encoder(ids.to(device))[0].detach()
     metadata = dict(schema_version='distillschedule.official_dmd2_sd.v1', variant='sdxl' if sdxl else 'sd15',
         upstream=dict(repository=REPOSITORY, revision=REVISION, license='CC-BY-NC-SA-4.0', **api.source.identity),
         bundle=bundle, preprocessing_assets=preprocessing_assets(bundle['files'],
             variant='sdxl' if sdxl else 'sd15', images=True),
         generator_checkpoint=checkpoint_identity, settings=deepcopy(vars(args)),
-        runtime=runtime_identity(), precision='FP32_CPU1', ema='NONE', quality_validation='NOT_RUN',
+        runtime=runtime_identity(), precision='FP32_CPU1' if device.type == 'cpu' else 'FP32_CUDA1',
+        placement=dict(device=str(device), layout='SINGLE_DEVICE_RESIDENT', distributed=False, amp=False),
+        ema='NONE', quality_validation='NOT_RUN',
         cpu_execution='CPU_IMPLEMENTATION_TESTED_ON_RANDOM_TINY_ASSETS_ONLY', gpu_execution='NOT_RUN',
-        placement_limit='CPU1_ONLY_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA_CUDA_NOT_VALIDATED')
+        placement_limit='SINGLE_DEVICE_FP32_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA',
+        cuda_trial_snapshot='UNAVAILABLE_AUTO_PLAN_AND_OWNER_EXECUTION_REJECTED_BEFORE_TRIAL')
     owner = DMD2Owner(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),
@@ -226,8 +281,10 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
             and set(prepared_manifest['streams']) == set(counts), 'prepared preprocessing streams binding required')
     for manifest in prepared_manifest['streams'].values():
         validate_prepared_binding(manifest, owner.identity['preprocessing_assets'])
-    require(request.trainer.get('device', 'cpu') == 'cpu' and 'distributed' not in request.trainer,
-            'current owner admits CPU1 only')
+    require('distributed' not in request.trainer
+            and _execution_device(request.trainer.get('device', 'cpu')) == owner.device,
+            'single-device trainer/model placement must match; distributed ownership is not admitted')
+    owner.admit_execution(request.execution.get('mode', 'reference'), request.execution.get('implementation', {}))
     require(request.trainer['cycles'] * owner.ratio <= owner.args.train_iters, 'native train_iters budget exceeded')
 
 
@@ -249,7 +306,7 @@ def generate(state, feeds, parameters):
     owner = state['native_cycle']; model = owner.model
     owner._validate_live()
     validate_row(_generation_row(feeds), sdxl=owner.args.sdxl,
-                 binding=owner.identity['preprocessing_assets'])
+                 binding=owner.identity['preprocessing_assets'], model=model)
     model.eval()
     return _generate_inference(dict(generator=model.feedforward_model, text_encoder=model.text_encoder,
                                    vae=model.vae), feeds, parameters, _inference_parameters(owner))
@@ -304,7 +361,7 @@ def _inference_parameters(owner):
 def _inference_components(state, parameters):
     metadata = dict(schema_version='distillschedule.official_sd_inference.v2',
         parameters=deepcopy({key: value for key, value in parameters.items() if key != 'device'}),
-        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN', precision='FP32_CPU1',
+        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN', precision='FP32_SINGLE_DEVICE',
         dependencies='EXTERNAL_PINNED_SOURCE_ONLY_NO_BASE_MODEL_WEIGHTS')
 
     def generate_current(state, feeds, generation_parameters):
@@ -337,8 +394,9 @@ def build_inference_model(parameters):
     from distillschedule.data.sd_inputs import validate_preprocessing_assets
     require(set(parameters) <= {'source_root', 'upstream', 'variant', 'architecture', 'lora', 'runtime',
             'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device'}
-            and parameters.get('device', 'cpu') == 'cpu' and parameters['variant'] in ('sd15', 'sdxl'),
+            and parameters['variant'] in ('sd15', 'sdxl'),
             'invalid inference-only construction parameters')
+    device = _execution_device(parameters.get('device', 'cpu'))
     validate_preprocessing_assets(parameters.get('preprocessing_assets'), variant=parameters['variant'], images=True)
     api = original(parameters['source_root'])
     require(parameters['upstream'] == api.source.identity, 'inference upstream source lock changed')
@@ -360,10 +418,12 @@ def build_inference_model(parameters):
         torch.nn.Module.__init__(text)
         text.text_encoder_one = CLIPTextModel(clip_config('clip_one'))
         text.text_encoder_two = CLIPTextModelWithProjection(clip_config('clip_two'))
-        text.accelerator = _LocalAccelerator(torch.device('cpu'))
+        text.accelerator = _LocalAccelerator(device)
     else:
         text = CLIPTextModel(clip_config('clip_one'))
     text.requires_grad_(False); vae.requires_grad_(False)
+    for module in (generator, text, vae):
+        module.to(device=device, dtype=torch.float32)
     return _inference_components(dict(generator=generator, text_encoder=text, vae=vae), parameters)
 
 
@@ -372,26 +432,35 @@ def _generate_inference(state, feeds, parameters, settings):
     from distillschedule.data.sd_inputs import validate_row
     require(set(parameters) <= {'steps'}, 'unknown inference settings')
     row = _generation_row(feeds); sdxl = settings['variant'] == 'sdxl'
-    validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'])
     generator, text = state['generator'], state['text_encoder']
+    device = next(generator.parameters()).device
+    require(not torch.is_autocast_enabled(device.type), 'FP32 inference does not admit AMP')
+    require(all(t.device == device and (not t.is_floating_point() or t.dtype == torch.float32)
+                for module in state.values() for t in (*module.parameters(), *module.buffers())),
+            'inference module device/FP32 placement changed')
+    validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'], device=device)
     steps = parameters.get('steps', settings['steps'])
     require(type(steps) is int and steps > 0 and 1000 % steps == 0 and (sdxl or steps == 1),
             'invalid inference denoising schedule')
     if sdxl:
         embedding, pooled = text(row)
         resolution = settings['geometry']['resolution']
-        time_ids = torch.tensor([[resolution, resolution, 0, 0, resolution, resolution]], dtype=torch.float32)
+        time_ids = torch.tensor([[resolution, resolution, 0, 0, resolution, resolution]],
+                                dtype=torch.float32, device=device)
         conditions = {'time_ids': time_ids.repeat(len(embedding), 1), 'text_embeds': pooled}
     else:
         embedding = text(row['text_input_ids_one'].squeeze(1))[0].float(); conditions = None
     geometry = settings['geometry']
-    sample = torch.randn(len(embedding), 4, geometry['latent_resolution'], geometry['latent_resolution'])
+    sample = torch.randn(len(embedding), 4, geometry['latent_resolution'], geometry['latent_resolution'], device=device)
     from diffusers import DDIMScheduler
     scheduler = DDIMScheduler.from_config(settings['architecture']['scheduler'])
+    for name, value in vars(scheduler).copy().items():
+        if isinstance(value, torch.Tensor):
+            setattr(scheduler, name, value.to(device))
     get_x0 = original(settings['source_root']).utils.get_x0_from_noise
     schedule = [settings['conditioning_timestep']] if steps == 1 else list(range(999, 0, -(1000 // steps)))
     for index, timestep in enumerate(schedule):
-        times = torch.full((len(embedding),), timestep, dtype=torch.long)
+        times = torch.full((len(embedding),), timestep, dtype=torch.long, device=device)
         noise = generator(sample, times, embedding, added_cond_kwargs=conditions).sample
         image = get_x0(sample.double(), noise.double(), scheduler.alphas_cumprod.double(), times).float()
         if index + 1 < len(schedule):

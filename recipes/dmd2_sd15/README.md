@@ -108,11 +108,29 @@ The helper constructs local **random tiny real Diffusers UNet/CLIP/VAE** assets
 and tokenizers. It does not download a pretrained model and does not establish
 image quality, training convergence, throughput, or production parity.
 
-CPU1 FP32 is the validated integration boundary. CUDA/AMP, distributed/FSDP and
-GPU scheduling are NOT_RUN. The common backend consumes the owner's live
+CPU1 FP32 is the validated integration boundary. A single-device resident
+CUDA FP32 **reference source path** is also implemented: explicitly select
+`trainer.device: "cuda:0"` (or the owned CUDA index) and `execution.mode:
+"reference"`. It places all native modules, scheduler/conditioning tensors,
+inputs and restored Adam moments on that device; RNG and noncapturable Adam
+step metadata stay on the host. Current-G generation and portable inference
+reload use their explicitly selected CPU/CUDA placement. This is **not CUDA
+validation**: GPU execution, capacity, pretrained quality and performance
+remain NOT_RUN; AMP and distributed/FSDP ownership remain rejected.
+The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
-including native plain conditioning/scheduler tensors. That wiring is not
-CUDA validation: the adapter still rejects CUDA/AMP/distributed placement.
+including native plain conditioning/scheduler tensors.
+
+CUDA auto, saved-plan and `owner_execution` admission are explicitly rejected,
+as are whole-owner CUDA deep copies. The existing paired trial path cannot yet
+snapshot/restore real resident roles within a capacity budget covering frozen
+Teacher/CLIP/VAE, optimizer, comparison and CPU staging. CPU trial behavior is
+unchanged; no unsupported CUDA request silently falls back to it. Optional
+`tests/gpu/test_training_dmd2_lifecycle.py` uses the existing random tiny actual
+fixtures for native-source parity, host-checkpoint restore, new-process resume
+and current-G export/reload. It skips on CPU-only Torch and is not pretrained
+or full-GAN GPU evidence.
+
 Before update or checkpoint save, live mathematical settings, initially
 frozen Teacher/CLIP/VAE/base-LoRA tensors and native conditioning/scheduler
 tables must match their initial fingerprints. Upstream's post-first-guidance

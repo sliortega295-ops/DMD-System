@@ -10,10 +10,12 @@ import hashlib
 
 from .checkpoint import (rng_state, restore_rng, validate_rng,
                          _validate_layout, _validate_optimizer_layout)
-from .sd import require
+from .sd import require, _device_scope
 from distillschedule.workloads.best_known.registry import fingerprint
 
 SCHEMA = 'distillschedule.official_dmd2_owner.v1'
+CUDA_TRIAL_LIMIT = ('CUDA owner trials require a capacity-bounded snapshot/restore including frozen '
+                    'Teacher/CLIP/VAE, optimizer and CPU staging; auto/plan/owner_execution are not admitted')
 
 
 def stream_counts(args):
@@ -52,6 +54,7 @@ class DMD2Owner:
         import torch
         from diffusers.optimization import get_scheduler
         self.model, self.args, self.source = model, args, source
+        self.device = model.accelerator.device
         self.uncond_embedding = uncond_embedding
         self.identity = deepcopy(identity)
         self.ratio, self.native_step = args.dfake_gen_update_ratio, 0
@@ -78,7 +81,7 @@ class DMD2Owner:
         self._preprocessing_hash = fingerprint(self.identity['preprocessing_assets'])
         self._frozen_identity = self._frozen_tensors_identity()
         self._constants_hash = fingerprint(self._native_constants())
-        self._rng = _clone(rng_state())
+        self._rng = _clone(rng_state(device=self.device))
         self.observer = None  # Optional diagnostics; never serialized or used for math.
         self._validate_live()
 
@@ -86,16 +89,30 @@ class DMD2Owner:
     def cycle(self):
         return self.native_step // self.ratio
 
+    def __deepcopy__(self, memo):
+        # The generic paired path clones whole live owners. A real CUDA model
+        # must not enter it until a bounded, resident-only snapshot ABI exists.
+        require(self.device.type != 'cuda', CUDA_TRIAL_LIMIT)
+        result = type(self).__new__(type(self))
+        memo[id(self)] = result
+        result.__dict__.update(deepcopy(self.__dict__, memo))
+        return result
+
+    def admit_execution(self, mode, implementation):
+        require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
+                and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
+
     @contextmanager
     def random_scope(self):
         """Restore the native stream inside (not from) Program's random scope."""
-        outer = rng_state()
-        restore_rng(self._rng)
-        try:
-            yield
-        finally:
-            self._rng = _clone(rng_state())
-            restore_rng(outer)
+        with _device_scope(self.device):
+            outer = rng_state(device=self.device)
+            restore_rng(self._rng)
+            try:
+                yield
+            finally:
+                self._rng = _clone(rng_state(device=self.device))
+                restore_rng(outer)
 
     def _event(self, event, value):
         if self.observer is not None:
@@ -119,7 +136,8 @@ class DMD2Owner:
         require(runtime == self.identity['runtime'], 'live numerical dependency runtime changed')
         required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
         stack = dict(runtime, torch=str(torch.__version__).split('+')[0])
-        qualified = (all(stack[name] == version for name, version in required.items())
+        qualified = (self.device.type == 'cpu'
+                     and all(stack[name] == version for name, version in required.items())
                      and not torch.distributed.is_initialized())
         baseline = {'gradient_checkpointing': self.args.gradient_checkpointing}
         descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
@@ -129,7 +147,8 @@ class DMD2Owner:
                 provider_file_sha256=file_sha256(Path(__file__)),
                 native_classes={name: code_signature(type(value)) for name, value in (
                     ('model', self.model), ('guidance', self.model.guidance_model))},
-                capability=dict(status='AVAILABLE' if qualified else 'UNAVAILABLE_RUNTIME', required_runtime=required),
+                capability=dict(status=('UNAVAILABLE_CUDA_TRIAL_SNAPSHOT' if self.device.type == 'cuda' else
+                    'AVAILABLE' if qualified else 'UNAVAILABLE_RUNTIME'), required_runtime=required),
                 scope='CPU1_FP32_NATIVE_UNETS_ONLY_NO_TEACHER_CLIP_VAE'))
         # Optional checkpoint qualification must not narrow the preexisting
         # reference factory's runtime admission. No override is offered here.
@@ -233,8 +252,8 @@ class DMD2Owner:
         """Device-owned tensors, excluding host-only RNG/Adam step metadata.
 
         The common backend consumes this live-tensor seam, not state_dict's
-        cloned host metadata. This does not admit CUDA: native placement and
-        checkpoint restore remain validated only on CPU1/FP32.
+        cloned host metadata. CUDA reference owners use one resident device;
+        CUDA paired/optimized admission remains explicitly unavailable.
         """
         yield from self.model.parameters()
         yield from self.model.buffers()
@@ -294,7 +313,20 @@ class DMD2Owner:
                 for name, value in self.initial_masks.items()}
 
     def _validate_live(self):
+        import torch
         from distillschedule.data.sd_inputs import preprocessing_assets
+        require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
+        require(self.device == self.model.accelerator.device == self.model.guidance_model.accelerator.device
+                and self.identity['placement']['device'] == str(self.device)
+                and all(t.device == self.device and (not t.is_floating_point() or t.dtype == torch.float32)
+                        for t in self.runtime_tensors()), 'live native device/FP32 placement changed')
+        require(not torch.is_autocast_enabled(self.device.type), 'native FP32 owner does not admit AMP')
+        require(not self.args.sdxl or self.model.text_encoder.accelerator.device == self.device,
+                'live SDXL CLIP device placement changed')
+        require(all(state.get('step') is None or (state['step'].device.type == 'cpu'
+                    and state['step'].dtype == torch.float32)
+                    for optimizer in self.optimizers.values() for state in optimizer.state.values()),
+                'AdamW noncapturable step metadata must remain FP32 on CPU')
         self.source.validate()
         require(fingerprint(vars(self.args)) == self._settings_hash
                 and fingerprint(self.identity['settings']) == self._settings_hash
@@ -444,7 +476,7 @@ class DMD2Owner:
         require(all(_hash_tensor(value['model'][name]) == digest for name, digest in self.frozen_hashes.items()),
                 'frozen teacher/CLIP/VAE/base-LoRA tensor changed')
         _validate_layout(current['uncond_embedding'], value['uncond_embedding'], 'DMD2 unconditional CLIP')
-        require(self.uncond_embedding is None or torch.equal(self.uncond_embedding, value['uncond_embedding']),
+        require(self.uncond_embedding is None or _hash_tensor(self.uncond_embedding) == _hash_tensor(value['uncond_embedding']),
                 'empty-prompt CLIP conditioning changed')
         require(value['optimizer_ownership'] == self.ownership and set(value['optimizers']) == set(self.optimizers)
                 and set(value['schedulers']) == set(self.schedulers), 'checkpoint optimizer ownership changed')
@@ -481,7 +513,9 @@ class DMD2Owner:
         require(all(bool(torch.isfinite(tensor).all()) for tensor in tree_leaves(value)
                     if isinstance(tensor, torch.Tensor) and tensor.is_floating_point()),
                 'nonfinite checkpoint tensor')
-        validate_rng(value['rng'])
+        require(('cuda' in value['rng']) == (self.device.type == 'cuda'), 'checkpoint native RNG device changed')
+        with _device_scope(self.device):
+            validate_rng(value['rng'])
 
     def load_state_dict(self, value):
         self.validate_state_dict(value)  # Validate everything before mutating live tensors.
@@ -496,7 +530,8 @@ class DMD2Owner:
             self.schedulers[name].load_state_dict(deepcopy(value['schedulers'][name]))
         self.native_step = value['native_step']
         self.generator_updates, self.guidance_updates = value['generator_updates'], value['guidance_updates']
-        self.uncond_embedding = _clone(value['uncond_embedding'])
+        self.uncond_embedding = (None if value['uncond_embedding'] is None else
+                                value['uncond_embedding'].detach().to(device=self.device, copy=True))
         self._rng = _clone(value['rng'])
         self._validate_live()
 
