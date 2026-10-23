@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM
 
 
 _FAMILIES = {
@@ -100,6 +100,12 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
             resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
                         verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
+        if _helios_safe_stream(config, workload):
+            result["native_api"] = "distillschedule.training.helios_worker:run_safe_stream"
+            result["capabilities"]["modes"] = ["manual"]
+            result["capabilities"]["resume"]["scope"] = "complete native cohort; same source/assets/stream/node-HSDP/SafeBundle"
+            result["capabilities"]["bootstrap"]["asset_contract"] = "distillschedule.helios_reference_assets.v1; explicit local assets only"
+            result["capabilities"]["physical_policy"] = "node-HSDP/C512/p0/window5/full SafeBundle/stride0; local pinned FA2 required"
     if _h3_grid_training(config, workload):
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
@@ -132,6 +138,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
 
 def _helios_stream(config, workload):
     return workload == "W2" and config.data.get("input_kind") == "original_helios_cohort_stream.v1"
+
+
+def _helios_safe_stream(config, workload):
+    return workload == "W2" and config.execution.get("preset") == HELIOS_SAFE_STREAM
 
 
 def _h3_grid_training(config, workload):
@@ -192,7 +202,7 @@ def _options(config, workload):
         _require(config.execution.get("mode") == "manual", "execution.preset requires explicit manual mode")
         _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
                  "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
-        _require(config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
+        _require(_helios_safe_stream(config, workload) or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
                  and not config.trainer.get("resume_from"),
                  "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
         if workload == "W1":
@@ -227,6 +237,12 @@ def _options(config, workload):
                  "W5 original training requires cycles 2..64 and explicit matching native seed/checkpoint_every")
         return "reference"
     if _helios_stream(config, workload):
+        if _helios_safe_stream(config, workload):
+            _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
+                     and 2 <= config.trainer["cycles"] <= 64,
+                     "W2 safe stream requires 2..64 explicit fresh cohorts; replay is not substituted")
+            _require("capacity_policy" not in config.execution, "W2 safe stream does not accept an unbound capacity policy")
+            return "manual"
         _require(config.execution.get("mode", "reference") == "reference"
                  and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
                  "W2 fresh stream currently supports explicit reference only; manual/selected plans are not ignored")
@@ -234,6 +250,7 @@ def _options(config, workload):
                  "W2 fresh stream requires explicit prepared data; fixed replay is not substituted")
         _require(2 <= config.trainer["cycles"] <= 64, "W2 fresh stream cycles must be 2..64")
         return "reference"
+    _require(not _helios_safe_stream(config, workload), "W2 safe stream preset requires its explicit fresh input stream")
     _require(not (config.trainer.get("checkpoint_every", 0) or config.trainer.get("resume_from"))
              or workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
                 and bool(config.data.get("prepared")),
@@ -478,8 +495,9 @@ def _admit(config):
     if workload == "W1":
         admitted = _wan(config, mode, task_value, assets_value, paths)
     elif _helios_stream(config, workload):
-        from .helios_worker import admit_reference
-        admitted = admit_reference(config, task_value, assets_value, paths)
+        from .helios_worker import admit_reference, admit_safe_stream
+        admit = admit_safe_stream if _helios_safe_stream(config, workload) else admit_reference
+        admitted = admit(config, task_value, assets_value, paths)
     elif _h3_grid_training(config, workload):
         from .h3_grid_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
@@ -541,8 +559,9 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
     if _helios_stream(config, _workload(config)) and not dry_run:
         # All rank-local source/asset/stream metadata belongs under the fresh
         # training wrapper's owned Gloo plane, before entering original P0.
-        from .helios_worker import run_reference
-        return run_reference(config, admit=lambda: _admit(config))
+        from .helios_worker import run_reference, run_safe_stream
+        run = run_safe_stream if _helios_safe_stream(config, _workload(config)) else run_reference
+        return run(config, admit=lambda: _admit(config))
     if _h3_grid_training(config, _workload(config)) and not dry_run:
         # This lifecycle enters a metadata plane before rank-local admission or
         # model imports. A bad source/input on one rank must fail its peers too.

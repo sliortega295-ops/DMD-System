@@ -1,4 +1,4 @@
-"""Explicit reference-only W2 front door into the original hardened P0 worker."""
+"""Explicit W2 reference or versioned SafeBundle stream into original P0."""
 from __future__ import annotations
 
 import importlib.util
@@ -85,6 +85,24 @@ def admit_reference(config, task_value, assets_value, paths):
         "validation_scope": "CPU_W2_SOURCE_ASSET_STREAM_METADATA; ORIGINAL_PAYLOAD_AND_PHYSICAL_GATES_ON_WORKER"}
 
 
+def admit_safe_stream(config, task_value, assets_value, paths):
+    """New direct strategy, not a widened saved benchmark plan or reference."""
+    from . import helios_safe_stream as safe
+    require(assets_value.get("schema_version") == REFERENCE_ASSETS,
+            "safe stream requires explicit local versioned assets, not historical benchmark defaults", path="helios.training")
+    admitted = admit_reference(config, task_value, assets_value, paths)
+    args = admitted["argv"]
+    args[args.index("--mesh-policy") + 1] = "node-hsdp"
+    args[args.index("--attention-backend") + 1] = "local-fa2"
+    args[args.index("--run-id") + 1] = "original-helios-safe-stream-v1"
+    for name, enabled in safe.effective_flags().items():
+        if enabled:
+            args[args.index("--no-" + name.replace("_", "-"))] = "--" + name.replace("_", "-")
+    admitted.update(selected=safe.descriptor(), implementation=safe.implementation(),
+        validation_scope="CPU_W2_SOURCE_ASSET_FRESH_STREAM_SAFE_POLICY; NATIVE_KERNEL_CAPACITY_NUMERICAL_GATES_NOT_RUN")
+    return admitted
+
+
 def _backend():
     root = repository_root()
     source = root / "third_party/helios_compat/source"
@@ -153,25 +171,38 @@ def reference_process_group():
 
 def run_reference(config, admitted=None, source=None, *, admit=None):
     """Public execution admits all local source/config files collectively first."""
+    return _run(config, admitted, source, admit=admit, optimized=False)
+
+
+def run_safe_stream(config, admitted=None, source=None, *, admit=None):
+    """Same original process/setup owner; explicit opt-in optimized controls."""
+    return _run(config, admitted, source, admit=admit, optimized=True)
+
+
+def _run(config, admitted, source, *, admit, optimized):
     if admit is None:
         import torch.distributed as dist
         if dist.is_initialized():
-            return _run_admitted(config, admitted, source)
+            return _run_admitted(config, admitted, source, optimized=optimized)
         with reference_process_group() as ownership:
-            return _run_admitted(config, admitted, source, ownership=ownership)
+            return _run_admitted(config, admitted, source, ownership=ownership, optimized=optimized)
     from . import distributed
     with reference_process_group() as ownership:
         _, source, _, admitted = distributed.checked(admit, "Helios original source/config/input admission")
         distributed.checked(lambda: require(not source["identity"]["dirty"],
             "execution requires a clean committed source checkout", path="helios.training"), "Helios original source cleanliness")
-        distributed.checked(lambda: require(not any(os.environ.get(k) for k in
-            ("LOCAL_KERNELS", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF")),
-            "reference attention/allocator environment differs", path="helios.training"), "Helios original environment")
+        if optimized:
+            from .helios_safe_stream import validate_environment
+            distributed.checked(lambda: validate_environment(require_kernel=True), "Helios safe stream dependency/environment")
+        else:
+            distributed.checked(lambda: require(not any(os.environ.get(k) for k in
+                ("LOCAL_KERNELS", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF")),
+                "reference attention/allocator environment differs", path="helios.training"), "Helios original environment")
         backend = distributed.checked(_backend, "Helios original import/dependency admission")
-        return _run_admitted(config, admitted, source, ownership=ownership, backend=backend)
+        return _run_admitted(config, admitted, source, ownership=ownership, backend=backend, optimized=optimized)
 
 
-def _run_admitted(config, admitted, source, *, ownership=None, backend=None):
+def _run_admitted(config, admitted, source, *, ownership=None, backend=None, optimized=False):
     """Entered on every existing torchrun rank; never launches/reserves nodes."""
     from .helios_lifecycle import original_training_scope, admit_original_output
     if ownership is None:
@@ -185,6 +216,17 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None):
     # leave its peers entering the original NCCL initialization alone.
     stream = admitted["stream"]
     portable = admitted["assets"].get("schema_version") == REFERENCE_ASSETS
+    if optimized:
+        from . import helios_safe_stream as safe
+        require(config.execution.get("mode") == "manual" and config.execution.get("preset") == safe.PRESET_ID
+                and portable and admitted.get("implementation") == safe.implementation()
+                and admitted["selected"] == safe.descriptor(),
+                "safe stream typed implementation/source binding changed", path="helios.training")
+        # Repeat at the direct API seam, before importing the original backend.
+        from . import distributed
+        distributed.checked(lambda: safe.validate_environment(require_kernel=True), "Helios safe stream dependency/environment")
+    else:
+        require("implementation" not in admitted, "reference cannot use optimized stream policy", path="helios.training")
     bootstrap = {} if portable else load_profile("helios14b_nogan_best")["runtime"]["environment"]
     identity = {"schema_version": "distillschedule.helios_training_identity.v1",
         "source_head": source["identity"]["head"], "source_fingerprint": stream["identity"]["source_fingerprint"],
@@ -192,8 +234,13 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None):
         "reference_policy": admitted["selected"],
         "bootstrap_logical_hash": admitted["bootstrap"]["logical_manifest_hash"] if portable else bootstrap["DISTILLSCHEDULE_LOGICAL_STEP10_HASH"],
         "bootstrap_trace_hash": stream["cohorts"][0]["trace_hash"] if portable else bootstrap["DISTILLSCHEDULE_TRACE_BUNDLE_HASH"]}
+    if optimized:
+        identity["schema_version"] = "distillschedule.helios_safe_stream_identity.v1"
+        identity["execution_policy"] = identity.pop("reference_policy")
     binding = {"config": config, "stream": stream, "identity": identity, "assets": admitted["assets"],
                "portable_reference":portable, **(ownership or {})}
+    if optimized:
+        binding["implementation"] = admitted["implementation"]
     old = sys.argv
     try:
         sys.argv = ["original-helios-training-v1", *admitted["argv"]]

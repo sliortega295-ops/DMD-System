@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from datetime import timedelta
+import json
 import os
 from pathlib import Path
 import random
@@ -122,20 +123,30 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             require(args.variant == "no-gan" and args.timing_mode
                     and not args.profile_mode and not args.profile_diagnostics,
                     "reference original world16 helpers required", path="helios.training")
-            require(policy.mesh_policy == "world16-fsdp" and policy.rollout_batch_size == 1
-                    and not policy.pack_real_score_pair and policy.modulation_chunk_tokens == 512
-                    and not policy.generator_nograd_persistent_unshard and args.attention_backend == "sdpa"
-                    and policy.selective_flash_checkpoint_stride == args.selective_flash_checkpoint_stride == 0
-                    and args.ema_device == "cuda"
-                    and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
-                    "reference physical policy changed", path="helios.training")
-            require(all(getattr(args, name.replace("-", "_")) is False for name in _OFF),
-                    "reference cannot enable an unbound optimization", path="helios.training")
-            require(current_implementation() is None,
-                    "reference cannot inherit a generated plan environment", path="helios.training")
-            require(not os.environ.get("LOCAL_KERNELS") and not os.environ.get("PYTORCH_CUDA_ALLOC_CONF")
-                    and not os.environ.get("PYTORCH_ALLOC_CONF"),
-                    "reference attention/allocator environment differs", path="helios.training")
+            implementation = binding.get("implementation")
+            effective = None
+            if implementation is not None:
+                from . import helios_safe_stream as safe
+                require(binding.get("portable_reference") and implementation == safe.implementation()
+                        and binding["identity"].get("execution_policy") == safe.descriptor(),
+                        "safe stream implementation/source binding changed", path="helios.training")
+                safe.validate_environment(require_kernel=True)
+                effective = safe.bind_effective(args=args, policy=policy)
+            else:
+                require(policy.mesh_policy == "world16-fsdp" and policy.rollout_batch_size == 1
+                        and not policy.pack_real_score_pair and policy.modulation_chunk_tokens == 512
+                        and not policy.generator_nograd_persistent_unshard and args.attention_backend == "sdpa"
+                        and policy.selective_flash_checkpoint_stride == args.selective_flash_checkpoint_stride == 0
+                        and args.ema_device == "cuda"
+                        and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
+                        "reference physical policy changed", path="helios.training")
+                require(all(getattr(args, name.replace("-", "_")) is False for name in _OFF),
+                        "reference cannot enable an unbound optimization", path="helios.training")
+                require(current_implementation() is None,
+                        "reference cannot inherit a generated plan environment", path="helios.training")
+                require(not os.environ.get("LOCAL_KERNELS") and not os.environ.get("PYTORCH_CUDA_ALLOC_CONF")
+                        and not os.environ.get("PYTORCH_ALLOC_CONF"),
+                        "reference attention/allocator environment differs", path="helios.training")
             output = Path(binding["config"].trainer["output_dir"])
             require(not os.path.lexists(output / "ranks" / f"rank_{rank:02d}.json"),
                     "new output directory required; old rank receipt is preserved", path="helios.training")
@@ -144,6 +155,8 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             require(stream["stream_sha256"] == binding["identity"]["stream_sha256"],
                     "stream changed during worker admission", path="helios.training")
             identity = {**binding["identity"], "verified_immutable_assets": immutable_assets(binding["assets"])}
+            if effective is not None:
+                identity["effective_configuration"] = effective
             startup = None
             if binding.get("portable_reference"):
                 from runtime.gst_pool_contract import NegativePromptAsset
@@ -167,15 +180,25 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
                     validate_rollout_entries(group)
                 negative = NegativePromptAsset.load(binding["assets"]["assets"]["negative_prompt"]["path"])
                 startup = {"logical":logical, "trace":trace, "request":trace.task.request, "negative":negative}
-            checkpoint_policy = {"schema_version": "distillschedule.helios_training_checkpoint_policy.v1",
-                                 "identity_sha256": fingerprint(identity)}
-            return stream, identity, checkpoint_policy, startup
+            if implementation is not None and binding["config"].trainer.get("resume_from"):
+                # Metadata only, never deserialize model-sized state here.
+                # read_manifest below authenticates the complete identity and
+                # publication. Actual rebuilt native layouts must match again
+                # before restore, not merely trust this saved descriptor.
+                path = Path(binding["config"].trainer["resume_from"]) / "manifest.json"
+                saved_layout = json.loads(path.read_text()).get("identity", {}).get("native_owner_layout")
+                safe.validate_layout_record(saved_layout)
+                identity["native_owner_layout"] = saved_layout
+            checkpoint_policy = _checkpoint_policy(identity, optimized=implementation is not None)
+            return stream, identity, checkpoint_policy, startup, effective
 
-        stream, identity, checkpoint_policy, startup = distributed.checked(
+        stream, identity, checkpoint_policy, startup, effective = distributed.checked(
             local_admission, "Helios reference input/asset admission")
         # Publish only collectively admitted, actually verified identities;
         # neither identity agreement nor restart may use unverified asset pins.
         binding.update(stream=stream, identity=identity, checkpoint_policy=checkpoint_policy)
+        if effective is not None:
+            binding["effective_configuration"] = effective
         if startup is not None:
             binding["startup"] = startup
         distributed.admit_run_controls(binding["config"])
@@ -211,6 +234,12 @@ def validate_progress(header, binding):
             "restart must be an incomplete-stream complete G1/C5/EMA5 boundary", path="helios.training")
 
 
+def _checkpoint_policy(identity, *, optimized):
+    return {"schema_version": ("distillschedule.helios_safe_stream_checkpoint_policy.v1" if optimized
+                               else "distillschedule.helios_training_checkpoint_policy.v1"),
+            "identity_sha256": fingerprint(identity)}
+
+
 def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, negative,
                    rank, device, binding, result, progress=None):
     """One original preparation/dispatch per fresh cohort; persistent owners."""
@@ -218,6 +247,12 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
     from distillschedule.search.helios_implementation import HeliosImplementation
     from .native_state import engine_state
     from .checkpoint import read_manifest, restore_checkpoint, save_checkpoint
+    implementation = binding.get("implementation") or HeliosImplementation("no-gan", "world16-fsdp", 512, 1, False)
+    optimized = implementation.candidate_bundle.enabled
+    if optimized:
+        from . import helios_safe_stream as safe
+        require(implementation == safe.implementation() and binding.get("effective_configuration") is not None,
+                "safe stream preconstruction physical binding missing", path="helios.training")
     state = engine_state({"generator": generator, "critic": critic}, ema=ema)
     require(_versions(generator, critic, ema) == expected_versions(0),
             "original bootstrap G/C/EMA clocks changed", path="helios.training")
@@ -236,7 +271,13 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
     # A value object only for _prepare_cycle's graph/call census. No generated
     # plan is selected, no winner inherited, and receipt_binding is not bypassed
     # for a saved plan: those combinations are rejected by public admission.
-    implementation = HeliosImplementation("no-gan", "world16-fsdp", 512, 1, False)
+    if optimized:
+        # Validate actual installation before the first cycle, including after
+        # restore. Kernel/replay caches are reconstructed by original setup,
+        # never loaded from checkpoint or substituted with a reference policy.
+        with _plane(binding):
+            distributed.checked(lambda: implementation.candidate_bundle.effect_snapshot(result.get("build", {})),
+                                "Helios safe stream installation census")
     stream = binding["stream"]
     result.update(schema_version=SCHEMA, status="RUNNING", mode="reference", cycles=[],
         bootstrap_contract=result.pop("contract", None), source_cohort_policy="fresh_step_qualified_original_inputs",
@@ -246,6 +287,12 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         initializations=1, same_process=True, initial_versions=expected_versions(start),
         numerical_status="NOT_RUN", formal_timing_eligible=False, claimable_speedup=False,
         generation="UNSUPPORTED", export="UNSUPPORTED")
+    if optimized:
+        result.update(schema_version="distillschedule.original_helios_safe_stream.v1", mode="manual",
+            candidate_id=implementation.id, preset=safe.PRESET_ID,
+            effective_configuration=binding["effective_configuration"],
+            numerical_status="REVIEW", gpu_kernel_numerical_parity="NOT_RUN",
+            capacity_validation="NOT_RUN; source bridge does not establish native setup/checkpoint/restore reserve")
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
     for index in range(start, len(stream["cohorts"])):
         task = HeliosCohortTask(index)
@@ -256,6 +303,8 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             observed = {"cohort": entry, "versions": _versions(generator, critic, ema)}
             require(all(item == observed for item in distributed.gather(observed)),
                     "rank cohort/version mismatch", path="helios.training")
+            before = (distributed.checked(lambda: implementation.candidate_bundle.effect_snapshot(result.get("build", {})),
+                      "Helios safe stream pre-cycle census") if optimized else None)
         observer = _Observer(torch=p0.torch, device=device, rank=rank, impl=implementation,
             generator=generator, critic=critic, ema=ema, mode="native",
             version_offsets={"generator": 0, "critic": 0, "ema": 0})
@@ -276,10 +325,15 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
                         validate()
                 return versions
             versions = distributed.checked(boundary, "Helios complete-cycle boundary")
+            effects = (distributed.checked(lambda: implementation.candidate_bundle.executed_effects(
+                result.get("build", {}), before), "Helios safe stream executed bundle census") if optimized else None)
         row = {"cycle": index + 1, "cohort_index": index, "source_steps": list(task.source_steps),
                "trace_hash": entry["trace_hash"], "semantic_validation": validation,
                "dispatch": prepared.receipt(), "selected_order": list(order),
                "actions": observer.actions, "final_versions": versions, "status": "PASS"}
+        if effects is not None:
+            row.update(candidate_bundle=effects, rollout_lifetimes=observer.lifetimes,
+                       peak_live_rollouts=observer.peak_live, retained_rollouts=len(observer.live))
         result["cycles"].append(row)
         result.update(status="PARTIAL_ORIGINAL_HELIOS_TRAINING", final_versions=versions,
                       completed_cycles=index + 1, next_cohort=index + 1)
@@ -305,6 +359,20 @@ def run_training_cycles(*, p0, args, policy, result, output, rank, device, logic
             "original training preflight missing", path="helios.training")
     require(all(int(logical.component(key)["optimizer_step"]) == expected_versions(0)[key]
                 for key in ("generator", "critic")), "logical original bootstrap changed", path="helios.training")
+    if binding.get("implementation") is not None:
+        from .helios_safe_stream import owner_layout
+        with _plane(binding):
+            observed = distributed.checked(
+                lambda: owner_layout(generator_engine, critic_engine), "Helios safe stream native owner layout")
+            saved = binding["identity"].get("native_owner_layout")
+            distributed.checked(lambda: require(not binding["config"].trainer.get("resume_from") or saved == observed,
+                "rebuilt safe stream native owner layout differs from checkpoint", path="helios.training"),
+                "Helios safe stream restored layout admission")
+            binding["identity"] = {**binding["identity"], "native_owner_layout": observed}
+            binding["checkpoint_policy"] = _checkpoint_policy(binding["identity"], optimized=True)
+            require(all(row == binding["identity"] for row in distributed.gather(binding["identity"])),
+                    "rank safe stream native owner layout differs", path="helios.training")
+            result["native_owner_layout"] = observed
     return execute_cycles(p0=p0, args=args, policy=policy, result=result, rank=rank, device=device,
         generator=generator_engine, critic=critic_engine, ema=ema, diagnostics=diagnostics, negative=negative,
         binding=binding, progress=lambda value: p0.base._atomic_json(output, value))

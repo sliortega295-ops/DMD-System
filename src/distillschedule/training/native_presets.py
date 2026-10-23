@@ -10,6 +10,7 @@ from copy import deepcopy
 
 
 SCHEMA = "distillschedule.native_training_preset.v1"
+HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
 _PRESETS = {
     "W1": dict(id="wan_ar.incumbent21a.v1", numerical_status="REVIEW",
         source_origin="21a0993db64137489e120dd6614c48a1bf1a6002",
@@ -60,8 +61,21 @@ _PRESETS = {
 def describe_preset(workload: str, preset_id: str) -> dict:
     """Metadata only: no Torch, model, asset access or numerical promotion."""
     value = _PRESETS.get(workload)
-    if value is None or value["id"] != preset_id:
+    stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
+    if value is None or value["id"] != preset_id and not stream:
         raise ValueError(f"native training: unknown or mismatched preset {preset_id!r} for {workload}")
+    if stream:
+        value = dict(deepcopy(value), id=HELIOS_SAFE_STREAM,
+            runtime="distillschedule.training.helios_worker:run_safe_stream",
+            implementation_paths=[*value["implementation_paths"], "training/helios_safe_stream.py", "training/helios_lifecycle.py"])
+        return dict(schema_version=SCHEMA, workload=workload, **value,
+            opt_in="execution.mode=manual; explicit fresh stream; not stable/recommended",
+            source_archived=True, runtime_binding="ORIGINAL_NATIVE_FRESH_STREAM_SAFE_BUNDLE",
+            continuous_training=True, cycles=dict(min=2, max=64, finite_prepared_stream=True),
+            lifecycle_verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN",
+            gpu_execution="NOT_RUN", mechanism_execution="NOT_RUN; requires actual native per-cycle counters",
+            source_binding="current source/assets/stream/topology; frozen two-cycle plans unchanged",
+            reference_alternative="explicit original reference remains world16 FSDP/SDPA/window1/optimizations OFF")
     return dict(schema_version=SCHEMA, workload=workload, **deepcopy(value),
         opt_in="execution.mode=manual; not a stable/recommended default",
         source_archived=True, runtime_binding="EXISTING_NATIVE_IMPLEMENTATION",

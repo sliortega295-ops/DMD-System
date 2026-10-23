@@ -27,7 +27,7 @@ from helios_reference_fixtures import (original_logical as original_logical,
 
 
 @pytest.fixture(scope="module")
-def fresh_stream(tmp_path_factory):
+def fresh_stream(tmp_path_factory, request):
     import yaml
     root = tmp_path_factory.mktemp("original-helios-stream")
     training = yaml.safe_load((repository_root() / "configs/distillschedule/templates/helios_stage3_384x640.yaml").read_text())
@@ -37,7 +37,7 @@ def fresh_stream(tmp_path_factory):
     training["training_config"]["noise_corrupt_clean_prob_history"] = 1.
     config = root / "training.yaml"; config.write_text(yaml.safe_dump(training))
     sources = []
-    for index in range(3):
+    for index in range(getattr(request, "param", 3)):
         samples = []
         seed = 41 + index
         for offset in range(5):
