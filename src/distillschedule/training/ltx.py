@@ -21,46 +21,8 @@ from .ltx_source import original, require
 from .prediction import PredictionSpec
 
 
-class TrainableLowRankLinear(nn.Module):
-    """Unmerged W*x + (alpha/rank)*B(A*x), separately trainable A/B.
-
-    The native Linear base remains frozen. This is a training parameterization,
-    not the upstream inference-only ``builder.loras`` or a merge-time weight edit.
-    """
-    def __init__(self, base, *, rank, alpha):
-        super().__init__()
-        require(type(base) is nn.Linear and type(rank) is int and 0 < rank <= min(base.in_features, base.out_features)
-                and type(alpha) in (int, float) and 0 < alpha < float('inf'), 'invalid native Linear LoRA scope/rank/alpha')
-        self.base = base.requires_grad_(False)
-        self.lora_a = nn.Parameter(torch.empty(rank, base.in_features, device=base.weight.device, dtype=base.weight.dtype))
-        self.lora_b = nn.Parameter(torch.zeros(base.out_features, rank, device=base.weight.device, dtype=base.weight.dtype))
-        nn.init.kaiming_uniform_(self.lora_a, a=5 ** .5)
-        self.scale = float(alpha) / rank
-
-    def forward(self, value):
-        from torch.nn import functional as F
-        return self.base(value) + self.scale * F.linear(F.linear(value, self.lora_a), self.lora_b)
-
-
-def trainable_scope(native, config):
-    require(isinstance(config, dict) and config.get('mode') in ('full', 'lora'), 'explicit full or lora trainable scope required')
-    if config['mode'] == 'full':
-        require(set(config) == {'mode'}, 'full mode accepts no ignored LoRA settings')
-        native.requires_grad_(True)
-        return
-    require(set(config) == {'mode', 'rank', 'alpha', 'targets'} and isinstance(config['targets'], list)
-            and config['targets'] and len(config['targets']) == len(set(config['targets']))
-            and all(isinstance(name, str) and name for name in config['targets']), 'exact nonempty native Linear LoRA targets required')
-    targets = {}
-    for name in config['targets']:
-        try:
-            targets[name] = native.get_submodule(name)
-        except AttributeError as exc:
-            raise ValueError('LTX-2.5: missing actual native LoRA target: ' + name) from exc
-        require(type(targets[name]) is nn.Linear, 'LoRA target is not an actual native Linear: ' + name)
-    native.requires_grad_(False)
-    for name, module in targets.items():
-        native.set_submodule(name, TrainableLowRankLinear(module, rank=config['rank'], alpha=config['alpha']))
+# Backwards-compatible public aliases; the arithmetic and ownership are unchanged.
+from .low_rank import TrainableLowRankLinear, trainable_scope
 
 
 def _validate_architecture(architecture):

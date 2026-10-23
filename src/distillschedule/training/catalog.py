@@ -97,6 +97,43 @@ for _name, _factory, _caps, _description in (
     register_model(_name, factory='distillschedule.training.' + _factory,
                    capabilities=_caps, description=_description)
 
+# Source-qualified image families. Validation levels remain distinct: actual
+# tiny native CPU fixtures are not pretrained/GPU/quality acceptance.
+for _name, _module, _model_id, _revision in (
+    ('flux2-klein-base', 'flux', 'black-forest-labs/FLUX.2-klein-base-4B', 'a3b4f4849157f664bdbc776fd7453c2783562f4d'),
+    ('qwen-image', 'qwen_image', 'Qwen/Qwen-Image', '75e0b4be04f60ec59a75f475837eced720f823b6'),
+):
+    register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
+        capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
+        description='Pinned native T2I, CPU1 FP32 local safe assets; explicit flow DMD, not official DMD2',
+        source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
+        validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
+        compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
+            devices=['cpu'], distributed=False,
+            model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
+                'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
+
+
+def validate_compatibility(model, algorithm, trainer):
+    """Optional declarative preconstruction contract; unknown plugins stay open.
+
+    Metadata only: never import a model or allocate/load weights to reject a
+    known incompatible request. Explicit factories receive the same gate as
+    named models when they match a registered declaration.
+    """
+    entries = [row for row in _registry('model').values() if row['factory'] == model.get('factory')]
+    for entry in entries:
+        contract = entry.get('compatibility')
+        if contract is None:
+            continue
+        if (algorithm.get('factory') not in contract['algorithm_factories']
+                or trainer.get('device', 'cpu') not in contract['devices']
+                or not contract['distributed'] and 'distributed' in trainer
+                or set(model.get('parameters', {})) - set(contract['model_parameters'])
+                or model.get('parameters', {}).get('device', 'cpu') not in contract['devices']):
+            raise ValueError('incompatible model/algorithm/backend or unsupported model capability: ' + model['factory'])
+
+
 for _name, _factory, _description in (
     ('dmd2', 'dmd2:build_dmd2', 'Official SD DMD2 with native iteration and guidance updates'),
     ('self-forcing', 'self_forcing:build_self_forcing', 'Official causal self-rollout DMD'),

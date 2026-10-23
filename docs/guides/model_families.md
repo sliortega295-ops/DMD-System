@@ -13,6 +13,8 @@ An execution policy chooses only admitted physical changes. The command remains
 | SDXL / official DMD2 | Actual dual CLIP, added conditions, backward simulation; four-step or explicitly initialized single-step | Both tokenizers; native VAE; no fabricated pooled or unconditional context | `train,dmd2` |
 | Official Self-Forcing Wan | Actual causal random-exit block rollout, KV state, DMD loss, native G/C and EMA clocks | Native T5 prompt encoding or pinned embeddings; native full-step causal inference and VAE video | `train,self-forcing-official` |
 | LTX-2.5 / generic No-GAN DMD | Actual AV LTX Transformer; explicit rectified-flow surrogate and Fake regression policy | Actual Gemma4/connectors, native video/audio VAEs, vocoder; AV or explicit latents | isolated `train,ltx25`, Python >=3.11 |
+| FLUX.2 klein Base 4B / explicit flow DMD | Actual Flux2 Transformer, no guidance embeddings, normalized sigma; not official DMD2 | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`, CPU1 FP32 only |
+| Original Qwen-Image T2I / explicit flow DMD | Actual QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Actual Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`, CPU1 FP32 only |
 | Existing W1–W6 | Their distinct original contracts, not aliases of the above algorithms | See each recipe and six-workload support matrix | Existing separate qualified lanes |
 
 Official Self-Forcing is **not W4 LiveWan**. W4 retains the cross-scale
@@ -40,6 +42,8 @@ See the runnable source-specific guides:
 - [SDXL DMD2](../../recipes/dmd2_sdxl/README.md)
 - [Official Self-Forcing](../../recipes/self_forcing_official/README.md)
 - [LTX-2.5](../../recipes/ltx25/README.md)
+- [FLUX.2 klein Base 4B](../../recipes/flux_dmd/README.md)
+- [Original Qwen-Image](../../recipes/qwen_image_dmd/README.md)
 
 ## Native iterations and public cycles
 
@@ -137,3 +141,23 @@ new isolated environment, reusing only the invoking numerical dependency roots
 in their real import order. Its receipt binds the actual Torch version/origin,
 so a Torch2.10 overlay cannot silently become a base Torch2.14 run. It does not
 resolve/download dependencies or modify the invoking environment.
+
+## Initial native image-family slice
+
+FLUX.2 klein Base and original Qwen-Image are explicitly **source/actual tiny
+CPU references**, not completed pretrained/GPU/quality integrations. Their
+static compatibility metadata rejects known official DMD2/Self-Forcing,
+CUDA/distributed and unsupported causal/cache model options before model
+imports/weight loading, including matching explicit registered factory calls.
+Arbitrary existing plugins without a declaration remain extensible.
+
+The first admitted recipes are same-family **unmerged LoRA**, G1/F5 and four
+explicit Euler steps through existing `training.dmd`, with teacher/fake CFG=1.
+They do not reproduce official DMD2 or Self-Forcing. Native Qwen norm-rescaled
+CFG is not silently replaced with common linear CFG. Real local safetensors,
+complete shards/configs, actual text/VAE/tokenizer assets and hash-bound data
+are required, with no random production fallback. Explicit BF16/F32 storage to
+FP32 conversion is distinct from unqualified BF16 compute. Three different
+prompt lengths, exact new-process state and actual native decoded output are
+CPU-tested with `SYNTHETIC_TEST_ONLY` weights; full pretrained V3–V5 remain
+**NOT_RUN**. See the [shared image recipe](../../recipes/flow_image/README.md).

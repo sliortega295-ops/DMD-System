@@ -106,3 +106,39 @@ def test_original_workload_state_not_mutated_by_calibration():
     w=build(); before=w.identity
     for impl in candidates(w)['candidates']: Session(w,impl).run()
     assert w.identity==before and not w.state['adam'].state
+
+
+def duplicate_frozen_slots_workload():
+    """Equal frozen slots within one subtree, like real DiT norm/bias slots."""
+    w = build(n=1)
+    base = nn.Sequential(nn.Linear(4,4,bias=False),nn.Linear(4,4,bias=False)).requires_grad_(False)
+    with torch.no_grad():
+        base[1].weight.copy_(base[0].weight)
+    w.state['learner'].base=base
+    w.state['guide'].base=deepcopy(base)
+    return w.validate()
+
+
+def test_immutable_aliases_preserve_every_named_slot_and_control_state():
+    w=duplicate_frozen_slots_workload()
+    control=Session(w,dict(backend='torch-callable-resident-v1',share_immutable=False,checkpoint_bindings=[]))
+    expected=control.result_state(control.run())
+    shared=Session(w,dict(backend='torch-callable-resident-v1',share_immutable=True,checkpoint_bindings=[]))
+    output=shared.run()
+    assert shared.state['guide'].base[0].weight is shared.state['guide'].base[1].weight
+    assert shared.state['guide'].base[1].weight is shared.state['learner'].base[1].weight
+    assert shared.effects['shared_parameter_aliases']==3
+    assert shared.initial_storage<control.initial_storage
+    assert compare(expected,shared.result_state(output))['status']=='PASS'
+
+
+@pytest.mark.parametrize('share',[False,True])
+def test_mutating_a_duplicate_frozen_slot_still_fails(share):
+    w=duplicate_frozen_slots_workload()
+    def mutate(ctx):
+        ctx.state['guide'].base[1].weight.add_(1)
+        return teacher(ctx)
+    w.bindings={**w.bindings,'teacher':mutate}
+    session=Session(w,dict(backend='torch-callable-resident-v1',share_immutable=share,checkpoint_bindings=[]))
+    with pytest.raises(ValueError,match='immutable'):
+        session.run()

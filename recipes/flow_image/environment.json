@@ -1,0 +1,19 @@
+{
+  "scope": "CPU1_FP32_REFERENCE_ONLY_SEPARATE_FROM_TRANSFORMERS4_LANES",
+  "qualified_python": "3.12",
+  "optional_extra": "modern-flow",
+  "versions": {
+    "torch": "2.10.0",
+    "diffusers": "0.37.1",
+    "transformers": "5.14.1",
+    "peft": "0.18.1",
+    "tokenizers": "0.22.2",
+    "huggingface-hub": "1.7.1",
+    "safetensors": "0.8.0",
+    "accelerate": "1.14.0"
+  },
+  "cuda": "NOT_RUN",
+  "distributed": "NOT_RUN",
+  "amp": "NOT_RUN",
+  "full_pretrained_training_and_quality": "NOT_RUN"
+}

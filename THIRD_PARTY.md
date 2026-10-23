@@ -39,3 +39,26 @@ training. Model/tokenizer/VAE/Gemma asset licenses are separate and must be
 supplied/reviewed by the operator. Procedural/random original-class CPU
 fixtures establish interface and mathematical/lifecycle behavior only—not
 pretrained quality or permission to redistribute external assets.
+
+## Native FLUX.2 klein Base and original Qwen-Image CPU adapters
+
+These adapters import, rather than vendor, actual **Diffusers 0.37.1** and
+**Transformers 5.14.1** classes. Their original Apache-2.0 notices and licenses
+remain with those dependency distributions. PEFT0.18.1 belongs to the separate
+qualified modern-flow import lane; trainable LoRA remains unmerged native
+Linear arithmetic, not upstream inference-only weight fusion. Actual package
+source hashes and exact local asset inventories are bound into prepared
+features, checkpoints and portable exports.
+
+| Fixed source candidate | Source-audited model repository/license | Explicit limits |
+| --- | --- | --- |
+| FLUX.2 klein Base 4B | [black-forest-labs/FLUX.2-klein-base-4B at a3b4f4](https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B/tree/a3b4f4849157f664bdbc776fd7453c2783562f4d), Apache-2.0 | Only the named Base T2I version; not FLUX.1, distilled klein or other variants |
+| Original Qwen-Image | [Qwen/Qwen-Image at 75e0b4](https://huggingface.co/Qwen/Qwen-Image/tree/75e0b4be04f60ec59a75f475837eced720f823b6), Apache-2.0 | Original T2I only; not Edit or later generations |
+
+Qwen3 and Qwen2.5-VL text models/tokenizers, VAE/model assets, and datasets
+remain operator-supplied components with their own source and license
+obligations. A repository label plus local hashes does not authenticate
+pretrained provenance or grant redistribution rights. No model weights or
+third-party source are downloaded/bundled by these recipes. Random actual-class
+fixtures are labeled **SYNTHETIC_TEST_ONLY** and establish only CPU interface,
+math/state/codec behavior, never pretrained/GPU/quality or performance proof.

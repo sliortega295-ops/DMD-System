@@ -58,7 +58,7 @@ def pack_state(state):
             packed[key] = {"kind": "module", "class": _class(value),
                            "value": pack(value.state_dict()),
                            "training": {name: child.training for name, child in value.named_modules()},
-                           "requires_grad": {name: p.requires_grad for name, p in value.named_parameters()}}
+                           "requires_grad": {name: p.requires_grad for name, p in value.named_parameters(remove_duplicate=False)}}
         elif isinstance(value, torch.optim.Optimizer):
             packed[key] = {"kind": "optimizer", "class": _class(value), "value": pack(value.state_dict()),
                            "parameters": [[parameter_names[id(p)] for p in group["params"]]
@@ -149,7 +149,7 @@ def _stage_state(packed, state, *, progress=None):
         if row["kind"] == "module":
             current = value.state_dict()
             _validate_layout(current, restored[key], key)
-            if row["requires_grad"] != {name: p.requires_grad for name, p in value.named_parameters()}:
+            if row["requires_grad"] != {name: p.requires_grad for name, p in value.named_parameters(remove_duplicate=False)}:
                 raise ValueError(f"checkpoint trainables changed: {key}")
             if (set(row["training"]) != {name for name, _ in value.named_modules()}
                     or any(type(item) is not bool for item in row["training"].values())):

@@ -91,7 +91,7 @@ def signature(value, *, _metadata=False):
         return {'class':type(value).__module__+'.'+type(value).__qualname__,
                 'training':[ (n,m.training) for n,m in value.named_modules()],
                 'tensors':{k:signature(v) for k,v in value.state_dict().items()},
-                'requires_grad':{k:p.requires_grad for k,p in value.named_parameters()}}
+                'requires_grad':{k:p.requires_grad for k,p in value.named_parameters(remove_duplicate=False)}}
     if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict())}
     if _stateful(value):
         return {'stateful':type(value).__module__+'.'+type(value).__qualname__,
@@ -204,9 +204,13 @@ def resolve_module(state,path):
 
 
 def sharing_inventory(workload, *, include_existing=False):
+    # Inspect every named immutable slot, even when two slots already alias.
+    # Parameter ownership/optimizers still use unique Parameter objects. Without
+    # slot-complete snapshots, equal DiT norm/bias aliases erase verification
+    # keys and can make a valid immutable share look like a value mutation.
     seen={}; pairs=[]
     for path in workload.immutable_modules:
-        for name,p in resolve_module(workload.state,path).named_parameters():
+        for name,p in resolve_module(workload.state,path).named_parameters(remove_duplicate=False):
             require(p.is_contiguous() and p.layout==torch.strided,'shared parameter must be contiguous strided storage',path='open.state')
             key=tensor_signature(p)
             item=(path,name,p)
@@ -312,7 +316,7 @@ class Session:
                                if copy_state else (dict(workload.state),dict(workload.feeds)))
         self.device=workload.device; self.graph=workload.program.compile()
         self.profile={}; self.effects={'shared_parameter_aliases':0,'checkpoint_calls':0,'recompute_calls':0}
-        self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}
+        self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}
                          for path in workload.immutable_modules}
         if implementation['share_immutable']:
             for first,second,_ in sharing_inventory(workload):
@@ -464,7 +468,7 @@ class Session:
                     and row.get('effect') == self.owner_inventory[key]['descriptor']['effect'],
                     'owner changed admitted execution effect predicates', path='open.runtime')
         for path,values in self._immutable.items():
-            require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}==values,
+            require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}==values,
                     'declared immutable parameters changed',path='open.runtime')
         self.receipt={'status':'EXECUTED_OPEN_PROGRAM','program':self.workload.program.digest,
             'dispatcher':prepared.receipt(),'effects':deepcopy(self.effects),'wall_ns':time.perf_counter_ns()-started,
@@ -481,7 +485,7 @@ class Session:
             if isinstance(v,Mapping): return {str(k):clone(x) for k,x in v.items()}
             if isinstance(v,(list,tuple)): return [clone(x) for x in v]
             return v
-        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in unwrap_module(v).named_parameters()}
+        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in unwrap_module(v).named_parameters(remove_duplicate=False)}
                      for k,v in self.state.items() if isinstance(v,nn.Module)}})
 
 
