@@ -62,3 +62,24 @@ pretrained provenance or grant redistribution rights. No model weights or
 third-party source are downloaded/bundled by these recipes. Random actual-class
 fixtures are labeled **SYNTHETIC_TEST_ONLY** and establish only CPU interface,
 math/state/codec behavior, never pretrained/GPU/quality or performance proof.
+
+## HunyuanVideo-1.5 T2V native CPU adapter
+
+The fixed source-only model candidate is
+[hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v at 286be7c](https://huggingface.co/hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v/tree/286be7ce72277246578a3e3cc2487e95ddae5bcf).
+**Model assets are subject to Tencent Hunyuan Community terms (repository tag
+`other`), not Apache-2.0.** Operators must review the original model/text/
+tokenizer/data terms; local hashes do not prove pretrained authenticity or
+grant redistribution rights. No full model config, weights or third-party
+implementation is vendored or downloaded by this adapter. The old upstream
+example ID without `Diffusers` returned401 during the recorded source audit;
+that failure is retained rather than retried or bypassed.
+
+Actual Diffusers0.37.1 and Transformers5.14.1 code is imported from separately
+licensed Apache-2.0 dependency distributions, whose notices remain with those
+packages. It is not a replacement license for Tencent assets. The tiny native
+Qwen2.5 text-only/T5/ByT5/Hunyuan Transformer/temporal4 VAE fixtures use random
+weights and are explicitly **SYNTHETIC_TEST_ONLY**; native semantics, lifecycle,
+sharing and portable RGB decode are not pretrained/GPU/capacity/quality or
+performance validation. See [source pin](recipes/hunyuan_video_dmd/source.json)
+and [bounded recipe](recipes/hunyuan_video_dmd/README.md).

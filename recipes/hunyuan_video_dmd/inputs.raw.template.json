@@ -1,0 +1,5 @@
+{
+  "schema_version": "distillschedule.hunyuan15_t2v_inputs.v1", "family": "hunyuan15-t2v",
+  "assets": "/ABSOLUTE/local-hunyuan15/assets.json", "mode": "raw",
+  "records": [{"id": "video-0001", "prompt": "A bird flies over a lake.", "video": {"path": "/ABSOLUTE/clip-or-rgb-frame-directory", "sha256": "REPLACE_WITH_FILE_SHA256_OR_SORTED_FRAME_INVENTORY_FINGERPRINT"}}]
+}

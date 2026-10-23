@@ -161,3 +161,27 @@ FP32 conversion is distinct from unqualified BF16 compute. Three different
 prompt lengths, exact new-process state and actual native decoded output are
 CPU-tested with `SYNTHETIC_TEST_ONLY` weights; full pretrained V3–V5 remain
 **NOT_RUN**. See the [shared image recipe](../../recipes/flow_image/README.md).
+
+## Initial HunyuanVideo-1.5 T2V slice
+
+`hunyuan15-t2v` reuses the same common flow-DMD/lifecycle and actual immutable
+sharing, not another trainer or a model-name searcher. The bounded reference is
+CPU1 FP32/B1, same-family unmerged LoRA, four Euler steps and G1/F5/CFG1.
+It executes actual native Hunyuan15 Transformer, Qwen2.5 **text-only** model
+with native template/crop108/hidden-3, native T5/slow ByT5 glyph extraction
+(including the valid no-glyph zero/allfalse sentinel), and temporal4 Hunyuan VAE.
+Native raw videos/frames, prompt geometry and source-bound safe features share
+one validator; silent truncation/resampling and I2V/meanflow/distilled/causal
+options reject. Every role/codec has an explicit meta parameter-budget gate
+before concrete training or portable reconstruction.
+
+Fresh-process exact complete-state recovery, real shared/unshared updates and
+current-Student + both native text/tokenizer/VAE portable decoded new-input
+video are tested using actual tiny **SYNTHETIC_TEST_ONLY** classes. This is not
+pretrained, GPU, production geometry/capacity, long-run or quality evidence.
+The model assets use **Tencent Hunyuan terms, not Apache-2.0**; dependency
+implementation licenses are separate. See the
+[bounded recipe and source/license pin](../../recipes/hunyuan_video_dmd/README.md).
+New-input preparation still explicitly uses original local assets; export-only
+public preparation is not supplied or claimed here. All full pretrained/GPU/
+capacity/quality gates remain **NOT_RUN**.

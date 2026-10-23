@@ -11,7 +11,7 @@ def test_new_flow_family_catalog_is_lazy_and_precise():
 from distillschedule.training.catalog import describe
 value = describe()
 assert 'torch' not in sys.modules
-for name in ('flux2-klein-base', 'qwen-image'):
+for name in ('flux2-klein-base', 'qwen-image', 'wan22-ti2v5b-t2v', 'hunyuan15-t2v'):
     row = value['models'][name]
     assert row['validation']['gpu'] == 'NOT_RUN'
     assert row['validation']['quality'] == 'NOT_RUN'
@@ -27,7 +27,7 @@ print(json.dumps(value))
 def test_declared_flow_compatibility_rejects_before_torch_or_asset_loading():
     code = '''import sys
 from distillschedule.training.config import TrainingConfig
-for name in ('flux2-klein-base', 'qwen-image'):
+for name in ('flux2-klein-base', 'qwen-image', 'wan22-ti2v5b-t2v', 'hunyuan15-t2v'):
     for algorithm in ('dmd2', 'self-forcing'):
         value = dict(schema_version='distillschedule.training.v1', model=dict(name=name, parameters={'assets':'MISSING'}),
             algorithm=dict(name=algorithm), data=dict(prepared='MISSING'), execution=dict(mode='reference'),
@@ -49,7 +49,7 @@ def test_static_device_cache_rejections_and_unknown_plugin_extension_are_lazy():
 from copy import deepcopy
 from distillschedule.training.config import TrainingConfig
 from distillschedule.training.catalog import resolve
-for name in ('flux2-klein-base','qwen-image'):
+for name in ('flux2-klein-base','qwen-image','wan22-ti2v5b-t2v','hunyuan15-t2v'):
     base=dict(schema_version='distillschedule.training.v1',model=dict(factory=resolve('model',name)['factory'],parameters={'assets':'MISSING'}),
         algorithm=dict(name='dmd'),data=dict(prepared='MISSING'),execution=dict(mode='reference'),
         trainer=dict(cycles=1,output_dir='MISSING',device='cpu'))
