@@ -278,11 +278,42 @@ def latent_outputs(generated):
     return schema
 
 
+def decoded_media(decoded, *, required_kind=None):
+    """Validate explicit decoded media; layouts are model adapters' responsibility."""
+    import torch
+    from collections.abc import Mapping
+    _require(isinstance(decoded, Mapping), 'generation needs an actual decoder returning an explicit media mapping')
+    result = {}
+    if 'video' in decoded:
+        result['video'] = decoded_video(decoded)
+    if 'image' in decoded:
+        image = decoded['image']
+        _require(isinstance(image, torch.Tensor) and image.dtype == torch.uint8
+                 and image.ndim == 3 and min(image.shape) > 0 and image.shape[-1] in (3, 4),
+                 'image decoder must return HWC uint8 RGB/RGBA')
+        result['image'] = image
+    if 'audio' in decoded:
+        audio = decoded['audio']
+        _require(isinstance(audio, Mapping) and set(audio) == {'samples', 'sample_rate'},
+                 'audio decoder needs samples and sample_rate')
+        samples, rate = audio['samples'], audio['sample_rate']
+        _require(isinstance(samples, torch.Tensor) and samples.is_floating_point()
+                 and samples.ndim == 2 and min(samples.shape) > 0 and type(rate) is int and rate > 0
+                 and bool(torch.isfinite(samples).all()) and bool((samples.abs() <= 1).all()),
+                 'audio decoder must return finite normalized TC floating samples and positive integer sample_rate')
+        result['audio'] = audio
+    required = {'audio_video': {'audio', 'video'}}.get(required_kind, {required_kind} if required_kind else set())
+    _require(required <= result.keys(), f'generation needs an actual decoder returning required {required_kind} media')
+    return result
+
+
 def write_generation(root, values, *, metadata, output_kind=None):
     """Write one already-validated, CPU-materialized sample, without resampling."""
     import torch
     latents = latent_outputs(values["generated"]) if output_kind == "latents" else None
-    video = None if latents is not None else decoded_video(values["decoded"], required=False)
+    media = ({} if latents is not None or (output_kind is None and not isinstance(values['decoded'], dict))
+             else decoded_media(values['decoded'], required_kind=output_kind))
+    video = media.get('video')
     if video is not None:
         from PIL import Image
         frames = root / "frames"
@@ -296,6 +327,25 @@ def write_generation(root, values, *, metadata, output_kind=None):
     torch.save(values, root / "generation.pt")
     result = {**metadata, "video": video_metadata,
               "artifact": str(root / "generation.pt"), "quality_validation": "NOT_RUN"}
+    if 'image' in media:
+        from PIL import Image
+        image = media['image']
+        Image.fromarray(image.contiguous().numpy()).save(root / 'image.png')
+        result['image'] = {'path': str(root / 'image.png'), 'layout': 'HWC', 'shape': list(image.shape)}
+    if 'audio' in media:
+        import wave
+        import numpy as np
+        audio = media['audio']
+        samples = audio['samples']
+        with wave.open(str(root / 'audio.wav'), 'wb') as stream:
+            stream.setnchannels(samples.shape[1])
+            stream.setsampwidth(2)
+            stream.setframerate(audio['sample_rate'])
+            stream.writeframes(np.rint(samples.numpy() * 32767).astype('<i2').tobytes())
+        result['audio'] = {'path': str(root / 'audio.wav'), 'layout': 'TC', 'shape': list(samples.shape),
+                           'sample_rate': audio['sample_rate'], 'encoding': 'PCM16'}
+    if output_kind:
+        result['output_kind'] = output_kind
     if latents is not None:
         result["output_kind"] = "latents"
         result["latents"] = {"schema_version": "distillschedule.latent_outputs.v1", "tensors": latents,

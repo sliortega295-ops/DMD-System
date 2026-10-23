@@ -93,9 +93,9 @@ def source_identity(path, *, frames=False):
 
 def raw_record(record, base_dir):
     """Resolve references and hash all media before a trusted plugin is imported."""
-    require(any(key in record for key in ("video", "audio", "text")), "raw record needs video, audio or text")
+    require(any(key in record for key in ("image", "video", "audio", "text")), "raw record needs image, video, audio or text")
     resolved, identities = deepcopy(record), {}
-    for name in ("video", "audio"):
+    for name in ("image", "video", "audio"):
         if name not in record:
             continue
         reference = record[name]
@@ -172,7 +172,7 @@ def provenance_schema(value, rows):
         require(isinstance(item, dict) and set(item) == {"id", "media"} and item["id"] == row["id"],
                 "source identities must match record order and ids")
         require(isinstance(item["media"], dict) and bool(item["media"]), "record source media are required")
-        allowed = {"video", "audio", "text"} if value["mode"] == "raw" else {"features"}
+        allowed = {"image", "video", "audio", "text"} if value["mode"] == "raw" else {"features"}
         require(set(item["media"]) <= allowed, "unknown source media identity")
         for identity in item["media"].values():
             source_schema(identity)

@@ -91,7 +91,7 @@ def prepare(raw_manifest: str | Path, output_dir: str | Path) -> Path:
     """
     _new_output(output_dir)  # refuse existing data before even importing a plugin
     path, value, documents = load_input(raw_manifest, RAW_SCHEMA, allowed={"encoder"})
-    rows = records(value.get("records"), allowed={"id", "video", "audio", "text", "metadata"})
+    rows = records(value.get("records"), allowed={"id", "image", "video", "audio", "text", "metadata"})
     encoder = value.get("encoder")
     require(isinstance(encoder, dict) and set(encoder) <= {"factory", "parameters"}, "encoder needs factory and parameters")
     parameters = encoder.get("parameters", {})

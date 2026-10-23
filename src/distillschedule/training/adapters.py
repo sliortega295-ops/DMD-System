@@ -24,8 +24,17 @@ class ModelComponents:
     admit_training: Callable | None = None
     collect_metrics: Callable | None = None
     inference_projection: Callable | None = None
+    prediction: Any = None
+    capabilities: tuple[str, ...] = ()
 
     def validate(self):
+        from .prediction import PredictionSpec
+        if self.prediction is not None and not isinstance(self.prediction, PredictionSpec):
+            raise ValueError('prediction must be an explicit PredictionSpec')
+        if (not isinstance(self.capabilities, tuple)
+                or any(not isinstance(item, str) or not item for item in self.capabilities)
+                or len(set(self.capabilities)) != len(self.capabilities)):
+            raise ValueError('capabilities must be unique nonempty strings')
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
             raise ValueError("model state must have explicit nonempty names")
         if self.immutable_modules:

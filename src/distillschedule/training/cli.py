@@ -26,7 +26,9 @@ def doctor(config=None):
             from .native import describe_native
             result["training"] = describe_native(config)
         else:
-            checks = {"prepared_manifest": Path(config.data["prepared"]).is_file()}
+            checks = ({'prepared_' + name: Path(stream['prepared']).is_file()
+                       for name, stream in config.data['streams'].items()} if 'streams' in config.data else
+                      {"prepared_manifest": Path(config.data["prepared"]).is_file()})
             for section in ("model", "algorithm"):
                 reference = getattr(config, section)["factory"]
                 path = reference.rpartition(":")[0]
@@ -49,6 +51,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="distillctl",
         description="DMD-System data, continuous training, checkpoint and export lifecycle")
     sub = parser.add_subparsers(dest="command", required=True)
+    for kind in ('models', 'algorithms'):
+        catalog = sub.add_parser(kind, help='list registered factories without importing model code')
+        catalog.add_argument('action', choices=('list', 'show'), nargs='?', default='list')
+        catalog.add_argument('name', nargs='?')
     check = sub.add_parser("doctor", help="inspect installed dependencies without loading models")
     check.add_argument("--config", type=Path)
     config_parser = sub.add_parser("config", help="validate or render a training configuration")
@@ -65,7 +71,7 @@ def main(argv=None):
         elif name == "generate":
             p.add_argument("--weights", type=Path, required=True)
             p.add_argument("--prepared", type=Path, required=True)
-            p.add_argument("--output-kind", choices=("video", "latents"), default="video",
+            p.add_argument("--output-kind", choices=('image', 'video', 'audio', 'audio_video', 'latents'), default="video",
                            help="video requires a real decoder; latents is an explicit native diagnostic")
         else:
             p.add_argument("--checkpoint", type=Path, required=True)
@@ -74,7 +80,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         config = load_training_config(args.config) if getattr(args, "config", None) else None
-        if args.command == "doctor":
+        if args.command in ('models', 'algorithms'):
+            from .catalog import describe, resolve
+            if args.action == 'show':
+                if not args.name:
+                    raise ValueError('show requires a registered name')
+                result = resolve('model' if args.command == 'models' else 'algorithm', args.name)
+            else:
+                result = describe()[args.command]
+        elif args.command == "doctor":
             result = doctor(config)
         elif args.command == "config":
             result = {"status": "VALID_CONFIG", "identity": config.identity,

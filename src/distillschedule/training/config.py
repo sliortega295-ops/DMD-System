@@ -54,8 +54,8 @@ class TrainingConfig:
             raise ValueError("checkpoint_every must be a nonnegative integer")
         if execution.get("adapter", "program") == "program":
             allowed = {
-                "model": {"factory", "parameters"}, "data": {"prepared", "sharding", "validation_prepared", "sampling"},
-                "algorithm": {"factory", "parameters"},
+                "model": {"name", "factory", "parameters"}, "data": {"prepared", "streams", "sharding", "validation_prepared", "sampling"},
+                "algorithm": {"name", "factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
                               "max_candidates", "samples", "max_program_runs", "max_states"},
                 "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed", "validation"},
@@ -71,13 +71,35 @@ class TrainingConfig:
             if mode == "manual" and not isinstance(execution.get("implementation"), dict):
                 raise ValueError("manual mode requires an explicit implementation object")
             for key in ("model", "algorithm"):
+                if 'name' in parts[key]:
+                    from .catalog import resolve
+                    entry = resolve(key, parts[key]['name'])
+                    if 'factory' in parts[key] and parts[key]['factory'] != entry['factory']:
+                        raise ValueError(f'{key}.name and factory disagree')
+                    parts[key]['factory'] = entry['factory']
                 if not isinstance(parts[key].get("factory"), str):
                     raise ValueError(f"{key}.factory is required")
                 parts[key]["factory"] = resolve_reference(parts[key]["factory"], source.parent)
                 if not isinstance(parts[key].get("parameters", {}), dict):
                     raise ValueError(f"{key}.parameters must be an object")
-            if not parts["data"].get("prepared"):
-                raise ValueError("data.prepared is required; prepare raw media before training")
+            if bool(parts['data'].get('prepared')) == bool(parts['data'].get('streams')):
+                raise ValueError('exactly one of data.prepared or data.streams is required')
+            if 'streams' in parts['data']:
+                if 'sampling' in parts['data'] or 'validation' in trainer:
+                    raise ValueError('streams use per-stream sampling; periodic validation needs a single prepared input')
+                streams = parts['data']['streams']
+                if not isinstance(streams, dict) or not streams:
+                    raise ValueError('data.streams must be a nonempty object')
+                for name, stream in streams.items():
+                    if (not isinstance(name, str) or not name or not isinstance(stream, dict)
+                            or set(stream) - {'prepared', 'samples_per_cycle', 'sampling'}
+                            or not isinstance(stream.get('prepared'), str) or not stream['prepared']
+                            or type(stream.get('samples_per_cycle', 1)) is not int
+                            or stream.get('samples_per_cycle', 1) < 1):
+                        raise ValueError('each stream needs prepared and positive samples_per_cycle')
+                    if 'sampling' in stream:
+                        stream['sampling'] = sampling_policy(stream['sampling'])
+                    stream['prepared'] = str((source.parent / Path(stream['prepared']).expanduser()).resolve())
             if parts["data"].get("sharding", "single") not in ("single", "rank_strided"):
                 raise ValueError("data.sharding must be single or rank_strided")
             if "sampling" in parts["data"]:

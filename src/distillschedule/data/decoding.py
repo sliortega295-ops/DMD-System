@@ -91,6 +91,12 @@ def decode_record(record: dict, *, base_dir: str | Path | None = None) -> dict:
     """
     resolved, _ = raw_record(record, Path.cwd() if base_dir is None else Path(base_dir))
     result = deepcopy(resolved)
+    if 'image' in resolved:
+        import numpy as np
+        import torch
+        from PIL import Image
+        with Image.open(resolved['image']) as image:
+            result['image'] = torch.from_numpy(np.array(image.convert('RGB'), copy=True))
     if "video" in resolved:
         result["video"] = _video(resolved["video"])
     if "audio" in resolved:

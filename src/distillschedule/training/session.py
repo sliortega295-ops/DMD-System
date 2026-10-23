@@ -29,6 +29,7 @@ from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy, cycle_structure
 from .sampling import ProgramSampling
+from .data_streams import training_data, training_sampling, data_progress, validate_data_progress
 from .validation import Validation, admit_scope
 
 
@@ -101,8 +102,7 @@ def _same_factory(current, original):
 
 
 def construct(config, *, include_validation=False):
-    from distillschedule.data import PreparedDataset
-    dataset = PreparedDataset(config.data["prepared"])
+    dataset = training_data(config, world_size=distributed.rank_world()[1])
     _seed(config.trainer.get("seed", 0))
     components, model_source = _construct_model(config)
     algorithm, algorithm_source = load_callable(config.algorithm["factory"])
@@ -126,9 +126,9 @@ def build_cycle(config, components, dataset, algorithm, *, cycle, cursor, versio
     import torch
 
     from distillschedule.open_workload.torch_backend import Workload
-    if cursor >= len(dataset):
+    if not hasattr(dataset, 'cycle_sample') and cursor >= len(dataset):
         raise ValueError("prepared input exhausted; add samples instead of silently recycling")
-    feeds = dataset.sample(cursor)
+    feeds = dataset.cycle_sample(cursor) if hasattr(dataset, 'cycle_sample') else dataset.sample(cursor)
     device = config.trainer.get("device", "cpu")
     from torch.utils._pytree import tree_map
     feeds = tree_map(lambda value: value.to(device) if isinstance(value, torch.Tensor) else value, feeds)
@@ -197,8 +197,7 @@ def _train(config: TrainingConfig):
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
-    sampling = ProgramSampling(config.data.get("sampling"), size=len(dataset),
-                               seed=config.trainer.get("seed", 0), world_size=world)
+    sampling = training_sampling(config, dataset, world_size=world)
     sampling.admit_cycles(config.trainer["cycles"])
     start_cycle = cursor = 0
     versions = None
@@ -213,6 +212,7 @@ def _train(config: TrainingConfig):
                                        "checkpoint reading")
         distributed.checked(lambda: sampling.validate_progress(metadata["cycle"], metadata["cursor"]),
                             "checkpoint sampling progress admission")
+        distributed.checked(lambda: validate_data_progress(dataset, metadata), 'checkpoint input stream admission')
         policy.restore(metadata["policy"])
         del metadata
         session = policy.prepare_resume(workload)
@@ -267,6 +267,8 @@ def _train(config: TrainingConfig):
                    "versions": versions, "finite": True,
                    "execution": session.receipt, "policy_sha256": digest(policy.bound),
                    "timing_scope": "TRAINING_DIAGNOSTIC_INCLUDES_INITIAL_PLAN_ADMISSION"}
+            if data_progress(dataset, cursor) is not None:
+                row['data_progress'] = data_progress(dataset, cursor)
             completed_cycles_this_process += 1
             distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
                                 "training metrics publication")
@@ -274,7 +276,7 @@ def _train(config: TrainingConfig):
             if every and ((cycle + 1) % every == 0 or cycle + 1 == config.trainer["cycles"]):
                 latest = save_checkpoint(root / "checkpoints" / f"cycle-{cycle + 1:06d}", session.state,
                                          identity=identity, cycle=cycle + 1, cursor=cursor,
-                                         versions=versions, policy=policy.bound)
+                                         versions=versions, policy=policy.bound, data_progress=data_progress(dataset, cursor))
             distributed.primary(lambda: _json(root / "effective-policy.json", policy.bound), "policy publication")
         rank_results = distributed.gather({"rank": rank, "completed_cycles": config.trainer["cycles"],
                                            "cursor": cursor, "versions": versions})
@@ -308,8 +310,7 @@ def _load_for_output(config, checkpoint):
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on checkpoint output configuration, source or dataset")
     rank, world = distributed.rank_world()
-    sampling = ProgramSampling(config.data.get("sampling"), size=len(dataset),
-                               seed=config.trainer.get("seed", 0), world_size=world)
+    sampling = training_sampling(config, dataset, world_size=world)
     workload = distributed.checked(lambda: build_cycle(config, components, dataset, algorithm, cycle=0,
                                                       cursor=sampling.position(rank).sample_index),
                                    "output workload construction")
@@ -318,6 +319,7 @@ def _load_for_output(config, checkpoint):
         raise ValueError("ranks disagree on output checkpoint manifest or progress")
     distributed.checked(lambda: sampling.validate_progress(metadata["cycle"], metadata["cursor"]),
                         "output sampling progress admission")
+    distributed.checked(lambda: validate_data_progress(dataset, metadata), 'output stream progress admission')
     policy = CyclePolicy(config.execution)
     distributed.checked(lambda: policy.restore(metadata["policy"]), "output policy admission")
     def structure_admission():
@@ -344,11 +346,11 @@ def _generation_parameters(parameters):
         raise ValueError("generation parameters must be finite JSON values") from exc
 
 
-def _generate_values(config, components, feeds, parameters, *, video_required=False, latents_required=False):
+def _generate_values(config, components, feeds, parameters, *, video_required=False, latents_required=False, output_kind=None):
     import torch
     from torch.utils._pytree import tree_map
 
-    from .inference import decoded_video, latent_outputs
+    from .inference import decoded_video, decoded_media, latent_outputs
     if components.generate is None:
         raise ValueError("model adapter does not implement generation")
     for value in components.state.values():
@@ -367,6 +369,8 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
         raise ValueError("generation produced nonfinite values")
     if latents_required:
         latent_outputs(generated)
+    elif output_kind:
+        decoded_media(decoded, required_kind=output_kind)
     else:
         decoded_video(decoded, required=video_required)
     return {"generated": generated, "decoded": decoded}
@@ -446,8 +450,8 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     from distillschedule.data import PreparedDataset
 
     from .inference import read_export, restore_modules, write_generation
-    if output_kind not in ("video", "latents"):
-        raise ValueError("output_kind must be video or explicit diagnostic latents")
+    if output_kind not in ('image', 'video', 'audio', 'audio_video', 'latents'):
+        raise ValueError('unsupported output_kind')
     if distributed.rank_world()[1] != 1 or int(os.environ.get("WORLD_SIZE", "1")) != 1:
         raise ValueError("portable export generation is single-process; distributed checkpoint evaluation uses evaluate")
     if config.execution.get("adapter", "program") != "program":
@@ -469,7 +473,8 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
         raise ValueError("export model metadata changed")
     restore_modules(components, root, manifest)
     values = cpu_tree(_generate_values(config, components, feeds, parameters,
-                                      video_required=output_kind == "video", latents_required=output_kind == "latents"))
+                                      video_required=output_kind == "video", latents_required=output_kind == "latents",
+                                      output_kind=None if output_kind == 'latents' else output_kind))
     _, current = read_export(root)
     if digest(current) != digest(manifest):
         raise ValueError("export manifest changed during generation")

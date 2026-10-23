@@ -242,7 +242,7 @@ def restore_rng(value):
         np.random.set_state((name, np.asarray(values, dtype=np.uint32), position, gauss, cached))
 
 
-def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None):
+def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None):
     import torch
     if type(cycle) is not int or cycle < 0 or type(cursor) is not int or cursor < 0:
         raise ValueError("checkpoint must describe a complete cycle and data cursor")
@@ -264,6 +264,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
     allocated = distributed.topology()
     common = {"identity": identity, "cycle": cycle, "cursor": cursor,
               "versions": dict(versions), "policy": policy, "topology": allocated}
+    if data_progress is not None:
+        common['data_progress'] = data_progress
     if any(row != common for row in distributed.gather(common)):
         raise ValueError("ranks disagree on checkpoint identity or completed progress")
     path = Path(path).resolve()
@@ -278,6 +280,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
     try:
         payload = distributed.checked(lambda: {"state": pack_state(state), "rng": rng_state(), "cycle": cycle,
                    "cursor": cursor, "versions": dict(versions), "policy": policy}, "checkpoint packing")
+        if data_progress is not None:
+            payload['data_progress'] = data_progress
         filename = "state.pt" if world == 1 else f"rank-{rank:05d}.pt"
         def write_shard():
             if not staging.is_dir():
@@ -297,6 +301,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                         "identity": identity, "cycle": cycle, "cursor": cursor,
                         "versions": dict(versions), "policy": policy,
                         "topology": allocated, "torch": torch.__version__, "files": files}
+            if data_progress is not None:
+                manifest['data_progress'] = data_progress
             (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
             (staging / "_SUCCESS").write_text(_sha(staging / "manifest.json") + "\n")
             os.rename(staging, path)
@@ -348,6 +354,8 @@ def read_checkpoint(path, *, identity):
                          map_location="cpu", weights_only=True)
     if any(payload[key] != manifest[key] for key in ("cycle", "cursor", "versions", "policy")):
         raise ValueError("checkpoint progress disagrees with manifest")
+    if payload.get('data_progress') != manifest.get('data_progress'):
+        raise ValueError('checkpoint stream progress disagrees with manifest')
     return payload
 
 
