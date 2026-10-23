@@ -18,3 +18,24 @@ ownership, not permission to redistribute model weights or datasets.
 Models and data are explicitly supplied by the operator; recipes do not upload
 or download them. Source identity and original notices must accompany future
 vendoring or relocation. The root license does not replace upstream licenses.
+
+## Optional native model integrations
+
+These sources are **not vendored in the framework wheel**. The adapters require
+explicit local, file-hash-locked source closures; recipe fetch helpers are
+optional source-only actions and never fetch weights.
+
+| Integration | Pinned original source | License / limits |
+| --- | --- | --- |
+| Official DMD2 (SD1.5 / SDXL) | [tianweiy/DMD2](https://github.com/tianweiy/DMD2/tree/8d8fa55633d47cfb81bbc7a892e7248f9518763f) | **CC-BY-NC-SA-4.0**, retained and checked in the external closure; not covered by the framework Apache-2.0 grant. Review upstream terms before use/redistribution. |
+| Official Self-Forcing | [guandeh17/Self-Forcing](https://github.com/guandeh17/Self-Forcing/tree/33593df3e81fa3ec10239271dd2c100facac6de1) | Original Apache-2.0 license retained in its external source closure. Distinct from LiveWan W4. |
+| LTX-2.5 / ltx-core 1.5 | [Lightricks/LTX-2](https://github.com/Lightricks/LTX-2/tree/e98f6d927d83c92ef2be6aec76c8440b19306e39/packages/ltx-core) | **LTX-2.x Community License**, retained and hash-checked externally; not Apache-2.0 or a model-weight grant. |
+| Optional original Wan2.1 decoder | [Wan-Video/Wan2.1](https://github.com/Wan-Video/Wan2.1/tree/9737cba9c1c3c4d04b33fcad41c111989865d315) | Separate Apache-2.0 `wan/modules/vae.py` + `LICENSE.txt` closure, independent of the frozen packaged W4 source manifest. |
+
+The source importer uses private namespaces and explicitly recorded import or
+CPU/device boundary adaptations. Actual numerical bodies execute from the
+pinned source; there is no model-weight, dataset or checkpoint download in
+training. Model/tokenizer/VAE/Gemma asset licenses are separate and must be
+supplied/reviewed by the operator. Procedural/random original-class CPU
+fixtures establish interface and mathematical/lifecycle behavior only—not
+pretrained quality or permission to redistribute external assets.

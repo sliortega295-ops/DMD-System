@@ -1,38 +1,48 @@
 # DMD-System
 
-An extensible framework for **video and audio-video distribution-matching
-distillation**. DMD-System connects data preparation, model and algorithm
-adapters, continuous training, checkpoint recovery and execution planning.
+A unified framework for **image, video and audio–video distribution-matching
+distillation**. Choose a model, an explicit distillation workflow and an admitted
+execution policy; use one lifecycle for data preparation, real continuous
+updates, checkpoint recovery, generation and inference export.
 
-Model mathematics stays in the algorithm. Placement, state retention and
-execution order are selected explicitly or from measured capabilities, then
-executed by the existing runtime. The package is `distillschedule`; the common
-command is `distillctl`.
+The Python package is **`distillschedule`** and the user command is
+**`distillctl`**. Algorithm mathematics and native iteration clocks remain
+algorithm-owned. Physical placement, state lifetimes and legal execution order
+use the existing Program, distributed backends and measured planner—not another
+trainer or a hardcoded model-name winner.
 
-## Install
+## Install and discover
 
 ```sh
-python -m pip install -e '.[train,test]'
+python -m pip install -e '.[train]'
 distillctl doctor
+distillctl models list
+distillctl algorithms list
+distillctl strategies list
+distillctl capabilities list
 distillctl workloads list
 ```
 
-Choose a compatible existing environment before installing. `pip install .`
-provides lightweight JSON configuration and six-workload discovery;
-`.[config]` adds YAML, `.[media]` adds NumPy/Pillow and `.[train]` adds public
-training dependencies, including Torch >= 2.10 for the public FSDP2 API.
-Video-file decoding uses existing `ffmpeg`/`ffprobe`.
-Original distributed recipes retain their pinned native environments/assets.
+A base `pip install .` supports lightweight JSON configuration and discovery
+without Torch, CUDA initialization or model downloads. `.[config]` adds YAML;
+`.[media]` adds NumPy/Pillow; `.[train]` adds the common training dependencies.
+Existing FFmpeg/FFprobe decode local video containers. Models and datasets are
+always explicit operator-supplied assets.
 
-## A complete offline training example
+**Use separate model environments.** SD/DMD2, official Self-Forcing, original
+Wan/LiveWan, Helios helpers and LTX/Gemma have distinct pinned dependency lanes.
+Do not install all extras together. See [installation and model families](docs/guides/model_families.md).
 
-This example uses actual RGB frame files, WAV audio and text, tiny randomly
-initialized models and real DMD gradient/AdamW updates. It demonstrates the
-lifecycle; it is not pretrained generation or a quality benchmark.
+## A complete offline training lifecycle
+
+This executable example uses actual RGB frame files, WAV audio, text, tiny
+random models and real gradient/AdamW updates. It demonstrates the framework,
+not pretrained quality.
 
 ```sh
 DEMO="$(mktemp -d -t dmd-system.XXXXXX)"
 python -m distillschedule.examples.tiny_av --output "$DEMO" --samples 6
+
 distillctl data prepare "$DEMO/raw/manifest.json" --output "$DEMO/prepared"
 distillctl doctor --config "$DEMO/train.json"
 distillctl train "$DEMO/train.json"
@@ -42,55 +52,68 @@ distillctl train "$DEMO/train.json" --resume "$CP" --cycles 6 --output "$DEMO/re
 distillctl evaluate "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/generated"
 distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported"
 
-# The seventh fixture record was not part of the six-record training dataset.
-NEW_INPUTS="$DEMO/new-inputs"
-python -m distillschedule.examples.tiny_av --output "$NEW_INPUTS" --samples 7
-distillctl data prepare "$NEW_INPUTS/raw/manifest.json" --output "$NEW_INPUTS/prepared"
+# A genuinely new seventh record, not part of the six-record training input.
+NEW="$DEMO/new-inputs"
+python -m distillschedule.examples.tiny_av --output "$NEW" --samples 7
+distillctl data prepare "$NEW/raw/manifest.json" --output "$NEW/prepared"
 distillctl generate "$DEMO/train.json" --weights "$DEMO/exported" \
-  --prepared "$NEW_INPUTS/prepared/manifest.json" --sample-index 6 --output "$DEMO/new-generated"
+  --prepared "$NEW/prepared/manifest.json" --sample-index 6 --output "$DEMO/new-generated"
 ```
 
-`evaluate` restores a training checkpoint; `generate --weights` instead loads
-portable inference weights with an explicit new prepared input. It needs neither
-the original training data nor optimizer/checkpoint state, but the model factory
-source, effective arguments and module layout must still match. Decoded PNG
-frames are diagnostic, not evidence of pretrained quality.
+Configuration has five independent sections: **model, data, algorithm,
+execution, trainer**. Data can be raw images/video/audio/text, prompt-only, or
+already encoded native features; model-specific encoders prepare features
+offline. Independent generator/guidance/real-image streams keep their own
+sample progress. Missing conditioning never falls back to synthetic tensors.
 
-Configuration has five sections: **model, data, algorithm, execution, trainer**.
-Data and adapter paths are explicit, with no implicit model downloads or
-synthetic-data fallback. Read [the tutorial](examples/framework/README.md),
-[data guide](docs/guides/data.md) and [training/recovery](docs/guides/training.md).
+A training checkpoint saves actual roles, optimizer/scheduler/EMA state, native
+and public clocks, RNG, input progress and versions. Recovery is at complete
+cycle boundaries with the same topology; it is not weight-only initialization.
+Portable inference export contains current Student/Generator weights and the
+required owned inference components, **not** resumable optimizer/data state.
+`generate --weights` uses new explicit inputs and does not need old training
+artifacts. Outputs are actual images, video frames, WAV audio or AV where the
+adapter supplies real decoders; explicit native latents are never called media.
 
-## Six original workloads
+Read [data formats](docs/guides/data.md), [training and recovery](docs/guides/training.md)
+and [the end-to-end tutorial](examples/framework/README.md).
 
-| ID | Protocol | Native recipe |
+## Models and algorithms
+
+| Integration | Reference workflow | Entry and scope |
 | --- | --- | --- |
-| W1 | Wan1.3B hierarchical AR No-GAN DMD | [Wan](recipes/wan_ar/README.md) |
+| SD1.5 | Official DMD2 single-step; optional original GAN branch | [Recipe and local image/prompt intake](recipes/dmd2_sd15/README.md) |
+| SDXL | Official DMD2 four-step and explicitly initialized single-step; dual CLIP/added conditions | [Recipe](recipes/dmd2_sdxl/README.md) |
+| Official Self-Forcing Wan | Native causal chunk rollout, random gradient exit, KV cache, DMD loss and EMA/update clocks | [Recipe](recipes/self_forcing_official/README.md) |
+| LTX-2.5 | Actual LTX AV model/codecs/Gemma with reusable No-GAN flow DMD; full parameters or unmerged LoRA | [Recipe; start with LoRA](recipes/ltx25/README.md) |
+
+The new integrations execute actual upstream model classes at bounded small
+CPU configurations, with real backward, source-oracle checks where provided,
+fresh-process recovery and current-model export/generation. Their explicit
+CPU scopes **do not qualify pretrained quality, full-size GPU/distributed
+execution or performance**. There are no bundled model weights or automatic
+Hub downloads. Original DMD2 and LTX sources remain external under their own
+licenses; they are not relicensed as Apache-2.0.
+
+Official Self-Forcing is **not** the existing W4 LiveWan cross-scale workflow.
+The generic flow-DMD recipe is **not** a replacement for either official loss.
+
+## Six preserved native workloads
+
+| ID | Distinct protocol | Recipe |
+| --- | --- | --- |
+| W1 | Wan1.3B hierarchical No-GAN DMD | [Wan](recipes/wan_ar/README.md) |
 | W2 | Helios14B No-GAN, G1/C5/EMA5 | [Helios No-GAN](recipes/helios_nogan/README.md) |
 | W3 | Helios14B DMD + GAN, G1/C5/EMA1 | [Helios GAN](recipes/helios_gan/README.md) |
-| W4 | Self-Forcing / LiveWan, 14B Teacher → 1.3B Student | [C51 Self-Forcing](recipes/self_forcing/README.md) |
-| W5 | Full-sequence audio-video H3, approximate Grid1000 | [Full-sequence H3](recipes/h3_fullseq/README.md) |
-| W6 | Original DiffSynth AR audio-video H3, continuous sigma | [H3 AR](recipes/h3_ar/README.md) |
+| W4 | LiveWan cross-scale Self-Forcing, 14B Teacher → 1.3B Student | [LiveWan](recipes/self_forcing/README.md), [current-G CPU lifecycle](recipes/self_forcing/CPU_PUBLIC.md) |
+| W5 | Full-sequence H3 audio–video, explicitly approximate Grid1000 | [Full-sequence H3](recipes/h3_fullseq/README.md) |
+| W6 | DiffSynth autoregressive previous/current audio–video, continuous sigma | [H3 AR](recipes/h3_ar/README.md) |
 
-Each recipe contains a public `training.json` that lowers to the original
-runtime and source/capacity/input gates. Saved selections actually reach that
-runtime. Native execution requires a checkout and qualified local assets;
-existing APIs retain their actual cycle and lifecycle limits. Consult the
-[native guide](docs/guides/native_workloads.md) and
-[support matrix](docs/guides/support_matrix.md).
-
-Fresh original-engine training and complete-cycle restart are separately
-available for [Wan](docs/workloads/original_wan_fresh_training.md),
-[Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md),
-[Self-Forcing](recipes/self_forcing/REFERENCE_TRAINING.md), and
-[Grid1000 H3](recipes/h3-grid-original-training.md). Separately versioned CPU
-Program references connect the actual original [W1 No-GAN Full5 model and trainer](recipes/wan_ar/CPU_REFERENCE.md),
-[W2 warm No-GAN model and trainer](recipes/helios_nogan/CPU_REFERENCE.md),
-[Helios GAN model and trainer](recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
-and [cached previous/current H3 AR source](recipes/h3_ar/CPU_REFERENCE.md),
-including real gradients and safe fresh-process continuation. Their input/checkpoint
-contracts remain explicit; they do not turn all six historical two-cycle
-workers into arbitrary-length pretrained trainers.
+Original source, hardware, precision, capacity and numerical gates remain.
+Native selected-plan workers retain their actual lifecycle limits; separately
+versioned continuous reference paths are not permission to widen a frozen
+benchmark. See the [support matrix](docs/guides/support_matrix.md) and
+[native guide](docs/guides/native_workloads.md).
 
 ```sh
 distillctl workloads describe --workload W4
@@ -99,131 +122,50 @@ distillctl config validate recipes/helios_nogan/training.json
 distillctl train recipes/helios_nogan/training.json --dry-run
 ```
 
-Replace explicit recipe asset/plan placeholders before admission. Discovery
-does not import models or initialize CUDA. Older immutable profiles remain
-available with `distillctl workloads list --legacy`.
+Replace recipe asset placeholders before execution. The old five locked
+profiles remain available with `distillctl workloads list --legacy`.
+Existing A100/H100 results retain separate [source](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md)
+and [H100](docs/status/H100_SOURCE_SNAPSHOT_20261019.md) identities; this framework
+integration does not rerun them or turn CPU tests into hardware claims.
 
-## Add a model or workflow
+## Execution and extension
 
-A model factory constructs named roles, optimizers and optional state; an
-encoder prepares native features. An algorithm factory describes one cycle
-with existing DMD hooks or `Program`/`Call`. The trainer owns continuous data
-progress, metrics and complete-cycle save/recovery.
+`reference` is a usable starting point; automatic planning is optional.
+`manual` selects an admitted implementation; `auto` measures real candidates
+and runs the existing constrained solver; `plan` executes that saved,
+source-bound selection. The implementation and actual operation/version/effect
+receipts are recorded. Unsupported layouts or stale caches fail closed rather
+than falling back to an old script. Ray is not a required dependency.
 
-Start with [the external model template](examples/framework/newmodel.py) and
-[extension guide](docs/guides/extensions.md). Adding that model needs no solver
-branch. Loss, history, GAN and update logic remain algorithm-owned; supported
-backends and optimization capabilities are declared separately.
+See [physical capabilities](docs/guides/optimization_capabilities.md),
+[framework architecture](docs/architecture/framework.md) and
+[native planning](docs/runbooks/native_planner_workflow.md).
 
-## Strategies and automatic planning
+Three independent extension seams are supported:
 
-Use `execution.mode: reference` first, or supply an admitted manual policy.
-`auto` measures supported candidates, runs the shared constrained search and
-executes its selection after the original reference gate. `plan` replays a
-source-bound saved selection. Training records the implementation, executed
-operations and logical versions.
+1. **Model/data adapter:** checkpoint, prediction meaning, trainables, encoders,
+   modalities and generation; reuse a compatible algorithm.
+2. **Workflow:** native rollout/loss/update dependencies through existing DMD
+   hooks or Program, reusing models and backends.
+3. **Physical capability:** actual execution, applicability, effect counters and
+   measured costs; no model-name branch in the general solver.
 
-Existing advanced entrypoints remain available:
+Start with [the new-model template](examples/framework/newmodel.py),
+[the stateful-workflow template](examples/framework/newworkflow.py) and
+[extension contracts](docs/guides/extensions.md). Installed packages may
+advertise model/algorithm entry points; discovery reads metadata without
+executing their trusted Python code.
 
-```sh
-distillctl workloads native program --help
-distillctl workloads native validate --task configs/distillschedule/original_h3_ar/w6_reference.json
-```
+## Development and licenses
 
-See [architecture](docs/architecture/framework.md),
-[native planning](docs/runbooks/native_planner_workflow.md) and
-[role pools](docs/workloads/open_role_pools.md). Distributed backends retain
-their independent admission; Ray is not required.
+Run the [CPU verification lanes](docs/guides/model_families.md#verification-lanes)
+in their separate environments. The package's installed-wheel acceptance runs
+outside the checkout and verifies fresh-process training/recovery, a measured
+saved plan and genuinely new-input decoded generation after removing training
+artifacts. See [the current integration receipt](docs/status/FRAMEWORK_MODEL_EXPANSION_CPU_20261023.md)
+for source-scoped tests and unvalidated capabilities.
 
-## Development
-
-```sh
-python -m pytest -q tests/test_data_*.py tests/test_training_*.py
-python scripts/check_framework_install.py
-python scripts/check_wheel_install.py
-distillctl workloads verify-catalog --repo-root .
-python scripts/distillschedule/check_best_known_integration.py
-```
-
-The [current framework acceptance and limits](docs/status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md)
-cover the common lifecycle and all six distinct reference integrations, including
-the actual original Helios GAN and cached-H3 CPU paths. Earlier dated reports
-remain source-scoped history, not the current capability inventory.
-
-CPU checks cover actual media, real autograd, optimizer state, fresh-process
-restart, selected-plan execution and an external model. Installed-wheel
-acceptance also generates decoded frames from exported weights on genuinely new
-inputs after removing the original training data and checkpoints. Hardware-qualified
-records remain in the [source index](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md)
-and [H100 index](docs/status/H100_SOURCE_SNAPSHOT_20261019.md); this integration
-does not remeasure large-model performance or quality.
-
-Original-helper CPU tests have separate optional dependencies from the public
-tiny example and native CUDA environments. On Linux x86-64,
-`.[train,test,test-helios]` qualifies the licensed Helios helpers, including real
-`kernels`/Triton imports without compiling or launching a kernel. The dedicated
-[H3 CPU workflow](.github/workflows/h3-grid-native-cpu.yml) also reads exact
-LightX2V/Diffusers source commits and installs `test-h3`; it is not a model
-download or an installation recipe for a CUDA cluster. Those native runtimes
-must still pass their own pinned source/backend/dependency checks.
-
-The separate `native-wan` tests require Diffusers 0.35.2; the Helios CPU helper
-extra pins 0.34.0. Use separate qualified environments/overlays for those groups,
-not a combined `test-helios,native-wan` install. Neither group replaces a
-model-native CUDA environment or downloads model weights.
-
-The [full-original Helios model provider](docs/guides/native_workloads.md#explicit-full-original-helios-model-reference)
-has its own public `helios-reference` Diffusers0.37.1 runtime, separate from
-both pins above. Public training needs `.[train,helios-reference]`, not pytest.
-Its source-qualified CPU tests add `test` independently:
-
-```sh
-# Use a separate environment, not the 0.34 helper or 0.35 Wan environment.
-python -m pip install -e '.[train,test,helios-reference]'
-python -m pytest -q tests/test_helios_reference_model_cpu.py
-```
-
-Its [dedicated workflow](.github/workflows/helios-reference-model-cpu.yml) uses
-minimum Torch 2.10 CPU on Python 3.10/3.12 and requires the actual full-source
-flow/GAN, fresh-process model save/load, and true PEFT/original-helper restart
-tests without skips. That dedicated dependency lane also requires the actual
-original public W3 data, both GAN backward policies, checkpoint continuation
-and portable current-G tests. It also requires W1's actual original
-BF16-base/FP32-LoRA Full5, fresh-process continuation and current-G inference;
-that CPU1 per-sample diagnostic is not world16 numerical qualification.
-The general 0.34 helper lane is not repinned.
-CPU full-class execution does not qualify pretrained, CUDA or performance behavior.
-
-The independent `.[train,test,h3-cached-reference]` extra admits only the
-[licensed cached-AV source derivative](recipes/h3_ar/CPU_REFERENCE.md), not a
-complete DiffSynth/SFT distribution. Its [dedicated CPU workflow](.github/workflows/h3-cached-reference-cpu.yml)
-requires original source, actual H3/LoRA/Adam updates and both flat/packed
-fresh-process continuation proofs without skips. No model weights are bundled.
-
-For original Helios G, [portable export and explicit native latent generation](recipes/helios_gan/PORTABLE_INFERENCE_CPU.md)
-use the common inference interface after removing old training data and
-checkpoints. Without a real decoder, default video generation still refuses;
-latent diagnostics are never relabeled as generated videos.
-The [cached H3 current-Student companion](recipes/h3_ar/PORTABLE_INFERENCE_CPU.md)
-likewise exports actual current unmerged weights for new-condition audio/video
-latent inference. Its [source-scoped CPU acceptance](docs/status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md)
-includes an installed-wheel, three-process training/restart/export/generation proof.
-
-## Organization
-
-```text
-src/distillschedule/  data, model interfaces, algorithms, training, backends, runtime and planner
-recipes/             six original-model requests and guides
-examples/            tutorials and new-model templates
-runtime/             packaged, audited compatibility mechanisms
-configs/             typed tasks, backend fragments and locked historical profiles
-scripts/             entrypoints, native launchers and verification
-tools/               standalone preparation and profiling tools
-benchmarks/          developer kernel/state canaries
-docs/                architecture, guides, contracts, runbooks and evidence
-tests/               lifecycle, protocol, source and distributed regressions
-third_party/         pinned upstream source and original notices
-```
-
-[Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) ·
-[License](LICENSE) · [Third-party notices](THIRD_PARTY.md)
+Contributions must retain semantics and include real update/recovery or effect
+proof as appropriate; see [CONTRIBUTING](CONTRIBUTING.md). Framework-authored
+code is Apache-2.0. [Third-party notices](THIRD_PARTY.md), original source and
+model/data licenses remain authoritative.

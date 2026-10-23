@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from test_training_self_forcing_cpu import source_root
+from test_training_self_forcing_cpu import source_root, fixture_assets
 from test_training_end_to_end import equal
 
 
@@ -112,3 +112,39 @@ def test_preencoded_native_condition_rejection(corruption):
         row['prompt_embeds'] = torch.zeros(1, 16, 8)
     with pytest.raises(ValueError):
         validate_row(row, shape=(1, 8, 16))
+
+
+def test_raw_native_t5_prompt_streams_reach_real_training_and_video(text_assets, fixture_assets, tmp_path):
+    """Join the actual offline encoder to the same public native training path."""
+    from distillschedule.data.self_forcing_inputs import encode_text, prepare_inputs, SCHEMA
+    from distillschedule.training.config import load_training_config
+    from distillschedule.training.session import train, evaluate
+    from distillschedule.workloads.best_known.registry import file_sha256
+    root, encoder = text_assets
+    negative = encode_text('', encoder, base_dir=root)['prompt_embeds']
+    assets_path = Path(fixture_assets['assets'])/'assets.json'
+    assets = json.loads(assets_path.read_text())
+    negative_path = assets_path.parent/assets['negative_prompt_embeds']['path']
+    torch.save(negative, negative_path)
+    assets['negative_prompt_embeds']['sha256'] = file_sha256(negative_path)
+    assets_path.write_text(json.dumps(assets))
+    config_path = Path(fixture_assets['config'])
+    config = json.loads(config_path.read_text())
+    config['model']['parameters']['settings']['negative_prompt'] = ''
+    config['data']['streams'] = {}
+    for role, count in (('generator', 1), ('critic', 5)):
+        source = root/(role+'-raw.json')
+        source.write_text(json.dumps(dict(schema_version=SCHEMA, mode='prompts', encoder=encoder,
+            records=[dict(id=f'{role}-raw-{index}', prompt=('hello world' if role == 'generator'
+                else 'a different world')+f' {index}') for index in range(count)])))
+        prepared = prepare_inputs(source, root/(role+'-prepared'))
+        config['data']['streams'][role] = dict(prepared=str(prepared), samples_per_cycle=count)
+    config['trainer'].update(cycles=1, output_dir=str(tmp_path/'actual-text-run'))
+    config_path.write_text(json.dumps(config))
+    request = load_training_config(config_path)
+    result = train(request)
+    assert result['final_versions']['native_cycle'] == 1
+    generated = evaluate(request, result['checkpoint'], tmp_path/'actual-text-video')
+    assert generated['video']['shape'] == [81, 32, 32, 3]
+    assert len(list(Path(generated['video']['frames']).glob('*.png'))) == 81
+    assert not torch.cuda.is_initialized()

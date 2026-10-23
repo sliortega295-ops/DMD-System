@@ -36,9 +36,10 @@ export PYTHONPATH=src
 ```sh
 "$PY" recipes/ltx25/create_cpu_fixture.py "$RUN/fixture" \
   --source-root "$LTX_SOURCE_ROOT" --cycles 3
-"$PY" -m distillschedule train "$RUN/fixture/training.json"
-# Same actual native bases, but independent trainable low-rank A/B parameters:
-"$PY" -m distillschedule train "$RUN/fixture/training.lora.json"
+# Start with independent, unmerged trainable LoRA A/B parameters.
+distillctl train "$RUN/fixture/training.lora.json"
+# Full-parameter reference uses the same algorithm and lifecycle:
+distillctl train "$RUN/fixture/training.json"
 ```
 
 The fixture writes procedural PNG image/3-frame video, stereo PCM WAV and text.
@@ -175,12 +176,12 @@ binary 1=valid; floating B11L masks are native additive 0/-finfo.max only.
 ## Common checkpoint and portable AV output
 
 ```sh
-"$PY" -m distillschedule train "$RUN/fixture/training.json" --cycles 1 --output "$RUN/partial"
-"$PY" -m distillschedule train "$RUN/fixture/training.json" --cycles 3 \
+distillctl train "$RUN/fixture/training.json" --cycles 1 --output "$RUN/partial"
+distillctl train "$RUN/fixture/training.json" --cycles 3 \
   --resume "$RUN/partial/checkpoints/cycle-000001" --output "$RUN/resumed"
-"$PY" -m distillschedule evaluate "$RUN/fixture/training.json" \
+distillctl evaluate "$RUN/fixture/training.json" \
   --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/evaluation"
-"$PY" -m distillschedule export "$RUN/fixture/training.json" \
+distillctl export "$RUN/fixture/training.json" \
   --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/export"
 ```
 

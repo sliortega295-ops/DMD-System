@@ -25,7 +25,7 @@ flowchart TD
 | Concern | Public seam | Execution ownership |
 | --- | --- | --- |
 | Models | `training.ModelComponents` returned by a trusted model factory | Named modules, optimizers and optional scheduler/EMA/history state; model-owned encode/generate/decode/export functions |
-| Data | `data.PreparedDataset`, `prepare`, `import_preencoded` | Exact tensor trees, sample IDs, hashes, original conditioning and ordered cursor |
+| Data | `data.PreparedDataset`, independent `InputStreams`, model-native offline preparers | Exact tensor trees, sample IDs, hashes, original conditioning and ordered cursor |
 | Algorithm | Existing `DMDHooks`, `Program`, `Call`, or a native recipe | Actual loss, sample policy, G/C update order, EMA and history semantics |
 | Lifecycle | `training.session` and complete-cycle checkpoint API | Persistent owned training state, data progress, metrics and recovery |
 | Placement and state policy | Existing `ExecutionPlan`, capabilities, calibration and search | Only admitted Resident/FSDP2/HSDP/ZeRO-3/role-pool paths; backend support is explicit |
@@ -104,3 +104,22 @@ These are structural references, not new runtime dependencies or claims that
 DMD-System implements every capability of either project. DMD-System's
 state/version graph and DMD-specific retained-state capabilities remain its own
 interfaces; Ray is not a required dependency.
+
+
+## Model, workflow and physical strategy are independent axes
+
+The lazy model/algorithm catalogs and installed-package entry points select
+factories, not hardware winners. `PredictionSpec` and effective model
+capabilities are source/checkpoint-bound; epsilon, velocity, flow and x0 cannot
+be swapped merely because shapes match. The generic No-GAN flow protocol is
+reused by actual LTX and an independent non-LTX model. Official SD DMD2 and
+Self-Forcing retain their own numerical native owners and native iteration
+clocks instead of adopting that generic policy.
+
+A native optimizer-containing macrocall remains atomic and not replay-safe.
+Optional finite owner execution descriptors let the existing measured
+candidate library scope a real implementation inside it, without another
+solver or a model-name branch. The first implementation is actual DMD2 UNet
+checkpointing. Its effects, source and restored flag lifetime are observable;
+its paired reference and restart gates do not make the owner generically
+shardable. Catalog discovery itself enables no optimization.

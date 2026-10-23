@@ -106,3 +106,87 @@ def build(components, feeds, parameters, cycle, seed):
     evaluated = run_cli('evaluate', path, '--checkpoint', result['checkpoint'],
                         '--output', tmp_path / 'evaluated', '--sample-index', 0)
     assert evaluated['sample_id'] == 'sample-000000'
+
+
+def _multistream_fixture(tmp_path):
+    """Real prepared media and two independently consumed stream records."""
+    root = tmp_path / 'media'
+    build_fixture(root, samples=12)
+    prepare(root / 'raw/manifest.json', root / 'prepared')
+    workflow = tmp_path / 'multistream-workflow.py'
+    workflow.write_text('''from distillschedule.examples.tiny_av import build_algorithm
+def build(components, feeds, parameters, cycle, seed):
+    inputs = dict(feeds['generator'][0])
+    inputs['condition'] = (feeds['critic'][0]['condition'] + feeds['critic'][1]['condition']) / 2
+    return build_algorithm(components, inputs, parameters, cycle, seed)
+''')
+    raw = json.loads((root / 'train.json').read_text())
+    raw['data'] = {'streams': {name: {
+        'prepared': str(root / 'prepared/manifest.json'), 'samples_per_cycle': count}
+        for name, count in (('generator', 1), ('critic', 2))}}
+    raw['algorithm']['factory'] = str(workflow) + ':build'
+    path = root / 'multistream.json'
+    path.write_text(json.dumps(raw))
+    return root, path
+
+
+def test_two_rank_unequal_stream_counts_resume_all_state_and_sample_order(tmp_path):
+    from test_training_distributed import _launch
+    from test_training_end_to_end import equal
+    _, config = _multistream_fixture(tmp_path)
+    first = _launch(tmp_path, config, 'first', 1, 'post_backward')
+    resumed = _launch(tmp_path, config, 'resumed', 3, 'post_backward',
+                      first / 'checkpoints/cycle-000001')
+    whole = _launch(tmp_path, config, 'whole', 3, 'post_backward')
+    for rank in range(2):
+        relative = f'checkpoints/cycle-000003/rank-{rank:05d}.pt'
+        assert equal(torch.load(resumed / relative, weights_only=True),
+                     torch.load(whole / relative, weights_only=True))
+        rows = [json.loads(line) for line in
+                (resumed / f'ranks/rank-{rank:05d}/metrics.jsonl').read_text().splitlines()]
+        for row, cycle in zip(rows, (1, 2)):
+            assert row['sample_id'] == {
+                'generator': [f'sample-{cycle * 2 + rank:06d}'],
+                'critic': [f'sample-{cycle * 4 + rank:06d}',
+                           f'sample-{cycle * 4 + 2 + rank:06d}']}
+            assert row['data_progress']['generator']['cursor'] == (cycle + 1) * 2
+            assert row['data_progress']['critic']['cursor'] == (cycle + 1) * 4
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('corruption', ['missing', 'inconsistent', 'shard_disagreement'])
+@pytest.mark.parametrize('operation', ['train', 'evaluate'])
+def test_public_multistream_checkpoint_rejects_corrupt_progress_before_output(tmp_path, corruption, operation):
+    from pathlib import Path
+    from test_training_end_to_end import run_cli
+    from distillschedule.workloads.best_known.registry import file_sha256
+    import os
+    import subprocess
+    import sys
+    root, config = _multistream_fixture(tmp_path)
+    trained = run_cli('train', config, '--cycles', 1, '--output', root / 'first')
+    checkpoint = Path(trained['checkpoint'])
+    payload = torch.load(checkpoint / 'state.pt', weights_only=True)
+    manifest = json.loads((checkpoint / 'manifest.json').read_text())
+    if corruption == 'missing':
+        payload.pop('data_progress')
+        manifest.pop('data_progress')
+    else:
+        payload['data_progress']['critic']['cursor'] += 1
+        if corruption == 'inconsistent':
+            manifest['data_progress'] = payload['data_progress']
+    torch.save(payload, checkpoint / 'state.pt')
+    manifest['files']['state.pt'] = file_sha256(checkpoint / 'state.pt')
+    (checkpoint / 'manifest.json').write_text(json.dumps(manifest))
+    (checkpoint / '_SUCCESS').write_text(file_sha256(checkpoint / 'manifest.json') + '\n')
+    before = {p.name: file_sha256(p) for p in checkpoint.iterdir() if p.is_file()}
+    output = root / 'rejected'
+    arguments = (['--resume', str(checkpoint), '--cycles', '2'] if operation == 'train'
+                 else ['--checkpoint', str(checkpoint)])
+    result = subprocess.run([sys.executable, '-m', 'distillschedule', operation, str(config),
+                             *arguments, '--output', str(output)],
+                            text=True, capture_output=True, env=os.environ.copy(), timeout=90)
+    assert result.returncode != 0
+    assert 'progress' in result.stderr, result.stdout + result.stderr
+    assert not output.exists()
+    assert before == {p.name: file_sha256(p) for p in checkpoint.iterdir() if p.is_file()}

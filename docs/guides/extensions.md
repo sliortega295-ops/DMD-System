@@ -56,18 +56,14 @@ export callbacks are currently unsupported. The built-in distributed exporter
 gathers full tensors on all owning ranks and writes shared files on primary.
 
 `generate(state, feeds, parameters)` receives the new prepared sample under
-no-grad with every declared module in evaluation mode. Its actual
-`decode(value, parameters)` for portable video generation returns nonempty THWC
-uint8 RGB/RGBA `video` (or generate may return that explicit decoded contract
-itself, as a mapping containing `video`). Legacy checkpoint `evaluate` also
-supports non-video safe tensor outputs without manufacturing frames; its receipt
-then reports `video.status=NOT_AVAILABLE`. If a `video` key is supplied, its
-shape/dtype are mandatory. The framework saves diagnostic pixels without latent
-resizing or inferred decoding, and keeps quality validation **NOT_RUN**.
-Callback parameters are finite canonical JSON; distributed evaluation admits
-their common digest before any forward. Receipts preserve this actual parameter
-map and the runtime `trainer.seed`, reseeded immediately before generation,
-separately from any model-factory initialization seed.
+no-grad with declared modules in evaluation mode. Its `decode(value,
+parameters)` returns explicit real media: `image` HWC uint8, `video` THWC uint8,
+`audio` with finite TC samples/native sample rate, or both AV. The requested
+portable `--output-kind` must be actually present. Explicit named native
+latents need their exact `latent_schema`; they are never relabeled as media.
+See [output contracts](training.md#generate-and-export) for serialization,
+legacy checkpoint evaluation and finite JSON `--parameters` behavior. Quality
+validation remains NOT_RUN; the framework does not synthesize a renderer.
 
 An offline encoder takes decoded media plus its parameter mapping and returns
 the native tensor feeds expected by the model. Reuse that model's local
@@ -192,3 +188,32 @@ with each tensor's exact `layout`, `shape`, and Torch `dtype`. The default
 `video` path remains decoded THWC uint8 media and refuses a fake decoder.
 A latent diagnostic is not a generated video or a quality metric. See the
 [actual original current-G example](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md).
+
+
+## Installed model and workflow plugins
+
+A trusted independently installed package can register factories without
+modifying the framework or general solver:
+
+```toml
+[project.entry-points."distillschedule.models"]
+my-model = "my_package.adapter:build_model"
+[project.entry-points."distillschedule.algorithms"]
+my-workflow = "my_package.workflow:build_algorithm"
+```
+
+Use `model.name: my-model` / `algorithm.name: my-workflow` in the same training
+configuration, or keep an explicit `factory`. Discovery reads distribution
+metadata only; it never calls `EntryPoint.load()` or imports the advertised
+module. Builtin names, duplicate names and non-plain installed references are
+rejected. Effective prediction/capabilities are admitted from the constructed
+`ModelComponents` and bound to checkpoint identity, not trusted from catalog
+advertising. Plugins remain trusted Python, not sandboxed code; pin their
+helper/runtime/assets in model metadata.
+
+To reuse the explicit generic flow-DMD algorithm rather than write another
+loss, implement the role method contract in
+[physical capabilities](optimization_capabilities.md#model-adaptation-not-optimization-script-copying).
+LTX demonstrates an actual different AV architecture using this same algorithm,
+while a rank-two non-LTX model tests the absence of a fixed layout assumption.
+Official DMD2 and Self-Forcing preserve their own mathematics instead.

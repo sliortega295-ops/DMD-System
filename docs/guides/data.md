@@ -66,7 +66,7 @@ the **top-level manifest's directory**, including paths introduced by includes.
 ```
 
 Every record requires a unique, nonempty `id` and at least one of `video`,
-`audio`, or `text`. The `metadata` objects are optional finite JSON. Unknown
+`audio`, `image`, or `text`. The `metadata` objects are optional finite JSON. Unknown
 record fields are rejected rather than guessed. Video/audio references are a
 local path string or an object containing only `path`. Text is explicitly
 `{"path": "..."}` or `{"value": "..."}`; a bare string is not guessed to be
@@ -76,6 +76,7 @@ The generic decoder supplies the encoder with:
 
 | Record field | Decoded value |
 | --- | --- |
+| `image` | CPU `torch.uint8` RGB tensor `[height, width, 3]`; generic Pillow RGB conversion, no resize |
 | `video` | CPU `torch.uint8` RGB tensor `[frames, height, width, 3]` |
 | `audio` | `{"samples": CPU float32 [samples, channels], "sample_rate": int}` |
 | `text` | Exact UTF-8 string, retaining whitespace |
@@ -273,3 +274,47 @@ replace the distributed native input ABIs above:
 These are opt-in local CPU references. Sources, shapes, precision and evidence
 labels remain explicit, and the production recipes never invoke the statistics
 encoder from the tiny media example.
+
+
+## Images, prompt-only data and model-native preparers
+
+The raw v1 record also accepts `image: "picture.png"` or
+`image: {"path": "picture.png"}`. Generic image decoding uses Pillow RGB and
+returns HWC uint8 without spatial resizing. Model-native preparers may impose
+stricter color/geometry requirements: SD's real-image VAE path requires exact
+single-frame RGB and does not silently convert, crop or resize.
+A text-only record is valid; no video or fabricated media is mandatory.
+
+Use the same CLI with the model's explicit preparer:
+
+```sh
+distillctl data prepare inputs.json --output prepared \
+  --preparer distillschedule.data.sd_inputs:prepare_inputs
+# Alternatives: distillschedule.data.self_forcing_inputs:prepare_inputs
+# or distillschedule.data.ltx_inputs:prepare_inputs
+```
+
+Native manifests carry their own versioned schemas. SD owns CLIP tokenization
+and optional actual local VAE encoding; official Self-Forcing owns its actual
+local T5/tokenizer; LTX owns its actual Gemma/AV VAE/token transforms. These are
+not interchangeable with the tiny example's statistics encoder. Source,
+checkpoint and conditioning identities are adapter-owned and bound to prepared
+provenance. The pipeline never fills missing conditions with random features.
+SD input schema v2 binds the actual variant and relative tokenizer file hashes
+to every prepared tensor row and to model admission; image latents additionally
+bind actual VAE file/configuration hashes. Same-shaped incompatible bundles are
+rejected before updates and generation, including external checkpoint-evaluation
+inputs and new inputs to inference-only exports. Byte-identical relocated
+tokenizers/VAE assets remain compatible; export generation never reopens the
+original preparation/base-model paths. Supplied preencoded SD latents require
+`preencoded_vae_compatibility: PREENCODED_LATENTS_MATCH_LOCAL_VAE`, a caller's
+explicit assertion against the pinned VAE, not an encoder-execution claim.
+
+`data.streams` in a training request declares independent prepared manifests,
+`samples_per_cycle` and optional per-stream epoch
+sampling. Each stream has its own saved sampler/position and independently
+derived sampling seed, without consuming the training RNG. This represents
+DMD2 Generator/guidance/denoising/real-image consumption and official
+Self-Forcing's separate G/C prompts; the algorithm admits the exact required
+counts. Do not turn independent streams into one shared advancing iterator.
+See [model families](model_families.md) for exact recipes.

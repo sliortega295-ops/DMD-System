@@ -329,19 +329,35 @@ of factory initialization or RNG consumed assembling a training workload.
 Receipts record this `inference_seed` separately from the exported model's seed,
 alongside the actual canonical `generation_parameters` passed to the callbacks.
 
-Portable `generate` requires the decoded-video capability: the decoder returns
-`{"video": tensor, ...}` with nonempty THWC uint8 RGB/RGBA video (or generation
-already returns this decoded contract). `generation.pt` retains the
-generated/decoded values; PNGs in
-`frames/` preserve the decoder's exact pixels and dimensions. There is no latent
-resize, guessed normalization or substitute quality renderer. Missing generation
-or compatible decoding support rejects before output creation. For compatibility
-with non-video models, legacy `evaluate` may instead save latent/audio/other safe
-outputs to `generation.pt` without PNGs and explicitly reports
-`video.status=NOT_AVAILABLE`. Malformed explicitly supplied video still rejects.
-Video outputs are
-diagnostic frames, not evidence of useful pretrained quality: FVD, VBench and
-other quality validation remain **NOT_RUN**.
+Portable `generate` defaults to decoded video, but explicitly supports
+`--output-kind image|video|audio|audio_video|latents`. The adapter must actually
+supply the requested output; no guessed latent reshape is a decoder.
+
+| Output kind | Actual decoded contract | Files |
+| --- | --- | --- |
+| image | `image`: nonempty HWC uint8 RGB/RGBA | `image.png` and safe tensor artifact |
+| video | `video`: nonempty THWC uint8 RGB/RGBA | exact diagnostic PNG frames and safe artifact |
+| audio | `audio`: `{samples: finite floating TC in [-1,1], sample_rate: positive int}` | PCM16 WAV at the declared native rate and safe artifact |
+| audio_video | both the audio and video contracts above | frame directory + WAV; not an implicitly muxed movie |
+| latents | named finite floating tensors and each exact layout/shape/dtype in `latent_schema` | explicitly labeled native diagnostic, not media |
+
+Audio samples are explicitly converted to FP32 for PCM serialization (including
+BF16 input), clamped to [-1,1] and quantized to PCM16; no rate or channel count
+is guessed or resampled. Original safe tensor output is also retained. Video
+and image pixels preserve the decoder's declared dimensions. Missing generation
+or requested decoding support rejects before output publication. Legacy
+checkpoint `evaluate` may keep non-media safe tensor results and report
+`video.status=NOT_AVAILABLE`; malformed explicitly supplied media still fails.
+
+Both `evaluate` and `generate` accept `--parameters path/to/finite.json`, an
+explicit JSON object passed to the model's native generation/decoder. Duplicate
+keys, nonfinite values and wrong root types reject. Parameter meaning and any
+pinned codec assets are admitted by that model; the CLI never infers them.
+For example, DMD2 explicitly selects `--output-kind image`, LTX selects
+`--output-kind audio_video`, and a decoder-free H3 route uses `latents`.
+
+Decoded outputs remain diagnostic. Pretrained quality, FVD and VBench are
+**NOT_RUN** in this framework integration.
 
 Custom formats require paired `export` and explicit `load_export` callbacks;
 see [the extension contract](extensions.md). The framework never infers a loader

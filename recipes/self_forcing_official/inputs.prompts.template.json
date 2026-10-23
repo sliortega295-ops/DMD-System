@@ -1,0 +1,31 @@
+{
+  "schema_version": "distillschedule.official_self_forcing_inputs.v1",
+  "mode": "prompts",
+  "encoder": {
+    "source_root": "/REPLACE_WITH/pinned-official-self-forcing-source",
+    "config": {
+      "vocab": 256384,
+      "dim": 4096,
+      "dim_attn": 4096,
+      "dim_ffn": 10240,
+      "num_heads": 64,
+      "num_layers": 24,
+      "num_buckets": 32,
+      "shared_pos": false,
+      "dropout": 0.1
+    },
+    "weights": {
+      "path": "encoder-bundle/t5.pt",
+      "sha256": "REPLACE_WITH_FILE_SHA256"
+    },
+    "tokenizer": "encoder-bundle/tokenizer",
+    "text_len": 512,
+    "tokenizer_use_fast": true
+  },
+  "records": [
+    {
+      "id": "prompt-0001",
+      "prompt": "A small sailboat at sunrise."
+    }
+  ]
+}

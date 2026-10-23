@@ -22,9 +22,9 @@ def main() -> int:
         work = Path(name)
         wheels = work / "wheels"
         wheels.mkdir()
-        subprocess.run([sys.executable, "-m", "pip", "wheel", str(root), "--no-deps",
-                        "--no-build-isolation", "--wheel-dir", str(wheels)],
-                       check=True, cwd=work, env=env)
+        subprocess.run([sys.executable, "-c",
+                        "import sys; from setuptools.build_meta import build_wheel; build_wheel(sys.argv[1])",
+                        str(wheels)], check=True, cwd=root, env=env)
         wheel_files = list(wheels.glob("distillschedule-*.whl"))
         if len(wheel_files) != 1:
             raise RuntimeError(f"expected exactly one wheel, found {wheel_files}")
@@ -42,6 +42,9 @@ site = Path(sysconfig.get_paths()['purelib']).resolve()
 for package in (distillschedule, runtime):
     assert Path(package.__file__).resolve().is_relative_to(site), package.__file__
 assert [r['id'] for r in load_catalog()['workloads']] == ['W1','W2','W3','W4','W5','W6']
+from distillschedule.cli import main
+for command in ('models', 'algorithms', 'strategies', 'capabilities'):
+    assert main([command, 'list']) == 0
 assert 'torch' not in sys.modules, 'discovery unexpectedly imported Torch'
 print(json.dumps({'status':'PASS_ISOLATED_WHEEL','workloads':6,'gpu_execution':'NOT_RUN'}))
 '''

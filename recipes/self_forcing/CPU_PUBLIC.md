@@ -7,7 +7,7 @@ performance result. It is independent of the separately pinned official
 
 Use the `livewan-wan21-reference` plus `train` extras (Torch≥2.10,
 Diffusers **0.35.2**, NumPy and safetensors); add `media` for PNG frames and
-`einops==0.8.1` for the optional original codec. Do not mix in Helios'
+the optional original codec (the extra includes `einops==0.8.1`). Do not mix in Helios'
 Diffusers0.37.1 extra and call it the qualified Wan runtime. Run with one CPU
 thread, CPU FP32/default dtype, no outer autocast, no initialized CUDA or
 distributed process group. No asset or model download is automatic.
@@ -29,11 +29,11 @@ explicit preparer (its schema/constants are in `data/livewan_reference_inputs.py
 
 ```bash
 export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-python scripts/distillctl.py data prepare /absolute/training-inputs.json \
+distillctl data prepare /absolute/training-inputs.json \
   --preparer distillschedule.data.livewan_reference_inputs:prepare_inputs \
   --output /absolute/training-prepared
-python scripts/distillctl.py train /absolute/cpu-training.json
-python scripts/distillctl.py export /absolute/cpu-training.json \
+distillctl train /absolute/cpu-training.json
+distillctl export /absolute/cpu-training.json \
   --checkpoint /absolute/run/checkpoints/cycle-000001 \
   --output /absolute/current-G-export
 ```
@@ -69,7 +69,7 @@ positive text; no negative, fabricated zero history, implicit teacher-clip
 crop, future target frames or prompt encoder is provided.
 
 ```bash
-python scripts/distillctl.py data prepare /absolute/NEW-inputs.json \
+distillctl data prepare /absolute/NEW-inputs.json \
   --preparer distillschedule.data.livewan_inference_inputs:prepare_inputs \
   --output /absolute/NEW-prepared
 ```
@@ -84,7 +84,7 @@ all four original renoise steps with fresh intermediate noise and the final
 clean t0 K/V commit. It never calls CUDA-timed `stream()`.
 
 ```bash
-python scripts/distillctl.py generate /absolute/inference.json \
+distillctl generate /absolute/inference.json \
   --weights /absolute/current-G-export --prepared /absolute/NEW-prepared/manifest.json \
   --output-kind latents --output /absolute/generated-latents
 ```
@@ -132,7 +132,7 @@ Write `generation-parameters.json` as
 using the actual size/hash, then run:
 
 ```bash
-python scripts/distillctl.py generate /absolute/inference.json \
+distillctl generate /absolute/inference.json \
   --weights /absolute/current-G-export --prepared /absolute/NEW-prepared/manifest.json \
   --parameters /absolute/generation-parameters.json --output-kind video \
   --output /absolute/decoded-frames

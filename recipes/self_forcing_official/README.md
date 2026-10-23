@@ -87,7 +87,7 @@ the training dataset or training model assets.
 ## Qualification boundary
 
 CPU1/FP32, batch1 only; no autocast or distributed layout. Native T2V, minimum 21 latent
-frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer
+frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer-frame
 training, I2V, independent first frame, uncached causal/flex training and native
 gradient-checkpointed cache execution are explicitly rejected, not emulated.
 
@@ -98,3 +98,43 @@ training-boundary `.cuda()` lookups changed to `noise.device`. Uncached causal
 execution is rejected rather than quietly removing its causal mask. No global
 Torch/CUDA/module monkeypatches are installed. GPU and pretrained media quality
 remain `NOT_RUN` regardless of tiny CPU test results.
+
+## Unified runnable entry
+
+Use the separate `.[train,self-forcing-official]` environment (add `test` only
+for development). The public training entry is the same as every other model:
+
+```sh
+export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+python recipes/self_forcing_official/fetch_source.py /PROJECT/dependencies/Self-Forcing
+python recipes/self_forcing_official/create_cpu_fixture.py /PROJECT/random-native-fixture \
+  --source-root /PROJECT/dependencies/Self-Forcing --cycles 3
+
+distillctl train /PROJECT/random-native-fixture/training.json --cycles 1 \
+  --output /PROJECT/partial
+distillctl train /PROJECT/random-native-fixture/training.json --cycles 3 \
+  --resume /PROJECT/partial/checkpoints/cycle-000001 --output /PROJECT/resumed
+distillctl export /PROJECT/random-native-fixture/training.json \
+  --checkpoint /PROJECT/resumed/checkpoints/cycle-000003 --output /PROJECT/current-G
+```
+
+This helper creates explicitly random original-class assets/embeddings, **not
+pretrained quality data**. For real raw prompts, fill
+`inputs.prompts.template.json` with the actual local native T5 architecture,
+checkpoint SHA and tokenizer directory, then use
+`distillctl data prepare ... --preparer distillschedule.data.self_forcing_inputs:prepare_inputs`.
+The template's T5 dimensions describe the pinned native UMT5-XXL constructor,
+not a tiny substitute; the bounded test builds a separately labeled small T5.
+`inputs.preencoded.template.json` supplies exact already-native embeddings.
+The static `training.json` selects the actual registered model/workflow and
+independent G1/C5 streams; fill its explicit paths before use.
+
+For exported inference, use the exact `model.factory` and `model.parameters`
+from `export.json` in the inference request, a newly prepared input manifest
+and explicit inference seed. `distillctl generate ... --weights /PROJECT/current-G
+--prepared NEW/manifest.json --output-kind video --output NEW/generated` runs
+the native full-step causal inference + actual VAE. This is a model-only
+projection; old training assets, optimizer or prepared training prompts are
+not required. The [common guide](../../docs/guides/training.md#generate-and-export)
+explains checkpoint versus inference identity.

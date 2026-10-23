@@ -9,3 +9,9 @@ separately licensed H3 components, and Git submodules. Their original copyright,
 license and NOTICE files remain authoritative. See THIRD_PARTY.md and
 third_party/helios_compat/NOTICE. The project license does not relicense model
 weights, datasets or external submodules.
+
+Optional DMD2, official Self-Forcing and LTX integrations execute explicitly
+supplied, pinned external sources. DMD2 is CC-BY-NC-SA-4.0 and LTX-2.x has its
+own Community License; neither is relicensed by this framework. Their licenses
+and source identities remain authoritative. No model weights or datasets are
+included. See THIRD_PARTY.md and the individual recipes.
