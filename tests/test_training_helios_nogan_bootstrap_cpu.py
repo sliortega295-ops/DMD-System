@@ -442,3 +442,16 @@ def test_native_policy_is_immutable_and_proof_copies_do_not_change_next_admissio
     result=bootstrap.materialize_bootstrap(warm_fixture['asset'])
     assert result.identity['policy']['gradient_clip']==1.
     assert result.identity['policy']['betas']==(0.,.999)
+
+
+def test_genuine_cpu_test_warm_provenance_is_distinct_and_requires_actual_receipts(warm_fixture, tmp_path):
+    from distillschedule.training import helios_nogan_bootstrap as bootstrap
+    assert bootstrap.CPU_WARM not in (bootstrap.READER_ONLY, bootstrap.ORIGINAL)
+    value = json.loads(warm_fixture['asset'].read_text())
+    proof = json.loads(Path(value['provenance']['path']).read_text())
+    proof['evidence_kind'] = bootstrap.CPU_WARM
+    proof['update_source'] = 'ORIGINAL_W2_HELPERS'
+    value['provenance'] = _pin(_write(tmp_path/'false-original-proof.json', proof))
+    path = _write(tmp_path/'false-original-assets.json', value)
+    with pytest.raises(ValueError, match='actual original CPU warm receipt'):
+        bootstrap.materialize_bootstrap(path)

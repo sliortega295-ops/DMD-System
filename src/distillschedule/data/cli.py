@@ -30,6 +30,9 @@ def main(argv=None):
     wan = sub.add_parser("prepare-wan-reference", help="prepare original captured W1 CPU1 per-sample reference; not world16 execution")
     wan.add_argument("--sources", type=Path, required=True)
     wan.add_argument("--output", type=Path, required=True)
+    nogan = sub.add_parser("prepare-helios-nogan-reference", help="prepare independent original W2 CPU1/rank0 records")
+    nogan.add_argument("--sources", type=Path, required=True)
+    nogan.add_argument("--output", type=Path, required=True)
     cached = sub.add_parser("prepare-h3-cached-reference", help="prepare original W6 cached AV CPU reference; no decoding/download")
     cached.add_argument("--sources", type=Path, required=True)
     cached.add_argument("--output", type=Path, required=True)
@@ -60,6 +63,9 @@ def main(argv=None):
             result = inspect_prepared(prepare_inputs(args.sources, args.output))
         elif args.command == "prepare-wan-reference":
             from .wan_reference_inputs import prepare_inputs
+            result = inspect_prepared(prepare_inputs(args.sources, args.output))
+        elif args.command == "prepare-helios-nogan-reference":
+            from .helios_nogan_reference_inputs import prepare_inputs
             result = inspect_prepared(prepare_inputs(args.sources, args.output))
         elif args.command == "prepare-h3-grid":
             from distillschedule.training.h3_grid_inputs import prepare_inputs

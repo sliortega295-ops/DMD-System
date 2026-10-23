@@ -85,6 +85,8 @@ def _initial_adapter_state(model):
 
 def _include_helper_peaks(memory, value):
     """Legacy rollout helpers reset peaks; retain their observed subrange peaks."""
+    if memory.get("status") == "NOT_APPLICABLE_CPU_REFERENCE":
+        return
     if isinstance(value, dict):
         for key in ("max_allocated", "max_reserved"):
             for suffix, scale in (("_bytes", 1), ("_gib", 2**30)):
@@ -151,7 +153,8 @@ class _ObservedTrace:
 
 
 class _Observer:
-    def __init__(self, *, torch, device, rank, impl, generator, critic, ema, mode, version_offsets):
+    def __init__(self, *, torch, device, rank, impl, generator, critic, ema, mode, version_offsets,
+                 cpu_trace=None):
         self.torch, self.device, self.rank, self.impl = torch, device, rank, impl
         self.generator, self.critic, self.ema, self.mode = generator, critic, ema, mode
         self.version_offsets = dict(version_offsets)
@@ -162,6 +165,23 @@ class _Observer:
         self.peak_live = 0
         self.in_backward = False
         self._timesteps = []
+        self._cpu_trace = cpu_trace
+        if mode == "cpu-diagnostic":
+            from distillschedule.data.helios_nogan_reference_inputs import cpu_telemetry
+            from distillschedule.search.helios_implementation import HeliosImplementation
+            require(torch.device(device).type == "cpu" and rank == 0
+                    and impl == HeliosImplementation("no-gan", "world16-fsdp", 512, 1, False)
+                    and version_offsets == dict(generator=0, critic=0, ema=0)
+                    and cpu_telemetry(device, cpu_trace), "explicit admitted W2 CPU diagnostic observer required")
+        else:
+            require(cpu_trace is None, "CPU trace requires explicit W2 CPU diagnostic mode")
+
+    def memory(self, *, driver=False):
+        if self.mode == "cpu-diagnostic":
+            return dict(status="NOT_APPLICABLE_CPU_REFERENCE", allocated_bytes=None, reserved_bytes=None,
+                        max_allocated_bytes=None, max_reserved_bytes=None,
+                        timing="UNAVAILABLE_CPU_DIAGNOSTIC", claimable_speedup=False)
+        return _memory(self.torch, self.device, driver=driver)
 
     def version_snapshot(self):
         physical = _versions(self.generator, self.critic, self.ema)
@@ -283,7 +303,7 @@ class _Observer:
         if calibrated:
             self.torch.cuda.synchronize(self.device)
             self.torch.cuda.reset_peak_memory_stats(self.device)
-        row["memory_before"] = _memory(self.torch, self.device, driver=calibrated)
+        row["memory_before"] = self.memory(driver=calibrated)
         if calibrated:
             row["calibration_start_unix_ns"] = time.time_ns()
             started = time.perf_counter()
@@ -295,7 +315,7 @@ class _Observer:
                 row["calibration_seconds"] = time.perf_counter() - started
                 row["calibration_stop_unix_ns"] = time.time_ns()
             row["versions_after"], row["physical_versions_after"] = self.version_snapshot()
-            row["memory_after"] = _memory(self.torch, self.device, driver=calibrated)
+            row["memory_after"] = self.memory(driver=calibrated)
             row["retained_after"] = dict(count=len(self.live), bytes=sum(x["bytes"] for x in self.live.values()))
             self.current, self.current_entry = None, None
         wanted = {**row["versions_before"], **op.produced_versions}
@@ -474,6 +494,10 @@ def _validate_action(row, impl):
 
 def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, diagnostics,
                    generator_free_memory):
+    if observer.mode == "cpu-diagnostic":
+        from distillschedule.data.helios_nogan_reference_inputs import cpu_telemetry
+        require(trace is observer._cpu_trace and tuple(steps) == trace.task.source_steps
+                and cpu_telemetry(observer.device, trace), "W2 input-task source steps changed")
     graph, order = _cycle_graph(observer.impl, steps, observer.versions())
     observed_trace = _ObservedTrace(trace, observer)
     common = dict(rank=observer.rank, device=observer.device, trace=observed_trace,

@@ -26,6 +26,8 @@ POLICY = MappingProxyType(dict(lora_rank=256,gradient_clip=1.,generator_lr=2e-6,
               ema_decay=.99,ema_update_after_step=750))
 READER_ONLY = 'STATE_READER_FIXTURE_ONLY'
 ORIGINAL = 'OPERATOR_SUPPLIED_ORIGINAL_W2_STEP10'
+CPU_WARM = 'ACTUAL_ORIGINAL_W2_CPU_TEST_WARM_NOT_HISTORICAL_STEP10'
+CPU_WARM_RECEIPT = 'distillschedule.helios_nogan_actual_cpu_warm_receipt.v1'
 
 
 def native_policy():
@@ -158,7 +160,7 @@ def _admit(path):
     proof = read_json(checked_pin(value['provenance']))
     require(isinstance(proof,dict) and set(proof)=={'evidence_kind','update_source','source','runtime','request',
         'policy','bases','native_assets','inputs','clocks'}, 'complete pinned warm-state provenance required')
-    require(proof['evidence_kind'] in (READER_ONLY,ORIGINAL) and proof['update_source']==
+    require(proof['evidence_kind'] in (READER_ONLY,ORIGINAL,CPU_WARM) and proof['update_source']==
             ('DECLARED_READER_GRADIENTS_NOT_W2' if proof['evidence_kind']==READER_ONLY else 'ORIGINAL_W2_HELPERS'),
             'explicit original W2 or STATE_READER_FIXTURE_ONLY evidence required; no W1 relabel')
     require(proof['source']==value['source'] and proof['runtime']==value['runtime']
@@ -169,9 +171,84 @@ def _admit(path):
     require(isinstance(proof['inputs'],list) and proof['inputs'], 'explicit warm input evidence pins required')
     inputs = [checked_pin(pin) for pin in proof['inputs']]
     require(len(inputs)==len(set(inputs)), 'duplicate warm input evidence')
+    if proof['evidence_kind']==CPU_WARM:
+        _validate_cpu_warm_receipt(inputs,value,manifest)
     package, bootstrap = load_bootstrap(native,verify_payloads=True)
     require(package.manifest==manifest, 'logical manifest changed during native admission')
     return value,proof,package,bootstrap,metadata,ema_path.parent
+
+
+def _validate_cpu_warm_receipt(inputs,value,manifest):
+    """Admit a distinct test warm boundary, never invent historical step0 data.
+
+    Pinned actual observer action/forward/backward/commit records and complete
+    source documents bind the serialized moments, masters and EMA. This is a
+    CPU test fixture, not provenance for an operator's pretrained Step10.
+    """
+    from distillschedule.runtime.helios_planner_cycle import _cycle_graph, _validate_action
+    from distillschedule.search.helios_implementation import HeliosImplementation
+    from .helios_inputs import HeliosCohortTask, source_fingerprint
+    require(len(inputs)==1, 'actual original CPU warm receipt required')
+    receipt = read_json(inputs[0])
+    fields = {'schema_version','evidence_kind','source','runtime','request','framework_source','execution',
+              'physical_initial','physical_final','cycles','input_documents','prepared_inputs','logical_payloads','ema_manifest'}
+    require(set(receipt)==fields and receipt['schema_version']==CPU_WARM_RECEIPT
+            and receipt['evidence_kind']==CPU_WARM and receipt['source']==value['source']
+            and receipt['runtime']==value['runtime'] and receipt['request']==value['request']
+            and receipt['framework_source']==source_fingerprint()
+            and receipt['execution']==dict(device='cpu',world_size=1,source_rank=0,source_world_size=16,
+                historical_step0_inputs=False,pretrained_quality='NOT_RUN')
+            and receipt['physical_initial']==dict(generator=0,critic=0,ema=0)
+            and receipt['physical_final']==dict(generator=2,critic=10,ema=10)
+            and isinstance(receipt['cycles'],list) and len(receipt['cycles'])==2,
+            'actual original CPU warm receipt/source required')
+    impl = HeliosImplementation('no-gan','world16-fsdp',512,1,False)
+    from distillschedule.data import PreparedDataset
+    from distillschedule.data.helios_nogan_reference_inputs import decode, descriptor
+    prepared_path = checked_pin(receipt['prepared_inputs'])
+    dataset = PreparedDataset(prepared_path)
+    require(len(dataset)==2, 'actual original CPU warm receipt requires two complete prepared cohorts')
+    for index,row in enumerate(receipt['cycles']):
+        task = HeliosCohortTask(index)
+        trace = decode(dataset.sample(index),task)
+        require(row['descriptor']==descriptor(trace.reference_document)
+                and row['rank_control_hashes']==[trace._control[r].trace_hash for r in range(16)],
+                'actual original CPU warm receipt does not bind its original prepared inputs')
+        initial = dict(generator=index,critic=5*index,ema=5*index)
+        graph,order = _cycle_graph(impl,task.source_steps,initial)
+        require(row['task']==task.to_dict() and row['source_steps']==list(task.source_steps)
+                and row['dispatch']['status']=='PASS' and row['dispatch']['initial_versions']==initial
+                and row['dispatch']['final_versions']==graph.metadata['final_versions']
+                and row['dispatch']['executed_operations']==list(order)
+                and [a['action_id'] for a in row['actions']]==list(order)
+                and len(row['rank_control_hashes'])==16 and len(set(row['rank_control_hashes']))==16,
+                'actual original CPU warm receipt action/rank/source clocks changed')
+        operations = {op.operation_id:op for op in graph.operations}
+        current = initial
+        for action in row['actions']:
+            _validate_action(action,impl)
+            wanted = {**current,**operations[action['action_id']].produced_versions}
+            require(action['versions_before']==current and action['versions_after']==wanted
+                    and action['physical_versions_before']==current and action['physical_versions_after']==wanted,
+                    'actual original CPU warm receipt native versions changed')
+            current = wanted
+    require(isinstance(receipt['input_documents'],list) and len(receipt['input_documents'])>=65,
+            'actual original CPU warm receipt complete original input pins required')
+    documents = [checked_pin(pin) for pin in receipt['input_documents']]
+    pins = {pin['path']:pin for pin in receipt['input_documents']}
+    expected = [dict(path=str(prepared_path),sha256=receipt['prepared_inputs']['sha256']),
+                *dataset.manifest['provenance']['documents'],
+                *[dict(path=str(prepared_path.parent/r['features']['path']),sha256=r['features']['sha256'])
+                  for r in dataset.manifest['records']]]
+    require(all(row['path'] in pins and row['sha256']==pins[row['path']]['sha256'] for row in expected),
+            'actual original CPU warm receipt input document/payload coverage changed')
+    require(len(documents)==len(set(documents)) and receipt['logical_payloads']=={
+        role:{name:payload['sha256'] for name,payload in component['payloads'].items()}
+        for role,component in manifest['components'].items()}, 'actual original CPU warm receipt logical payload binding changed')
+    row = value['native_assets']['assets']['logical_checkpoint']
+    require(checked_pin(receipt['ema_manifest'])==Path(row['path'])/row['ema_manifest']['identity_file']
+            and receipt['ema_manifest']['sha256']==row['ema_manifest']['sha256'],
+            'actual original CPU warm receipt EMA binding changed')
 
 
 def _model(cls, value, role, remaining):
@@ -339,6 +416,7 @@ def materialize_bootstrap(asset_manifest):
         engine.lr_scheduler.load_state_dict(scheduler_state)
     identity = dict(schema_version=SCHEMA,scope=SCOPE,asset_manifest=asset_pin,assets=value,bootstrap=bootstrap,policy=native_policy(),
         evidence_kind=proof['evidence_kind'],original_w2_warm_updates_verified=False,
+        cpu_test_warm_receipt_admitted=proof['evidence_kind']==CPU_WARM,
         provenance_claim=proof['update_source'],native_protocol_samples=dict(generator=32,critic=160),
         cpu_execution=dict(device='cpu',rank=0,world_size=1,batch=1,distributed_reduction=False),
         serialized_ema_names=metadata['tracked_names'],generation_export_lifecycle='NOT_IMPLEMENTED_BY_D1')

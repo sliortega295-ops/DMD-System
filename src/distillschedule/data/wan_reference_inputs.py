@@ -144,6 +144,14 @@ def cpu_telemetry(device, trace):
     if type(trace) is BatchedOperationTrace:
         require(len(trace.entries) == 1, 'CPU reference forbids rollout batching')
         trace = trace.entries[0].operation_trace
+    # W2 is a separate, closed trace ABI. Never admit an arbitrary object by
+    # the presence of validate_cpu_reference (or by a claimed scope string).
+    from .helios_nogan_reference_inputs import (HeliosNoGANReferenceTrace,
+        HeliosNoGANReferenceOperationTrace, cpu_telemetry as w2_cpu_telemetry)
+    from distillschedule.runtime.helios_planner_cycle import _ObservedTrace
+    if (type(trace) in (HeliosNoGANReferenceTrace, HeliosNoGANReferenceOperationTrace)
+            or (type(trace) is _ObservedTrace and type(trace._trace) is HeliosNoGANReferenceTrace)):
+        return w2_cpu_telemetry(device, trace)
     if type(trace) is WanReferenceOperationTrace:
         trace = trace.reference_owner
     if type(trace) is WanReferenceTrace:
