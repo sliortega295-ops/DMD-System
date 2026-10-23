@@ -20,7 +20,11 @@ Both LR schedulers step five times; G commits once and guidance five times.
 
 To train from real preencoded denoising latents instead, set
 `backward_simulation: false` and provide their exact FP32 B4HW tensors in every
-`denoising` record. Full-GAN adds `real: 5` native latent/prompt batches, the
+`denoising` record. The source manifest must explicitly declare
+`"preencoded_vae_compatibility": "PREENCODED_LATENTS_MATCH_LOCAL_VAE"`;
+both tokenizer inventories and the asserted VAE bytes must match the actual
+owner. This assertion does not claim that the preparer encoded supplied latents.
+Full-GAN adds `real: 5` native latent/prompt batches, the
 actual 1280-channel, 104,874,241-parameter head and explicitly chosen loss
 weights. Nothing resizes that head for CPU tests. Generator LoRA uses the
 upstream target modules and masks, not a substitute adapter architecture.

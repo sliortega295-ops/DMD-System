@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 import hashlib
 
-from .checkpoint import (rng_state, restore_rng, validate_rng, cpu_tree,
+from .checkpoint import (rng_state, restore_rng, validate_rng,
                          _validate_layout, _validate_optimizer_layout)
 from .sd import require
 from distillschedule.workloads.best_known.registry import fingerprint
@@ -40,7 +40,7 @@ def _clone(value):
 
 def _hash_tensor(value):
     import torch
-    return hashlib.sha256(value.detach().contiguous().cpu().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
+    return hashlib.sha256(value.detach().contiguous().cpu().reshape(-1).view(torch.uint8).numpy()).hexdigest()
 
 
 def _tensor_identity(value):
@@ -75,6 +75,7 @@ class DMD2Owner:
         self.frozen_hashes = {name: _hash_tensor(parameter) for name, parameter in model.named_parameters()
                               if not parameter.requires_grad}
         self._settings_hash = fingerprint(vars(args))
+        self._preprocessing_hash = fingerprint(self.identity['preprocessing_assets'])
         self._frozen_identity = self._frozen_tensors_identity()
         self._constants_hash = fingerprint(self._native_constants())
         self._rng = _clone(rng_state())
@@ -293,11 +294,16 @@ class DMD2Owner:
                 for name, value in self.initial_masks.items()}
 
     def _validate_live(self):
+        from distillschedule.data.sd_inputs import preprocessing_assets
         self.source.validate()
         require(fingerprint(vars(self.args)) == self._settings_hash
                 and fingerprint(self.identity['settings']) == self._settings_hash
                 and self.model.args is self.args and self.model.guidance_model.args is self.args
                 and self.ratio == self.args.dfake_gen_update_ratio, 'live mathematical settings changed')
+        require(fingerprint(self.identity['preprocessing_assets']) == self._preprocessing_hash
+                and self.identity['preprocessing_assets'] == preprocessing_assets(self.identity['bundle']['files'],
+                    variant='sdxl' if self.args.sdxl else 'sd15', images=True),
+                'live tokenizer/VAE preprocessing binding changed')
         require(self._frozen_tensors_identity() == self._frozen_identity,
                 'live frozen Teacher/CLIP/VAE/base-LoRA tensors changed')
         require(self.model.noise_scheduler is self.model.guidance_model.scheduler
@@ -322,6 +328,7 @@ class DMD2Owner:
                     'wrong samples_per_cycle for stream ' + name)
             for row in feeds[name]:
                 validate_row(row, sdxl=self.args.sdxl, model=self.model,
+                             binding=self.identity['preprocessing_assets'],
                              images=name == 'real' or (name == 'denoising' and not self.args.backward_simulation))
 
     def run(self, feeds, *, cycle):

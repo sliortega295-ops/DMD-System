@@ -42,6 +42,11 @@ Each record is a native batch: `prompt`
 may be one string or a list of strings. Tokens remain int64 B1L. Optional
 `latents: {path, sha256}` loads an existing FP32 B4HW tensor unchanged; this
 adapter never secretly encodes, resizes or renormalizes image latents.
+Such supplied latents require the source manifest's explicit
+`"preencoded_vae_compatibility": "PREENCODED_LATENTS_MATCH_LOCAL_VAE"`
+assertion: the caller declares compatibility with this local bundle's actual
+VAE weights/configuration/scaling. The preparer pins those bytes but **does
+not claim to have encoded or independently verified the supplied latents**.
 
 For raw local images, use `images.template.json` with the same preparer. Its
 explicit `vae_encoding` declares `[height, width]`, `[channels, latent_height,
@@ -58,8 +63,15 @@ unique record ID; reordering records does not change samples or consume the
 training RNG. Local tokenizer/VAE weights, encoder source, image bytes and
 source manifest are hashed into provenance and rechecked before publication.
 Only VAE and native CLIP tokenizers are loaded; no Teacher/Fake is constructed.
-The optional fields extend the existing v1 schema; old pinned latent tensors
-remain bitwise unchanged.
+SD input schema v2 requires a path-independent preprocessing binding in both
+prepared metadata and every tensor row. Training admission checks every stream;
+the native owner checks again before any update. Checkpoint evaluation and
+inference-only generation check each input row before any forward/RNG draw.
+Same-shaped different CLIP vocabulary mappings or VAE weights/configuration
+are incompatible, not silently accepted. Old prepared v1 rows without these
+bindings must be prepared again; supplied latent tensors remain bitwise unchanged.
+Raw-image encoding and caller-declared preencoded compatibility have distinct
+`latent_origin` labels, never a fabricated encoder receipt.
 
 Fill the explicit paths in `training.json`, then use the existing common
 `distillctl train`, `export` and `generate` lifecycle. A cycle performs ten
@@ -106,6 +118,10 @@ frozen Teacher/CLIP/VAE/base-LoRA tensors and native conditioning/scheduler
 tables must match their initial fingerprints. Upstream's post-first-guidance
 `requires_grad=True` behavior is preserved; the Teacher still never enters
 the optimizer. Mutable G/Fake weights are not incorrectly treated as frozen.
+Install the complete `dmd2` extra: it explicitly pins `ftfy==6.3.1`, used in
+the qualified native CLIP preprocessing. Installing Transformers alone may
+silently select its different BasicTokenizer fallback; that is not the
+documented reference environment.
 
 ## Optional native UNet checkpoint policy
 
@@ -166,3 +182,36 @@ does not construct a teacher/fake UNet or optimizer and never calls
 original base bundle, restart checkpoints, and training inputs. The explicit
 external source root remains necessary. Select `--output-kind image` to write
 the native VAE decode as an RGB image; `latents` remains available.
+Exports retain tokenizer/VAE file hashes, not their old asset paths. New prompt
+preparation needs byte-identical local `tokenizer/` (and SDXL `tokenizer_2/`)
+files, which may be copied to a different directory independently of the old
+base weights. Tokenizer-only input preparation does not load or require a VAE.
+New raw/preencoded image inputs additionally bind the matching VAE bytes.
+
+### Official generator-weight mapping
+
+The common export's `weights.pt` is a named mapping: `generator` contains the
+**unmodified native `feedforward_model.state_dict()`**, `text_encoder` contains
+native CLIP (dual CLIP on SDXL), and `vae` contains the native VAE. There is no
+framework prefix renaming, dtype conversion, EMA substitution or LoRA merge.
+To initialize an upstream-compatible generator checkpoint, extract this exact
+mapping from a completed, hash-verified export:
+
+```python
+from pathlib import Path
+import torch
+from distillschedule.training.inference import read_export
+
+root, manifest = read_export('/PROJECT/export')
+weights = torch.load(root / 'weights.pt', map_location='cpu', weights_only=True)
+torch.save(weights['generator'], Path('/PROJECT/native_generator.pt'))
+```
+
+Set `model.parameters.generator_checkpoint` to that file to initialize the
+same native architecture through `distillctl train`. SDXL LoRA needs the same
+native LoRA settings; its separate base/A/B tensors remain separate. Strict
+key and shape checking rejects incompatible models. This mapping is tested
+with real updated SD1.5, SDXL and SDXL-LoRA exports and new native owners.
+It imports **weights only**, starts new optimizer/scheduler/native clocks and
+does not resume Fake Score, RNG or data positions. Only a complete framework
+checkpoint supplied to `train --resume` restores the training trajectory.

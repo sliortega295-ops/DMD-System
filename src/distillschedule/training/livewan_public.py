@@ -85,7 +85,7 @@ def tensor_content(value):
         require(not value.is_floating_point() or bool(value.isfinite().all()), "nonfinite state")
         tensor = value.detach().contiguous()
         return dict(shape=list(tensor.shape), dtype=str(tensor.dtype),
-                    sha256=hashlib.sha256(tensor.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest())
+                    sha256=hashlib.sha256(tensor.reshape(-1).view(torch.uint8).numpy()).hexdigest())
     if isinstance(value, dict):
         return {str(k): tensor_content(v) for k, v in value.items()}
     if isinstance(value, (tuple, list)):
@@ -367,6 +367,22 @@ class LiveWanCPUOwner:
 
     def _parameters(self):
         return {role + "." + name: p for role, model in self.models.items() for name, p in model.named_parameters(remove_duplicate=False)}
+
+    def runtime_tensors(self):
+        """Live compute state only; host RNG/Adam-step metadata still saves."""
+        for model in self.models.values():
+            yield from model.parameters()
+            yield from model.buffers()
+            # Original Wan deliberately keeps complex RoPE outside buffers.
+            yield model.freqs
+            for parameter in model.parameters():
+                if parameter.grad is not None:
+                    yield parameter.grad
+        for optimizer in self.optimizers.values():
+            for state in optimizer.state.values():
+                for name, value in state.items():
+                    if name != "step":
+                        yield value
 
     @staticmethod
     def _source_modules():

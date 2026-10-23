@@ -323,6 +323,76 @@ def owner_from_boundary(files, complete, output):
     return owner, complete[0]
 
 
+def test_runtime_tensors_preserve_live_storage_without_checkpoint_copies(files, complete, tmp_path, monkeypatch):
+    from distillschedule.open_workload.torch_backend import tensors, storage_key, storage_bytes
+    from distillschedule.training import livewan_public
+    from distillschedule.training.checkpoint import rng_state
+    owner, _ = owner_from_boundary(files, complete, tmp_path / "not-created")
+    saved, outer_rng = owner.state_dict(), rng_state()
+    assert owner.cycle == 1 and all(optimizer.state for optimizer in owner.optimizers.values())
+    parameters = [p for model in owner.models.values() for p in model.parameters()]
+    constants = [model.freqs for model in owner.models.values()]
+    assert all(value.is_complex() for value in constants)
+    assert all(not any(value is buffer for buffer in model.buffers())
+               for model, value in zip(owner.models.values(), constants))
+    slots = [value for optimizer in owner.optimizers.values() for state in optimizer.state.values()
+             for name, value in state.items() if name != "step"]
+    steps = [state["step"] for optimizer in owner.optimizers.values() for state in optimizer.state.values()]
+    assert slots and steps
+    # Exercise present gradients and a registered buffer on the real owner,
+    # without running different math or changing the saved complete boundary.
+    grad_parameters = [next(iter(optimizer.state)) for optimizer in owner.optimizers.values()]
+    student = owner.models["student"]
+    student.register_buffer("_runtime_inventory_probe", torch.ones(2), persistent=False)
+    try:
+        for parameter in grad_parameters:
+            parameter.grad = torch.ones_like(parameter)
+        buffers = [buffer for model in owner.models.values() for buffer in model.buffers()]
+        gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
+        expected = parameters + buffers + constants + gradients + slots
+        expected_storage = {storage_key(value): value.untyped_storage().nbytes() for value in expected}
+
+        def no_serialization(*args, **kwargs):
+            pytest.fail("runtime inventory must not call state_dict/cpu_tree")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(type(owner), "state_dict", no_serialization)
+            patch.setattr(livewan_public, "cpu_tree", no_serialization)
+            patch.setattr(type(owner), "_optimizer_value", no_serialization)
+            for model_class in {type(model) for model in owner.models.values()}:
+                patch.setattr(model_class, "state_dict", no_serialization)
+            live = list(tensors(owner))
+            assert {id(value) for value in live} == {id(value) for value in expected}
+            assert {storage_key(value) for value in live} == set(expected_storage)
+            assert storage_bytes(owner) == sum(expected_storage.values())
+            assert not any(value is owner._rng["torch"] or any(value is step for step in steps) for value in live)
+            assert storage_key(owner._rng["torch"]) not in expected_storage
+            assert all(storage_key(step) not in expected_storage for step in steps)
+    finally:
+        for parameter in grad_parameters:
+            parameter.grad = None
+        del student._runtime_inventory_probe
+
+    # Actual serialization still validates and makes defensive copies, including
+    # the host-only RNG/step metadata deliberately omitted from runtime inventory.
+    serialized = owner.state_dict()
+    assert equal(saved, serialized) and equal(outer_rng, rng_state())
+    for role, model in owner.models.items():
+        for name, value in model.state_dict().items():
+            assert storage_key(serialized["modules"][role][name]) != storage_key(value)
+    names = {id(parameter): name for name, parameter in owner._parameters().items()}
+    for role, optimizer in owner.optimizers.items():
+        for parameter, state in optimizer.state.items():
+            copied = serialized["optimizers"][role]["state"][names[id(parameter)]]
+            for name, value in state.items():
+                assert torch.equal(copied[name], value) and storage_key(copied[name]) != storage_key(value)
+                copied[name].add_(1)
+    assert storage_key(serialized["rng"]["torch"]) != storage_key(owner._rng["torch"])
+    serialized["modules"]["student"]["patch_embedding.weight"].add_(1)
+    serialized["rng"]["torch"].zero_()
+    assert equal(saved, owner.state_dict()) and equal(outer_rng, rng_state())
+
+
 @pytest.mark.parametrize("failure", ["after_generator", "teacher", "critic", "read"])
 def test_partial_native_failure_poisons_all_owners_and_restores_previous_boundary(files, complete, tmp_path, failure):
     from distillschedule.training.checkpoint import rng_state, pack_state, unpack_state, save_checkpoint

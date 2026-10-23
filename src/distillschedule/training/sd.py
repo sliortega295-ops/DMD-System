@@ -156,6 +156,7 @@ def _arguments(parameters, *, sdxl):
 def _build(parameters, *, sdxl):
     import torch
     from transformers import CLIPTokenizer
+    from distillschedule.data.sd_inputs import preprocessing_assets
     from .dmd2_owner import DMD2Owner
     args = _arguments(parameters, sdxl=sdxl)
     from .session import _seed
@@ -189,7 +190,9 @@ def _build(parameters, *, sdxl):
             uncond = model.text_encoder(ids)[0].detach()
     metadata = dict(schema_version='distillschedule.official_dmd2_sd.v1', variant='sdxl' if sdxl else 'sd15',
         upstream=dict(repository=REPOSITORY, revision=REVISION, license='CC-BY-NC-SA-4.0', **api.source.identity),
-        bundle=bundle, generator_checkpoint=checkpoint_identity, settings=deepcopy(vars(args)),
+        bundle=bundle, preprocessing_assets=preprocessing_assets(bundle['files'],
+            variant='sdxl' if sdxl else 'sd15', images=True),
+        generator_checkpoint=checkpoint_identity, settings=deepcopy(vars(args)),
         runtime=runtime_identity(), precision='FP32_CPU1', ema='NONE', quality_validation='NOT_RUN',
         cpu_execution='CPU_IMPLEMENTATION_TESTED_ON_RANDOM_TINY_ASSETS_ONLY', gpu_execution='NOT_RUN',
         placement_limit='CPU1_ONLY_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA_CUDA_NOT_VALIDATED')
@@ -210,6 +213,7 @@ def build_sdxl(parameters):
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
     from .dmd2_owner import stream_counts
+    from distillschedule.data.sd_inputs import validate_prepared_binding
     owner = state['native_cycle']
     require(request.execution.get('adapter', 'program') == 'program', 'common Program adapter required')
     require(request.algorithm['factory'] == 'distillschedule.training.dmd2:build_dmd2', 'official DMD2 algorithm required')
@@ -218,6 +222,10 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
     streams = request.data.get('streams', {})
     require(set(streams) == set(counts) and all(streams[name].get('samples_per_cycle', 1) == count
             for name, count in counts.items()), 'independent streams/counts must match native iteration consumption')
+    require(isinstance(prepared_manifest, dict) and isinstance(prepared_manifest.get('streams'), dict)
+            and set(prepared_manifest['streams']) == set(counts), 'prepared preprocessing streams binding required')
+    for manifest in prepared_manifest['streams'].values():
+        validate_prepared_binding(manifest, owner.identity['preprocessing_assets'])
     require(request.trainer.get('device', 'cpu') == 'cpu' and 'distributed' not in request.trainer,
             'current owner admits CPU1 only')
     require(request.trainer['cycles'] * owner.ratio <= owner.args.train_iters, 'native train_iters budget exceeded')
@@ -237,8 +245,11 @@ def _generation_row(feeds):
 
 def generate(state, feeds, parameters):
     """Current generator, original x0 conversion and ancestral renoising."""
+    from distillschedule.data.sd_inputs import validate_row
     owner = state['native_cycle']; model = owner.model
-    owner.source.validate()
+    owner._validate_live()
+    validate_row(_generation_row(feeds), sdxl=owner.args.sdxl,
+                 binding=owner.identity['preprocessing_assets'])
     model.eval()
     return _generate_inference(dict(generator=model.feedforward_model, text_encoder=model.text_encoder,
                                    vae=model.vae), feeds, parameters, _inference_parameters(owner))
@@ -284,13 +295,14 @@ def _inference_parameters(owner):
             getattr(model.feedforward_model, 'peft_config', {}).items()}
     return dict(source_root=str(owner.source.root), upstream=deepcopy(owner.source.identity),
         variant='sdxl' if args.sdxl else 'sd15', architecture=architecture, lora=lora, runtime=runtime_identity(),
+        preprocessing_assets=deepcopy(owner.identity['preprocessing_assets']),
         geometry=dict(resolution=args.resolution, latent_resolution=args.latent_resolution, latent_channel=4),
         steps=args.num_denoising_step if args.sdxl else 1,
         conditioning_timestep=args.conditioning_timestep, seed=0)
 
 
 def _inference_components(state, parameters):
-    metadata = dict(schema_version='distillschedule.official_sd_inference.v1',
+    metadata = dict(schema_version='distillschedule.official_sd_inference.v2',
         parameters=deepcopy({key: value for key, value in parameters.items() if key != 'device'}),
         selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN', precision='FP32_CPU1',
         dependencies='EXTERNAL_PINNED_SOURCE_ONLY_NO_BASE_MODEL_WEIGHTS')
@@ -322,10 +334,12 @@ def build_inference_model(parameters):
     from diffusers import UNet2DConditionModel, AutoencoderKL
     from transformers import CLIPTextConfig, CLIPTextModel, CLIPTextModelWithProjection
     from peft import LoraConfig
+    from distillschedule.data.sd_inputs import validate_preprocessing_assets
     require(set(parameters) <= {'source_root', 'upstream', 'variant', 'architecture', 'lora', 'runtime',
-            'geometry', 'steps', 'conditioning_timestep', 'seed', 'device'}
+            'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device'}
             and parameters.get('device', 'cpu') == 'cpu' and parameters['variant'] in ('sd15', 'sdxl'),
             'invalid inference-only construction parameters')
+    validate_preprocessing_assets(parameters.get('preprocessing_assets'), variant=parameters['variant'], images=True)
     api = original(parameters['source_root'])
     require(parameters['upstream'] == api.source.identity, 'inference upstream source lock changed')
     require(parameters['runtime'] == runtime_identity(), 'inference numerical dependency versions changed')
@@ -358,7 +372,7 @@ def _generate_inference(state, feeds, parameters, settings):
     from distillschedule.data.sd_inputs import validate_row
     require(set(parameters) <= {'steps'}, 'unknown inference settings')
     row = _generation_row(feeds); sdxl = settings['variant'] == 'sdxl'
-    validate_row(row, sdxl=sdxl)
+    validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'])
     generator, text = state['generator'], state['text_encoder']
     steps = parameters.get('steps', settings['steps'])
     require(type(steps) is int and steps > 0 and 1000 % steps == 0 and (sdxl or steps == 1),

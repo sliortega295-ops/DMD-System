@@ -406,6 +406,7 @@ def test_prompt_preparation_preserves_exact_latents_and_rejects_invalid_layout(f
     path = tmp_path / 'native.pt'; torch.save(latent, path)
     source = tmp_path / 'new-source.json'
     value = dict(schema_version=SCHEMA, variant=variant, model_id=fixture_assets['assets'],
+        preencoded_vae_compatibility='PREENCODED_LATENTS_MATCH_LOCAL_VAE',
         records=[dict(id='native', prompt='new native prompt', latents=dict(path=str(path),
                          sha256=hashlib.sha256(path.read_bytes()).hexdigest()))])
     source.write_text(json.dumps(value))
@@ -417,7 +418,7 @@ def test_prompt_preparation_preserves_exact_latents_and_rejects_invalid_layout(f
                 dict(row, text_input_ids_one=row['text_input_ids_one'].squeeze(1)),
                 dict(row, text_input_ids_one=row['text_input_ids_one'].float())):
         with pytest.raises(ValueError, match='SD input'):
-            validate_row(bad, sdxl=variant == 'sdxl')
+            validate_row(bad, sdxl=variant == 'sdxl', binding=data.manifest['metadata']['preprocessing_assets'])
     value['records'][0]['latents']['sha256'] = '0' * 64
     source.write_text(json.dumps(value))
     with pytest.raises(ValueError, match='SHA256 mismatch'):

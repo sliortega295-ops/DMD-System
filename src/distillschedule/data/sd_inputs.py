@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 import inspect
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import random
 
 from .manifest import source_identity, validate_source
@@ -17,7 +17,11 @@ from .preparation import _publish
 from .tensors import tensor_tree
 from distillschedule.workloads.best_known.registry import fingerprint
 
-SCHEMA = 'distillschedule.sd_inputs.v1'
+SCHEMA = 'distillschedule.sd_inputs.v2'
+PREPROCESSING_SCHEMA = 'distillschedule.sd_preprocessing.v1'
+PREENCODED_VAE_ASSERTION = 'PREENCODED_LATENTS_MATCH_LOCAL_VAE'
+# These are provenance labels, not new latent transforms or encoder policies.
+PROMPT_ONLY, VAE_ENCODED, PREENCODED_DECLARED = 0, 1, 2
 
 
 def _require(condition, message):
@@ -25,10 +29,88 @@ def _require(condition, message):
         raise ValueError('SD input: ' + message)
 
 
-def validate_row(row, *, sdxl, model=None, images=False):
+def preprocessing_assets(files, *, variant, images):
+    """Select actual bundle bytes, with no absolute path in the binding."""
+    _require(variant in ('sd15', 'sdxl') and isinstance(files, dict), 'invalid preprocessing binding assets')
+    folders = ['tokenizer', *(('tokenizer_2',) if variant == 'sdxl' else ()), *(('vae',) if images else ())]
+    selected = {name: sha for name, sha in files.items()
+                if isinstance(name, str) and name.split('/')[0] in folders}
+    result = dict(schema_version=PREPROCESSING_SCHEMA, variant=variant, files=selected)
+    validate_preprocessing_assets(result, variant=variant, images=images)
+    return result
+
+
+def validate_preprocessing_assets(value, *, variant, images=None):
+    from .manifest import sha256
+    _require(variant in ('sd15', 'sdxl') and isinstance(value, dict) and set(value) == {'schema_version', 'variant', 'files'}
+             and value['schema_version'] == PREPROCESSING_SCHEMA and value['variant'] == variant
+             and isinstance(value['files'], dict), 'missing/malformed preprocessing binding')
+    if images is None:
+        images = any(isinstance(name, str) and name.startswith('vae/') for name in value['files'])
+    folders = {'tokenizer', *(('tokenizer_2',) if variant == 'sdxl' else ()), *(('vae',) if images else ())}
+    seen = set()
+    for name, digest in value['files'].items():
+        _require(isinstance(name, str) and '\\' not in name, 'invalid preprocessing binding file')
+        path = PurePosixPath(name)
+        _require(not path.is_absolute() and name == path.as_posix() and '..' not in path.parts
+                 and len(path.parts) >= 2 and path.parts[0] in folders, 'nonrelative preprocessing binding file')
+        sha256(digest)
+        seen.add(path.parts[0])
+    _require(seen == folders, 'missing tokenizer/VAE preprocessing binding files')
+    return value
+
+
+def _record_origin(record):
+    return PREENCODED_DECLARED if 'latents' in record else VAE_ENCODED if 'images' in record else PROMPT_ONLY
+
+
+def _row_binding(assets, origin):
+    value = dict(assets=preprocessing_assets(assets['files'], variant=assets['variant'], images=origin != PROMPT_ONLY),
+                 latent_origin=origin)
+    if origin == PREENCODED_DECLARED:
+        value['preencoded_vae_compatibility'] = PREENCODED_VAE_ASSERTION
+    return fingerprint(value)
+
+
+def validate_prepared_binding(manifest, expected):
+    """Admission uses recorded pins, never reopens the old preparation paths."""
+    _require(isinstance(manifest, dict) and isinstance(manifest.get('metadata'), dict),
+             'prepared preprocessing binding metadata required')
+    metadata = manifest['metadata']; actual = metadata.get('preprocessing_assets')
+    origins = metadata.get('latent_origins')
+    _require(isinstance(origins, list) and bool(origins) and all(type(n) is int and n in (0, 1, 2) for n in origins)
+             and origins == sorted(set(origins)), 'missing/malformed preprocessing latent origins')
+    variant = expected['variant']; images = any(n != PROMPT_ONLY for n in origins)
+    validate_preprocessing_assets(actual, variant=variant, images=images)
+    _require(metadata.get('schema_version') == SCHEMA and metadata.get('variant') == variant
+             and actual == preprocessing_assets(expected['files'], variant=variant, images=images),
+             'prepared tokenizer/VAE preprocessing binding differs from actual model bundle')
+    encoder = manifest.get('provenance', {}).get('encoder')
+    parameters = encoder.get('parameters') if isinstance(encoder, dict) else None
+    _require(isinstance(parameters, dict) and parameters.get('preprocessing_assets') == actual
+             and parameters.get('latent_origins') == origins
+             and encoder.get('parameters_sha256') == fingerprint(parameters),
+             'prepared preprocessing binding disagrees with encoder provenance')
+    _require(PREENCODED_DECLARED not in origins
+             or parameters.get('preencoded_vae_compatibility') == PREENCODED_VAE_ASSERTION,
+             'preencoded VAE compatibility assertion missing from preprocessing provenance')
+
+
+def validate_row(row, *, sdxl, binding, model=None, images=False):
     import torch
     keys = {'text_input_ids_one', 'text_input_ids_two'} if sdxl else {'text_input_ids_one'}
-    _require(isinstance(row, dict) and keys <= set(row) <= keys | {'images'}, 'native token fields changed')
+    required = keys | {'preprocessing_binding', 'latent_origin'}
+    _require(isinstance(row, dict) and required <= set(row) <= required | {'images'},
+             'native token/preprocessing binding fields changed')
+    origin, digest = row['latent_origin'], row['preprocessing_binding']
+    _require(type(origin) is torch.Tensor and origin.dtype == torch.uint8 and origin.shape == ()
+             and origin.device.type == 'cpu' and int(origin) in (0, 1, 2)
+             and (int(origin) != PROMPT_ONLY) == ('images' in row), 'invalid preprocessing latent origin binding')
+    _require(type(digest) is torch.Tensor and digest.dtype == torch.uint8 and digest.shape == (32,)
+             and digest.device.type == 'cpu', 'missing/malformed preprocessing binding tensor')
+    validate_preprocessing_assets(binding, variant='sdxl' if sdxl else 'sd15')
+    _require(bytes(digest.tolist()).hex() == _row_binding(binding, int(origin)),
+             'tokenizer/VAE preprocessing binding differs from actual model bundle')
     batch = None
     for name in sorted(keys):
         tokens = row[name]
@@ -88,7 +170,7 @@ def _local_files(root, folder):
     files = sorted(p for p in directory.rglob('*') if p.is_file())
     _require(bool(files), 'local encoder/tokenizer files missing: ' + folder)
     _require(all(file.resolve().is_relative_to(root) for file in files), 'encoder/tokenizer symlink escapes bundle')
-    return [source_identity(file) for file in files]
+    return {file.relative_to(root).as_posix(): source_identity(file) for file in files}
 
 
 def _load_vae(root, policy):
@@ -132,7 +214,7 @@ def prepare_inputs(source_manifest, output_dir):
     value = json.loads(path.read_text())
     validate_source(document)
     _require(isinstance(value, dict) and {'schema_version', 'variant', 'model_id', 'records'} <= set(value)
-            <= {'schema_version', 'variant', 'model_id', 'records', 'vae_encoding'}
+            <= {'schema_version', 'variant', 'model_id', 'records', 'vae_encoding', 'preencoded_vae_compatibility'}
             and value['schema_version'] == SCHEMA and value['variant'] in ('sd15', 'sdxl'), 'unsupported source manifest')
     root = (path.parent / Path(value['model_id']).expanduser()).resolve(strict=True)
     _require(root.is_dir(), 'explicit local tokenizer bundle required')
@@ -143,7 +225,7 @@ def prepare_inputs(source_manifest, output_dir):
     tokenizers = []
     for folder in (('tokenizer', 'tokenizer_2') if sdxl else ('tokenizer',)):
         asset_files[folder] = _local_files(root, folder)
-        documents.extend(asset_files[folder])
+        documents.extend(asset_files[folder].values())
         tokenizers.append(CLIPTokenizer.from_pretrained(root / folder, local_files_only=True))
     rows = value['records']
     _require(isinstance(rows, list) and bool(rows), 'nonempty prompt records required')
@@ -171,13 +253,28 @@ def prepare_inputs(source_manifest, output_dir):
             media['image'] = documents[-1]
         sources.append({'id': row['id'], 'media': media})
 
-    encoder_parameters = dict(model_id=str(root), variant=value['variant'], source_dir=str(path.parent))
+    origins = sorted({_record_origin(row) for row in rows})
+    if PREENCODED_DECLARED in origins:
+        _require(value.get('preencoded_vae_compatibility') == PREENCODED_VAE_ASSERTION,
+                 'supplied preencoded latents require an explicit local VAE compatibility assertion')
+    else:
+        _require('preencoded_vae_compatibility' not in value, 'unused preencoded VAE compatibility assertion')
+    if any(origin != PROMPT_ONLY for origin in origins):
+        # Supplied latents are NOT encoded again: these are the bytes against
+        # which the caller explicitly asserts their existing compatibility.
+        asset_files['vae'] = _local_files(root, 'vae')
+        documents.extend(asset_files['vae'].values())
+    assets = preprocessing_assets({name: identity['sha256'] for pins in asset_files.values()
+                                   for name, identity in pins.items()}, variant=value['variant'],
+                                  images=any(origin != PROMPT_ONLY for origin in origins))
+    encoder_parameters = dict(model_id=str(root), variant=value['variant'], source_dir=str(path.parent),
+                              preprocessing_assets=assets, latent_origins=origins)
+    if PREENCODED_DECLARED in origins:
+        encoder_parameters['preencoded_vae_compatibility'] = PREENCODED_VAE_ASSERTION
     vae, vae_metadata = None, None
     if 'vae_encoding' in value:
         _require(any('images' in row for row in rows), 'unused VAE encoding policy')
         policy = _encoding_policy(value['vae_encoding'])
-        asset_files['vae'] = _local_files(root, 'vae')
-        documents.extend(asset_files['vae'])
         vae, vae_metadata = _load_vae(root, policy)
         from diffusers.models.autoencoders.vae import DiagonalGaussianDistribution
         from diffusers.utils.torch_utils import randn_tensor
@@ -204,7 +301,8 @@ def prepare_inputs(source_manifest, output_dir):
 
     return _publish(output_dir, rows=[{**row, 'metadata': {'prompt': row['prompt']}} for row in rows],
         provenance=dict(mode='raw', documents=documents, sources=sources, encoder=encoder),
-        metadata=dict(schema_version=SCHEMA, variant=value['variant'], layout='NATIVE_B1L_AND_OPTIONAL_B4HW'), produce=produce)
+        metadata=dict(schema_version=SCHEMA, variant=value['variant'], layout='NATIVE_B1L_AND_OPTIONAL_B4HW',
+                      preprocessing_assets=assets, latent_origins=origins), produce=produce)
 
 
 def encode_record(record, parameters, *, tokenizers=None, vae=None):
@@ -213,8 +311,21 @@ def encode_record(record, parameters, *, tokenizers=None, vae=None):
     from transformers import CLIPTokenizer
     sdxl = parameters['variant'] == 'sdxl'
     _require(not ('latents' in record and 'images' in record), 'latents and raw images are mutually exclusive')
+    origin = _record_origin(record)
+    if origin == PREENCODED_DECLARED:
+        _require(parameters.get('preencoded_vae_compatibility') == PREENCODED_VAE_ASSERTION,
+                 'supplied preencoded latents require an explicit local VAE compatibility assertion')
+    assets = parameters.get('preprocessing_assets')
+    validate_preprocessing_assets(assets, variant=parameters['variant'])
+    standalone_pins = None
     if tokenizers is None:
-        root = Path(parameters['model_id'])
+        root = Path(parameters['model_id']).expanduser().resolve(strict=True)
+        # The public encoder can also be called through the generic preparer.
+        # Never let supplied metadata relabel different actual local bytes.
+        folders = sorted({name.split('/')[0] for name in assets['files']})
+        standalone_pins = {folder: _local_files(root, folder) for folder in folders}
+        actual = {name: identity['sha256'] for pins in standalone_pins.values() for name, identity in pins.items()}
+        _require(actual == assets['files'], 'encoder tokenizer/VAE preprocessing binding changed')
         tokenizers = [CLIPTokenizer.from_pretrained(root / folder, local_files_only=True)
             for folder in (('tokenizer', 'tokenizer_2') if sdxl else ('tokenizer',))]
     _require(len(tokenizers) == (2 if sdxl else 1), 'missing native SDXL second tokenizer')
@@ -257,5 +368,10 @@ def encode_record(record, parameters, *, tokenizers=None, vae=None):
         _require(tokens['images'].dtype == torch.float32
                  and list(tokens['images'].shape) == [len(prompts), *policy['latent_shape']],
                  'actual VAE output differs from declared FP32 latent geometry')
-    validate_row(tokens, sdxl=sdxl)
+    if standalone_pins is not None:
+        _require(all(_local_files(root, folder) == pins for folder, pins in standalone_pins.items()),
+                 'encoder tokenizer/VAE preprocessing binding changed during encoding')
+    tokens['latent_origin'] = torch.tensor(origin, dtype=torch.uint8)
+    tokens['preprocessing_binding'] = torch.tensor(list(bytes.fromhex(_row_binding(assets, origin))), dtype=torch.uint8)
+    validate_row(tokens, sdxl=sdxl, binding=assets)
     return tokens

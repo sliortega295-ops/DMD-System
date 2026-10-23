@@ -1,5 +1,5 @@
 {
-  "schema_version": "distillschedule.sd_inputs.v1",
+  "schema_version": "distillschedule.sd_inputs.v2",
   "variant": "sd15",
   "model_id": "/ABSOLUTE/LOCAL/SD15_BUNDLE",
   "vae_encoding": {
