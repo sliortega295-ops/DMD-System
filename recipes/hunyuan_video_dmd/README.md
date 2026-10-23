@@ -127,9 +127,11 @@ distillctl generate /ABSOLUTE/inference.json --weights /ABSOLUTE/current-student
 ```
 
 Portable generation requires neither original assets nor training checkpoints;
-it outputs decoded THWC uint8 RGB plus frame files. The current data preparer
-still requires the original explicit assets for preparing new inputs. There is
-no export-only public preparer in this unit, and no such workflow is claimed.
+it outputs decoded THWC uint8 RGB plus a PNG frame sequence (no invented FPS).
+The Hunyuan asset-based preparer still requires the original explicit assets.
+For new prompts/raw media **after deleting assets and all checkpoints**, use the
+separate [common export-only public preparer](../../docs/guides/export_inputs.md).
+Its actual tiny native CPU proof does not qualify pretrained/GPU/quality use.
 
 ## Reproduce the synthetic CPU proofs
 

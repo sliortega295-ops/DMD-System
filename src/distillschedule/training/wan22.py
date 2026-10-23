@@ -286,6 +286,7 @@ def load_media_bundle(assets):
 
 
 def _components(state, descriptor, *, training):
+    from distillschedule.data.wan22_inputs import encode_export_input
     immutable = ['teacher','media'] if training else ['media']
     if training:
         for role in ('student','fake'):
@@ -299,6 +300,7 @@ def _components(state, descriptor, *, training):
     return ModelComponents(state=state,immutable_modules=tuple(immutable),metadata=metadata,
         prediction=PredictionSpec('flow'),capabilities=('video','flow','lora','dmd_flow_v1'),
         generate=generate,decode=state['media'].decode,inference_projection=project_current_generator if training else None,
+        encode_input=None if training else encode_export_input,
         admit_training=admit_training if training else None).validate()
 
 

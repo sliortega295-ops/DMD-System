@@ -6,7 +6,7 @@ explicit geometry/noise TEMPLATES, never conditional features or training images
 """
 from pathlib import Path
 
-from .manifest import source_identity, validate_source
+from .manifest import source_identity, validate_source, raw_record, resolve_path
 from .preparation import _publish
 from .tensors import tensor_tree
 
@@ -72,7 +72,9 @@ def validate_row(row, *, api, config, media_config, binding, empty):
 def encode_record(record, parameters, *, api=None, media=None, config=None):
     import torch
     from distillschedule.training.flow_image import require, load_media_bundle, json_object
-    require(isinstance(parameters, dict) and set(parameters) == {'family', 'assets', 'mode', 'source_dir', 'binding'},
+    keys = {'family', 'mode', 'source_dir', 'binding'}
+    require(isinstance(parameters, dict) and keys <= parameters.keys()
+            and set(parameters) <= keys | {'assets'} and (media is not None or 'assets' in parameters),
             'explicit native encoding source/family/mode/binding required')
     api = family_api(parameters['family']) if api is None else api
     if media is None:
@@ -119,6 +121,49 @@ def encode_record(record, parameters, *, api=None, media=None, config=None):
         row.update(api.geometry(row, shape=shape, context=context, null_context=null_context))
     empty = media.encode_text([''])
     return validate_row(row, api=api, config=config, media_config=media.architecture, binding=media.binding, empty=empty)
+
+
+def export_record_sources(record, parameters, *, media_kind):
+    """Shared native record admission, independent of any model-name selector."""
+    from distillschedule.training.flow_image import require
+    require(isinstance(parameters, dict) and set(parameters) == {'mode', 'source_dir', 'model_metadata'},
+            'explicit export mode/source/model metadata required')
+    mode = parameters['mode']
+    require(mode in ('raw', 'prompts'), 'export native input mode must be raw or prompts; preencoded/training assets refused')
+    expected = {'id', 'prompt', media_kind if mode == 'raw' else 'latent_shape'}
+    require(isinstance(record, dict) and set(record) == expected and isinstance(record['id'], str)
+            and record['id'] and isinstance(record['prompt'], str), 'unknown/missing native export record or conditions')
+    _, source = raw_record(dict(id=record['id'], text={'value': record['prompt']}), Path(parameters['source_dir']))
+    if mode == 'raw':
+        spec = record[media_kind]
+        require(isinstance(spec, dict) and set(spec) == {'path', 'sha256'}, 'raw media requires explicit path and SHA256')
+        path = resolve_path(spec['path'], Path(parameters['source_dir']))
+        identity = source_identity(path, frames=media_kind == 'video' and path.is_dir())
+        require(identity['sha256'] == spec['sha256'], 'raw native input SHA256 changed')
+        source['media'][media_kind] = identity
+    return source['media']
+
+
+def export_metadata(api, media, parameters, *, schema):
+    from copy import deepcopy
+    from distillschedule.training.flow_image import require
+    metadata = parameters['model_metadata']
+    require(metadata['binding'] == media.binding, 'export native encoder binding changed')
+    return dict(schema_version=schema, family=api.FAMILY, binding=media.binding,
+        evidence_kind=metadata['evidence_kind'], mode=parameters['mode'], prediction='FLOW_EPSILON_MINUS_X0',
+        encoder_contract=dict(codec_policy=api.CODEC_POLICY, media_config=deepcopy(media.architecture),
+                              runtime=deepcopy(metadata['runtime'])),
+        gpu_execution='NOT_RUN', quality_validation='NOT_RUN')
+
+
+def encode_export_input(state, record, parameters):
+    """Use only restored current-native codecs; never reopen an asset bundle."""
+    role, media = state['student'], state['media']
+    sources = export_record_sources(record, parameters, media_kind='image')
+    row = encode_record(record, dict(family=role.api.FAMILY, mode=parameters['mode'],
+        source_dir=parameters['source_dir'], binding=media.binding), api=role.api, media=media, config=role.architecture)
+    role.validate_feeds(row)
+    return dict(features=row, metadata=export_metadata(role.api, media, parameters, schema=SCHEMA), sources=sources)
 
 
 def prepare_inputs(source_manifest, output_dir):

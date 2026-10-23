@@ -182,6 +182,8 @@ pretrained, GPU, production geometry/capacity, long-run or quality evidence.
 The model assets use **Tencent Hunyuan terms, not Apache-2.0**; dependency
 implementation licenses are separate. See the
 [bounded recipe and source/license pin](../../recipes/hunyuan_video_dmd/README.md).
-New-input preparation still explicitly uses original local assets; export-only
-public preparation is not supplied or claimed here. All full pretrained/GPU/
-capacity/quality gates remain **NOT_RUN**.
+The separate common [export-only public preparer](export_inputs.md) can now
+encode native new prompts/raw media from this export after original assets and
+all training checkpoints are deleted. The existing Hunyuan asset-based preparer
+still explicitly requires its local assets. All full pretrained/GPU/capacity/
+quality gates remain **NOT_RUN**.

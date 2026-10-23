@@ -330,6 +330,7 @@ def _metadata(api, descriptor):
 
 
 def _components(api, state, descriptor, *, training):
+    from distillschedule.data.flow_image_inputs import encode_export_input
     immutable = ['teacher', 'media'] if training else ['media']
     if training:
         # Reuse the existing exact immutable alias mechanism, including actual
@@ -341,6 +342,7 @@ def _components(api, state, descriptor, *, training):
     return ModelComponents(state=state, immutable_modules=tuple(immutable), metadata=_metadata(api, descriptor),
         prediction=PredictionSpec('flow'), capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
         generate=api.generate, decode=state['media'].decode,
+        encode_input=None if training else encode_export_input,
         inference_projection=api.project_current_generator if training else None,
         admit_training=api.admit_training if training else None).validate()
 

@@ -100,6 +100,12 @@ there is no silent downgrade to a different strategy.
 
 ## Reproducible CPU-only synthetic check
 
+The [common export-only preparer](../../docs/guides/export_inputs.md) additionally
+encodes new prompts/raw video using this export's restored native codecs after
+all training assets/checkpoints are deleted. The Wan asset-based preparer remains
+separate and still requires its original bundle. Output is a PNG frame sequence,
+not an inferred-FPS playable container or pretrained-quality result.
+
 ```sh
 DMD_MODERN_FLOW_CPU=1 python recipes/wan22_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture
 DMD_MODERN_FLOW_CPU=1 python -m pytest -q tests/test_training_wan22_cpu.py

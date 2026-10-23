@@ -26,6 +26,11 @@ class ModelComponents:
     inference_projection: Callable | None = None
     prediction: Any = None
     capabilities: tuple[str, ...] = ()
+    # Optional, read-only export input capability. Called only after strict
+    # inference restoration: (state, record, {mode, source_dir, model_metadata})
+    # -> {features: tensor tree, metadata: cohort-wide JSON, sources: identities}.
+    # The model owns record/geometry/codec validation; no asset reload is implied.
+    encode_input: Callable | None = None
 
     def validate(self):
         from .prediction import PredictionSpec
@@ -56,7 +61,7 @@ class ModelComponents:
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
         for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training", "collect_metrics",
-                     "inference_projection"):
+                     "inference_projection", "encode_input"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")

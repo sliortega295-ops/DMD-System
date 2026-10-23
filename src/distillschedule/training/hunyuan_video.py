@@ -314,6 +314,7 @@ def load_media_bundle(assets):
 
 
 def _components(state, descriptor, *, training):
+    from distillschedule.data.hunyuan_video_inputs import encode_export_input
     immutable = ['teacher','media'] if training else ['media']
     if training:
         for role in ('student','fake'):
@@ -325,6 +326,7 @@ def _components(state, descriptor, *, training):
         gpu_execution='NOT_RUN',pretrained_quality='NOT_RUN',quality_validation='NOT_RUN')
     return ModelComponents(state=state,immutable_modules=tuple(immutable),metadata=metadata,prediction=PredictionSpec('flow'),
         capabilities=('video','flow','lora','dmd_flow_v1'),generate=generate,decode=state['media'].decode,
+        encode_input=None if training else encode_export_input,
         inference_projection=project_current_generator if training else None,admit_training=admit_training if training else None).validate()
 
 

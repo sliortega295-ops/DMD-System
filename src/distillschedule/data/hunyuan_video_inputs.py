@@ -8,7 +8,7 @@ from pathlib import Path
 from .manifest import source_identity, validate_source, resolve_path
 from .preparation import _publish
 from .tensors import tensor_tree
-from .flow_image_inputs import _tensor
+from .flow_image_inputs import _tensor, export_record_sources, export_metadata
 from .wan22_inputs import input_identity
 
 SCHEMA = 'distillschedule.hunyuan15_t2v_inputs.v1'
@@ -55,7 +55,9 @@ def encode_record(record, parameters, *, media=None, config=None):
     import torch
     from distillschedule.training import hunyuan_video as api
     from distillschedule.training.flow_image import require, json_object
-    require(isinstance(parameters,dict) and set(parameters) == {'assets','mode','source_dir','binding'}, 'explicit native video encoding source/mode/binding required')
+    keys = {'mode','source_dir','binding'}
+    require(isinstance(parameters,dict) and keys <= parameters.keys() and set(parameters) <= keys|{'assets'}
+            and (media is not None or 'assets' in parameters), 'explicit native video encoding source/mode/binding required')
     if media is None:
         media,_,roots,_,_,_,_,_ = api.load_media_bundle(parameters['assets'])
         config = json_object(roots['student']/'config.json')
@@ -90,6 +92,16 @@ def encode_record(record, parameters, *, media=None, config=None):
         row = dict(latents={'video':latent},**conditions,latent_shape=torch.tensor(shape,dtype=torch.int64),
             encoder_identity=torch.tensor(list(bytes.fromhex(media.binding)),dtype=torch.uint8))
     return validate_row(row,config=config,media_config=media.architecture,binding=media.binding,empty=media.encode_text(['']))
+
+
+def encode_export_input(state, record, parameters):
+    from distillschedule.training import hunyuan_video as api
+    role, media = state['student'], state['media']
+    sources = export_record_sources(record, parameters, media_kind='video')
+    row = encode_record(record, dict(mode=parameters['mode'], source_dir=parameters['source_dir'], binding=media.binding),
+                        media=media, config=role.architecture)
+    role.validate_feeds(row)
+    return dict(features=row, metadata=export_metadata(api, media, parameters, schema=SCHEMA), sources=sources)
 
 
 def prepare_inputs(source_manifest, output_dir):

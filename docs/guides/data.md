@@ -318,3 +318,8 @@ DMD2 Generator/guidance/denoising/real-image consumption and official
 Self-Forcing's separate G/C prompts; the algorithm admits the exact required
 counts. Do not turn independent streams into one shared advancing iterator.
 See [model families](model_families.md) for exact recipes.
+
+For FLUX/Qwen-Image/Wan2.2/Hunyuan inference exports with native encoding
+capabilities, [export-only new-input preparation](export_inputs.md) uses the
+same public plugin entrypoint without original assets/checkpoints. Unsupported
+adapters refuse rather than falling back to their asset-based preparer.

@@ -186,6 +186,11 @@ cache, guessed normalization kernel or inference weight merging is added.
 
 ## New input and portable output
 
+After exporting, the [common export-only preparer](../../docs/guides/export_inputs.md)
+can encode new prompts/raw RGB using restored native codecs even after deleting
+all training assets/checkpoints. The existing image asset-based preparer below
+remains available and still explicitly requires its original asset bundle.
+
 Prepare genuinely new prompts with the same codec binding, then export the
 restored current Student. The returned export manifest supplies the exact
 `build_inference_model` factory and parameters for an inference config. Keep

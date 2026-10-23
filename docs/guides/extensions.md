@@ -182,6 +182,12 @@ must not fall back to initialized/base/Hub weights. Do not bind metadata to live
 random initial parameter values or old payload locations. Native nonpersistent
 buffers must still be initialized by the model's actual constructor.
 
+An optional read-only `encode_input` capability permits the
+[common export-only preparer](export_inputs.md#adapter-extension-contract) to
+encode new prompts/raw media from those restored codecs. The model owns its
+record, shape, conditioning and source contracts. Missing capability refuses;
+no training-bundle fallback or generic family-name branch is introduced.
+
 `generate --output-kind latents` is an explicit opt-in when no real decoder
 exists. Return named nonempty finite floating tensors and `latent_schema`
 with each tensor's exact `layout`, `shape`, and Torch `dtype`. The default
