@@ -341,7 +341,10 @@ def write_generation(root, values, *, metadata, output_kind=None):
             stream.setnchannels(samples.shape[1])
             stream.setsampwidth(2)
             stream.setframerate(audio['sample_rate'])
-            stream.writeframes(np.rint(samples.numpy() * 32767).astype('<i2').tobytes())
+            # NumPy cannot represent BF16, and FP16 rounds 32767 to 32768.
+            # Quantize in FP32 for every admitted floating input dtype.
+            pcm = samples.detach().float().cpu().numpy()
+            stream.writeframes(np.rint(pcm * 32767).astype('<i2').tobytes())
         result['audio'] = {'path': str(root / 'audio.wav'), 'layout': 'TC', 'shape': list(samples.shape),
                            'sample_rate': audio['sample_rate'], 'encoding': 'PCM16'}
     if output_kind:

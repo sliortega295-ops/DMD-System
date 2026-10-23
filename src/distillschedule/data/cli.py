@@ -18,6 +18,8 @@ def main(argv=None):
         command.add_argument("manifest", type=Path)
         if name in ("prepare", "import"):
             command.add_argument("--output", type=Path, required=True)
+        if name == 'prepare':
+            command.add_argument('--preparer', help='explicit trusted module:callable native data adapter')
         if name == "validate":
             command.add_argument("--sources", action="store_true", help="also verify original media and encoder source")
     helios = sub.add_parser("prepare-helios-stream", help="prepare explicit original W2 feature cohorts on CPU")
@@ -78,7 +80,16 @@ def main(argv=None):
             result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
                                     cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
         elif args.command == "prepare":
-            result = inspect_prepared(prepare(args.manifest, args.output))
+            if args.preparer:
+                from distillschedule.training.plugins import load_callable, resolve_reference
+                reference = resolve_reference(args.preparer, args.manifest.resolve().parent)
+                factory, source = load_callable(reference)
+                manifest = Path(factory(args.manifest, args.output)).resolve()
+                if not manifest.is_relative_to(args.output.resolve()):
+                    raise ValueError('native preparer must return its manifest below the requested output')
+                result = {**inspect_prepared(manifest), 'preparer_source': source}
+            else:
+                result = inspect_prepared(prepare(args.manifest, args.output))
         elif args.command == "import":
             result = inspect_prepared(import_preencoded(args.manifest, args.output))
         elif args.command == "validate":

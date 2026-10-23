@@ -35,6 +35,15 @@ class ModelComponents:
                 or any(not isinstance(item, str) or not item for item in self.capabilities)
                 or len(set(self.capabilities)) != len(self.capabilities)):
             raise ValueError('capabilities must be unique nonempty strings')
+        if self.prediction is not None or self.capabilities:
+            contract = {'prediction': self.prediction.kind if self.prediction is not None else None,
+                        'capabilities': sorted(self.capabilities)}
+            metadata = dict(self.metadata)
+            key = '_distillschedule_model_contract'
+            if key in metadata and metadata[key] != contract:
+                raise ValueError('model metadata disagrees with effective prediction/capabilities')
+            metadata[key] = contract
+            self.metadata = metadata
         if not self.state or not all(isinstance(key, str) and key for key in self.state):
             raise ValueError("model state must have explicit nonempty names")
         if self.immutable_modules:

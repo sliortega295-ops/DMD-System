@@ -42,3 +42,15 @@ def test_media_output_rejects_missing_modality_and_invalid_audio(tmp_path):
         decoded_media({'video': torch.zeros(1, 8, 8, 3, dtype=torch.uint8)}, required_kind='image')
     with pytest.raises(ValueError, match='audio'):
         decoded_media({'audio': {'samples': torch.tensor([[float('nan')]]), 'sample_rate': 1}}, required_kind='audio')
+
+
+@pytest.mark.parametrize('dtype', [torch.bfloat16, torch.float16])
+def test_low_precision_audio_is_converted_to_pcm_without_overflow(tmp_path, dtype):
+    import numpy as np
+    samples = torch.tensor([[-1.], [0.], [1.]], dtype=dtype)
+    values = {'generated': torch.zeros(1), 'decoded': {
+        'audio': {'samples': samples, 'sample_rate': 16000}}}
+    result = write_generation(tmp_path, values, metadata={}, output_kind='audio')
+    with wave.open(result['audio']['path']) as stream:
+        pcm = np.frombuffer(stream.readframes(3), dtype='<i2')
+    assert pcm.tolist() == [-32767, 0, 32767]

@@ -44,7 +44,15 @@ def tensors(value):
     elif isinstance(value, torch.optim.Optimizer):
         yield from tensors(value.state)
     elif _stateful(value):
-        yield from tensors(value.state_dict())
+        live = getattr(value, 'runtime_tensors', None)
+        if live is None:
+            yield from tensors(value.state_dict())
+        else:
+            require(callable(live), 'runtime_tensors must be callable', path='open.state')
+            for tensor in live():
+                require(isinstance(tensor, torch.Tensor),
+                        'runtime_tensors must yield live tensors', path='open.state')
+                yield tensor
     elif isinstance(value, Mapping):
         for v in value.values(): yield from tensors(v)
     elif isinstance(value, (tuple, list)):

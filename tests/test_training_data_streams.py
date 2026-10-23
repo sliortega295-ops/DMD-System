@@ -83,3 +83,26 @@ def build(components, feeds, parameters, cycle, seed):
     manifest = json.loads((Path(resumed['checkpoint']) / 'manifest.json').read_text())
     assert manifest['data_progress']['generator']['cursor'] == 4
     assert manifest['data_progress']['critic']['cursor'] == 4
+
+
+def test_multistream_evaluation_uses_physical_generator_record_not_cycle_cursor(tmp_path):
+    from test_training_end_to_end import run_cli
+    root = tmp_path / 'media'
+    build_fixture(root, samples=1)
+    prepare(root / 'raw/manifest.json', root / 'prepared')
+    workflow = tmp_path / 'workflow.py'
+    workflow.write_text('''from distillschedule.examples.tiny_av import build_algorithm
+def build(components, feeds, parameters, cycle, seed):
+    return build_algorithm(components, feeds['generator'][0], parameters, cycle, seed)
+''')
+    config = json.loads((root / 'train.json').read_text())
+    config['data'] = {'streams': {'generator': {
+        'prepared': str(root / 'prepared/manifest.json'), 'samples_per_cycle': 2,
+        'sampling': {'kind': 'epochs', 'shuffle': False}}}}
+    config['algorithm']['factory'] = str(workflow) + ':build'
+    config['trainer'].update(cycles=1, output_dir=str(tmp_path / 'first'))
+    path = root / 'streams.json'; path.write_text(json.dumps(config))
+    result = run_cli('train', path)
+    evaluated = run_cli('evaluate', path, '--checkpoint', result['checkpoint'],
+                        '--output', tmp_path / 'evaluated', '--sample-index', 0)
+    assert evaluated['sample_id'] == 'sample-000000'

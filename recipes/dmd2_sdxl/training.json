@@ -1,0 +1,32 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "name": "sdxl",
+    "parameters": {
+      "source_root": "/ABSOLUTE/LOCAL/EXTERNAL_DMD2_SOURCE",
+      "model_id": "/ABSOLUTE/LOCAL/SDXL_BUNDLE",
+      "settings": {
+        "dfake_gen_update_ratio": 5,
+        "generator_lr": 0.000001,
+        "guidance_lr": 0.000001,
+        "resolution": 1024,
+        "latent_resolution": 128,
+        "num_denoising_step": 4,
+        "denoising": true,
+        "backward_simulation": true,
+        "warmup_step": 500,
+        "train_iters": 1000000
+      }
+    }
+  },
+  "algorithm": {"name": "dmd2"},
+  "data": {
+    "streams": {
+      "generator": {"prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json", "samples_per_cycle": 1, "sampling": {"kind": "epochs", "shuffle": true}},
+      "guidance": {"prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json", "samples_per_cycle": 4, "sampling": {"kind": "epochs", "shuffle": true}},
+      "denoising": {"prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json", "samples_per_cycle": 5, "sampling": {"kind": "epochs", "shuffle": true}}
+    }
+  },
+  "execution": {"adapter": "program", "mode": "reference"},
+  "trainer": {"cycles": 2, "seed": 17, "device": "cpu", "output_dir": "/ABSOLUTE/PROJECT/DMD2_SDXL_RUN", "checkpoint_every": 1}
+}

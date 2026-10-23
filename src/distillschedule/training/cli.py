@@ -77,6 +77,9 @@ def main(argv=None):
             p.add_argument("--checkpoint", type=Path, required=True)
         if name in ("evaluate", "generate"):
             p.add_argument("--sample-index", type=int, default=0)
+        if name == 'evaluate':
+            p.add_argument('--prepared', type=Path, help='explicit physical evaluation inputs')
+            p.add_argument('--stream', help='physical training input stream (default generator when present)')
     args = parser.parse_args(argv)
     try:
         config = load_training_config(args.config) if getattr(args, "config", None) else None
@@ -119,7 +122,8 @@ def main(argv=None):
                                               prepared=args.prepared, sample_index=args.sample_index,
                                               output_kind=args.output_kind)
             elif args.command == "evaluate":
-                result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index)
+                result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
+                                  prepared=args.prepared, stream=args.stream)
             else:
                 result = export(config, args.checkpoint, args.output)
         if type(result) is int:

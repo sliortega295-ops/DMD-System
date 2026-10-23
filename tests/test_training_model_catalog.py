@@ -64,3 +64,34 @@ def test_prediction_conversion_rejects_missing_diffusion_coefficient():
     from distillschedule.training.prediction import PredictionSpec
     with pytest.raises(ValueError, match='alpha'):
         PredictionSpec('epsilon').to_x0(1., 2., sigma=.5)
+
+
+def test_effective_prediction_and_capabilities_are_bound_to_checkpoint_identity(tmp_path, monkeypatch):
+    from distillschedule.examples.tiny_av import build_fixture
+    from distillschedule.data import prepare
+    from distillschedule.training.config import load_training_config
+    from distillschedule.training.session import train
+    root = tmp_path / 'media'; build_fixture(root, samples=4)
+    prepare(root / 'raw/manifest.json', root / 'prepared')
+    plugin = tmp_path / 'model.py'
+    plugin.write_text('''import os
+from distillschedule.examples.tiny_av import build_model as tiny
+from distillschedule.training.prediction import PredictionSpec
+def build(parameters):
+    result = tiny(parameters)
+    result.prediction = PredictionSpec(os.environ.get('TEST_PRED_KIND', 'flow'))
+    result.capabilities = (os.environ.get('TEST_MODEL_CAP', 'video'),)
+    return result
+''')
+    value = json.loads((root / 'train.json').read_text())
+    value['model']['factory'] = str(plugin) + ':build'
+    value['trainer'].update(cycles=1, output_dir=str(tmp_path / 'first'))
+    config = TrainingConfig.from_dict(value, source=root / 'training.json')
+    first = train(config)
+    value['trainer'].update(cycles=2, resume_from=first['checkpoint'], output_dir=str(tmp_path / 'wrong'))
+    monkeypatch.setenv('TEST_PRED_KIND', 'x0')
+    with pytest.raises(ValueError, match='identity'):
+        train(TrainingConfig.from_dict(value, source=config.source))
+    monkeypatch.setenv('TEST_PRED_KIND', 'flow'); monkeypatch.setenv('TEST_MODEL_CAP', 'audio')
+    with pytest.raises(ValueError, match='identity'):
+        train(TrainingConfig.from_dict(value, source=config.source))

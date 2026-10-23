@@ -41,7 +41,7 @@ def describe():
 
 
 for _name, _factory, _caps, _description in (
-    ('sd15', 'sd:build_sd15', ('image', 'epsilon', 'lora'), 'Stable Diffusion 1.5'),
+    ('sd15', 'sd:build_sd15', ('image', 'epsilon', 'gan'), 'Stable Diffusion 1.5'),
     ('sdxl', 'sd:build_sdxl', ('image', 'epsilon', 'lora', 'pooled_text'), 'Stable Diffusion XL'),
     ('self-forcing-wan', 'self_forcing:build_model', ('video', 'causal', 'kv_cache', 'flow'), 'Official Self-Forcing Wan'),
     ('ltx25', 'ltx:build_model', ('video', 'audio', 'flow', 'lora'), 'LTX-2.5 audio-video'),

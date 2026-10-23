@@ -74,3 +74,20 @@ def test_native_preparation_missing_input_is_a_normal_cli_error(tmp_path, capsys
                  "--output", str(tmp_path / "output.json")]) == 2
     assert "ERROR:" in capsys.readouterr().err
     assert not (tmp_path / "output.json").exists()
+
+
+def test_explicit_native_preparer_runs_through_same_data_frontdoor(tmp_path, capsys):
+    from PIL import Image
+    Image.new('RGB', (4, 4), (1, 2, 3)).save(tmp_path / 'image.png')
+    (tmp_path / 'encoder.py').write_text('def encode(record, parameters):\n    return {"pixels": record["image"]}\n')
+    source = tmp_path / 'raw.json'
+    source.write_text(json.dumps({'schema_version': 'distillschedule.data.raw.v1',
+        'encoder': {'factory': 'encoder.py:encode'}, 'records': [{'id': 'a', 'image': 'image.png'}]}))
+    plugin = tmp_path / 'preparer.py'
+    plugin.write_text('from distillschedule.data import prepare\ndef prepare_native(source, output):\n    return prepare(source, output)\n')
+    assert main(['prepare', str(source), '--output', str(tmp_path / 'prepared'),
+                 '--preparer', str(plugin) + ':prepare_native']) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['preparer_source']['sha256']
+    from distillschedule.data import PreparedDataset
+    assert PreparedDataset(tmp_path / 'prepared/manifest.json').sample(0)['pixels'].shape == (4, 4, 3)

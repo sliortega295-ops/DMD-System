@@ -376,25 +376,40 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
     return {"generated": generated, "decoded": decoded}
 
 
-def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None):
+def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, prepared=None, stream=None):
     with distributed.context(config):
         from .inference import write_generation
         root = Path(output).expanduser().resolve()
         def admit_request():
             effective = _generation_parameters(parameters)
-            return effective, digest({"output": str(root), "sample_index": sample_index, "parameters": effective})
+            return effective, digest({"output": str(root), "sample_index": sample_index, "parameters": effective,
+                                      "prepared": str(prepared) if prepared is not None else None, "stream": stream})
         parameters, request = distributed.checked(admit_request, "evaluation request admission")
         if any(row != request for row in distributed.gather(request)):
             raise ValueError("ranks disagree on shared evaluation request")
         components, dataset, payload, identity, _session = _load_for_output(config, checkpoint)
         rank, world = distributed.rank_world()
         def admit():
-            if type(sample_index) is not int or sample_index < 0 or sample_index + world > len(dataset):
+            from .data_streams import InputStreams
+            from distillschedule.data import PreparedDataset
+            if prepared is not None and stream is not None:
+                raise ValueError('evaluation takes prepared or stream, not both')
+            inputs = dataset
+            if prepared is not None:
+                inputs = PreparedDataset(prepared)
+            elif isinstance(dataset, InputStreams):
+                name = stream or ('generator' if 'generator' in dataset.datasets else None)
+                if name not in dataset.datasets:
+                    raise ValueError('multistream evaluation requires an explicit physical input stream')
+                inputs = dataset.datasets[name]
+            elif stream is not None:
+                raise ValueError('evaluation stream requires multistream training data')
+            if type(sample_index) is not int or sample_index < 0 or sample_index + world > len(inputs):
                 raise ValueError("evaluation sample index cohort out of range")
             if components.generate is None:
                 raise ValueError("model adapter does not implement generation")
-            return dataset.sample(sample_index + rank), dataset.sample_id(sample_index + rank)
-        feeds, sample_id = distributed.checked(admit, "evaluation input admission")
+            return inputs.sample(sample_index + rank), inputs.sample_id(sample_index + rank), inputs.identity
+        feeds, sample_id, input_identity = distributed.checked(admit, "evaluation input admission")
         # All ranks execute native forwards (and any FSDP all-gathers), not just
         # rank zero. Each receives its own rank-strided prepared sample.
         values = distributed.checked(lambda: _generate_values(config, components, feeds, parameters), "checkpoint generation")
@@ -408,7 +423,7 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None):
             "status": "GENERATED", "kind": "INFERENCE_FROM_TRAINING_CHECKPOINT",
             "checkpoint_cycle": payload["cycle"], "rank": rank, "world_size": world,
             "sample_index": sample_index + rank, "sample_id": sample_id, "identity": identity,
-            "input_identity": dataset.identity, "generation_parameters": parameters,
+            "input_identity": input_identity, "generation_parameters": parameters,
             "inference_seed": config.trainer.get("seed", 0)}), "evaluation artifact writing")
         results = distributed.gather(result)
         def publish():

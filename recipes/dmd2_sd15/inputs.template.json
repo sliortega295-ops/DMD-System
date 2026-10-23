@@ -1,0 +1,9 @@
+{
+  "schema_version": "distillschedule.sd_inputs.v1",
+  "variant": "sd15",
+  "model_id": "/ABSOLUTE/LOCAL/SD15_BUNDLE",
+  "records": [
+    {"id": "prompt-0001", "prompt": "A watercolor painting of a quiet mountain village"},
+    {"id": "prompt-0002", "prompt": "A small sailboat at sunrise"}
+  ]
+}
