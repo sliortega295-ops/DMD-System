@@ -42,9 +42,12 @@ def cycle_structure(workload):
                      "parameters": {name: {**shapes(p), "requires_grad": p.requires_grad}
                                     for name, p in unwrap_module(model).named_parameters()}}
                for key, model in workload.state.items() if isinstance(model, torch.nn.Module)}
+    from distillschedule.open_workload.owner_execution import inventory
+    owners = inventory(workload.state)
     return digest({"program": program, "modules": modules, "feeds": shapes(dict(workload.feeds)),
                    "bindings": {key: code_signature(fn) for key, fn in workload.bindings.items()},
                    "immutable_modules": workload.immutable_modules,
+                   **({"owner_execution": owners} if owners else {}),
                    "replica_semantics": (workload.replica_semantics.to_dict()
                                          if workload.replica_semantics is not None else None)})
 
@@ -54,11 +57,22 @@ class CyclePolicy:
         self.execution = dict(execution)
         self.bound = None
         self.session = None
+        self._owner_readmission = False
 
     def restore(self, value):
         if not isinstance(value, dict) or value.get("schema_version") != "distillschedule.cycle_policy.v1":
             raise ValueError("checkpoint has no admitted cycle policy")
         self.bound = deepcopy(value)
+        from distillschedule.open_workload.owner_execution import selected
+        self._owner_readmission = selected(self.bound['implementation'])
+
+    def _admit_owner_request(self):
+        from distillschedule.open_workload.owner_execution import selected
+        requested = self.execution.get('implementation', {})
+        if (self.bound['mode'] == 'manual'
+                and (selected(self.bound['implementation']) or selected(requested))
+                and requested != self.bound['implementation']):
+            raise ValueError('checkpoint owner execution policy changed')
 
     def prepare_resume(self, workload):
         """Install the saved physical layout before restoring its local shards."""
@@ -66,6 +80,7 @@ class CyclePolicy:
         from distillschedule.open_workload.planning import source_identity
         backend = ExecutionBackend(workload)
         def admit():
+            self._admit_owner_request()
             if (self.bound["source"] != source_identity()
                     or self.bound["structure"] != cycle_structure(workload)
                     or self.bound["mode"] != self.execution.get("mode", "reference")):
@@ -81,6 +96,7 @@ class CyclePolicy:
         def admit():
             current_structure = cycle_structure(workload)
             if self.bound is not None:
+                self._admit_owner_request()
                 if self.bound["source"] != source_identity() or self.bound["structure"] != current_structure:
                     raise ValueError("training policy source, workload, model precision or input structure changed")
                 if self.bound["mode"] != self.execution.get("mode", "reference"):
@@ -127,17 +143,35 @@ class CyclePolicy:
                 return session, outputs
             default = backend.inventory(1)["candidates"][0]
             implementation = self.execution.get("implementation", default) if mode == "manual" else default
-            session = backend.session(implementation, copy_state=False, persistent=True)
             order = self.execution.get("order")
-            outputs = session.run(order)
+            from distillschedule.open_workload.owner_execution import selected
+            gate = {"status": "NOT_RUN", "reason": "explicit user strategy"}
+            if selected(implementation):
+                from distillschedule.open_workload.planning import paired_execution
+                session, outputs, gate, native = paired_execution(backend, implementation, order, persistent=True)
+                if gate['status'] != 'PASS':
+                    raise ValueError('owner execution numerical admission needs review; training did not commit')
+                session.receipt.update(reference_gate=gate, native_capability_evidence=native)
+            else:
+                session = backend.session(implementation, copy_state=False, persistent=True)
+                outputs = session.run(order)
             self.bound = {"schema_version": "distillschedule.cycle_policy.v1", "mode": mode,
                           "source": source_identity(), "structure": current_structure,
                           "implementation": deepcopy(implementation),
                           "order": list(order or (*[c.id for c in workload.program.calls], "__open_finish__")),
-                          "initial_reference_gate": {"status": "NOT_RUN", "reason": "explicit user strategy"}}
+                          "initial_reference_gate": gate}
             self.session = session
             return session, outputs
         implementation = self.bound["implementation"]
+        if self._owner_readmission:
+            from distillschedule.open_workload.planning import paired_execution
+            session, outputs, gate, native = paired_execution(backend, implementation, self.bound['order'], persistent=True)
+            if gate['status'] != 'PASS':
+                raise ValueError('resumed owner execution numerical admission needs review; training did not commit')
+            session.receipt.update(reference_gate=gate, native_capability_evidence=native,
+                                   owner_resume_reference_admission=True)
+            self.session, self._owner_readmission = session, False
+            return session, outputs
         # Session applies the actual capability predicates. A user-admitted
         # manual combination need not appear in a truncated search inventory.
         if self.session is None:
@@ -149,4 +183,12 @@ class CyclePolicy:
             from distillschedule.open_workload.hardware_probe import plan_memory_limit
             plan_memory_limit(session.device, distributed=backend.distributed, consensus=backend.consensus,
                               requested=self.bound["memory_limit_bytes"], reserve_bytes=0)
-        return session, session.run(self.bound["order"])
+        outputs = session.run(self.bound["order"])
+        from distillschedule.open_workload.owner_execution import selected
+        if selected(implementation):
+            from distillschedule.open_workload.checkpoint_policy import native_effect_evidence
+            native = backend.consensus(native_effect_evidence(implementation, session.effects))
+            if not all(row['active'] for row in native):
+                raise ValueError('selected native capability was not exercised on every rank')
+            session.receipt['native_capability_evidence'] = native
+        return session, outputs

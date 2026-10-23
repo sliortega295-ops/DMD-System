@@ -100,6 +100,134 @@ class DMD2Owner:
         if self.observer is not None:
             self.observer(event, value)
 
+    def execution_options(self):
+        """Pure, source-bound CPU1/FP32 native UNet checkpoint capability.
+
+        The bound args/metadata stay mathematical identity. Only a complete
+        macrocycle's physical flags and supported Diffusers callbacks change.
+        """
+        import torch
+        import inspect
+        from pathlib import Path
+        from diffusers import UNet2DConditionModel
+        from .sd import runtime_identity
+        from distillschedule.open_workload.torch_backend import code_signature
+        from distillschedule.workloads.best_known.registry import file_sha256
+        self._validate_live()
+        runtime = runtime_identity()
+        require(runtime == self.identity['runtime'], 'live numerical dependency runtime changed')
+        required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
+        stack = dict(runtime, torch=str(torch.__version__).split('+')[0])
+        qualified = (all(stack[name] == version for name, version in required.items())
+                     and not torch.distributed.is_initialized())
+        baseline = {'gradient_checkpointing': self.args.gradient_checkpointing}
+        descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
+            options=[baseline], effect=dict(kind='native_checkpoint', enabled_key='gradient_checkpointing',
+                                           components=['generator', 'fake']),
+            identity=dict(source=deepcopy(self.source.identity), runtime=runtime,
+                provider_file_sha256=file_sha256(Path(__file__)),
+                native_classes={name: code_signature(type(value)) for name, value in (
+                    ('model', self.model), ('guidance', self.model.guidance_model))},
+                capability=dict(status='AVAILABLE' if qualified else 'UNAVAILABLE_RUNTIME', required_runtime=required),
+                scope='CPU1_FP32_NATIVE_UNETS_ONLY_NO_TEACHER_CLIP_VAE'))
+        # Optional checkpoint qualification must not narrow the preexisting
+        # reference factory's runtime admission. No override is offered here.
+        if not qualified:
+            return descriptor
+        require(all(t.device.type == 'cpu' and (not t.is_floating_point() or t.dtype == torch.float32)
+                    for t in self.runtime_tensors()), 'native checkpoint requires CPU1/FP32 tensors')
+        roots = (self.model.feedforward_model, self.model.guidance_model.fake_unet)
+        for root in roots:
+            require(type(root) is UNet2DConditionModel and root._supports_gradient_checkpointing
+                    and all(name not in vars(root) for name in (
+                        'enable_gradient_checkpointing', 'disable_gradient_checkpointing', '_set_gradient_checkpointing'))
+                    and any(hasattr(module, 'gradient_checkpointing') for module in root.modules())
+                    and all(type(module.gradient_checkpointing) is bool for module in root.modules()
+                            if hasattr(module, 'gradient_checkpointing')),
+                    'native checkpoint requires unmodified checkpoint-capable actual UNets')
+        from . import checkpoint as checkpoint_state, sd
+        helper_files = {type(module).__module__: inspect.getsourcefile(type(module))
+                        for root in roots for module in root.modules()}
+        helper_files.update({module.__name__: module.__file__ for module in (checkpoint_state, sd)})
+        helper_files[type(self.source).__module__] = inspect.getsourcefile(type(self.source))
+        helper_files['torch.utils.checkpoint'] = inspect.getsourcefile(inspect.unwrap(torch.utils.checkpoint.checkpoint))
+        helper_files['torch.checkpoint_wrapper'] = inspect.getsourcefile(torch.utils.checkpoint.checkpoint)
+        require(all(path is not None for path in helper_files.values()),
+                'native checkpoint helpers require inspectable source files')
+        descriptor['options'].append({'gradient_checkpointing': not self.args.gradient_checkpointing})
+        descriptor['identity'].update(
+            helper_files={name: file_sha256(Path(path)) for name, path in sorted(helper_files.items())},
+            checkpoint_api={name: code_signature(getattr(UNet2DConditionModel, name)) for name in (
+                'enable_gradient_checkpointing', 'disable_gradient_checkpointing', '_set_gradient_checkpointing')},
+            torch_checkpoint=code_signature(inspect.unwrap(torch.utils.checkpoint.checkpoint)))
+        return descriptor
+
+    @contextmanager
+    def execution_scope(self, option, effects):
+        """Retain original native toggles, observe real requests and callable replay.
+
+        Upstream re-enables checkpointing without a callback on non-G turns and
+        every fake turn. Scope the supported enable API too, so those original
+        calls reinstall our measured, numerically identical native callback.
+        Never wrap or replace a UNet forward, change masks, modes, args or RNG.
+        """
+        import torch
+        descriptor = self.execution_options()
+        require(len(descriptor['options']) > 1 and type(option) is dict and set(option) == {'gradient_checkpointing'}
+                and type(option['gradient_checkpointing']) is bool and option in descriptor['options'],
+                'unsupported native execution option')
+        enabled = option['gradient_checkpointing']
+        roots = {'generator': self.model.feedforward_model, 'fake': self.model.guidance_model.fake_unet}
+        flags = [(owner, owner.gradient_checkpointing) for owner in (self.model, self.model.guidance_model)]
+        attributes = ('gradient_checkpointing', '_gradient_checkpointing_func', 'enable_gradient_checkpointing')
+        saved = [(module, {key: (key in vars(module), vars(module).get(key)) for key in attributes})
+                 for root in roots.values() for module in root.modules()]
+        effects['components'] = {name: dict(checkpoint_requests=0, recompute_calls=0, disabled_verified=False)
+                                 for name in roots}
+
+        def measured_enable(root, row):
+            original = root.enable_gradient_checkpointing
+            def checkpoint(module, *args):
+                row['checkpoint_requests'] += 1
+                invocations = 0
+                def call(*values):
+                    nonlocal invocations
+                    invocations += 1
+                    if invocations > 1:
+                        row['recompute_calls'] += 1
+                    return module.__call__(*values)
+                # Exactly Diffusers0.37's default callback and RNG behavior.
+                return torch.utils.checkpoint.checkpoint(call, *args, use_reentrant=False)
+            def enable(gradient_checkpointing_func=None):
+                require(gradient_checkpointing_func is None,
+                        'nested native checkpoint callback override is not admitted')
+                return original(gradient_checkpointing_func=checkpoint)
+            return enable
+
+        try:
+            for name, root in roots.items():
+                root.enable_gradient_checkpointing = measured_enable(root, effects['components'][name])
+                root.disable_gradient_checkpointing()
+            self.model.gradient_checkpointing = self.model.guidance_model.gradient_checkpointing = enabled
+            if enabled:
+                roots['generator'].enable_gradient_checkpointing()
+            # Fake remains disabled until its original compute_loss_fake enables
+            # it, and the original disable at the end of that forward remains.
+            yield
+        finally:
+            for name, root in roots.items():
+                effects['components'][name]['disabled_verified'] = all(
+                    not module.gradient_checkpointing for module in root.modules()
+                    if hasattr(module, 'gradient_checkpointing'))
+            for module, values in reversed(saved):
+                for key, (present, value) in values.items():
+                    if present:
+                        setattr(module, key, value)
+                    elif key in vars(module):
+                        delattr(module, key)
+            for owner, value in flags:
+                owner.gradient_checkpointing = value
+
     def runtime_tensors(self):
         """Device-owned tensors, excluding host-only RNG/Adam step metadata.
 

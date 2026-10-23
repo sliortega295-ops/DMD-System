@@ -81,14 +81,25 @@ def native_effect_evidence(implementation, effects):
     """
     local = implementation.get('local', implementation)
     policy = local.get('checkpoint_policy', 'recompute')
-    if policy == 'recompute':
+    owner_options = bool(local.get('owner_execution'))
+    if policy == 'recompute' and not owner_options:
         return {'status': 'NOT_REQUIRED', 'policy': policy, 'active': True}
     rows = effects.get('replica_effects', [effects])
+    if owner_options:
+        from .owner_execution import evidence as owner_evidence
+        owner = owner_evidence(local, rows)
+        if policy == 'recompute':
+            return {'status': owner['status'], 'policy': policy, 'active': owner['active'],
+                    'owner_execution': owner}
     evidence = [{'native_save_requests': int(row.get('selective_save_requests', 0)),
                  'native_cached_bytes': int(row.get('selective_native_cache_bytes', 0)),
                  'explicit_replay_callbacks': int(row.get('selective_replay_hits', 0))}
                 for row in rows]
     active = bool(evidence) and all(row['native_save_requests'] > 0 and
                                     row['native_cached_bytes'] > 0 for row in evidence)
-    return {'status': 'ACTIVE_NATIVE_SELECTIVE_SAVE' if active else 'INAPPLICABLE_NATIVE_OP',
-            'policy': policy, 'active': active, 'rank_evidence': evidence}
+    result = {'status': 'ACTIVE_NATIVE_SELECTIVE_SAVE' if active else 'INAPPLICABLE_NATIVE_OP',
+              'policy': policy, 'active': active, 'rank_evidence': evidence}
+    if owner_options:
+        result.update(owner_execution=owner, active=active and owner['active'])
+        if not owner['active']: result['status'] = owner['status']
+    return result

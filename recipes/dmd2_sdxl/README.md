@@ -55,3 +55,10 @@ real Program new-process restart, and inference-only current-G/CLIP/VAE export
 on new prompt inputs after removal of training/base assets. The original GAN
 heads are tested separately, not claimed as tiny full-GAN end-to-end training.
 CPU integration is not pretrained quality, CUDA, or distributed validation.
+
+The shared [native UNet checkpoint policy](../dmd2_sd15/README.md#optional-native-unet-checkpoint-policy)
+also applies to SDXL's actual generator/fake UNets, including backward-simulation
+prefixes and native non-G disable/re-enable turns. It changes no denoising
+schedule, conditioning, update ratio, optimizer or RNG semantics. The same
+manual/auto/saved-plan admission and first-postrestart paired reference gate
+apply; Teacher, dual CLIP and VAE remain outside the option.

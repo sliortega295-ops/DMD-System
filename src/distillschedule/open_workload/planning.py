@@ -127,7 +127,10 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
                 profiles.append(session.profile);static=max(static,session.static_bytes)
                 del out,session
             if rejected_effect is not None:
-                failed.append({'implementation':implementation, 'reason':'INAPPLICABLE_NATIVE_SELECTIVE_CAPABILITY',
+                from .owner_execution import selected as owner_selected
+                reason = ('INAPPLICABLE_NATIVE_OWNER_CAPABILITY' if owner_selected(implementation)
+                          else 'INAPPLICABLE_NATIVE_SELECTIVE_CAPABILITY')
+                failed.append({'implementation':implementation, 'reason':reason,
                                'native_evidence':rejected_effect});continue
             if gate['status']!='PASS':
                 failed.append({'implementation':implementation,'reference_comparison':gate});continue
@@ -268,6 +271,33 @@ def verify_order(selected,graph,rules,costs,lives,static,limit):
     return order
 
 
+def paired_execution(backend, implementation, order=None, *, persistent=False,
+                     rtol=1e-5, atol=1e-7, execute=None):
+    """Preupdate admission on independent clones; never commit to live owners.
+
+    Shared by saved plans and explicit stateful physical options, including the
+    first continued update after restore. Only the selected session is adopted.
+    """
+    from .owner_execution import admit, inventory, selected
+    if selected(implementation):
+        # Reject malformed owner selections before even a cloned reference
+        # update. Backend/session admission still owns the complete layout.
+        backend.validated(lambda: admit(implementation.get('local', implementation),
+                                         inventory(backend.workload.state)), 'owner execution predicates')
+    reference = backend.session(backend.inventory(1)['candidates'][0])
+    out = reference.run()
+    expected = reference.result_state(out)
+    del reference, out
+    session = backend.session(implementation, persistent=persistent)
+    out = execute(session) if execute is not None else session.run(order)
+    from .checkpoint_policy import native_effect_evidence
+    native = backend.consensus(native_effect_evidence(implementation, session.effects))
+    require(all(row['active'] for row in native),
+            'selected native capability was not exercised on every rank', path='open.run')
+    gate = backend.compare(expected, session.result_state(out), rtol=rtol, atol=atol)
+    return session, out, gate, native
+
+
 def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False,persistent=False):
     from .execution import ExecutionBackend
     backend=ExecutionBackend(workload)
@@ -297,24 +327,19 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False,persi
     order=verify_order(selected,g,rules,costs,lives,row['static_bytes'],document['memory_limit_bytes'])
     root=Path(output).resolve();backend.mkdir(root)
     try:
-        reference=backend.session(backend.inventory(1)['candidates'][0]);out=reference.run()
-        expected=reference.result_state(out);del reference,out
-        session=backend.session(row['implementation'],persistent=persistent)
         require(type(deep_profile) is bool, 'invalid deep-profile flag', path='open.run')
         traces=[]
-        if deep_profile:
+        def execute(session):
+            if not deep_profile:
+                return session.run(order)
             from .deep_profile import selected_plan_trace
             session.deep_trace_labels=True
             out,trace=selected_plan_trace(lambda:session.run(order),root,
                                           rank=backend.rank,device=workload.device)
-            traces=backend.consensus(trace)
-        else:
-            out=session.run(order)
-        from .checkpoint_policy import native_effect_evidence
-        actual_native=backend.consensus(native_effect_evidence(row['implementation'],session.effects))
-        require(all(x['active'] for x in actual_native),
-                'selected native capability was not exercised on every rank',path='open.run')
-        gate=backend.compare(expected,session.result_state(out),rtol=rtol,atol=atol)
+            traces.extend(backend.consensus(trace))
+            return out
+        session,out,gate,actual_native=paired_execution(backend,row['implementation'],order,
+            persistent=persistent,rtol=rtol,atol=atol,execute=execute)
         result={**session.receipt,'plan_sha256':sha,'reference_gate':gate,
                 'status':'PASS_SELECTED_PROGRAM' if gate['status']=='PASS' else 'REVIEW_SELECTED_PROGRAM',
                 'selected_implementation':row['implementation'],'executed_order':list(order),

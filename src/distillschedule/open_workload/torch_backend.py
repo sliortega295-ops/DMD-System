@@ -8,7 +8,7 @@ backends are admitted separately by the common planning service.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass, field
 import hashlib
@@ -166,6 +166,8 @@ class Workload:
             from .replica_contract import ReplicaSemantics
             require(isinstance(self.replica_semantics, ReplicaSemantics), 'typed replica semantics required', path='open.workload')
             self.replica_semantics.validate(self)
+        from .owner_execution import inventory
+        inventory(self.state)
         return self
 
     @property
@@ -176,12 +178,15 @@ class Workload:
     def identity(self):
         self.validate()
         classes={type(m) for obj in self.state.values() if isinstance(obj,nn.Module) for m in obj.modules()}
+        from .owner_execution import inventory
+        owners = inventory(self.state)
         return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state)),
                 'feeds':fingerprint(signature(self.feeds)), 'seed':self.seed,
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
                 'model_code':{k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes},
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),
                 'torch':torch.__version__,'device':str(self.device),
+                **({'owner_execution': owners} if owners else {}),
                 **({'replica_semantics':self.replica_semantics.to_dict()} if self.replica_semantics is not None else {})}
 
 
@@ -219,7 +224,10 @@ def candidates(workload, *, limit=16):
     shares=(False,True) if sharing_inventory(workload) else (False,)
     from .checkpoint_policy import POLICIES, operations
     policies=tuple(p for p in POLICIES if operations(p))
+    from .owner_execution import inventory, alternatives
+    owners = inventory(workload.state)
     total=len(shares)*(1+(1+len(policies))*(2**len(groups)-1))
+    total *= math.prod(len(row['descriptor']['options']) for row in owners.values())
     result=[]
     # Baseline and ordinary singleton/full checkpoint choices first; then give
     # selective policies budget before lower-priority combinatorial subsets.
@@ -232,10 +240,12 @@ def candidates(workload, *, limit=16):
         if key in visited: return
         visited.add(key)
         for share in shares:
-            if len(result)>=limit: return
-            option={'share_immutable':share,'checkpoint_bindings':list(selected),'backend':'torch-callable-resident-v1'}
-            if policy!='recompute': option['checkpoint_policy']=policy
-            result.append(option)
+            for owner_options in alternatives(owners):
+                if len(result)>=limit: return
+                option={'share_immutable':share,'checkpoint_bindings':list(selected),'backend':'torch-callable-resident-v1'}
+                if policy!='recompute': option['checkpoint_policy']=policy
+                if owner_options: option['owner_execution']=owner_options
+                result.append(option)
     for selected in primary: append(selected,'recompute')
     for policy in policies:
         for selected in primary:
@@ -244,7 +254,9 @@ def candidates(workload, *, limit=16):
         if len(result)>=limit: break
         for policy in ('recompute',*policies): append(selected,policy)
     return {'candidates':result,'total_candidates':total,'exhaustive':len(result)==total,
-            'capabilities':['reference','nonreentrant_checkpoint','immutable_parameter_alias',*policies],
+            'capabilities':['reference','nonreentrant_checkpoint','immutable_parameter_alias',*policies,
+                            *(['stateful_owner_execution'] if any(len(row['descriptor']['options']) > 1
+                                                                  for row in owners.values()) else [])],
             'layout':'single-device-resident','cross_call_overlap':False}
 
 
@@ -274,8 +286,11 @@ class Session:
     def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False):
         workload.validate()
         from .checkpoint_policy import POLICIES, operations
+        from .owner_execution import admit, inventory
+        self.owner_inventory = inventory(workload.state)
+        self.owner_options = admit(implementation, self.owner_inventory)
         policy=implementation.get('checkpoint_policy','recompute')
-        require(set(implementation) in ({'share_immutable','checkpoint_bindings','backend'},
+        require(set(implementation) - {'owner_execution'} in ({'share_immutable','checkpoint_bindings','backend'},
                     {'share_immutable','checkpoint_bindings','backend','checkpoint_policy'})
                 and (policy=='recompute' or (policy in POLICIES and operations(policy)
                      and bool(implementation['checkpoint_bindings'])))
@@ -325,6 +340,9 @@ class Session:
         """
         require(self.persistent, 'trial sessions are one-shot', path='open.runtime')
         workload.validate()
+        from .owner_execution import inventory
+        require(inventory(workload.state) == self.owner_inventory,
+                'owner execution descriptor or source changed', path='open.runtime')
         require(set(workload.state) == set(self.state) and all(
             workload.state[key] is self.state[key] for key in self.state),
             'cycle must retain the owned state objects', path='open.runtime')
@@ -425,13 +443,31 @@ class Session:
         runner=StaticRoleRunner('open_runtime',{'call':dispatch,'barrier':finish},versions=VersionLedger(self.graph.metadata['initial_versions']))
         prepared=runner.prepare(self.graph,order=tuple(order or (*[c.id for c in self.workload.program.calls],'__open_finish__')),retain_outputs=self.workload.program.outputs)
         if self.lifecycle is not None: self.lifecycle.before_run(self, prepared.order if hasattr(prepared, 'order') else tuple(order or (*[c.id for c in self.workload.program.calls], '__open_finish__')))
-        started=time.perf_counter_ns();outputs=prepared.run();self.synchronize()
-        if self.lifecycle is not None: self.lifecycle.finish(self)
+        started=time.perf_counter_ns()
+        with ExitStack() as scopes:
+            if self.owner_options:
+                from .owner_execution import inventory
+                require(inventory(self.state) == self.owner_inventory,
+                        'owner execution descriptor or source changed', path='open.runtime')
+                # Per-run observations, not cumulative success from an earlier cycle.
+                self.effects['owner_execution'] = {}
+                for key, option in self.owner_options.items():
+                    row = {'option': deepcopy(option),
+                           'effect': deepcopy(self.owner_inventory[key]['descriptor']['effect'])}
+                    self.effects['owner_execution'][key] = row
+                    scopes.enter_context(self.state[key].execution_scope(deepcopy(option), row))
+            outputs=prepared.run();self.synchronize()
+            if self.lifecycle is not None: self.lifecycle.finish(self)
+        for key, option in self.owner_options.items():
+            row = self.effects['owner_execution'][key]
+            require(row.get('option') == option
+                    and row.get('effect') == self.owner_inventory[key]['descriptor']['effect'],
+                    'owner changed admitted execution effect predicates', path='open.runtime')
         for path,values in self._immutable.items():
             require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}==values,
                     'declared immutable parameters changed',path='open.runtime')
         self.receipt={'status':'EXECUTED_OPEN_PROGRAM','program':self.workload.program.digest,
-            'dispatcher':prepared.receipt(),'effects':dict(self.effects),'wall_ns':time.perf_counter_ns()-started,
+            'dispatcher':prepared.receipt(),'effects':deepcopy(self.effects),'wall_ns':time.perf_counter_ns()-started,
             'device':str(self.device),'gpu_execution':'NOT_RUN' if self.device.type=='cpu' else 'NATIVE_CUDA_RUN',
             'claimable_speedup':False}
         return outputs

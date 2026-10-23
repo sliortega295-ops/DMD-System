@@ -107,6 +107,58 @@ tables must match their initial fingerprints. Upstream's post-first-guidance
 `requires_grad=True` behavior is preserved; the Teacher still never enters
 the optimizer. Mutable G/Fake weights are not incorrectly treated as frozen.
 
+## Optional native UNet checkpoint policy
+
+The common capability inventory can measure the original DMD2 generator and
+fake-UNet checkpoint option. The optimizer-containing `external_grad` macrocall
+remains atomic and **not replay safe**. This is not ordinary call checkpointing:
+
+```json
+{
+  "adapter": "program",
+  "mode": "manual",
+  "implementation": {
+    "backend": "torch-callable-resident-v1",
+    "share_immutable": false,
+    "checkpoint_bindings": [],
+    "owner_execution": {"native_cycle": {"gradient_checkpointing": true}}
+  }
+}
+```
+
+Omit `owner_execution` to keep the model's declared baseline unchanged. An
+explicit `false` can temporarily disable a declared checkpoint-enabled baseline.
+Neither option rewrites model settings, identity, native RNG, masks, modes or
+optimizer ownership. Both original model/guidance flags and all affected UNet
+checkpoint flags/callbacks are restored after each complete macrocycle, also on
+exceptions. Teacher, CLIP and VAE are never checkpointed by this option.
+
+`auto` uses the same bounded candidate budget, measured calibration and shared
+solver; `plan` reexecutes the same source-bound measured option. A lower tracked
+storage budget may select checkpointing even when its measured CPU time is
+longer. Enabled options require observed generator **and** fake checkpoint
+requests and real callable recomputations on every run; explicit disabled
+options require verified disabled flags and zero requests. Unexercised options
+are pruned during calibration and rejected for manual/saved-plan execution.
+
+New manual owner policies receive full preupdate reference admission on
+independent clones, including model/Adam/schedulers/native clocks/RNG and
+outputs. Only the selected clone is adopted. The first continued optimized
+update after process restart is similarly re-admitted; ordinary steady-state
+cycles do not execute duplicate reference updates. Provider descriptors, owner
+class code, native sources and helper-file hashes bind plans and restart policy.
+Malformed, changed or incompatible selections fail closed.
+
+This capability is limited to actual checkpoint-capable native UNets on the
+verified Torch 2.10.0 / Diffusers 0.37.1 / Transformers 4.51.3 / PEFT 0.17.1
+CPU1/FP32 closure. Tiny SD1.5/SDXL tests validate native effect and restart
+semantics; CPU tracked-storage and timing are diagnostics, **not** GPU memory,
+throughput, pretrained quality, AMP/FSDP or production-validation claims.
+An otherwise admitted reference on a different numerical-library stack keeps
+its declared baseline: its descriptor marks this optional capability unavailable
+and offers no owner override. This does not silently qualify checkpointing on
+that stack. Runtime drift relative to an already constructed owner still fails.
+
 Export projects **current G + CLIP + VAE only**, with architecture configs and
 named module weights. `distillschedule.training.sd:build_inference_model`
 does not construct a teacher/fake UNet or optimizer and never calls
