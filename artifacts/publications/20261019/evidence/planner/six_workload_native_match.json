@@ -1,0 +1,142 @@
+{
+  "schema_version": "dmd.six_workload_match_coverage.v1",
+  "utc": "2026-10-18T04:05:13.444754+00:00",
+  "comparison": "CURRENT_SAME_PARAMETER_MANUAL_INCUMBENT_VS_ACTUAL_SAVED_PLAN_NATIVE_C2",
+  "target_fraction": 0.03,
+  "rows": [
+    {
+      "id": "W1",
+      "name": "Wan1.3B with measured retain4 policy",
+      "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+      "source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "manual_C2": 20.040549555,
+      "selected_C2": 20.10377526,
+      "gap_percent": 0.3154888783188481,
+      "details": "New source cost-bound retention choice; actual saved window3/retained26-29 versus manualwindow5/retained26-29,16/16. REVIEW, no new speedup claim."
+    },
+    {
+      "id": "W2",
+      "name": "Helios No-GAN",
+      "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+      "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+      "manual_C2": 84.86731821484864,
+      "selected_C2": 84.95865019131452,
+      "gap_percent": 0.10761737072293442,
+      "details": "Same original384x640x33 globalB16 r256 G1/C5/EMA5, full safe HSDP bundle; original2GiB policy, no merged-LoRA. Actual saved model_plan/source present on both nodes. Ordinary numerical REVIEW, not strict/statistical equivalence.",
+      "new_evidence": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion-v2.json",
+        "sha256": "9321f1d64c29724d680ebe2c943859b20bf3f00b811eab1f20c2c7dbea75791f"
+      }
+    },
+    {
+      "id": "W3",
+      "name": "Helios GAN-on",
+      "status": "REUSED_MATCHED_DIAGNOSTIC_TARGET_MET",
+      "source": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+      "manual_C2": 116.80552457,
+      "selected_C2": 118.764660094,
+      "gap_percent": 1.6772627246960603,
+      "details": "Same-source16/16 single pair; REVIEW; explicit1GiB capacitypolicy and6MiB sampledminimum. Prior12starts exhausted; no rerun."
+    },
+    {
+      "id": "W4",
+      "name": "LiveWan C51",
+      "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+      "source": "5cdffc2efab969ad35a8f69dd7b94ad061cc8c86",
+      "manual_C2": 42.558984374999994,
+      "selected_C2": 42.49630078124999,
+      "gap_percent": -0.14728639480133715,
+      "details": "ORIGINAL 368x640x81 globalB16 G1/C5/EMA0 continuous sigma; same-source full C51 manual vs actual saved selected plan. Canonical v2/capacity unchanged. Numerical REVIEW is not strict equivalence or a statistical speedup claim. Cleanup is original owned-teardown evidence; current GPU idle was not probed.",
+      "new_evidence": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/reports/conclusion.json",
+        "sha256": "9c371393c220e2502bbed6f9a7834e267dc9d0e9aaf286b62c284284b5ce7b7b"
+      }
+    },
+    {
+      "id": "W5",
+      "name": "H3 Full-Sequence Grid1000",
+      "status": "DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN",
+      "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+      "manual_C2": null,
+      "selected_C2": null,
+      "gap_percent": null,
+      "details": "Three additional two-cycle diagnostics completed16/16 each: depth2 independent repeat and depth1. Initial/input/forward/cache samples match; first observed difference in backward; default sampled numerical gate FAIL retained. Not a unique-root-cause or unbiased-noise proof. No H3 native timing or REVIEW-only bypass. Used5/6; three-arm diagnostic series closed.",
+      "new_evidence": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq/reports/conclusion-v2.json",
+        "sha256": "9920ffe3f818fd9d2457030b3857344b9ef71f93dc0fefed8f27ea8c1b3837c8"
+      },
+      "next_action": "USER_DIRECTED_FIRST_DIVERGENCE_DIAGNOSIS_NO_H3_TIMING_PAIR",
+      "diagnostic_status": "FIRST_OBSERVED_DIVERGENCE_LOCALIZED_TO_BACKWARD_STRICT_NUMERICAL_FAILURE_UNRESOLVED",
+      "diagnostic_source": "493a2ee108cdec4038df3cfc0130f98479149fe8",
+      "diagnostic_evidence": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq_divergence_cpu/reports/numerical_diagnosis.json",
+        "sha256": "b7334618b52f8b5404384bf6228f507c3fc5af265a9380af2a7118ae57971616"
+      }
+    },
+    {
+      "id": "W6",
+      "name": "H3 AR / DiffSynth",
+      "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+      "source": "e88d21c168ce54be99134cecd195c961319cb45a",
+      "manual_C2": 255.501368846,
+      "selected_C2": 255.442535079,
+      "gap_percent": -0.0230267913106319,
+      "details": "Fresh metadata-only source e88; zero3-native/AP actual2C calibration -> saved source-bound plan -> same-source manual/saved native C2;16/16 each. Numerical REVIEW, no full-state/quality or statistical equivalence. Original W6 reserve0/hardcap policy unchanged; minimum cycle-boundary driver-free2.375MiB, no robust-margin claim.",
+      "historical_manual_C2": 255.670644,
+      "new_evidence": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r16/reports/derived-pair.json",
+        "sha256": "8ee328fa81738c6abb2b6e17ec310c5723b0bc874cdcdf68b16860afacf890e2"
+      },
+      "historical_three_attempts_preserved": true,
+      "new_native_starts": 4
+    }
+  ],
+  "archived_C34_match": {
+    "manual_C2": 46.89432421875,
+    "selected_C2": 47.12245703125,
+    "source": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+    "evidence": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/livewan_c34_r1/reports/conclusion.json",
+      "sha256": "fdb759370ae40fd7f8f699a954e7431a6be6005e00bf97f30f006f4fb3076278"
+    }
+  },
+  "H100": "CPU_CODE_ONLY_NOT_CONTACTED",
+  "ordinary_numerical_review_not_strict_equivalence": true,
+  "source_bound_native_rows_not_current_main_claim": true,
+  "new_reports": {
+    "W2": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/nogan/reports/conclusion-v2.json",
+      "sha256": "9321f1d64c29724d680ebe2c943859b20bf3f00b811eab1f20c2c7dbea75791f"
+    },
+    "W4": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/reports/conclusion.json",
+      "sha256": "9c371393c220e2502bbed6f9a7834e267dc9d0e9aaf286b62c284284b5ce7b7b"
+    },
+    "W5": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq/reports/conclusion-v2.json",
+      "sha256": "9920ffe3f818fd9d2457030b3857344b9ef71f93dc0fefed8f27ea8c1b3837c8"
+    },
+    "W6": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_ar/reports/conclusion.json",
+      "sha256": "af45d46c3deed11df3ceeed4709ed23e2df3eaee2f1c8320b4ae9a6c7f9c0444"
+    }
+  },
+  "parent_index": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r16/reports/six-workload-planner-status-v3.json",
+  "original_index_unchanged": true,
+  "matched_original_parameter_workloads": 5,
+  "total_workloads": 6,
+  "main_code_claim": "Independent candidate branches only; not pushed/merged/current-main capability",
+  "all_numeric_REVIEW_not_equivalence": true,
+  "open_W5": "Backwards/noise attribution ongoing, user explicitly prohibited speed pair before numerical resolution",
+  "new_retention_candidates": "Wan retain4 now actual measured native search+saved-plan closed loop; r18. Other retention derivatives retain own source/status, not all integrated.",
+  "previous_W1": {
+    "id": "W1",
+    "name": "Wan1.3B",
+    "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+    "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+    "manual_C2": 20.328810747,
+    "selected_C2": 20.345210192,
+    "gap_percent": 0.08067095121351286,
+    "details": "Fresh same-source full implementation manual/saved native C2,16/16; actual saved-plan SHA, same input/runtime/hardware/census; numerical REVIEW retained. One setup-only port failure preserved."
+  }
+}

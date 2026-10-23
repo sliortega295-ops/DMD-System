@@ -1,0 +1,24 @@
+{
+  "status": "GO_EXACT_EMA_COMPONENT_QUALIFIED_TWO_NATIVE_ARMS",
+  "prior_charged": 84,
+  "max_native_starts": 2,
+  "target_CPU": [
+    {
+      "returncode": 0,
+      "torch": "2.10.0+cu128",
+      "CUDA_initialized": false
+    },
+    {
+      "returncode": 0,
+      "torch": "2.10.0+cu128",
+      "CUDA_initialized": false
+    }
+  ],
+  "source": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+  "GPU_component_evidence": "/home/lyy/Helios/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r33/reports/component-result.json",
+  "original_reserves": true,
+  "original_comparator": true,
+  "profiler": false,
+  "planner": false,
+  "no_retry": true
+}

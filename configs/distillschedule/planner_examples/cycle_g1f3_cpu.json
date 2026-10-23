@@ -1,0 +1,71 @@
+{
+  "schema_version": "distillschedule.cycle_planner_input.v1",
+  "scope": "CPU_FIXTURE_ONLY",
+  "protocol": "post_generator_commit_independent_rollouts",
+  "source_steps": [
+    0,
+    1,
+    2
+  ],
+  "initial_versions": {
+    "generator": 0,
+    "critic": 0,
+    "ema": 0
+  },
+  "ema_after": [
+    0,
+    1,
+    2
+  ],
+  "memory_limits": {
+    "0": 45
+  },
+  "static_bytes_per_rank": 8,
+  "action_costs": {
+    "g": {
+      "duration_ns": 5,
+      "workspace_bytes_per_rank": 8
+    },
+    "r0": {
+      "duration_ns": 3,
+      "workspace_bytes_per_rank": 8
+    },
+    "c0": {
+      "duration_ns": 4,
+      "workspace_bytes_per_rank": 8
+    },
+    "e0": {
+      "duration_ns": 1,
+      "workspace_bytes_per_rank": 0
+    },
+    "r1": {
+      "duration_ns": 3,
+      "workspace_bytes_per_rank": 8
+    },
+    "c1": {
+      "duration_ns": 4,
+      "workspace_bytes_per_rank": 8
+    },
+    "e1": {
+      "duration_ns": 1,
+      "workspace_bytes_per_rank": 0
+    },
+    "r2": {
+      "duration_ns": 3,
+      "workspace_bytes_per_rank": 8
+    },
+    "c2": {
+      "duration_ns": 4,
+      "workspace_bytes_per_rank": 8
+    },
+    "e2": {
+      "duration_ns": 1,
+      "workspace_bytes_per_rank": 0
+    }
+  },
+  "retained_output_bytes": {
+    "r0": 24,
+    "r1": 24,
+    "r2": 24
+  }
+}

@@ -23,7 +23,9 @@ from runtime.operation_trace import tensor_sha256
 from runtime.rollout_trace import ForceNoGradCalls, LightweightNestedCallAudit, NestedCallTracer
 
 
-def _memory_snapshot(device: torch.device) -> dict[str, float]:
+def _memory_snapshot(device: torch.device, *, cpu_reference: bool = False):
+    if cpu_reference:
+        return {"status": "NOT_APPLICABLE_CPU_REFERENCE", "allocator": None, "timing": None}
     free, total = torch.cuda.mem_get_info(device)
     gib = float(2**30)
     return {
@@ -49,6 +51,8 @@ def run_generator_trace_rollout_batch(
     use_cross_kv_cache: bool = False,
     use_static_context_cache: bool = False,
     synchronize_after_rollout: bool = True,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -61,6 +65,14 @@ def run_generator_trace_rollout_batch(
     from helios.utils.utils_helios_post import run_generator
 
     loaded = make_batched_loaded_entry(tuple(loaded_entries))
+    from distillschedule.runtime.rollout_geometry import rollout_geometry
+    geometry = rollout_geometry(loaded.operation_trace)
+    cpu_reference = False
+    if torch.device(device).type != "cuda":
+        from distillschedule.data.wan_reference_inputs import cpu_telemetry
+        cpu_reference = cpu_telemetry(device, loaded.operation_trace)
+        if detailed_profile:
+            raise ValueError("CUDA detailed profiling is unavailable for CPU reference")
     tensors = loaded.tensors
     validation = loaded.operation_trace.validation
     expected_call_count = int(validation["call_count"])
@@ -85,27 +97,34 @@ def run_generator_trace_rollout_batch(
         stage_range=[0, 1 / 3, 2 / 3, 1],
         gamma=1 / 3,
     )
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    timesteps = sigmas * 1000
-    args = SimpleNamespace(
-        training_config=SimpleNamespace(
-            base_seq_len=256,
-            max_seq_len=4096,
-            base_shift=0.5,
-            max_shift=1.15,
-            saturation_ratio_min=0.3,
-            saturation_ratio_max=1.7,
-            saturation_ratio_clean_prob=0.1,
+    cache_key = f"rollout_constants/{device}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
         )
-    )
-    tracer: Any
+        timesteps = sigmas * 1000
+        args = SimpleNamespace(
+            training_config=SimpleNamespace(
+                base_seq_len=256,
+                max_seq_len=4096,
+                base_shift=0.5,
+                max_shift=1.15,
+                saturation_ratio_min=0.3,
+                saturation_ratio_max=1.7,
+                saturation_ratio_clean_prob=0.1,
+            )
+        )
+        tracer: Any
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps, args)
+    else:
+        sigmas, timesteps, args = cached
     if detailed_profile:
         tracer = NestedCallTracer(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=geometry.latent_shape[-2],
+            base_width=geometry.latent_shape[-1],
             num_stages=3,
             synchronize=lambda: torch.cuda.synchronize(device),
             before_call=lambda: torch.cuda.reset_peak_memory_stats(device),
@@ -115,14 +134,15 @@ def run_generator_trace_rollout_batch(
     else:
         tracer = LightweightNestedCallAudit(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=geometry.latent_shape[-2],
+            base_width=geometry.latent_shape[-1],
             num_stages=3,
         )
     physical_call = ForceNoGradCalls(tracer)
     model.enable_adapters()
     model.train()
-    torch.cuda.reset_peak_memory_stats(device)
+    if not clean_runtime and not cpu_reference:
+        torch.cuda.reset_peak_memory_stats(device)
     with generator_nograd_cross_kv_cache_scope(
         model,
         enabled=use_cross_kv_cache,
@@ -155,8 +175,8 @@ def run_generator_trace_rollout_batch(
             history_sizes=[16, 2, 1],
             is_enable_stage2=True,
             stage2_num_stages=3,
-            stage2_num_inference_steps_list=[2, 2, 2],
-            denoising_step_list=[1000, 750, 500, 250],
+            stage2_num_inference_steps_list=list(geometry.stage2_inference_steps),
+            denoising_step_list=list(geometry.denoising_step_list),
             last_step_only=False,
             last_section_grad_only=False,
             return_sim_step=False,
@@ -165,7 +185,7 @@ def run_generator_trace_rollout_batch(
             timestep_shift=5.0,
             use_dynamic_shifting=True,
             time_shift_type="linear",
-            num_critic_input_frames=9,
+            num_critic_input_frames=geometry.latent_shape[2],
             num_rollout_sections=1,
             is_skip_first_section=False,
             is_amplify_first_chunk=True,
@@ -181,13 +201,13 @@ def run_generator_trace_rollout_batch(
             operation_trace=loaded.operation_trace,
             trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
         )
-    if synchronize_after_rollout:
+    if synchronize_after_rollout and not clean_runtime and not cpu_reference:
         torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
-    if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
+    if list(generated_x0.shape) != [batch_size, *geometry.latent_shape[1:]]:
         raise AssertionError(
             "batched Generator returned a malformed x0: "
-            f"{list(generated_x0.shape)} != {[batch_size, 16, 9, 48, 80]}"
+            f"{list(generated_x0.shape)} != {[batch_size, *geometry.latent_shape[1:]]}"
         )
     if generated_x0.dtype != torch.bfloat16:
         raise AssertionError("batched Generator wire contract requires BF16 x0")
@@ -224,6 +244,9 @@ def run_generator_trace_rollout_batch(
         "batch_size": batch_size,
         "call_count": len(tracer.calls),
         "stage_call_count": stage_calls,
+        "logical_call_count": expected_call_count,
+        "logical_stage_call_count": expected_stage_calls,
+        "dummy_call_count": 0,
         "calls": tracer.calls,
         "output_shape": list(generated_x0.shape),
         "output_dtype": str(generated_x0.dtype),
@@ -235,7 +258,7 @@ def run_generator_trace_rollout_batch(
             logical_rollouts=batch_size,
             batch_size=batch_size,
         ),
-        "memory": _memory_snapshot(device),
+        "memory": _memory_snapshot(device, cpu_reference=cpu_reference),
         "cross_kv_cache": cross_kv_cache,
         "static_context_cache": static_context_cache,
     }
@@ -261,6 +284,8 @@ def run_generator_trace_rollout_batch(
                 with diagnostics_scope(f"DIAG_OUTPUT_SHA_D2H/generator_x0_step{step}"):
                     hashes.append(tensor_sha256(output))
         details["output_sha256"] = hashes
+    from distillschedule.runtime.fsdp2_p0 import validate_exact_rollout_call_inventory
+    validate_exact_rollout_call_inventory(details, label="critic-input rollout")
     return outputs, details
 
 

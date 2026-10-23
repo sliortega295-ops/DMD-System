@@ -1,34 +1,25 @@
-# Documentation map
+# Documentation
 
-DMD-System separates durable design, frozen experiment contracts, operational procedures and evidence status. Do not use a historical experiment note as the source of truth for a current launch.
+## Current use
 
-## Architecture
+- [Installation and environment selection](guides/installation.md), [troubleshooting](guides/troubleshooting.md).
+- [Framework architecture](architecture/framework.md), [training and recovery](guides/training.md),
+  [data preparation](guides/data.md), [new-model extension](guides/extensions.md),
+  [native integration](guides/native_workloads.md), and [support matrix](guides/support_matrix.md).
+- [Complete offline media-to-training example](../examples/framework/README.md).
+- [Current framework and original-model CPU acceptance](status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md).
+- [Original Wan Full5 public training/restart/current-G output acceptance](status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md).
+- [Original H3 current-Student export and installed-wheel acceptance](status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md).
+- [Earlier source-scoped framework acceptance](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
+- [Original W2/W5 reference lifecycle and CPU evidence](status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md).
+- [Original W4 reference lifecycle and reviewed CPU boundaries](status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md).
+- [Six workload guides](../recipes/README.md) and `distillctl workloads list`.
+- [Shared native planning](runbooks/native_planner_workflow.md), [Wan compute/state](runbooks/wan_compute_state_planning_v1.md), [LiveWan C51](runbooks/livewan_c51_planner_v1.md), [original H3 AR](runbooks/original_h3_ar_native.md).
+- [Open workload Program](workloads/open_workload_program.md) and [role pools](workloads/open_role_pools.md).
+- [Repository organization](architecture/repository_organization.md).
 
-- [`architecture/refactor_v1.md`](architecture/refactor_v1.md): typed runtime, adapter boundary and strangler migration order.
-- [`architecture/v0.2_source_inventory.md`](architecture/v0.2_source_inventory.md): source versus raw-evidence retention policy.
-- [`architecture/baai_server_adaptation_20260808.md`](architecture/baai_server_adaptation_20260808.md): historical CPU/source adaptation snapshot; not the live world16 status page.
+## Results and provenance
 
-## Frozen contracts
+Read [six-workload corrections](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before the [A100/planner source index](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and [H100 source index](status/H100_SOURCE_SNAPSHOT_20261019.md). Historical runbook `NOT_RUN` statements describe their original source and date; later archived receipts do not silently update those frozen records.
 
-- [`contracts/routea_full5_world16.md`](contracts/routea_full5_world16.md): the exact Route-A Full5 world16 workload and prohibited semantic changes.
-
-A contract answers **what must remain equivalent**. It must not contain mutable run IDs, launcher outcomes or temporary recovery steps.
-
-## Runbooks
-
-- [`runbooks/baai_routea_world16.md`](runbooks/baai_routea_world16.md): environment, preflight, two-host worker launch, topology probe and summarization.
-- [`runbooks/baai_no_gan_suite.md`](runbooks/baai_no_gan_suite.md): central suite entrypoint, evidence reuse, external executor seams and `Not Run` boundaries.
-
-A runbook answers **how to execute the current implementation**. It may change when tooling changes, but it may not silently change the frozen contract.
-
-## Status and experiments
-
-- [`status/routea_world16.md`](status/routea_world16.md): authoritative evidence ledger and current open gaps.
-- [`experiments/routea_world16_typed_revalidation_20260808.md`](experiments/routea_world16_typed_revalidation_20260808.md): detailed preregistration and attempt history for the August 8 integration cycle.
-
-A status page answers **what has actually been measured**. `Running`, `Partial`, `Failed` and `Not Run` are first-class outcomes; none may be rewritten as a successful result.
-
-## Evidence
-
-- [`../artifacts/manifests/README.md`](../artifacts/manifests/README.md): curated manifest policy, status labels and raw-evidence boundary.
-- [`../profiling/nsight/README.md`](../profiling/nsight/README.md): diagnostic profiling conventions and formal-claim boundary.
+[Legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md) and [Route-A](status/routea_world16.md) remain historical compatibility evidence, not the current project scope. Numerical REVIEW, genuine FAIL and missing quality results remain explicit. Main is not modified by the research-branch organization.

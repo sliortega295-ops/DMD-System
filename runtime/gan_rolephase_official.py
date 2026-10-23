@@ -137,13 +137,19 @@ def score_official_kwargs(
     device: torch.device,
 ) -> dict[str, Any]:
     training = config.training_config
+    from distillschedule.runtime.rollout_geometry import rollout_geometry
+    from distillschedule.search.helios_request import trace_request
+    geometry = rollout_geometry(trace)
+    request = trace_request(trace)
+    if request is not None:
+        request.validate_official_config(config)
     from helios.utils.utils_base import apply_schedule_shift
     from helios.utils.utils_helios_post import replay_operation_trace_prepared_history
 
     sigmas = torch.linspace(1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64)
     sigmas = apply_schedule_shift(
         sigmas,
-        torch.empty((1, 16, 9, 48, 80)),
+        torch.empty(geometry.latent_shape),
         base_seq_len=training.base_seq_len,
         max_seq_len=training.max_seq_len,
         base_shift=training.base_shift,
@@ -210,6 +216,12 @@ def critic_official_kwargs(
     engine: Any,
 ) -> dict[str, Any]:
     training = config.training_config
+    from distillschedule.search.helios_request import trace_request
+    request = trace_request(trace)
+    if request is not None:
+        request.validate_official_config(config)
+        if tuple(generated_x0.shape) != request.latent_shape:
+            raise ValueError("official GAN Critic input shape differs from ORIGINAL Helios request")
     return {
         "args": config,
         "critic_accelerator": HeliosAcceleratorAdapter(generated_x0.device, engine),

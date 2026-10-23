@@ -1,0 +1,14 @@
+{
+  "schema": "dmd.wan_exact_ema_manual.v1",
+  "source_head": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+  "arm": "graph",
+  "run_id": "wan-exact-ema-graph-20261018-r34",
+  "entry_files": {
+    "manual_entry.py": "0dfacf682828f4d3594285c3bbdd5e986d0cb7d22270f096941dfe6c9d946ffc",
+    "exact_ema_graph.py": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d"
+  },
+  "parent_entry": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r30/scripts/manual_entry.py",
+  "parent_entry_sha256": "d0fb3f85f7bd1399475ff967670d48b7ed5375478dc197eba517c44541e1b62b",
+  "stream_packet": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r34/configs/graph-stream.json",
+  "stream_packet_sha256": "4a3abef08d576341c4731227ead4d2d7e906ec823887249d11e9d621ef6afb7d"
+}

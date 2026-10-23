@@ -1,0 +1,10 @@
+{
+  "incomplete_journal_requires_reconciliation": false,
+  "no_automatic_retry": true,
+  "prior_spent": 2,
+  "remaining": 0,
+  "this_session_complete": 6,
+  "this_session_started": 6,
+  "total_limit": 8,
+  "total_spent": 8
+}

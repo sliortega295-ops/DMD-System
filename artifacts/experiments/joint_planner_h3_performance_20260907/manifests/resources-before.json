@@ -1,0 +1,16 @@
+{
+  "utc": "2026-09-07T23:12:21.064103+00:00",
+  "results": [
+    {
+      "node": 0,
+      "status": "FAIL_SSH",
+      "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 5, in <module>\n  File \"<string>\", line 5, in <dictcomp>\n  File \"/usr/lib/python3.10/pathlib.py\", line 1134, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\n  File \"/usr/lib/python3.10/pathlib.py\", line 1119, in open\n    return self._accessor.open(self, mode, buffering, encoding, errors,\nFileNotFoundError: [Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'\n"
+    },
+    {
+      "node": 1,
+      "status": "FAIL_SSH",
+      "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 5, in <module>\n  File \"<string>\", line 5, in <dictcomp>\n  File \"/usr/lib/python3.10/pathlib.py\", line 1134, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\n  File \"/usr/lib/python3.10/pathlib.py\", line 1119, in open\n    return self._accessor.open(self, mode, buffering, encoding, errors,\nFileNotFoundError: [Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'\n"
+    }
+  ],
+  "lock": "NOT_ACQUIRED_READ_ONLY_AUDIT"
+}

@@ -1,0 +1,318 @@
+{
+  "status": "PASS_ACTUAL_SAME_HEAD_SINGLE_NATIVE_DIAGNOSTIC_PAIR",
+  "utc": "2026-10-16T02:49:36.102079+00:00",
+  "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+  "arms": {
+    "control": {
+      "seconds": 95.53463149257004,
+      "rank_receipts": 8,
+      "logical_slots": [
+        0,
+        8,
+        1,
+        9,
+        2,
+        10,
+        3,
+        11,
+        4,
+        12,
+        5,
+        13,
+        6,
+        14,
+        7,
+        15
+      ],
+      "rank_rows": [
+        {
+          "rank": 0,
+          "seconds": 95.5263849850744,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 1,
+          "seconds": 95.52483696490526,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 2,
+          "seconds": 95.53463149257004,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 3,
+          "seconds": 95.53231518901885,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 4,
+          "seconds": 95.53089595679194,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 5,
+          "seconds": 95.53010100498796,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 6,
+          "seconds": 95.53360602166504,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 7,
+          "seconds": 95.52577895112336,
+          "fences": {
+            "critic_rollout_sync_count": 10,
+            "elide_explicit_rollout_sync": false,
+            "generator_update_empty_cache_count": 2,
+            "generator_update_sync_count": 2,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        }
+      ],
+      "max_captured_allocated_bytes": 55843441664,
+      "max_captured_reserved_bytes": 59190018048,
+      "memory_scope": "maximum across preserved allocator snapshots; not continuously measured peak/minimum",
+      "updates": {
+        "generator": 1,
+        "critic": 5,
+        "ema": 5
+      },
+      "final_versions": {
+        "generator": 3,
+        "critic": 15,
+        "ema": 15
+      },
+      "CUDA_OOM": 0,
+      "host_oom_delta": 0,
+      "own_teardown": "PASS_ORIGINAL_RUN_EMPTY",
+      "full_state_numeric_parity": "NOT_RUN",
+      "formal_speedup_eligibility": false
+    },
+    "candidate": {
+      "seconds": 94.31143263261765,
+      "rank_receipts": 8,
+      "logical_slots": [
+        0,
+        8,
+        1,
+        9,
+        2,
+        10,
+        3,
+        11,
+        4,
+        12,
+        5,
+        13,
+        6,
+        14,
+        7,
+        15
+      ],
+      "rank_rows": [
+        {
+          "rank": 0,
+          "seconds": 94.30210577324033,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 1,
+          "seconds": 94.30234943889081,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 2,
+          "seconds": 94.3025822462514,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 3,
+          "seconds": 94.31143263261765,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 4,
+          "seconds": 94.30118107050657,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 5,
+          "seconds": 94.30637126788497,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 6,
+          "seconds": 94.30555788427591,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        },
+        {
+          "rank": 7,
+          "seconds": 94.30817846953869,
+          "fences": {
+            "critic_rollout_sync_count": 0,
+            "elide_explicit_rollout_sync": true,
+            "generator_update_empty_cache_count": 0,
+            "generator_update_sync_count": 0,
+            "outer_full5_boundary_sync_preserved": true
+          }
+        }
+      ],
+      "max_captured_allocated_bytes": 55843441664,
+      "max_captured_reserved_bytes": 59190018048,
+      "memory_scope": "maximum across preserved allocator snapshots; not continuously measured peak/minimum",
+      "updates": {
+        "generator": 1,
+        "critic": 5,
+        "ema": 5
+      },
+      "final_versions": {
+        "generator": 3,
+        "critic": 15,
+        "ema": 15
+      },
+      "CUDA_OOM": 0,
+      "host_oom_delta": 0,
+      "own_teardown": "PASS_ORIGINAL_RUN_EMPTY",
+      "full_state_numeric_parity": "NOT_RUN",
+      "formal_speedup_eligibility": false
+    }
+  },
+  "isolated_change": "only existing internal rollout sync/empty_cache elision; retainedG/retention prepost allocator flush inbotharms",
+  "saved_seconds": 1.2231988599523902,
+  "ratio": 1.0129697834695954,
+  "replications": 1,
+  "CV": "NOT_MEASURED",
+  "profiled": false,
+  "frozen_official_swap_s": 138.3719482459128,
+  "descriptive_cross_revision_ratio": 1.467181065787954,
+  "strict_full_state_numeric_parity": "NOT_RUN",
+  "formal_claimable": false,
+  "source_bindings": {
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/helios_h100_rollout_fence_probe_20261015_r1/matched_pair_r1/result.json": "ceb3d936ce3004099bc0e0aa1943059323f4bae848dc809b6fb7f8e02aa4128f",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_validate_20261015_r1/summary.json": "b8ba593de7a018c1830826f21ee4dc6b921bac7e4c0735b1c8f747fdc9660555",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/summary.json": "c23b5c9b76cc0e3f8b4b6fc8cf78e561c653509561e3699485ba7446e6467a44",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_00.json": "46487bf6571987abeeca185b9a1f43217f9997fdfa3d4ffeb5e2573953ac1c33",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_01.json": "25f868476463f599c2c6f2f189ea062bcf62544997cb17c28b7870450cc31512",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_02.json": "161c82e3ee0c175c7709e3360dc965302fa2b8d00b21721cfedb59f1fc661ffc",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_03.json": "b7feb5e4c9909e6f7c05986639fa443d400783d5cfa77e1be97750c5dd048811",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_04.json": "dfca250fe14987d2080b6eab8808899da60d37f2953f48775bc3bc8ec35ae252",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_05.json": "3a81e41071ac484ae49cb4870c51e865d6cbca1a1d3ddb9c61a84dd41d7c6601",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_06.json": "84366faf81164ad55900573dc713fa5f87a1f14e07042eb8537330e688c248cd",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_correctness_20261015_r1/execution/ranks/rank_07.json": "eb0ad311132f333787a3aa6bca800ff19ced376522db78cbd76e3602ebc40001",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/summary.json": "3aa8319410feddd236e3ee7cf2b0b2008439f71072f3a4a9f2d8c3cbbfcf50ff",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_00.json": "c8ce280d2e7aaff7cde3e104de7c5522b0acd594b6806059b7bd5b5f1f7119fa",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_01.json": "1bba521e2a6c39c93c2f580729fffb4d704176867cc96caa238c056bc4f652f1",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_02.json": "a5dc055770eac8068e4dd1c5d20ada8b833c936844079d5d6f1f27b2ed2f5eb1",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_03.json": "6a62afa6e2077b765c910010e3cdb1904729de5639f24e2e79fc77f5578ca15a",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_04.json": "802004496c063f3431ed12e0362fa04fe922b01175e42e2811d4119c4da07f7a",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_05.json": "348a1b0f41a667d091cc8637e8d42589a258ad6fcd49eaf723935fede6986df5",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_06.json": "2a74a2eb6bf790b3f4702fc95c4cc1a8d71297bc8bb862b45d9d83eeccd414eb",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_control_timing_20261015_r1/execution/ranks/rank_07.json": "62e56ab6d612a48b0a733b503eb1d6971827e17fa3dae05ef71f79abe8f41e56",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_validate_20261015_r1/summary.json": "f11572c1064caa9e5e0306cfc5e5fc51515158a6be7a5dab5560af92761d52ed",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/summary.json": "1bc1242719bf02a455db891c54068c419ae00ea8ef94fa6de4077fb627c79818",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_00.json": "b41eaaae4ab908f0e66c7507f604fba39320e380809de66c7da5afaf3c8852ee",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_01.json": "183fb87b786f233b1f9d67b129ac4a4085f3919666d9839dab6d3b6600ce2371",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_02.json": "2b96ee047fad7cf47b3ab5751362f73dfe719905e12791ca516f5d2a8a118f80",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_03.json": "dff5a293b3242c74195ad9d5b8be496bb45d48c6344a577069ae755d7ab535f6",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_04.json": "e939cc429d3009fd3cf2a3ba3c7e3281675845e5e20a08f147a7c3300f7f58d1",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_05.json": "723f8910454edc738ddf0f1b1f4a88b8a732d3edc09c16b44f8f1067148cdb4b",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_06.json": "80223ce3dca071ad002eb61d3fa502207c39af6d40690ae5be64683d12f872e6",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_correctness_20261015_r1/execution/ranks/rank_07.json": "1929944500fe8df046b0f1fc66faffe1b84f7e165b2bfd178b275ae5f0be5640",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/summary.json": "326181707f456116b0c89b434cf0f8f4786071392ffffa6d5717cfbdd48ba40e",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_00.json": "050402f5d37c39e64adbaae0f539c2348d63d26e5a7cc89a5a75ab63fe6c7967",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_01.json": "b6d0e17f5dd2ed69fd4cf451c784448d92801aeb7266ac96d0c264cfe03f282f",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_02.json": "e1bccbbde7ddad8a2fadf9c4721e93f3a58ef828c952b5531c7398eafb5f822c",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_03.json": "410441c6dca27be046fed32a8a6c2524388c62ee4f4a131c8bdba08030e7ad04",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_04.json": "81f446900616487d63fdf48cfb7d8d0abd8cb0d111321519fc57900edd7c62f3",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_05.json": "8bd4dc1c30f9e7652aaffaae40f84387bf6bd68ddd2b46e1d6eb564bcdc96350",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_06.json": "2182d61fa15a5eea895016c12b121b24f4eaead13544294ca60b7cfefbe21a8b",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/helios_h100_fence_candidate_timing_20261015_r1/execution/ranks/rank_07.json": "8702cb906e9bd3fd2b5cd8dfe495ce18b1526f9c3473b7192ada658bf7b7eafa"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "status": "PASS_SAME_REVISION_W6_THREE_ARM_SINGLE_DIAGNOSTIC_MATRIX",
+  "source_head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+  "single_native_trials": [
+    {
+      "placement": "resident_named_CPU_fallback",
+      "head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "native_C2_seconds": 308.6704701697454,
+      "C1_warmup_excluded_seconds": 315.12799312733114,
+      "peak_allocated_bytes": 79626779136,
+      "peak_reserved_bytes": 82388713472,
+      "sampled_host_cgroup_peak_bytes": 923254501376,
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "final_versions": "Student2/Fake2/EMA0",
+      "new_host_OOM": 0,
+      "owned_cleanup": "EMPTY",
+      "full_model_strict_native_C2_state": "NOT_RUN",
+      "formal_speedup_eligible": false
+    },
+    {
+      "placement": "fsdp",
+      "head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "native_C2_seconds": 320.66605521179736,
+      "C1_warmup_excluded_seconds": 322.93644439801574,
+      "peak_allocated_bytes": 46044036608,
+      "peak_reserved_bytes": 50000297984,
+      "sampled_host_cgroup_peak_bytes": 804860284928,
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "final_versions": "Student2/Fake2/EMA0",
+      "new_host_OOM": 0,
+      "owned_cleanup": "EMPTY",
+      "full_model_strict_native_C2_state": "NOT_RUN",
+      "formal_speedup_eligible": false
+    },
+    {
+      "placement": "candidate",
+      "head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "native_C2_seconds": 278.88644194882363,
+      "C1_warmup_excluded_seconds": 359.38038629852235,
+      "peak_allocated_bytes": 44174510080,
+      "peak_reserved_bytes": 49543118848,
+      "sampled_host_cgroup_peak_bytes": 1348850413568,
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "final_versions": "Student2/Fake2/EMA0",
+      "new_host_OOM": 0,
+      "owned_cleanup": "EMPTY",
+      "full_model_strict_native_C2_state": "NOT_RUN",
+      "formal_speedup_eligible": false
+    }
+  ],
+  "fsdp_to_candidate_ratio": 1.149808692638563,
+  "inherited_numerical": "Actual27008 full C1 bitwise comparisons at1abd, explicit default-off entireworker AST equivalence to0419; not a fresh0419 strict proof.",
+  "native_C2_full_state_parity": "NOT_RUN",
+  "formal_speedup_eligibility": false,
+  "Resident_boundary": "CPU checkpoint boundaries+16 frozenAdaLN CPU parameters, LOW_HEADROOM, not pure no-offload Resident and not placement-only comparator.",
+  "optimized_attention_cache": "existing exact-source FA2 result CPU reuse remains; generic activation_offload=False is not a zero-copy claim",
+  "source_identity_AST_proof": "manifests/default_off_nonresident_source_equivalence_r1.json",
+  "one_cycle": "private native AR8 continuous sigma G1/F1 LoRA64; not W5 Grid Student1/Fake5",
+  "utc": "2026-10-15T23:15:45.933326+00:00"
+}

@@ -74,8 +74,11 @@ class StaticFSDP2P0Policy:
     generator_nograd_persistent_unshard: bool = False
     generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
     cuda_allocator_expandable_segments: bool = False
+    lora_b_gemm_epilogue: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.lora_b_gemm_epilogue) is not bool:
+            raise ValueError("lora_b_gemm_epilogue must be an explicit boolean")
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
             raise ValueError(f"unsupported mesh policy: {self.mesh_policy}")
         if self.rollout_batch_size not in SUPPORTED_ROLLOUT_BATCH_SIZES:
@@ -223,7 +226,38 @@ class StaticFSDP2P0Policy:
                 suffixes.append("generatorpersistnoflush")
         if self.cuda_allocator_expandable_segments:
             suffixes.append("expandablesegments")
+        if self.lora_b_gemm_epilogue:
+            suffixes.append("lorabgemmepilogue")
         return "-".join((base, *suffixes))
+
+
+def validate_nogan_b_gemm_request(
+    *, enabled: bool, checkpoint_replay_scope: bool,
+    all_role_scale1_add: bool, variant: str, rollout_batch_size: int,
+    pack_real_score_pair: bool, attention_backend: str, gan_manual_bundle: bool = False,
+) -> None:
+    """Reject an unqualified port configuration before model construction.
+
+    This is the NoGAN B1 port of the existing N37 kernel, not a new GAN,
+    batching, precision, or placement experiment. The default-off path does
+    not import Torch, Triton, or any new runtime implementation.
+    """
+    if any(type(value) is not bool for value in (
+        enabled, checkpoint_replay_scope, all_role_scale1_add, pack_real_score_pair, gan_manual_bundle,
+    )):
+        raise ValueError("LoRA-B port switches must be explicit booleans")
+    if checkpoint_replay_scope and not all_role_scale1_add:
+        raise ValueError("LoRA checkpoint scope requires all-role scale1 add")
+    if enabled and not (
+        all_role_scale1_add and checkpoint_replay_scope
+        and (variant == "no-gan" or (variant == "gan" and gan_manual_bundle))
+        and type(rollout_batch_size) is int and rollout_batch_size == 1
+        and not pack_real_score_pair and attention_backend == "local-fa2"
+    ):
+        raise ValueError(
+            "NoGAN LoRA-B port requires B1, packing OFF, pinned local-fa2, "
+            "all-role scale1 add, and captured checkpoint replay scope"
+        )
 
 
 def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:
@@ -259,10 +293,29 @@ def apply_blockwise_fsdp2_policy(
     *,
     mesh_policy: str,
     world_size: int = WORLD_SIZE,
+    expected_block_count: int = 40,
     param_dtype: Any | None = None,
     reduce_dtype: Any | None = None,
+    separate_gan_heads: bool = False,
 ) -> dict[str, Any]:
-    """Shard all 40 Helios blocks bottom-up under FSDP or node-local HSDP."""
+    """Shard every expected block bottom-up under FSDP or node-local HSDP.
+
+    The default remains the fail-closed 40-block Helios-14B contract.  A
+    caller must opt in explicitly to another audited architecture, such as the
+    30-block Wan2.1-T2V-1.3B control used by the FSDP upper-bound experiment.
+    The explicit GAN-only option restores the source-qualified five-head
+    grouping; it does not alter the default or the Wan architecture path.
+    """
+
+    if type(separate_gan_heads) is not bool:
+        raise ValueError("separate_gan_heads must be an explicit boolean")
+    if separate_gan_heads and not (
+        type(expected_block_count) is int and expected_block_count == 40
+        and type(world_size) is int and world_size == WORLD_SIZE
+        and mesh_policy == "world16-fsdp"
+        and getattr(module, "is_use_gan", False) is True
+    ):
+        raise ValueError("separate GAN-head FSDP requires the GAN Critic, 40 blocks and world16-fsdp")
 
     import torch
     import torch.distributed as dist
@@ -271,8 +324,22 @@ def apply_blockwise_fsdp2_policy(
     if not dist.is_initialized() or dist.get_world_size() != world_size:
         raise RuntimeError("world16 must be initialized before FSDP2")
     blocks = list(getattr(module, "blocks", ()))
-    if len(blocks) != 40:
-        raise AssertionError(f"Helios block count changed: {len(blocks)} != 40")
+    if expected_block_count <= 0:
+        raise ValueError("expected_block_count must be positive")
+    if len(blocks) != expected_block_count:
+        raise AssertionError(
+            f"Transformer block count changed: {len(blocks)} != {expected_block_count}"
+        )
+    head_units = ()
+    if separate_gan_heads:
+        from helios.modules.transformer_helios import Discriminator3DHead
+        from .fsdp2_gan_head_groups import gan_head_fsdp_units
+
+        # Resolve every ownership/alias check before creating a mesh or
+        # mutating even the first block with fully_shard.
+        head_units = gan_head_fsdp_units(
+            module, head_type=Discriminator3DHead, container_type=torch.nn.ModuleDict,
+        )
     mesh = create_device_mesh(mesh_policy, world_size=world_size)
     mp_policy = MixedPrecisionPolicy(
         param_dtype=param_dtype if param_dtype is not None else torch.bfloat16,
@@ -285,6 +352,8 @@ def apply_blockwise_fsdp2_policy(
             reshard_after_forward=True,
             mp_policy=mp_policy,
         )
+    for _, head in head_units:
+        fully_shard(head, mesh=mesh, reshard_after_forward=True, mp_policy=mp_policy)
     fully_shard(
         module,
         mesh=mesh,
@@ -295,7 +364,7 @@ def apply_blockwise_fsdp2_policy(
     parameters = list(module.parameters())
     if not parameters or not all(hasattr(value, "device_mesh") for value in parameters):
         raise AssertionError("FSDP2 did not convert every parameter to DTensor")
-    return {
+    receipt = {
         "backend": (
             "FSDP2_COMPOSABLE_FULL_SHARD"
             if mesh_policy == "world16-fsdp"
@@ -305,7 +374,7 @@ def apply_blockwise_fsdp2_policy(
         "mesh_shape": list(mesh_shape_for_policy(mesh_policy, world_size=world_size)),
         "world_size": world_size,
         "block_count": len(blocks),
-        "wrap_policy": "40_BLOCKS_BOTTOM_UP_THEN_ROOT",
+        "wrap_policy": f"{expected_block_count}_BLOCKS_BOTTOM_UP_THEN_ROOT",
         "reshard_after_forward": True,
         "param_compute_dtype": str(mp_policy.param_dtype),
         "reduce_dtype": str(mp_policy.reduce_dtype),
@@ -313,6 +382,20 @@ def apply_blockwise_fsdp2_policy(
         "parameter_streaming": False,
         "transition": False,
     }
+    if separate_gan_heads:
+        # Preserve the legacy/default-off receipt exactly, including the
+        # parameterized 30-block path. Only the new opt-in reports new fields.
+        receipt.update(
+            wrap_policy="40_BLOCKS_THEN_5_GAN_HEADS_THEN_ROOT",
+            separate_gan_head_fsdp={
+                "requested": True, "enabled": True,
+                "head_paths": [path for path, _ in head_units],
+                "head_unit_count": len(head_units),
+                "fsdp_unit_count": len(blocks) + len(head_units) + 1,
+                "original_gradient_mesh_size": world_size,
+            },
+        )
+    return receipt
 
 
 def chunked(values: Sequence[Any], size: int) -> tuple[tuple[Any, ...], ...]:
@@ -714,3 +797,183 @@ __all__ = [
     "split_packed_prediction",
     "validate_rollout_entries",
 ]
+
+
+def validate_exact_rollout_call_inventory(
+    row: Mapping[str, Any], *, label: str
+) -> dict[str, Any]:
+    """Validate the shared exact-rollout receipt schema.
+
+    Generator-update and B1 no-grad rollout producers use the same physical
+    and logical DiT census.  Keep that equality explicit in the receipt rather
+    than treating an absent logical count as if it matched the physical one.
+    """
+
+    required = (
+        "call_count",
+        "stage_call_count",
+        "logical_call_count",
+        "logical_stage_call_count",
+        "dummy_call_count",
+    )
+    missing = [key for key in required if key not in row]
+    if missing:
+        raise ValueError(f"{label} is missing call-inventory fields: {missing}")
+
+    def count(key: str) -> int:
+        value = row[key]
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"{label}.{key} must be an integer")
+        if value < 0:
+            raise ValueError(f"{label}.{key} must be non-negative")
+        return int(value)
+
+    def stage_counts(key: str) -> dict[int, int]:
+        raw = row[key]
+        if not isinstance(raw, Mapping) or not raw:
+            raise TypeError(f"{label}.{key} must be a non-empty mapping")
+        result: dict[int, int] = {}
+        for raw_stage, raw_count in raw.items():
+            if isinstance(raw_count, bool) or not isinstance(raw_count, int):
+                raise TypeError(f"{label}.{key}[{raw_stage!r}] must be an integer")
+            stage = int(raw_stage)
+            if stage in result:
+                raise ValueError(f"{label}.{key} has duplicate stage {stage}")
+            if raw_count < 0:
+                raise ValueError(
+                    f"{label}.{key}[{raw_stage!r}] must be non-negative"
+                )
+            result[stage] = int(raw_count)
+        return result
+
+    physical = count("call_count")
+    logical = count("logical_call_count")
+    dummy = count("dummy_call_count")
+    physical_stages = stage_counts("stage_call_count")
+    logical_stages = stage_counts("logical_stage_call_count")
+    if sum(physical_stages.values()) != physical:
+        raise AssertionError(f"{label} physical stage-call census does not add up")
+    if sum(logical_stages.values()) != logical:
+        raise AssertionError(f"{label} logical stage-call census does not add up")
+    if dummy != 0 or physical != logical or physical_stages != logical_stages:
+        raise AssertionError(
+            f"{label} changed exact physical/logical DiT census: "
+            f"physical={physical}/{physical_stages}, "
+            f"logical={logical}/{logical_stages}, dummy={dummy}"
+        )
+    return {
+        "call_count": physical,
+        "stage_call_count": physical_stages,
+        "logical_call_count": logical,
+        "logical_stage_call_count": logical_stages,
+        "dummy_call_count": dummy,
+    }
+
+
+
+def expected_trace_rollout_call_inventory(
+    rank_control_validation: Mapping[str, Any],
+    *,
+    operation: str,
+    expected_rank_count: int | None = None,
+) -> dict[str, Any]:
+    """Return one rollout's exact census from the validated rank trace.
+
+    Helios samples a separate synchronized pyramid exit schedule for every
+    rollout operation.  Consequently, different steps can execute different
+    numbers of DiT forwards.  This helper deliberately derives the expected
+    receipt from ``StaticWorld16Trace.rank_control_validation`` instead of
+    imposing one uniform call inventory on all operations.
+    """
+
+    if rank_control_validation.get("status") != "PASS":
+        raise ValueError("rank trace schedule validation is not PASS")
+    if (
+        rank_control_validation.get("semantics")
+        != "official_helios_normal_rank0_broadcast_strict"
+    ):
+        raise ValueError("rank trace schedule uses unsupported semantics")
+    if rank_control_validation.get("cross_rank_call_count_parity") is not True:
+        raise ValueError("rank trace schedule lacks strict cross-rank parity")
+    local_exceptions = rank_control_validation.get("local_exception_entry_count")
+    if (
+        isinstance(local_exceptions, bool)
+        or not isinstance(local_exceptions, int)
+        or local_exceptions != 0
+    ):
+        raise ValueError("rank trace schedule contains local call-count exceptions")
+
+    rank_count = rank_control_validation.get("rank_count")
+    if isinstance(rank_count, bool) or not isinstance(rank_count, int) or rank_count <= 0:
+        raise TypeError("rank trace schedule has an invalid rank_count")
+    if expected_rank_count is not None and rank_count != expected_rank_count:
+        raise ValueError(
+            f"rank trace schedule rank_count {rank_count} != {expected_rank_count}"
+        )
+
+    rows = rank_control_validation.get("operations")
+    if not isinstance(rows, list) or not rows:
+        raise TypeError("rank trace schedule has no operation rows")
+    if rank_control_validation.get("operation_count") != len(rows):
+        raise ValueError("rank trace schedule operation_count is inconsistent")
+    if rank_control_validation.get("global_entry_count") != rank_count * len(rows):
+        raise ValueError("rank trace schedule global_entry_count is inconsistent")
+    matches = [
+        row
+        for row in rows
+        if isinstance(row, Mapping) and row.get("operation") == operation
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"rank trace schedule operation {operation!r} matched {len(matches)} rows"
+        )
+    row = matches[0]
+    if row.get("rank_count") != rank_count:
+        raise ValueError(f"{operation} rank-count receipt is inconsistent")
+
+    exits = row.get("synchronized_exit")
+    stage_calls = row.get("per_stage_call_counts")
+    if (
+        not isinstance(exits, list)
+        or not exits
+        or not isinstance(stage_calls, list)
+        or len(stage_calls) != len(exits)
+    ):
+        raise TypeError(f"{operation} has a malformed synchronized stage schedule")
+
+    normalized_stages: dict[int, int] = {}
+    for stage, (raw_exit, raw_calls) in enumerate(zip(exits, stage_calls, strict=True)):
+        if (
+            isinstance(raw_exit, bool)
+            or not isinstance(raw_exit, int)
+            or raw_exit < 0
+            or isinstance(raw_calls, bool)
+            or not isinstance(raw_calls, int)
+            or raw_calls <= 0
+        ):
+            raise TypeError(f"{operation} stage {stage} has an invalid exit/call count")
+        if raw_calls != raw_exit + 1:
+            raise ValueError(
+                f"{operation} stage {stage} call count does not equal exit + 1"
+            )
+        normalized_stages[stage] = int(raw_calls)
+
+    logical = row.get("logical_call_count")
+    physical = row.get("physical_call_count")
+    if (
+        isinstance(logical, bool)
+        or not isinstance(logical, int)
+        or isinstance(physical, bool)
+        or not isinstance(physical, int)
+    ):
+        raise TypeError(f"{operation} has invalid logical/physical call counts")
+    if logical <= 0 or physical != logical or logical != sum(normalized_stages.values()):
+        raise ValueError(f"{operation} has an inconsistent exact call census")
+
+    return {
+        "call_count": physical,
+        "stage_call_count": normalized_stages,
+        "logical_call_count": logical,
+        "logical_stage_call_count": dict(normalized_stages),
+        "dummy_call_count": 0,
+    }

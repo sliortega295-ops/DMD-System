@@ -1,0 +1,140 @@
+{
+  "schema_version": "distillschedule.helios_nogan_original_public_cpu_acceptance.v1",
+  "status": "PASS_BOUNDED_ORIGINAL_WARM_CPU_REFERENCE",
+  "behavior_commit": "8ce0cb00c1fef08d44e6ee8f457847099d366809",
+  "observed_at": "2026-10-23T06:50:23.746292+00:00",
+  "environment": {
+    "python": "3.12.3",
+    "torch": "2.10.0+cpu",
+    "diffusers": "0.37.1",
+    "peft": "0.17.1",
+    "transformers": "4.51.3"
+  },
+  "scope": "CPU1_SOURCE_RANK0_B1_PER_SAMPLE_NOT_WORLD16",
+  "geometry": {
+    "height": 384,
+    "width": 640,
+    "frames": 33,
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "pyramid_steps": [
+      2,
+      2,
+      2
+    ]
+  },
+  "precision": "ORIGINAL_MIXED_BF16_BASE_FP32_ONLY_MODULES_FP32_LORA256; native inference latents FP32",
+  "warm_state": {
+    "versions": {
+      "generator": 2,
+      "critic": 10,
+      "ema": 10
+    },
+    "actual_fixture_kind": "ACTUAL_ORIGINAL_W2_CPU_TEST_WARM_NOT_HISTORICAL_STEP10",
+    "receipt_schema": "distillschedule.helios_nogan_actual_cpu_warm_receipt.v2",
+    "receipt_sha256": "5c4fc1f17f7cede22bd4399604f73cf6a76438bce3baa635fe1354dc80b1ccf7",
+    "executed_frozen_bases_bound": true,
+    "not_historical_step0": true
+  },
+  "proofs": {
+    "full_original_model": true,
+    "real_original_warm_updates": true,
+    "original_no_gan_p0_dispatch": true,
+    "g1_c5_ema5": true,
+    "all_three_generator_history_adapters": true,
+    "fresh_original_cohorts": true,
+    "named_adam_lr_sparse_ema": true,
+    "fresh_process_full3_vs1_plus2_exact": true,
+    "all_owner_staged_restore": true,
+    "partial_failure_poison": true,
+    "outer_zero_warm_recovery": true,
+    "same_layout_alternate_base_rejected": true,
+    "equivalent_numeric_rotary_metadata_export": true,
+    "current_full_unmerged_g_projection": true,
+    "projection_next_update_unchanged": true,
+    "fresh_process_new_prompt_old_training_removed": true,
+    "cuda_uninitialized": true
+  },
+  "suites": {
+    "training": {
+      "tests": 91,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "sha256": "4922278e5755767ec828dafbe6398c5b129c55db24721469601010afba5cf14b",
+      "seconds": 882.716
+    },
+    "inference": {
+      "tests": 37,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "sha256": "bd4b0cacef9d7de0ef8398aa906e15c12d98a234a8e17f89f87578921f290b88",
+      "seconds": 440.032
+    },
+    "required_refactor": {
+      "passed": 2153,
+      "passed_subtests": 20,
+      "skipped": 85,
+      "sha256": "2bdcacd257a3ef5a4971a3efb6184e7209216107a374126bb7129f675cb03270",
+      "seconds": 264.556
+    },
+    "workflow_consumers": {
+      "passed": 17,
+      "skipped": 0,
+      "sha256": "52b8c399cae73185af01c69316965b68438fbdfff16372270a66dbefc00ef3b9"
+    }
+  },
+  "literal_two_report_ci_gate": {
+    "status": "PASS_ACTUAL_FINAL_128_CASES_TWO_REPORT_CI_CONSUMER",
+    "suites": {
+      "training": {
+        "tests": 91,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "sha256": "4922278e5755767ec828dafbe6398c5b129c55db24721469601010afba5cf14b",
+        "seconds": 882.716
+      },
+      "inference": {
+        "tests": 37,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "sha256": "bd4b0cacef9d7de0ef8398aa906e15c12d98a234a8e17f89f87578921f290b88",
+        "seconds": 440.032
+      }
+    },
+    "workflow_sha256": "02d4b7a48dccfe109460d1d377d9d3a66d5924c972594995ba5314e7028f27c5",
+    "literal_consumer": true,
+    "synthetic_model_evidence": false,
+    "hosted": "NOT_RUN"
+  },
+  "source_fingerprint": "301a5857d36d9bc1b4391c449fba50dcf7ce3165e3f79d703f1c1a5249742428",
+  "source_map_unchanged": true,
+  "source_map_sha256": "599cf789dc6c949bbd24667aa07271050046f8906bd3edf10e318129477d8488",
+  "source_layout_lock_sha256": "c600a7ea7998e1140252f30ab68015ed35ddad256e43dc212a0e1f68cdeeefa8",
+  "review": {
+    "status": "complete",
+    "lenses": 9,
+    "confirmed_findings": 2,
+    "applied_and_final_parent_verified": 2,
+    "review_sha256": "149e46a6d592efeac466caf6f784e654cf7ea768d454eef632a570a7e67c8d51",
+    "external_provider": "NO_USABLE_REVIEW_EXECUTION_CONTEXT_API_ERROR; NOT_ACCOUNT_STATUS_EVIDENCE"
+  },
+  "not_validated": [
+    "pretrained quality",
+    "decoded video",
+    "world16 numerical equivalence",
+    "CUDA training",
+    "performance",
+    "native distributed restart",
+    "new hosted W2 CI execution"
+  ],
+  "main_changed": false
+}

@@ -1,0 +1,15 @@
+{
+  "analysis/artifact_sha256.json": "d081d594858c8906d163bfa9424925d55ec6e5c9e65a7e0977052bf7275075a4",
+  "analysis/pool-actions.csv": "a8bd56abea70ed3ef34f67a327da959ee538399f7a9e36b681d3f37d4ce0f5b9",
+  "analysis/pool-contract.json": "a931eec7ec57e2562812276db56a9751a9bbfd2feb5fa9e8f0f579dbc2a900f6",
+  "analysis/summary.json": "384b7e6b7746afb2b764019f2587310b6cda6f772ee365c4c36341a2ba89cad7",
+  "manifest.json": "ded856b1513e3a2780b70deef9d459c2a2e471de9e1f97928aa57f7175c66c85",
+  "manifests/derived-transfer-r1.json": "0d7b1d030b19b17fa03ee9500aa06f248bf9a112f654e210f6b198a4e3a4c984",
+  "manifests/derived-transfer-r2.json": "5079e9b47829d3d6e4b76e2f5da92245249742428ae04565b35ca2318afb50c2",
+  "manifests/derived-transfer-r3.json": "94c4321eef6f2c46693e7743430d3425af7dba6dd3a6942bd0d02f8dc4b61dce",
+  "manifests/remote-command.json": "205ca2eed819879f2e502b90d91aaced95fc985df0cc2357f958d63bd3e5f7de",
+  "research_log.md": "e2916d396a581d8ba786ab65e4d092d475c2c061e625dbf9915ed2ab19cc5299",
+  "scripts/derive_pool_contract.py": "ffbf1f596191df4ad55972bf1b09af88ffa92675f5469e43710ebbc2f2b8c419",
+  "scripts/run_remote_derivation.py": "6b0c537a5046228dfe1a0ab13f9b2c6ed4f3a434e17b1e15bb12e95803902a5d",
+  "tests/focused-tests.txt": "a57f46377f0bdc5aa0fa0c03783daf8cd3ffda136b92a6bc1fb7cb97bfe7034a"
+}

@@ -1,0 +1,17 @@
+{
+  "denoising_steps": 8,
+  "ema_updates": 0,
+  "fake_updates": 1,
+  "fps": 24,
+  "input_contract_sha256": "c12a59eff4ac2907f06645a4132d5f0dea58458729546083041b98c53c173d82",
+  "lora_rank": 64,
+  "physical_batch": 1,
+  "precision": "native_bf16_autocast_cache_disabled",
+  "previous_frames": 56,
+  "protocol": "diffsynth_native_previous_current_av_dmd2_v1",
+  "schema_version": "distillschedule.original_h3_ar_task.v2",
+  "video_frames": 56,
+  "video_height": 768,
+  "video_width": 1344,
+  "world_size": 16
+}

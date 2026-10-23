@@ -1,0 +1,69 @@
+name: framework-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/**'
+      - 'tests/test_training_*.py'
+      - 'tests/test_data_*.py'
+      - 'examples/framework/**'
+      - 'recipes/**'
+      - 'scripts/check_framework_install.py'
+      - 'scripts/run_framework_cpu_tests.py'
+      - 'tests/test_framework_*.py'
+      - 'tests/test_cpu_receipt_gate.py'
+      - 'pyproject.toml'
+      - '.github/workflows/framework-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e '.[train,test,test-helios]' wheel
+      - name: Real media, updates, restart, extension and saved-plan execution
+        env:
+          PYTHONPATH: src:.
+          CUDA_VISIBLE_DEVICES: ''
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+          OMP_NUM_THREADS: '1'
+        run: python scripts/run_framework_cpu_tests.py --junitxml=framework-cpu.xml
+      - name: Require original Helios startup and persistent state proof
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = list(ET.parse('framework-cpu.xml').getroot().iter('testcase'))
+          restart = [case for case in cases if case.get('name') ==
+                     'test_actual_original_helpers_three_cycles_checkpoint_resume_equal']
+          startup = [case for case in cases if case.get('name', '').startswith(
+                     'test_public_to_original_p0_collectively_admits_before_model[')]
+          assert len(restart) == 1 and len(startup) == 13
+          assert all(case.find('skipped') is None for case in restart + startup)
+          PY
+      - name: Installed wheel outside the checkout
+        run: python scripts/check_framework_install.py --output installed-framework.json
+      - name: Lightweight wheel and original source admission
+        run: |
+          python scripts/check_wheel_install.py
+          python scripts/distillschedule/check_best_known_integration.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: framework-cpu-${{ matrix.python }}
+          path: |
+            framework-cpu.xml
+            installed-framework.json

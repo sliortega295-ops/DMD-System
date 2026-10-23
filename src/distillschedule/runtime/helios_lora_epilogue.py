@@ -25,6 +25,35 @@ PEFT_0181_LINEAR_FORWARD_SHA256 = (
     "ec0a80f5c5ce05f5dd90027952bb5d29aaf910e9d2ab40486a90e8a03c7e1cd9"
 )
 
+LORA_B_GEMM_VALIDATED_SHAPES = ((11040, 5120), (13680, 5120), (11040, 13824))
+
+
+def _lora_b_gemm_selection(
+    hidden: Any, base: Any, weight: Any, torch: Any, *,
+    allowed_shapes: Iterable[tuple[int, int]] = LORA_B_GEMM_VALIDATED_SHAPES,
+    rank: int = 256,
+) -> tuple[bool, str, str]:
+    """Metadata-only selection; the kernel rechecks actual post-hook inputs."""
+    if hidden.ndim < 2 or base.ndim != hidden.ndim:
+        return False, "NDIM", "UNRESOLVED"
+    m, n = int(hidden.numel()) // int(hidden.shape[-1]), int(base.shape[-1])
+    shape_key = f"M{m}_N{n}_R{int(hidden.shape[-1])}"
+    if (m, n) not in allowed_shapes:
+        return False, "NOT_SELECTED_SHAPE", shape_key
+    if int(hidden.shape[-1]) != rank or tuple(weight.shape) != (n, rank):
+        return False, "RANK_OR_WEIGHT_SHAPE", shape_key
+    if tuple(hidden.shape[:-1]) != tuple(base.shape[:-1]):
+        return False, "LEADING_SHAPE", shape_key
+    if any(value.dtype != torch.bfloat16 for value in (hidden, base, weight)):
+        return False, "DTYPE", shape_key
+    if any(not value.is_cuda for value in (hidden, base, weight)):
+        return False, "DEVICE_NOT_CUDA", shape_key
+    if hidden.device != base.device or hidden.device != weight.device:
+        return False, "DEVICE_MISMATCH", shape_key
+    if any(not value.is_contiguous() for value in (hidden, base, weight)):
+        return False, "NONCONTIGUOUS", shape_key
+    return True, "SELECTED", shape_key
+
 
 def _torch() -> Any:
     import torch
@@ -45,6 +74,10 @@ def install_generator_nograd_lora_fused_epilogue(
     variant_kwarg_keys: Iterable[str] | None = None,
     fused_epilogue: Any | None = None,
     all_role_scale1: bool = False,
+    checkpoint_replay_scope: bool = False,
+    lora_b_gemm_epilogue: bool = False,
+    lora_b_gemm_epilogue_impl: Any | None = None,
+    lora_b_gemm_test_shapes: Iterable[tuple[int, int]] | None = None,
 ) -> dict[str, Any]:
     """Install one bounded exact Helios LoRA epilogue replacement.
 
@@ -55,6 +88,12 @@ def install_generator_nograd_lora_fused_epilogue(
     available unchanged when this argument is false.
     """
 
+    if checkpoint_replay_scope and (not enabled or not all_role_scale1):
+        raise ValueError("LoRA checkpoint scope requires enabled all-role scale1 add")
+    if lora_b_gemm_epilogue and (not enabled or not all_role_scale1 or not checkpoint_replay_scope):
+        raise ValueError("LoRA-B GEMM requires enabled all-role scale1 and checkpoint scope")
+    if lora_b_gemm_test_shapes is not None and (linear_type is None or lora_b_gemm_epilogue_impl is None):
+        raise ValueError("LoRA-B test shapes require both injected type and injected implementation")
     receipt: dict[str, Any] = {
         "requested": bool(enabled),
         "enabled": False,
@@ -74,6 +113,23 @@ def install_generator_nograd_lora_fused_epilogue(
         "reference_fallback_count": 0,
         "reference_fallback_reasons": {},
         "adapter_disabled_bypass_count": 0,
+        "checkpoint_replay_scope": bool(checkpoint_replay_scope),
+        "checkpoint_wrap_count": 0,
+        "checkpoint_scope_execution_count": 0,
+        "checkpoint_scope_restore_count": 0,
+        "checkpoint_missing_active_scope_count": 0,
+        "lora_b_gemm_epilogue_requested": bool(lora_b_gemm_epilogue),
+        "lora_b_gemm_epilogue_enabled": False,
+        "lora_b_gemm_selected_invocation_count": 0,
+        "lora_b_gemm_selected_grad_invocation_count": 0,
+        "lora_b_gemm_selected_nograd_invocation_count": 0,
+        "lora_b_gemm_fallback_count": 0,
+        "lora_b_gemm_fallback_reasons": {},
+        "lora_b_gemm_shape_counts": {},
+        "lora_b_gemm_selected_shape_counts": {},
+        "lora_b_gemm_selected_attempt_count": 0,
+        "lora_b_gemm_completed_invocation_count": 0,
+        "lora_b_gemm_kernel_call_count": 0,
         "reference_pointwise_kernel_count_per_invocation": {
             "torch.float32": 3,
             "torch.bfloat16": 2,
@@ -128,9 +184,57 @@ def install_generator_nograd_lora_fused_epilogue(
     else:
         receipt["runtime_identity"] = {"implementation": "TEST_INJECTED"}
 
+    allowed_b_shapes = tuple(lora_b_gemm_test_shapes or LORA_B_GEMM_VALIDATED_SHAPES)
+    injected_b_impl = lora_b_gemm_epilogue_impl is not None
+    if lora_b_gemm_epilogue:
+        if lora_b_gemm_epilogue_impl is None:
+            from distillschedule.runtime.helios_lora_b_gemm_kernel import (
+                fused_lora_b_gemm_epilogue, runtime_identity as b_runtime_identity,
+            )
+            lora_b_gemm_epilogue_impl = fused_lora_b_gemm_epilogue
+            receipt["lora_b_gemm_runtime_identity"] = b_runtime_identity()
+        else:
+            if not injected_type:
+                raise ValueError("LoRA-B implementation injection requires injected Linear type")
+            receipt["lora_b_gemm_runtime_identity"] = {
+                "implementation": "TEST_INJECTED_NOT_GPU_PRODUCTION",
+            }
+        receipt["lora_b_gemm_validated_shapes"] = [list(shape) for shape in allowed_b_shapes]
+        receipt["lora_b_gemm_epilogue_enabled"] = True
+        receipt["lora_b_gemm_semantics"] = (
+            "BF16_B_GEMM_RN_THEN_FP32_ADD_RN_THEN_BF16_STORE;"
+            "REFERENCE_CONDITIONAL_FIRST_ORDER_MM_BACKWARD;NOT_BITWISE_GEMM_CLAIM"
+        )
+
     active_call: contextvars.ContextVar[bool] = contextvars.ContextVar(
         "helios_generator_nograd_lora_fused_epilogue", default=False
     )
+    if checkpoint_replay_scope:
+        def wrap_checkpoint_function(function: Any) -> Any:
+            # Capture only our LoRA scope, not unrelated saved-tensor/CPU-offload
+            # contexts.  This callable is what checkpoint actually saves.
+            captured_active = active_call.get()
+            if not captured_active:
+                receipt["checkpoint_missing_active_scope_count"] += 1
+                raise RuntimeError("LoRA checkpoint created outside active model scope")
+            receipt["checkpoint_wrap_count"] += 1
+
+            @functools.wraps(function)
+            def scoped_execution(*args: Any, **kwargs: Any) -> Any:
+                token = active_call.set(captured_active)
+                receipt["checkpoint_scope_execution_count"] += 1
+                try:
+                    return function(*args, **kwargs)
+                finally:
+                    # Non-reentrant replay may exit through PyTorch early-stop.
+                    active_call.reset(token)
+                    receipt["checkpoint_scope_restore_count"] += 1
+
+            return scoped_execution
+
+        model._distillschedule_lora_checkpoint_function_wrapper = (
+            wrap_checkpoint_function
+        )
     named_linears = [
         (name, child)
         for name, child in model.named_modules()
@@ -142,6 +246,57 @@ def install_generator_nograd_lora_fused_epilogue(
 
     for module_name, child in named_linears:
         original_forward = child.forward
+        if lora_b_gemm_epilogue:
+            for b_module in child.lora_B.values():
+                if getattr(b_module, "_distillschedule_lora_b_gemm_wrapper_installed", False):
+                    raise RuntimeError("LoRA-B GEMM module already wrapped")
+                original_b_forward = b_module.forward
+
+                @functools.wraps(original_b_forward)
+                def b_forward(
+                    hidden: Any, *args: Any,
+                    _distillschedule_lora_base_result: Any = None,
+                    _b_module: Any = b_module, _original_b_forward: Any = original_b_forward,
+                    **kwargs: Any,
+                ) -> Any:
+                    if _distillschedule_lora_base_result is None:
+                        return _original_b_forward(hidden, *args, **kwargs)
+                    if not active_call.get() or args or kwargs:
+                        raise RuntimeError("LoRA-B fused call outside bounded model scope")
+                    if getattr(_b_module, "bias", None) is not None:
+                        raise RuntimeError("LoRA-B fused path requires bias=False")
+                    caller_grad_enabled = _torch().is_grad_enabled()
+                    shape_key = (
+                        f"M{int(hidden.numel()) // int(hidden.shape[-1])}"
+                        f"_N{int(_distillschedule_lora_base_result.shape[-1])}"
+                        f"_R{int(hidden.shape[-1])}"
+                    )
+
+                    def note_launch() -> None:
+                        receipt["lora_b_gemm_kernel_call_count"] += 1
+                        receipt["lora_b_gemm_selected_invocation_count"] += 1
+                        grad_suffix = "grad" if caller_grad_enabled else "nograd"
+                        receipt[f"lora_b_gemm_selected_{grad_suffix}_invocation_count"] += 1
+                        counts = receipt["lora_b_gemm_selected_shape_counts"]
+                        counts[shape_key] = int(counts.get(shape_key, 0)) + 1
+
+                    # This forward is reached via B.__call__, retaining module
+                    # pre/post hooks (including any FSDP hooks), never directly.
+                    if injected_b_impl:
+                        result = lora_b_gemm_epilogue_impl(
+                            hidden, _b_module.weight, _distillschedule_lora_base_result,
+                        )
+                        note_launch()  # Test fixture, not a production kernel claim.
+                    else:
+                        result = lora_b_gemm_epilogue_impl(
+                            hidden, _b_module.weight, _distillschedule_lora_base_result,
+                            on_kernel_launch=note_launch,
+                        )
+                    receipt["lora_b_gemm_completed_invocation_count"] += 1
+                    return result
+
+                b_module.forward = b_forward
+                b_module._distillschedule_lora_b_gemm_wrapper_installed = True
 
         @functools.wraps(original_forward)
         def fused_forward(
@@ -184,8 +339,38 @@ def install_generator_nograd_lora_fused_epilogue(
             lora_a = _child.lora_A[adapter]
             lora_b = _child.lora_B[adapter]
             cast_x = _child._cast_input_dtype(x, lora_a.weight.dtype)
-            update = lora_b(lora_a(_child.lora_dropout[adapter](cast_x)))
+            lora_hidden = lora_a(_child.lora_dropout[adapter](cast_x))
             torch = _torch()
+            if lora_b_gemm_epilogue:
+                selected, reason, shape_key = _lora_b_gemm_selection(
+                    lora_hidden, result, lora_b.weight, torch,
+                    allowed_shapes=allowed_b_shapes,
+                    rank=int(lora_hidden.shape[-1]) if lora_b_gemm_test_shapes is not None else 256,
+                )
+                if float(_child.scaling[adapter]) != 1.0:
+                    raise RuntimeError("LoRA-B GEMM requires scaling=1")
+                if float(getattr(_child.lora_dropout[adapter], "p", 0.0)) != 0.0:
+                    raise RuntimeError("LoRA-B GEMM requires dropout=0")
+                shape_counts = receipt["lora_b_gemm_shape_counts"]
+                shape_counts[shape_key] = int(shape_counts.get(shape_key, 0)) + 1
+                if selected:
+                    receipt["lora_b_gemm_selected_attempt_count"] += 1
+                    result = lora_b(
+                        lora_hidden, _distillschedule_lora_base_result=result,
+                    )
+                    grad_suffix = "grad" if torch.is_grad_enabled() else "nograd"
+                    receipt["fused_invocation_count"] += 1
+                    receipt[f"fused_{grad_suffix}_invocation_count"] += 1
+                    receipt["fused_element_count"] += int(result.numel())
+                    dtype_counts = receipt["fused_update_dtype_counts"]
+                    dtype_counts[str(torch.bfloat16)] = int(dtype_counts.get(str(torch.bfloat16), 0)) + 1
+                    scale_counts = receipt["fused_scale_counts"]
+                    scale_counts["1.0"] = int(scale_counts.get("1.0", 0)) + 1
+                    return result
+                receipt["lora_b_gemm_fallback_count"] += 1
+                reasons = receipt["lora_b_gemm_fallback_reasons"]
+                reasons[reason] = int(reasons.get(reason, 0)) + 1
+            update = lora_b(lora_hidden)
             fallback_reason = None
             if result.dtype != torch.bfloat16:
                 fallback_reason = f"BASE_DTYPE_{result.dtype}"

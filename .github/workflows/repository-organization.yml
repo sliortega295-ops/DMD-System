@@ -1,0 +1,52 @@
+name: repository-organization
+on:
+  pull_request:
+  push:
+    branches: [main, agent/general-workload-planning-20261012]
+    paths:
+      - 'src/**'
+      - 'runtime/**'
+      - 'recipes/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'benchmarks/**'
+      - 'tests/test_repository_organization.py'
+      - 'tests/test_workload_catalog_validation.py'
+      - 'pyproject.toml'
+      - 'docs/workloads/source_layout.lock.json'
+      - 'docs/architecture/repository_organization.json'
+      - '.github/workflows/repository-organization.yml'
+permissions:
+  contents: read
+jobs:
+  source-package-and-catalog:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install source-only test dependencies
+        run: python -m pip install -e '.[test]' wheel
+      - name: Verify immutable sources and six current entrypoints
+        env:
+          PYTHONPATH: src:.
+          CUDA_VISIBLE_DEVICES: ''
+        run: |
+          python scripts/distillctl.py workloads verify-catalog --repo-root .
+          python scripts/distillschedule/check_best_known_integration.py
+          python -m pytest -q tests/test_repository_organization.py tests/test_workload_catalog_validation.py tests/test_refactor_best_known*.py
+      - name: Isolated installation outside the checkout
+        # Deliberately inject the former problematic value: the checker must
+        # neutralize it, install the wheel, and assert actual site-package imports.
+        env:
+          PYTHONPATH: src:.
+        run: python scripts/check_wheel_install.py

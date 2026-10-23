@@ -1,0 +1,16 @@
+{
+  "action_costs.csv": "51e09c4a8699c8825edab4d681228c76f89937728ade4f5e44235213e9517f77",
+  "calibration-fsdp.json": "2350d99140037bcb8de98910c2754bb8f78393ab8d3284711289702fb9aae6eb",
+  "calibration-resident.json": "7853bcbc251ba616a775f9a7e39b86dd280425572e9ec2d7e55b0d57b1efaac3",
+  "component-observations.json": "b0ec37082734f1779ff7adb05d26932f19155b49fdb1a0b7095e78b7fb757e3a",
+  "cpu-focused.txt": "4658e8e3ee6b4b57441df6e89abae48ad49f88f973c144713f59d8e6c895443e",
+  "final-node-audit.json": "c608a3fdaa3b86d8eff28ba4e2fc208666e219173bb69ac4b96562c7987c9f27",
+  "heldout-feedback.json": "3c140301db7a9d97cdf6a1db99d885fe3a648f4b9de745a3cc6c3ee5bc4a036a",
+  "heldout-native-summary-excerpt.json": "54ac67a1f6daadf646f70cc3f7f19a54a835edcbbecd478c23eee932b7c9848d",
+  "heldout-native.json": "1e11973e787b80dafb2826660a4f5249ab4d4715687f65a302c2f33ca94803c0",
+  "manifest.json": "4aede274e4f9fb03c73f068f75305047e2d1063c3bb7493d0146040c6ac1cc32",
+  "scripts/assemble_and_search.py": "641995743e5702174b084d933863d90ce725ee784b389733bfc1fb19d0ebe042",
+  "scripts/collect_components.py": "29ca47d86cb133badcd09591b1c03d753f21066d1e7db732b9acc2d45abd45fc",
+  "scripts/validate_heldout.py": "57de521fd0b86b5ef02ee9a216ff97bbbcd75d0b8797feba6bfa4e6d6e88511d",
+  "search-summary.json": "509886c0893177140525e3d7e4c363166698eb9682d5723545b8952f436b6c47"
+}

@@ -1,0 +1,24 @@
+--- a/scripts/distillschedule/probe_static_fsdp2_p0_world16.py
++++ b/scripts/distillschedule/probe_static_fsdp2_p0_world16.py
+@@ -1810,6 +1810,21 @@
+             "ema_step": int(ema.optimization_step),
+             "memory": base._memory(device),
+         }
++        # H100_C2_HOOK_BEGIN: default off; installed source is a new cohort.
++        from distillschedule.runtime.h100_helios_two_cycle import requested_mode
++        if requested_mode() != "off":
++            from distillschedule.runtime.h100_helios_two_cycle import run_two_cycles
++            run_two_cycles(
++                p0=sys.modules[__name__], args=args, policy=policy, result=result,
++                rank=rank, device=device, logical=logical, trace=trace,
++                negative=negative, cfg=cfg, generator_engine=generator_engine,
++                critic_engine=critic_engine, ema=ema, diagnostics=diagnostics,
++                generator_free_memory=generator_free_memory,
++            )
++            base._atomic_json(output, result)
++            dist.barrier()
++            return 0
++        # H100_C2_HOOK_END
+         dist.barrier()
+         torch.cuda.synchronize(device)
+         started_perf = time.perf_counter()

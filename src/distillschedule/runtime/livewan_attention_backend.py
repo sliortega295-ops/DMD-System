@@ -87,6 +87,8 @@ def _install_flash_attn2(
     requested_name: str,
     role_label: str,
     allowed_input_dtypes: set[tuple[Any, Any, Any]],
+    kernel_binding: tuple[Any, Path, dict[str, Any]] | None = None,
+    readonly_splitkv: bool = False,
 ) -> dict[str, Any]:
     """Install the pinned dense FA2 kernel under an exact per-role contract.
 
@@ -126,14 +128,22 @@ def _install_flash_attn2(
             f"expected {EXPECTED_FLASH_ATTENTION_SHA256}, observed {source_hashes}"
         )
 
-    flash_attn2, kernel_root = _load_flash_attn2()
+    if kernel_binding is None:
+        flash_attn2, kernel_root = _load_flash_attn2()
+        artifact_identity = {
+            "artifact_metadata_sha256": EXPECTED_METADATA_SHA256,
+            "artifact_package_sha256": EXPECTED_PACKAGE_SHA256,
+            "artifact_extension_sha256": EXPECTED_EXTENSION_SHA256,
+        }
+    else:
+        # C38 supplies an already hash-verified, API-compatible dense backend.
+        # Preserve the original helper's validation/casts and bookkeeping.
+        flash_attn2, kernel_root, artifact_identity = kernel_binding
     receipt: dict[str, Any] = {
         "enabled": True,
         "name": requested_name,
         "source_flash_attention_sha256": EXPECTED_FLASH_ATTENTION_SHA256,
-        "artifact_metadata_sha256": EXPECTED_METADATA_SHA256,
-        "artifact_package_sha256": EXPECTED_PACKAGE_SHA256,
-        "artifact_extension_sha256": EXPECTED_EXTENSION_SHA256,
+        **artifact_identity,
         "artifact_root": str(kernel_root),
         "function_patched": True,
         "install_status": "PASS",
@@ -147,6 +157,14 @@ def _install_flash_attn2(
         "output_cast_count": 0,
         "contract_failure_count": 0,
     }
+
+    splitkv = None
+    if readonly_splitkv:
+        if role_label != "Generator":
+            raise RuntimeError("read-only splitKV must not install on Score ranks")
+        from distillschedule.runtime.livewan_generator_splitkv import ReadOnlySplitKV
+        splitkv = ReadOnlySplitKV(torch, flash_attn2)
+        receipt["readonly_splitkv"] = splitkv.receipt
 
     def validate(
         q: Any,
@@ -245,16 +263,25 @@ def _install_flash_attn2(
         receipt["input_cast_count"] += int(q_kernel is not q)
         receipt["input_cast_count"] += int(k_kernel is not k)
         receipt["input_cast_count"] += int(v_kernel is not v)
-        output = flash_attn2.flash_attn_func(
-            q_kernel,
-            k_kernel,
-            v_kernel,
-            dropout_p=dropout_p,
-            softmax_scale=softmax_scale,
-            causal=causal,
-            window_size=window_size,
-            deterministic=deterministic,
-        )
+        if splitkv is None:
+            output = flash_attn2.flash_attn_func(
+                q_kernel,
+                k_kernel,
+                v_kernel,
+                dropout_p=dropout_p,
+                softmax_scale=softmax_scale,
+                causal=causal,
+                window_size=window_size,
+                deterministic=deterministic,
+            )
+        else:
+            output = splitkv.execute(
+                q_kernel, k_kernel, v_kernel,
+                reference=flash_attn2.flash_attn_func,
+                reference_options=dict(dropout_p=dropout_p,
+                    softmax_scale=softmax_scale, causal=causal,
+                    window_size=window_size, deterministic=deterministic),
+            )
         if output.dtype != output_dtype:
             output = output.to(output_dtype)
             receipt["output_cast_count"] += 1
@@ -305,7 +332,7 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
     )
 
 
-def install_generator_flash_attn2(torch: Any) -> dict[str, Any]:
+def install_generator_flash_attn2(torch: Any, *, readonly_splitkv: bool = False) -> dict[str, Any]:
     """Replace Generator-rank dense attention after installing the C18 K/V cache.
 
     Self attention arrives as BF16/BF16/BF16.  Wan cross attention normalizes
@@ -318,6 +345,7 @@ def install_generator_flash_attn2(torch: Any) -> dict[str, Any]:
         torch,
         requested_name="generator_flash_attn2_unmasked_exact_cast_v1",
         role_label="Generator",
+        readonly_splitkv=readonly_splitkv,
         allowed_input_dtypes={
             (torch.bfloat16, torch.bfloat16, torch.bfloat16),
             (torch.float32, torch.float32, torch.bfloat16),

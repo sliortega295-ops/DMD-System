@@ -1,0 +1,23 @@
+{
+  "status": "PASS_EXACT_BYTES",
+  "raw_native_data_transferred": false,
+  "prior_summary_semantic_equality": true,
+  "files": {
+    "pool-contract.json": {
+      "bytes": 648362,
+      "sha256": "a931eec7ec57e2562812276db56a9751a9bbfd2feb5fa9e8f0f579dbc2a900f6"
+    },
+    "pool-actions.csv": {
+      "bytes": 17918,
+      "sha256": "a8bd56abea70ed3ef34f67a327da959ee538399f7a9e36b681d3f37d4ce0f5b9"
+    },
+    "summary.json": {
+      "bytes": 7021,
+      "sha256": "384b7e6b7746afb2b764019f2587310b6cda6f772ee365c4c36341a2ba89cad7"
+    },
+    "artifact_sha256.json": {
+      "bytes": 271,
+      "sha256": "d081d594858c8906d163bfa9424925d55ec6e5c9e65a7e0977052bf7275075a4"
+    }
+  }
+}

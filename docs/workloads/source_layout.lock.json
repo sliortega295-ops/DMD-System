@@ -1,0 +1,479 @@
+{
+  "schema_version": "distillschedule.source_layout_lock.v1",
+  "organization_base_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+  "original_map_preserved": true,
+  "files": {
+    "scripts/distillschedule/probe_wan13b_fair_world16.py": {
+      "target": "scripts/distillschedule/probe_wan13b_fair_world16.py",
+      "original_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
+      "reviewed_source_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/wan13b_lora_cast.py": {
+      "target": "src/distillschedule/runtime/wan13b_lora_cast.py",
+      "original_integrated_sha256": "82f43c793b34c3b532ff37f434b08a8581aa1b447d5156e0c259c6429bde26ba",
+      "reviewed_source_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "runtime/gst_pool_helios.py": {
+      "target": "runtime/gst_pool_helios.py",
+      "original_integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
+      "reviewed_source_sha256": "da754a01af8aac2dd179326aa7a28007caf85c960b9e2b374042239ae76c0ab3",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "da754a01af8aac2dd179326aa7a28007caf85c960b9e2b374042239ae76c0ab3",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=8f24de9f352c8ddac4170d9a5e8201777e3da4f616516d3593310d86ec02d25f; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:5ce9b3dc39f5f1a49f434ba4f57eb93d936f129d47440085a336baf61581d182; current_branch_integration_or_cli_discovery"
+    },
+    "runtime/static_fsdp2_p0_helios.py": {
+      "target": "runtime/static_fsdp2_p0_helios.py",
+      "original_integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
+      "reviewed_source_sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=ddf64fb854a0456f6ceb3380d0f98e08a9b599ba5b63073e8cd3f43e1500739a; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:8d9f719d0ae1ddf354f57fbeef0804ed641923c767746aeb8df085d2d3eea047; current_branch_integration_or_cli_discovery"
+    },
+    "runtime/static_world16_trace.py": {
+      "target": "runtime/static_world16_trace.py",
+      "original_integrated_sha256": "4f99c2b20466f06fd2d34ef48276e2c8e4a6ba5e0d47b10ffc1c0bfc6cc18a04",
+      "reviewed_source_sha256": "2cdca148183447292069ec0dd73f0a3a6e11fdb99cce67a671b020c2a2dd86a0",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "2cdca148183447292069ec0dd73f0a3a6e11fdb99cce67a671b020c2a2dd86a0",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh": {
+      "target": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
+      "original_integrated_sha256": "15afebdd1fc10a0e1ad3b34b111f9d6dc784e3e74f2a2c0954c18eb47e2c841f",
+      "reviewed_source_sha256": "d81aada2eb3af4e8495d4c0d55f8cd7179d686dde9cf2f602a6408e387d9c413",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "d81aada2eb3af4e8495d4c0d55f8cd7179d686dde9cf2f602a6408e387d9c413",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/probe_static_fsdp2_p0_world16.py": {
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "original_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
+      "reviewed_source_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=1cb97b32f10844d2c7237ba46b546c2a2ceb982afdab657045394cb91e677a44; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=48829ae3e536a0c8a11f8802fe5a612de3afcfdd:800fc17a7af70712823fa87d669716a9895937c16e7f871e336099b2f21a8167; opt_in_original_W2_failure_receipt_entry_ownership_only; default_benchmark_math_and_publication_unchanged; previous_overlay=68ff42d1efed85887f6db8d4a2b70f310833818b:dcb835e25de997a845b719ed5ef6908340961ce3d4662a2112e7a61e7151abe8; opt_in_portable_original_W2_assets_and_collective_public_to_P0_startup; previous_overlay=f096c7a01fafac5ed714b082df87e8875baa5b2c:fb0833f2202f6982049e40be66cd70b31832091320e3de41f89c4f9eeaac56e4; opt_in_original_W2_persistent_training_hooks; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4; canonical_two_cycle_math_unchanged"
+    },
+    "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py": {
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",
+      "original_integrated_sha256": "8af7899d9686cfa75880f009e38acf41305be73d515e6bafcd38e2212196b457",
+      "reviewed_source_sha256": "49ae0ca5d049f2a7affe1bfd1e51ca1bd1798db323435e8327897b9ab76488e6",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "49ae0ca5d049f2a7affe1bfd1e51ca1bd1798db323435e8327897b9ab76488e6",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/fsdp2_p0.py": {
+      "target": "src/distillschedule/runtime/fsdp2_p0.py",
+      "original_integrated_sha256": "c64cc37b27539817c44b7d73d4fe94579479402b8f24039a96362f5dd0748183",
+      "reviewed_source_sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/fsdp2_static.py": {
+      "target": "src/distillschedule/runtime/fsdp2_static.py",
+      "original_integrated_sha256": "c7b8b5eca9a591f6d548984cc557ecca8aadecb69e842eb902ed4dd9243e5aca",
+      "reviewed_source_sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+      "source_commit": "0b93933107f4762b5d2cb29867eb749b4cb67a5d",
+      "integrated_sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+      "change": "optimizer_owned_gradient_clipping_across_original_GAN_phase_flags_and_explicit_dp_world_size_metadata_default16_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:f9af12208185d9891f94e107fbfe7b0fc12c750115d82d9d9f0b4cda8757e4ff; original_import_receipt_preserved; CPU1_native_owner_not_world16_GPU_validation"
+    },
+    "src/distillschedule/runtime/helios_lora_epilogue.py": {
+      "target": "src/distillschedule/runtime/helios_lora_epilogue.py",
+      "original_integrated_sha256": "5a2ae2eda5a5c8a35b1465212a518de7aeb53da4ab553ab52e7d1129523252fe",
+      "reviewed_source_sha256": "9e2ac9a5e381fdea1d17598bb9970448e8a82c0ea66e0c60857fb8af3dc45151",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "9e2ac9a5e381fdea1d17598bb9970448e8a82c0ea66e0c60857fb8af3dc45151",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh": {
+      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+      "original_integrated_sha256": "c50f9141c17c2f9e20cfb46b80384fb7686c7a8951ed372b133566910fef53af",
+      "reviewed_source_sha256": "1089504e60787878916c2c997ee725d4ee548568723415e684e42246f75e109a",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "1089504e60787878916c2c997ee725d4ee548568723415e684e42246f75e109a",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/probe_livewan_crossscale_transport.py": {
+      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
+      "original_integrated_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687",
+      "reviewed_source_sha256": "5829e9aca1e7e5c525f5fc321960c67fe80da791966e8ac834401b96b49cd93e",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "5829e9aca1e7e5c525f5fc321960c67fe80da791966e8ac834401b96b49cd93e",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/run_livewan_crossscale_world16.py": {
+      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py",
+      "original_integrated_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821",
+      "reviewed_source_sha256": "3cbaf31893253dbd287d05de84fe539a5e4480895414eaadec79c1abb7b70ceb",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "3cbaf31893253dbd287d05de84fe539a5e4480895414eaadec79c1abb7b70ceb",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_attention_backend.py": {
+      "target": "src/distillschedule/runtime/livewan_attention_backend.py",
+      "original_integrated_sha256": "0ff6c9eb7b4d364434bc77d0e4a11caebff375954ac0ffb3b908d404084729a0",
+      "reviewed_source_sha256": "ee4d2c33450634b81802a0beb9974dcaf46544e1ab6650d53b62f24589c5073c",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "ee4d2c33450634b81802a0beb9974dcaf46544e1ab6650d53b62f24589c5073c",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_crossscale_worker.py": {
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "original_integrated_sha256": "9b33e0ec3872cdf5403ddb062504db3714c99785d86bddc55df9002bf050c31c",
+      "reviewed_source_sha256": "d7d57f130e954d0669350adf9ecf95c1104fc6237401fdf90283a985787e68fb",
+      "source_commit": "e61eed95894e698b0d9dddff82b5d0122a1b8fda",
+      "integrated_sha256": "08f44a79194d046c5f30b0e88be2dd046602ac8034e3fe4a850e25ba00c3f294",
+      "change": "offered_W4_additive_CPU1_FP32_reference_context_hooks; native_None_path_preserved; no_GPU_math_or_C51_contract_change; previous_overlay=c2d6ca959c8f25dd1d3f13558b0cc874371d87cc:d7d57f130e954d0669350adf9ecf95c1104fc6237401fdf90283a985787e68fb; reviewed_W4_opt_in_input_owner_integration; historical_C27_context_method_restored_byte_exact; source_input_dispatch_only_no_training_math; previous_overlay=ef4e1cb111c7e4692adc02ea84367197293eb5df:aa5c4caf48b4ef363a3b39a8e77f131b0b6b2b11494b7d1369b847b01b62100e; current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/check_best_known_integration.py": {
+      "target": "scripts/distillschedule/check_best_known_integration.py",
+      "original_integrated_sha256": "226af8f67241ecbe45323c18d8598b25a47b4134cfd7442267190dbe8d8fbf6d",
+      "reviewed_source_sha256": "226af8f67241ecbe45323c18d8598b25a47b4134cfd7442267190dbe8d8fbf6d",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "061c4060394b9535bde3741db994ab0dae8f8ef457e1a6df4cada49f10d35800",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/cli.py": {
+      "target": "src/distillschedule/cli.py",
+      "original_integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
+      "reviewed_source_sha256": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
+      "source_commit": "04ecbee34d88c7160016e6af065a5175c6bfb8d7",
+      "integrated_sha256": "bf975df918d5d922b78193b04ae3caccf545084a5b930730846700d002fbdf56",
+      "change": "public_strategy_capability_discovery_only; no_native_command_or_training_math_change; previous_overlay=a1353fcdce4b23cd50503f4bb6037278a0de9126:1f566ffb5432b0bf1b0597618666c283dbf1c472268ed9844fca00f9deeed3ed; registered_model_workflow_discovery_and_public_training_parameters_dispatch; original_native_commands_preserved; previous_overlay=c2d6ca959c8f25dd1d3f13558b0cc874371d87cc:8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4; public_training_lifecycle_routes_and_portable_inference_generate; previous_overlay=e6317e64232d4bdd53a3bbb57ff911121f21bc62:3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e; canonical_math_unchanged"
+    },
+    "src/distillschedule/workloads/best_known/cli.py": {
+      "target": "src/distillschedule/workloads/best_known/cli.py",
+      "original_integrated_sha256": "f5c75c23ce2e1291c3153d8b87e603b17cdbf1e3d044cb32bf8d294a0ff516e7",
+      "reviewed_source_sha256": "237432c77a7df42a3655c305f2939217e32cdafae5cd92bc97665ac405f134ae",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "6fa0cb58a2da28e67fe4aff207064d140b3f388b078767d56a607b5539f41b43",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/workloads/best_known/dispatch.py": {
+      "target": "src/distillschedule/workloads/best_known/dispatch.py",
+      "original_integrated_sha256": "e913087e841d55ed3cb98c700c89cc69c45c49508e4de4fe9e74f7215af0abc3",
+      "reviewed_source_sha256": "3738839027c1e84860fb9ca1c52bbf2d145190c30e913754aa8dad349328694c",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "3738839027c1e84860fb9ca1c52bbf2d145190c30e913754aa8dad349328694c",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/workloads/best_known/registry.py": {
+      "target": "src/distillschedule/workloads/best_known/registry.py",
+      "original_integrated_sha256": "cdcbed682c2c953b0de956266a8e391b86c039de8d0092bc222b2055147f0839",
+      "reviewed_source_sha256": "468fa4bccb3c5531915e6bb13fdc700d82331c56bc960b2577eb8865918b01dc",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "1f2775ea28ddf98c8009921ad26f2d41acd2ed386894af0295f3b8dc03348a72",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/analyze_livewan_crossscale_nsys.py": {
+      "target": "tools/profiling/analyze_livewan_crossscale_nsys.py",
+      "original_integrated_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63",
+      "reviewed_source_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_continuous_trace.py": {
+      "target": "tools/assets/build_livewan_continuous_trace.py",
+      "original_integrated_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa",
+      "reviewed_source_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_crossscale_bootstrap.py": {
+      "target": "tools/assets/build_livewan_crossscale_bootstrap.py",
+      "original_integrated_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59",
+      "reviewed_source_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_crossscale_profile_gate.py": {
+      "target": "tools/assets/build_livewan_crossscale_profile_gate.py",
+      "original_integrated_sha256": "aed0188a42528978d72945db586eb820ebbf8833925a47624e7da012b65403fb",
+      "reviewed_source_sha256": "aed0188a42528978d72945db586eb820ebbf8833925a47624e7da012b65403fb",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "c028acc2885aacbf5eab752c4ec14b06ab4ab5ef7a4ee7e912091cbb524c8d86",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_crossscale_trace.py": {
+      "target": "tools/assets/build_livewan_crossscale_trace.py",
+      "original_integrated_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c",
+      "reviewed_source_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_two_cycle_profile_gate.py": {
+      "target": "tools/assets/build_livewan_two_cycle_profile_gate.py",
+      "original_integrated_sha256": "3e0f72741271535042af57531b69b142c6d3d10ba1b49ec2b9b51296e18280c1",
+      "reviewed_source_sha256": "3e0f72741271535042af57531b69b142c6d3d10ba1b49ec2b9b51296e18280c1",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "d22f6fb6bdbf8a5f0cbc0e41cc53ca443bccd6350ce20cf744e6a96d075b1089",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py": {
+      "target": "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py",
+      "original_integrated_sha256": "0b8bc6a7f75107a25e21be83c9e118742586b030f2cfd940a24011ccea550817",
+      "reviewed_source_sha256": "c16145b9de1fa1195f7d64c15ce2b31c956a98a248fe632322c9f2769c11360f",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "c16145b9de1fa1195f7d64c15ce2b31c956a98a248fe632322c9f2769c11360f",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/canary_livewan_attention_checkpoint.py": {
+      "target": "benchmarks/kernels/canary_livewan_attention_checkpoint.py",
+      "original_integrated_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68",
+      "reviewed_source_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_context_staging.py": {
+      "target": "benchmarks/kernels/canary_livewan_context_staging.py",
+      "original_integrated_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705",
+      "reviewed_source_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_generator_gate.py": {
+      "target": "benchmarks/kernels/canary_livewan_generator_gate.py",
+      "original_integrated_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb",
+      "reviewed_source_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_generator_modulation.py": {
+      "target": "benchmarks/kernels/canary_livewan_generator_modulation.py",
+      "original_integrated_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5",
+      "reviewed_source_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_generator_rms_epilogue.py": {
+      "target": "benchmarks/kernels/canary_livewan_generator_rms_epilogue.py",
+      "original_integrated_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388",
+      "reviewed_source_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_rollout_cast_cache.py": {
+      "target": "benchmarks/kernels/canary_livewan_rollout_cast_cache.py",
+      "original_integrated_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640",
+      "reviewed_source_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/canary_livewan_score_rmsnorm.py": {
+      "target": "benchmarks/kernels/canary_livewan_score_rmsnorm.py",
+      "original_integrated_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7",
+      "reviewed_source_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/compare_livewan_two_cycle_timing.py": {
+      "target": "scripts/distillschedule/compare_livewan_two_cycle_timing.py",
+      "original_integrated_sha256": "9a246d959d82f49f32a56cda5f16dc14b33c0f42f7a52fa62d4bddef1b4a78db",
+      "reviewed_source_sha256": "995195da89fbf7363560f31e228a845fb6ef7c54df04d5a9ea8a42928bc22edb",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "995195da89fbf7363560f31e228a845fb6ef7c54df04d5a9ea8a42928bc22edb",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py": {
+      "target": "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py",
+      "original_integrated_sha256": "a32d6715fd45504d7c5b527dd84788cba9ff21d38091188c0640e927b829e45f",
+      "reviewed_source_sha256": "494628453b43f68302f6d842bd9e5bd99eb73b02bc150bb198ce695c385aff6f",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "494628453b43f68302f6d842bd9e5bd99eb73b02bc150bb198ce695c385aff6f",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/derive_livewan_continuous_bootstrap.py": {
+      "target": "tools/assets/derive_livewan_continuous_bootstrap.py",
+      "original_integrated_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356",
+      "reviewed_source_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356",
+      "change": "relocation_and_reference_updates"
+    },
+    "scripts/distillschedule/summarize_livewan_trajectory_world16.py": {
+      "target": "scripts/distillschedule/summarize_livewan_trajectory_world16.py",
+      "original_integrated_sha256": "25a1429c7fb8b6c47a34a4509ba42cf0280232966589367ce9d5b02200adad1c",
+      "reviewed_source_sha256": "75dc00bc44a3cc3f13a3a3c1f80a29c7bafb6d85f254296e3fc9043c1a06369d",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "75dc00bc44a3cc3f13a3a3c1f80a29c7bafb6d85f254296e3fc9043c1a06369d",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py": {
+      "target": "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
+      "original_integrated_sha256": "3ca1bd8498c4391fce0e3277c6bcf9d19903a9e46ad73ccf57bf51619a2b71b5",
+      "reviewed_source_sha256": "457ef009f01869a8b282586373ec9c959820f485642002f10128b86e20e82654",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "457ef009f01869a8b282586373ec9c959820f485642002f10128b86e20e82654",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_attention_checkpoint.py": {
+      "target": "src/distillschedule/runtime/livewan_attention_checkpoint.py",
+      "original_integrated_sha256": "ad6535d481105dfbf72d6643d1f79568fa58e4fa78b6cdf3180b58bed480cfa3",
+      "reviewed_source_sha256": "cd5dc9fdeffc672734aeecf25ac0f7ee39ef28a9ed6a19e98d527ff9bee99ea6",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "cd5dc9fdeffc672734aeecf25ac0f7ee39ef28a9ed6a19e98d527ff9bee99ea6",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_generator_gate.py": {
+      "target": "src/distillschedule/runtime/livewan_generator_gate.py",
+      "original_integrated_sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+      "reviewed_source_sha256": "4490197597faa483c8f294fc8478cbc436e05870f67582acee1b22ef5dc57b52",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "4490197597faa483c8f294fc8478cbc436e05870f67582acee1b22ef5dc57b52",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_generator_modulation.py": {
+      "target": "src/distillschedule/runtime/livewan_generator_modulation.py",
+      "original_integrated_sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+      "reviewed_source_sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "src/distillschedule/runtime/livewan_generator_rms_epilogue.py": {
+      "target": "src/distillschedule/runtime/livewan_generator_rms_epilogue.py",
+      "original_integrated_sha256": "494cc6952669e64325bb99c571b68fb2097699606b7224e81f737d20dd743eb3",
+      "reviewed_source_sha256": "81b3eaa8a9ed2beb0a3033c68d9bc11ad091fb90d40365831d1c3552913d522f",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "81b3eaa8a9ed2beb0a3033c68d9bc11ad091fb90d40365831d1c3552913d522f",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_attention_checkpoint.py": {
+      "target": "tests/test_refactor_livewan_attention_checkpoint.py",
+      "original_integrated_sha256": "a15b56e978dd2123659866b566488ccd7a980062055024e440cc58556d3bacef",
+      "reviewed_source_sha256": "6643f393190676673a5649c59c81be7fdbe3f2592ae89761e1be2073f9d22527",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "6f18424d7e40d2d01b84ea2cffddebe2dcd3ab1b4b418df9e591e305d3059570",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_c33_integration.py": {
+      "target": "tests/test_refactor_livewan_c33_integration.py",
+      "original_integrated_sha256": "f99212afdf04279bc697a475993ae2b1fcdfc17dfde4aac3b4ff5cc455483e89",
+      "reviewed_source_sha256": "aa442761dcd8d7dc42aeedba71300d572047724adeb52609d020bc380c04c1f9",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "aa442761dcd8d7dc42aeedba71300d572047724adeb52609d020bc380c04c1f9",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_context_staging.py": {
+      "target": "tests/test_refactor_livewan_context_staging.py",
+      "original_integrated_sha256": "22d07b44f0bbc29764f95ca53e9b38f9c2b4ca5ebf04aec951ef368b16d70bdb",
+      "reviewed_source_sha256": "22d07b44f0bbc29764f95ca53e9b38f9c2b4ca5ebf04aec951ef368b16d70bdb",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "d1bc6dccaf4171233cbea58b79dd4164de9436151c0280892d8efa7c4a001c29",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_crossscale_profile.py": {
+      "target": "tests/test_refactor_livewan_crossscale_profile.py",
+      "original_integrated_sha256": "341501e06a86bf53b8d71e12f556e3bed2e94755a188bba30894804cae788dba",
+      "reviewed_source_sha256": "341501e06a86bf53b8d71e12f556e3bed2e94755a188bba30894804cae788dba",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "2dd0ba4ebbe31658dfb280cecdba81c356c49bba728c812ee356aebbc2f71895",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_generator_cast_square.py": {
+      "target": "tests/test_refactor_livewan_generator_cast_square.py",
+      "original_integrated_sha256": "75e3eb6cd30443ef2b8d11f29dd4bd1d58e1a56b98de373613f82bc8312c7ddc",
+      "reviewed_source_sha256": "75e3eb6cd30443ef2b8d11f29dd4bd1d58e1a56b98de373613f82bc8312c7ddc",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "7b01c4f1123b8ddfbdd32422704bfb3ae4e19d133f22ac7ac03fda822134aace",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_generator_gate.py": {
+      "target": "tests/test_refactor_livewan_generator_gate.py",
+      "original_integrated_sha256": "1c21d113e5dde88d909690209549a5e1bd27dcde124fd890d0a2614bde7a55f0",
+      "reviewed_source_sha256": "1c21d113e5dde88d909690209549a5e1bd27dcde124fd890d0a2614bde7a55f0",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "3e348e9764ac1732824a6a04501f46ea169ef929577cdf0afeff83da20c21831",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_generator_modulation.py": {
+      "target": "tests/test_refactor_livewan_generator_modulation.py",
+      "original_integrated_sha256": "e7037ee2274d3070f740f943e7b443e9a7b83d7e542bbb27bdbdf487fb3ae2de",
+      "reviewed_source_sha256": "2a4d7aa6236f3591bc76c99dcc92d0133c1a78bed3b8679e80c335db2c3b6590",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "36338ea144784604be793ffaac6cda8bb69b4168da1fb3c82e7b94c996e4a077",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_generator_rms_epilogue.py": {
+      "target": "tests/test_refactor_livewan_generator_rms_epilogue.py",
+      "original_integrated_sha256": "eecc8ffd76e22eb078c26beeed5c7f87a00c18068b9e15ec5230bc170db3c611",
+      "reviewed_source_sha256": "44335df578c0a2875552cda9c22b84b860471d85f5a0ac74efb5b99382003510",
+      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "integrated_sha256": "351f35d44bbe8d3ee1a83cdb431139f9dd184d991f05d527e988092097d1ecdd",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_rollout_cast_cache.py": {
+      "target": "tests/test_refactor_livewan_rollout_cast_cache.py",
+      "original_integrated_sha256": "40f9ac12bf39736f2cd20fc295267dc80999802fe53a668dbafec97093f17cde",
+      "reviewed_source_sha256": "40f9ac12bf39736f2cd20fc295267dc80999802fe53a668dbafec97093f17cde",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "fc3b6a4dcbc2f9678b37cdf42fbd6dcd184819ac999e2062c65365fe4db721c7",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_trajectory.py": {
+      "target": "tests/test_refactor_livewan_trajectory.py",
+      "original_integrated_sha256": "069550df29335fa41a6b96c1a8802b0a08f3abac3eb37f2b2ab0461bee65c739",
+      "reviewed_source_sha256": "069550df29335fa41a6b96c1a8802b0a08f3abac3eb37f2b2ab0461bee65c739",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "a53ed21da6c5febdc1c0d2971105671c6fbdf8a77565d9514e0fa7df05590c9d",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "tests/test_refactor_livewan_two_cycle_profile.py": {
+      "target": "tests/test_refactor_livewan_two_cycle_profile.py",
+      "original_integrated_sha256": "b18ed768884b297974cc506d71637ae9fea832f4625fb418e5fe96957574c369",
+      "reviewed_source_sha256": "b18ed768884b297974cc506d71637ae9fea832f4625fb418e5fe96957574c369",
+      "source_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
+      "integrated_sha256": "747f16b9213d96113485220072e35c7d8892a7cd15d20ec21794413e9df0ac1b",
+      "change": "current_branch_integration_or_cli_discovery"
+    },
+    "scripts/distillctl.py": {
+      "target": "scripts/distillctl.py",
+      "original_integrated_sha256": "d3a296a3d6add3301c610b524a8167c21dfbca99276fcaa5bf5f3a57c48e3992",
+      "reviewed_source_sha256": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
+      "source_commit": "e6317e64232d4bdd53a3bbb57ff911121f21bc62",
+      "integrated_sha256": "21bb50f7b0e8dc3f73d80f1ff639e9611bb805155d630424d3100354c718ee33",
+      "change": "public_training_lifecycle_routes_and_package_equivalent_source_entrypoint; canonical_math_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+      "original_integrated_sha256": "d566f71ad1270aeb470fd3073b86339809085c9a49ab217aa712e44362a633c8",
+      "reviewed_source_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "integrated_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "opt_in_original_W5_lifecycle_pre_model_config_data_admission_and_actual_trainer_binding; canonical_math_and_original_benchmark_path_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/trainer.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer.py",
+      "original_integrated_sha256": "bdb3c01653fa6a15bd6578407d7aed8710c4857ff3ba6a6e99b315b1c05f7431",
+      "reviewed_source_sha256": "be0169efa8a08210b2f4a879e748f5bcf53f7069d2c4f31aa34575f55ba0caff",
+      "integrated_sha256": "be0169efa8a08210b2f4a879e748f5bcf53f7069d2c4f31aa34575f55ba0caff",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "lazy_optional_LoRA_Triton_imports_only_same_setup_branches; canonical_math_and_original_benchmark_path_unchanged"
+    },
+    "src/distillschedule/backends/training/minimax_h3/trainer_loop.py": {
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "original_integrated_sha256": "a63e3d18a129cd3a12dd5e6601d6a3777ebb91d726b62932a4cde341c71fc17e",
+      "reviewed_source_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "integrated_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
+      "change": "opt_in_original_W5_complete_cycle_data_cursor_and_canonical_state_hooks_legacy_observer_unchanged; canonical_math_and_original_benchmark_path_unchanged"
+    }
+  }
+}

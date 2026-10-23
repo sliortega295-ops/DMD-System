@@ -1,0 +1,305 @@
+{
+  "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+  "workload": "W1 Wan1.3B original384x640x33 B1/global16 G1/C5/EMA5",
+  "source_head": "ea29129342741b54e59c4773e07454f541fadcc7",
+  "actual": {
+    "manual": {
+      "C1_seconds": 31.975596336,
+      "C2_seconds": 20.040549555,
+      "completed_ranks": 16,
+      "cycles_each": 2,
+      "source_head": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "strategy": {
+        "candidate_bundle": {
+          "critic_grad_cuda_graph": true,
+          "generator_nograd_lora_cast_cache": true,
+          "generator_rollout_cuda_graph": true,
+          "grad_lora_fused_epilogue": true,
+          "modulated_norm_fusion": true,
+          "schema_version": "distillschedule.wan_candidate_bundle.v1"
+        },
+        "chunk_tokens": 2048,
+        "lora_epilogue": true,
+        "placement": "resident",
+        "retained_critic_blocks": [
+          26,
+          27,
+          28,
+          29
+        ],
+        "retention_execution": "planner-retain4.v1",
+        "rollout_window": 5
+      },
+      "initial_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "peak_allocated_GiB": 26.691760540008545,
+      "peak_reserved_GiB": 33.943359375,
+      "memory_scope": "PYTORCH_HIGHWATER_ACROSS_OBSERVED_NATIVE_PYTHON_RESETS_INCLUDING_SETUP_AND_BOTH_CYCLES",
+      "min_driver_free_at_post_C2_sample_GiB": 1.9749755859375,
+      "native_reset_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "rank_sources": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_00.json",
+          "sha256": "93944298d8547948274a98c29ee69e776e4dccf2e4c7f1b6e33a1d104d1a1f94"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_01.json",
+          "sha256": "86666951c7ca14958680e6b7e8f1569075d55198ccaeb548f4f95478cf8fa592"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_02.json",
+          "sha256": "8f0ecad1906f0bdd012433045d54501e1b2597654f8b9791521cf2ce1b79f6d6"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_03.json",
+          "sha256": "49b8ac6c275df87bd64180fd3f1bbaeb350571bb9dd22da646661621d55f1b87"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_04.json",
+          "sha256": "964668ad1be64e9ab4590f2fc3521f3310961455ffccdfd5d9c9c1ecf8d87c6b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_05.json",
+          "sha256": "afdf5aec3bc05c753bf76e7d8b10a7f5a59a2e5c3b5950967687eb2165c5320f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_06.json",
+          "sha256": "ce843d79a76f1bfcf694fb4acc1de6f424ae804b139ef3b6a3b46e2b8d311137"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_07.json",
+          "sha256": "3e1bfcb467ce69abebe615cf5ede3e33d33523b47400f2cbdb90e0b7a3817ad7"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_08.json",
+          "sha256": "b90c5f20c8335c22e503f1e937af6d96e16421b400a276db6fb2c52e01839749"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_09.json",
+          "sha256": "d520df0a7d674e1b489e57b332ea179c687878ec0153b035426edb2987a6d4da"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_10.json",
+          "sha256": "91f796f60b2ad231964ba1035d22a14e7bc210f4a9f138b937ad36288aad7c65"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_11.json",
+          "sha256": "4567c087caf60be8a260d7a49545a004bf4d5a6bf998cfe5acf389daf6e8f135"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_12.json",
+          "sha256": "567fe5ec51931f70fdf7d926d467f7e05ac4cb11a77956bdf8f22517d730d775"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_13.json",
+          "sha256": "01014d1032215f8c0a33cb33e924a24e7c5c54ae07e3dbd182776ae693d5e828"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_14.json",
+          "sha256": "5b87e64db48e757f8f56bc6a3faa8c2c8fcbc5ba95327e32d0eb683da7dc3f5f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/manual/rank_15.json",
+          "sha256": "dfd8784792f10cd0da589736bc34aa22203c3e32ea7783b997966fee4f932119"
+        }
+      ]
+    },
+    "selected": {
+      "C1_seconds": 31.966593023,
+      "C2_seconds": 20.10377526,
+      "completed_ranks": 16,
+      "cycles_each": 2,
+      "source_head": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "strategy": {
+        "candidate_bundle": {
+          "critic_grad_cuda_graph": true,
+          "generator_nograd_lora_cast_cache": true,
+          "generator_rollout_cuda_graph": true,
+          "grad_lora_fused_epilogue": true,
+          "modulated_norm_fusion": true,
+          "schema_version": "distillschedule.wan_candidate_bundle.v1"
+        },
+        "chunk_tokens": 2048,
+        "lora_epilogue": true,
+        "placement": "resident",
+        "retained_critic_blocks": [
+          26,
+          27,
+          28,
+          29
+        ],
+        "retention_execution": "planner-retain4.v1",
+        "rollout_window": 3
+      },
+      "initial_versions": {
+        "critic": 10,
+        "ema": 10,
+        "generator": 2
+      },
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "peak_allocated_GiB": 26.62493085861206,
+      "peak_reserved_GiB": 33.546875,
+      "memory_scope": "PYTORCH_HIGHWATER_ACROSS_OBSERVED_NATIVE_PYTHON_RESETS_INCLUDING_SETUP_AND_BOTH_CYCLES",
+      "min_driver_free_at_post_C2_sample_GiB": 2.3714599609375,
+      "native_reset_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "rank_sources": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_00.json",
+          "sha256": "22694aeea56cb9e3f25693ca43c39684b32900e99b54bb69d9c66c2138f1f0a8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_01.json",
+          "sha256": "5fdfb3825e73dc618efed4249862b26cf884e4c83c120d36924ad671713a1719"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_02.json",
+          "sha256": "46c03eea8373ec229b08412ffae77fe975ac30c243c81bd6604e2de77863c003"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_03.json",
+          "sha256": "5076efffbe2590abfbaca1f2c548d4b379f2860231291f90fa136e2719446ad2"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_04.json",
+          "sha256": "54fc83b48ab90cff2b39dae1a515a7c90b436bc7f77abee6574b5334a4f2846c"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_05.json",
+          "sha256": "839ec357eabc55169766e3ed0846a0e6aeeaf25c27c5d673fc1ae8d0d94c1127"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_06.json",
+          "sha256": "a0633e4b1e2783d097938b6a50e9c1c2d930834a8e03dccb6896b5d32f6f874d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_07.json",
+          "sha256": "0b22f32aff7daa840359cd20e3531d6e004fb9c766a65cd67d863d966714f8aa"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_08.json",
+          "sha256": "373681fe922ce74cb2600de8d137c26b0567621ef222d83eb1acc7a24731fa82"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_09.json",
+          "sha256": "ec38c3526d40ea5293aa4f17461849fe705be1107f484444cc5c2f49c63772db"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_10.json",
+          "sha256": "12dab6059480746fa9ffa89814f47c477080420bdb779fbbc844d61abe0cfd87"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_11.json",
+          "sha256": "f66d55260bd7d72e5635a4af7cfd7535b994eb2732904e3ced51dffb5ef6c861"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_12.json",
+          "sha256": "1354788d66a68ff7a94e148edc81f4fef8d370fbdb815ccb2e561e13bf29f3ef"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_13.json",
+          "sha256": "da3c968ff3a21b7202ec36e989e4cc4142aec692f8c6f472a21ddff79c6dcd94"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_14.json",
+          "sha256": "9aab044b60a790a05217c719c519c31745db2e4aebbaa124aebdd39bf1b261aa"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected/rank_15.json",
+          "sha256": "c5c98491d97e7f33e48ff9e6aaad720326405f87f474e4ff2537b0d554f0a261"
+        }
+      ]
+    }
+  },
+  "selected_over_manual": 1.0031548887831885,
+  "selected_extra_seconds": 0.06322570500000069,
+  "max_allowed_fraction": 0.03,
+  "numerical_status": "REVIEW",
+  "numerical": {
+    "tensor_count": 4308,
+    "failed_tensors": 1524,
+    "max_abs": 1.1738608009181917e-05,
+    "rtol": 1e-05,
+    "atol": 1e-07
+  },
+  "semantics": "PASS_ORIGINAL_NATIVE_CENSUS_VERSIONS_INPUT_IDENTITIES_AND_RUNTIME",
+  "saved_plan_sha256": "148b03e596207721ebf00761b2f0ea4623a9b04ce2e7af81ed65852eb070e456",
+  "saved_plan_file_sha256": "25585cd17e342ba33d3d4a6b167582d84b115d0853b03b2af50ac6547268fee0",
+  "selected_order": [
+    "g",
+    "r0",
+    "c0",
+    "r1",
+    "e0",
+    "r2",
+    "c1",
+    "r3",
+    "e1",
+    "r4",
+    "c2",
+    "e2",
+    "c3",
+    "e3",
+    "c4",
+    "e4"
+  ],
+  "whole_workload_global_optimum": "NOT_CLAIMED",
+  "formal_speedup_eligible": false,
+  "statistical_equivalence": "NOT_ESTABLISHED_SINGLE_PAIR",
+  "CPU_collector_CUDA_initialized": false,
+  "host_peak": "NOT_CAPTURED_IN_THIS_TIMER_PAIR; OOM_IN_OWNER_RECEIPTS",
+  "profiler": false,
+  "raw_state_remote_only": true,
+  "setup_port_recovery_only": {
+    "used": false,
+    "original_failed_selected_started_native": null,
+    "manual_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native",
+    "selected_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native",
+    "saved_plan_unchanged": true
+  }
+}

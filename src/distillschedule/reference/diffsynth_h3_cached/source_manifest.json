@@ -1,0 +1,937 @@
+{
+  "canonical_gan_start_step": 500,
+  "checkpoint_trust": "original load_checkpoint uses weights_only=False; trusted local checkpoints only",
+  "files": [
+    {
+      "allowed_transformations": [
+        "static definition relocation with explicit dependency imports"
+      ],
+      "bytes": 7965,
+      "kind": "selected_definition_derivative",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "examples/minimax_h3/model_training/train_ours.py",
+          "sha256": "55e9af70206f7aa6d0a12e1ddf7a389b359338a1be20a26bab558b900c37dc37"
+        }
+      ],
+      "path": "cache.py",
+      "sha256": "9ac65af64ebad44e30ccbbfa3ea8b6100d9ec7b952e4dbf2126b5104319d91c9",
+      "symbols": [
+        {
+          "ast_sha256": "035fe0c8ed71b7b6e1e436bcd05f3a590df21c651b9649302db51af1f95e90f3",
+          "end_line": 46,
+          "source_sha256": "29cc3ec933c20fcd28dd3c1b2f07926e37deb9c015ede3bc3eeb7e9e980b28f6",
+          "start_line": 39,
+          "symbol": "require_tensor"
+        },
+        {
+          "ast_sha256": "f681dd021f01ffb5a5fc91491633081b49cedfa9695117589b354e5edb7000cf",
+          "end_line": 53,
+          "source_sha256": "6d3104121cebedd88c17cea473c06e7623b60d90a6b14eba01c2225fe2572bc7",
+          "start_line": 49,
+          "symbol": "check_video"
+        },
+        {
+          "ast_sha256": "a51c45d91b9a9d72ea33f68dbe32ad3ac81f040eacafe3ca159d4994808c5238",
+          "end_line": 60,
+          "source_sha256": "26cebbcc421e4f3344a302f399e7301d901e4a377ba7680c6097da774d6f3703",
+          "start_line": 56,
+          "symbol": "check_audio"
+        },
+        {
+          "ast_sha256": "d540ef804ede9a2da258f6c8328d3fc92c4688b7272db7186ba9578e870bbfd9",
+          "end_line": 75,
+          "source_sha256": "3562ca3970fc6019b99881e35cebbfc4a532b30d9f5ba64f2d2eff41a5bf65e4",
+          "start_line": 63,
+          "symbol": "check_clean_anchor"
+        },
+        {
+          "ast_sha256": "c1ba42f5f1e9f706f5bb089bd77699aaa36db9b599746b0fb7c3981e9b0d4909",
+          "end_line": 91,
+          "source_sha256": "aa2b64af13dadcb5a0ba29c1ef37dde4bda0c8a6330c152539ed39b8918468a8",
+          "start_line": 78,
+          "symbol": "reference_shape_from_packed"
+        },
+        {
+          "ast_sha256": "5c9bf2bdfc66bbce7445308589523e5611cf3f73f30d9d89132b3f7689239180",
+          "end_line": 161,
+          "source_sha256": "2d3c459bdd3bd7fa138face115eca047f0ccf14d71486d1b69d15289e39098fe",
+          "start_line": 94,
+          "symbol": "prepare_cached_inputs"
+        },
+        {
+          "ast_sha256": "043a5c057c40e0477abdebcf4d2f5f5e511620006fc3d2831ccbc39ccdd689b0",
+          "end_line": 198,
+          "source_sha256": "e0eca4ec90f0af1026b8ab46e0da5a70c9e3e3e57edce65baabe2617240d0dd8",
+          "start_line": 181,
+          "symbol": "NodeLocalSampler"
+        },
+        {
+          "ast_sha256": "9610f5cd7ea5c8f84bff745d8001d82ccff774248c1b12af33720317a81d02e3",
+          "end_line": 210,
+          "source_sha256": "5012e2ee74079728c7e4369056cca5f14be85793d0e78e77e2ffef458a5b912d",
+          "start_line": 205,
+          "symbol": "gathered_parameter"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "new explicit namespace/backend import admission"
+      ],
+      "bytes": 132,
+      "kind": "maintained_import_bridge",
+      "origins": [],
+      "path": "core/__init__.py",
+      "sha256": "e12e4edf3ea7b867076084614f26fe3a1ca45c1675e6ee5dc85eb4a81223ea16",
+      "symbols": []
+    },
+    {
+      "allowed_transformations": [
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
+      ],
+      "bytes": 195,
+      "kind": "maintained_import_bridge",
+      "origins": [],
+      "path": "core/attention/__init__.py",
+      "sha256": "20d627b00d53a3acaca1c1e1bcfd0d0a5a83cca4ed73ed5bca94163724f99293",
+      "symbols": []
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 13461,
+      "kind": "unchanged_whole_module",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "diffsynth/core/attention/attention.py",
+          "sha256": "1126b2e19184299cbfc611dcf66e46d0fd1a7bfa1d616f2ed38bc60ba19679ae"
+        }
+      ],
+      "path": "core/attention/attention.py",
+      "sha256": "1126b2e19184299cbfc611dcf66e46d0fd1a7bfa1d616f2ed38bc60ba19679ae",
+      "symbols": [
+        {
+          "ast_sha256": "93ba91d946047842732fb5192f3a9fbe8967807ae65d5360c1151383a4151446",
+          "end_line": 77,
+          "source_sha256": "13ee0c1f6e0cc74f39317b860973e837440ac268c5a775623428836b7708e733",
+          "start_line": 61,
+          "symbol": "initialize_attention_priority"
+        },
+        {
+          "ast_sha256": "dc2fdf9bf39b96d605e14ca990952eee310911150e7ebbf4286a0644ad159621",
+          "end_line": 91,
+          "source_sha256": "832f0acac9099c3fced191a2a8d89873a9ca1382cfe7e19240dab2197e60d899",
+          "start_line": 83,
+          "symbol": "rearrange_qkv"
+        },
+        {
+          "ast_sha256": "0bac0793f8bf65f6989d1b6f46865dce5acf31669effa72fac28f9aab2f3e4b3",
+          "end_line": 98,
+          "source_sha256": "3e5d508002a03a9783928efc9ec2b7f313eb65c3b65030b9dcba5686d409def9",
+          "start_line": 94,
+          "symbol": "rearrange_out"
+        },
+        {
+          "ast_sha256": "c3d5a3c14c0448f12b2b0d1f1b8f751f746aaf62cd2c323088f0bcd67a94ad81",
+          "end_line": 116,
+          "source_sha256": "a68e4384199a2033ccb6cad735e0fbf361740d3404fbc3c36bffd19fa10323d3",
+          "start_line": 101,
+          "symbol": "torch_sdpa"
+        },
+        {
+          "ast_sha256": "7a703cbbd3c75276f4827f8ac68847d869f54f045b32f6dd1f80db93a2512ebb",
+          "end_line": 160,
+          "source_sha256": "008ce2fb55bd69eaea299a1d5631b6f8df0e1025de607eb5750ee0e10f8b4a9c",
+          "start_line": 119,
+          "symbol": "torch_sdpa_sliding_window"
+        },
+        {
+          "ast_sha256": "60aae5c7fe28212d7ab1e3c92eb9ef088adab9e61deab763326a83db751936e0",
+          "end_line": 171,
+          "source_sha256": "fe9231d72e0f165a4da2bc858f9b18417c32c2e333ecf04ffe988e6dc4fb6510",
+          "start_line": 163,
+          "symbol": "flash_attention_4"
+        },
+        {
+          "ast_sha256": "85d79df941d49ef8a619148688b672a2afd07082c8f8da931997630f21a734b7",
+          "end_line": 182,
+          "source_sha256": "2d23485f5ea56cedf390ec8fd843f8cf6f3b71732bdcc27517a4b5894dcebe56",
+          "start_line": 174,
+          "symbol": "flash_attention_3"
+        },
+        {
+          "ast_sha256": "4e6c13b4cfdaa51b9bd81cf0356f521b77a88b8dd7b26378b442ce612ac88521",
+          "end_line": 191,
+          "source_sha256": "80967dc6d913b06dd2bba32e88634cca736ef7801da5b8ce70ac37de621b3894",
+          "start_line": 185,
+          "symbol": "flash_attention_2"
+        },
+        {
+          "ast_sha256": "74820a624ed1aab3cfcc234eea5b69c4fe569b41193940123c34d15533c215d9",
+          "end_line": 202,
+          "source_sha256": "b1cae0b015c8043d9d5daa07de7a6a38c282375465ea5cfa803d99a556fbc891",
+          "start_line": 194,
+          "symbol": "flash_attention_customized_kernel"
+        },
+        {
+          "ast_sha256": "f4d749d7ff1129b159d8f18be5048723aeebddc212261dad0ef957e76635c93f",
+          "end_line": 210,
+          "source_sha256": "c02a5635877e36cd80461f1cfe329ca5a24c8e9509f32db4b60a9fa027b80ae2",
+          "start_line": 205,
+          "symbol": "sage_attention"
+        },
+        {
+          "ast_sha256": "f6c4cfc59b720ce8a91ce1e7e1bdd3d3f3f428cbd7f7d6e0e5e04a772ebf541f",
+          "end_line": 218,
+          "source_sha256": "4062a22991136226794270bf2de5534cd4031b29642a51aef9a73889e102bd8c",
+          "start_line": 213,
+          "symbol": "xformers_attention"
+        },
+        {
+          "ast_sha256": "278ce90ae9712e31c04520a6915b3f80f9d83f8c181fe671050215158805f2c2",
+          "end_line": 227,
+          "source_sha256": "7513202b6e657c6f0f6d62b0af04290f0e551fb03d1cf360fe58b54b551851bb",
+          "start_line": 221,
+          "symbol": "flex_attention"
+        },
+        {
+          "ast_sha256": "a70d3eaf1f03cb7aff1d8114f39c9986dfa0e11c23723cb47838bf4831f1cec7",
+          "end_line": 255,
+          "source_sha256": "a79e82ad00ffdb442c17188e9986bb423a340b3877d05aeac397142fe494faca",
+          "start_line": 230,
+          "symbol": "attention_forward"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
+      ],
+      "bytes": 225,
+      "kind": "maintained_import_bridge",
+      "origins": [],
+      "path": "core/gradient/__init__.py",
+      "sha256": "5fce710c5870c9fbb1bd85818a487fe25d8f059115519454cca0affaafe4b30e",
+      "symbols": []
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 1854,
+      "kind": "unchanged_whole_module",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "diffsynth/core/gradient/gradient_checkpoint.py",
+          "sha256": "00f33981e4ac155d1ae757de2765703cd4881775b9cf8360627c709d631c2b21"
+        }
+      ],
+      "path": "core/gradient/gradient_checkpoint.py",
+      "sha256": "00f33981e4ac155d1ae757de2765703cd4881775b9cf8360627c709d631c2b21",
+      "symbols": [
+        {
+          "ast_sha256": "aa1597d5806b0dc890cf71ea411b2706f22fb0647f373bf4c2de05408a9b0daf",
+          "end_line": 14,
+          "source_sha256": "29f35078370b1d2660db537a25002966fedbccc6c5abc06050278de24143bbac",
+          "start_line": 11,
+          "symbol": "create_custom_forward"
+        },
+        {
+          "ast_sha256": "f5e9a349497e2d964924a1055fab29300d4a0cd189b06ff19b0e534222836189",
+          "end_line": 20,
+          "source_sha256": "054d607bf3569ab093e3169493f0d73801833f7fad1d9deb26329b17cadc53cd",
+          "start_line": 17,
+          "symbol": "create_custom_forward_use_reentrant"
+        },
+        {
+          "ast_sha256": "d793a95cbe6b48fa3f202349a0d2702aa15f3132f292e8bd137e0328c9302b58",
+          "end_line": 27,
+          "source_sha256": "b1da36d73feab3c9919d5809a966f43599a59e5e202f8159e118752315e976a4",
+          "start_line": 23,
+          "symbol": "judge_args_requires_grad"
+        },
+        {
+          "ast_sha256": "4af17dcbcf9124b73525dcf40d426fc370843ffe465dd34f87a48108b3395b7f",
+          "end_line": 65,
+          "source_sha256": "7edd55b85edaa0850c844bd1bc5feb353974f4f8d8839f4b673cc8ec7a0e635f",
+          "start_line": 30,
+          "symbol": "gradient_checkpoint_forward"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "new explicit namespace/backend import admission",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
+      ],
+      "bytes": 197,
+      "kind": "maintained_import_bridge",
+      "origins": [],
+      "path": "diffusion/__init__.py",
+      "sha256": "8cac555db4e75786c3e0442252180442bc308c78700b4a5f54a5ba1f00ec1ebe",
+      "symbols": []
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 22873,
+      "kind": "unchanged_whole_module",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "diffsynth/diffusion/flow_match.py",
+          "sha256": "b4c162413008db4a3986ad8b3638166d7c9b5a4820580e4524e3891ec5c710ba"
+        }
+      ],
+      "path": "diffusion/flow_match.py",
+      "sha256": "b4c162413008db4a3986ad8b3638166d7c9b5a4820580e4524e3891ec5c710ba",
+      "symbols": [
+        {
+          "ast_sha256": "e2f426d73b1adeb57e738611a022b4d69087e7d94c7633e85f4c303ebd78c724",
+          "end_line": 424,
+          "source_sha256": "a6e90b67ce5548fa4bfd9a095128b84914dad1844f84aacc1fa676c0d659ff2d",
+          "start_line": 6,
+          "symbol": "FlowMatchScheduler"
+        },
+        {
+          "ast_sha256": "d08bf9212b342e44b1fc8f152247ecb73b9e464e3a64381285bb21cf7f6a6663",
+          "end_line": 464,
+          "source_sha256": "fd582dfc63e589fe6df9accce135fbe06d6923a4c789d8bb8d8dd71fe9e59e39",
+          "start_line": 427,
+          "symbol": "HiDreamO1FlashScheduler"
+        },
+        {
+          "ast_sha256": "c764a99957e6d0364a9c82d9ae1fab5c0f976d2c9be86474aaa17954e7d9bd26",
+          "end_line": 489,
+          "source_sha256": "95dbd707fbaf5b37fbb4958443fccc5832b96d1ee6f621d75327a0e07963f3af",
+          "start_line": 467,
+          "symbol": "AncestralFlowMatchScheduler"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 6001,
+      "kind": "unchanged_whole_module",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "examples/minimax_h3/model_training/dmd2_zero3.py",
+          "sha256": "c8b7beb4375c26daae9e8e0dd863fb8a9079e644c17e690d712d45f14c3bab7b"
+        }
+      ],
+      "path": "dmd2_zero3.py",
+      "sha256": "c8b7beb4375c26daae9e8e0dd863fb8a9079e644c17e690d712d45f14c3bab7b",
+      "symbols": [
+        {
+          "ast_sha256": "72c3411ac536dc27600ada9f63e560f8892852c3d3297a2f5f5acd0f103abae7",
+          "end_line": 32,
+          "source_sha256": "c618192435e4fbfcbfdd018da9c798da109cf43185ca31776f2846420dd4912a",
+          "start_line": 6,
+          "symbol": "AlternatingAdamW"
+        },
+        {
+          "ast_sha256": "0373173093ed26c6881bfbc3bf84a89d7e81a2b3b228d523c158554e5e0a02dd",
+          "end_line": 42,
+          "source_sha256": "953ddd31d66c669452c9b54736a3235e33fa5c865b4f276887d7af42f19d55d5",
+          "start_line": 35,
+          "symbol": "DMD2Module"
+        },
+        {
+          "ast_sha256": "1493d9cf575615a5bfff7e2848ba44c710a2fc40cfb09cde54abd2afff3f3d2d",
+          "end_line": 68,
+          "source_sha256": "7363b0fec9aca69b07d8e6278c16bf82d880b000da1c2895577e4e6cc3b492fe",
+          "start_line": 45,
+          "symbol": "configure"
+        },
+        {
+          "ast_sha256": "3607ad4ca57c83d8a52dded658ba616daf55a5e157de7de8c5b0a663a651e5b4",
+          "end_line": 91,
+          "source_sha256": "985030a3c91c6f1586cdc46e556b6fdc5933f51e962fc77a301e8216a42a25c5",
+          "start_line": 71,
+          "symbol": "initialize"
+        },
+        {
+          "ast_sha256": "2c7e1c59f77b724755cb92f732c95b6d005b1bf70fa955291cffc7dc75614430",
+          "end_line": 105,
+          "source_sha256": "a728f9725e139b5578fab65e00eb9ddee7857176c7281450c5c65eed0b8e07a7",
+          "start_line": 94,
+          "symbol": "step"
+        },
+        {
+          "ast_sha256": "81dd43de9723d9b683b968275cd9ef5d306252bf8e205b8bf0815a49a5e7a07f",
+          "end_line": 128,
+          "source_sha256": "404f9e4e448a41fbe15f9bbde1ab291563f248f0d995e9c76b4e36c96970aec0",
+          "start_line": 108,
+          "symbol": "export_states"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "four top-level imports made explicitly relative to selected closure"
+      ],
+      "bytes": 16772,
+      "kind": "import_only_derivative",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "examples/minimax_h3/model_training/h3_dmd2.py",
+          "sha256": "77744f5ec391be813d42ebaf6a2692c18ea58f5ca7fb41398fd287d2a177ca62"
+        }
+      ],
+      "path": "h3_dmd2.py",
+      "sha256": "59393510353191f8b03c8cdb9922f4f071ec1a4dd80f3c520156443d805f9cae",
+      "symbols": [
+        {
+          "ast_sha256": "f93ecbeadbc31f40bfed3504b2f258883652fbe649fe0e6af792d971ec69c365",
+          "end_line": 74,
+          "source_sha256": "d8b75b50c02b2bce33a96a4ea567d982f6c48a0a3f64fc29b399e0f33fce3650",
+          "start_line": 21,
+          "symbol": "DMD2Config"
+        },
+        {
+          "ast_sha256": "5230676f6f8a34df6d241eeeb83473c9cda60c1c13d10c6ba9e578850eac54ae",
+          "end_line": 83,
+          "source_sha256": "9ece1ddb0398d68437f93940a661351c930802477791860f8250f7d63f66f290",
+          "start_line": 77,
+          "symbol": "make_schedule"
+        },
+        {
+          "ast_sha256": "097919d935d79e4d1a1091b1ada105e78ca3be8c56c2940c80da43547c8e8c8f",
+          "end_line": 87,
+          "source_sha256": "cb10d5ce2b36f24c5aa3dd78b0d8f708c02d31e92854ba95a52dcaa76dac1f54",
+          "start_line": 86,
+          "symbol": "add_noise"
+        },
+        {
+          "ast_sha256": "977108bba917ee55650e786b16014d6e7e2fc9b2990eddf85dbba84fd6e9af30",
+          "end_line": 91,
+          "source_sha256": "2f17f11b6b92661ea86d90a1e311bfc9c5c8630f03527ef337114ff623859401",
+          "start_line": 90,
+          "symbol": "prediction_to_x0"
+        },
+        {
+          "ast_sha256": "e5c3961539719496e22b82b724af99a7d7aecd058dc727a7e240d8e1be9c3572",
+          "end_line": 97,
+          "source_sha256": "2bb92ea2595aa268639867072d5368e4177af108c988ceb2658f09cbc4408d8e",
+          "start_line": 94,
+          "symbol": "dmd_gradient"
+        },
+        {
+          "ast_sha256": "f5895cf8eb0363076eb74226306ccc8a3a132886f163e75ed9ebad32eec3dce3",
+          "end_line": 102,
+          "source_sha256": "324f60089fb1ef6f2a3e76f27ec115b3b832394b840d2d525623bcb6fcbcfee0",
+          "start_line": 100,
+          "symbol": "exact_gradient_surrogate"
+        },
+        {
+          "ast_sha256": "891617c716e06bf05040659f05ff732e339f95fd5ee4e55e8a371914b1bcf951",
+          "end_line": 126,
+          "source_sha256": "d6ba71abb7c9d00a1fd77991c58ba3d2f51603c0d7ac05267f1f56d67488e319",
+          "start_line": 105,
+          "symbol": "DualLoRALinear"
+        },
+        {
+          "ast_sha256": "76a47d016d169eafc6f0f7deb06cccd0019ec281e67683fe2dcc58c82ac0c833",
+          "end_line": 183,
+          "source_sha256": "3ac00f13b830a04bf0f6b26372113594507615e06addedccb457d490bf312121",
+          "start_line": 129,
+          "symbol": "H3Adapter"
+        },
+        {
+          "ast_sha256": "68cfb61051acd6ee1081d7d58f1399eb036af49dd0b0244df14d66d2fec9d5dc",
+          "end_line": 202,
+          "source_sha256": "10f52d01f9d56c95fda56f033f7c4ebb9aacd0675b2af99735979f1d6d20c2db",
+          "start_line": 186,
+          "symbol": "VelocityDiscriminator"
+        },
+        {
+          "ast_sha256": "8d083e34e11ad47b2fbbb852bf8a74334caf0e7caec71617c13a044f36c1cfe6",
+          "end_line": 224,
+          "source_sha256": "856a4826c2097c47805f3cb0d9dac1d80d22d5b508ef861828edeb860a079095",
+          "start_line": 205,
+          "symbol": "prepare_batch"
+        },
+        {
+          "ast_sha256": "b35b1768557f1d982735732e0e0c80f48fd0ea2b9799e96e181ca0f0506ea7fb",
+          "end_line": 228,
+          "source_sha256": "5e32bc428abcb7c70906e55c610705551ad593826aebf35518757d4be6e1798c",
+          "start_line": 227,
+          "symbol": "modality_sum"
+        },
+        {
+          "ast_sha256": "95df7c88ce2b1c44b3b02bc50eb24cd5e7d45f00b31f272fe85731624b32bd99",
+          "end_line": 242,
+          "source_sha256": "7f125547efa51c842c6929c2125e4d925df734638bd4e273333a4aa60f9d1723",
+          "start_line": 231,
+          "symbol": "rollout"
+        },
+        {
+          "ast_sha256": "c88b4eac3a03b3570b2dc55b4c0a8b669f2024dd65ec06369300df1ba085f7a8",
+          "end_line": 333,
+          "source_sha256": "ec23b567647e15e2070c00e8f83dfa3b1b98de894338169fe7397b2094f6eff4",
+          "start_line": 245,
+          "symbol": "DMD2Trainer"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "new explicit namespace/backend import admission"
+      ],
+      "bytes": 132,
+      "kind": "maintained_import_bridge",
+      "origins": [],
+      "path": "models/__init__.py",
+      "sha256": "e12e4edf3ea7b867076084614f26fe3a1ca45c1675e6ee5dc85eb4a81223ea16",
+      "symbols": []
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 18207,
+      "kind": "unchanged_whole_module",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "diffsynth/models/minimax_h3_dit.py",
+          "sha256": "bd617a4312c70405e916707e1908100b484b2259dfbeba4af7de5bb145206d80"
+        }
+      ],
+      "path": "models/minimax_h3_dit.py",
+      "sha256": "bd617a4312c70405e916707e1908100b484b2259dfbeba4af7de5bb145206d80",
+      "symbols": [
+        {
+          "ast_sha256": "ba70984430d4551406e399d1821a61a671bbf30e1fcda3b1b32225722f2a80ea",
+          "end_line": 21,
+          "source_sha256": "edd53fd05e5e527352f8052fb5af5e078e0f6f64716c099e4cb79454414f4f32",
+          "start_line": 15,
+          "symbol": "patchify_video"
+        },
+        {
+          "ast_sha256": "4a1f66572beba78f11efbf082bd76b7c035879ead88686f3ba5449609b089bf4",
+          "end_line": 29,
+          "source_sha256": "874be3208e39c087dfcbf7e0b308928c0675d311c11dcca9508b98c82c93fdad",
+          "start_line": 24,
+          "symbol": "unpatchify_video"
+        },
+        {
+          "ast_sha256": "f8370e49cf21ecedd2811c580c5d84018b31eeaa6de589b924304dcbcc98f071",
+          "end_line": 35,
+          "source_sha256": "e6953c3a1ae9283a5a7dc4052c366e6df98486c8e8140802934bb443c0c54430",
+          "start_line": 32,
+          "symbol": "pack_audio"
+        },
+        {
+          "ast_sha256": "bb9c8aa157ebef40a46538414e1d5fcbfbcc620ff5d0b7532ffe198627c9481d",
+          "end_line": 40,
+          "source_sha256": "b0bc40ca71d5722b765197884f120b442cdf3f7274f34b85c11f264b9aca9a90",
+          "start_line": 38,
+          "symbol": "unpack_audio"
+        },
+        {
+          "ast_sha256": "28e8967cc7a7eabca5af8da4c90565db684f3e161e346e0e94a25df9a672e5e7",
+          "end_line": 44,
+          "source_sha256": "bf43cd661a4d14e9959d264381a911883896d40a84ed27dd43cb11bb4d9331a5",
+          "start_line": 43,
+          "symbol": "_norm"
+        },
+        {
+          "ast_sha256": "877ebca81b4802c348a21eec513cb455f72a1d9fa168426e57d4606dd84498d6",
+          "end_line": 49,
+          "source_sha256": "76bba8946d51d7cfc65a86ad4456e5901a4616d17a3780feec2f4c805dc58cdb",
+          "start_line": 47,
+          "symbol": "_rotate_half"
+        },
+        {
+          "ast_sha256": "081b281526eb45021e18fdc0407b987ea840e116e964e3dd5eef34c09749af13",
+          "end_line": 58,
+          "source_sha256": "64bd2a2c9a7463b2d9fd9235f545a5bee963dd65cf74cc2c868609e22aaec46a",
+          "start_line": 52,
+          "symbol": "_apply_rope"
+        },
+        {
+          "ast_sha256": "ebc8272124e0942d416bfc625085143aefe15cdb982e97c7aa7d340be0eee600",
+          "end_line": 63,
+          "source_sha256": "3ec7b4ea0117a17b95b81b82f24c305a3dab2068a0d8316b3130fe5118e87c6a",
+          "start_line": 61,
+          "symbol": "_modulate_scale_shift"
+        },
+        {
+          "ast_sha256": "0de11d481f14f94eb57973662efb9e2c502dd7e79d4bf167111b9878618e459b",
+          "end_line": 67,
+          "source_sha256": "fc3b09e75d2ab9f521d740674fad700b9d026687c45b850960e8dfba7c8ec9d3",
+          "start_line": 66,
+          "symbol": "_modulate_gate"
+        },
+        {
+          "ast_sha256": "dc22015325b2a33396311c98dcc48fd763fbcb47c2d7565b5261cbdf88f974c1",
+          "end_line": 81,
+          "source_sha256": "2bcfe804fac1bd8c1711d94786ce9a091c4413516d5575fb9182c2ba2d6df6a3",
+          "start_line": 70,
+          "symbol": "_sdpa_varlen_attention"
+        },
+        {
+          "ast_sha256": "d79c86e25bb8ba792788c6ce8279658495f7e4f36439d8672bf54e3d1d702441",
+          "end_line": 102,
+          "source_sha256": "2dfcbe16f9011eae112a90219713d25b16f5b1a556db8d70b77373274da63b40",
+          "start_line": 84,
+          "symbol": "MiniMaxH3Rope"
+        },
+        {
+          "ast_sha256": "93e859cd32f9bf7e73eebe8c0fe5eb1c4892a3f42dc2af250ca8ebbf0c5f3a20",
+          "end_line": 121,
+          "source_sha256": "656771e712b1d3da163c9f6b1a19f47c987f7e52e5d5620f2c2330deb3c01819",
+          "start_line": 105,
+          "symbol": "MiniMaxH3TimeEmbedder"
+        },
+        {
+          "ast_sha256": "c7dd0e537f8d3c8f2ded63b02e37cbac1549af2103b4433497ef1b44082abbf2",
+          "end_line": 150,
+          "source_sha256": "b38ccb648cbbda45503bc441b5a835da6fc7666d692df2bef6758d89cd11c3d5",
+          "start_line": 124,
+          "symbol": "MiniMaxH3Attention"
+        },
+        {
+          "ast_sha256": "fefc8e61c3eff1851a8504a2e4f4d82e26055dfbab35d728e86171192dee6398",
+          "end_line": 163,
+          "source_sha256": "3bae8c29d3cbd6aa5ce74d46764b38d2237d9048175a915c527682e513900fb1",
+          "start_line": 153,
+          "symbol": "MiniMaxH3MLP"
+        },
+        {
+          "ast_sha256": "f72631265b590581ffe68937f8e7bc4327bed00ebfd762800b494629bbcb315d",
+          "end_line": 183,
+          "source_sha256": "a7bb4e689b6919266b564df4939792d6604b68f71d9d1dd158a3e3dd37688237",
+          "start_line": 166,
+          "symbol": "MiniMaxH3AdalnProj"
+        },
+        {
+          "ast_sha256": "d3d4a9a049b4ed1f7c7f499bcdb1765d3e2550c73373f75859a1dd7cd2c88b6f",
+          "end_line": 197,
+          "source_sha256": "8713edb0a242a8a2ce1fd44b1edcda21f8c33f8dc9c01a092e2d7877e3456f72",
+          "start_line": 186,
+          "symbol": "MiniMaxH3TokenRefinerBlock"
+        },
+        {
+          "ast_sha256": "ca64f5d47b7686a2b4fea6cb2ad438d2d65c39c68a8fc8f69b2942929cfddb07",
+          "end_line": 211,
+          "source_sha256": "d3f2d3b07fce588a7e726001938268446855774e66f87c3aa415411f446d5419",
+          "start_line": 200,
+          "symbol": "MiniMaxH3TokenRefiner"
+        },
+        {
+          "ast_sha256": "575f83c648f3349bc61a78af9af8b5ba2621c526bafb11bbae8f5d577d0dfd66",
+          "end_line": 234,
+          "source_sha256": "c3f65699e46a5fc0ff988a5f2f190bb097cffc961d049c9f443237836450ecec",
+          "start_line": 214,
+          "symbol": "MiniMaxH3DiTBlock"
+        },
+        {
+          "ast_sha256": "2ae50cc3d2b70336474e45c31abc6136c7edf0737054e1247c0ecd9a1dd9c9ed",
+          "end_line": 252,
+          "source_sha256": "f38243a265320ad93d777d8be8782e028db55b2702bc5621cdce5edfa07dd4c3",
+          "start_line": 237,
+          "symbol": "MiniMaxH3FinalLayer"
+        },
+        {
+          "ast_sha256": "a2d9bae139bed0177b9db45d9fa7e581e214e02a3e4ef6b6902032f4dd5ee53f",
+          "end_line": 401,
+          "source_sha256": "8e62cce1d8be1a6d9ba843501324a192dc1653bb174e21230e8e374eb47a8556",
+          "start_line": 255,
+          "symbol": "MiniMaxH3DiT"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "static definition relocation with explicit dependency imports",
+        "postponed annotations; no phantom MiniMaxH3Pipeline class",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
+      ],
+      "bytes": 20944,
+      "kind": "selected_definition_derivative",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "diffsynth/pipelines/minimax_h3_audio_video.py",
+          "sha256": "7f5ff890d796dcfac3551e235741bdfbd4dbcae91aae3b6e4c3817dce38eecd6"
+        }
+      ],
+      "path": "packing.py",
+      "sha256": "72100266c67de235545926e7f7c3e9098e0c5b257e62b7ef8f0864847b89424a",
+      "symbols": [
+        {
+          "ast_sha256": "5b404e5a684a958f9c064378a0dd6e238ec5b673d0cf4a0267736c3384a35dc9",
+          "end_line": 839,
+          "source_sha256": "e695afb603d2ead04542b860f67926093e195be992d5b3b153689e7a892f3563",
+          "start_line": 588,
+          "symbol": "MiniMaxH3Unit_PackedSequenceBuilder"
+        },
+        {
+          "ast_sha256": "c36ebf1b1452a3f9c1aab32ec5a73336aaf2a9124df5182788a24fea265fd09f",
+          "end_line": 941,
+          "source_sha256": "831dd15ee7352d108275807c6f79f8a94b18ddafe1e432e01fbaa67a0e95d0fc",
+          "start_line": 876,
+          "symbol": "model_fn_minimax_h3_controlnet"
+        },
+        {
+          "ast_sha256": "1fec57fcf224d5dc15cbc27a5d16288a748725d0e0fc4cb9f1be7b6ca940bcfe",
+          "end_line": 1068,
+          "source_sha256": "6e1c2e1cd3c658a593deb6780f8cf0a16b5345448e2e200ec17fc12a82eea19c",
+          "start_line": 944,
+          "symbol": "model_fn_minimax_h3"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "PipelineUnit verbatim",
+        "exact transfer_data_to_device method in honest CachedTensorMover wrapper"
+      ],
+      "bytes": 2662,
+      "kind": "retained_older_support_and_maintained_wrapper",
+      "origins": [
+        {
+          "archive": "H3-SFT4AR/20260821-runner-short-gate/retained-baseline",
+          "path": "diffsynth/diffusion/base_pipeline.py",
+          "sha256": "0a1a966332cecf221558db961a38f3f194b204e003443f9f9ef8d2a250727676"
+        },
+        {
+          "archive": "H3-SFT4AR/20260821-runner-short-gate/retained-baseline",
+          "path": "diffsynth/diffusion/training_module.py",
+          "sha256": "fa35a71810d77683c2ffdd0dd00e71fcdc6a9a406dbf1fc1390af0db446dc362"
+        }
+      ],
+      "path": "support.py",
+      "sha256": "9b6f7e1635bcad6bae92b6d44940a0b42e8058f3e1f60d5c12cdb1c13cd92518",
+      "symbols": [
+        {
+          "ast_sha256": "d839551b0f58109cfae1d6b3d485c088a1018c549d5a2ca2538426e1df2e317c",
+          "end_line": 59,
+          "origin": {
+            "archive": "H3-SFT4AR/20260821-runner-short-gate/retained-baseline",
+            "path": "diffsynth/diffusion/base_pipeline.py",
+            "sha256": "0a1a966332cecf221558db961a38f3f194b204e003443f9f9ef8d2a250727676"
+          },
+          "source_sha256": "b298988f31a7f4fd731f9303ed86f561a785b51156a2763ceaf4fd0d76796d14",
+          "start_line": 15,
+          "symbol": "PipelineUnit"
+        },
+        {
+          "ast_sha256": "556b01041f8ed103a3787e0a1a07711b798bedec0007ce8ac17b2e07ffdf650d",
+          "end_line": 150,
+          "origin": {
+            "archive": "H3-SFT4AR/20260821-runner-short-gate/retained-baseline",
+            "path": "diffsynth/diffusion/training_module.py",
+            "sha256": "fa35a71810d77683c2ffdd0dd00e71fcdc6a9a406dbf1fc1390af0db446dc362"
+          },
+          "output_symbol": "CachedTensorMover.transfer_data_to_device",
+          "source_sha256": "73f0c2021898d95c5019ea7fd72044fbf92e93b8aeb71c19a8a86e002e46033f",
+          "start_line": 132,
+          "symbol": "DiffusionTrainingModule.transfer_data_to_device"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "static definition relocation with explicit dependency imports",
+        "save_checkpoint optional ZeRO3 import made relative",
+        "2026-10-22 explicit import reexports or postponed full-SFT type comment; numerical AST unchanged"
+      ],
+      "bytes": 13273,
+      "kind": "selected_definition_derivative",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "examples/minimax_h3/model_training/train_dmd2.py",
+          "sha256": "1bd881e755687218c982adea11cc4b430e2b858d60a59a35d8da42f25ce674c5"
+        }
+      ],
+      "path": "training_api.py",
+      "sha256": "f38e437752c372d4b6f7caeb7cc9c29b67b71de8024b2329cc1356dc328dc3df",
+      "symbols": [
+        {
+          "ast_sha256": "2be08a3e6fdfdf01680bd774fa00c33d4eda373f52935673935c44b5c38089f6",
+          "end_line": 59,
+          "source_sha256": "d8bd203d75a6f1d74c6cfeb58a3145b5310caaacd440c9f0ab791591feabb5df",
+          "start_line": 58,
+          "symbol": "rank"
+        },
+        {
+          "ast_sha256": "c1e59c3d0a275eb1cc7c33e3bc3a16caa4587616379825d7c536a6e0330a5375",
+          "end_line": 63,
+          "source_sha256": "db4db953c88e5a7262b0c33d9dfbf05871574087f0ad8db7b2f5341a5427dab5",
+          "start_line": 62,
+          "symbol": "world_size"
+        },
+        {
+          "ast_sha256": "3c6c6cd3fccb6c7a7560460be81ebdc166e13a40231989c1132c7f5a8087e9b6",
+          "end_line": 68,
+          "source_sha256": "b2daf3d5c87275526c32bfb93435de856a5991d7e211ecc188b59770752e3989",
+          "start_line": 66,
+          "symbol": "barrier"
+        },
+        {
+          "ast_sha256": "7bf1395458c2dd448b28a8e972bf86bbfc02402ee4cf1eb0ae1ab18be039ee9a",
+          "end_line": 76,
+          "source_sha256": "f1f68bd14414d99daea2c4344663f96477cfbe7c0452cc9de9cf85f6a1be2ab0",
+          "start_line": 71,
+          "symbol": "gather_objects"
+        },
+        {
+          "ast_sha256": "1f3d8311d6beb91ee45b69fa695df3e6b43487b1ff9046237d2f0f35fd5e41f6",
+          "end_line": 84,
+          "source_sha256": "c3600f9e98d74e0fd06b8f09db27556d2731a65f07ffca6325cc6865c38dfc49",
+          "start_line": 79,
+          "symbol": "seed_all"
+        },
+        {
+          "ast_sha256": "e12ac456664f3d86d947d4ceba48f28f5d5334cdec27e696daa204372b77847f",
+          "end_line": 103,
+          "source_sha256": "3a7befec98f3a7ea8ea6d61dbbff6dd98c213bef94d94a4a9c58988e59ab031d",
+          "start_line": 87,
+          "symbol": "validate_node_caches"
+        },
+        {
+          "ast_sha256": "aa2779f76c401d2fc296b5480f9b91ea3d22e4d3a8bfa9a8d0504287c97bf673",
+          "end_line": 122,
+          "source_sha256": "e50336b82d123982bc5be98124c4e38ec909b1b92448d7bf9f73f15672c5131d",
+          "start_line": 106,
+          "symbol": "load_teacher"
+        },
+        {
+          "ast_sha256": "9595f883fb378a5885c87bee343ffcc251b1209fc309f87fc9d8bed1a6e76461",
+          "end_line": 156,
+          "source_sha256": "eb1dcb2f80f25b2076cd7ffe47db034a908c612819c1e92bd15a0947bec8d5d3",
+          "start_line": 125,
+          "symbol": "CacheDataset"
+        },
+        {
+          "ast_sha256": "6859afddc00413c28f23d717d3cff5615c25fa98d4cdb4918f6b88affc2cf98a",
+          "end_line": 170,
+          "source_sha256": "6c93b66e25d1ddc18f0e4fda7849222d9ce29185069fc7e25e1c8bdd5011e257",
+          "start_line": 159,
+          "symbol": "make_optimizers"
+        },
+        {
+          "ast_sha256": "59f8c8cc2559d9142e295559e277e8667463cd9b5dde299a1b33e0c2d5bdc1e2",
+          "end_line": 198,
+          "source_sha256": "7c84eaab4d4254149b7d867e5d95ea94a95541b59d215ad05db3088c7473afac",
+          "start_line": 173,
+          "symbol": "optimizer_step"
+        },
+        {
+          "ast_sha256": "341318e8bbe766bd454f07d2635075483cff19f0a19d8ccfe2c949a334d6052f",
+          "end_line": 202,
+          "source_sha256": "009650a29a592380eafe74faa6fe6f97f94deb2294056ab4b9a87777f2cded63",
+          "start_line": 201,
+          "symbol": "adapter_state"
+        },
+        {
+          "ast_sha256": "3b83a9c06c60f68e4af54964dab4df96b8daa627966758ae7373845c4cec8142",
+          "end_line": 207,
+          "source_sha256": "2caca5dcbd408f74c43b63cb3fb739501ea17a4e505e990ba7f36d3173cff71a",
+          "start_line": 205,
+          "symbol": "rng_state"
+        },
+        {
+          "ast_sha256": "369dae329b5dd464701942baff7891e99fb9ebd2776136962f0f1edfa259b6a7",
+          "end_line": 215,
+          "source_sha256": "6c11a62a57747190dbb16096c7546b44976a92e0e53142fe8dc36b51295c1ba7",
+          "start_line": 210,
+          "symbol": "restore_rng"
+        },
+        {
+          "ast_sha256": "e222e0c9677e533e5852f41aaa2d93f88368a03978018090b99d7fe670ef08b0",
+          "end_line": 272,
+          "source_sha256": "b8653029c9ff16177697706f93de1df2c8354b3d82b1c38a19dfe0ff730192f7",
+          "start_line": 218,
+          "symbol": "save_checkpoint"
+        },
+        {
+          "ast_sha256": "38e8aabb6d939e1ad71d3faa48cfe16084f5d35dcea140d1f554bb485e361709",
+          "end_line": 313,
+          "source_sha256": "ed4ec5f2bd7e7ce68e309fc97378403bedcb8ac2113ea9fa225a2092c97b33ea",
+          "start_line": 275,
+          "symbol": "load_checkpoint"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "static definition relocation with explicit dependency imports"
+      ],
+      "bytes": 3789,
+      "kind": "selected_definition_derivative",
+      "origins": [
+        {
+          "archive": "h3_diffsynth_dmd2_world16_20261010/reference_source_snapshot",
+          "path": "examples/minimax_h3/model_training/train_ours_full.py",
+          "sha256": "015ccecdbf713ba355f53efcc2802e4954fe4be78d1180da15af2a5fb208aff8"
+        }
+      ],
+      "path": "weights.py",
+      "sha256": "bbf8d7ec6613060467908a92d5119ba8d5cffd6cd421dcf373359e6925a55d1c",
+      "symbols": [
+        {
+          "ast_sha256": "a059dc2fda34099e9de4807601761c43a592ac25e99764c1a874e2213db9106e",
+          "end_line": 61,
+          "source_sha256": "ae7eddccc4fa1e14f6c031cd69d03895d0a17ed0119e6a5a0eeb379582894277",
+          "start_line": 38,
+          "symbol": "checkpoint_files"
+        },
+        {
+          "ast_sha256": "e5a8d9fbdf5828bd2eab92334b369bc7d039032a8b709063889dbedfe7ceb2b2",
+          "end_line": 72,
+          "source_sha256": "346309b04a4472ac7546433731b2b2a7bdf9cc5170622c892884d1cf1f472559",
+          "start_line": 64,
+          "symbol": "model_config"
+        },
+        {
+          "ast_sha256": "780f2fc401a875361f74592e028ca7cb9de7cac5472ab5285c46534b3c02dc92",
+          "end_line": 79,
+          "source_sha256": "9bb9d023bba2bf11df3565d0418eb468f5e7ef526d2cea01512fc67526cba34f",
+          "start_line": 75,
+          "symbol": "normalize_key"
+        },
+        {
+          "ast_sha256": "c742eebf2d1c9abd2aa004d087db4b78ee1825611546559d3e13b1515d7e8bce",
+          "end_line": 111,
+          "source_sha256": "c0164cd53bb554d8bac16493dd5e8f7d4c34adc6a19837a0a2ba74e8488ff327",
+          "start_line": 82,
+          "symbol": "load_full_weights"
+        }
+      ]
+    }
+  ],
+  "not_run": [
+    "full50block",
+    "world16",
+    "CUDA",
+    "NCCL",
+    "ZeRO3",
+    "FSDP",
+    "pretrained quality",
+    "performance"
+  ],
+  "original_config_default_critic_updates": 5,
+  "original_distribution": "not proven complete; selected original numerical closure only",
+  "qualified_protocol": {
+    "adversarial_enabled": true,
+    "audio_loss_weight": 0.5,
+    "audio_shift": 2.22,
+    "critic_updates": 1,
+    "ema_updates": 0,
+    "gan_start_step": 500,
+    "lora_alpha": 64,
+    "lora_rank": 64,
+    "num_inference_steps": 8,
+    "teacher_cfg_scale": 1.0,
+    "video_shift": 2.22
+  },
+  "schema_version": "distillschedule.diffsynth_h3_cached_source.v1",
+  "scope": "MAINTAINED_CACHED_AV_DERIVATIVE_CPU_SOURCE_ONLY"
+}

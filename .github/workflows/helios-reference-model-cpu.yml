@@ -1,0 +1,101 @@
+name: helios-reference-model-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/**'
+      - 'third_party/helios_compat/**'
+      - 'tests/test_helios_reference_model_cpu.py'
+      - 'tests/test_helios_step_owner_cpu.py'
+      - 'tests/test_training_helios_public_cpu.py'
+      - 'tests/test_training_helios_public_inference_cpu.py'
+      - 'tests/test_training_wan_public_cpu.py'
+      - 'tests/test_training_wan_inference_cpu.py'
+      - 'runtime/gst_pool_helios.py'
+      - 'runtime/static_fsdp2_p0_helios.py'
+      - 'scripts/distillschedule/probe_static_fsdp2_p0_world16.py'
+      - 'tests/test_data_helios_native_inputs.py'
+      - 'tests/test_training_helios_gan_state.py'
+      - 'tests/test_training_end_to_end.py'
+      - 'pyproject.toml'
+      - '.github/workflows/helios-reference-model-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  original-full-model:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    env:
+      PYTHONPATH: 'src:.:tests'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HELIOS_PUBLIC_REQUIRE_STACK: '1'
+      WAN_PUBLIC_REQUIRE_STACK: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install the minimum CPU Torch, not a native CUDA environment
+        run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Separate full-model dependencies; leave 0.34 helper and 0.35 Wan pins alone
+        run: python -m pip install -e '.[train,test,test-helios-model]'
+      - name: Full original class and original G/C/EMA owners with fresh-process continuation
+        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py --junitxml=helios-reference-model-cpu.xml
+      - name: Require the full-source proofs without skips
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('helios-reference-model-cpu.xml').getroot()
+          suites = list(root.iter('testsuite'))
+          assert suites and all(int(s.get(field, '0')) == 0 for s in suites
+                                for field in ('skipped', 'failures', 'errors'))
+          cases = list(root.iter('testcase'))
+          assert cases and all(case.find('skipped') is None for case in cases)
+          names = {case.get('name') for case in cases}
+          required = {
+              'test_reference_model_source_discovery_needs_no_torch_or_model_import',
+              'test_original_history19_native_producer_mapping_and_tensor_only_delivery',
+              'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
+              'test_public_fresh_os_process_four_vs_three_resume_exact[False]',
+              'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt',
+              'test_full_original_class_dense_flow_and_original_gan_head_backward',
+              'test_dense_backend_is_original_sdpa_math_and_rejects_varlen',
+              'test_normal_model_save_pretrained_and_fresh_process_from_pretrained[False]',
+              'test_normal_model_save_pretrained_and_fresh_process_from_pretrained[True]',
+              'test_full_class_true_peft_original_critic_helper_adam_and_restart',
+              'test_original_owner_runs_five_atomic_steps_with_real_g_and_all_five_c_rollouts',
+              'test_native_rng_remains_continuous_inside_repeated_program_random_scopes',
+              'test_fresh_process_checkpoint_exact_next_cycle_all_original_owners',
+              'test_full_owner_nonseparate_gan_policy_runs_full_c_and_restores_exactly',
+              'test_legitimate_cold_zero_dmd_gradient_is_not_rejected_or_replaced',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[timestamp-transformer]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[timestamp-backend]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[unchecked-hash-transformer]',
+              'test_reference_import_uses_verified_source_not_stale_bytecode[unchecked-hash-backend]',
+              'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[source]',
+              'test_post_import_validation_failure_cleans_private_namespace_and_can_retry[namespace]',
+              'test_real_original_bf16_program_two_distinct_cohorts',
+              'test_fresh_os_process_full4_vs3_plus_exact_restart',
+              'test_partial_cycle_poison_and_safe_all_owner_restore',
+              'test_fresh_process_new_prompt_only_no_old_assets_training_or_optimizer',
+          }
+          assert required <= names, f'missing full-source proofs: {sorted(required - names)}'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: helios-reference-model-cpu-py${{ matrix.python }}
+          path: helios-reference-model-cpu.xml
+          if-no-files-found: error

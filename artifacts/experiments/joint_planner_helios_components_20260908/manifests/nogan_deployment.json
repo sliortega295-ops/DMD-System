@@ -1,0 +1,306 @@
+{
+  "status": "GO_SOURCE_ENV_ASSET_PREFLIGHT",
+  "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+  "target": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3",
+  "remote_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1",
+  "assets_config": {
+    "assets": {
+      "generator_model": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled",
+        "sha256": "ca13e7cc7f6bffe87f4aa27dfcbf12aa9b70c16df5f0de9eeb1a08a9400e1839",
+        "identity_file": "transformer_ode/config.json"
+      },
+      "generator_precast": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1",
+        "sha256": "26aef5faec7b44f4c41a5da8c9fb8e404d907c3b3f72ff3b7cc8a8fbf018b25d",
+        "identity_file": "distillschedule_precast_manifest.json"
+      },
+      "score_model": {
+        "path": "/home/shuchenweng/xty/Helios-main/weights",
+        "sha256": "ca13e7cc7f6bffe87f4aa27dfcbf12aa9b70c16df5f0de9eeb1a08a9400e1839",
+        "identity_file": "transformer/config.json"
+      },
+      "negative_prompt": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/m1/negative_prompt_official_v1",
+        "sha256": "65ec8514cd57f3db770dbd167e7a43583077a844a1ae6de55e903523ec2681a3",
+        "identity_file": "manifest.json"
+      },
+      "hf_home": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210",
+        "sha256": "d302f66e99e710dde9f409b665d41916b5cfed03a5cfa6759e42db12e109b4a7",
+        "identity_file": "hub/models--kernels-community--flash-attn2/refs/main"
+      },
+      "flash_attn_kernel": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux",
+        "sha256": "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516",
+        "identity_file": "metadata.json"
+      },
+      "score_precast": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-v1",
+        "sha256": "8e0705c0f657787bf316c5c7f5dd7c54c31bb6e455b9d12ac543d9bae5b90116",
+        "identity_file": "distillschedule_precast_manifest.json"
+      },
+      "logical_checkpoint": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/logical_world16_step10_v3",
+        "sha256": "82fc285acbe65a7547eca6d831709718f194df21b2e2fa90bb51cfbf98e7c19a",
+        "identity_file": "manifest.json"
+      },
+      "trace": {
+        "path": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20",
+        "sha256": "686abaaf0d69e4ed9b3ba820e54995bee7e4b0bd3a1769c916c9be15efb2bbf8",
+        "identity_file": "bundle.json"
+      }
+    },
+    "master_addr": "172.24.211.163",
+    "master_port": 29671,
+    "node_local_cache_root": "/tmp/lyy-experiments/DMD-System/joint_helios_components_20260908_r1",
+    "nodes": [
+      {
+        "address_family": "ipv4",
+        "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+        "python_env": "/tmp/distillschedule-helios-official-torch210",
+        "repo_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3",
+        "ssh_port": 2222
+      },
+      {
+        "address_family": "ipv4",
+        "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+        "python_env": "/tmp/distillschedule-helios-official-torch210",
+        "repo_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3",
+        "ssh_port": 2222
+      }
+    ],
+    "run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1",
+    "schema_version": 1,
+    "timeout_seconds": 7200
+  },
+  "source_receipt": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/manifests/deployment-85be7e4e36de-r4.json",
+    "sha256": "fa3fe0c64bdca5210e089feef622b90fa8b22f2812379afe9216fddb38a6db79",
+    "bytes": 375582
+  },
+  "nodes": [
+    {
+      "node": 0,
+      "status": "PASS_NO_MODEL_PREFLIGHT",
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+      "cgroup_before": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "cgroup_after": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "runtime_identity": {
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "status": "PASS",
+        "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+        "node_rank": 0,
+        "environment": {
+          "python": "3.10.20",
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "packages": {
+            "torch": "2.10.0",
+            "triton": "3.6.0",
+            "diffusers": "0.38.0.dev0",
+            "transformers": "5.3.0",
+            "peft": "0.18.1",
+            "accelerate": "1.12.0",
+            "flash-attn": null,
+            "safetensors": "0.8.0",
+            "nvidia-nccl-cu12": "2.27.5"
+          },
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090",
+          "ld_library_path": "/tmp/distillschedule-helios-official-torch210/lib",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3/third_party/helios_compat/source",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "uuid": "GPU-cad55364-e014-c35f-337e-db899afd1c6a",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:07:00.0"
+            },
+            {
+              "device": 1,
+              "uuid": "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:0F:00.0"
+            },
+            {
+              "device": 2,
+              "uuid": "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:47:00.0"
+            },
+            {
+              "device": 3,
+              "uuid": "GPU-bab43db0-a051-0419-39f7-e33effa9445b",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:4E:00.0"
+            },
+            {
+              "device": 4,
+              "uuid": "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:87:00.0"
+            },
+            {
+              "device": 5,
+              "uuid": "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:90:00.0"
+            },
+            {
+              "device": 6,
+              "uuid": "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:B7:00.0"
+            },
+            {
+              "device": 7,
+              "uuid": "GPU-01fff32a-1dd6-93a7-1aae-60d378382961",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:BD:00.0"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "cuda_context_created": false
+      }
+    },
+    {
+      "node": 1,
+      "status": "PASS_NO_MODEL_PREFLIGHT",
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+      "cgroup_before": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "cgroup_after": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "runtime_identity": {
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "status": "PASS",
+        "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+        "node_rank": 1,
+        "environment": {
+          "python": "3.10.20",
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "packages": {
+            "torch": "2.10.0",
+            "triton": "3.6.0",
+            "diffusers": "0.38.0.dev0",
+            "transformers": "5.3.0",
+            "peft": "0.18.1",
+            "accelerate": "1.12.0",
+            "flash-attn": null,
+            "safetensors": "0.8.0",
+            "nvidia-nccl-cu12": "2.27.5"
+          },
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090",
+          "ld_library_path": "/tmp/distillschedule-helios-official-torch210/lib",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3/third_party/helios_compat/source",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "uuid": "GPU-a7668680-c210-ecdd-c247-a8337b735231",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:07:00.0"
+            },
+            {
+              "device": 1,
+              "uuid": "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:0F:00.0"
+            },
+            {
+              "device": 2,
+              "uuid": "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:47:00.0"
+            },
+            {
+              "device": 3,
+              "uuid": "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:4E:00.0"
+            },
+            {
+              "device": 4,
+              "uuid": "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:87:00.0"
+            },
+            {
+              "device": 5,
+              "uuid": "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:90:00.0"
+            },
+            {
+              "device": 6,
+              "uuid": "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:B7:00.0"
+            },
+            {
+              "device": 7,
+              "uuid": "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "total_bytes": 42949672960,
+              "driver": "535.161.08",
+              "pci_bus_id": "00000000:BD:00.0"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "cuda_context_created": false
+      }
+    }
+  ]
+}

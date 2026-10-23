@@ -1,0 +1,179 @@
+{
+  "assets": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native/configs/assets.json",
+    "sha256": "1caac3567197070931e931660f4021c23061c56c9ad3811f71d33fac0e276b8c"
+  },
+  "config_sha256": "4c881321bcc35d993bef2746e8a11f494326b1b7e74af39f31a70b7c923db107",
+  "gpu_execution": "NOT_RUN",
+  "historical_cost_used": false,
+  "identity": {
+    "assets_sha256": "403d4ac7c391cb2103977481d506d26a3262c7c33279d2a1bdd41ca612926aa0",
+    "source": {
+      "source_fingerprint": "7a6c08a1f2912daa38d2859530ba565dee6f41238c4fbe887f86a581a87d8550",
+      "source_head": "69a9464997de16deafd5786338f538ba7930d9a5"
+    },
+    "task_sha256": "4fcb6064021be2fbd029e0190fa1486187d13fa9d77401ace0ef9f53d7818b6c"
+  },
+  "native_dependency": {
+    "dist_info": {
+      "bytes": 45656,
+      "files": 8,
+      "tree_sha256": "104108264e27a84ff340ddcb95e16839a5f199bc3464d9434a52bb0dbde601c7"
+    },
+    "environment_sha256": "5a161dd2ba6b27a26d0f1a36bf94d48a52bef26eed4e0c355445776c821ecc84",
+    "metadata_sha256": "ed1c0dd9cca2d1449bbae7d641208431f5fccc7d5e06e20bec802c1d81340f6c",
+    "overlay_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/assets/native-accelerate-1.14",
+    "package": {
+      "bytes": 1491684,
+      "files": 84,
+      "tree_sha256": "3ee3c0d50df3d29faa8a07034a4ec26da94e964a7f9e4336e790457e52be1b6f"
+    },
+    "provenance_probe_sha256": [
+      "9a6340983b9c52a0eb9946ed640809fe07494522076d9f1d7e4c6cbd1eb9cfa8",
+      "78065e73757775a2b277e132b7e74d374f51a3079b6cc43895aa8bc38f6ae354"
+    ],
+    "schema_version": "distillschedule.h3_ar_native_accelerate.v1",
+    "source_site_packages": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/lib/python3.10/site-packages",
+    "version": "1.14.0"
+  },
+  "native_manifest": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/steady_two_cycle_20261012_r1/configs/world16_r1_manifest.json",
+    "sha256": "2d92ed819845340e680c5dab3efce3f450c5d050680355bb6dc58b4fe50b3a13"
+  },
+  "prepare_proofs": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native/reports/prepare-node0.json",
+      "sha256": "91566b8d393bc84fdc804c2099739a7aaf9c507f1e68cc55a4c10d4b9b151dfd"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native/reports/prepare-node1.json",
+      "sha256": "b1b92614101628cf9c5e389558df6ac36e5f50387e9ab72e358d296514a20eee"
+    }
+  ],
+  "source": {
+    "source_fingerprint": "7a6c08a1f2912daa38d2859530ba565dee6f41238c4fbe887f86a581a87d8550",
+    "source_head": "69a9464997de16deafd5786338f538ba7930d9a5"
+  },
+  "status": "PASS_ASSET_ADMISSION_CPU_ONLY",
+  "validation": {
+    "checkpoint_admission": {
+      "audit": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/native/artifacts/checkpoint-audit.json",
+        "sha256": "7ce920c90f561e508979f50ef5e6ce568098d634471b8a2e7c84658d096ef341"
+      },
+      "full_payload_rehashed": false,
+      "local_host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "observed_stat": {
+        "config.json": {
+          "ctime_ns": 1785858316000713948,
+          "device": 49,
+          "inode": 222611080715,
+          "mtime_ns": 1785858316000000000,
+          "size": 604
+        },
+        "model-00001-of-00013.safetensors": {
+          "ctime_ns": 1785861736000403859,
+          "device": 49,
+          "inode": 241284398604,
+          "mtime_ns": 1785861736000000000,
+          "size": 5227812968
+        },
+        "model-00002-of-00013.safetensors": {
+          "ctime_ns": 1785861423000851367,
+          "device": 49,
+          "inode": 408408468745,
+          "mtime_ns": 1785861423000000000,
+          "size": 5164578856
+        },
+        "model-00003-of-00013.safetensors": {
+          "ctime_ns": 1785863120000368263,
+          "device": 49,
+          "inode": 22257710603,
+          "mtime_ns": 1785863120000000000,
+          "size": 5164578872
+        },
+        "model-00004-of-00013.safetensors": {
+          "ctime_ns": 1785862178000618197,
+          "device": 49,
+          "inode": 399766725898,
+          "mtime_ns": 1785862178000000000,
+          "size": 5164578896
+        },
+        "model-00005-of-00013.safetensors": {
+          "ctime_ns": 1785862701000816359,
+          "device": 49,
+          "inode": 413645752841,
+          "mtime_ns": 1785862701000000000,
+          "size": 5164578896
+        },
+        "model-00006-of-00013.safetensors": {
+          "ctime_ns": 1785863064000223496,
+          "device": 49,
+          "inode": 244524245516,
+          "mtime_ns": 1785863063000000000,
+          "size": 5164578896
+        },
+        "model-00007-of-00013.safetensors": {
+          "ctime_ns": 1785864205000753808,
+          "device": 49,
+          "inode": 400647800842,
+          "mtime_ns": 1785864205000000000,
+          "size": 5164578896
+        },
+        "model-00008-of-00013.safetensors": {
+          "ctime_ns": 1785865109000100248,
+          "device": 49,
+          "inode": 48105072651,
+          "mtime_ns": 1785865108000000000,
+          "size": 5164578896
+        },
+        "model-00009-of-00013.safetensors": {
+          "ctime_ns": 1785865421000993698,
+          "device": 49,
+          "inode": 256222653964,
+          "mtime_ns": 1785865421000000000,
+          "size": 5164578896
+        },
+        "model-00010-of-00013.safetensors": {
+          "ctime_ns": 1785864677000756459,
+          "device": 49,
+          "inode": 9675864073,
+          "mtime_ns": 1785864677000000000,
+          "size": 5164578896
+        },
+        "model-00011-of-00013.safetensors": {
+          "ctime_ns": 1785865096000011455,
+          "device": 49,
+          "inode": 320751328523,
+          "mtime_ns": 1785865095000000000,
+          "size": 5164578896
+        },
+        "model-00012-of-00013.safetensors": {
+          "ctime_ns": 1785866118000060263,
+          "device": 49,
+          "inode": 400187897098,
+          "mtime_ns": 1785866117000000000,
+          "size": 5164578896
+        },
+        "model-00013-of-00013.safetensors": {
+          "ctime_ns": 1785866983000713136,
+          "device": 49,
+          "inode": 281276142601,
+          "mtime_ns": 1785866983000000000,
+          "size": 4242305176
+        },
+        "model.safetensors.index.json": {
+          "ctime_ns": 1785866501000417181,
+          "device": 49,
+          "inode": 222522369803,
+          "mtime_ns": 1785866501000000000,
+          "size": 38323
+        }
+      },
+      "origin_host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "payload_identity": "same SHA256-bound owner admission; stat recheck is not a fresh cryptographic payload read",
+      "stat_scope": "same_host_dev_inode_size_mtime_ctime"
+    },
+    "small_source_full_sha256": true
+  }
+}

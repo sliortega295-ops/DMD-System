@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W1"
+  },
+  "data": {
+    "replay_fixed_trace": true
+  },
+  "algorithm": {
+    "name": "original_wan_ar_dmd"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "reference",
+    "task": "../../configs/distillschedule/original_wan/full5_reference.json",
+    "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
+    "implementation": "reference_strategy.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 0,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

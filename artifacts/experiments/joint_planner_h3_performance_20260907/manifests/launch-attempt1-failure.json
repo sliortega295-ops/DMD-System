@@ -1,0 +1,7 @@
+{
+  "status": "FAIL_LOCAL_CONTROLLER_PREFLIGHT",
+  "failure": "FileNotFoundError: identity-rpc parent not created",
+  "gpu_run": "NOT_RUN",
+  "remote_run_directory": "NOT_CREATED",
+  "recovery": "Create local RPC log parent; preserve failed logs; identical source and workload"
+}

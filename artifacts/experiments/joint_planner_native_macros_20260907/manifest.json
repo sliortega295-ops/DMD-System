@@ -1,0 +1,37 @@
+{
+  "commands_note": "Historical commands, not safe automatic rerun instructions; exact node commands and environments remain in hash-bound launch manifests. H3 collect stopped before calibration. Never reuse run IDs.",
+  "controls": {
+    "canonical_profiles_changed": false,
+    "comparison_cycle": 2,
+    "cycles_per_native_run": 2,
+    "main_merged": false,
+    "numerical_thresholds_changed": false,
+    "profiler": "NOT_RUN"
+  },
+  "execution_commands": {
+    "h3": "PYTHONPATH=<source>/src <controller-python> /home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_h3_closed_loop_r3/scripts/collect.py h3 --execute",
+    "h3_self_repeat": "PYTHONPATH=<source>/src <controller-python> /home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_h3_closed_loop_r3/scripts/self_repeat.py",
+    "livewan": "PYTHONPATH=<source>/src <controller-python> /home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/scripts/collect.py livewan --execute; PYTHONPATH=<source>/src <controller-python> /home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/scripts/plan_and_validate.py livewan --execute"
+  },
+  "local_roots": {
+    "h3": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_h3_closed_loop_r3",
+    "livewan": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2"
+  },
+  "publication_head_is_not_execution_head": true,
+  "remote_raw_roots": {
+    "h3": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3",
+    "livewan": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan"
+  },
+  "result": {
+    "h3_comparison": "FAIL",
+    "h3_same_arm_repeat": "FAIL",
+    "h3_strict_winner": null,
+    "livewan_diagnostic_speedup": 1.3288018741927172,
+    "livewan_strict_winner": null
+  },
+  "source_heads": {
+    "h3": "b1706f073d09a5de03926c6e216273898af754f3",
+    "livewan": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "status": "LIVEWAN_COMPLETE_H3_BLOCKED_NUMERICAL_GATE"
+}

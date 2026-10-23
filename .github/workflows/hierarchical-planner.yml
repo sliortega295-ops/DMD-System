@@ -1,0 +1,43 @@
+name: hierarchical-planner
+on:
+  push:
+    branches: [agent/parameterized-hierarchical-planner-20261011]
+  pull_request:
+    paths:
+      - 'src/distillschedule/search/**'
+      - 'src/distillschedule/runtime/parameterized_cycle.py'
+      - 'tests/test_refactor_*'
+      - '.github/workflows/hierarchical-planner.yml'
+permissions:
+  contents: read
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install qualified CPU tensor and asset dependencies
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[test,native]'
+      - name: New algorithms and existing typed-runtime regressions (CPU only)
+        run: pytest -q tests/test_refactor_*.py --junitxml=planner-tests.xml
+      - name: Source and integration acceptance
+        run: python scripts/distillschedule/check_best_known_integration.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: planner-tests-${{ matrix.python-version }}-${{ github.sha }}
+          path: planner-tests.xml
+          retention-days: 14

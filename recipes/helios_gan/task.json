@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.original_helios_request.v1",
+  "model_family": "helios14b",
+  "variant": "gan",
+  "video_height": 384,
+  "video_width": 640,
+  "video_frames": 33,
+  "fake_updates": 5,
+  "stage2_inference_steps": [
+    2,
+    2,
+    2
+  ],
+  "denoising_step_list": [
+    1000,
+    750,
+    500,
+    250
+  ],
+  "world_size": 16,
+  "physical_batch": 1,
+  "global_batch": 16,
+  "stage_schedule_policy": "source_normal_only"
+}

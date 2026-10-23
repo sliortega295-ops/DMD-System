@@ -1,0 +1,625 @@
+{
+  "all16_merge_counts": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "cgroup_OOM_delta": [
+    {
+      "oom": 0,
+      "oom_kill": 0
+    },
+    {
+      "oom": 0,
+      "oom_kill": 0
+    }
+  ],
+  "cleanup": "PASS_BOTH_NODES_IDLE_SOURCE_CLEAN_LOCKS_RELEASED_NO_NEW_OOM",
+  "cycle1_warmup_seconds": 117.71609626803547,
+  "cycle2_steady_state_seconds": 116.25352301541716,
+  "difference_from_historical_113_589670249": 2.663852766621858,
+  "down40": "ON_UNCHANGED_INDEPENDENT_OF_N70",
+  "exception": "ADDED_POST_TIMER_OBSERVER_READ_policy_INSTEAD_OF_p0_policy;TRAINING_TIMERS_AND_CENSUS_ALREADY_COMPLETE",
+  "final_logical_versions": {
+    "critic": 1010,
+    "ema": 802,
+    "generator": 202
+  },
+  "final_physical_versions": {
+    "critic": 20,
+    "ema": 802,
+    "generator": 4
+  },
+  "formal_speedup_eligible": false,
+  "no_merge_gate": "16/16 PASS_OFFLINE_REVALIDATION_OF_REAL_RUNTIME_WITNESSES",
+  "one_GPU_run_only": true,
+  "optional_B": "NOT_RUN",
+  "peak_allocated_GiB": 36.81048822402954,
+  "peak_reserved_GiB": 38.05078125,
+  "profiler": "NOT_RUN",
+  "rank_cycle_semantic_finite_gate": "16/16 PASS_BOTH_CYCLES",
+  "rank_original_finalization": "16/16 FAIL_POST_TIMER_OBSERVER_KEYERROR",
+  "raw_receipts_rewritten": false,
+  "rows": [
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "1292473a66d9887f4b96e6c8e2e13dda8135a063106663204972b54eff653d46",
+      "cycle1_seconds": 117.71599248517305,
+      "cycle2_seconds": 116.25351837556809,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0765380859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0765380859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "6f26d201860e0aff4f4ac6aadde7db3d9d9a08acc7a21e87fe61688954553f64",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 0,
+      "raw_receipt_sha256": "78305f87764ed4c11d81639feba5c1bbc918899260413359619cdbfd41af23f8"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "800395412c73c61e258335d5bf008582004bf8932ad7e664557461ed85d7d3fe",
+      "cycle1_seconds": 117.7159005207941,
+      "cycle2_seconds": 116.25349171459675,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0941162109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0941162109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "7278e1a4d034c4073d69c350fa171aa2167816d33c6d14ec6c2e01eb978de23f",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 1,
+      "raw_receipt_sha256": "a9e36ce9c6109c8e70f48f0957768d87b84981933f7946c3e8048158dc2953b3"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "bf3285767656428933639868e849d96bfda514e1a3c1434b2b8b85b1fea6dfe5",
+      "cycle1_seconds": 117.71588264685124,
+      "cycle2_seconds": 116.253442090936,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0745849609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1038818359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "adac5daa5a97599e22ce34639fa12d74c934450eec05909ed9b8e10622faf45e",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 2,
+      "raw_receipt_sha256": "32fae0900a0698a7c1e35395f6c470510273ef2e2198071420e5e3ff6a41554e"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "6c15f95fa687b3adfee2b5e74034aa3ba200af517ec6691d4b2e31c32605a118",
+      "cycle1_seconds": 117.71594273112714,
+      "cycle2_seconds": 116.25345154851675,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0277099609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0570068359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41362128896,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "86b7c0975ed1422533dc63e9b4e9279bb1eb24f761025c7743f1b2e9d0f249b0",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 3,
+      "raw_receipt_sha256": "9c66e3d632a837c3eba2d4c2aae608c1046f3f8acd19e615ca4367d2a8bb208f"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "835993b287411be83180a69afc4bfdfe98810f02908e6d864a0d4ca96776b100",
+      "cycle1_seconds": 117.71599250566214,
+      "cycle2_seconds": 116.25330177508295,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0277099609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0570068359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41362128896,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "618224d9d11db53f3dd2ca484eea4319d19381b92541912f082c28c10af502ac",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 4,
+      "raw_receipt_sha256": "874cd77da389cae93a6a9d78e3345ad39dd6cdc589f265b99451ee37644b6898"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "7633f5d61d5d6311769def5ae952c8876bbe8d86d206edeabf5d26a18c44a5e0",
+      "cycle1_seconds": 117.71598316822201,
+      "cycle2_seconds": 116.25352301541716,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0921630859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0921630859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "11cf5fa77250a2fc896e7a91c071495aab0f79f666a8e58821d58b1bb8be785a",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 5,
+      "raw_receipt_sha256": "cc6f6b9ff7811242e9a4e306f176ba48bb454bcace936d2b56663b4fd21e211d"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "cee127e2bbadc503e61b53a7de5d43c94187798d37e5857b15db95d56816e0f3",
+      "cycle1_seconds": 117.71606966201216,
+      "cycle2_seconds": 116.25347199756652,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0823974609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1116943359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "3080eaa3ef9acefdec5845fa4669187f625d2fa6b2a9a7ea3c654ec4b14efbdb",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 6,
+      "raw_receipt_sha256": "c90582cf1be5299fd57808288e8317bc97f17d00b4f7ffaad4c09a14022a5f87"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "8a79552cd5195791597997a0967ed60df85c8f3c0c38264c075def5f68106ccb",
+      "cycle1_seconds": 117.71599634271115,
+      "cycle2_seconds": 116.25345464423299,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0823974609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1116943359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "a8c8734f9eef5abf5363261d7be92aa2671dda572dbd09385057a4d1f5020173",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 7,
+      "raw_receipt_sha256": "452f22a3c1a312c4e38cab33d438de0f19a8a5aafe0faec79f4e9f2a8f789a94"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "fb0626ab6c3d5eaa6fe56f2a0139ce52362a55dc6853a01c590154e6a0170fa3",
+      "cycle1_seconds": 117.71602042391896,
+      "cycle2_seconds": 116.2534192726016,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0804443359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1097412109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "b46cc9695a6c608b82d286ecbcbe0760654d68c08e253731e2d22ee1ddc3f751",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 8,
+      "raw_receipt_sha256": "c7c53eb9821e84c33e5c43812fa4301cced47a74032003228841c0b484ff284f"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "f65bb2c5c65a4c1ff73116ef53aea613bfede1ad6256b0333eb6794a7741fb56",
+      "cycle1_seconds": 117.71604796592146,
+      "cycle2_seconds": 116.25338413566351,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0921630859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1214599609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "0b1a61a22d7e5d289f487dcaab8fe8b08e076486dabdf9174e7c1f0e4240d010",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 9,
+      "raw_receipt_sha256": "e571ddda4df560cb22d92434279faa5edda01d0fc821e86ed24cddfce06598f2"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "d9ea0d6991a09dcbec274b4ab4510d6a137ea479d2e8c33cd101f914bd4a0ae2",
+      "cycle1_seconds": 117.71602542325854,
+      "cycle2_seconds": 116.2533803684637,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1019287109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1019287109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "a3233c51bd706eb94df52395487d20fd1356ab93c548daeec47df66da346c3d9",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 10,
+      "raw_receipt_sha256": "d0d11cb59bc6b6c6945a39bc1a3b8bf4a8eb5591132bd8e6f73d78d6a5c4ca69"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "f388bbe6f0427ee00f3baa7c1f5f81d7cc0baf0dab49efe2b3b090d39a802dde",
+      "cycle1_seconds": 117.71609626803547,
+      "cycle2_seconds": 116.25345213431865,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0335693359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0628662109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "b07070af7688c39e867bc33298c25cc5d18268d592c421a3628bd851a873757e",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 11,
+      "raw_receipt_sha256": "f8d62a926eefe89f64b7a3e395236697fc8faa52d3c6c7992272a3a4dd834666"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "3927edf6c0b852fb01ce2033bc4af697395b78af7744a44711732bbcc51e2eda",
+      "cycle1_seconds": 117.71604584250599,
+      "cycle2_seconds": 116.25336333550513,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0335693359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0628662109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "4a0d4547c956ed10e6edf15e70f2f4430d87890652308c3b00cdb9e64ea63e3f",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 12,
+      "raw_receipt_sha256": "2a3178ec0099b32870f8d6078003d8b538e4cd959c2d3093b2f6342ece6a1d35"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "ae7f3ba5652724139d27b12b3fa72e2139648f8a4c880b80b48121a2eefea5d6",
+      "cycle1_seconds": 117.71605430729687,
+      "cycle2_seconds": 116.25338140968233,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0609130859375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0902099609375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "ea8bce8e5d0ce709edd7c6f4e229f68f12b56a7adb44f6e8d8bb91b3eaee8515",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 13,
+      "raw_receipt_sha256": "34e537100b8acb3e2ccf302dc92af941b9871363d57e5789a999f17d740e94f1"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "40f31bbe8234ef3f2293167a975a9145f0a6f9f2bea0e4d8e2445c02ec957629",
+      "cycle1_seconds": 117.7160639660433,
+      "cycle2_seconds": 116.25342762935907,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1097412109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1097412109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "52957ac84de6b020825665e5ef9fc109f22d792a760a132b6b09dbaa829f64d7",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 14,
+      "raw_receipt_sha256": "7b40dbe99d7f2a65dc9f5ac31f9137d7e98ab743d4681f84cadf62f24f193dbb"
+    },
+    {
+      "argv_sha256": "66709bf0f07690277535ccbfc17887b8af48b43a0dfcf7b3d2703aedc6832100",
+      "backend_sha256": "0e8199a8d552806c1302b2f09dc56bf4a10a2b7b2ccb3684a03c91bd35492219",
+      "cycle1_seconds": 117.71601663623005,
+      "cycle2_seconds": 116.25342305004597,
+      "cycle_memory": [
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.0804443359375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735887872,
+          "max_allocated_gib": 36.81048774719238,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.498046875
+        },
+        {
+          "allocated_gib": 5.979286193847656,
+          "driver_free_gib": 5.1097412109375,
+          "driver_total_gib": 39.39385986328125,
+          "max_allocated_bytes": 39735888384,
+          "max_allocated_gib": 36.81048822402954,
+          "max_reserved_bytes": 41368420352,
+          "max_reserved_gib": 38.05078125,
+          "reserved_gib": 33.46875
+        }
+      ],
+      "cycle_semantic_finite_gate": "PASS",
+      "guard_sha256": "32e37982c53e34007a7b2312e1320006e7d9a989676f18b216d68e6391fe0797",
+      "merge_count": 0,
+      "offline_no_merge_gate": "PASS",
+      "original_receipt_status": "FAIL_POST_TIMER_OBSERVER_KEYERROR",
+      "rank": 15,
+      "raw_receipt_sha256": "88e566e014b95da01ce8ad1548e898376b5736cd3119efe2aace309ee8b9ab7b"
+    }
+  ],
+  "run_id": "gan_nomerge_down40_native_c2_world16_20261013_r1",
+  "schema": "gan.nomerge.completed_timer_offline_revalidation.v1",
+  "source_head": "ba52a2446b7f090cd31af9504679e68770d32603",
+  "status": "COMPLETED_NATIVE_TIMING_OFFLINE_REVALIDATED;RAW_RUNTIME_FINALIZATION_FAIL_PRESERVED",
+  "strict_numerical_status": "REVIEW;INHERITED_FA3_VS_FA2_PAIRED_FULL_STATE_PARITY_NOT_PROVEN",
+  "time_ratio_163_90": 1.4098497469041358,
+  "time_ratio_164_30": 1.4132905028453295
+}

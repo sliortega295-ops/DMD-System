@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillschedule.postrun_readback.v1",
+  "node": 1,
+  "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+  "time_ns": 1788804147038684051,
+  "run_id": "jointp_livewan_actions_20260907_r1-native-observation",
+  "gpu_processes": [],
+  "owned_run_processes": [],
+  "node_lock_free": true,
+  "port": 29938,
+  "port_listeners": [],
+  "cgroup_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0"
+  },
+  "status": "PASS"
+}

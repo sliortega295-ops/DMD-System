@@ -1,0 +1,78 @@
+{
+  "schema_version": "distillschedule.wan_closed_loop_publication.v1",
+  "runtime_source_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002",
+  "publication_parent_head": "8e6fd674302260ea24fa63f0121357db9ac15656",
+  "evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1",
+  "raw_native_run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native",
+  "status": "COMPLETE_NATIVE_VALIDATION_DIAGNOSTIC",
+  "canonical_changed": false,
+  "source_code_changed": false,
+  "strict_winner": null,
+  "raw_receipts_location": "Remain remote; metadata/source hashes revalidated. Published cost source_receipt paths refer to the immutable controller evidence directory, not portable fixture paths.",
+  "files": [
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/calibration.csv",
+      "bytes": 4050,
+      "sha256": "81969677cf829064e7e085e56963e596b6bb91861c36e9b058c43c277897ff4b"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/measured_operation_costs.json",
+      "bytes": 70865,
+      "sha256": "413ee32813c006384748c4327488fe462b8773ad308fe4375eafdcf5a9ac3c67"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/native_hash_version_verification.json",
+      "bytes": 1706,
+      "sha256": "d7ce0953b1c18418228e8191bf6e598408474f21b658600738d1a0715d86f17c"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/native_trials.csv",
+      "bytes": 2412,
+      "sha256": "bb9459d2945bba6180d4f832de19b98920c9dfec7cde03cb1f6c6fb19fe1100a"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/preserved_transport_failure.json",
+      "bytes": 1166,
+      "sha256": "6658e181640d057cee2b08249afad97b2794f5bbb62e2cfd42b877d3e35d88d0"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/search_summary.json",
+      "bytes": 447,
+      "sha256": "ee10ffcca665cdb9edff929f3d5f1aa2adbdfbde06ae0d4e2184ca83d79fc345"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/summarize_closed_loop.py",
+      "bytes": 9758,
+      "sha256": "626cc2ba3087fecf820fdf35bcec647214d40fd6e21a0235615af509305fe068"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/summary.json",
+      "bytes": 95867,
+      "sha256": "adc816e2224803670b35f04eb560a7f4706d4893b29f50e43aafb6f0192f7aa0"
+    },
+    {
+      "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/timing_budget.json",
+      "bytes": 225,
+      "sha256": "e9981caa6d46a2db979f154f9ea048f295667d55bb2bd894eb43b5398de807d9"
+    },
+    {
+      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
+      "sha256": "e509a30d96857b1560e916c35c42c664d719af92d9fe9b2fa8db0e41b1ffac69"
+    }
+  ],
+  "tests": {
+    "focused_cpu": {
+      "status": "PASS",
+      "count": 47,
+      "log_sha256": "2b5e2f8f7d85fa3aeb2803169d9dbcff7540febb0fae56ab65fdaf53d67006ab"
+    },
+    "five_profile_integration": {
+      "status": "PASS_CPU_INTEGRATION",
+      "profile_count": 5,
+      "log_sha256": "cf24b62c0dfb1f852a68deb82d6d3db2fc7a26222d6b9d61f76f9d0609f04e31"
+    },
+    "source_scope": "PRODUCTION_RUNTIME_UNCHANGED_FROM_4e3ffb59; PUBLICATION_IS_NOT_A_GPU_EXECUTION_HEAD",
+    "full_ce_review": "NOT_RUN"
+  },
+  "publication_format": "CSV uses LF and JSON for structured cells; numeric values unchanged from original immutable reports"
+}

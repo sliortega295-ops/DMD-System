@@ -1,0 +1,12 @@
+{
+  "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+  "command": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 <cpu-python> -m pytest -q -p no:cacheprovider tests/test_refactor_*.py",
+  "passed": 768,
+  "skipped": 17,
+  "seconds": 39.97,
+  "log_sha256": "fc0bbad3985abd23256fd4eedd1e0d1da9830acf9a9d76186594e54047d70a56",
+  "compile": "PASS_34_PYTHON_FILES",
+  "shell_syntax": "PASS_BOTH_NATIVE_LAUNCHERS",
+  "canonical_config_diff": "UNCHANGED_VS_9314c2b9",
+  "publication_bundle": "CPU_HISTORICAL_IR_REPLAY_NOT_NEW_NATIVE_LOWERING"
+}

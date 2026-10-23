@@ -1,0 +1,13 @@
+{
+  "schema_version": "distillschedule.official_self_forcing_inputs.v1",
+  "mode": "preencoded",
+  "records": [
+    {
+      "id": "prompt-0001",
+      "embedding": {
+        "path": "native-prompt-0001.pt",
+        "sha256": "REPLACE_WITH_FILE_SHA256"
+      }
+    }
+  ]
+}

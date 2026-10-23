@@ -1,0 +1,140 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c24-continuous-b16-score-modulation",
+  "metadata": {
+    "score_modulation_kernel": {
+      "enabled": true,
+      "name": "score_bf16_modulation_fusion_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_modulate_sha256": "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad",
+      "math_change": "fuse_exact_bf16_to_fp32_modulation_pointwise_chain",
+      "normalized_shift_scale_dtype": "bfloat16",
+      "output_dtype": "float32",
+      "per_frame": false,
+      "triton_block_size": 256
+    },
+    "score_rmsnorm_kernel": {
+      "enabled": true,
+      "name": "score_frozen_bf16_rmsnorm_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_class_sha256": "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e",
+      "affine_requires_grad": false,
+      "input_output_affine_dtype": "bfloat16",
+      "accumulation_dtype": "float32",
+      "intermediate_bf16_rounding": true,
+      "epsilon": 1e-06
+    },
+    "generator_rollout_cast_cache": {
+      "enabled": true,
+      "name": "generator_nograd_autocast_weight_cache_lifetime_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "outer_autocast_enabled": false,
+      "changes_effective_dtype": false,
+      "cache_cross_optimizer": false,
+      "parameter_dtype": "float32",
+      "preserve_native_inner_autocast": true
+    },
+    "generator_rms_epilogue": {
+      "enabled": true,
+      "name": "generator_nograd_rms_cast_square_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "native_pow_mean_preserved": false,
+      "input_dtype": "bfloat16",
+      "affine_dtype": "float32",
+      "output_dtype": "float32",
+      "intermediate_bf16_rounding": true,
+      "grad_path_changed": false,
+      "source_class_sha256": "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e",
+      "native_mean_preserved": true,
+      "fp32_square_preserved": true,
+      "fused_cast_square": true
+    },
+    "critic_attention_checkpoint": {
+      "enabled": true,
+      "name": "critic_fa2_exact_gpu_checkpoint_outputs_v1",
+      "scope": "score_rank_critic_grad_self_attention_only",
+      "interface_sha256": "a49ae75310beeea12a161d42d586e3620802f457e81b775b954f97970689904b",
+      "operator": "_flash_attn2_cuda_a511a4c::_flash_attn_forward",
+      "cache_location": "cuda_per_checkpoint",
+      "query_tokens": 19320,
+      "key_tokens": 19320,
+      "allow_cache_entry_mutation": false,
+      "preserve_rng_state": true,
+      "application_calls_unchanged": true,
+      "cross_attention_recomputed": true
+    },
+    "checkpoint_composition": {
+      "name": "c33_plus_generator_row_major_residual_v1",
+      "parent": "c33-continuous-b16-generator-gate",
+      "added_factor": "generator_nograd_row_major_residual_v1",
+      "critic_path_unchanged": true,
+      "application_calls_unchanged": true,
+      "numeric_policy_unchanged": true
+    },
+    "generator_modulation": {
+      "enabled": true,
+      "name": "generator_nograd_fp32_modulation_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "native_norm_preserved": true,
+      "scale_dtype": "float32",
+      "shift_dtype": "float32",
+      "output_dtype": "float32",
+      "fma": false,
+      "source_sha256": "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad",
+      "grad_path_changed": false
+    },
+    "generator_gate": {
+      "enabled": true,
+      "name": "generator_nograd_fp32_residual_gate_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "source_sha256": "4665c81a5dfbb7b7b75590c94a9c3acb2027bf7474f708033d1d1c96583ce527",
+      "product_dtype": "float32",
+      "output_dtype": "float32",
+      "fma": false,
+      "out_of_place": true,
+      "grad_path_changed": false
+    },
+    "generator_residual_layout": {
+      "enabled": true,
+      "name": "generator_nograd_row_major_residual_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "output_layout": "row_major",
+      "internal_stride_changed": true,
+      "public_output_contract_unchanged": true,
+      "source_sha256": "4665c81a5dfbb7b7b75590c94a9c3acb2027bf7474f708033d1d1c96583ce527",
+      "grad_path_changed": false
+    },
+    "score_residual_gate": {
+      "enabled": true,
+      "name": "score_bf16_row_major_residual_gate_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_sha256": "4665c81a5dfbb7b7b75590c94a9c3acb2027bf7474f708033d1d1c96583ce527",
+      "product_dtype": "bfloat16",
+      "output_dtype": "bfloat16",
+      "fma": false,
+      "gate_requires_grad": false,
+      "output_layout": "row_major",
+      "out_of_place": true,
+      "native_layernorm_unchanged": true,
+      "application_calls_unchanged": true
+    },
+    "score_layernorm": {
+      "enabled": true,
+      "name": "score_frozen_non_affine_bf16_layernorm_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_sha256": "17d4c9908c060202755a6f1bfd7830ec5aca655c28ff90a3e4278ee483c0282b",
+      "input_dtype": "bfloat16",
+      "output_dtype": "bfloat16",
+      "statistics_dtype": "float32",
+      "input_gradient_dtype": "bfloat16",
+      "elementwise_affine": false,
+      "eps": 1e-06,
+      "output_layout": "row_major",
+      "native_affine_and_unsupported_preserved": true,
+      "numerical_gate": "UNCHANGED_DEFAULT_P0_PARITY",
+      "application_calls_unchanged": true
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/performance-closure.json",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/reports/performance-closure.json",
+    "sha256": "4303f5c4121b9ce245c0523d6f9884a5ef894a8f9ebacc23f34e4f640785db45",
+    "bytes": 2754
+  },
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/performance-closure.md",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/reports/performance-closure.md",
+    "sha256": "c609e4a7b8c69e96afffbd18e71d35d13bfb64f807cd19efe1af7108e801c6bd",
+    "bytes": 8110
+  },
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/serializer-fix.patch",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/reports/serializer-fix.patch",
+    "sha256": "41a9c78067baa9d8860dc31042fad41cc22f0f1650aa6b900d19da8723677132",
+    "bytes": 2702
+  },
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/manifests/stop.json",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/reports/stop.json",
+    "sha256": "ac1805cb5a5441488b86174633b6450451b4c73a881ec561afe690de3019fab9",
+    "bytes": 386
+  }
+]

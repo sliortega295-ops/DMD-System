@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_world16_sorted_json_roundtrip_preserves_prediction ____________
+
+    def test_world16_sorted_json_roundtrip_preserves_prediction():
+        problem, costs, assignment = fixture()
+        problem = replace(problem, memory_limits={rank: 100 for rank in range(16)})
+        restored = PlanningProblem.from_dict(json.loads(json.dumps(problem.to_dict(), sort_keys=True)))
+        assert restored.digest == problem.digest
+>       assert simulate(problem, assignment, costs) == simulate(restored, assignment, costs)
+E       AssertionError: assert {'assignment'...Y_PROOF', ...} == {'assignment'...Y_PROOF', ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Differing items:
+E         {'memory': [{'limit_bytes': 100, 'peak_at_ns': 0, 'peak_bytes': 55, 'predicted_headroom_bytes': 45, ...}, {'limit_byte..._bytes': 100, ...}, {'limit_bytes': 100, 'peak_at_ns': 0, 'peak_bytes': 0, 'predicted_headroom_bytes': 100, ...}, ...]} != {'memory': [{'limit_bytes': 100, 'peak_at_ns': 0, 'peak_bytes': 55, 'predicted_headroom_bytes': 45, ...}, {'limit_byte..._bytes': 100, ...}, {'limit_bytes': 100, 'peak_at_ns': 0, 'peak_bytes': 0, 'predicted_headroom_bytes': 100, ...}, ...]}
+E         Use -v to get more diff
+
+../../../research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/test_simulator_roundtrip.py:14: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/test_simulator_roundtrip.py::test_world16_sorted_json_roundtrip_preserves_prediction
+1 failed in 0.15s

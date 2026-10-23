@@ -1,0 +1,64 @@
+name: original-h3-grid-lifecycle-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/training/**'
+      - 'src/distillschedule/backends/training/minimax_h3/**'
+      - 'tests/test_training_h3_grid*.py'
+      - 'tests/test_training_native_state.py'
+      - 'pyproject.toml'
+      - '.github/workflows/h3-grid-native-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  original-source-state:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPATH: 'src:.'
+      DMD_H3_TEST_UPSTREAM: '${{ github.workspace }}/third_party/lightx2v'
+      DMD_H3_TEST_DIFFUSERS_SOURCE: '${{ github.workspace }}/.framework-test-deps/diffusers'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read the exact existing original data and trainer source
+        run: git submodule update --init --depth 1 third_party/lightx2v
+      - uses: actions/checkout@v4
+        with:
+          repository: huggingface/diffusers
+          ref: 9284607295a09f759aadd65ed08f48b35feea6d9
+          path: .framework-test-deps/diffusers
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install CPU helper dependencies, not the native CUDA environment
+        run: python -m pip install -e '.[train,test,test-helios,test-h3]'
+      - name: Actual original loop, data cursor, atomic state and rejection tests
+        run: python -m pytest -q tests/test_training_h3_grid.py tests/test_training_h3_grid_distributed.py tests/test_training_native_state.py --junitxml=h3-grid-cpu.xml
+      - name: Do not silently skip the original-source qualification
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          suites = list(ET.parse('h3-grid-cpu.xml').getroot().iter('testsuite'))
+          assert suites and all(int(s.get('skipped', '0')) == 0 for s in suites)
+          names = {case.get('name') for suite in suites for case in suite.findall('testcase')}
+          assert 'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation' in names
+          assert any(name.startswith('test_full_lazy_cpu_admission_with_real_pinned_sources') for name in names)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-h3-grid-cpu-${{ github.sha }}
+          path: h3-grid-cpu.xml

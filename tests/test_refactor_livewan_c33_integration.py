@@ -60,6 +60,10 @@ def test_actual_receipt_counts_fail_closed():
         assert runtime_receipt_errors(dict(r,**{k:v}),rank=0,cycles=2)
     assert runtime_receipt_errors(r,rank=8,cycles=2)
     assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE'},rank=8,cycles=2)
+    from distillschedule.search.livewan_request import LiveWanRequest
+    new = dict(r,scope_forward_calls=[960]*20,calls=960*20)
+    assert runtime_receipt_errors(new,rank=0,cycles=2)
+    assert not runtime_receipt_errors(new,rank=0,cycles=2,request=LiveWanRequest(frames=69))
 
 @pytest.mark.parametrize('kind',['trajectory','two-cycle-timing'])
 def test_actual_launcher_prefix(tmp_path,kind):

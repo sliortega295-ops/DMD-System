@@ -1,0 +1,96 @@
+{
+  "environment": {
+    "existing_environment_replaced": false,
+    "gpu_visible": false,
+    "helper_dependencies": "Pinned optional CPU helper groups plus isolated disposable overlay; not a CUDA environment",
+    "python": "3.12.3",
+    "torch": "2.14.0+cpu"
+  },
+  "gpu_launches": 0,
+  "main_changed": false,
+  "no_new_claims": {
+    "capacity": "NOT_RUN",
+    "gpu_training": "NOT_RUN",
+    "performance": "NOT_RUN",
+    "pretrained_numerical_parity": "NOT_RUN",
+    "quality": "NOT_RUN"
+  },
+  "remaining_native_limits": {
+    "W3": "bounded selected native worker; no common restart/generation adapter",
+    "W4": "bounded selected C51 worker; no common restart/generation adapter",
+    "W6": "bounded original ZeRO3 worker; complete licensed upstream source and new lifecycle contract still required",
+    "all_native": "generation and inference export not exposed by the common native front door; use native upstream tools"
+  },
+  "schema_version": "distillschedule.framework_native_cpu.v1",
+  "scope": "ORIGINAL_HELPERS_AND_STATE_MECHANICS_NOT_PRETRAINED_GPU",
+  "source": {
+    "native_data_cli": "25eb0d9d8bd2803f56e3264a37aea97a3b823515",
+    "original_source_map_sha256": "599cf789dc6c949bbd24667aa07271050046f8906bd3edf10e318129477d8488",
+    "w2_core": "f096c7a01fafac5ed714b082df87e8875baa5b2c",
+    "w2_portable": "68ff42d1efed85887f6db8d4a2b70f310833818b",
+    "w5_core": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7"
+  },
+  "ssh_connections": 0,
+  "w2": {
+    "actual_original_helper_state_restart": true,
+    "actual_public_to_p0_admission": true,
+    "asset_schema": "distillschedule.helios_reference_assets.v1",
+    "authoritative_suite": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "ed72480e7df8ff20d5f4db8f2166a679909a5f928f60a3209485f0b9701b84d6",
+      "seconds": 398.778,
+      "skipped": 1,
+      "tests": 330
+    },
+    "bootstrap": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2,
+      "global_step": 10
+    },
+    "cycles": {
+      "max": 64,
+      "min": 2
+    },
+    "gloo_processes": 2,
+    "input_kind": "original_helios_cohort_stream.v1",
+    "model_construction": "EXPLICIT_TINY_CPU_OWNERS_ONLY",
+    "post_lint_followup": {
+      "passed": 22,
+      "seconds": 122.88
+    },
+    "reference_only": true,
+    "world16_cuda_topology": "SYNTHETIC_FACADE_ONLY_IN_CPU_TESTS"
+  },
+  "w5": {
+    "actual_original_loop_loss_and_adam": true,
+    "asset_schema": "distillschedule.original_h3_grid_assets.v1",
+    "authoritative_suite": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "65c6ce53e639035a494b8a35ba8a1d97d8fa73a63e93d013ca81909eaac53282",
+      "seconds": 46.466,
+      "skipped": 0,
+      "tests": 207
+    },
+    "construction_fixture": "TINY_CPU_DIT_ADALN_FSDP_BOUNDARY_NOT_PRETRAINED_H3",
+    "cycles": {
+      "max": 64,
+      "min": 2
+    },
+    "exact_upstream_sources": {
+      "diffusers": "9284607295a09f759aadd65ed08f48b35feea6d9",
+      "lightx2v": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
+    },
+    "input_kind": "original_h3_grid_latent_dataset.v1",
+    "known_optimized_backward_gate": "FAIL_UNCHANGED",
+    "objective": "APPROXIMATE_GRID1000",
+    "reference_only": true,
+    "updates_per_cycle": {
+      "ema": 0,
+      "fake": 5,
+      "student": 1
+    }
+  }
+}

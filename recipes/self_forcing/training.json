@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W4"
+  },
+  "data": {},
+  "algorithm": {
+    "name": "original_self_forcing_c51"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "plan",
+    "task": "task.json",
+    "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
+    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 0,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

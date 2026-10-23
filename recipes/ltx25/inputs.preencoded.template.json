@@ -1,0 +1,10 @@
+{
+  "schema_version": "distillschedule.ltx25_inputs.v1",
+  "mode": "preencoded",
+  "source_root": "/REPLACE_WITH/pinned-ltx25-source",
+  "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+  "records": [{
+    "id": "native-preencoded-0000",
+    "features": {"path": "complete-native-row.pt", "sha256": "REPLACE_WITH_SHA256"}
+  }]
+}

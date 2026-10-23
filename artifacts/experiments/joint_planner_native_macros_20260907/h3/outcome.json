@@ -1,0 +1,3794 @@
+{
+  "status": "BLOCKED_NUMERICAL_GATE",
+  "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+  "workload": "minimax_h3_grid1000_best",
+  "runs": [
+    {
+      "run_id": "jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128",
+      "candidate_id": "joint-h3v1-d1-n128",
+      "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+      "mode": "correctness",
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/bound-summary.json",
+      "summary_sha256": "182cbce0d629c58e75aff6da11e460b71733594441c786f8c88cf7e1377358b7",
+      "rank_count": 16,
+      "cycle_wall_seconds": {
+        "1": 773.264659594,
+        "2": 769.160941884
+      },
+      "formal_timing_eligible": false,
+      "final_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 0
+      },
+      "native_contract_status": "PASS",
+      "peak_allocated_bytes": 35857402880,
+      "peak_reserved_bytes": 39833305088,
+      "rank_receipts": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_000.json",
+          "sha256": "13d86180f581603691a7231fafaaa13b7e7a4161e8591ce67d57553d6133c326"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_001.json",
+          "sha256": "c70590773fca42cc752305e2aef9c87975f5ce04eb66a2f3d3d563c1aaa21b72"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_002.json",
+          "sha256": "6459cd0ac884218c8578ff01ade7fec977c56e6f7065f6e6695ae611a08dcead"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_003.json",
+          "sha256": "6c73ecba6de05158d4b5af3024e92776e3d34b4b9d29d298d941eb1f8bef1b4f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_004.json",
+          "sha256": "ee3948634449efe7e1515df08137f4c08da2d3bea37b027e1b6a86cdb591fa4b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_005.json",
+          "sha256": "b05a8d16c908ccbc2af1290168e04be5405def83c097a0de7db33806581b5d0e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_006.json",
+          "sha256": "bd82753d7935b02059bed7c857211a1d53d41bde35163873e1ee5e4c8123ba27"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_007.json",
+          "sha256": "5c16cc592b6058663bfa78587e2c3876b3750ae82edec4227d18cab95c04da34"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_008.json",
+          "sha256": "b342f9dfbc8a203e8404518bbd93257c6276d423f7bbdd0f311fbe98f8bc3065"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_009.json",
+          "sha256": "093b6880fc80baf9f0cf8a6c4fa2944727020dd9ee5da9c7a93e55796689c5ad"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_010.json",
+          "sha256": "789635238431d4c473467e8ef262b444c9934856875c16013b08cb2a07e3fadf"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_011.json",
+          "sha256": "acdad9f2643201d4a38ce42995e268e1588dfe36772897a93083a566d3024d93"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_012.json",
+          "sha256": "18bbbae25787e9d7f11b739b5591dcbe534458317510e6746829fd5d533b0d05"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_013.json",
+          "sha256": "b89373a3b19ef48bc57bb085b08b98bd972d3afcbe6da3b07e2c1fb941a06ee2"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_014.json",
+          "sha256": "6475b15139e8a941188205040aa554ed1f46e2dd10b7f43f69c1461d06af816f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_015.json",
+          "sha256": "2722d83a34919c045acd30f88a179070d8f54cb88490942ec328db3a27f9f4b9"
+        }
+      ],
+      "census_per_rank_per_cycle": {
+        "student_forward": 24,
+        "fake_forward": 6,
+        "teacher_forward": 1,
+        "student_backward": 1,
+        "fake_backward": 5,
+        "sample_identities_world": 96
+      },
+      "grid_per_rank_per_cycle": {
+        "checkpoint_wraps": 300,
+        "scoped_executions": 600,
+        "hits": 600,
+        "misses": 0
+      },
+      "resources": [
+        {
+          "node_rank": 0,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/search-resources.node0.json",
+          "sha256": "3350b9e34d7fcaf5d8c82f362dd1b9a5308e74cc71ce29b7dc22739e2e3218e3",
+          "sample_count": 834,
+          "host_peak_sampled_bytes": 475868966912,
+          "min_driver_free_sampled_bytes": 1612709888,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        },
+        {
+          "node_rank": 1,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128/search-resources.node1.json",
+          "sha256": "78659ba0295b9ca8ebc091d4c7a2087e68ccd9d8b2af819e1830b7e94de70f84",
+          "sample_count": 832,
+          "host_peak_sampled_bytes": 475483971584,
+          "min_driver_free_sampled_bytes": 1769996288,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        }
+      ],
+      "teardown": {
+        "0": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128",
+        "1": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_macro_20260907_r3-gate-joint-h3v1-d1-n128"
+      }
+    },
+    {
+      "run_id": "jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128",
+      "candidate_id": "joint-h3v1-d2-n128",
+      "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+      "mode": "correctness",
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/bound-summary.json",
+      "summary_sha256": "bf989de3240190e4e2dfc3b095c09a0355f31b0a50846bc4b261679830a30908",
+      "rank_count": 16,
+      "cycle_wall_seconds": {
+        "1": 776.619708261,
+        "2": 772.570723252
+      },
+      "formal_timing_eligible": false,
+      "final_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 0
+      },
+      "native_contract_status": "PASS",
+      "peak_allocated_bytes": 35857402880,
+      "peak_reserved_bytes": 41406169088,
+      "rank_receipts": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_000.json",
+          "sha256": "683f2223593f52d2b97be31904ed406cc7e28b1bf520f7b6e3f43edc212a5367"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_001.json",
+          "sha256": "cea1000fe426c4543e47eeb10543c28102ff1da0c04ef500009e86cb4fa025b3"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_002.json",
+          "sha256": "bbb9dcfbc76e14b0218664b570865440c2c33d21b0b4b8877f9af0a19f5e2400"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_003.json",
+          "sha256": "44bf966da3e291fa4b7a7df3b9cccf4fb92df5296a23299e5faff673c6be8866"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_004.json",
+          "sha256": "30f6b202c50955bd19a6c7332e10549b008ebf6be3788c19760aad635768c427"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_005.json",
+          "sha256": "cfe706e66aa5c1842aa4f45bad89b786479b3621baea709783afd26c1ef5d0dd"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_006.json",
+          "sha256": "6f10378e66b5eca9f7d32309834056b705706c386a6dfcee38fb7c4c62adf8e6"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_007.json",
+          "sha256": "1a9aa31ce1e8ff53e423fa46560408a25311df389ad7d2c8a940f484b1cdfc41"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_008.json",
+          "sha256": "f70cd19e5e17d184887f0df8e118e0a748f3003344378c39d02da5ab0466e4ef"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_009.json",
+          "sha256": "63322cea36dd777994482c7b3976fe7bcfb41d2a1f6cbad32c14fe2065963737"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_010.json",
+          "sha256": "a3d93137434c2195b59a4b06effde91aa3f6bbd92d88a4d8eb92491113ac08bf"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_011.json",
+          "sha256": "4c0344a248b93fd6f526ae96895c24a50de34006f4d56ce6859e65dcf12f347b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_012.json",
+          "sha256": "ab10fc7cb6e6d67732666d3b42dffa1f2b0b3eaa2bb86e9ec4a5980b24cedc67"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_013.json",
+          "sha256": "d66ff4b00389a128c1b2ff34816863fb3a8274b99c5904202313773e71a3b38b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_014.json",
+          "sha256": "6f4d04e374ae0f7098d72f8a06019e29db26b6eac75be2b5a457299291c11868"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/execution/ranks/rank_015.json",
+          "sha256": "5fa8c931ae770ae7d4afa0743d414351072fc9375c078f369f27d9a6c31595c7"
+        }
+      ],
+      "census_per_rank_per_cycle": {
+        "student_forward": 24,
+        "fake_forward": 6,
+        "teacher_forward": 1,
+        "student_backward": 1,
+        "fake_backward": 5,
+        "sample_identities_world": 96
+      },
+      "grid_per_rank_per_cycle": {
+        "checkpoint_wraps": 300,
+        "scoped_executions": 600,
+        "hits": 600,
+        "misses": 0
+      },
+      "resources": [
+        {
+          "node_rank": 0,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/search-resources.node0.json",
+          "sha256": "9fa13bdb56748d8c11f305bfb28e66afe198aa080e440e7e0b83a805dac5e60e",
+          "sample_count": 827,
+          "host_peak_sampled_bytes": 484563337216,
+          "min_driver_free_sampled_bytes": 1046478848,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        },
+        {
+          "node_rank": 1,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/search-resources.node1.json",
+          "sha256": "6e0955e18f74bb59937b32223e64d2d73ca6705620cc8f7b242d6816c2eaca24",
+          "sample_count": 825,
+          "host_peak_sampled_bytes": 484144836608,
+          "min_driver_free_sampled_bytes": 8388608,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        }
+      ],
+      "teardown": {
+        "0": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128",
+        "1": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128"
+      }
+    },
+    {
+      "run_id": "jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128",
+      "candidate_id": "joint-h3v1-d1-n128",
+      "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+      "mode": "correctness",
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/bound-summary.json",
+      "summary_sha256": "b5f8a40d928b40b4ef3ac364cc4e99f889d264dbd322b1122845d0bf03291c86",
+      "rank_count": 16,
+      "cycle_wall_seconds": {
+        "1": 775.856636065,
+        "2": 780.012095608
+      },
+      "formal_timing_eligible": false,
+      "final_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 0
+      },
+      "native_contract_status": "PASS",
+      "peak_allocated_bytes": 35857402880,
+      "peak_reserved_bytes": 40399536128,
+      "rank_receipts": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_000.json",
+          "sha256": "48eb3ed41bcdf4eaa1c50488f93d67c93f05b2e582a4a7901ae3997d493cbeac"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_001.json",
+          "sha256": "d3bd9fd3a768c3519f3d7f8e263e453a8c0027ef05dd09cff8158652117ec1d0"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_002.json",
+          "sha256": "305535fd1d7a379bc16dd017f3304cc0ba0215e67678bfe6549893e5894e29b3"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_003.json",
+          "sha256": "de9dc54b58459e7ce39a1b5c583815d32231d5f0984b658581c334ac13e6c308"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_004.json",
+          "sha256": "8620a20bfdbdd396cca6902f029bbb663afb586dc619d0f96ed4ea0b82ffc73a"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_005.json",
+          "sha256": "7113006d8ba6e0152ceb620857d7ead85ea97fe9c47d9ebf954a33bc61f4322f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_006.json",
+          "sha256": "9752bea8670657c70798002f9a2d739c495a505a103d8adc838f803a032735aa"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_007.json",
+          "sha256": "4bd3257cfae2384d322fd1e83277039e3d6c2f9b85ef9cfdb549540784142f40"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_008.json",
+          "sha256": "a67f88ed798d3e473be5e28b32757cee12bf9622c9252e58a64dfb50a6613282"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_009.json",
+          "sha256": "58bd40e53c246ff694041093a4f740b30e62c16c91a82ea9826d1463cbeb09a5"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_010.json",
+          "sha256": "d728a931890f4c65910d4b8c31f3b444e1683b34ef9e6b6c5e68caaa4e5e8258"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_011.json",
+          "sha256": "852a6bdde2505cb311517a35f42ef4eafbd3ff61f988c7da9348f445a705b579"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_012.json",
+          "sha256": "19178f6b312ef1e2fbd9ce00dddec631cd8a6415d8f083694447f8a347eb876e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_013.json",
+          "sha256": "ae96b129e6f53eaf5cce5d2a8fd4801512e208ff7950e41a253c6d57a3e3a75e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_014.json",
+          "sha256": "bf0133bc01936cc15942ee11c7387d0a64282db5696c28b8ecb488f4da8cc1e6"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/execution/ranks/rank_015.json",
+          "sha256": "5623593a4d4dd3dceb3e247d6465d3aba8da50a04ee64d4b129dc67878c7cc0b"
+        }
+      ],
+      "census_per_rank_per_cycle": {
+        "student_forward": 24,
+        "fake_forward": 6,
+        "teacher_forward": 1,
+        "student_backward": 1,
+        "fake_backward": 5,
+        "sample_identities_world": 96
+      },
+      "grid_per_rank_per_cycle": {
+        "checkpoint_wraps": 300,
+        "scoped_executions": 600,
+        "hits": 600,
+        "misses": 0
+      },
+      "resources": [
+        {
+          "node_rank": 0,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/search-resources.node0.json",
+          "sha256": "daf3d9bb3c9347fdac541c896232f95c297f7007be04b8644f460b86f604f17b",
+          "sample_count": 823,
+          "host_peak_sampled_bytes": 475786805248,
+          "min_driver_free_sampled_bytes": 1017118720,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        },
+        {
+          "node_rank": 1,
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/search-resources.node1.json",
+          "sha256": "c8d81ea5c90b638b393c10b42091b4bd6fca57d68bc0b8e7b2876170facab1b2",
+          "sample_count": 824,
+          "host_peak_sampled_bytes": 475431931904,
+          "min_driver_free_sampled_bytes": 1583349760,
+          "cgroup_oom_delta": {
+            "oom": 0,
+            "oom_kill": 0
+          }
+        }
+      ],
+      "teardown": {
+        "0": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128",
+        "1": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128"
+      }
+    }
+  ],
+  "cross_comparison": {
+    "candidate_id": "joint-h3v1-d2-n128",
+    "claim_boundary": "BOUNDED_LOCAL_SHARD_SAMPLES_NOT_FULL_STATE_OR_STRICT_PAIR_GATE",
+    "cycles": 2,
+    "formal_timing_eligible": false,
+    "full_state_comparison": "NOT_RUN",
+    "integration_head": "b1706f073d09a5de03926c6e216273898af754f3",
+    "loss_status": "FAIL",
+    "rank_count": 16,
+    "reference_candidate_id": "joint-h3v1-d1-n128",
+    "rng_scope": "TORCH_DEFAULT_CPU_AND_RANK_CUDA_BOUNDARIES_ONLY; OTHER_GENERATORS_NOT_OBSERVED",
+    "rng_status": "PASS",
+    "sample_status": "PASS",
+    "sampled_state_status": "FAIL",
+    "schema_version": "distillschedule.h3_native_two_cycle_comparison.v1",
+    "search_ready": false,
+    "status": "FAIL",
+    "strict_numerical_gate": "NOT_RUN",
+    "thresholds": {
+      "max_abs_atol": 0.05,
+      "max_abs_rtol": 0.01,
+      "mean_relative": 0.005,
+      "min_cosine": 0.9999,
+      "normalized_l2": 0.005
+    },
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_macro_20260907_r3-gate-joint-h3v1-d2-n128/search-gate/comparison.json",
+    "sha256": "4ffca98b8c3144afc2126f77e26b016793e3707b5d640883c86bdee48c395f0d",
+    "components": {
+      "student_parameters": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 256,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.2025978105189786,
+          "mean": 0.5584618079353345,
+          "max": 3.416416657973428
+        },
+        "cosine": {
+          "min": -0.8026746373074625,
+          "median": 0.9573111008163885,
+          "mean": 0.673748249021332,
+          "max": 1.0000000000000002
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.20409663943764753,
+          "mean": 0.49501231536572554,
+          "max": 2.2030843951493186
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 5.042180418968201e-06,
+          "mean": 3.3504860766697675e-05,
+          "max": 0.0001316070556640625
+        },
+        "reference_peak_abs": {
+          "min": 5.066394805908203e-06,
+          "median": 0.0040323734283447266,
+          "mean": 0.008212437736801803,
+          "max": 0.0281982421875
+        }
+      },
+      "student_optimizer": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 80,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 0.18779172386870094,
+          "max": 2.6875033425890518
+        },
+        "cosine": {
+          "min": -0.32317263720672434,
+          "median": 1.0,
+          "mean": 0.9152307615921783,
+          "max": 1.0
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 0.0001873316025140242,
+          "max": 0.0028512374683486996
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 6.621183603161318e-10,
+          "max": 1.2398231774568558e-08
+        },
+        "reference_peak_abs": {
+          "min": 0.0,
+          "median": 6.002665079135171e-10,
+          "mean": 0.6875000005851462,
+          "max": 2.0
+        }
+      },
+      "fake_parameters": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 275,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.05435511384455366,
+          "mean": 0.15896986881354644,
+          "max": 1.0835293160106916
+        },
+        "cosine": {
+          "min": 0.46079686517024704,
+          "median": 0.9976335605318536,
+          "mean": 0.9685539350075253,
+          "max": 1.0
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.051204080094566014,
+          "mean": 0.14323907414500983,
+          "max": 1.0102312846746884
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 4.793703556060791e-05,
+          "mean": 5.5274971600738354e-05,
+          "max": 0.000213623046875
+        },
+        "reference_peak_abs": {
+          "min": 9.059906005859375e-05,
+          "median": 0.0033588409423828125,
+          "mean": 0.008281552232801914,
+          "max": 0.0303955078125
+        }
+      },
+      "fake_optimizer": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 279,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.016141099613925694,
+          "mean": 0.46257982280283333,
+          "max": 13.072770917459472
+        },
+        "cosine": {
+          "min": -0.8327432031648957,
+          "median": 1.0,
+          "mean": 0.8085157430035903,
+          "max": 1.0
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 3.751593626684022e-09,
+          "mean": 0.13717491949966873,
+          "max": 2.205964207383379
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 1.4901274658640773e-14,
+          "mean": 6.389316505235322e-07,
+          "max": 1.1801719665527344e-05
+        },
+        "reference_peak_abs": {
+          "min": 5.854691731421724e-17,
+          "median": 2.0116567611694336e-06,
+          "mean": 3.4375008351917766,
+          "max": 10.0
+        }
+      }
+    },
+    "ranks": [
+      {
+        "rank": 0,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.999980695787116,
+            "finite": true,
+            "max_abs": 0.003767356276512146,
+            "max_abs_limit": 0.05485450565814972,
+            "mean_abs": 0.0014180034399032594,
+            "mean_relative": 0.0049062884703102595,
+            "normalized_l2": 0.006628884243195714,
+            "reference_peak_abs": 0.4854505658149719,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9995940329351949,
+            "finite": true,
+            "max_abs": 0.04691731929779053,
+            "max_abs_limit": 0.05882055997848511,
+            "mean_abs": 0.013837093114852905,
+            "mean_relative": 0.03162349547117888,
+            "normalized_l2": 0.043340459394221965,
+            "reference_peak_abs": 0.8820559978485107,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 4.492781590670347e-05,
+            "max_abs_limit": 0.050014132075011736,
+            "mean_abs": 4.492781590670347e-05,
+            "mean_relative": 0.031791379446692414,
+            "normalized_l2": 0.031791379446692414,
+            "reference_peak_abs": 0.0014132075011730194,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 1,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999977017004099,
+            "finite": true,
+            "max_abs": 0.0032019615173339844,
+            "max_abs_limit": 0.057471159100532535,
+            "mean_abs": 0.0007695376873016358,
+            "mean_relative": 0.002253309753227877,
+            "normalized_l2": 0.0036452652741908,
+            "reference_peak_abs": 0.7471159100532532,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9997510672615524,
+            "finite": true,
+            "max_abs": 0.011081203818321228,
+            "max_abs_limit": 0.05210380807518959,
+            "mean_abs": 0.005159023404121399,
+            "mean_relative": 0.028719278176793744,
+            "normalized_l2": 0.03494896255383513,
+            "reference_peak_abs": 0.21038080751895905,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 4.287099000066519e-05,
+            "max_abs_limit": 0.05001782705192454,
+            "mean_abs": 4.287099000066519e-05,
+            "mean_relative": 0.02404827796661482,
+            "normalized_l2": 0.02404827796661482,
+            "reference_peak_abs": 0.0017827051924541593,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 2,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.99999906103519,
+            "finite": true,
+            "max_abs": 0.001645505428314209,
+            "max_abs_limit": 0.05817559540271759,
+            "mean_abs": 0.00041655004024505616,
+            "mean_relative": 0.0009315728480922812,
+            "normalized_l2": 0.001505058457903678,
+            "reference_peak_abs": 0.817559540271759,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999036221863633,
+            "finite": true,
+            "max_abs": 0.053057074546813965,
+            "max_abs_limit": 0.06319727897644044,
+            "mean_abs": 0.012040948867797852,
+            "mean_relative": 0.02670306039959127,
+            "normalized_l2": 0.03781217524731657,
+            "reference_peak_abs": 1.319727897644043,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.00025715213268995285,
+            "max_abs_limit": 0.0500275530316867,
+            "mean_abs": 0.00025715213268995285,
+            "mean_relative": 0.09332988674859431,
+            "normalized_l2": 0.09332988674859431,
+            "reference_peak_abs": 0.002755303168669343,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 3,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999821536907588,
+            "finite": true,
+            "max_abs": 0.003809422254562378,
+            "max_abs_limit": 0.0544956111907959,
+            "mean_abs": 0.0010818541049957275,
+            "mean_relative": 0.004156819541231451,
+            "normalized_l2": 0.006303342237865838,
+            "reference_peak_abs": 0.44956111907958984,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999966321244932,
+            "finite": true,
+            "max_abs": 0.003182053565979004,
+            "max_abs_limit": 0.0575922703742981,
+            "mean_abs": 0.0014000236988067627,
+            "mean_relative": 0.004629228069198313,
+            "normalized_l2": 0.004736632659620188,
+            "reference_peak_abs": 0.7592270374298096,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0008668801747262478,
+            "max_abs_limit": 0.050051253568381075,
+            "mean_abs": 0.0008668801747262478,
+            "mean_relative": 0.16913557477227342,
+            "normalized_l2": 0.16913557477227342,
+            "reference_peak_abs": 0.005125356838107109,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 4,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999999052346021,
+            "finite": true,
+            "max_abs": 0.001450657844543457,
+            "max_abs_limit": 0.06035985231399536,
+            "mean_abs": 0.0003649860620498657,
+            "mean_relative": 0.001031898608169994,
+            "normalized_l2": 0.0013524901949977914,
+            "reference_peak_abs": 1.0359852313995361,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999163638586251,
+            "finite": true,
+            "max_abs": 0.019440367817878723,
+            "max_abs_limit": 0.0630487608909607,
+            "mean_abs": 0.008279693126678467,
+            "mean_relative": 0.017792141831562407,
+            "normalized_l2": 0.018495591203024714,
+            "reference_peak_abs": 1.3048760890960693,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0004719709977507591,
+            "max_abs_limit": 0.050035674367100005,
+            "mean_abs": 0.0004719709977507591,
+            "mean_relative": 0.13229975360957535,
+            "normalized_l2": 0.13229975360957535,
+            "reference_peak_abs": 0.003567436710000038,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 5,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999322010751369,
+            "finite": true,
+            "max_abs": 0.005865216255187988,
+            "max_abs_limit": 0.05470807105302811,
+            "mean_abs": 0.0028517380356788634,
+            "mean_relative": 0.010678643234136571,
+            "normalized_l2": 0.0120593161950318,
+            "reference_peak_abs": 0.47080710530281067,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9991846530084022,
+            "finite": true,
+            "max_abs": 0.02476295828819275,
+            "max_abs_limit": 0.05338428318500519,
+            "mean_abs": 0.007715076208114624,
+            "mean_relative": 0.031979754526924954,
+            "normalized_l2": 0.04651654738207747,
+            "reference_peak_abs": 0.3384283185005188,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 5.130888894200325e-06,
+            "max_abs_limit": 0.050019586014095695,
+            "mean_abs": 5.130888894200325e-06,
+            "mean_relative": 0.002619669764931089,
+            "normalized_l2": 0.002619669764931089,
+            "reference_peak_abs": 0.0019586014095693827,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 6,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999376763612935,
+            "finite": true,
+            "max_abs": 0.012482643127441406,
+            "max_abs_limit": 0.05451164484024048,
+            "mean_abs": 0.0031656980514526366,
+            "mean_relative": 0.012357260462298151,
+            "normalized_l2": 0.019707487612220964,
+            "reference_peak_abs": 0.45116448402404785,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999712730239411,
+            "finite": true,
+            "max_abs": 0.004347801208496094,
+            "max_abs_limit": 0.05307558655738831,
+            "mean_abs": 0.002158379554748535,
+            "mean_relative": 0.009556758846387339,
+            "normalized_l2": 0.01082710740673043,
+            "reference_peak_abs": 0.30755865573883057,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0015014179516583681,
+            "max_abs_limit": 0.05001145977759734,
+            "mean_abs": 0.0015014179516583681,
+            "mean_relative": 1.3101632548323963,
+            "normalized_l2": 1.3101632548323963,
+            "reference_peak_abs": 0.0011459777597337961,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 7,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 19,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999970468570326,
+            "finite": true,
+            "max_abs": 0.002311110496520996,
+            "max_abs_limit": 0.05838290750980377,
+            "mean_abs": 0.0005517393350601196,
+            "mean_relative": 0.0016552495074968184,
+            "normalized_l2": 0.0024765961622862415,
+            "reference_peak_abs": 0.8382907509803772,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9997759522921992,
+            "finite": true,
+            "max_abs": 0.011550351977348328,
+            "max_abs_limit": 0.05400515139102936,
+            "mean_abs": 0.004032739996910095,
+            "mean_relative": 0.017590119459051857,
+            "normalized_l2": 0.022823300471346324,
+            "reference_peak_abs": 0.4005151391029358,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0009449848439544439,
+            "max_abs_limit": 0.05003837384050712,
+            "mean_abs": 0.0009449848439544439,
+            "mean_relative": 0.24625756282567318,
+            "normalized_l2": 0.24625756282567318,
+            "reference_peak_abs": 0.0038373840507119894,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 8,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999970332226311,
+            "finite": true,
+            "max_abs": 0.0012098252773284912,
+            "max_abs_limit": 0.052569197416305544,
+            "mean_abs": 0.0003563046455383301,
+            "mean_relative": 0.001604141819146414,
+            "normalized_l2": 0.0025514287840547037,
+            "reference_peak_abs": 0.2569197416305542,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9994755977741634,
+            "finite": true,
+            "max_abs": 0.017676234245300293,
+            "max_abs_limit": 0.0534615045785904,
+            "mean_abs": 0.006008121371269226,
+            "mean_relative": 0.026775033964999403,
+            "normalized_l2": 0.03513535175568925,
+            "reference_peak_abs": 0.3461504578590393,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.00013084860984236002,
+            "max_abs_limit": 0.05001517765340396,
+            "mean_abs": 0.00013084860984236002,
+            "mean_relative": 0.08621135715767703,
+            "normalized_l2": 0.08621135715767703,
+            "reference_peak_abs": 0.0015177653403952718,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 9,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999834230905968,
+            "finite": true,
+            "max_abs": 0.002437978982925415,
+            "max_abs_limit": 0.05228494316339493,
+            "mean_abs": 0.000728800892829895,
+            "mean_relative": 0.003701327923759592,
+            "normalized_l2": 0.00595346708425181,
+            "reference_peak_abs": 0.2284943163394928,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9998323077233368,
+            "finite": true,
+            "max_abs": 0.02215754985809326,
+            "max_abs_limit": 0.06329250693321228,
+            "mean_abs": 0.009921562671661378,
+            "mean_relative": 0.024415425973102933,
+            "normalized_l2": 0.02211880644615015,
+            "reference_peak_abs": 1.329250693321228,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0018455162644386292,
+            "max_abs_limit": 0.05002822568640113,
+            "mean_abs": 0.0018455162644386292,
+            "mean_relative": 0.6538428289080777,
+            "normalized_l2": 0.6538428289080777,
+            "reference_peak_abs": 0.002822568640112877,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 10,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999916795892886,
+            "finite": true,
+            "max_abs": 0.0017742067575454712,
+            "max_abs_limit": 0.05433502554893494,
+            "mean_abs": 0.0007404327392578125,
+            "mean_relative": 0.003389846002606703,
+            "normalized_l2": 0.0040861273109938576,
+            "reference_peak_abs": 0.43350255489349365,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9998232634078612,
+            "finite": true,
+            "max_abs": 0.01746988296508789,
+            "max_abs_limit": 0.05644749045372009,
+            "mean_abs": 0.007111728191375732,
+            "mean_relative": 0.021571041272571208,
+            "normalized_l2": 0.024870412243817912,
+            "reference_peak_abs": 0.6447490453720093,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0010296800173819065,
+            "max_abs_limit": 0.050063096638768914,
+            "mean_abs": 0.0010296800173819065,
+            "mean_relative": 0.1631909460586425,
+            "normalized_l2": 0.1631909460586425,
+            "reference_peak_abs": 0.006309663876891136,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 11,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999196519718854,
+            "finite": true,
+            "max_abs": 0.006913855671882629,
+            "max_abs_limit": 0.05254283964633942,
+            "mean_abs": 0.0016702264547348022,
+            "mean_relative": 0.009240909954473388,
+            "normalized_l2": 0.01686917549817135,
+            "reference_peak_abs": 0.25428396463394165,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999636839470367,
+            "finite": true,
+            "max_abs": 0.00312119722366333,
+            "max_abs_limit": 0.05329974532127381,
+            "mean_abs": 0.0017515376210212707,
+            "mean_relative": 0.008422623541000526,
+            "normalized_l2": 0.008802356643709545,
+            "reference_peak_abs": 0.32997453212738037,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0003299098461866379,
+            "max_abs_limit": 0.05006166759878397,
+            "mean_abs": 0.0003299098461866379,
+            "mean_relative": 0.05349808533041114,
+            "normalized_l2": 0.05349808533041114,
+            "reference_peak_abs": 0.006166759878396988,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 12,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999570536206943,
+            "finite": true,
+            "max_abs": 0.007183969020843506,
+            "max_abs_limit": 0.053678337931633,
+            "mean_abs": 0.0018497616052627563,
+            "mean_relative": 0.007249747110876896,
+            "normalized_l2": 0.012257277806846437,
+            "reference_peak_abs": 0.36783379316329956,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999831616196643,
+            "finite": true,
+            "max_abs": 0.016645193099975586,
+            "max_abs_limit": 0.06185274958610535,
+            "mean_abs": 0.005423063039779663,
+            "mean_relative": 0.013176641521306515,
+            "normalized_l2": 0.014613773702444698,
+            "reference_peak_abs": 1.1852749586105347,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 8.485512807965279e-05,
+            "max_abs_limit": 0.050026161370333284,
+            "mean_abs": 8.485512807965279e-05,
+            "mean_relative": 0.032435276515960926,
+            "normalized_l2": 0.032435276515960926,
+            "reference_peak_abs": 0.002616137033328414,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 13,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999983902142152,
+            "finite": true,
+            "max_abs": 0.002971827983856201,
+            "max_abs_limit": 0.06485099077224732,
+            "mean_abs": 0.0008747667074203491,
+            "mean_relative": 0.0015304728036427634,
+            "normalized_l2": 0.0018336252987343463,
+            "reference_peak_abs": 1.4850990772247314,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999563439112885,
+            "finite": true,
+            "max_abs": 0.004656314849853516,
+            "max_abs_limit": 0.053965988457202914,
+            "mean_abs": 0.0030214622616767882,
+            "mean_relative": 0.011294949588588666,
+            "normalized_l2": 0.011601065330433378,
+            "reference_peak_abs": 0.39659884572029114,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.00036788545548915863,
+            "max_abs_limit": 0.05008191732689739,
+            "mean_abs": 0.00036788545548915863,
+            "mean_relative": 0.04490935793718052,
+            "normalized_l2": 0.04490935793718052,
+            "reference_peak_abs": 0.008191732689738274,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 14,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999754403548519,
+            "finite": true,
+            "max_abs": 0.0033355653285980225,
+            "max_abs_limit": 0.05285235434770584,
+            "mean_abs": 0.001255539059638977,
+            "mean_relative": 0.005186776857876141,
+            "normalized_l2": 0.00714987639697905,
+            "reference_peak_abs": 0.2852354347705841,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999981039517704,
+            "finite": true,
+            "max_abs": 0.0040854811668396,
+            "max_abs_limit": 0.05488681614398957,
+            "mean_abs": 0.0015319690108299255,
+            "mean_relative": 0.0066337556987559835,
+            "normalized_l2": 0.007645269526913971,
+            "reference_peak_abs": 0.4886816143989563,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0003399683628231287,
+            "max_abs_limit": 0.050041313036344945,
+            "mean_abs": 0.0003399683628231287,
+            "mean_relative": 0.08229081977527491,
+            "normalized_l2": 0.08229081977527491,
+            "reference_peak_abs": 0.004131303634494543,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "rank": 15,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "fake",
+            "cosine": 0.9999836055769309,
+            "finite": true,
+            "max_abs": 0.0042359232902526855,
+            "max_abs_limit": 0.054219090044498444,
+            "mean_abs": 0.0009231030941009522,
+            "mean_relative": 0.0036481220443117593,
+            "normalized_l2": 0.006934875401331822,
+            "reference_peak_abs": 0.42190900444984436,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 1,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "reference_peak_abs": 0.0,
+            "status": "PASS",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "cosine": 0.9999019094167814,
+            "finite": true,
+            "max_abs": 0.12866592407226562,
+            "max_abs_limit": 0.06726092219352722,
+            "mean_abs": 0.03653977811336517,
+            "mean_relative": 0.057490870175704735,
+            "normalized_l2": 0.07076363559272418,
+            "reference_peak_abs": 1.7260922193527222,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "cosine": 1.0,
+            "finite": true,
+            "max_abs": 1.2028263881802559e-05,
+            "max_abs_limit": 0.05000612328294665,
+            "mean_abs": 1.2028263881802559e-05,
+            "mean_relative": 0.019643488609963004,
+            "normalized_l2": 0.019643488609963004,
+            "reference_peak_abs": 0.0006123282946646214,
+            "status": "FAIL",
+            "thresholds": {
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01,
+              "mean_relative": 0.005,
+              "min_cosine": 0.9999,
+              "normalized_l2": 0.005
+            }
+          }
+        ]
+      }
+    ],
+    "first_student_loss_equal_ranks": 16,
+    "first_fake_loss_equal_ranks": 16,
+    "second_fake_loss_equal_ranks": 0
+  },
+  "self_comparison": {
+    "schema_version": "distillschedule.h3_native_two_cycle_comparison.v1",
+    "status": "FAIL",
+    "integration_head": "b1706f073d09a5de03926c6e216273898af754f3",
+    "reference_candidate_id": "joint-h3v1-d1-n128",
+    "candidate_id": "joint-h3v1-d1-n128",
+    "rank_count": 16,
+    "cycles": 2,
+    "sampled_state_status": "FAIL",
+    "loss_status": "FAIL",
+    "sample_status": "PASS",
+    "rng_status": "PASS",
+    "thresholds": {
+      "mean_relative": 0.005,
+      "normalized_l2": 0.005,
+      "min_cosine": 0.9999,
+      "max_abs_atol": 0.05,
+      "max_abs_rtol": 0.01
+    },
+    "strict_numerical_gate": "NOT_RUN",
+    "rng_scope": "TORCH_DEFAULT_CPU_AND_RANK_CUDA_BOUNDARIES_ONLY; OTHER_GENERATORS_NOT_OBSERVED",
+    "full_state_comparison": "NOT_RUN",
+    "formal_timing_eligible": false,
+    "search_ready": false,
+    "claim_boundary": "BOUNDED_LOCAL_SHARD_SAMPLES_NOT_FULL_STATE_OR_STRICT_PAIR_GATE",
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r3/h3/jointp_h3_selfrepeat_20260907_r3-gate-joint-h3v1-d1-n128/source-native-repeat-analysis/self-comparison.json",
+    "sha256": "2569cccf393bf28862f0cd82a32739691a32ffde0aec7b3bad8df1a07a257f39",
+    "components": {
+      "student_parameters": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 256,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.2633165855851175,
+          "mean": 0.6396956962961396,
+          "max": 5.1658449620201194
+        },
+        "cosine": {
+          "min": -0.8989191026514267,
+          "median": 0.9318255011817314,
+          "mean": 0.6357917325755927,
+          "max": 1.0000000000000002
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.20483816506680816,
+          "mean": 0.5752692098771243,
+          "max": 3.1462309730779623
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 7.465481758117676e-06,
+          "mean": 3.646906407084316e-05,
+          "max": 0.00013875961303710938
+        },
+        "reference_peak_abs": {
+          "min": 5.066394805908203e-06,
+          "median": 0.0040323734283447266,
+          "mean": 0.008212437736801803,
+          "max": 0.0281982421875
+        }
+      },
+      "student_optimizer": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 80,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 0.16825101247496824,
+          "max": 2.455686520802692
+        },
+        "cosine": {
+          "min": -0.4852980662556452,
+          "median": 1.0,
+          "mean": 0.932609269533128,
+          "max": 1.0
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 0.0001803276174464475,
+          "max": 0.0027848159334098455
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 0.0,
+          "mean": 5.871987342489283e-10,
+          "max": 1.2048985809087753e-08
+        },
+        "reference_peak_abs": {
+          "min": 0.0,
+          "median": 6.002665079135171e-10,
+          "mean": 0.6875000005851462,
+          "max": 2.0
+        }
+      },
+      "fake_parameters": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 272,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.05067300629169536,
+          "mean": 0.1645114146649578,
+          "max": 1.0678635595861092
+        },
+        "cosine": {
+          "min": 0.2263302308818426,
+          "median": 0.9980272417622558,
+          "mean": 0.9674790080015847,
+          "max": 0.9999999999999998
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 0.049092910792046994,
+          "mean": 0.1491386858352864,
+          "max": 1.026281844566269
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 4.8995018005371094e-05,
+          "mean": 5.6405864597763866e-05,
+          "max": 0.00019168853759765625
+        },
+        "reference_peak_abs": {
+          "min": 9.059906005859375e-05,
+          "median": 0.0033588409423828125,
+          "mean": 0.008281552232801914,
+          "max": 0.0303955078125
+        }
+      },
+      "fake_optimizer": {
+        "tested_sampled_tensors": 512,
+        "failed_sampled_tensors": 272,
+        "normalized_l2": {
+          "min": 0.0,
+          "median": 0.018800391703869063,
+          "mean": 0.3924486947097341,
+          "max": 5.479119365092813
+        },
+        "cosine": {
+          "min": -0.8114577908674597,
+          "median": 1.0,
+          "mean": 0.8104237215816082,
+          "max": 1.0
+        },
+        "mean_relative": {
+          "min": 0.0,
+          "median": 3.515291763190806e-09,
+          "mean": 0.13691124693127307,
+          "max": 1.862431233234929
+        },
+        "max_abs": {
+          "min": 0.0,
+          "median": 2.2211399386407038e-14,
+          "mean": 6.399049050364596e-07,
+          "max": 1.3679265975952148e-05
+        },
+        "reference_peak_abs": {
+          "min": 5.854691731421724e-17,
+          "median": 2.0116567611694336e-06,
+          "mean": 3.4375008351917766,
+          "max": 10.0
+        }
+      }
+    },
+    "ranks": [
+      {
+        "rank": 0,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0016206294298171998,
+            "mean_relative": 0.00560737390503092,
+            "normalized_l2": 0.007757910163270884,
+            "cosine": 0.9999762024026642,
+            "max_abs": 0.004266321659088135,
+            "max_abs_limit": 0.05485450565814972,
+            "reference_peak_abs": 0.4854505658149719
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 1.1233612895011902e-05,
+            "mean_relative": 0.007949018729158704,
+            "normalized_l2": 0.007949018729158704,
+            "cosine": 1.0,
+            "max_abs": 1.1233612895011902e-05,
+            "max_abs_limit": 0.050014132075011736,
+            "reference_peak_abs": 0.0014132075011730194
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.015371376276016235,
+            "mean_relative": 0.03512996870192366,
+            "normalized_l2": 0.0526247655513563,
+            "cosine": 0.9993305894067583,
+            "max_abs": 0.057839274406433105,
+            "max_abs_limit": 0.05882055997848511,
+            "reference_peak_abs": 0.8820559978485107
+          }
+        ]
+      },
+      {
+        "rank": 1,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0019048929214477539,
+            "mean_relative": 0.0055777824394850056,
+            "normalized_l2": 0.007767632292777464,
+            "cosine": 0.999980172065478,
+            "max_abs": 0.006022989749908447,
+            "max_abs_limit": 0.057471159100532535,
+            "reference_peak_abs": 0.7471159100532532
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00011430063750594854,
+            "mean_relative": 0.06411639904890651,
+            "normalized_l2": 0.06411639904890651,
+            "cosine": 1.0,
+            "max_abs": 0.00011430063750594854,
+            "max_abs_limit": 0.05001782705192454,
+            "reference_peak_abs": 0.0017827051924541593
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.005103352665901184,
+            "mean_relative": 0.02840937002325124,
+            "normalized_l2": 0.037417398227459576,
+            "cosine": 0.9993003704696994,
+            "max_abs": 0.012285768985748291,
+            "max_abs_limit": 0.05210380807518959,
+            "reference_peak_abs": 0.21038080751895905
+          }
+        ]
+      },
+      {
+        "rank": 2,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0015128761529922484,
+            "mean_relative": 0.0033833974564610775,
+            "normalized_l2": 0.0061543813819633164,
+            "cosine": 0.9999851088165851,
+            "max_abs": 0.006821095943450928,
+            "max_abs_limit": 0.05817559540271759,
+            "reference_peak_abs": 0.817559540271759
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0007120675873011351,
+            "mean_relative": 0.258435295033259,
+            "normalized_l2": 0.258435295033259,
+            "cosine": 1.0,
+            "max_abs": 0.0007120675873011351,
+            "max_abs_limit": 0.0500275530316867,
+            "reference_peak_abs": 0.002755303168669343
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.013430798053741455,
+            "mean_relative": 0.029785311405392808,
+            "normalized_l2": 0.03893625978231134,
+            "cosine": 0.9999202205702427,
+            "max_abs": 0.05384063720703125,
+            "max_abs_limit": 0.06319727897644044,
+            "reference_peak_abs": 1.319727897644043
+          }
+        ]
+      },
+      {
+        "rank": 3,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 16,
+          "fake_parameters": 19,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0005695641040802002,
+            "mean_relative": 0.0021884422186796717,
+            "normalized_l2": 0.0023131976629656528,
+            "cosine": 0.9999979707341352,
+            "max_abs": 0.0009308457374572754,
+            "max_abs_limit": 0.0544956111907959,
+            "reference_peak_abs": 0.44956111907958984
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00028164591640233994,
+            "mean_relative": 0.05495147465797856,
+            "normalized_l2": 0.05495147465797856,
+            "cosine": 1.0,
+            "max_abs": 0.00028164591640233994,
+            "max_abs_limit": 0.050051253568381075,
+            "reference_peak_abs": 0.005125356838107109
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0023909419775009154,
+            "mean_relative": 0.007905734541140394,
+            "normalized_l2": 0.007436113252772209,
+            "cosine": 0.9999731692880052,
+            "max_abs": 0.0038163065910339355,
+            "max_abs_limit": 0.0575922703742981,
+            "reference_peak_abs": 0.7592270374298096
+          }
+        ]
+      },
+      {
+        "rank": 4,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0006711393594741822,
+            "mean_relative": 0.0018974636100895586,
+            "normalized_l2": 0.0027032700079628203,
+            "cosine": 0.9999994166312746,
+            "max_abs": 0.0029630661010742188,
+            "max_abs_limit": 0.06035985231399536,
+            "reference_peak_abs": 1.0359852313995361
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 5.680485628545284e-05,
+            "mean_relative": 0.015923157410535318,
+            "normalized_l2": 0.015923157410535318,
+            "cosine": 1.0,
+            "max_abs": 5.680485628545284e-05,
+            "max_abs_limit": 0.050035674367100005,
+            "reference_peak_abs": 0.003567436710000038
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.01272743046283722,
+            "mean_relative": 0.02734983585520773,
+            "normalized_l2": 0.030580072960610234,
+            "cosine": 0.9999589061112981,
+            "max_abs": 0.04079926013946533,
+            "max_abs_limit": 0.0630487608909607,
+            "reference_peak_abs": 1.3048760890960693
+          }
+        ]
+      },
+      {
+        "rank": 5,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.002836872637271881,
+            "mean_relative": 0.010622978133017394,
+            "normalized_l2": 0.015856162365463892,
+            "cosine": 0.9999216436693265,
+            "max_abs": 0.009938299655914307,
+            "max_abs_limit": 0.05470807105302811,
+            "reference_peak_abs": 0.47080710530281067
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00020029419101774693,
+            "mean_relative": 0.10226388587241113,
+            "normalized_l2": 0.10226388587241113,
+            "cosine": 1.0,
+            "max_abs": 0.00020029419101774693,
+            "max_abs_limit": 0.050019586014095695,
+            "reference_peak_abs": 0.0019586014095693827
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00562746524810791,
+            "mean_relative": 0.02332640046432812,
+            "normalized_l2": 0.027687419821682,
+            "cosine": 0.9999440402056738,
+            "max_abs": 0.009334325790405273,
+            "max_abs_limit": 0.05338428318500519,
+            "reference_peak_abs": 0.3384283185005188
+          }
+        ]
+      },
+      {
+        "rank": 6,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0019985437393188477,
+            "mean_relative": 0.007801289046100232,
+            "normalized_l2": 0.011462234378942487,
+            "cosine": 0.9999482476958497,
+            "max_abs": 0.006948143243789673,
+            "max_abs_limit": 0.05451164484024048,
+            "reference_peak_abs": 0.45116448402404785
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 3.9757462218403816e-05,
+            "mean_relative": 0.03469304869200886,
+            "normalized_l2": 0.03469304869200886,
+            "cosine": 1.0,
+            "max_abs": 3.9757462218403816e-05,
+            "max_abs_limit": 0.05001145977759734,
+            "reference_peak_abs": 0.0011459777597337961
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0017685294151306152,
+            "mean_relative": 0.007830601015452472,
+            "normalized_l2": 0.011949883986604347,
+            "cosine": 0.9999446310431377,
+            "max_abs": 0.005956560373306274,
+            "max_abs_limit": 0.05307558655738831,
+            "reference_peak_abs": 0.30755865573883057
+          }
+        ]
+      },
+      {
+        "rank": 7,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.001799657940864563,
+            "mean_relative": 0.005399076576539927,
+            "normalized_l2": 0.00753073963090077,
+            "cosine": 0.9999729582596579,
+            "max_abs": 0.006774485111236572,
+            "max_abs_limit": 0.05838290750980377,
+            "reference_peak_abs": 0.8382907509803772
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0006312853656709194,
+            "mean_relative": 0.16450930043183729,
+            "normalized_l2": 0.16450930043183729,
+            "cosine": 1.0,
+            "max_abs": 0.0006312853656709194,
+            "max_abs_limit": 0.05003837384050712,
+            "reference_peak_abs": 0.0038373840507119894
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.002695214748382568,
+            "mean_relative": 0.011756063973420773,
+            "normalized_l2": 0.01267230150532545,
+            "cosine": 0.9999857549626896,
+            "max_abs": 0.0044841468334198,
+            "max_abs_limit": 0.05400515139102936,
+            "reference_peak_abs": 0.4005151391029358
+          }
+        ]
+      },
+      {
+        "rank": 8,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0002780765295028687,
+            "mean_relative": 0.0012519460396725756,
+            "normalized_l2": 0.0016456350580407505,
+            "cosine": 0.9999986621178137,
+            "max_abs": 0.0006153881549835205,
+            "max_abs_limit": 0.052569197416305544,
+            "reference_peak_abs": 0.2569197416305542
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00010352709796279669,
+            "mean_relative": 0.06821021353395454,
+            "normalized_l2": 0.06821021353395454,
+            "cosine": 1.0,
+            "max_abs": 0.00010352709796279669,
+            "max_abs_limit": 0.05001517765340396,
+            "reference_peak_abs": 0.0015177653403952718
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.005315089225769043,
+            "mean_relative": 0.02368655454057595,
+            "normalized_l2": 0.03192605030791752,
+            "cosine": 0.9996554059955711,
+            "max_abs": 0.016046375036239624,
+            "max_abs_limit": 0.0534615045785904,
+            "reference_peak_abs": 0.3461504578590393
+          }
+        ]
+      },
+      {
+        "rank": 9,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 16,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.000843966007232666,
+            "mean_relative": 0.00428621174865007,
+            "normalized_l2": 0.006999327726731687,
+            "cosine": 0.9999784637938747,
+            "max_abs": 0.003027185797691345,
+            "max_abs_limit": 0.05228494316339493,
+            "reference_peak_abs": 0.2284943163394928
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0011908425949513912,
+            "mean_relative": 0.4219003137878583,
+            "normalized_l2": 0.4219003137878583,
+            "cosine": 1.0,
+            "max_abs": 0.0011908425949513912,
+            "max_abs_limit": 0.05002822568640113,
+            "reference_peak_abs": 0.002822568640112877
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.007315415143966675,
+            "mean_relative": 0.018002101364555125,
+            "normalized_l2": 0.014763070550241895,
+            "cosine": 0.9999454765404898,
+            "max_abs": 0.015700817108154297,
+            "max_abs_limit": 0.06329250693321228,
+            "reference_peak_abs": 1.329250693321228
+          }
+        ]
+      },
+      {
+        "rank": 10,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 18,
+          "fake_parameters": 18,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0016909807920455933,
+            "mean_relative": 0.007741641035681674,
+            "normalized_l2": 0.012857986061891797,
+            "cosine": 0.9999605035343136,
+            "max_abs": 0.006972014904022217,
+            "max_abs_limit": 0.05433502554893494,
+            "reference_peak_abs": 0.43350255489349365
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0015257755294442177,
+            "mean_relative": 0.24181565915615613,
+            "normalized_l2": 0.24181565915615613,
+            "cosine": 1.0,
+            "max_abs": 0.0015257755294442177,
+            "max_abs_limit": 0.050063096638768914,
+            "reference_peak_abs": 0.006309663876891136
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.005597427487373352,
+            "mean_relative": 0.01697791817982825,
+            "normalized_l2": 0.016901605349150896,
+            "cosine": 0.9998582381579921,
+            "max_abs": 0.009884655475616455,
+            "max_abs_limit": 0.05644749045372009,
+            "reference_peak_abs": 0.6447490453720093
+          }
+        ]
+      },
+      {
+        "rank": 11,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.001134297251701355,
+            "mean_relative": 0.0062757590354675435,
+            "normalized_l2": 0.011486362186946928,
+            "cosine": 0.9999563141678527,
+            "max_abs": 0.004730880260467529,
+            "max_abs_limit": 0.05254283964633942,
+            "reference_peak_abs": 0.25428396463394165
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 7.894542068243027e-05,
+            "mean_relative": 0.012801766606640059,
+            "normalized_l2": 0.012801766606640059,
+            "cosine": 1.0,
+            "max_abs": 7.894542068243027e-05,
+            "max_abs_limit": 0.05006166759878397,
+            "reference_peak_abs": 0.006166759878396988
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.002348378300666809,
+            "mean_relative": 0.01129265287881069,
+            "normalized_l2": 0.012799863410683005,
+            "cosine": 0.9999190865646742,
+            "max_abs": 0.005360126495361328,
+            "max_abs_limit": 0.05329974532127381,
+            "reference_peak_abs": 0.32997453212738037
+          }
+        ]
+      },
+      {
+        "rank": 12,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 16,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00046461224555969236,
+            "mean_relative": 0.001820948859215802,
+            "normalized_l2": 0.0025523956187473006,
+            "cosine": 0.9999981943476275,
+            "max_abs": 0.0011161714792251587,
+            "max_abs_limit": 0.053678337931633,
+            "reference_peak_abs": 0.36783379316329956
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00016311532817780972,
+            "mean_relative": 0.062349688146986756,
+            "normalized_l2": 0.062349688146986756,
+            "cosine": 1.0,
+            "max_abs": 0.00016311532817780972,
+            "max_abs_limit": 0.050026161370333284,
+            "reference_peak_abs": 0.002616137033328414
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0035573095083236694,
+            "mean_relative": 0.008643342669573794,
+            "normalized_l2": 0.010982185593957887,
+            "cosine": 0.999949572486438,
+            "max_abs": 0.01340058445930481,
+            "max_abs_limit": 0.06185274958610535,
+            "reference_peak_abs": 1.1852749586105347
+          }
+        ]
+      },
+      {
+        "rank": 13,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0004963129758834839,
+            "mean_relative": 0.0008683383869565506,
+            "normalized_l2": 0.0008543026777655594,
+            "cosine": 0.9999996429968423,
+            "max_abs": 0.0012145638465881348,
+            "max_abs_limit": 0.06485099077224732,
+            "reference_peak_abs": 1.4850990772247314
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0007062237709760666,
+            "mean_relative": 0.08621176956381257,
+            "normalized_l2": 0.08621176956381257,
+            "cosine": 1.0,
+            "max_abs": 0.0007062237709760666,
+            "max_abs_limit": 0.05008191732689739,
+            "reference_peak_abs": 0.008191732689738274
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0027900382876396177,
+            "mean_relative": 0.010429831346506081,
+            "normalized_l2": 0.01043236471196578,
+            "cosine": 0.9999548221469218,
+            "max_abs": 0.004156291484832764,
+            "max_abs_limit": 0.053965988457202914,
+            "reference_peak_abs": 0.39659884572029114
+          }
+        ]
+      },
+      {
+        "rank": 14,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 17,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0005955994129180908,
+            "mean_relative": 0.00246048996068387,
+            "normalized_l2": 0.0031504379436394013,
+            "cosine": 0.999997388859285,
+            "max_abs": 0.0012970715761184692,
+            "max_abs_limit": 0.05285235434770584,
+            "reference_peak_abs": 0.2852354347705841
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0005778912454843521,
+            "mean_relative": 0.13988108757226603,
+            "normalized_l2": 0.13988108757226603,
+            "cosine": 1.0,
+            "max_abs": 0.0005778912454843521,
+            "max_abs_limit": 0.050041313036344945,
+            "reference_peak_abs": 0.004131303634494543
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0032907500863075256,
+            "mean_relative": 0.01424965647731878,
+            "normalized_l2": 0.015452649745600375,
+            "cosine": 0.9999086634624105,
+            "max_abs": 0.007315874099731445,
+            "max_abs_limit": 0.05488681614398957,
+            "reference_peak_abs": 0.4886816143989563
+          }
+        ]
+      },
+      {
+        "rank": 15,
+        "sample_status": "PASS",
+        "rng_status": "PASS",
+        "state_status": "FAIL",
+        "loss_status": "FAIL",
+        "state_failed_tensors": {
+          "fake_optimizer": 17,
+          "fake_parameters": 16,
+          "student_optimizer": 5,
+          "student_parameters": 16
+        },
+        "losses": [
+          {
+            "cycle": 1,
+            "role": "student",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0,
+            "mean_relative": 0.0,
+            "normalized_l2": 0.0,
+            "cosine": 1.0,
+            "max_abs": 0.0,
+            "max_abs_limit": 0.05,
+            "reference_peak_abs": 0.0
+          },
+          {
+            "cycle": 1,
+            "role": "fake",
+            "status": "PASS",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.00010316371917724609,
+            "mean_relative": 0.00040770509871407767,
+            "normalized_l2": 0.0005186426759857504,
+            "cosine": 0.9999999107592721,
+            "max_abs": 0.00024890899658203125,
+            "max_abs_limit": 0.054219090044498444,
+            "reference_peak_abs": 0.42190900444984436
+          },
+          {
+            "cycle": 2,
+            "role": "student",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.0002745346864685416,
+            "mean_relative": 0.44834558334252245,
+            "normalized_l2": 0.44834558334252245,
+            "cosine": 1.0,
+            "max_abs": 0.0002745346864685416,
+            "max_abs_limit": 0.05000612328294665,
+            "reference_peak_abs": 0.0006123282946646214
+          },
+          {
+            "cycle": 2,
+            "role": "fake",
+            "status": "FAIL",
+            "thresholds": {
+              "mean_relative": 0.005,
+              "normalized_l2": 0.005,
+              "min_cosine": 0.9999,
+              "max_abs_atol": 0.05,
+              "max_abs_rtol": 0.01
+            },
+            "finite": true,
+            "mean_abs": 0.02251827120780945,
+            "mean_relative": 0.03542974460799909,
+            "normalized_l2": 0.04255740627869768,
+            "cosine": 0.999971800839325,
+            "max_abs": 0.07620453834533691,
+            "max_abs_limit": 0.06726092219352722,
+            "reference_peak_abs": 1.7260922193527222
+          }
+        ]
+      }
+    ],
+    "first_student_loss_equal_ranks": 16,
+    "first_fake_loss_equal_ranks": 16,
+    "second_fake_loss_equal_ranks": 0
+  },
+  "calibration": "NOT_RUN",
+  "model_search": "NOT_RUN",
+  "native_timing_validation": "NOT_RUN",
+  "timing_attempts": 0,
+  "correctness_attempts_current_head": 3,
+  "threshold_changes": false,
+  "profiler": "NOT_RUN",
+  "strict_winner": null,
+  "canonical_winner_updated": false
+}

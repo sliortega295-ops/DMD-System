@@ -198,7 +198,14 @@ def model_runtime_scope(torch: Any, student: Any):
 
 
 def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int,
-                           fuse_cast_square: bool = False) -> list[str]:
+                           fuse_cast_square: bool = False, request=None) -> list[str]:
+    from distillschedule.search.livewan_request import LiveWanRequest
+    allowed = (request or LiveWanRequest()).kernel_scope_calls("rms")
+    if r.get("name") == "generator_nograd_fused_rms_row_v1":
+        if request is not None and request != LiveWanRequest():
+            return ["C51 fused RMS supports only the measured 81-frame geometry"]
+        from distillschedule.runtime.livewan_generator_fused_rms import runtime_receipt_errors as fused_errors
+        return fused_errors(r, rank=rank, cycles=cycles)
     if rank >= 8:
         return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C29 changed Score scope']
     scope_calls = r.get('scope_forward_calls', [])
@@ -219,7 +226,7 @@ def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int,
         or r.get('input_dtype') != 'bfloat16' or r.get('affine_dtype') != 'float32'
         or r.get('output_dtype') != 'float32' or r.get('intermediate_bf16_rounding') is not True
         or len(scope_calls) != 10 * cycles
-        or any(v not in (1920, 2370, 2820) for v in scope_calls)
+        or any(v not in allowed for v in scope_calls)
         or r.get('calls') != sum(scope_calls)):
         return ['C29 actual norm call/scope/precision contract failed']
     return []

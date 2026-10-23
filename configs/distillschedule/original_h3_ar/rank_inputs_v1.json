@@ -1,0 +1,3335 @@
+{
+  "cache_manifest": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/qualified_manifest.json",
+    "sha256": "c5d0218e63e772d8bad8b0e9e92099c1114497db3068f164db0b689c74447f48"
+  },
+  "native_source_receipt_sha256": "9ca4ad8ca13b0a9e7397f6313e4eca225f10f52802e90423b06f7e786a58b989",
+  "observed_proof": {
+    "CUDA_initialized": false,
+    "GPU_started": 0,
+    "sha256": "32ee3cfd5619705c25f1853c04b2b15a9e257d65ebcd1082fa001efc3985358d",
+    "source_head": "56c1701d6d3690ad866b2c3a9355d5c4d5c8c8f4",
+    "status": "OBSERVED_REAL_NATIVE_PREPARE_BATCH_ALL16_CPU"
+  },
+  "parser_sources": {
+    "examples/minimax_h3/model_training/h3_dmd2.py": "77744f5ec391be813d42ebaf6a2692c18ea58f5ca7fb41398fd287d2a177ca62",
+    "examples/minimax_h3/model_training/train_ours.py": "55e9af70206f7aa6d0a12e1ddf7a389b359338a1be20a26bab558b900c37dc37"
+  },
+  "prepared_scalar_authority": "Original SHA-bound train_ours.prepare_cached_inputs clean reference conditioning constants; tensor metadata observed by original16 CPU proof",
+  "rows": [
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000040.pth",
+        "sha256": "15888a75d0c8cf68a1e6d132fa7e91cdd1a70f5eb37205390d65db52b112a7d2"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            232,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 0,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                232
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              232,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000160.pth",
+        "sha256": "ed228044eed0496dda4402b7de9da9a586f9570f68d02a161abce6dd837a5cca"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              204
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            204,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 1,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                204
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              204,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              204
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000200.pth",
+        "sha256": "4bef4ca1db0af64bdda7dfb91dc2358febddbf3ffa5c869c03c2b88e36ff6e6c"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              35008,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              309
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              35008
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            309,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 2,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                35008,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                309
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                35008
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              309,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              309
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000240.pth",
+        "sha256": "6c19d98939a2d967e75433d91d8c1887b9aec19bed1b0143e9ae296aab5a466a"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              35008,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              354
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              35008
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            354,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 3,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                35008,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                354
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                35008
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              354,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              354
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000280.pth",
+        "sha256": "ae9de6bb236a0fb43c92be5dc25a050102e821fb148fb526b81b35e7f1c5819e"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34944,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              277
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34944
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            277,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 4,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34944,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                277
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34944
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              277,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              277
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000320.pth",
+        "sha256": "de3e70e10fadd1dd245fc4598ba0ced415c3841855545b96224e99fb2cc89d19"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34944,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              250
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34944
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            250,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 5,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34944,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                250
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34944
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              250,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              250
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000360.pth",
+        "sha256": "f49feda456686e05500ece0d10cc964f5080ad67833f57b5a90fb2e510fd2b54"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          94
+        ],
+        "previous_audio": [
+          188,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            94
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              376
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              35008,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              302
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              35008
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            302,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            188,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 6,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              94
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              188,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                376
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                35008,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                302
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                35008
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              302,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              302
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000400.pth",
+        "sha256": "964d75da9447b69b57acbae41f21aecaaa54ef5ee23661fb90d9380abaa9bfab"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              224
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            224,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 7,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                224
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              224,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              224
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000440.pth",
+        "sha256": "d172cbe3e93301af7bce27b5ccc1fb6cf6e283ea8593574707d04eee3afb36a4"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34944,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              240
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34944
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            240,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 8,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34944,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                240
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34944
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              240,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              240
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000480.pth",
+        "sha256": "908f5dcbc0167a9f42e7ffbc434aacac729808729fbd7b97359d61f40fe9eaf0"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              179
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            179,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 9,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                179
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              179,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              179
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000520.pth",
+        "sha256": "029520d5c42f66f19467aacb370195a45ac0a680e9e9a79f7ccdf19cb11f0d06"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              192
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            192,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 10,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                192
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              192,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              192
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000600.pth",
+        "sha256": "c4438f5724607f685c82f4666d98e42852232dfe65f4e33b2f1fccce280b3530"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              217
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            217,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 11,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                217
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              217,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              217
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000640.pth",
+        "sha256": "f774d2f75074be5a9b6518dd365ee2a067147fd959d6c1422bb39831d45eafde"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            232,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 12,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                232
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              232,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000680.pth",
+        "sha256": "5c2a179e7e05b9cd10a357025068f39c7c55874cb67674efd82e8208fc992b82"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              35008,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              356
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              35008
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            356,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 13,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                35008,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                356
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                35008
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              356,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              356
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000720.pth",
+        "sha256": "8d8abc644c8cf83a4d28d55f22e9f156883b07d62951a57218b99a79ccc6cf02"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34880,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34880
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            232,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 14,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34880,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                232
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34880
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              232,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              232
+            ]
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "input_identity": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/assets/native_prev56_cache_r2/row-000000800.pth",
+        "sha256": "53f958ddeac70971f6b98959b65887456a76bfbb3385d596f47dd9fee052eaab"
+      },
+      "input_shapes": {
+        "audio": [
+          2,
+          32,
+          93
+        ],
+        "previous_audio": [
+          186,
+          32
+        ],
+        "previous_video": [
+          17136,
+          96
+        ],
+        "video": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ]
+      },
+      "negative_tensors": null,
+      "positive_scalars": {
+        "audio_cond_noise_aug": 1.0,
+        "imgvid_cond_noise_aug": 1.0
+      },
+      "positive_tensors": {
+        "audio_input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            2,
+            32,
+            93
+          ]
+        },
+        "input_latents": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            1,
+            24,
+            17,
+            48,
+            84
+          ]
+        },
+        "packed": {
+          "audio_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              372
+            ]
+          },
+          "cu_seqlens": {
+            "dtype": "torch.int32",
+            "shape": [
+              3
+            ]
+          },
+          "img_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              34272
+            ]
+          },
+          "img_position_ids": {
+            "dtype": "torch.float64",
+            "shape": [
+              1,
+              34944,
+              3
+            ]
+          },
+          "text_pos": {
+            "dtype": "torch.int64",
+            "shape": [
+              259
+            ]
+          },
+          "token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              34944
+            ]
+          }
+        },
+        "prompt_embeds": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            259,
+            5120
+          ]
+        },
+        "ref_audio_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            186,
+            32
+          ]
+        },
+        "ref_visual_anchor": {
+          "dtype": "torch.bfloat16",
+          "shape": [
+            17136,
+            96
+          ]
+        }
+      },
+      "rank": 15,
+      "raw_tensors": [
+        {
+          "audio_input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              32,
+              93
+            ]
+          },
+          "input_latents": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              24,
+              17,
+              48,
+              84
+            ]
+          },
+          "ref_audio_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              186,
+              32
+            ]
+          },
+          "ref_visual_anchor": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              17136,
+              96
+            ]
+          }
+        },
+        {
+          "packed": {
+            "audio_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                372
+              ]
+            },
+            "cu_seqlens": {
+              "dtype": "torch.int32",
+              "shape": [
+                3
+              ]
+            },
+            "img_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                34272
+              ]
+            },
+            "img_position_ids": {
+              "dtype": "torch.float64",
+              "shape": [
+                1,
+                34944,
+                3
+              ]
+            },
+            "text_pos": {
+              "dtype": "torch.int64",
+              "shape": [
+                259
+              ]
+            },
+            "token_tags": {
+              "dtype": "torch.int64",
+              "shape": [
+                34944
+              ]
+            }
+          },
+          "prompt_embeds": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              259,
+              5120
+            ]
+          },
+          "text_token_tags": {
+            "dtype": "torch.int64",
+            "shape": [
+              259
+            ]
+          }
+        },
+        {}
+      ]
+    }
+  ],
+  "schema_version": "distillschedule.original_h3_ar_rank_inputs.v1",
+  "scope": "METADATA_ONLY_ORIGINAL_PREPARE_BATCH_NO_TENSOR_VALUES_NO_TRANSFORMATION_NOT_COSTS"
+}

@@ -1,0 +1,10 @@
+{
+  "status": "PASS_CPU_REGRESSION",
+  "old_error_reproduced": true,
+  "corrected_schema": "p0_policy",
+  "corrected_post_timer_check_passed": true,
+  "fix_applied_to_GPU_run": false,
+  "new_GPU_run": "NOT_RUN",
+  "original_failing_file_sha256": "bf654f87967b74e6386456b2d4cf1be02cb00a27a7961e84f0c3e8f74e2847ce",
+  "fixed_file_sha256": "142f84a04efc1eaf37a02babc125f9a140b08a0a461c1b0ae0c3d0fb4b93f6f2"
+}

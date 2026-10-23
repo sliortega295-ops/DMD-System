@@ -1,0 +1,16 @@
+{
+  "schema_version": "distillschedule.ltx25_inputs.v1",
+  "mode": "prompts",
+  "source_root": "/REPLACE_WITH/pinned-ltx25-source",
+  "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+  "records": [{
+    "id": "native-prompt-0000",
+    "prompt": "a cat runs",
+    "geometry": {
+      "video_shape": [1, 128, 2, 2, 2],
+      "audio_shape": [1, 8, 11, 16],
+      "fps": 8.0,
+      "conditioning": {"video_prefix_latent_frames": 0, "audio_prefix_latent_frames": 0}
+    }
+  }]
+}

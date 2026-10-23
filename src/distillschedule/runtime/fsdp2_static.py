@@ -13,7 +13,7 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 
 @dataclasses.dataclass(frozen=True)
@@ -116,6 +116,7 @@ def fsdp2_metadata_tolerant_checkpoint(
     *args: Any,
     operation_source: bool = False,
     selective_flash_receipt: dict[str, Any] | None = None,
+    function_wrapper: Any | None = None,
     **kwargs: Any,
 ) -> Any:
     """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
@@ -154,8 +155,11 @@ def fsdp2_metadata_tolerant_checkpoint(
             _selective_flash_checkpoint_contexts,
             selective_flash_receipt,
         )
+    function = module.__call__
+    if function_wrapper is not None:
+        function = function_wrapper(function)
     return checkpoint(
-        module.__call__,
+        function,
         *args,
         use_reentrant=False,
         determinism_check="none",
@@ -215,11 +219,18 @@ def configure_fsdp2_checkpointing(
         "auxiliary_checkpoint_module_counts": {},
         "block_call_counts": {str(index): 0 for index in range(len(blocks))},
         "operation_source": bool(operation_source),
+        "lora_checkpoint_replay_scope": callable(
+            getattr(model, "_distillschedule_lora_checkpoint_function_wrapper", None)
+        ),
         "adds_synchronization": False,
         "changes_module_math": False,
         "changes_physical_model_call_inventory": False,
     }
     model._distillschedule_checkpoint_policy_receipt = receipt
+    function_wrapper = getattr(
+        model, "_distillschedule_lora_checkpoint_function_wrapper", None
+    )
+    extra = {"function_wrapper": function_wrapper} if function_wrapper is not None else {}
 
     if not selective_flash_checkpoint_stride:
         if operation_source:
@@ -229,6 +240,10 @@ def configure_fsdp2_checkpointing(
             )
         else:
             model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+        if extra:
+            model._gradient_checkpointing_func = functools.partial(
+                model._gradient_checkpointing_func, **extra
+            )
         return receipt
 
     block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
@@ -257,7 +272,7 @@ def configure_fsdp2_checkpointing(
             receipt["auxiliary_checkpoint_forward_count"] += 1
             counts = receipt["auxiliary_checkpoint_module_counts"]
             counts[module_name] = int(counts.get(module_name, 0)) + 1
-            return fsdp2_metadata_tolerant_checkpoint(module, *args, **kwargs)
+            return fsdp2_metadata_tolerant_checkpoint(module, *args, **extra, **kwargs)
 
         receipt["checkpoint_forward_count"] += 1
         receipt["block_call_counts"][str(block_index)] += 1
@@ -267,6 +282,7 @@ def configure_fsdp2_checkpointing(
             selective_flash_receipt=(
                 receipt if block_index in selected_set else None
             ),
+            **extra,
             **kwargs,
         )
 
@@ -451,13 +467,16 @@ class FSDP2EngineAdapter:
         physical_step: int,
         global_batch: int = 16,
         gradient_clip: float = 1.0,
+        dp_world_size: int = 16,
     ) -> None:
+        if type(dp_world_size) is not int or dp_world_size < 1:
+            raise ValueError("FSDP2 engine dp_world_size must be an explicit positive integer")
         self.module = module
         self.optimizer = optimizer
         self.lr_scheduler = scheduler
         self.global_steps = int(physical_step)
         self.global_samples = int(physical_step) * int(global_batch)
-        self.dp_world_size = 16
+        self.dp_world_size = dp_world_size
         self._global_batch = int(global_batch)
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
@@ -471,12 +490,17 @@ class FSDP2EngineAdapter:
 
     def step(self) -> None:
         torch = _torch()
-        trainables = [
-            parameter for parameter in self.module.parameters() if parameter.requires_grad
+        # Phase masks may disable a parameter after its gradient accumulated.
+        # Clip the optimizer's actual ownership, in parameter-group order.
+        parameters = [
+            parameter for group in self.optimizer.param_groups for parameter in group["params"]
         ]
-        if not trainables:
-            raise RuntimeError("FSDP2 engine has no trainable parameters")
-        torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if not parameters:
+            raise RuntimeError("FSDP2 engine optimizer has no parameters")
+        clip_norm = torch.nn.utils.clip_grad_norm_(parameters, self._gradient_clip)
+        if getattr(self, "_trajectory_capture_grad_norm", False):
+            norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
+            self.last_gradient_norm = float(norm.detach().float().cpu())
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad(set_to_none=True)

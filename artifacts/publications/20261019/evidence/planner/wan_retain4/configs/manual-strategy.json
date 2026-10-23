@@ -1,0 +1,21 @@
+{
+  "candidate_bundle": {
+    "schema_version": "distillschedule.wan_candidate_bundle.v1",
+    "grad_lora_fused_epilogue": true,
+    "modulated_norm_fusion": true,
+    "generator_rollout_cuda_graph": true,
+    "generator_nograd_lora_cast_cache": true,
+    "critic_grad_cuda_graph": true
+  },
+  "retention_execution": "planner-retain4.v1",
+  "retained_critic_blocks": [
+    26,
+    27,
+    28,
+    29
+  ],
+  "placement": "resident",
+  "chunk_tokens": 2048,
+  "lora_epilogue": true,
+  "rollout_window": 5
+}

@@ -1,0 +1,277 @@
+................FFFFFFF                                                  [100%]
+=================================== FAILURES ===================================
+______________ test_bad_action_evidence_fail_closed[backward_rng] ______________
+
+failure = 'backward_rng'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+___________ test_bad_action_evidence_fail_closed[backward_duplicate] ___________
+
+failure = 'backward_duplicate'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+_____________ test_bad_action_evidence_fail_closed[shadow_missing] _____________
+
+failure = 'shadow_missing'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+_____________ test_bad_action_evidence_fail_closed[shadow_layout] ______________
+
+failure = 'shadow_layout'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+___________ test_bad_action_evidence_fail_closed[cycle_distribution] ___________
+
+failure = 'cycle_distribution'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+______________ test_bad_action_evidence_fail_closed[host_missing] ______________
+
+failure = 'host_missing'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+______________ test_bad_action_evidence_fail_closed[paired_bytes] ______________
+
+failure = 'paired_bytes'
+
+    @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
+                                       'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
+                                       'host_missing','paired_bytes'])
+    def test_bad_action_evidence_fail_closed(failure):
+        from distillschedule.search.livewan_action_observation import validate_action_observations
+        raws = action_fixture()
+        if failure == 'rank': raws.pop()
+        elif failure == 'source': raws[0]['source_head'] = 'b'*40
+        elif failure == 'version': raws[0]['rows'][1]['runtime_before']['generator'] = 7
+        elif failure == 'sample': raws[8]['rows'][3]['metadata']['rows'][0]['seeds']['rollout'] = 888
+        elif failure == 'bytes': raws[0]['transport_observation']['rows'][0]['bytes'] = 101
+        elif failure == 'parent': raws[0]['rows'][1]['parent'] = 888
+        elif failure == 'backward_rng':
+            r=next(r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward')
+            r['metadata']['rows'][0]['seeds']['rollout']=444
+        elif failure == 'backward_duplicate':
+            r=[r for r in raws[0]['rows'][1:] if r['metadata']['action_kind']=='generator_backward']
+            r[1]['metadata']['rows']=r[0]['metadata']['rows']
+        elif failure == 'shadow_missing': raws[0]['native_transport_contract']['shadow']=None
+        elif failure == 'shadow_layout': raws[0]['native_transport_contract']['shadow']['layout_sha256']='c'*64
+        elif failure == 'cycle_distribution':
+            r=next(r for r in raws[8]['rows'][1:] if r['metadata']['action_kind']=='teacher_velocity' and r['cycle']==2)
+            r['cycle']=1
+        elif failure == 'host_missing':
+            raws[0]['transport_observation']['rows']=[r for r in raws[0]['transport_observation']['rows'] if r['kind']!='gloo_send_completion']
+        elif failure == 'paired_bytes':
+            c=raws[8]['native_transport_contract']['runahead'];c.update(payload_bytes=200,payload_shape=[50],h2d_bytes=3400)
+            for r in raws[8]['transport_observation']['rows']:
+                if r['kind'] in ('latent_h2d','gloo_receive_wait'): r['bytes']=200
+        else: raws[0]['rows'].pop()
+>       with pytest.raises(ValueError): validate_action_observations(raws,expected_head='a'*40)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_refactor_livewan_action_observation.py:267: Failed
+=========================== short test summary info ============================
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[backward_rng]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[backward_duplicate]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[shadow_missing]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[shadow_layout]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[cycle_distribution]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[host_missing]
+FAILED tests/test_refactor_livewan_action_observation.py::test_bad_action_evidence_fail_closed[paired_bytes]
+7 failed, 16 passed in 0.26s

@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"workload": "W4"},
+  "data": {
+    "input_kind": "original_livewan_teacher_cohorts.v1",
+    "prepared": "REPLACE_WITH_PREPARED_NATIVE_INPUTS/livewan-inputs.json"
+  },
+  "algorithm": {"name": "original_self_forcing_reference.v1"},
+  "execution": {
+    "adapter": "native",
+    "mode": "reference",
+    "task": "task.json",
+    "assets": "REPLACE_WITH_PREPARED_REFERENCE_ASSETS.json",
+    "capacity_policy": "REPLACE_WITH_EXPLICIT_REFERENCE_CAPACITY_POLICY.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 1,
+    "seed": 20260830,
+    "output_dir": "REPLACE_WITH_NEW_PROJECT_RUN_DIRECTORY"
+  }
+}

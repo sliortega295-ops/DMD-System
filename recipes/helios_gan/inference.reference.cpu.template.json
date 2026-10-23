@@ -1,0 +1,23 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "factory": "distillschedule.training.helios_inference:build_inference_model",
+    "parameters": {}
+  },
+  "algorithm": {
+    "factory": "distillschedule.training.helios_inference:refuse_training"
+  },
+  "data": {
+    "prepared": "/absolute/project/new-inference-inputs/prepared/manifest.json"
+  },
+  "execution": {
+    "adapter": "program",
+    "mode": "reference"
+  },
+  "trainer": {
+    "cycles": 1,
+    "seed": 729,
+    "device": "cpu",
+    "output_dir": "/absolute/project/inference-only-not-a-training-run"
+  }
+}

@@ -164,7 +164,9 @@ def model_runtime_scope(torch, student):
             yield
 
 
-def runtime_receipt_errors(r, *, rank, cycles, output_layout='native'):
+def runtime_receipt_errors(r, *, rank, cycles, output_layout='native', request=None):
+    from distillschedule.search.livewan_request import LiveWanRequest
+    allowed = (request or LiveWanRequest()).kernel_scope_calls("gate")
     if rank >= 8:
         return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C33 changed Score scope']
     calls = r.get('scope_forward_calls', [])
@@ -174,7 +176,7 @@ def runtime_receipt_errors(r, *, rank, cycles, output_layout='native'):
         or r.get('execution_status') != 'PASS' or r.get('scope_entries') != 10*cycles
         or r.get('scope_exits') != 10*cycles or r.get('active') is not False
         or r.get('scope_failures') != 0 or r.get('contract_failures') != 0
-        or len(calls) != 10*cycles or any(c not in (1260, 1560, 1860) for c in calls)
+        or len(calls) != 10*cycles or any(c not in allowed for c in calls)
         or r.get('calls') != sum(calls)):
         return ['C33 actual no-grad gate call/scope/precision contract failed']
     return []

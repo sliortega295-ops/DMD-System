@@ -6,7 +6,7 @@ compute, NCCL, copies, synchronization, optimizer work and waits. Use
 activity strips on one aligned time axis.
 
 ```bash
-python scripts/distillschedule/analyze_nsys_activity_overlay.py \
+python tools/profiling/analyze_nsys_activity_overlay.py \
   --input 2=/path/to/rank2.sqlite \
   --input 9=/path/to/rank9.sqlite \
   --capture-range 2=<start_ns>:<end_ns> \

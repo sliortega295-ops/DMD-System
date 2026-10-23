@@ -1,0 +1,17 @@
+{
+  "analyzer_commit": "812236caf73163824e20aa055dda0326fdfec258",
+  "baseline_rerun": false,
+  "baseline_seconds": 45.3613984375,
+  "baseline_summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/reports/timing_baseline_HW_reaudit_r1.json",
+  "candidate_seconds": 45.257226562499994,
+  "candidate_summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/w4_h100_teacher_resident_20261015_r1/artifacts/matched_candidate_resume_r1/candidate_timing_audited_summary.json",
+  "claim_boundary": "originalrawbaselinesummaryFAILpreserved; originalsame8ranktimer recoveredonlythroughhashboundHWmetadata. ExistingtrajectoryREVIEWkept; no strictfullstate claim, no profiledtime",
+  "descriptive_ratio": 1.0023017732837902,
+  "new_GPU_arms": 1,
+  "profiled": false,
+  "replications": 1,
+  "status": "PASS_W4_SAME_SOURCE_SINGLE_DIAGNOSTIC_PAIR",
+  "strict_full_state_equivalence": "REVIEW_UNCHANGED_NOT_STRICT_PASS",
+  "training_head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+  "utc": "2026-10-15T20:13:02.965548+00:00"
+}

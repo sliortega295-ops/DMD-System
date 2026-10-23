@@ -1,0 +1,6 @@
+{
+  "command": "cd /share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-h3-actions-878aff490ce2-20260907 && env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-h3-actions-878aff490ce2-20260907/src /share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/bin/python /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/analyze_action_canary_r1.py --root /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/native/jointp_h3_actions_20260907_r1-w3-correctness --output /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/analysis-action-r1 --head 878aff490ce28c661ac1d927f08f8846992baf45",
+  "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+  "analyzer_sha256": "ebbe565925dfaa4e47907e5036adf0458dcbf4fdfdf2fcf535f7a2be138343dd",
+  "new_gpu_run": false
+}

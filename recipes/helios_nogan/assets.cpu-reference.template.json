@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillschedule.helios_nogan_cpu_reference_assets.v1",
+  "scope": "CPU1_RANK0_PER_SAMPLE_ORIGINAL_W2_NOT_WORLD16",
+  "precision": "WAN_NATIVE_MIXED_BF16",
+  "bootstrap": {
+    "path": "/ABSOLUTE/LOCAL/W2/bootstrap.cpu-reference.json",
+    "bytes": 0,
+    "sha256": "REPLACE_WITH_ACTUAL_CONTENT_SHA256"
+  },
+  "args": {
+    "path": "/ABSOLUTE/LOCAL/W2/complete-original-args.json",
+    "bytes": 0,
+    "sha256": "REPLACE_WITH_ACTUAL_CONTENT_SHA256"
+  },
+  "input_config": {
+    "path": "/ABSOLUTE/LOCAL/W2/original-capture.yaml",
+    "bytes": 0,
+    "sha256": "REPLACE_WITH_ACTUAL_CONTENT_SHA256"
+  }
+}

@@ -1,0 +1,297 @@
+{
+  "schema_version": "distillschedule.joint_planner_native_calibration_pilot.v1",
+  "status": "PASS_NATIVE_STAGE_CALIBRATION",
+  "runtime_source_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002",
+  "run_id": "jointp_wan_stage_c1024_20260907_r1-calibration",
+  "implementation": "joint-wan1-resident-c1024-e1",
+  "branch": "agent/dmd-joint-planner-20260907",
+  "pr": 28,
+  "canonical_profiles_changed": false,
+  "main_modified": false,
+  "rank_count": 16,
+  "stage_records": 224,
+  "final_versions": {
+    "critic": 20,
+    "ema": 20,
+    "generator": 4
+  },
+  "correctness": {
+    "current_source_reference_and_candidate": "16/16 ranks x2 cycles PASS",
+    "native_coarse_trajectory": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+    "actual_cycles": 2,
+    "strict_equivalence": "NOT_ESTABLISHED_BY_COARSE_TRAJECTORY"
+  },
+  "calibration_diagnostic_only": {
+    "cycle1_wall_seconds": 28.927612989908084,
+    "cycle2_wall_seconds": 25.867769131902605,
+    "formal_timing_eligible": false,
+    "speedup": null,
+    "caveat": "EXTRA_STAGE_BARRIERS_AND_SYNCHRONIZATION; NOT_NATIVE_FULL5_OR_CYCLE2_DENOMINATOR"
+  },
+  "memory": {
+    "post_setup_static_GiB": 17.76177453994751,
+    "max_allocated_GiB": 21.899551391601562,
+    "max_reserved_GiB": 22.328125,
+    "driver_min_sampled_GiB": 16.26953125,
+    "node_cgroup_peak_sampled_GiB": [
+      53.467899322509766,
+      53.78373336791992
+    ],
+    "cgroup_oom_delta": [
+      0,
+      0
+    ],
+    "worker_cuda_oom": "NONE_IN_COMPLETED_RUN_NOT_DRIVER_COUNTER",
+    "scope": "ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN_AND_CGROUP_PEAK"
+  },
+  "calibration_binding": {
+    "asset_fingerprint": "825d0ff761b62e167fde9bf34aefae9b4e534598ff7f8462407472e1ea9b7ec7",
+    "environment_fingerprint": "c8bed61f3d53e75bd1cc202c75692afd4b92d3ab1ff179f32840e63e709f0c4f",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "3de62c3adf7a22dd9c9d3cc748e7af60e7a7aa2c4433071dc19ebe452b812d90",
+    "semantic_fingerprint": "a4d411a2b5a53f1253b6fe63a6f95bdf0a59116abd018c31286aca881df4ad12",
+    "source_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002"
+  },
+  "records": [
+    {
+      "operation_id": "cycle1.generator_update",
+      "max_rank_duration_seconds": 9.188944859,
+      "workspace_GiB": 4.137776851654053,
+      "key": "9f4c5b6fd5349d74722e63490c8b68c5c391060720248d6513f3e7ddf6282faa",
+      "samples_ns": [
+        9188944859
+      ],
+      "workspace_bytes_per_rank": 4442904064,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.generator_update.json",
+      "source_receipt_sha256": "fc2ad69b250acbab8eeca57fe94f776979664baede7d518854203c21d2fe6b03",
+      "operation_contract_sha256": "9f4c5b6fd5349d74722e63490c8b68c5c391060720248d6513f3e7ddf6282faa"
+    },
+    {
+      "operation_id": "cycle1.critic_rollouts",
+      "max_rank_duration_seconds": 8.097875093,
+      "workspace_GiB": 1.112072467803955,
+      "key": "2afc910183b9fae2a9c3a5eadfc545d2ab547ad979042853a372c80494165c26",
+      "samples_ns": [
+        8097875093
+      ],
+      "workspace_bytes_per_rank": 1194078720,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic_rollouts.json",
+      "source_receipt_sha256": "7e2117efce17e5fa63db34564ab432aea33400c691454b599af1f422cd3ca582",
+      "operation_contract_sha256": "2afc910183b9fae2a9c3a5eadfc545d2ab547ad979042853a372c80494165c26"
+    },
+    {
+      "operation_id": "cycle1.critic0_update_ema",
+      "max_rank_duration_seconds": 2.346753032,
+      "workspace_GiB": 3.0008773803710938,
+      "key": "ec61538ecd1829e6e37080a0203a527c73f48110037969aaba78cd9625099f00",
+      "samples_ns": [
+        2346753032
+      ],
+      "workspace_bytes_per_rank": 3222167552,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic0_update_ema.json",
+      "source_receipt_sha256": "dc56edc39e255ea90f06d8eaa8a2067dcc9a526894c2e9d41a453a4540d978f4",
+      "operation_contract_sha256": "ec61538ecd1829e6e37080a0203a527c73f48110037969aaba78cd9625099f00"
+    },
+    {
+      "operation_id": "cycle1.critic1_update_ema",
+      "max_rank_duration_seconds": 2.315580441,
+      "workspace_GiB": 2.997246265411377,
+      "key": "32ce4a706edf413e43c4f932baffb2d6cbcbc8cfc983a1ddb5bb850f03ca7038",
+      "samples_ns": [
+        2315580441
+      ],
+      "workspace_bytes_per_rank": 3218268672,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic1_update_ema.json",
+      "source_receipt_sha256": "5d26f105db799601e77de2d77b271e5a2b2605b50ea21f2de40a9283582962b1",
+      "operation_contract_sha256": "32ce4a706edf413e43c4f932baffb2d6cbcbc8cfc983a1ddb5bb850f03ca7038"
+    },
+    {
+      "operation_id": "cycle1.critic2_update_ema",
+      "max_rank_duration_seconds": 2.319959696,
+      "workspace_GiB": 2.998467445373535,
+      "key": "4dae15225905dd18038cb0a748d5b1cf9b73414229dd05afee6b4b040d3a361e",
+      "samples_ns": [
+        2319959696
+      ],
+      "workspace_bytes_per_rank": 3219579904,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic2_update_ema.json",
+      "source_receipt_sha256": "484165efd76e61992a16a1d9fa1161ea419ef3ba9b0034620e5e09a7b38dece2",
+      "operation_contract_sha256": "4dae15225905dd18038cb0a748d5b1cf9b73414229dd05afee6b4b040d3a361e"
+    },
+    {
+      "operation_id": "cycle1.critic3_update_ema",
+      "max_rank_duration_seconds": 2.320170021,
+      "workspace_GiB": 2.993295192718506,
+      "key": "685b90aaf3efd62df9830998200600a36d7d2bdea868c4280dd50c099a668692",
+      "samples_ns": [
+        2320170021
+      ],
+      "workspace_bytes_per_rank": 3214026240,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic3_update_ema.json",
+      "source_receipt_sha256": "0332ad878707f3791b277685a48a8867f94b2957119b96b98d4b7a9f6ddd5396",
+      "operation_contract_sha256": "685b90aaf3efd62df9830998200600a36d7d2bdea868c4280dd50c099a668692"
+    },
+    {
+      "operation_id": "cycle1.critic4_update_ema",
+      "max_rank_duration_seconds": 2.319388671,
+      "workspace_GiB": 2.9878101348876953,
+      "key": "d3371eacdbb49d8cfd98642162488da0c4ffe759bd0911c7e4d6174613714fe7",
+      "samples_ns": [
+        2319388671
+      ],
+      "workspace_bytes_per_rank": 3208136704,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle1.critic4_update_ema.json",
+      "source_receipt_sha256": "2563aaf9382cb8f39f3b524b734af1e271a695f664d4f781c0edd7bbf00a10e6",
+      "operation_contract_sha256": "d3371eacdbb49d8cfd98642162488da0c4ffe759bd0911c7e4d6174613714fe7"
+    },
+    {
+      "operation_id": "cycle2.generator_update",
+      "max_rank_duration_seconds": 5.856459567,
+      "workspace_GiB": 4.132378101348877,
+      "key": "6a828c421dff4a0bf43d2caaa808b96203038efefce6fb26315313f3df654636",
+      "samples_ns": [
+        5856459567
+      ],
+      "workspace_bytes_per_rank": 4437107200,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.generator_update.json",
+      "source_receipt_sha256": "5a8df132e484537dc570498f7bfe5ba593c846028f88137bf20b552fc1775c67",
+      "operation_contract_sha256": "6a828c421dff4a0bf43d2caaa808b96203038efefce6fb26315313f3df654636"
+    },
+    {
+      "operation_id": "cycle2.critic_rollouts",
+      "max_rank_duration_seconds": 8.083177187,
+      "workspace_GiB": 1.1120753288269043,
+      "key": "d5bab931edc919ecf5ac89957ff5e30080ec82f3147d7700e3d0b8843d7e4942",
+      "samples_ns": [
+        8083177187
+      ],
+      "workspace_bytes_per_rank": 1194081792,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic_rollouts.json",
+      "source_receipt_sha256": "8cb1f0abcc75a8e4bca8eb353194a580e2f8731c46a284971fc74c1cd84408e8",
+      "operation_contract_sha256": "d5bab931edc919ecf5ac89957ff5e30080ec82f3147d7700e3d0b8843d7e4942"
+    },
+    {
+      "operation_id": "cycle2.critic0_update_ema",
+      "max_rank_duration_seconds": 2.624151678,
+      "workspace_GiB": 3.000880241394043,
+      "key": "3a5c5929fbd3e92864bf5ff7a72fb7027b156f3d78f8f7a60e332620e442e7e8",
+      "samples_ns": [
+        2624151678
+      ],
+      "workspace_bytes_per_rank": 3222170624,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic0_update_ema.json",
+      "source_receipt_sha256": "00ab40ca11b15597e06793ec5432d059452df984f855984fa017a1a8d3e3ac65",
+      "operation_contract_sha256": "3a5c5929fbd3e92864bf5ff7a72fb7027b156f3d78f8f7a60e332620e442e7e8"
+    },
+    {
+      "operation_id": "cycle2.critic1_update_ema",
+      "max_rank_duration_seconds": 2.317475065,
+      "workspace_GiB": 2.997249126434326,
+      "key": "e93020bb40e090231f2c70935221dc176ca37e5ebf10e4fcaf662a5c4dac4d83",
+      "samples_ns": [
+        2317475065
+      ],
+      "workspace_bytes_per_rank": 3218271744,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic1_update_ema.json",
+      "source_receipt_sha256": "b3331999fa8acdafa48c8172085089762014b1c34f20b84f4f749d27ddb9c35a",
+      "operation_contract_sha256": "e93020bb40e090231f2c70935221dc176ca37e5ebf10e4fcaf662a5c4dac4d83"
+    },
+    {
+      "operation_id": "cycle2.critic2_update_ema",
+      "max_rank_duration_seconds": 2.31978227,
+      "workspace_GiB": 2.9984703063964844,
+      "key": "f3570df34e92bc8da511ffc51d8f4515ba4c502b34a0f49f00e558b589420f45",
+      "samples_ns": [
+        2319782270
+      ],
+      "workspace_bytes_per_rank": 3219582976,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic2_update_ema.json",
+      "source_receipt_sha256": "045bb63529013107419a915411e212c4b6345249842e13463c4d6028c2ed9929",
+      "operation_contract_sha256": "f3570df34e92bc8da511ffc51d8f4515ba4c502b34a0f49f00e558b589420f45"
+    },
+    {
+      "operation_id": "cycle2.critic3_update_ema",
+      "max_rank_duration_seconds": 2.323729805,
+      "workspace_GiB": 2.993298053741455,
+      "key": "319e06b4e99cdb4a4efea29bfd7be0b2664dc267a90f5e6ccb92022451d463e9",
+      "samples_ns": [
+        2323729805
+      ],
+      "workspace_bytes_per_rank": 3214029312,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic3_update_ema.json",
+      "source_receipt_sha256": "c85494cd5c9f64556fb0255034478cf10c0aa30ce72aa839968d4656efb5d474",
+      "operation_contract_sha256": "319e06b4e99cdb4a4efea29bfd7be0b2664dc267a90f5e6ccb92022451d463e9"
+    },
+    {
+      "operation_id": "cycle2.critic4_update_ema",
+      "max_rank_duration_seconds": 2.320803694,
+      "workspace_GiB": 2.9878129959106445,
+      "key": "d84479e791d2809ba3a5e6cc99645d239ac5753c3a17b234bea581f9d43c5d4b",
+      "samples_ns": [
+        2320803694
+      ],
+      "workspace_bytes_per_rank": 3208139776,
+      "source_receipt": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/cycle2.critic4_update_ema.json",
+      "source_receipt_sha256": "c3d7a980be459c0fd5fd6b87e8e669fcaa8ae5d372f589d7fccd3e3369fd930a",
+      "operation_contract_sha256": "d84479e791d2809ba3a5e6cc99645d239ac5753c3a17b234bea581f9d43c5d4b"
+    }
+  ],
+  "remote_layout_fragment": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/layout-fragment.json",
+    "sha256": "fbf879a254f602fa4565db834a9ca5212b49eb8e3f6448c44ec0f1139ac30911"
+  },
+  "remote_operation_costs": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/operation-costs.json",
+    "sha256": "24dd4408067689632c9878153f3ba2068447c0f9360355c40f36c654a05bb488"
+  },
+  "remote_provenance": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_stage_c1024_20260907_r1-calibration/stage-costs/provenance.json",
+    "sha256": "3d858ba7ff4a1ff45cfb8c5aae941cfd8a1b55204d2deeeb89c25fd701c18ccc"
+  },
+  "reconciliation": "PASS_COST_RECEIPT_RECONCILIATION",
+  "cleanup": [
+    {
+      "node": 0,
+      "status": "PASS",
+      "exit_code": 0,
+      "log": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_stage_calibration_r1/logs/node0_after_cleanup.log",
+      "output_tail": "ry.events ps -eo pid,comm,args echo PASS_GPU_EMPTY_AND_NODE_LOCK_AVAILABLE \n1826419 ps              ps -eo pid,comm,args\nPASS_GPU_EMPTY_AND_NODE_LOCK_AVAILABLE\n"
+    },
+    {
+      "node": 1,
+      "status": "PASS",
+      "exit_code": 0,
+      "log": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_stage_calibration_r1/logs/node1_after_cleanup.log",
+      "output_tail": "ry.events ps -eo pid,comm,args echo PASS_GPU_EMPTY_AND_NODE_LOCK_AVAILABLE \n 875008 ps              ps -eo pid,comm,args\nPASS_GPU_EMPTY_AND_NODE_LOCK_AVAILABLE\n"
+    }
+  ],
+  "tests": {
+    "focused": 49,
+    "all_refactor_passed": 558,
+    "all_refactor_skipped": 17,
+    "five_profile_integration": "PASS",
+    "github_ci_runtime_head": "6/6 SUCCESS",
+    "review": "Bounded independent audit + finding regression tests; full CE review NOT_RUN"
+  },
+  "fixed_pre_gpu_bugs": [
+    "New calibration mode fell into legacy single-cycle launcher gate; actual heredoc regression fixed.",
+    "FSDP inner rollout reset_peak_memory_stats erased macro-stage peaks; calibration-only wrapper preserves pre-reset stats, invokes original reset, restores on success/failure."
+  ],
+  "budget": {
+    "prior_native_timing_attempts_spent": 2,
+    "new_native_timing_attempts": 0,
+    "native_timing_attempts_remaining": 6,
+    "diagnostic_calibration_runs_completed": 1,
+    "new_current_source_correctness_runs": 2
+  },
+  "remaining": {
+    "complete_seven_implementation_layout": "NOT_COLLECTED",
+    "model_selected_non_seed_native_timing": "NOT_RUN",
+    "independent_confirmation": "NOT_RUN",
+    "livewan_generated_lowerer": "NOT_IMPLEMENTED",
+    "h3_grid1000_generated_lowerer": "NOT_IMPLEMENTED",
+    "new_winner": null
+  },
+  "local_evidence": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_stage_calibration_r1",
+  "raw_data_policy": "Large assets/state remain remote; only small derived metadata copied."
+}

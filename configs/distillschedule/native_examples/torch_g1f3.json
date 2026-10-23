@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.native_flow_task.v1",
+  "protocol": "euler_last_step_detached_dmd_post_g_independent_fake_v1",
+  "backend": "torch-reference",
+  "fixture": true,
+  "device": "cpu",
+  "dtype": "float32",
+  "video_height": 32,
+  "video_width": 32,
+  "video_frames": 5,
+  "channels": 4,
+  "fake_updates": 3,
+  "denoising_steps": 4,
+  "lora_rank": 2,
+  "lora_alpha": 2,
+  "ema_after": [0, 1, 2],
+  "max_retained_bytes": 512
+}

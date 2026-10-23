@@ -1,0 +1,3668 @@
+{
+  "status": "PASS_BOTH_GAN_CORRECTNESS_16_RANKS_TWO_CYCLES",
+  "source_head": "cc7e451bff7387640634a394f07047be8e0c089e",
+  "runs": [
+    {
+      "candidate": "joint-helios1-gan-fsdp-c512-p0-w5",
+      "run_id": "jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5",
+      "rank_count": 16,
+      "ranks": [
+        {
+          "rank": 0,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24368331604637,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5587206144,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40526903001592,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3030777856,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_00.json",
+            "sha256": "9ce243320cba8106fdf2c85bc7a1bcd043eac3fa11c8fdaf07ae9ae9a1be8174"
+          }
+        },
+        {
+          "rank": 1,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24369390588254,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5652217856,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35785801728
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40524864010513,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3095789568,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26784195584,
+                "max_reserved_bytes": 38342230016,
+                "reserved_bytes": 38342230016
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_01.json",
+            "sha256": "9034d7776ec4949edaf4afb25f59be7480b501c76893dba8e708fd2460dd85a6"
+          }
+        },
+        {
+          "rank": 2,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24363391310908,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5616566272,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40525867906399,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3060137984,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_02.json",
+            "sha256": "cca1c874e64ee86c30dd6f74e227ad3fe0e4cc1980b7cb6c41dabe10f1042791"
+          }
+        },
+        {
+          "rank": 3,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24363931291737,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5566234624,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40530226216651,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3009806336,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_03.json",
+            "sha256": "4f2c92235947e3afa0dbef828acfc9836a31954bd0c5e14477a8804100971967"
+          }
+        },
+        {
+          "rank": 4,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24369974806905,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5566234624,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40530194109306,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3009806336,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_04.json",
+            "sha256": "15639d7ae81c8166223ccfabddb5c8a97f5ae35c1e28d2a666622f015cde5ea4"
+          }
+        },
+        {
+          "rank": 5,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.2436633289326,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5603983360,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.4052112097852,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3047555072,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_05.json",
+            "sha256": "e04e27adcaa96f8a8a14fde5ab0b2d336c4be0a12583908e6eefd8cb347a93d2"
+          }
+        },
+        {
+          "rank": 6,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24367112410255,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5624954880,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.4052948479075,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3068526592,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_06.json",
+            "sha256": "a0bff5ca734e2c62ad2a3e64f98a858056ace414b0e7d6d5f9a9313d676d30f9"
+          }
+        },
+        {
+          "rank": 7,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24370628991164,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5528485888,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26777535488,
+                "max_reserved_bytes": 40953184256,
+                "reserved_bytes": 35896950784
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40525170601904,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 2972057600,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778534912,
+                "max_reserved_bytes": 38453379072,
+                "reserved_bytes": 38453379072
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_07.json",
+            "sha256": "48a8866c38fab00ddb31f19af7c0dbbaaf8f486ad42b12a846c8b5288dc0bbe9"
+          }
+        },
+        {
+          "rank": 8,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24465971114114,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5622857728,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40585924289189,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3066429440,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_08.json",
+            "sha256": "cae0c81f36e2ce1ac23045f462b6d4282caa5b93af8fae12ecacbba917796e0e"
+          }
+        },
+        {
+          "rank": 9,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24449307494797,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5650120704,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35785801728
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40583491697907,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3093692416,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26784195584,
+                "max_reserved_bytes": 38342230016,
+                "reserved_bytes": 38342230016
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_09.json",
+            "sha256": "b26299a847d7e7bcc3902c067f1df0d4feca7cae21630093b4da3a72ca5a9960"
+          }
+        },
+        {
+          "rank": 10,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24453028617427,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5614469120,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40582044003531,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3058040832,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_10.json",
+            "sha256": "b876033204e17aa45a623fe1784f455533828dd5585e0133b8d698be0efc4395"
+          }
+        },
+        {
+          "rank": 11,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24461044790223,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5572526080,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40586259006523,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3016097792,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_11.json",
+            "sha256": "de82e8fd4380b813be6fa7a8cc34e1974d9fcf3e073ba7e10154571cb88ec0e3"
+          }
+        },
+        {
+          "rank": 12,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24450102006085,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5572526080,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40586238983087,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3016097792,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_12.json",
+            "sha256": "52587d04e6d874fde771c45a1ea331543f574efd7b7e80c416833545c5f27a9e"
+          }
+        },
+        {
+          "rank": 13,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24460250302218,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5616566272,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35785801728
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40588041394949,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3060137984,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26784195584,
+                "max_reserved_bytes": 38342230016,
+                "reserved_bytes": 38342230016
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_13.json",
+            "sha256": "222b87f849dd3123bce04995e9ed07d9cd9b6cef276f57452675c2312de581d6"
+          }
+        },
+        {
+          "rank": 14,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24454638594761,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5622857728,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40586203895509,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3066429440,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_14.json",
+            "sha256": "9579fdb841dfa563b738f58aeb82ece5b28760d08520f68ed7059ffe8302dc69"
+          }
+        },
+        {
+          "rank": 15,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 133.24442763114348,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 5622857728,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26778190848,
+                "max_reserved_bytes": 40904949760,
+                "reserved_bytes": 35800481792
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 127.40584945492446,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 3066429440,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 26782393344,
+                "max_reserved_bytes": 38356910080,
+                "reserved_bytes": 38356910080
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c512-p0-w5/execution/ranks/rank_15.json",
+            "sha256": "a97869ef9e4dc6af7c92af8fbd9f1b4ef172cfcdfb2da94cc61e0d1026a9022c"
+          }
+        }
+      ]
+    },
+    {
+      "candidate": "joint-helios1-gan-fsdp-c2048-p1-w5",
+      "run_id": "jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5",
+      "rank_count": 16,
+      "ranks": [
+        {
+          "rank": 0,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72142689395696,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4261806080,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17366332793608,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4230348800,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_00.json",
+            "sha256": "499dc27556126464015587b25700ddf81f2742021d19492f543a1e8c30995e2c"
+          }
+        },
+        {
+          "rank": 1,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72136466298252,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4341497856,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41437626368,
+                "reserved_bytes": 37096521728
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17366030300036,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4372955136,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41437626368,
+                "reserved_bytes": 37065064448
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_01.json",
+            "sha256": "6ffc9466599ad2a35bfce1d6908f7435d88da42554090ed6924b85db0c3565ad"
+          }
+        },
+        {
+          "rank": 2,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72141263610683,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4291166208,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17365125496872,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4291166208,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_02.json",
+            "sha256": "5a253760da9f5d6326ee9542d61ab844fd39dc5e41f0192b6e1561777d1c3c7e"
+          }
+        },
+        {
+          "rank": 3,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.7214093101211,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4240834560,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17362328106537,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4240834560,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_03.json",
+            "sha256": "c7ad2b9e1c72a5f30d47956d98a68cd42aca1ef5f12ddc2f5b7210d2eba7c753"
+          }
+        },
+        {
+          "rank": 4,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72140492103063,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4240834560,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17372412607074,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4240834560,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_04.json",
+            "sha256": "b908fedf7e723e62de5c0a2f25069f9b197383565a3e65434cf8bcfc1af76c60"
+          }
+        },
+        {
+          "rank": 5,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72142402804457,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4286971904,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37117493248
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17368850717321,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4286971904,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37117493248
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_05.json",
+            "sha256": "e25839086ec9b614011ac40a78b47404e2d96db2e3d4f88b5b527dfa1240743e"
+          }
+        },
+        {
+          "rank": 6,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72145255398937,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4299554816,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17371917585842,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4268097536,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_06.json",
+            "sha256": "e54a619489cfadf61fec5f89e74680bda7f5633bcc5207651ed055d423c4fc34"
+          }
+        },
+        {
+          "rank": 7,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.72142240498215,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4299554816,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.17366461083293,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4268097536,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_07.json",
+            "sha256": "9bc5ff7dc89b22bf34ea8b431bee895beae5951ca55c90298a5f19deed0913c0"
+          }
+        },
+        {
+          "rank": 8,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71502099488862,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4297457664,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16888396209106,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4266000384,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_08.json",
+            "sha256": "b9986f3fbc5c71f9ea18288d27d1eba21f41985a7de1265003badcdbd7bb023c"
+          }
+        },
+        {
+          "rank": 9,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71504849707708,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4310040576,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16890104394406,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4278583296,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_09.json",
+            "sha256": "3ac954c2fe882ca4e0f3eba8811d4d25cb4903e0508e947231fb346f3c1beb16"
+          }
+        },
+        {
+          "rank": 10,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71511695696972,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4289069056,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16886475589126,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4289069056,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_10.json",
+            "sha256": "f6263180b251a753750cdfa677daefaf8261b1fc7a41d87647e963f90fd828ee"
+          }
+        },
+        {
+          "rank": 11,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71509803202935,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4247126016,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16887883213349,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4247126016,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_11.json",
+            "sha256": "fbbd50ebf0164299a6e3c137988bf4b764086a1718653a7e5843a796572158e9"
+          }
+        },
+        {
+          "rank": 12,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.7150740060024,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4247126016,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16889425111003,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4247126016,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_12.json",
+            "sha256": "7cd80939333e67e4e4876b6d010946f37372c5d69a6cc5bb0d69f1b621c6d1f8"
+          }
+        },
+        {
+          "rank": 13,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71515824599192,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4276486144,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16885587899014,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4276486144,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41355837440,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_13.json",
+            "sha256": "4841748e2600a8ef70a6e42bd3794bac9dfb25808b16517a0af8c8652d099ec0"
+          }
+        },
+        {
+          "rank": 14,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.7149845259264,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4297457664,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37125881856
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16885249200277,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4266000384,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37157339136
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_14.json",
+            "sha256": "ac2cab849a64caabe3ae602feb7c66de1884b609d6bbd62045593090f3520543"
+          }
+        },
+        {
+          "rank": 15,
+          "status": "PASS",
+          "initial_versions": {
+            "critic": 1000,
+            "ema": 800,
+            "generator": 200
+          },
+          "initial_physical_versions": {
+            "critic": 10,
+            "ema": 800,
+            "generator": 2
+          },
+          "final_versions": {
+            "critic": 1010,
+            "ema": 802,
+            "generator": 202
+          },
+          "final_physical_versions": {
+            "critic": 20,
+            "ema": 802,
+            "generator": 4
+          },
+          "cycles": [
+            {
+              "cycle": 1,
+              "wall_seconds": 129.71511268010363,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4305846272,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37117493248
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            },
+            {
+              "cycle": 2,
+              "wall_seconds": 124.16890254686587,
+              "counts": {
+                "critic_backward": 10,
+                "critic_commit": 5,
+                "critic_forward": 12,
+                "critic_optimizer": 5,
+                "generator_backward": 1,
+                "generator_commit": 1,
+                "generator_forward": 31,
+                "generator_optimizer": 1,
+                "teacher_forward": 2
+              },
+              "semantics": {
+                "census": "PASS",
+                "dtype": "PASS",
+                "finite": "PASS",
+                "numerical_equivalence": "NOT_RUN",
+                "sample_rng": "PASS",
+                "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+                "versions": "PASS"
+              },
+              "memory": {
+                "allocated_bytes": 6418341376,
+                "driver_free_bytes": 4274388992,
+                "driver_total_bytes": 42298834944,
+                "max_allocated_bytes": 39734593536,
+                "max_reserved_bytes": 41404071936,
+                "reserved_bytes": 37148950528
+              },
+              "order": [
+                "g",
+                "r_all",
+                "c0",
+                "e0",
+                "c1",
+                "c2",
+                "c3",
+                "c4"
+              ]
+            }
+          ],
+          "source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/jointp_helios_components_20260908_cc7e451_gan-gate-joint-helios1-gan-fsdp-c2048-p1-w5/execution/ranks/rank_15.json",
+            "sha256": "76f05fee52ccfba8cbf75d9a5f36be7af95db44840c1255f7fb567a63761243e"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,835 @@
+#!/usr/bin/env python3
+"""Static world16 FSDP2 Full5 baseline for No-GAN and GAN-on Helios.
+
+Both 14B physical backbones are constructed once, block-wise FSDP2 sharded on
+the same default world16, and kept in that representation for the entire
+measured Full5.  There is no role transition, process-group rebuild, CPU frozen
+parameter streaming, or parameter offload in the timed window.
+"""
+from __future__ import annotations
+
+import argparse
+import gc
+import hashlib
+import json
+import os
+import socket
+import sys
+import time
+import traceback
+from pathlib import Path
+from typing import Any
+
+import torch
+import torch.distributed as dist
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from distillschedule.runtime.fsdp2_static import (
+    FSDP2ShardEMA,
+    apply_blockwise_fsdp2,
+    build_fsdp2_engine,
+    configure_fsdp2_checkpointing,
+    contract_for_variant,
+)
+from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
+from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
+from distillschedule.runtime.helios_generator_free_memory import (
+    generator_free_memory_scope,
+)
+from runtime.critic_pool_checkpoint import (
+    LogicalCheckpointPackage,
+    load_logical_master_into_trainables,
+)
+from runtime.critic_pool_helios import (
+    build_helios_pool_model,
+    prepare_student_batch,
+    run_generator_trace_rollout,
+    student_forward_loss,
+)
+from runtime.dmd_boundary import detached_dmd_surrogate_loss
+from runtime.gan_rolephase_official import (
+    critic_official_kwargs,
+    load_official_config,
+    score_official_kwargs,
+)
+from runtime.gst_pool_contract import NegativePromptAsset
+from runtime.gst_pool_helios import (
+    construct_dmd_gradient,
+    prepare_dmd_score_batch,
+    run_generator_update_trace_rollout,
+    score_forward,
+)
+from runtime.official_baseline import suspend_transformers_zero3_init, trim_host_allocator
+from runtime.static_world16_trace import StaticWorld16Trace
+
+
+WORLD_SIZE = 16
+TIMING_OMITTED = "omitted_in_low_overhead_timing_mode"
+
+
+def _atomic_json(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    os.replace(temporary, path)
+
+
+def _memory(device: torch.device) -> dict[str, float]:
+    free, total = torch.cuda.mem_get_info(device)
+    gib = float(2**30)
+    return {
+        "allocated_gib": torch.cuda.memory_allocated(device) / gib,
+        "reserved_gib": torch.cuda.memory_reserved(device) / gib,
+        "max_allocated_gib": torch.cuda.max_memory_allocated(device) / gib,
+        "max_reserved_gib": torch.cuda.max_memory_reserved(device) / gib,
+        "driver_free_gib": free / gib,
+        "driver_total_gib": total / gib,
+    }
+
+
+def _local_trainable_fingerprint(module: torch.nn.Module) -> str:
+    digest = hashlib.sha256()
+    for name, parameter in module.named_parameters():
+        if not parameter.requires_grad:
+            continue
+        local = parameter.detach().to_local() if hasattr(parameter, "to_local") else parameter.detach()
+        value = local.float()
+        stats = torch.stack(
+            (
+                value.sum(dtype=torch.float64),
+                value.square().sum(dtype=torch.float64),
+                value.abs().max().double(),
+                torch.tensor(float(value.numel()), device=value.device, dtype=torch.float64),
+            )
+        ).cpu().numpy().tobytes()
+        digest.update(name.encode())
+        digest.update(stats)
+    return digest.hexdigest()
+
+
+def _profile_fingerprint(
+    module: torch.nn.Module,
+    diagnostics: StaticProfileDiagnostics,
+    key: str,
+) -> str:
+    """Fingerprint trainables with an explicit, profile-only D2H envelope."""
+
+    with diagnostics.scope(f"DIAG_FINGERPRINT_D2H/{key}"):
+        return _local_trainable_fingerprint(module)
+
+
+def _build_static_model(
+    *,
+    args: argparse.Namespace,
+    role: str,
+    package: LogicalCheckpointPackage,
+    device: torch.device,
+) -> tuple[torch.nn.Module, dict[str, Any]]:
+    if role not in {"generator", "critic"}:
+        raise ValueError(role)
+    root = args.generator_root if role == "generator" else args.score_root
+    precast = args.precast_generator_root if role == "generator" else args.precast_score_root
+    subfolder = "transformer_ode" if role == "generator" else "transformer"
+    with suspend_transformers_zero3_init():
+        model, metadata = build_helios_pool_model(
+            role=role,
+            model_root=root,
+            subfolder=subfolder,
+            precast_model_root=precast,
+            enable_gan=(args.variant == "gan" and role == "critic"),
+        )
+        logical_restore = load_logical_master_into_trainables(
+            model,
+            package,
+            component=role,
+            verify_payload_sha256=(dist.get_rank() == 0),
+        )
+    # FSDP2's mixed-precision materializer can expose different metadata for
+    # the original and replayed checkpoint tensors.  Keep Helios' enabled
+    # non-reentrant checkpointing and RNG semantics; disable only PyTorch's
+    # metadata validator through the FSDP2-specific compatibility adapter.
+    configure_fsdp2_checkpointing(model)
+    # Only one full 14B model is materialized on a GPU at a time.  It is
+    # immediately FSDP2-sharded before construction of the second backbone.
+    model.to(device)
+    torch.cuda.synchronize(device)
+    fsdp = apply_blockwise_fsdp2(model, world_size=WORLD_SIZE)
+    gc.collect()
+    host_trimmed = trim_host_allocator()
+    torch.cuda.empty_cache()
+    return model, {
+        "metadata": metadata,
+        "logical_restore": logical_restore,
+        "fsdp2": fsdp,
+        "host_allocator_trimmed_after_shard": host_trimmed,
+        "memory_after_shard": _memory(device),
+    }
+
+
+def _build_engines(
+    *,
+    args: argparse.Namespace,
+    package: LogicalCheckpointPackage,
+    device: torch.device,
+) -> tuple[Any, Any, dict[str, Any]]:
+    generator, generator_build = _build_static_model(
+        args=args, role="generator", package=package, device=device
+    )
+    dist.barrier()
+    critic, critic_build = _build_static_model(
+        args=args, role="critic", package=package, device=device
+    )
+    dist.barrier()
+    generator_engine, generator_restore = build_fsdp2_engine(
+        module=generator,
+        package=package,
+        component="generator",
+        lr=2e-6,
+        betas=(0.0, 0.999),
+        eps=1e-8,
+        weight_decay=1e-3,
+    )
+    critic_engine, critic_restore = build_fsdp2_engine(
+        module=critic,
+        package=package,
+        component="critic",
+        lr=4e-7,
+        betas=(0.0, 0.999),
+        eps=1e-8,
+        weight_decay=1e-3,
+    )
+    return generator_engine, critic_engine, {
+        "generator": {**generator_build, "optimizer_restore": generator_restore},
+        "critic": {**critic_build, "optimizer_restore": critic_restore},
+        "static_residency": {
+            "both_backbones_fsdp2_sharded_on_every_rank": True,
+            "parameter_offload": False,
+            "frozen_parameter_streaming": False,
+            "role_transition": False,
+            "process_group_rebuild_in_full5": False,
+        },
+    }
+
+
+def _run_nogan_generator_update(
+    *,
+    rank: int,
+    device: torch.device,
+    generator_engine: Any,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    negative: torch.Tensor,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+) -> dict[str, Any]:
+    with diagnostics.scope("INPUT_H2D/generator_entry"):
+        entry = trace.load_generator_entry(rank=rank, device=device)
+    diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
+    before = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "generator_before")
+    )
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator"):
+        x0, gradient_mask, rollout = run_generator_update_trace_rollout(
+            engine=generator_engine,
+            entry=entry,
+            device=device,
+            detailed_profile=False,
+            collect_diagnostics=collect_diagnostics,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
+        pass
+    batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
+    fake = score_forward(
+        critic_engine.module,
+        batch,
+        condition=batch["encoder_hidden_states"],
+        adapter_enabled=True,
+    )
+    real_cond = score_forward(
+        critic_engine.module,
+        batch,
+        condition=batch["encoder_hidden_states"],
+        adapter_enabled=False,
+    )
+    real_uncond = score_forward(
+        critic_engine.module,
+        batch,
+        condition=negative,
+        adapter_enabled=False,
+    )
+    gradient, auxiliary = construct_dmd_gradient(
+        batch=batch,
+        fake_flow_cond=fake,
+        real_flow_cond=real_cond,
+        real_flow_uncond=real_uncond,
+    )
+    loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
+        generator_engine.backward(loss)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/generator"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/generator"):
+        generator_engine.step()
+    after = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "generator_after")
+    )
+    if collect_diagnostics and before == after:
+        raise AssertionError("No-GAN FSDP2 Generator trainables did not update")
+    del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
+    return {
+        "logical_step": 10,
+        "source_rank": rank,
+        "physical_generator_step_after": int(generator_engine.global_steps),
+        "local_trainable_before": before,
+        "local_trainable_after": after,
+        "rollout": rollout,
+        "surrogate_loss": diagnostics.diagnostic_scalar("generator_surrogate", loss) if collect_diagnostics else TIMING_OMITTED,
+        "score_forwards": 3,
+    }
+
+
+def _gan_score_boundary_gradient(
+    *,
+    score_model: torch.nn.Module,
+    generated_latent: torch.Tensor,
+    gan_g_weight: float,
+    official_kwargs: dict[str, Any],
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
+) -> tuple[torch.Tensor, dict[str, Any]]:
+    """Compute d(DMD + w*GAN-G)/dx without mutating FSDP2 requires_grad state."""
+
+    from helios.utils.utils_helios_post import compute_distribution_matching_loss
+
+    preexisting = {
+        name: id(parameter.grad)
+        for name, parameter in score_model.named_parameters()
+        if parameter.grad is not None
+    }
+    leaf = generated_latent.detach().requires_grad_(True)
+    with generator_free_memory_scope(
+        generator_free_memory_receipt,
+        elide=elide_official_generator_free_memory,
+    ):
+        outputs = compute_distribution_matching_loss(
+            real_fake_score_model=score_model,
+            image_or_video=leaf,
+            **official_kwargs,
+        )
+    if len(outputs) != 5:
+        raise AssertionError("official GAN score return signature changed")
+    dmd_loss, _ca, _dm, gan_g_loss, _logs = outputs
+    total = dmd_loss + gan_g_loss * float(gan_g_weight)
+    gradient = torch.autograd.grad(
+        total,
+        leaf,
+        retain_graph=False,
+        create_graph=False,
+        only_inputs=True,
+    )[0].detach()
+    for name, parameter in score_model.named_parameters():
+        if parameter.grad is None:
+            continue
+        if name not in preexisting or id(parameter.grad) != preexisting[name]:
+            raise AssertionError("GAN-G/DMD read-only FSDP2 Score produced parameter gradients")
+    return gradient.to(dtype=generated_latent.dtype), {
+        "total": diagnostics.diagnostic_scalar("gan_total", total) if collect_diagnostics else TIMING_OMITTED,
+        "dmd": diagnostics.diagnostic_scalar("gan_dmd", dmd_loss) if collect_diagnostics else TIMING_OMITTED,
+        "gan_g_raw": diagnostics.diagnostic_scalar("gan_g_raw", gan_g_loss) if collect_diagnostics else TIMING_OMITTED,
+    }
+
+
+def _run_gan_generator_update(
+    *,
+    args: argparse.Namespace,
+    rank: int,
+    device: torch.device,
+    generator_engine: Any,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    cfg: Any,
+    negative: torch.Tensor,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
+) -> dict[str, Any]:
+    with diagnostics.scope("INPUT_H2D/generator_entry"):
+        entry = trace.load_generator_entry(rank=rank, device=device)
+    diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
+    source = trace.source(rank=rank, device=device)
+    diagnostics.add_tensor_tree("generator_source", source, direction="H2D")
+    before = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "gan_generator_before")
+    )
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator"):
+        x0, gradient_mask, rollout = run_generator_update_trace_rollout(
+            engine=generator_engine,
+            entry=entry,
+            device=device,
+            detailed_profile=False,
+            collect_diagnostics=collect_diagnostics,
+            empty_cache_before_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
+            synchronize_after_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
+        pass
+    gradient, losses = _gan_score_boundary_gradient(
+        score_model=critic_engine.module,
+        generated_latent=x0,
+        gan_g_weight=float(cfg.training_config.gan_g_weight),
+        official_kwargs=score_official_kwargs(
+            cfg,
+            entry.operation_trace,
+            source,
+            1000,
+            negative,
+            device,
+        ),
+        collect_diagnostics=collect_diagnostics,
+        diagnostics=diagnostics,
+        generator_free_memory_receipt=generator_free_memory_receipt,
+        elide_official_generator_free_memory=(
+            elide_official_generator_free_memory
+        ),
+    )
+    # The Score helper already returned the normalized latent derivative.  Use
+    # a SUM chain-rule surrogate, matching the validated GAN pipeline seam.
+    surrogate = (x0.float() * gradient.float()).sum()
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
+        generator_engine.backward(surrogate)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/generator"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/generator"):
+        generator_engine.step()
+    after = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "gan_generator_after")
+    )
+    if collect_diagnostics and before == after:
+        raise AssertionError("GAN FSDP2 Generator trainables did not update")
+    return {
+        "logical_step": 1000,
+        "source_rank": rank,
+        "physical_generator_step_after": int(generator_engine.global_steps),
+        "local_trainable_before": before,
+        "local_trainable_after": after,
+        "rollout": rollout,
+        "score_forwards": 4,
+        "losses": losses if collect_diagnostics else TIMING_OMITTED,
+    }
+
+
+def _run_nogan_critic(
+    *,
+    rank: int,
+    step: int,
+    device: torch.device,
+    generator_engine: Any,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+) -> dict[str, Any]:
+    with diagnostics.scope(f"INPUT_H2D/critic_entry/step{step}"):
+        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    diagnostics.add_tensor_tree(f"critic_entry/step{step}", entry, direction="H2D")
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator_critic_rollout"):
+        x0, rollout = run_generator_trace_rollout(
+            model=generator_engine.module,
+            loaded=entry,
+            device=device,
+            detailed_profile=False,
+            record_output_sha256=collect_diagnostics,
+            empty_cache_before_rollout=False,
+            collect_diagnostics=collect_diagnostics,
+            diagnostics_scope=diagnostics.scope,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator_critic_rollout"):
+        pass
+    batch = prepare_student_batch(generated_x0=x0, loaded=entry, device=device)
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
+        _prediction, loss = student_forward_loss(critic_engine, batch)
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/critic"):
+        critic_engine.backward(loss)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/critic"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/critic"):
+        critic_engine.step()
+    return {
+        "logical_step": step,
+        "source_rank": rank,
+        "physical_critic_step_after": int(critic_engine.global_steps),
+        "loss": diagnostics.diagnostic_scalar(f"critic_step{step}", loss) if collect_diagnostics else TIMING_OMITTED,
+        "rollout": rollout,
+        "score_forwards": 1,
+    }
+
+
+def _run_gan_critic(
+    *,
+    rank: int,
+    step: int,
+    device: torch.device,
+    generator_engine: Any,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    cfg: Any,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+) -> dict[str, Any]:
+    from helios.utils.utils_helios_post import _critic_loss
+
+    with diagnostics.scope(f"INPUT_H2D/critic_entry/step{step}"):
+        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    diagnostics.add_tensor_tree(f"critic_entry/step{step}", entry, direction="H2D")
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator_critic_rollout"):
+        x0, rollout = run_generator_trace_rollout(
+            model=generator_engine.module,
+            loaded=entry,
+            device=device,
+            detailed_profile=False,
+            record_output_sha256=collect_diagnostics,
+            empty_cache_before_rollout=False,
+            collect_diagnostics=collect_diagnostics,
+            diagnostics_scope=diagnostics.scope,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator_critic_rollout"):
+        pass
+    source = trace.source(rank=rank, device=device)
+    diagnostics.add_tensor_tree(f"critic_source/step{step}", source, direction="H2D")
+    kwargs = critic_official_kwargs(
+        cfg,
+        entry.operation_trace,
+        source,
+        step,
+        x0,
+        critic_engine,
+    )
+    before = int(critic_engine.global_steps)
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
+        loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
+    if not bool(logs.get("critic_optimizer_committed")):
+        raise AssertionError("GAN static FSDP2 Critic did not commit")
+    if int(critic_engine.global_steps) != before + 1:
+        raise AssertionError("GAN static FSDP2 Critic optimizer step drift")
+    return {
+        "logical_step": step,
+        "source_rank": rank,
+        "physical_critic_step_after": int(critic_engine.global_steps),
+        "loss": diagnostics.diagnostic_scalar(f"gan_critic_step{step}", loss) if collect_diagnostics else TIMING_OMITTED,
+        "rollout": rollout,
+        "score_forwards": 2,
+        "critic_optimizer_committed": True,
+    }
+
+
+def _nvtx_push(args: argparse.Namespace) -> None:
+    if args.profile_mode:
+        torch.cuda.nvtx.range_push(f"STATIC_FSDP2_FULL5/{args.variant}")
+
+
+def _nvtx_pop(args: argparse.Namespace) -> None:
+    if args.profile_mode:
+        torch.cuda.nvtx.range_pop()
+
+
+def parser() -> argparse.ArgumentParser:
+    value = argparse.ArgumentParser()
+    value.add_argument("--variant", choices=("no-gan", "gan"), required=True)
+    value.add_argument("--run-id", required=True)
+    value.add_argument("--output-dir", type=Path, required=True)
+    value.add_argument("--logical-package", type=Path, required=True)
+    value.add_argument("--expected-logical-hash")
+    value.add_argument("--trace-bundle", type=Path, required=True)
+    value.add_argument("--expected-trace-hash")
+    value.add_argument("--generator-root", type=Path, required=True)
+    value.add_argument("--precast-generator-root", type=Path, required=True)
+    value.add_argument("--score-root", type=Path, required=True)
+    value.add_argument("--precast-score-root", type=Path, required=True)
+    value.add_argument("--negative-prompt", type=Path, required=True)
+    value.add_argument("--gan-config", type=Path)
+    value.add_argument("--timing-mode", action="store_true")
+    value.add_argument("--profile-mode", action="store_true")
+    value.add_argument(
+        "--profile-diagnostics",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="collect legacy CPU diagnostics inside a profile (default: on)",
+    )
+    value.add_argument("--ema-device", choices=("cpu", "cuda"), default="cpu")
+    value.add_argument("--validate-only", action="store_true")
+    return value
+
+
+def main() -> int:
+    args = parser().parse_args()
+    if args.timing_mode and args.profile_mode:
+        raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    world = dist.get_world_size()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    if world != WORLD_SIZE:
+        raise AssertionError(f"static FSDP2 baseline requires world16, got {world}")
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
+    result: dict[str, Any] = {
+        "schema_version": "distillschedule.static_fsdp2_full5_rank.v1",
+        "status": "RUNNING",
+        "run_id": args.run_id,
+        "variant": args.variant,
+        "rank": rank,
+        "local_rank": local_rank,
+        "hostname": socket.gethostname(),
+        "world_size": world,
+        "timing_mode": bool(args.timing_mode),
+        "profile_mode": bool(args.profile_mode),
+    }
+    try:
+        contract = contract_for_variant(args.variant)
+        nsys_range = StaticFSDP2Full5NsightRange.from_env(variant=args.variant)
+        if args.profile_mode and not nsys_range.enabled:
+            raise ValueError(
+                "static profile mode requires DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE"
+            )
+        logical = (
+            LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
+            if args.variant == "gan"
+            else LogicalCheckpointPackage.load(args.logical_package)
+        )
+        if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
+            raise ValueError("logical checkpoint identity changed")
+        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
+        if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
+            raise ValueError("trace bundle identity changed")
+        result["contract"] = dataclasses_asdict(contract)
+        result["identities"] = {
+            "logical_manifest_hash": logical.manifest_hash,
+            "trace_bundle_hash": trace.bundle_hash,
+            "trace_binding_hash": trace.binding_hash,
+            "rank_control_validation": trace.rank_control_validation,
+        }
+        if args.validate_only:
+            result.update(status="PASS", validate_only=True)
+            _atomic_json(output, result)
+            dist.barrier()
+            return 0
+        if args.variant == "gan" and args.gan_config is None:
+            raise ValueError("GAN variant requires --gan-config")
+        negative = NegativePromptAsset.load(args.negative_prompt).embedding.to(
+            device=device, dtype=torch.bfloat16
+        )
+        cfg = load_official_config(args.gan_config) if args.variant == "gan" else None
+        generator_engine, critic_engine, build = _build_engines(
+            args=args, package=logical, device=device
+        )
+        ema = FSDP2ShardEMA.load_from_logical(
+            generator_engine.module,
+            logical.root,
+            device=args.ema_device,
+            nvtx_enabled=args.profile_mode,
+        )
+        diagnostics = StaticProfileDiagnostics(
+            enabled=args.profile_mode,
+            rank=rank,
+            output_path=(
+                args.output_dir / "diagnostics" / f"rank_{rank:02d}.json"
+                if args.profile_mode
+                else None
+            ),
+            collect_cpu_diagnostics=(not args.profile_mode) or args.profile_diagnostics,
+        )
+        collect_diagnostics = (not args.timing_mode) and args.profile_diagnostics
+        result["build"] = build
+        result["profile_diagnostics"] = bool(args.profile_diagnostics)
+        result["ema_device"] = args.ema_device
+        result["initial"] = {
+            "generator_physical_step": int(generator_engine.global_steps),
+            "critic_physical_step": int(critic_engine.global_steps),
+            "ema_step": int(ema.optimization_step),
+            "memory": _memory(device),
+        }
+        dist.barrier()
+        torch.cuda.synchronize(device)
+        started_perf = time.perf_counter()
+        result["timing_start_unix_ns"] = time.time_ns()
+        if args.profile_mode:
+            # The outer node-level Nsight session is controlled by local rank
+            # zero.  Barriers make the API range a common world16 boundary;
+            # they are profile-only and never enter formal timing.
+            dist.barrier()
+            nsys_range.before_model_compute(contract.logical_steps[0])
+            _nvtx_push(args)
+            dist.barrier()
+        else:
+            _nvtx_push(args)
+        generator_record = None
+        critic_records: list[dict[str, Any]] = []
+        ema_records: list[dict[str, Any]] = []
+        for index, step in enumerate(contract.logical_steps):
+            if index == 0:
+                generator_record = (
+                    _run_gan_generator_update(
+                        args=args,
+                        rank=rank,
+                        device=device,
+                        generator_engine=generator_engine,
+                        critic_engine=critic_engine,
+                        trace=trace,
+                        cfg=cfg,
+                        negative=negative,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
+                    )
+                    if args.variant == "gan"
+                    else _run_nogan_generator_update(
+                        rank=rank,
+                        device=device,
+                        generator_engine=generator_engine,
+                        critic_engine=critic_engine,
+                        trace=trace,
+                        negative=negative,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
+                    )
+                )
+            critic_record = (
+                _run_gan_critic(
+                    rank=rank,
+                    step=step,
+                    device=device,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    trace=trace,
+                    cfg=cfg,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics=diagnostics,
+                )
+                if args.variant == "gan"
+                else _run_nogan_critic(
+                    rank=rank,
+                    step=step,
+                    device=device,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    trace=trace,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics=diagnostics,
+                )
+            )
+            critic_records.append(critic_record)
+            if step in contract.ema_update_steps:
+                ema_decay = ema.step()
+                diagnostics.add_bytes(
+                    "ema_shadow",
+                    int(getattr(ema, "last_transfer_bytes", 0)),
+                    direction="D2H" if args.ema_device == "cpu" else "GPU",
+                    source="fsdp2_ema_local_shard",
+                )
+                ema_records.append(
+                    {
+                        "logical_step": step,
+                        "decay": ema_decay,
+                        "optimization_step": int(ema.optimization_step),
+                    }
+                )
+        if args.profile_mode:
+            torch.cuda.synchronize(device)
+            dist.barrier()
+            _nvtx_pop(args)
+            nsys_range.after_critic_commit(contract.logical_steps[-1])
+            dist.barrier()
+            nsys_range.assert_complete()
+            diagnostics.dump_after_capture()
+        else:
+            _nvtx_pop(args)
+        torch.cuda.synchronize(device)
+        result["timing_stop_unix_ns"] = time.time_ns()
+        result["full5_seconds"] = time.perf_counter() - started_perf
+        expected_g = int(logical.component("generator")["optimizer_step"]) + 1
+        expected_c = int(logical.component("critic")["optimizer_step"]) + 5
+        if int(generator_engine.global_steps) != expected_g:
+            raise AssertionError("static FSDP2 Generator update count changed")
+        if int(critic_engine.global_steps) != expected_c:
+            raise AssertionError("static FSDP2 Critic update count changed")
+        if int(ema.optimization_step) != int(contract.final_versions["ema"]):
+            raise AssertionError("static FSDP2 EMA update count changed")
+        result.update(
+            status="PASS",
+            generator=generator_record,
+            critic=critic_records,
+            ema=ema_records,
+            updates={"generator": 1, "critic": 5, "ema": len(ema_records)},
+            final={
+                "generator_physical_step": int(generator_engine.global_steps),
+                "critic_physical_step": int(critic_engine.global_steps),
+                "generator_logical_version": int(contract.final_versions["generator"]),
+                "critic_logical_version": int(contract.final_versions["critic"]),
+                "ema_step": int(ema.optimization_step),
+                "ema_local_checksum": (
+                    TIMING_OMITTED if args.timing_mode else ema.checksum()
+                ),
+                "memory": _memory(device),
+            },
+            formal_timer_scope=(
+                "immediately_before_step0_model_compute_through_final_critic_commit_and_required_ema"
+            ),
+            transition_count=0,
+            model_swap_count=0,
+            parameter_streaming_count=0,
+        )
+        _atomic_json(output, result)
+        dist.barrier()
+        return 0
+    except BaseException as error:
+        result.update(
+            status=(
+                "OOM"
+                if isinstance(error, torch.cuda.OutOfMemoryError)
+                or "out of memory" in str(error).lower()
+                else "FAIL"
+            ),
+            error_type=type(error).__name__,
+            error=str(error),
+            traceback=traceback.format_exc(),
+        )
+        try:
+            result["memory_failure"] = _memory(device)
+        except BaseException:
+            pass
+        _atomic_json(output, result)
+        raise
+    finally:
+        if dist.is_initialized():
+            try:
+                dist.destroy_process_group()
+            except BaseException:
+                pass
+
+
+def dataclasses_asdict(value: Any) -> dict[str, Any]:
+    import dataclasses
+
+    return dataclasses.asdict(value)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

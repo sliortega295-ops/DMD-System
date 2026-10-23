@@ -1,0 +1,8 @@
+{
+  "status": "FAIL_HASH_CHECK_FAIL_CLOSED",
+  "cause": "Path.read_text normalized CSV CRLF; refused to write mismatched CSV",
+  "persisted": [
+    "pool-contract.json"
+  ],
+  "resolution": "Read bytes and base64 exact small artifacts, no native or analysis rerun"
+}

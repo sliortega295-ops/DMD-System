@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.wan_cpu_reference_assets.v1",
+  "scope": "CPU1_RANK0_PER_SAMPLE_ORIGINAL_W1_NOT_WORLD16",
+  "precision": "WAN_NATIVE_MIXED_BF16",
+  "evidence_kind": "FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY",
+  "source": "REPLACE_WITH_CURRENT_reference_model_identity(backend='torch-sdpa')",
+  "runtime": "REPLACE_WITH_CURRENT_runtime_identity()",
+  "args": {"path": "/ABSOLUTE/LOCAL/W1/complete-original-args.json", "bytes": 0, "sha256": "REPLACE"},
+  "input_config": {"path": "/ABSOLUTE/LOCAL/W1/original-capture.yaml", "bytes": 0, "sha256": "REPLACE"},
+  "task": "REPLACE_WITH_COMPLETE_FIRST_STEP_0_TASK_FROM_INPUT_TEMPLATE",
+  "geometry": {"noise_shape": [1, 16, 9, 16, 16], "prompt_shape": [1, 2, 4096]},
+  "budget": {"max_parameters": 2000000, "max_loaded_bytes": 20000000},
+  "generator": {
+    "config": {"path": "/ABSOLUTE/LOCAL/W1/generator/config.json", "bytes": 0, "sha256": "REPLACE"},
+    "weights": [{"path": "/ABSOLUTE/LOCAL/W1/generator/model.safetensors", "bytes": 0, "sha256": "REPLACE"}]
+  },
+  "critic": {
+    "config": {"path": "/ABSOLUTE/LOCAL/W1/critic/config.json", "bytes": 0, "sha256": "REPLACE"},
+    "weights": [{"path": "/ABSOLUTE/LOCAL/W1/critic/model.safetensors", "bytes": 0, "sha256": "REPLACE"}]
+  },
+  "negative": {"path": "/ABSOLUTE/LOCAL/W1/negative.safetensors", "bytes": 0, "sha256": "REPLACE"}
+}

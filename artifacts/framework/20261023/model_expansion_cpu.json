@@ -1,0 +1,170 @@
+{
+  "boundaries": {
+    "existing_hardware_evidence": "Preserved, not rerun or promoted by CPU tests",
+    "gpu_execution": "NOT_RUN",
+    "main_branch": "UNCHANGED",
+    "model_weights_download": "NONE",
+    "new_hardware_performance": "NOT_RUN",
+    "new_providers": "Actual small random upstream model classes; CPU1 FP32 only",
+    "pretrained_quality": "NOT_RUN",
+    "push": "NOT_PERFORMED",
+    "ssh": "NOT_RUN"
+  },
+  "branch": "codex/open-source-framework-20261021",
+  "count_note": "Suites overlap. Do not sum them as unique cases; native provider lanes require zero skips. Additional SD weight mapping is a separately executed characterization, not an unexecuted part of an earlier JUnit.",
+  "created_at": "2026-10-23T14:06:34.739099+00:00",
+  "installed_framework": {
+    "export": true,
+    "exported_weights_new_inputs": true,
+    "fresh_process_generation": true,
+    "fresh_process_resume": true,
+    "generate": true,
+    "measured_plan_executed": true,
+    "outside_checkout": true,
+    "raw_media": true,
+    "real_autograd": true,
+    "receipt_sha256": "2e19bcd89121f01156950f213ca7584545707885d9ea52170e695d6eb20a693b",
+    "restart_full_state_equal": true,
+    "saved_plan_executed": true,
+    "status": "PASS_INSTALLED_FRAMEWORK_CPU",
+    "torch_version": "2.10.0+cpu",
+    "training_artifacts_unavailable": true,
+    "wheel_sha256": "ca2a5bd424e503c899306e73a8f6fb579f6c689ae298708b25c689b10fb8281f"
+  },
+  "isolated_discovery": {
+    "log_sha256": "4fd6caeaa73ca97d974f96e6e03f5302b507dcf0ae9ce9e244b4abba340b7b06",
+    "status": "PASS_ISOLATED_WHEEL",
+    "torch_imported": false,
+    "workloads": 6
+  },
+  "review": {
+    "external_peer": "NO_REVIEW_RETURNED; local adversarial coverage used; no cross-provider corroboration claimed",
+    "followup_sha256": "31935a25e64646adaea59742688efd7fa70e115036e0d0707e10349317a66a78",
+    "original_receipt_sha256": "54dba61431276555bcfad51c7d417805f9fba2d0449ccb82906876df11dc3dbc",
+    "original_verdict": "Ready with fixes",
+    "remaining_concrete_defects": 0,
+    "resolved_findings": 2,
+    "status": "complete",
+    "validated_findings": 2
+  },
+  "schema_version": "distillschedule.framework_cpu_release.v1",
+  "six_workload_sources": {
+    "gpu_server": "NOT_RUN_ON_INTEGRATION_BRANCH",
+    "legacy_canonical_profiles": 5,
+    "log_sha256": "aa00669d98195defa8d79fca3128cc9187bd35bc8dd59dcc6bd3a25e0c2adbf7",
+    "project_workloads": 6,
+    "status": "PASS_CPU_INTEGRATION"
+  },
+  "source": {
+    "identity_note": "The validation parent plus the reviewed committed delta; production file hashes remained frozen throughout final acceptance.",
+    "production_python_files": 472,
+    "production_python_sha256": "13479783e0cf96082e32a3d8b1ec90ec4bd51a708763b01f9aaf6c688a65462c",
+    "reviewed_working_tree_delta": true,
+    "validation_parent_head": "140353e47bcb262a7e04a1c96d25b7c592230998"
+  },
+  "status": "PASS_CPU_INTEGRATION",
+  "suites": [
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-common.xml",
+      "junit_sha256": "a18cd76a4ec9fbd807b8d67a94cbaf14522ecc798ce07c9e8102bf2e3fb81ca5",
+      "name": "accepted-common",
+      "passed": 1134,
+      "required_zero_skip": false,
+      "scope": "common .34 Program/data/lifecycle lane; optional absent providers skipped",
+      "skipped": 630,
+      "tests": 1764
+    },
+    {
+      "additional_pytest_subtests_passed": 20,
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-refactor.xml",
+      "junit_sha256": "66050360d021495d14209589e16726b772fb989bf09851c02d0bf5f51ec3998c",
+      "name": "accepted-refactor",
+      "passed": 2153,
+      "required_zero_skip": false,
+      "scope": "original source/refactor contract regression; optional dependencies skipped",
+      "skipped": 85,
+      "tests": 2238
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-dmd2.xml",
+      "junit_sha256": "97f9c576224e20e452fadf4d216ba3bddeeb41aed77735c242a6c46aec03ae29",
+      "name": "accepted-dmd2",
+      "passed": 187,
+      "required_zero_skip": true,
+      "scope": "actual SD1.5/SDXL native DMD2 + owner capability + preprocessing binding",
+      "skipped": 0,
+      "tests": 187
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-dmd2-weight-mapping.xml",
+      "junit_sha256": "5517eeaaee3f8e981138fdd1dc774186571195dbd1b93084b043ae7c879d7d79",
+      "name": "accepted-dmd2-weight-mapping",
+      "passed": 3,
+      "required_zero_skip": true,
+      "scope": "characterization of actual current-G export to strict native initialization",
+      "skipped": 0,
+      "tests": 3
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-self-forcing.xml",
+      "junit_sha256": "a0d5959a9691874046599aebb657d2427c5b987acee6352d27598a56e7160cb8",
+      "name": "accepted-self-forcing",
+      "passed": 52,
+      "required_zero_skip": true,
+      "scope": "actual official causal model/T5/DMD/native trainer/codec/lifecycle",
+      "skipped": 0,
+      "tests": 52
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-ltx.xml",
+      "junit_sha256": "d955305d2311bd5f398c56626c7e1cec745261a8963d7d075ac28b4036632277",
+      "name": "accepted-ltx",
+      "passed": 75,
+      "required_zero_skip": true,
+      "scope": "actual LTX AV, native codecs/text/import, common flow algorithm, full/LoRA lifecycle",
+      "skipped": 0,
+      "tests": 75
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "accepted-livewan.xml",
+      "junit_sha256": "301ff1143b6b3da0cd9c9961b9ba7531fc76f1b6c77b0064cd89a42927f1dbf5",
+      "name": "accepted-livewan",
+      "passed": 119,
+      "required_zero_skip": true,
+      "scope": "actual original W4 owner/current-G/codec/live tensor inventory",
+      "skipped": 0,
+      "tests": 119
+    },
+    {
+      "errors": 0,
+      "failures": 0,
+      "junit_file": "release-packaging-final.xml",
+      "junit_sha256": "5770430c1a61c1ccdc4a275a9a5e7acc8e5306865f5b54a7dddd5a68c3aa1355",
+      "name": "release-packaging-final",
+      "passed": 23,
+      "required_zero_skip": true,
+      "scope": "real CI file selector/child environment and package metadata",
+      "skipped": 0,
+      "tests": 23
+    }
+  ],
+  "upstreams": {
+    "dmd2": "tianweiy/DMD2@8d8fa55633d47cfb81bbc7a892e7248f9518763f",
+    "ltx25": "Lightricks/LTX-2@e98f6d927d83c92ef2be6aec76c8440b19306e39",
+    "official_self_forcing": "guandeh17/Self-Forcing@33593df3e81fa3ec10239271dd2c100facac6de1"
+  }
+}

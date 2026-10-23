@@ -1,0 +1,716 @@
+{
+  "source_head": "ea29129342741b54e59c4773e07454f541fadcc7",
+  "config_sha256": "45e423e74576639a6de3336590269b7dc39185a53b6e30e07d9c8d39c2573f9f",
+  "numerical_status": "REVIEW",
+  "finite": true,
+  "semantics_pass": true,
+  "raw_measured_calibration": true,
+  "rank_sources": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_00.json",
+      "sha256": "8f213df12e3e073067c96d4da9ca60a7261c219da2d708a35e56d11c3c2d81ac"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_01.json",
+      "sha256": "041cd35620a7533e313be5959394d7f47a00dcbab5bd261ead1b824afe994a93"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_02.json",
+      "sha256": "d934fa505a8a81db27a7bc8e9ee734492fb47d6d3c9a2f478f8e4f179714b664"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_03.json",
+      "sha256": "42e6f194b8d5d2137f0f6763e1734beed95131ac458009e391d7742ec4ffe528"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_04.json",
+      "sha256": "a1843ff09264bab8910ae38435405e96347d1b08c5483cd5d4861f95fecc1830"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_05.json",
+      "sha256": "4694c7162a31f8d6224afd56ba79377f715a8be11c392d2a9e15bd76c63b481f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_06.json",
+      "sha256": "89fff36d9c21e55ac7d594cb5a243ddc1807f5e7ff02a94baaa7e29f806525e7"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_07.json",
+      "sha256": "c7c7d89f6e0772fe866bfd9ef0b1be5ba4df7d60feb191b47011e2dd161c9488"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_08.json",
+      "sha256": "16fa67141a2938a3ffbbf6fa900bd46cb96a327498235c1ca86a3eec5ba8e373"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_09.json",
+      "sha256": "f8cd2aa3faf323b3ea00a98821cde3068e3b53eaf9e16ea5db2371c4f96c5bc8"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_10.json",
+      "sha256": "2714ff8dc7f0ee5d04542805feaf0cf2390a892d532f93c7f3d6bfe9fba9eb44"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_11.json",
+      "sha256": "f4bb1088cade9e2bbea84c28df5ce249fb2201cdcb0909b19783239b12201276"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_12.json",
+      "sha256": "984cab148fc6047abab6fb957f9d5eeb16f72861d1f1d71448486f62c4b67ed3"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_13.json",
+      "sha256": "07934febf15a40a5d6b2e002465d419e921be1f142fa8fd5be9f616463c6ec52"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_14.json",
+      "sha256": "8e5117d7da5225f7da26b846c317fb8873af6b197f09a26c54c2fc64d6dc5311"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-control/rank_15.json",
+      "sha256": "dca1828cb9125682fdcc77615a05363ba1f25978af5a285ff6420668e5a37702"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_00.json",
+      "sha256": "786c9aa23fe498be61cd142d42f2ba39aa949b0c623416d14eb360ae7f1f5396"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_01.json",
+      "sha256": "ef98e90feeae1162915da302bbf3e409024ee120c3dea323402f0e0173e93f51"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_02.json",
+      "sha256": "4e8ee2b1a01d6a296bb9937c7e5cd71982ddbe6d52d68374f1507089a9277f7c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_03.json",
+      "sha256": "8f7df548ace65f5054ff56011192efced7169a28974c8861923aabb0e768af1f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_04.json",
+      "sha256": "cdecd5ec5aeb5710e6dce3f95a5ae6acd7a69333c942cee28c99add97cbd30c5"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_05.json",
+      "sha256": "847fb87e017b8077617bf32c003b4fdd02b77d4cbf979e2f5a6249cf78dc0c70"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_06.json",
+      "sha256": "11c352d0b409a14f0a7ae8d6c98bc0712066185566e573a65bc6f92430532a20"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_07.json",
+      "sha256": "cab261a6761119d9139c82048fbe50474736ce4a8478b45f4f5c6e282ee77b97"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_08.json",
+      "sha256": "36261ff29f7bb720e18deb2a6635162c288d4d76d8555fae621dcfa0460bf590"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_09.json",
+      "sha256": "56d3396b58b79379f43c3b7200aa4907a5ac138c8269dcd993fa9646c8cf894e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_10.json",
+      "sha256": "079f1bb1e4e94986f0401052e1bcebccb4c543236d3bad0176607985335f9054"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_11.json",
+      "sha256": "6dee8d3d835885fd505bbc42c076f39ca4af022687967771f3a7b1218d4c1ba1"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_12.json",
+      "sha256": "003d6076d950544973d9073db6fd4b9c12a8687df23c6f9e123b1e8d706cef43"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_13.json",
+      "sha256": "59c4e35803a5b27bc0025f81da70df0624673b60fc98a3c8e6797e7fb4970747"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_14.json",
+      "sha256": "5c91ad24a0f4e213af8a8492ceceff549c636dbf735f12a07ef7c0383e4be9db"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/calibrate-bundle/rank_15.json",
+      "sha256": "cd7b70c48824d9f2b3808ca718182ba6a0102861632cafb5373c0aa591abbaa3"
+    }
+  ],
+  "original_numerical_tolerances": {
+    "rtol": 1e-05,
+    "atol": 1e-07
+  },
+  "state_comparison_max_abs": 1.258660813618917e-05,
+  "state_failed_tensors": 1584,
+  "saved_plan_file": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r18/native/selected-plan.json",
+  "saved_plan_file_sha256": "25585cd17e342ba33d3d4a6b167582d84b115d0853b03b2af50ac6547268fee0",
+  "plan_sha256": "148b03e596207721ebf00761b2f0ea4623a9b04ce2e7af81ed65852eb070e456",
+  "selected": {
+    "schema_version": "distillschedule.frontier_schedule.v1",
+    "status": "PASS_CPU_SCHEDULE",
+    "graph_sha256": "6e3fa17bef8d9e14bb82e8b23e1e586b7ca1a6552429353371b331a7eee8742f",
+    "cost_model_sha256": "4c656dbe079783a693f1032297ef41e6146a0fb24b7ee366a04f982e38f97728",
+    "evidence_scope": "MEASURED",
+    "gpu_execution": "NOT_RUN",
+    "claimable_speedup": false,
+    "native_lowering": "REQUIRES_EXPLICIT_ACTION_ADAPTER",
+    "predicted_makespan_ns": 20538488988,
+    "order": [
+      "g",
+      "r0",
+      "c0",
+      "r1",
+      "e0",
+      "r2",
+      "c1",
+      "r3",
+      "e1",
+      "r4",
+      "c2",
+      "e2",
+      "c3",
+      "e3",
+      "c4",
+      "e4"
+    ],
+    "timeline": [
+      {
+        "operation": "g",
+        "start_ns": 0,
+        "end_ns": 4993575963,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "r0",
+        "start_ns": 4993575963,
+        "end_ns": 6472144714,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "c0",
+        "start_ns": 6472144714,
+        "end_ns": 8331798649,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "r1",
+        "start_ns": 8331798649,
+        "end_ns": 9789453672,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "e0",
+        "start_ns": 9789453672,
+        "end_ns": 9811744335,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "r2",
+        "start_ns": 9811744335,
+        "end_ns": 10818234527,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "c1",
+        "start_ns": 10818234527,
+        "end_ns": 12654718167,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "r3",
+        "start_ns": 12654718167,
+        "end_ns": 13500673722,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "e1",
+        "start_ns": 13500673722,
+        "end_ns": 13521749229,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "r4",
+        "start_ns": 13521749229,
+        "end_ns": 14974928772,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "c2",
+        "start_ns": 14974928772,
+        "end_ns": 16808696059,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "e2",
+        "start_ns": 16808696059,
+        "end_ns": 16828179653,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "c3",
+        "start_ns": 16828179653,
+        "end_ns": 18663102912,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "e3",
+        "start_ns": 18663102912,
+        "end_ns": 18683324752,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "c4",
+        "start_ns": 18683324752,
+        "end_ns": 20518236129,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      },
+      {
+        "operation": "e4",
+        "start_ns": 20518236129,
+        "end_ns": 20538488988,
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ]
+      }
+    ],
+    "memory": [
+      {
+        "rank": 0,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 1,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 2,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 3,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 4,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 5,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 6,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 7,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 8,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 9,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 10,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 11,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 12,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 13,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 14,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      },
+      {
+        "rank": 15,
+        "static_bytes": 19071560192,
+        "peak_bytes": 25132047872,
+        "limit_bytes": 40151351296
+      }
+    ],
+    "search_diagnostics": {
+      "expanded": 92,
+      "generated": 113,
+      "dominance_pruned": 20,
+      "capacity_pruned": 0,
+      "bound_pruned": 0,
+      "beam_dropped": 0,
+      "wait_transitions": 56,
+      "termination": "COMPLETE",
+      "beam_width": 0,
+      "remaining_frontier": 0,
+      "search_seconds": 0.015457849018275738,
+      "optimality": "FIXED_BINDING_EVENT_MODEL_OPTIMAL",
+      "dispatch_model": "ZERO_OR_COMPLETION_EVENTS_ONLY",
+      "native_optimality": "NOT_CLAIMED"
+    },
+    "candidate_id": "joint-wan3-resident-c2048-e1-bincumbent21a-v1-state-90db9711ea477ee203df7112ad06c7471757a2506368fc3bec324298a61f0dd9",
+    "implementation": {
+      "candidate_bundle": {
+        "schema_version": "distillschedule.wan_candidate_bundle.v1",
+        "grad_lora_fused_epilogue": true,
+        "modulated_norm_fusion": true,
+        "generator_rollout_cuda_graph": true,
+        "generator_nograd_lora_cast_cache": true,
+        "critic_grad_cuda_graph": true
+      },
+      "retention_execution": "planner-retain4.v1",
+      "retained_critic_blocks": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "placement": "resident",
+      "chunk_tokens": 2048,
+      "lora_epilogue": true,
+      "rollout_window": 1
+    },
+    "executable_backend": "original-wan-world16",
+    "strategy": {
+      "candidate_bundle": {
+        "schema_version": "distillschedule.wan_candidate_bundle.v1",
+        "grad_lora_fused_epilogue": true,
+        "modulated_norm_fusion": true,
+        "generator_rollout_cuda_graph": true,
+        "generator_nograd_lora_cast_cache": true,
+        "critic_grad_cuda_graph": true
+      },
+      "retention_execution": "planner-retain4.v1",
+      "retained_critic_blocks": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "placement": "resident",
+      "chunk_tokens": 2048,
+      "lora_epilogue": true,
+      "rollout_window": 3
+    },
+    "model_binding": {
+      "asset_fingerprint": "28b5a239a06adc6eee560296e669a76dde6963066f1c057cd0d3e19ee3bfb91d",
+      "environment_fingerprint": "d9aa447bb45f625aa020e560a87e6f2c714e8789c53c90dab55104221c86d85e",
+      "hardware_fingerprint": "025d29d5d59a0b099cb8152b4561e62f7ab54b61f7cdd261399045fdd9ed44c8",
+      "precision_fingerprint": "0b553d366eaeec47234d0c76c06ad2aa1ca1ef0332fd8c7e37d6c072e6c646ec",
+      "semantic_fingerprint": "fb020dd2e12374a015acbce5f6140d86588804b1511ee8f6504f36efa6a2e65b",
+      "source_head": "ea29129342741b54e59c4773e07454f541fadcc7"
+    }
+  },
+  "capacity": "ASSEMBLED_TOTAL_MINUS_2GIB_AND_COLD_NATIVE_HIGHWATER_REQUIRED",
+  "CUDA_initialized": false,
+  "strict_numeric_equivalence": false,
+  "formal_speedup_eligible": false
+}

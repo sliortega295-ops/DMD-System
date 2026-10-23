@@ -1,0 +1,256 @@
+{
+  "capability_boundaries": {
+    "W1": "Fresh native cohort reference/manual/plan and original-engine restart CPU/source tested; literal historical bundles remain two-cycle; pretrained CUDA restart NOT_RUN.",
+    "W2_W3_W4_W5_W6": "Existing bounded original-native APIs only; arbitrary native training, native complete-state restart/decoding/portable export remain unimplemented public adapter gaps, not claimed delivered.",
+    "W5_W6_distinct": "W5 approximate Grid1000 full-sequence; W6 continuous-sigma original AR, not interchangeable.",
+    "dense_export": "Full CPU tensor materialization on participants; production host capacity NOT_RUN.",
+    "native_upstream": "Existing save hooks preserved; W6 archived snapshot is not a complete licensed upstream distribution.",
+    "public_program": "Real local and Gloo/DDP/FSDP2/HSDP persistent training, complete-cycle same-topology restart, held-out local diagnostics, distributed checkpoint evaluation/export and local new-input portable inference.",
+    "trust": "Plugins and dependencies are trusted executable code; hashes bind integrity, not hostile-code isolation or publisher identity.",
+    "unsupported": "Mid-cycle/cross-topology restart, distributed periodic validation, custom distributed export, unowned hidden multi-device modules."
+  },
+  "ci": {
+    "local_minimum_version_pass_claimed": false,
+    "python": [
+      "3.10",
+      "3.12"
+    ],
+    "status": "SEPARATE_EXACT_HEAD_GITHUB_ACTIONS_CHECKS",
+    "target_torch": "2.10.0+cpu",
+    "workflow": ".github/workflows/framework-cpu.yml"
+  },
+  "functional_installed_wheel": {
+    "exported_weights_new_inputs": true,
+    "fresh_process_resume_full_state_equal": true,
+    "old_training_artifacts_unavailable": true,
+    "path": "artifacts/framework/20261021/installed_lifecycle_continuation.json",
+    "quality_validation": "NOT_RUN",
+    "raw_report_sha256": "0682fe5854a37c38b47b249f6f50a883df63a2216362ce8f026a53fefd13042e",
+    "real_autograd": true,
+    "real_media": true,
+    "saved_plan_actually_executed": true,
+    "status": "PASS_INSTALLED_FRAMEWORK_CPU"
+  },
+  "generated_at_utc": "2026-10-21T21:15:49.777132+00:00",
+  "integration_base": "3a773ccb5be9539f12ed86984466effb8c5e7e90",
+  "lightweight_wheel": {
+    "log_sha256": "ab6939cc2351e724c5a613ff46e47a8bfad5eacdc412e4d1c2cfd5580f7394c0",
+    "source_content_commit": "e1e971f5307b86b88f6013abf52e8abf66481fc0",
+    "status": "PASS_ISOLATED_WHEEL",
+    "torch_imported": false,
+    "workloads": 6
+  },
+  "lint": {
+    "linting_agent": "Read-only pass; inherited F841 removed and duplicate tutorial input corrected by host",
+    "new_formatter_or_suppression": false,
+    "status": "PASS_F_E9_ALL_40_CONTINUATION_PYTHON_FILES"
+  },
+  "local_environment": {
+    "persistent_environment_replaced": false,
+    "python": "3.12.3",
+    "test_configuration_overlay": "disposable existing test-only OmegaConf dependency overlay",
+    "torch": "2.14.0+cpu"
+  },
+  "main_changed": false,
+  "model_downloads": 0,
+  "new_gpu_runs": 0,
+  "norm_lint_followup": {
+    "junit_sha256": "41679088cbb3f652b256fa0403acf45744d2dd4e79205e29392aeda7305b9218",
+    "passed": 12,
+    "runtime_diff": "Delete unused local binding only",
+    "skipped": 36,
+    "source_content_commit": "9c182f195d241e5d13e1582b710f96b9157d4402"
+  },
+  "offline_sdist_roundtrip": {
+    "discovery_torch_imported": false,
+    "gpu_runs": 0,
+    "license_files_sha256": {
+      "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "NOTICE": "9247ab500279666c898a4ac7e943989ea8c4316c3211d7fda88ed5a28151366b",
+      "THIRD_PARTY.md": "b688c5e7b7084bb8fef5547b2fab2f3b381844b3ebcdc0cfd190d1cb53654e18",
+      "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
+      "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115"
+    },
+    "model_downloads": 0,
+    "persistent_environment_changes": 0,
+    "sdist_bytes": 1646117,
+    "sdist_sha256": "857c26042ac30100dde52d1e7170cdebedf662044da91ca3238bda38bfc1cd9b",
+    "source_content_commit": "e1e971f5307b86b88f6013abf52e8abf66481fc0",
+    "status": "PASS_OFFLINE_SDIST_WHEEL_INSTALL_DISCOVERY",
+    "wheel_bytes": 1352148,
+    "wheel_sha256": "051159372c8302d92e418085228db304ab2687004887904b79c8f510e05c3619"
+  },
+  "old_queues_resumed": false,
+  "performance_trials": 0,
+  "previous_frozen_receipt": {
+    "path": "artifacts/framework/20261021/cpu_acceptance.json",
+    "preserved": true,
+    "sha256": "53523fc0e8338a1c142e93b319b974e969c91ff6821461fc53de922b7213a888"
+  },
+  "publication": {
+    "draft": true,
+    "main_merged": false,
+    "pull_request": "https://github.com/sliortega295-ops/DMD-System/pull/36"
+  },
+  "quality_validation": "NOT_RUN",
+  "review": {
+    "actionable_residuals": 0,
+    "confirmed_findings": 4,
+    "different_provider": "Authentication unavailable; completed local adversarial fallback, no cross-model corroboration",
+    "fixes": [
+      {
+        "commit": "1fac8484a74b7166742ce4913a061b0a081d1259",
+        "file": "src/distillschedule/training/checkpoint.py",
+        "host_tests": "32 passed, 1 existing warning; focused F/E9 lint and diff checks PASS",
+        "number": 1,
+        "severity": "P2",
+        "status": "APPLIED_HOST_VERIFIED",
+        "title": "Preserve non-pointwise optimizer state during restart"
+      },
+      {
+        "commit": "429ff3abd286495643416220850afbb98cac555a",
+        "file": "src/distillschedule/training/policy.py",
+        "host_tests": "33 passed; focused F/E9 lint and diff checks PASS",
+        "number": 2,
+        "severity": "P2",
+        "status": "APPLIED_HOST_VERIFIED",
+        "title": "Make later-cycle policy rejection collective"
+      },
+      {
+        "commit": "429ff3abd286495643416220850afbb98cac555a",
+        "file": "src/distillschedule/training/policy.py",
+        "host_tests": "33 passed; focused F/E9 lint and diff checks PASS",
+        "number": 3,
+        "severity": "P2",
+        "status": "APPLIED_HOST_VERIFIED",
+        "title": "Bound DDP hook telemetry across persistent cycles"
+      },
+      {
+        "commit": "af753b05d0ca66c621fba0ab088fd3b339da5a6b",
+        "file": "src/distillschedule/training/session.py",
+        "host_tests": "24 passed; focused F/E9 lint and diff checks PASS",
+        "number": 4,
+        "severity": "P2",
+        "status": "APPLIED_HOST_VERIFIED",
+        "title": "Propagate rank-local metrics write failures collectively"
+      }
+    ],
+    "lenses": 8,
+    "reviewed_head": "b086732176df3f16d2acf1c00dd163dca07b7855",
+    "run_id": "20261021-110654-ce798fa1",
+    "status": "complete"
+  },
+  "schema_version": "distillschedule.framework_cpu_acceptance.v2",
+  "source_admission": {
+    "followup_log_sha256": "682e991e55d1791521ef91641bd32b9c31f289c6846e6edb03d0c6e6510a386c",
+    "legacy_canonical_profiles": 5,
+    "original_import_map_preserved": true,
+    "original_import_map_sha256": "599cf789dc6c949bbd24667aa07271050046f8906bd3edf10e318129477d8488",
+    "project_workloads": 6,
+    "status": "PASS_CPU_INTEGRATION",
+    "tests": 18
+  },
+  "source_content_commit": "9c182f195d241e5d13e1582b710f96b9157d4402",
+  "source_manifest": {
+    "examples/framework/newmodel.py": "131707ff382e022f74a9d19ea0759be071ce1dc709466b0a0bc5c8eb4bf9124c",
+    "examples/framework/newworkflow.py": "afdbd1ac08c799a22dbc34832f5d8548210afff8146611e2ca437b7397e915ab",
+    "pyproject.toml": "51c44a71a95c300a3280463874e419af2e3093b0b9b1fa5f7d1e790a8cb536bf",
+    "scripts/check_framework_install.py": "7a5eab65445b58cacac4e7aff8dc372a0e450d73381fba94c0a033cbdabf63d8",
+    "scripts/check_wheel_install.py": "0d0b818a21a9364ce233cbe33fb96359122af61b4641c29a09734a164197ebf3",
+    "src/distillschedule/cli.py": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
+    "src/distillschedule/data/__init__.py": "a6b45a9a2e3fb108092a1fa99bbb0b41758b1eb631024a6602a880f77008d384",
+    "src/distillschedule/data/cli.py": "b27b29c424a224b4cab7a2dffc4732c1d3ff15fdd9ef5711941c62a199ec0553",
+    "src/distillschedule/data/dataset.py": "5004515859ef8ff4b9a56e928b814a49686b01660f7eac875ebcfb40660ed829",
+    "src/distillschedule/data/decoding.py": "0ea93ac9b86196b9791595e831d7c98bbb3b771af82efa04f5f5d6f9e1b915f5",
+    "src/distillschedule/data/manifest.py": "10980f08454b1e32a4fc80594baee0e5615033b58bb2e08de5f84754026b33f4",
+    "src/distillschedule/data/preparation.py": "6006efceaa51920608c7ead6d9b46b791dbbbaa7bffbb872e01052babe91db7d",
+    "src/distillschedule/data/tensors.py": "f1145c68d39002204971f00754550e684ad997ccc69d3f6c982689fe4628ef8d",
+    "src/distillschedule/examples/__init__.py": "4c960c930b137cff60126ad394e55c02f2f87a9d7cbb122940ced1524093ee44",
+    "src/distillschedule/examples/tiny_av.py": "e6b2a0b1bf3a4618ac9dbb48ec77d63923b2ab9aef0ede01e02a6846d1afdf6b",
+    "src/distillschedule/open_workload/__init__.py": "09ac05cd26ef1f30142f1d748a173a168644c4c700210c1c0fc980ed568a3e66",
+    "src/distillschedule/open_workload/checkpoint_policy.py": "94ded755e2b5bf244bf2810a9e0ed5efa2dab41067f5d7a8d9d1a3eacafc5d4b",
+    "src/distillschedule/open_workload/cli.py": "704c93aef07ea7d7f01d29685db01fb37042591432990d6a742169051c2aa21e",
+    "src/distillschedule/open_workload/deep_profile.py": "e2409c8764d13e6e2db7303ba14f37edade53704a527abcb61b884171cd6aaf6",
+    "src/distillschedule/open_workload/dmd.py": "457b37fc5afe3aed6ca5101ea9d14b1cc6a7c2a86afb06a29a5400f7c32f4acd",
+    "src/distillschedule/open_workload/execution.py": "44215ccbd6a07b9d51f83c30784fdff6d918cd3fd7379d7aa2b29b41bcbd1e17",
+    "src/distillschedule/open_workload/hardware_probe.py": "a6f983636c5bbcffd5324f1a2a97ed892f497ed1334be20a048caf64f228999d",
+    "src/distillschedule/open_workload/mixed_layout.py": "8f146d74049868642c20136cdf8c3dfb825e091ae1ac434c38a8910289d60795",
+    "src/distillschedule/open_workload/opportunity.py": "b1c34832696c71eac80c0c12f631f0409364d8089cb5072fab209baf1ee9a1d9",
+    "src/distillschedule/open_workload/planning.py": "c47410b81d56e7a09cf58c7632ae2628881cf9a9e6abdde42b96ac64920de810",
+    "src/distillschedule/open_workload/replica_contract.py": "497b9db2b3227bbd0a31dffb07fdb755923dc4cb25771aebdfdb38bd7479def6",
+    "src/distillschedule/open_workload/replicated.py": "4f453a722009d4c12f536c2537813c1b372a04d35467b439c764980f9393df2a",
+    "src/distillschedule/open_workload/role_cli.py": "60fbac0bffed3e903ce6c282644b4c4b436f973d22c80bf091cb69cd2762bf24",
+    "src/distillschedule/open_workload/role_dispatch.py": "f40e34932f160aa8f10fac6fe77c8182169b8458a9044138cbd46d65d200029d",
+    "src/distillschedule/open_workload/role_offload.py": "e4504008702451db4de7038f1384874cc9b6736018eb26ee9d5882db69a69c55",
+    "src/distillschedule/open_workload/role_planning.py": "36d0d278acfbb5d391f1e752d2ae66ce46397057bc3dcbe939df2a978bbdab17",
+    "src/distillschedule/open_workload/role_prediction.py": "266e7fa131b6000a4b80a52047ac8b23a019ca430c6b66141486d8ac9c5a8153",
+    "src/distillschedule/open_workload/role_profiling.py": "19ea3193b1c5060eeb87767f8dff4e3fce3fbba74ad519758ca9edc5abbbab7f",
+    "src/distillschedule/open_workload/role_program.py": "d29af56cb4ce5ddb1be18e500f39c3a31258326990ba8bad3579c10e7a1511d7",
+    "src/distillschedule/open_workload/role_score.py": "e01aada4da44568156f06802a1bc7b37267053fd02b3d258d3250733d96878aa",
+    "src/distillschedule/open_workload/role_sharding.py": "c83047764575662bee426948c12b600a1ebdf2646f30677d42581e470705c002",
+    "src/distillschedule/open_workload/role_transport.py": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+    "src/distillschedule/open_workload/sharded.py": "9ed619b1c817c590b0d2a2c19fbf4ecc294cb85ce92fbb54eb4867da2bff1422",
+    "src/distillschedule/open_workload/topology.py": "3fc15ff4b8c3a925ece2a1c2417519d0a22ac62f5dfb7c9f223cc3968ecd293a",
+    "src/distillschedule/open_workload/torch_backend.py": "a771d668ac47508fabb760f43aabe00237275e9c704ea5fa30f44396f7983b2a",
+    "src/distillschedule/runtime/wan13b_modulated_norm_fusion.py": "bd0682b6f5615ef102b65fe144d0cce9febbd6e27a55e7a095b2aeb7da51930b",
+    "src/distillschedule/strategies/wan_cli.py": "0fb1c7696b16023205ace1cb80d5d51941df3dd68433815c6b483b8f21da30b9",
+    "src/distillschedule/strategies/wan_stream.py": "febf45b4b147cba262053597440e030a2e94ce73c02ceb0e01b73cf2c2ca5ac4",
+    "src/distillschedule/strategies/wan_worker.py": "5020cbf4c58120b0888c307f432714d57bd381eba25abdac5c40aca8909db55c",
+    "src/distillschedule/training/__init__.py": "42dcec9b70e1a53da7fbdb7623da2fdd1bfdd6b8b2a3ce60bdade75c60207fb1",
+    "src/distillschedule/training/adapters.py": "71ce7857a3b2070d4a42bd2b3de0f0355ccb1d93f335975763521bb9a6a180a7",
+    "src/distillschedule/training/checkpoint.py": "d5996c9921af3a1315fcfefb7e9f2f9f9bd55a5a34786e96d1a28680ad45e0d5",
+    "src/distillschedule/training/cli.py": "25a5fd22300f533bb53ccc71982701deaec64dd9287995558d7df114d924435e",
+    "src/distillschedule/training/config.py": "3ab04425e12ec06fa1b03f9db670ce381784df7fc3ea7dabd5ae82134b394497",
+    "src/distillschedule/training/distributed.py": "17fcdc933c28022fd6c4155968826382dfee5131bfebce7321155404ec8828f6",
+    "src/distillschedule/training/inference.py": "f2812be486923c1c5aba542cd6342dcb5da6b8e148b6ba593490debdf3d941e4",
+    "src/distillschedule/training/native.py": "abd97c1ed3e173ada2fb306b2d6747e121317efd556c10367a0fc5e68b737097",
+    "src/distillschedule/training/native_state.py": "9c0fb03162713a3fe71ecc2b31b36e1fc67153c417aabf95fbec2dcfde683f09",
+    "src/distillschedule/training/plugins.py": "f15e7664945a2c84bc0f18c100cfc609179f7992e84f6f9904712cf2cae22530",
+    "src/distillschedule/training/policy.py": "61bcb344f1b3dbe99c0b56caafd77e76af83686d4cc18c6f5c63e078b022dcb3",
+    "src/distillschedule/training/session.py": "eaf6c125df48e4316ce91dc4de59520aac02cae89d2145ff78b6e272849b3cfe",
+    "src/distillschedule/training/tensor_state.py": "aa1bdff596644ba4db03114010d3a4f2d79af2a9a2d3cb1150d8111230a8858f",
+    "src/distillschedule/training/validation.py": "00bfa832ff294301dda681627092986a8ec385379ec34ee8f05d695c94b90e12",
+    "src/distillschedule/workloads/program.py": "11437fdeef074d29333a3d76f1f92215156967c4f0d84aebdc68a0613cd39e5c"
+  },
+  "source_manifest_sha256": "6120e3807938060ded23cb65070b1c8326a7175c61be0be2b52ffb629a164a9f",
+  "speedup_claim": false,
+  "ssh_connections": 0,
+  "status": "PASS_PUBLIC_FRAMEWORK_CPU_WITH_NATIVE_ADAPTER_GAPS",
+  "test_suites": {
+    "framework_data_open_workload_organization": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "b3a8b796ba1042dba42f189355889981c20a5091a06acb67735fed3e169fe5c1",
+      "log_sha256": "94cd1b6c01fb7a445581145bdb7b167061c00eb2b6e2af69bb31052dec8531fb",
+      "passed": 511,
+      "pytest_summary": "511 passed, 2 skipped, 19 warnings in 618.08s (0:10:18)",
+      "skipped": 2,
+      "source_content_commit": "e1e971f5307b86b88f6013abf52e8abf66481fc0",
+      "subtests_passed": 0
+    },
+    "original_wan": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "4e1c6a9b4f4ccf8a85a06324682b546fa0db44244f829c7109a9ae18f19dc55b",
+      "log_sha256": "4898575433dfeb039d33aa33b5f36288ddb7846221368e78731d8c60e364710d",
+      "passed": 157,
+      "pytest_summary": "157 passed, 7 skipped in 10.99s",
+      "skipped": 7,
+      "source_content_commit": "e1e971f5307b86b88f6013abf52e8abf66481fc0",
+      "subtests_passed": 0
+    },
+    "required_refactor": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "252f4ba833ff6ee991a5bde1801e6f800c08a26e709ac877a5c833bf6c42cd8b",
+      "log_sha256": "8d79090e4fb1aa8242d80ed8ba4cff8d7528feb736e6f3299bfd0fa802c36315",
+      "passed": 2153,
+      "pytest_summary": "2153 passed, 85 skipped, 1 warning, 20 subtests passed in 243.84s (0:04:03)",
+      "skipped": 85,
+      "source_content_commit": "e1e971f5307b86b88f6013abf52e8abf66481fc0",
+      "subtests_passed": 20
+    }
+  },
+  "verification_scope_note": "Full suites ran at e1e971f. Its sole subsequent runtime change removes the unused norm original_backward binding at9c182f1. Norm/source audit/installed lifecycle/lint reran after that edit. Documentation and this receipt are not new GPU/native numerical validation."
+}

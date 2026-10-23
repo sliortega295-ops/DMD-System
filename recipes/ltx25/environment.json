@@ -1,0 +1,18 @@
+{
+  "scope": "ISOLATED_OPTIONAL_CPU_ACCEPTANCE_NOT_SHARED_SD_SELF_FORCING_ENV",
+  "torch": "2.10.0+cpu",
+  "torchaudio": "2.10.0+cpu",
+  "transformers": "5.14.1",
+  "tokenizers": "0.22.2",
+  "safetensors": "0.8.0",
+  "scipy": "1.16.3",
+  "colour-science": "0.4.7",
+  "cuda_visible_devices": "",
+  "OMP_NUM_THREADS": "1",
+  "MKL_NUM_THREADS": "1",
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "optional_media": "Pillow and existing local PCM WAV/frame decoding",
+  "gpu_execution": "NOT_RUN",
+  "weights_downloaded": false
+}

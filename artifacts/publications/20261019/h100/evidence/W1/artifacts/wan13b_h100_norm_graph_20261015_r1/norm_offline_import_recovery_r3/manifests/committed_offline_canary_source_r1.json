@@ -1,0 +1,75 @@
+{
+  "status": "PASS_CLEAN_COMMITTED_CPU_AND_REAL_OFFLINE_IMPORT_ONLY",
+  "utc": "2026-10-16T02:49:56.877132+00:00",
+  "head": "97b8ecc9cf7747d93619acad1a6083f98faae084",
+  "parent": "3bb2e81629e105a109caffebc4a36c004909f37e",
+  "CPU_counts": {
+    "tests": 54,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 36
+  },
+  "focused_CPU_helpers": 10,
+  "files": {
+    "scripts/distillschedule/canary_wan13b_modulated_norm.py": "abca640dc2e9d844050e9c14654fbf1a3c304018eea2d33304d3751631fc14c8",
+    "scripts/distillschedule/launch_wan13b_hardware_two_cycle_node.sh": "5264cd14bb4ced99b2cfb9e36e56ec10685d473d712656f13d7138a3127e0656",
+    "scripts/distillschedule/probe_wan13b_fair_world16.py": "a2573ac9a01e3eca30df506ca6f144e856c97b6300fd92efb8de27e8788347ce",
+    "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py": "64575d7dc20515a2d077ddcdac20f50693ac216993835be192b31f731876221c",
+    "scripts/distillschedule/summarize_wan13b_hardware_two_cycle.py": "5216c807fb8e5ba393233b146cb37279936db1618e69f42584c0300cf99486e7",
+    "src/distillschedule/runtime/wan13b_fused_layernorm_backward_kernel.py": "094c9b35a77a28eb75428c857af8210d249e1aecc2ac91a894fe807d3c910a10",
+    "src/distillschedule/runtime/wan13b_fused_layernorm_kernel.py": "e1e1cc675f2503cc6bc8e0f1c16639362420ddd1c400e601b6a1c3776a440f91",
+    "src/distillschedule/runtime/wan13b_modulated_norm_fusion.py": "a777a6f3c34026fa29fb43759b8dafa6f09ba308f10b9ed9ba8bc912412ba4b6",
+    "src/distillschedule/runtime/wan13b_modulated_norm_kernel.py": "6336c7b00283ef2e47b47a56bc916852315b6cf7ab5299407a72699c9c63bc10",
+    "src/distillschedule/runtime/wan13b_norm_policy.py": "7699813fe11e6763d01cac694c053edf437f48a84b4fcfe8e3218220379fdf72",
+    "tests/test_refactor_wan13b_modulated_norm_fusion.py": "2d09b3ed5877ba4e35a20a0466ea9790e82fe9a8ea37adf9c6d30550229d4c64",
+    "tests/test_refactor_wan_h100_norm_port.py": "14852b1679bbb28e7a448e23bb7393bfae671e0c60e6b6e644bfcdad944ebec6",
+    "scripts/distillschedule/canary_wan13b_rank_private_cache.py": "ec65731a14d4b171cc674219610d160f1a890cbb3b7290e52b2e5793050ae537",
+    "tests/test_refactor_wan13b_rank_cache.py": "6e0f8c3f9765519ef142d40f1520f7a3416135dec068b0346b4ba593378f476b"
+  },
+  "unchanged_operator_and_worker_files": {
+    "scripts/distillschedule/canary_wan13b_modulated_norm.py": "abca640dc2e9d844050e9c14654fbf1a3c304018eea2d33304d3751631fc14c8",
+    "scripts/distillschedule/launch_wan13b_hardware_two_cycle_node.sh": "5264cd14bb4ced99b2cfb9e36e56ec10685d473d712656f13d7138a3127e0656",
+    "scripts/distillschedule/probe_wan13b_fair_world16.py": "a2573ac9a01e3eca30df506ca6f144e856c97b6300fd92efb8de27e8788347ce",
+    "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py": "64575d7dc20515a2d077ddcdac20f50693ac216993835be192b31f731876221c",
+    "scripts/distillschedule/summarize_wan13b_hardware_two_cycle.py": "5216c807fb8e5ba393233b146cb37279936db1618e69f42584c0300cf99486e7",
+    "src/distillschedule/runtime/wan13b_fused_layernorm_backward_kernel.py": "094c9b35a77a28eb75428c857af8210d249e1aecc2ac91a894fe807d3c910a10",
+    "src/distillschedule/runtime/wan13b_fused_layernorm_kernel.py": "e1e1cc675f2503cc6bc8e0f1c16639362420ddd1c400e601b6a1c3776a440f91",
+    "src/distillschedule/runtime/wan13b_modulated_norm_fusion.py": "a777a6f3c34026fa29fb43759b8dafa6f09ba308f10b9ed9ba8bc912412ba4b6",
+    "src/distillschedule/runtime/wan13b_modulated_norm_kernel.py": "6336c7b00283ef2e47b47a56bc916852315b6cf7ab5299407a72699c9c63bc10",
+    "src/distillschedule/runtime/wan13b_norm_policy.py": "7699813fe11e6763d01cac694c053edf437f48a84b4fcfe8e3218220379fdf72",
+    "tests/test_refactor_wan13b_modulated_norm_fusion.py": "2d09b3ed5877ba4e35a20a0466ea9790e82fe9a8ea37adf9c6d30550229d4c64",
+    "tests/test_refactor_wan_h100_norm_port.py": "14852b1679bbb28e7a448e23bb7393bfae671e0c60e6b6e644bfcdad944ebec6"
+  },
+  "prior_actual_GPU_tests": {
+    "head": "3bb2e81629e105a109caffebc4a36c004909f37e",
+    "counts": {
+      "tests": 44,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_rankcache_recovery_r2/matched_native_r1/GPU_tests.xml",
+    "sha256": "b69b8e279ad252a6cc7400bfc6bc2222cf1a8bfe6e802e23e151148e38cce566"
+  },
+  "prior_actual_native9_primitive": {
+    "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_rankcache_recovery_r2/matched_native_r1/actual_native_width1536_primitive.json",
+    "sha256": "51d4da00a02b4e9c3dfea55efa88661280ab941641206358e62df6c6575d6cab"
+  },
+  "current_real_import_CPU": {
+    "path": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/h100_resident_baselines_20261014_r1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/logs/native_import_CPU_smoke_r2.json",
+    "sha256": "4446c7c1f3171d73469a2078a6293b65501a85effea0dd7baa262d6e6d40626e",
+    "CUDA_initialized": false
+  },
+  "repair": "canaryonly production offlineHeliosimport + wrappednativeRMSNormsourceidentity; no training/kernels/options/dependencies",
+  "GPU_current_head": "NOT_RUN_FOREIGN_CONTEXTS_PRESENT",
+  "math_changed": false,
+  "push": false,
+  "attempt_ledger": {
+    "full_model_norm_attempt_ordinal": 2,
+    "max_total_full_model_norm_attempts": 2,
+    "prior_expensive_arm_launches": 1,
+    "max_remaining_expensive_arm_launches": 4,
+    "cheap_cache_canary_failed_offline_before_model": 1,
+    "max_additional_cheap_cache_canary": 1
+  }
+}

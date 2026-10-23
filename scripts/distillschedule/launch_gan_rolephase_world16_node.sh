@@ -89,7 +89,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
 export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
 
-"${PYTHON}" "${ROOT}/scripts/distillschedule/build_gan_rolephase_source_identity.py" \
+"${PYTHON}" "${ROOT}/tools/assets/build_gan_rolephase_source_identity.py" \
   --dmd-root "${ROOT}" --helios-root "${HELIOS}" --git-head "${EXPECTED_HEAD}" \
   --verify "${SOURCE_IDENTITY}" >"${NODE_LOG}/source_identity.stdout.json"
 "${PYTHON}" - "${SOURCE_IDENTITY}" "${EXPECTED_SOURCE_IDENTITY}" <<'PY'

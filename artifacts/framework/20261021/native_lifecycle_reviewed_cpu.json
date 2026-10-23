@@ -1,0 +1,88 @@
+{
+  "behavior_head": "dc67c0b02c123c40147fe260fe632f23bccd6ed7",
+  "claims": {
+    "gpu_launches": 0,
+    "main_changed": false,
+    "minimum_torch_ci": "SEPARATE_EXACT_HEAD_CHECKS",
+    "model_payload_downloads": 0,
+    "performance": "NOT_RUN",
+    "pretrained_numerical_parity": "NOT_RUN",
+    "quality": "NOT_RUN",
+    "ssh_connections": 0
+  },
+  "dependencies": {
+    "existing_environment_replaced": false,
+    "helios_cpu_diffusers": "0.34.0",
+    "native_wan_cpu_diffusers": "0.35.2",
+    "native_wan_cpu_peft": "0.17.1",
+    "python": "3.12.3",
+    "separate_native_wan_overlay": true,
+    "torch": "2.14.0+cpu"
+  },
+  "quality": {
+    "applied_findings": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "compile_exit_checked": true,
+    "cross_model": "authentication-shaped no-review; local adversarial fallback completed",
+    "cross_model_corroboration": false,
+    "fix_commits": [
+      "16ec49635d0dc94daa15c5e70005412db2e1ef71",
+      "cc0a12fad65c0a431c911b8180943e44430d7fda",
+      "48829ae3e536a0c8a11f8802fe5a612de3afcfdd"
+    ],
+    "independent_local_persona_contexts": 9,
+    "independent_validator_batches": 1,
+    "review_run_id": "20261021-184807-1cda0bba",
+    "review_status": "complete",
+    "ruff_changed_python_files": 24,
+    "shell_syntax_files": 17,
+    "unapplied_actionable_findings": [],
+    "validated_findings": 7
+  },
+  "refactor_test_count_note": "2258 JUnit cases include2153 tests,85 skips and20 passing subtests",
+  "remaining_boundaries": [
+    "Native W3/W4/W6 arbitrary fresh-data lifecycle and common native generation/export remain unimplemented; do not confuse them with the public Program proof.",
+    "Native output admission is not an atomic cross-job filesystem reservation; unique operator-owned output directories remain required.",
+    "Restricted H3 admission precedes the pinned original loader; filesystem check/use races on operator-owned storage are not a sandbox guarantee.",
+    "CPU/Gloo and explicit construction facades do not qualify pretrained CUDA/NCCL/FSDP restart or capacity."
+  ],
+  "schema_version": "distillschedule.framework_native_reviewed_cpu.v1",
+  "scope": "CPU_ORIGINAL_HELPERS_DATA_AND_LIFECYCLE_NOT_PRETRAINED_GPU",
+  "source": {
+    "original_import_map_sha256": "599cf789dc6c949bbd24667aa07271050046f8906bd3edf10e318129477d8488",
+    "p0_reviewed_overlay_sha256": "800fc17a7af70712823fa87d669716a9895937c16e7f871e336099b2f21a8167"
+  },
+  "suites": {
+    "framework": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "ce48c3d82506e8c3aa8e6699939df578a016bb92b615635848d34061c12c8ba6",
+      "skipped": 2,
+      "tests": 664,
+      "wall_seconds": 996.2612825490069
+    },
+    "native-wan": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "c0f135c0f914a05792da54f8ca96b4e31c3fbde7b4bd0ea97cb8c06d321fd834",
+      "skipped": 0,
+      "tests": 173,
+      "wall_seconds": 18.56026225000096
+    },
+    "refactor": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "ea320dcb7900e4211b6a26e6bdd1064a8f0256be88223e5488ff761538744c45",
+      "skipped": 85,
+      "tests": 2258,
+      "wall_seconds": 251.47272613600944
+    }
+  }
+}

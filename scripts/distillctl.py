@@ -8,8 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+# runtime/ is an intentionally retained and packaged compatibility namespace.
+# Match the installed command even when invoked from another working directory.
+for path in (ROOT, SRC):
+    if str(path) in sys.path:
+        sys.path.remove(str(path))
+    sys.path.insert(0, str(path))
 
 from distillschedule.cli import main
 

@@ -1,0 +1,937 @@
+{
+  "build": {
+    "critic": {
+      "all_role_lora_scale1_add": {
+        "checkpoint_missing_active_scope_count": 0,
+        "checkpoint_replay_scope": true,
+        "checkpoint_scope_execution_count": 1970,
+        "checkpoint_scope_restore_count": 1970,
+        "checkpoint_wrap_count": 1028,
+        "enabled": true,
+        "fused_grad_invocation_count": 17798,
+        "fused_nograd_invocation_count": 818,
+        "instrumented_module_count": 406,
+        "lora_b_gemm_completed_invocation_count": 9280,
+        "lora_b_gemm_epilogue_enabled": true,
+        "lora_b_gemm_epilogue_requested": true,
+        "lora_b_gemm_kernel_call_count": 9280,
+        "lora_b_gemm_runtime_identity": {
+          "first_order_only": true,
+          "implementation": "TRITON_BF16_RANK256_B_GEMM_RN_BF16_THEN_ADD_RN_F32_BF16_STORE_REFERENCE_MM_BACKWARD",
+          "master_parameter_cast_or_reduction_changed": false,
+          "matmul_flags_observed_not_modified": {
+            "allow_bf16_reduced_precision_reduction": true,
+            "allow_fp16_reduced_precision_reduction": true,
+            "allow_tf32": true
+          },
+          "parameter_compute_dtype": "torch.bfloat16",
+          "rank": 256,
+          "source_primitive_sha256": "ef0923e9d587153f1ddf3c07110a70cfcf059e8017485d503fb7a876a95ca100",
+          "stages": 3,
+          "tile": [
+            64,
+            128,
+            64
+          ],
+          "torch_version": "2.10.0+cu128",
+          "triton_version": "3.6.0",
+          "validated_shapes": [
+            [
+              11040,
+              5120
+            ],
+            [
+              13680,
+              5120
+            ],
+            [
+              11040,
+              13824
+            ]
+          ],
+          "warps": 8
+        },
+        "lora_b_gemm_selected_attempt_count": 9280,
+        "lora_b_gemm_selected_grad_invocation_count": 8800,
+        "lora_b_gemm_selected_invocation_count": 9280,
+        "lora_b_gemm_selected_nograd_invocation_count": 480,
+        "lora_b_gemm_selected_shape_counts": {
+          "M11040_N13824_R256": 880,
+          "M11040_N5120_R256": 4400,
+          "M13680_N5120_R256": 4000
+        },
+        "model_call_count": 28,
+        "scope": "ALL_ROLE_SCALE1_MODEL_FORWARD"
+      },
+      "checkpoint_policy": {
+        "adds_synchronization": false,
+        "auxiliary_checkpoint_forward_count": 148,
+        "auxiliary_checkpoint_module_counts": {
+          "gan_final_head": 12,
+          "gan_heads.15": 12,
+          "gan_heads.25": 12,
+          "gan_heads.35": 12,
+          "gan_heads.5": 12,
+          "patch_embedding": 22,
+          "patch_long": 22,
+          "patch_mid": 22,
+          "patch_short": 22
+        },
+        "block_call_counts": {
+          "0": 22,
+          "1": 22,
+          "10": 22,
+          "11": 22,
+          "12": 22,
+          "13": 22,
+          "14": 22,
+          "15": 22,
+          "16": 22,
+          "17": 22,
+          "18": 22,
+          "19": 22,
+          "2": 22,
+          "20": 22,
+          "21": 22,
+          "22": 22,
+          "23": 22,
+          "24": 22,
+          "25": 22,
+          "26": 22,
+          "27": 22,
+          "28": 22,
+          "29": 22,
+          "3": 22,
+          "30": 22,
+          "31": 22,
+          "32": 22,
+          "33": 22,
+          "34": 22,
+          "35": 22,
+          "36": 22,
+          "37": 22,
+          "38": 22,
+          "39": 22,
+          "4": 22,
+          "5": 22,
+          "6": 22,
+          "7": 22,
+          "8": 22,
+          "9": 22
+        },
+        "block_count": 40,
+        "changes_module_math": false,
+        "changes_physical_model_call_inventory": false,
+        "checkpoint_forward_count": 880,
+        "effective_attention_backend": "pinned-sm80-fa3",
+        "explicit_exploratory_backend_override": true,
+        "lora_checkpoint_replay_scope": true,
+        "operation_source": false,
+        "reference_backend_scope": "SELECTIVE_PINNED_FA2_RESULT_REPLAY",
+        "schema_version": "distillschedule.fsdp2_checkpoint_policy.v1",
+        "scope": "SELECTIVE_PINNED_FA3_WHOLE_RESULT_REPLAY",
+        "selective_flash_block_indices": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          28,
+          30,
+          32,
+          34,
+          36,
+          38
+        ],
+        "selective_flash_context_count": 440,
+        "selective_flash_enabled": true,
+        "selective_flash_op": "_flash_attn3_cuda_373a45c._flash_attn_forward.default",
+        "selective_flash_original_save_count": 880,
+        "selective_flash_recompute_reuse_count": 880,
+        "selective_flash_stride": 2
+      },
+      "fsdp2": {
+        "backend": "FSDP2_COMPOSABLE_FULL_SHARD",
+        "block_count": 40,
+        "cpu_parameter_offload": false,
+        "mesh_policy": "world16-fsdp",
+        "mesh_shape": [
+          16
+        ],
+        "param_compute_dtype": "torch.bfloat16",
+        "parameter_streaming": false,
+        "reduce_dtype": "torch.float32",
+        "reshard_after_forward": true,
+        "separate_gan_head_fsdp": {
+          "enabled": true,
+          "fsdp_unit_count": 46,
+          "head_paths": [
+            "gan_heads.5",
+            "gan_heads.15",
+            "gan_heads.25",
+            "gan_heads.35",
+            "gan_final_head"
+          ],
+          "head_unit_count": 5,
+          "original_gradient_mesh_size": 16,
+          "requested": true
+        },
+        "transition": false,
+        "world_size": 16,
+        "wrap_policy": "40_BLOCKS_THEN_5_GAN_HEADS_THEN_ROOT"
+      }
+    },
+    "gan_manual_runtime": {
+      "actual_FA3_identity": {
+        "FA3_files_sha256": {
+          "_flash_attn3_cuda_373a45c.abi3.so": "8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56",
+          "_ops.py": "7f392b365cc945a3b3a420e24802ef776a79316c068e6e99e4da682e8927a1f6",
+          "flash_attn_interface.py": "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4"
+        },
+        "FA3_source_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux",
+        "actual_mapped_FA3_library": {
+          "device_major_minor": [
+            0,
+            49
+          ],
+          "inode": 336864136708,
+          "mapping_count": 5,
+          "maps_is_library_identity_not_GPU_ownership": true,
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/blobs/8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56",
+          "sha256": "8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56"
+        },
+        "actual_raw_dispatchers": {
+          "backward": "_flash_attn3_cuda_373a45c._flash_attn_backward.default",
+          "backward_schema": "_flash_attn3_cuda_373a45c::_flash_attn_backward(Tensor dout, Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor? cu_seqlens_q=None, Tensor? cu_seqlens_k=None, Tensor? sequed_q=None, Tensor? sequed_k=None, SymInt? max_seqlen_q=None, SymInt? max_seqlen_k=None, Tensor(a12!)? dq=None, Tensor(a13!)? dk=None, Tensor(a14!)? dv=None, float? softmax_scale=None, bool is_causal=False, SymInt window_size_left=-1, SymInt window_size_right=-1, float softcap=0., bool deterministic=False, SymInt sm_margin=0) -> Tensor",
+          "forward": "_flash_attn3_cuda_373a45c._flash_attn_forward.default",
+          "forward_return_pytree": "4_TENSORS_MUST_SAVE_WHOLE",
+          "forward_schema": "_flash_attn3_cuda_373a45c::_flash_attn_forward(Tensor q, Tensor k, Tensor v, Tensor? k_new=None, Tensor? v_new=None, Tensor? qv=None, Tensor? out_=None, Tensor? cu_seqlens_q=None, Tensor? cu_seqlens_k=None, Tensor? cu_seqlens_k_new=None, Tensor? seqused_q=None, Tensor? seqused_k=None, SymInt? max_seqlen_q=None, SymInt? max_seqlen_k=None, Tensor? page_table=None, Tensor? kv_batch_idx=None, Tensor? leftpad_k=None, Tensor? rotary_cos=None, Tensor? rotary_sin=None, Tensor? seqlens_rotary=None, Tensor? q_descale=None, Tensor? k_descale=None, Tensor? v_descale=None, float? softmax_scale=None, bool causal=False, SymInt window_size_left=-1, SymInt window_size_right=-1, SymInt attention_chunk=0, float softcap=0., bool rotary_interleaved=True, Tensor? scheduler_metadata=None, SymInt num_splits=1, bool? pack_gqa=None, SymInt sm_margin=0) -> (Tensor, Tensor, Tensor, Tensor)",
+          "source_arguments": [
+            "q",
+            "k",
+            "v",
+            "k_new",
+            "v_new",
+            "qv",
+            "out_",
+            "cu_seqlens_q",
+            "cu_seqlens_k",
+            "cu_seqlens_k_new",
+            "seqused_q",
+            "seqused_k",
+            "max_seqlen_q",
+            "max_seqlen_k",
+            "page_table",
+            "kv_batch_idx",
+            "leftpad_k",
+            "rotary_cos",
+            "rotary_sin",
+            "seqlens_rotary",
+            "q_descale",
+            "k_descale",
+            "v_descale",
+            "softmax_scale",
+            "causal",
+            "window_size_left",
+            "window_size_right",
+            "attention_chunk",
+            "softcap",
+            "rotary_interleaved",
+            "scheduler_metadata",
+            "num_splits",
+            "pack_gqa",
+            "sm_margin"
+          ]
+        },
+        "compiled_paths": [
+          "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/blobs/8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56"
+        ],
+        "ops_module_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/_ops.py",
+        "original_loaded_public_and_autograd_bytecode_attested": true,
+        "public_module": "flash_attn3_77c0fdd725eb0450.flash_attn_interface",
+        "public_source": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/flash_attn_interface.py",
+        "public_source_sha256": "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4"
+      },
+      "down40": {
+        "G_policy_changed": false,
+        "additional_CPU_copies": 0,
+        "additional_collectives": 0,
+        "additional_device_fences": 0,
+        "audit_errors": [],
+        "capacity_samples": [],
+        "combined_context_count": 800,
+        "enabled": true,
+        "extra_FA3": {
+          "original": 0,
+          "replay": 0
+        },
+        "extra_down": {
+          "original": 800,
+          "replay": 800
+        },
+        "formal_eligible": false,
+        "graph_drains": [
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              1,
+              0,
+              1000,
+              10
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              1,
+              0,
+              1000,
+              10
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              1,
+              1,
+              1001,
+              11
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              1,
+              1,
+              1001,
+              11
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              1,
+              2,
+              1002,
+              12
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              1,
+              2,
+              1002,
+              12
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              1,
+              3,
+              1003,
+              13
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              1,
+              3,
+              1003,
+              13
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              1,
+              4,
+              1004,
+              14
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              1,
+              4,
+              1004,
+              14
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              2,
+              0,
+              1000,
+              15
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              2,
+              0,
+              1000,
+              15
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              2,
+              1,
+              1001,
+              16
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              2,
+              1,
+              1001,
+              16
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              2,
+              2,
+              1002,
+              17
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              2,
+              2,
+              1002,
+              17
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              2,
+              3,
+              1003,
+              18
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              2,
+              3,
+              1003,
+              18
+            ]
+          },
+          {
+            "graph": "B1_DENOISE",
+            "scope": [
+              2,
+              4,
+              1004,
+              19
+            ]
+          },
+          {
+            "graph": "B3_GAN_R1",
+            "scope": [
+              2,
+              4,
+              1004,
+              19
+            ]
+          }
+        ],
+        "numerical_parity": "NOT_RUN",
+        "rank": 0,
+        "raw_counts": "NOT_MEASURED_UNPROFILED",
+        "restored": true,
+        "schema": "gan.native_down_sac.v1",
+        "source_head": "ba52a2446b7f090cd31af9504679e68770d32603",
+        "updates": [
+          {
+            "after": 11,
+            "before": 10,
+            "cycle": 1,
+            "index": 0,
+            "logical_step": 1000
+          },
+          {
+            "after": 12,
+            "before": 11,
+            "cycle": 1,
+            "index": 1,
+            "logical_step": 1001
+          },
+          {
+            "after": 13,
+            "before": 12,
+            "cycle": 1,
+            "index": 2,
+            "logical_step": 1002
+          },
+          {
+            "after": 14,
+            "before": 13,
+            "cycle": 1,
+            "index": 3,
+            "logical_step": 1003
+          },
+          {
+            "after": 15,
+            "before": 14,
+            "cycle": 1,
+            "index": 4,
+            "logical_step": 1004
+          },
+          {
+            "after": 16,
+            "before": 15,
+            "cycle": 2,
+            "index": 0,
+            "logical_step": 1000
+          },
+          {
+            "after": 17,
+            "before": 16,
+            "cycle": 2,
+            "index": 1,
+            "logical_step": 1001
+          },
+          {
+            "after": 18,
+            "before": 17,
+            "cycle": 2,
+            "index": 2,
+            "logical_step": 1002
+          },
+          {
+            "after": 19,
+            "before": 18,
+            "cycle": 2,
+            "index": 3,
+            "logical_step": 1003
+          },
+          {
+            "after": 20,
+            "before": 19,
+            "cycle": 2,
+            "index": 4,
+            "logical_step": 1004
+          }
+        ]
+      },
+      "effective_attention_backend": "pinned-sm80-fa3",
+      "guarded_merge_methods": 815,
+      "installed": true,
+      "lora_layer_count": 815,
+      "merge_attempt_count": 0,
+      "merge_count": 0,
+      "merged_layer_count": 0,
+      "public_backend_call_count": 9440,
+      "unsupported_request_count": 0,
+      "lora_inventory": {
+        "generator": {
+          "linear": 406,
+          "conv3d_names": [
+            "patch_long",
+            "patch_mid",
+            "patch_short"
+          ]
+        },
+        "critic": {
+          "linear": 406,
+          "conv3d_names": []
+        }
+      }
+    },
+    "generator": {
+      "all_role_lora_scale1_add": {
+        "checkpoint_missing_active_scope_count": 0,
+        "checkpoint_replay_scope": true,
+        "checkpoint_scope_execution_count": 526,
+        "checkpoint_scope_restore_count": 526,
+        "checkpoint_wrap_count": 264,
+        "enabled": true,
+        "fused_grad_invocation_count": 4854,
+        "fused_nograd_invocation_count": 19384,
+        "instrumented_module_count": 406,
+        "lora_b_gemm_completed_invocation_count": 4800,
+        "lora_b_gemm_epilogue_enabled": true,
+        "lora_b_gemm_epilogue_requested": true,
+        "lora_b_gemm_kernel_call_count": 4800,
+        "lora_b_gemm_runtime_identity": {
+          "first_order_only": true,
+          "implementation": "TRITON_BF16_RANK256_B_GEMM_RN_BF16_THEN_ADD_RN_F32_BF16_STORE_REFERENCE_MM_BACKWARD",
+          "master_parameter_cast_or_reduction_changed": false,
+          "matmul_flags_observed_not_modified": {
+            "allow_bf16_reduced_precision_reduction": true,
+            "allow_fp16_reduced_precision_reduction": true,
+            "allow_tf32": true
+          },
+          "parameter_compute_dtype": "torch.bfloat16",
+          "rank": 256,
+          "source_primitive_sha256": "ef0923e9d587153f1ddf3c07110a70cfcf059e8017485d503fb7a876a95ca100",
+          "stages": 3,
+          "tile": [
+            64,
+            128,
+            64
+          ],
+          "torch_version": "2.10.0+cu128",
+          "triton_version": "3.6.0",
+          "validated_shapes": [
+            [
+              11040,
+              5120
+            ],
+            [
+              13680,
+              5120
+            ],
+            [
+              11040,
+              13824
+            ]
+          ],
+          "warps": 8
+        },
+        "lora_b_gemm_selected_attempt_count": 4800,
+        "lora_b_gemm_selected_grad_invocation_count": 960,
+        "lora_b_gemm_selected_invocation_count": 4800,
+        "lora_b_gemm_selected_nograd_invocation_count": 3840,
+        "lora_b_gemm_selected_shape_counts": {
+          "M11040_N13824_R256": 800,
+          "M11040_N5120_R256": 4000
+        },
+        "model_call_count": 62,
+        "scope": "ALL_ROLE_SCALE1_MODEL_FORWARD"
+      },
+      "checkpoint_policy": {
+        "adds_synchronization": false,
+        "auxiliary_checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_module_counts": {},
+        "block_call_counts": {
+          "0": 0,
+          "1": 0,
+          "10": 0,
+          "11": 0,
+          "12": 0,
+          "13": 0,
+          "14": 0,
+          "15": 0,
+          "16": 0,
+          "17": 0,
+          "18": 0,
+          "19": 0,
+          "2": 0,
+          "20": 0,
+          "21": 0,
+          "22": 0,
+          "23": 0,
+          "24": 0,
+          "25": 0,
+          "26": 0,
+          "27": 0,
+          "28": 0,
+          "29": 0,
+          "3": 0,
+          "30": 0,
+          "31": 0,
+          "32": 0,
+          "33": 0,
+          "34": 0,
+          "35": 0,
+          "36": 0,
+          "37": 0,
+          "38": 0,
+          "39": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0,
+          "9": 0
+        },
+        "block_count": 40,
+        "changes_module_math": false,
+        "changes_physical_model_call_inventory": false,
+        "checkpoint_forward_count": 0,
+        "effective_attention_backend": "pinned-sm80-fa3",
+        "explicit_exploratory_backend_override": true,
+        "lora_checkpoint_replay_scope": true,
+        "operation_source": false,
+        "reference_backend_scope": "ALL_BLOCKS_NONREENTRANT_CHECKPOINT",
+        "schema_version": "distillschedule.fsdp2_checkpoint_policy.v1",
+        "scope": "ALL_BLOCKS_NONREENTRANT_CHECKPOINT",
+        "selective_flash_block_indices": [],
+        "selective_flash_context_count": 0,
+        "selective_flash_enabled": false,
+        "selective_flash_op": "_flash_attn3_cuda_373a45c._flash_attn_forward.default",
+        "selective_flash_original_save_count": 0,
+        "selective_flash_recompute_reuse_count": 0,
+        "selective_flash_stride": 0
+      },
+      "exact_history_current_fusion": {
+        "batch_counts": {
+          "1": 3920,
+          "3": 800
+        },
+        "call_count": 4720,
+        "enabled": true,
+        "expected_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "forward_source_sha256": "2276d2e58df0f08e08466a6815ff575c60197c8e362290b1ad236bcfe7a5d703",
+        "grad_enabled_call_count": 2240,
+        "nograd_call_count": 2480,
+        "reference_fallback_count": 0,
+        "requested": true,
+        "role": "generator",
+        "scope": "ALL_ROLE_NON_NAVIT_GUIDANCE_CROSS_ATTENTION_BLOCKS",
+        "semantic_contract": "BF16_CURRENT_PLUS_ATTENTION_AND_UNCHANGED_HISTORY_PREFIX;DIRECT_FULL_HIDDEN_AND_ATTENTION_SUFFIX_GRADIENTS;ATTENTION_NORM_NAVIT_FSDP_CHECKPOINT_AND_CALLS_UNCHANGED",
+        "shape_counts": {
+          "B1:H2400:C2160:W5120": 1040,
+          "B1:H2400:C540:W5120": 1040,
+          "B1:H2400:C8640:W5120": 1840,
+          "B3:H2400:C2160:W5120": 800
+        },
+        "shared_source_modified": false,
+        "transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "transformer_source": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_cuda_baseline_20260829/helios/modules/transformer_helios.py"
+      },
+      "exact_modulated_norm_epilogue": {
+        "backward_call_count": 2240,
+        "backward_chunk_count": 9440,
+        "backward_component_kernel_launch_count": 11680,
+        "backward_contract": "SOURCE_CHUNK_ORDER;TRITON_FP32_LAYERNORM_BACKWARD;DETERMINISTIC_BF16_COMPONENT_GRADIENT_ACCUMULATION",
+        "backward_hidden_element_count": 118910976000,
+        "backward_hidden_kernel_launch_count": 11680,
+        "backward_kernel_call_count": 2240,
+        "backward_kernel_chunk_count": 9440,
+        "backward_kernel_contract": "SOURCE_CHUNK_ORDER;BF16_INPUT_AND_UPSTREAM;FP32_AFFINE_FREE_LAYERNORM_GRAD_INPUT;DETERMINISTIC_PHASE_LOCAL_OR_TENSOR_COMPONENT_REDUCTIONS;BF16_GRADIENT_OUTPUT",
+        "backward_kernel_reference_fallback_count": 0,
+        "backward_kernel_requested": true,
+        "backward_layout_counts": {
+          "phase_local": 9440
+        },
+        "backward_requested": true,
+        "backward_tensor4d_kernel_launch_count": 0,
+        "enabled": true,
+        "expected_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "fused_call_count": 9440,
+        "fused_chunk_count": 37280,
+        "fused_element_count": 399949824000,
+        "implementation": "TRITON_B1_B3_BF16_INPUT_FP32_LAYERNORM_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_TRITON_FUSED_LAYERNORM_AND_COMPONENT_BACKWARD",
+        "layernorm_contract": "BF16_INPUT;FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;SOURCE_TABLE_COMPONENT_FP32_ADDS;SOURCE_MODULATION_FP32_FORMULA;BF16_OUTPUT;TRITON_FUSED_LAYERNORM_BACKWARD",
+        "layernorm_fused_call_count": 9440,
+        "layernorm_fused_chunk_count": 37280,
+        "layernorm_fused_element_count": 399949824000,
+        "layernorm_requested": true,
+        "materialization_contract": "SOURCE_TABLE_PLUS_COMPONENT_ADD_RN_F32_FUSED_BEFORE_EXISTING_EPILOGUE",
+        "materialization_fused_call_count": 9440,
+        "materialization_fused_chunk_count": 37280,
+        "materialization_requested": true,
+        "reference_fallback_count": 0,
+        "reference_fallback_reasons": {},
+        "requested": true,
+        "role": "generator",
+        "scope": "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE",
+        "semantic_contract": "FUSED_BF16_INPUT_FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;ADD_RN_F32_ONE_PLUS_SCALE;MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;FUSED_TRITON_LAYERNORM_BACKWARD_AND_DETERMINISTIC_COMPONENT_GRADIENTS",
+        "transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "transformer_source": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_cuda_baseline_20260829/helios/modules/transformer_helios.py",
+        "warmup": {
+          "chunk_tokens": 2048,
+          "eps": 1e-06,
+          "formal_timer_includes_warmup": false,
+          "fuse_layernorm": true,
+          "fuse_materialization": true,
+          "fused_backward": {
+            "formal_timer_includes_warmup": false,
+            "reduce_feature_block": 64,
+            "reduce_token_block": 32,
+            "row_block": 8192,
+            "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+            "shapes": [
+              [
+                1,
+                2048,
+                5120
+              ],
+              [
+                3,
+                2048,
+                5120
+              ]
+            ],
+            "status": "PASS",
+            "torch_version": "2.10.0+cu128",
+            "triton_version": "3.6.0"
+          },
+          "num_warps": 8,
+          "row_block": 8192,
+          "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+          "shapes": [
+            [
+              1,
+              2048,
+              5120
+            ],
+            [
+              3,
+              2048,
+              5120
+            ]
+          ],
+          "status": "PASS",
+          "torch_version": "2.10.0+cu128",
+          "triton_version": "3.6.0"
+        }
+      },
+      "fsdp2": {
+        "backend": "FSDP2_COMPOSABLE_FULL_SHARD",
+        "block_count": 40,
+        "cpu_parameter_offload": false,
+        "mesh_policy": "world16-fsdp",
+        "mesh_shape": [
+          16
+        ],
+        "param_compute_dtype": "torch.bfloat16",
+        "parameter_streaming": false,
+        "reduce_dtype": "torch.float32",
+        "reshard_after_forward": true,
+        "separate_gan_head_fsdp": {
+          "enabled": false,
+          "fsdp_unit_count": 41,
+          "head_paths": [],
+          "head_unit_count": 0,
+          "original_gradient_mesh_size": 16,
+          "requested": false
+        },
+        "transition": false,
+        "world_size": 16,
+        "wrap_policy": "40_BLOCKS_BOTTOM_UP_THEN_ROOT"
+      },
+      "generator_nograd_cross_kv_cache": {
+        "cache_device": "CUDA",
+        "cache_fill_count": 400,
+        "cache_miss_count": 0,
+        "cache_resident_bytes_sum": 4194304000,
+        "cache_reuse_count": 1760,
+        "cached_tensor_mutation_count": 0,
+        "cached_value": "CROSS_ATTENTION_ENCODER_KV_PRE_NORM",
+        "changes_attention_math": false,
+        "changes_fsdp_collectives": false,
+        "changes_model_call_count": false,
+        "cross_projection_call_count": 2160,
+        "cross_rollout_reuse": false,
+        "enabled": true,
+        "encoder_signature_mismatch_count": 0,
+        "expected_source_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "grad_enabled_call_count": 0,
+        "missing_source_encoder_count": 0,
+        "model_call_count": 54,
+        "query_projection_count": 2160,
+        "requested": true,
+        "role": "generator",
+        "rollout_scope_count": 10,
+        "schema_version": "distillschedule.helios_cross_kv_cache.v1",
+        "scope": "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY",
+        "self_projection_call_count": 2160,
+        "source_encoder_identity_mismatch_count": 0,
+        "source_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_cuda_baseline_20260829/helios/modules/transformer_helios.py",
+        "source_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "unexpected_cross_attention_count": 0,
+        "wrapped_symbol": "helios.modules.transformer_helios._get_qkv_projections"
+      },
+      "generator_nograd_residual_fusion": {
+        "enabled": true,
+        "exact_grad_requested": true,
+        "expected_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "fused_call_count": 4320,
+        "fused_chunk_count": 15200,
+        "fused_element_count": 130056192000,
+        "grad_backward_call_count": 2240,
+        "grad_backward_chunk_count": 9440,
+        "grad_backward_element_count": 120176640000,
+        "grad_bypass_count": 0,
+        "grad_frozen_temb_call_count": 0,
+        "grad_fused_call_count": 4480,
+        "grad_fused_chunk_count": 18880,
+        "grad_fused_element_count": 240353280000,
+        "grad_phase_local_fused_staging_chunk_count": 9440,
+        "grad_phase_local_fused_staging_element_count": 120176640000,
+        "grad_reference_fallback_count": 0,
+        "grad_reference_fallback_reasons": {},
+        "grad_saved_residual_tensor_count": 4480,
+        "grad_scope_active_call_count": 4480,
+        "grad_temb_descriptor_counts": {
+          "phase_local": 4480
+        },
+        "grad_temb_dtype_counts": {
+          "torch.bfloat16": 8960
+        },
+        "grad_temb_gradient_tensor_count": 11680,
+        "grad_trainable_temb_call_count": 4480,
+        "implementation": "TRITON_B1_B3_TILE_FORWARD_AND_PHASE_LOCAL_TEMB_EXACT_BACKWARD",
+        "non_cuda_storage_bypass_count": 0,
+        "non_generator_bypass_count": 640,
+        "reference_fallback_count": 0,
+        "reference_fallback_reasons": {},
+        "requested": true,
+        "role": "generator",
+        "scope": "GENERATOR_NOGRAD_AND_TRAINABLE_TEMB_EXACT_GRAD_GATED_RESIDUAL",
+        "scope_active_call_count": 4320,
+        "semantic_contract": "BF16_LOADS;MUL_RN_F32;ADD_RN_F32;BF16_RN_STORE;TRAINABLE_TEMB_GRAD_RESIDUAL_MUL_RN_F32_BF16_RN_STORE;PHASE_LOCAL_TEMB_PRODUCT_MUL_RN_F32_BF16_RN_STORE;EXPLICIT_TENSOR_OR_PHASE_LOCAL_TEMB_GRADIENT;NO_TRAINABLE_ADALN_TABLE",
+        "transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "transformer_source": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_cuda_baseline_20260829/helios/modules/transformer_helios.py",
+        "warmup": {
+          "backward_kernel": true,
+          "block_size": 512,
+          "chunk_tokens": 2048,
+          "formal_timer_includes_warmup": false,
+          "num_warps": 8,
+          "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+          "shapes": [
+            [
+              1,
+              2048,
+              5120
+            ],
+            [
+              3,
+              2048,
+              5120
+            ]
+          ],
+          "status": "PASS",
+          "torch_version": "2.10.0+cu128",
+          "triton_version": "3.6.0"
+        }
+      }
+    }
+  },
+  "scope": "CPU_COUNTER_CONTRACT_FIXTURE_NOT_FRESH_GPU_EVIDENCE",
+  "source_head": null,
+  "source_receipts_sha256": {
+    "native_down_rank_00_backend.json": "1292473a66d9887f4b96e6c8e2e13dda8135a063106663204972b54eff653d46",
+    "rank_00_ranks.json": "78305f87764ed4c11d81639feba5c1bbc918899260413359619cdbfd41af23f8"
+  }
+}

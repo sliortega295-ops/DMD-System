@@ -1,0 +1,170 @@
+{
+  "binding": {
+    "asset_fingerprint": "a84592f872b44e0ec6b82f39a8f12824aee3e88a43fc74002096ccbdecf7ca71",
+    "environment_fingerprint": "a7e4821dc3b846279b22046a9e10361ebde8274f29173ad28e8a01adfa7e5aa0",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "42b579f79a6b8fda084594466158583f5e0b9ff829e326a60d86c77e6f9ff389",
+    "semantic_fingerprint": "a6797989c73bf1fec989dc9101dfda746df1aa6cb3803553402bd449a2488cf2",
+    "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494"
+  },
+  "candidates": [
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w1",
+      "detail": "",
+      "predicted_cycle1_seconds": 95.94438455,
+      "predicted_cycle2_seconds": 91.877870366,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w3",
+      "detail": "",
+      "predicted_cycle1_seconds": 95.94438455,
+      "predicted_cycle2_seconds": 91.877870366,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w5",
+      "detail": "",
+      "predicted_cycle1_seconds": 95.94438455,
+      "predicted_cycle2_seconds": 91.877870366,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w4",
+      "detail": "",
+      "predicted_cycle1_seconds": 95.94438455,
+      "predicted_cycle2_seconds": 91.877870366,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w2",
+      "detail": "",
+      "predicted_cycle1_seconds": 95.94438455,
+      "predicted_cycle2_seconds": 91.877870366,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w2",
+      "detail": "",
+      "predicted_cycle1_seconds": 96.745377076,
+      "predicted_cycle2_seconds": 93.392675477,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w3",
+      "detail": "",
+      "predicted_cycle1_seconds": 96.745377076,
+      "predicted_cycle2_seconds": 93.392675477,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w5",
+      "detail": "",
+      "predicted_cycle1_seconds": 96.745377076,
+      "predicted_cycle2_seconds": 93.392675477,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w1",
+      "detail": "",
+      "predicted_cycle1_seconds": 96.745377076,
+      "predicted_cycle2_seconds": 93.392675477,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w4",
+      "detail": "",
+      "predicted_cycle1_seconds": 96.745377076,
+      "predicted_cycle2_seconds": 93.392675477,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c2048-p0-w1",
+      "detail": "UNCALIBRATED: 3aacfc381b82e9fb3786138501949c93cefb41a2816b3d6faae7ed945c2b09b4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c2048-p0-w2",
+      "detail": "UNCALIBRATED: 3aacfc381b82e9fb3786138501949c93cefb41a2816b3d6faae7ed945c2b09b4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c2048-p0-w3",
+      "detail": "UNCALIBRATED: 3aacfc381b82e9fb3786138501949c93cefb41a2816b3d6faae7ed945c2b09b4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c2048-p0-w4",
+      "detail": "UNCALIBRATED: 3aacfc381b82e9fb3786138501949c93cefb41a2816b3d6faae7ed945c2b09b4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c2048-p0-w5",
+      "detail": "UNCALIBRATED: 3aacfc381b82e9fb3786138501949c93cefb41a2816b3d6faae7ed945c2b09b4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c2048-p0-w1",
+      "detail": "UNCALIBRATED: c0343f61c5cbc66d28cebe3d4fa1c2ab83f10accdb3d996ca0910e9802f5531f",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c2048-p0-w2",
+      "detail": "UNCALIBRATED: c0343f61c5cbc66d28cebe3d4fa1c2ab83f10accdb3d996ca0910e9802f5531f",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c2048-p0-w3",
+      "detail": "UNCALIBRATED: c0343f61c5cbc66d28cebe3d4fa1c2ab83f10accdb3d996ca0910e9802f5531f",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c2048-p0-w4",
+      "detail": "UNCALIBRATED: c0343f61c5cbc66d28cebe3d4fa1c2ab83f10accdb3d996ca0910e9802f5531f",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c2048-p0-w5",
+      "detail": "UNCALIBRATED: c0343f61c5cbc66d28cebe3d4fa1c2ab83f10accdb3d996ca0910e9802f5531f",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    }
+  ],
+  "component_costs": 40,
+  "cost_model_sha256": "9ffcbe273354fa1f7ced12d8daadc19e81ded70fe8151f13f987cc1c4c97d350",
+  "feasible": 10,
+  "gpu": "NOT_RUN",
+  "historical_costs_used": false,
+  "native_validation_budget": 4,
+  "problem_sha256": "15c0351561958a7d150f1732abb98ae993a0ef1075bb0650557b2ec195e1955e",
+  "remote_output": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/model-search-85be7e4e36de/no-gan",
+  "seeds": [
+    "joint-helios1-nogan-fsdp-c512-p0-w5",
+    "joint-helios1-nogan-hsdp-c512-p0-w5"
+  ],
+  "selected": "joint-helios1-nogan-hsdp-c512-p0-w1",
+  "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+  "space_size": 20,
+  "status": "PASS_MEASURED_CPU_SEARCH_NATIVE_VALIDATION_NOT_RUN",
+  "uncalibrated": 10,
+  "workload": "helios14b_nogan_best"
+}

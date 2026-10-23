@@ -1,0 +1,23 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W6"
+  },
+  "data": {},
+  "algorithm": {
+    "name": "original_diffsynth_h3_ar"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "plan",
+    "task": "../../configs/distillschedule/original_h3_ar/w6_reference.json",
+    "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
+    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json",
+    "capacity_policy": "REPLACE_WITH_NATIVE_CAPACITY_POLICY.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 0,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

@@ -267,6 +267,7 @@ def _profiled_score_forward(
     *,
     condition: torch.Tensor,
     adapter_enabled: bool,
+    validate_finite: bool = True,
 ) -> torch.Tensor:
     batch_size = int(batch["hidden_states"].shape[0])
     return _nvtx_call(
@@ -276,6 +277,7 @@ def _profiled_score_forward(
         batch,
         condition=condition,
         adapter_enabled=adapter_enabled,
+        validate_finite=validate_finite,
     )
 
 
@@ -429,7 +431,9 @@ def main() -> int:
     enabled = "--profile-mode" in sys.argv
     with install_fsdp2_operation_markers(enabled=enabled) as session:
         _OPERATION_MARKERS = session
-        return int(impl.main())
+        from distillschedule.runtime.helios_gan_manual.runtime import manual_runtime_scope
+        with manual_runtime_scope(impl):
+            return int(impl.main())
 
 
 if __name__ == "__main__":

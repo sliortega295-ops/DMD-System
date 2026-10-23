@@ -1,0 +1,6 @@
+{
+  "placement": "fsdp",
+  "chunk_tokens": 512,
+  "lora_epilogue": false,
+  "rollout_window": 1
+}

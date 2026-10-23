@@ -14,7 +14,6 @@ from __future__ import annotations
 import gc
 import hashlib
 import importlib.util
-import json
 import os
 import socket
 import sys
@@ -223,6 +222,8 @@ def _build_static_model(
         ),
         role=role,
         all_role_scale1=bool(args.all_role_lora_scale1_add),
+        checkpoint_replay_scope=bool(getattr(args, "lora_checkpoint_replay_scope", False)),
+        lora_b_gemm_epilogue=policy.lora_b_gemm_epilogue,
     )
     residual_fusion = (
         install_generator_nograd_residual_fusion(
@@ -310,6 +311,8 @@ def _build_static_model(
         model,
         mesh_policy=policy.mesh_policy,
         world_size=WORLD_SIZE,
+        **({'separate_gan_heads': True}
+           if getattr(args, '_planner_gan_manual_bundle', False) and role == 'critic' else {}),
     )
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
@@ -437,6 +440,10 @@ def _run_nogan_generator_update_p0(
     diagnostics: StaticProfileDiagnostics,
     policy: StaticFSDP2P0Policy,
     score_pack_parity_check: bool,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -457,13 +464,21 @@ def _run_nogan_generator_update_p0(
             collect_diagnostics=collect_diagnostics,
             empty_cache_before_rollout=not policy.elide_explicit_rollout_sync,
             synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
         )
-    batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
+    batch = prepare_dmd_score_batch(
+        generated_x0=x0,
+        entry=entry,
+        device=device,
+        runtime_cache=runtime_cache,
+    )
     fake = score_forward(
         critic_engine.module,
         batch,
         condition=batch["encoder_hidden_states"],
         adapter_enabled=True,
+        validate_finite=deferred_finite_checks is None,
     )
     parity: dict[str, Any] = {"enabled": False}
     if policy.pack_real_score_pair:
@@ -479,12 +494,14 @@ def _run_nogan_generator_update_p0(
                 batch,
                 condition=batch["encoder_hidden_states"],
                 adapter_enabled=False,
+                validate_finite=deferred_finite_checks is None,
             )
             reference_uncond = score_forward(
                 critic_engine.module,
                 batch,
                 condition=negative,
                 adapter_enabled=False,
+                validate_finite=deferred_finite_checks is None,
             )
             cond_error = _score_pack_error(reference_cond, real_cond)
             uncond_error = _score_pack_error(reference_uncond, real_uncond)
@@ -527,12 +544,14 @@ def _run_nogan_generator_update_p0(
             batch,
             condition=batch["encoder_hidden_states"],
             adapter_enabled=False,
+            validate_finite=deferred_finite_checks is None,
         )
         real_uncond = score_forward(
             critic_engine.module,
             batch,
             condition=negative,
             adapter_enabled=False,
+            validate_finite=deferred_finite_checks is None,
         )
         physical_score_forwards = 3
     gradient, auxiliary = construct_dmd_gradient(
@@ -540,8 +559,11 @@ def _run_nogan_generator_update_p0(
         fake_flow_cond=fake,
         real_flow_cond=real_cond,
         real_flow_uncond=real_uncond,
+        validate_finite=deferred_finite_checks is None,
     )
     loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
+    if deferred_finite_checks is not None:
+        deferred_finite_checks.append(torch.isfinite(loss.detach()))
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
         generator_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/generator"):
@@ -555,24 +577,30 @@ def _run_nogan_generator_update_p0(
     )
     if collect_diagnostics and before == after:
         raise AssertionError("No-GAN P0 Generator trainables did not update")
+    generator_source_step = int(entry.logical_step)
     del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
     return {
-        "logical_step": 10,
+        "logical_step": generator_source_step,
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
         "local_trainable_before": before,
         "local_trainable_after": after,
         "rollout": rollout,
         "surrogate_loss": (
-            diagnostics.diagnostic_scalar("generator_surrogate", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar("generator_surrogate", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "logical_score_requests": 3,
         "physical_score_forwards": physical_score_forwards,
         "real_score_pair_packed": bool(policy.pack_real_score_pair),
         "score_pack_parity": parity,
     }
+
 
 
 def _rollout_pack_error(reference: torch.Tensor, candidate: torch.Tensor) -> dict[str, float]:
@@ -603,7 +631,14 @@ def _precompute_critic_rollouts(
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
     rollout_parity_check: bool,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
+    entry_outputs: dict[int, Any] | None = None,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]], dict[str, Any]]:
+    cpu_reference = False
+    if torch.device(device).type != "cuda":
+        from distillschedule.data.wan_reference_inputs import cpu_telemetry
+        cpu_reference = cpu_telemetry(device, trace)
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
     with generator_nograd_persistent_unshard_scope(
@@ -625,33 +660,45 @@ def _precompute_critic_rollouts(
                     f"critic_entry_rollout/step{step}", entry, direction="H2D"
                 )
                 entries.append(entry)
+                if entry_outputs is not None:
+                    entry_outputs[step] = entry
             with diagnostics.scope(
                 f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
             ):
-                generated, record = run_generator_trace_rollout_batch(
-                    model=generator_engine.module,
-                    loaded_entries=entries,
-                    device=device,
-                    detailed_profile=False,
-                    record_output_sha256=collect_diagnostics,
-                    collect_diagnostics=collect_diagnostics,
-                    diagnostics_scope=diagnostics.scope,
-                    use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
-                    use_static_context_cache=(
-                        policy.generator_nograd_static_context_cache
-                    ),
-                    synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
-                )
+                graph = getattr(generator_engine.module, "_distillschedule_rollout_cuda_graph", None)
+                if graph is not None:
+                    if policy.rollout_batch_size != 1 or policy.generator_nograd_persistent_unshard:
+                        raise ValueError("incumbent rollout graph requires resident detached B1 scope")
+                    graph.begin_rollout(version=int(generator_engine.global_steps), logical_steps=tuple(step_group))
+                try:
+                    generated, record = run_generator_trace_rollout_batch(
+                        model=generator_engine.module if graph is None else graph,
+                        loaded_entries=entries,
+                        device=device,
+                        detailed_profile=False,
+                        record_output_sha256=collect_diagnostics,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics_scope=diagnostics.scope,
+                        use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
+                        use_static_context_cache=(
+                            policy.generator_nograd_static_context_cache
+                        ),
+                        synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+                        clean_runtime=clean_runtime,
+                        runtime_cache=runtime_cache,
+                    )
+                finally:
+                    if graph is not None:
+                        graph.end_rollout()
             persistence["rollout_batch_count"] += 1
             persistence["rollout_memory"].append(
                 {
                     "batch_index": batch_index,
-                    "allocated_bytes": int(torch.cuda.memory_allocated(device)),
-                    "reserved_bytes": int(torch.cuda.memory_reserved(device)),
-                    "max_allocated_bytes": int(
-                        torch.cuda.max_memory_allocated(device)
-                    ),
-                    "max_reserved_bytes": int(torch.cuda.max_memory_reserved(device)),
+                    **({"status": "NOT_APPLICABLE_CPU_REFERENCE"} if cpu_reference else {}),
+                    "allocated_bytes": (None if cpu_reference else int(torch.cuda.memory_allocated(device))),
+                    "reserved_bytes": (None if cpu_reference else int(torch.cuda.memory_reserved(device))),
+                    "max_allocated_bytes": (None if cpu_reference else int(torch.cuda.max_memory_allocated(device))),
+                    "max_reserved_bytes": (None if cpu_reference else int(torch.cuda.max_memory_reserved(device))),
                 }
             )
             parity_rows: list[dict[str, Any]] = []
@@ -738,13 +785,28 @@ def _run_nogan_critic_precomputed(
     trace: StaticWorld16Trace,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    entry: Any | None = None,
+    runtime_cache: dict[str, Any] | None = None,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
-    with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
-        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    if entry is None:
+        with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
+            entry = trace.load_critic_entry(rank=rank, step=step, device=device)
     diagnostics.add_tensor_tree(f"critic_entry_update/step{step}", entry, direction="H2D")
-    batch = prepare_student_batch(generated_x0=x0, loaded=entry, device=device)
+    batch = prepare_student_batch(
+        generated_x0=x0,
+        loaded=entry,
+        device=device,
+        runtime_cache=runtime_cache,
+    )
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
-        _prediction, loss = student_forward_loss(critic_engine, batch)
+        _prediction, loss = student_forward_loss(
+            critic_engine,
+            batch,
+            validate_finite=deferred_finite_checks is None,
+            deferred_finite_checks=deferred_finite_checks,
+        )
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/critic"):
         critic_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/critic"):
@@ -754,13 +816,18 @@ def _run_nogan_critic_precomputed(
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
         "loss": (
-            diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "score_forwards": 1,
         "generator_rollout_precomputed": True,
     }
+
 
 
 def _run_gan_critic_precomputed(
@@ -1071,11 +1138,36 @@ def _parser() -> Any:
         default=DEFAULT_TARGET_BYTES,
     )
     value.add_argument("--operation-source-max-events", type=int, default=256)
+    value.add_argument(
+        "--lora-checkpoint-replay-scope", action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Capture only the all-role LoRA scope in the actual checkpoint function",
+    )
+    value.add_argument(
+        "--lora-b-gemm-epilogue", action=argparse.BooleanOptionalAction,
+        default=False,
+        help="NoGAN B1 opt-in: BF16 rank256 B-GEMM/add with native first-order backward",
+    )
     return value
 
 
 def main() -> int:
     args = _parser().parse_args()
+    from distillschedule.search.helios_implementation import current_implementation
+    from distillschedule.search.helios_gan_bundle import HeliosGANBundle
+    planner_impl = current_implementation()
+    args._planner_gan_manual_bundle = (
+        planner_impl is not None and type(planner_impl.candidate_bundle) is HeliosGANBundle)
+    from distillschedule.runtime.fsdp2_p0 import validate_nogan_b_gemm_request
+    validate_nogan_b_gemm_request(
+        enabled=bool(args.lora_b_gemm_epilogue),
+        checkpoint_replay_scope=bool(args.lora_checkpoint_replay_scope),
+        all_role_scale1_add=bool(args.all_role_lora_scale1_add),
+        variant=args.variant, rollout_batch_size=args.rollout_batch_size,
+        pack_real_score_pair=bool(args.pack_real_score_pair),
+        attention_backend=args.attention_backend,
+        gan_manual_bundle=args._planner_gan_manual_bundle,
+    )
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
     diagnostic_single_critic = args.critic_only_step is not None
@@ -1168,6 +1260,7 @@ def main() -> int:
         )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
+        lora_b_gemm_epilogue=bool(args.lora_b_gemm_epilogue),
         rollout_batch_size=args.rollout_batch_size,
         pack_real_score_pair=bool(args.pack_real_score_pair),
         rollout_backend=args.rollout_backend,
@@ -1211,7 +1304,11 @@ def main() -> int:
             args.elide_official_generator_free_memory
         ),
     )
-    dist.init_process_group("nccl")
+    from distillschedule.training.helios_lifecycle import (
+        adopt_original_process_group, owns_original_process_group, owns_original_rank_output,
+    )
+    if not adopt_original_process_group(dist=dist):
+        dist.init_process_group("nccl")
     rank = dist.get_rank()
     world = dist.get_world_size()
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -1229,6 +1326,7 @@ def main() -> int:
             f"{actual_allocator_conf!r} != {expected_allocator_conf!r}"
         )
     output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
+    owns_failure_output = owns_original_rank_output(output)
     result: dict[str, Any] = {
         "schema_version": "distillschedule.static_fsdp2_p0_rank.v1",
         "status": "RUNNING",
@@ -1243,6 +1341,7 @@ def main() -> int:
         "p0_policy": {
             "id": policy.id,
             "mesh_policy": policy.mesh_policy,
+            "lora_b_gemm_epilogue": policy.lora_b_gemm_epilogue,
             "rollout_batch_size": policy.rollout_batch_size,
             "pack_real_score_pair": policy.pack_real_score_pair,
             "rollout_backend": policy.rollout_backend,
@@ -1272,6 +1371,7 @@ def main() -> int:
                 args.generator_nograd_lora_fused_epilogue
             ),
             "all_role_lora_scale1_add": bool(args.all_role_lora_scale1_add),
+            "lora_checkpoint_replay_scope": bool(args.lora_checkpoint_replay_scope),
             "optimizer_dispatch_warmup": bool(
                 args.optimizer_dispatch_warmup
             ),
@@ -1299,6 +1399,12 @@ def main() -> int:
         },
     }
     try:
+        from distillschedule.training.helios_lifecycle import (
+            admit_reference_startup, checked_original_runtime,
+        )
+        training_startup = admit_reference_startup(
+            torch=torch, dist=dist, rank=rank, args=args, policy=policy,
+        )
         critic_scalar_logs = install_critic_scalar_log_elision(
             enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
         )
@@ -1310,8 +1416,14 @@ def main() -> int:
             )
         )
         result["generator_free_memory"] = generator_free_memory
-        result["attention_backend"] = _attention_backend_receipt(
-            args.attention_backend
+        def attention_admission():
+            if training_startup is not None:
+                from runtime.critic_pool_helios import configure_offline_helios
+                configure_offline_helios()
+            return _attention_backend_receipt(args.attention_backend)
+
+        result["attention_backend"] = checked_original_runtime(
+            attention_admission, "Helios original attention/dependency admission",
         )
         contract = contract_for_variant(args.variant)
         nsys_range = StaticFSDP2Full5NsightRange.from_env(
@@ -1332,25 +1444,35 @@ def main() -> int:
         )
         if args.profile_mode and not nsys_range.enabled:
             raise ValueError("profile mode requires the exact Nsight API range")
-        logical = (
-            LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
-            if args.variant == "gan"
-            else LogicalCheckpointPackage.load(args.logical_package)
-        )
-        if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
-            raise ValueError("logical checkpoint identity changed")
-        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
-        if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
-            raise ValueError("trace bundle identity changed")
-        control_entries = [
-            trace.load_critic_entry(rank=rank, step=step, device="cpu")
-            for step in contract.logical_steps
-        ]
-        from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
+        if training_startup is None:
+            logical = (
+                LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
+                if args.variant == "gan"
+                else LogicalCheckpointPackage.load(args.logical_package)
+            )
+            if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
+                raise ValueError("logical checkpoint identity changed")
+            from distillschedule.search.helios_implementation import current_implementation
+            helios_implementation = current_implementation()
+            helios_request = helios_implementation.request if helios_implementation is not None else None
+            trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant, request=helios_request)
+            if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
+                raise ValueError("trace bundle identity changed")
+            helios_native_grid = (helios_request.validate_native_stage_grids(trace._control[rank])
+                                  if helios_request is not None else None)
+            control_entries = [
+                trace.load_critic_entry(rank=rank, step=step, device="cpu")
+                for step in contract.logical_steps
+            ]
+            from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
 
-        for group in chunked(control_entries, policy.rollout_batch_size):
-            validate_rollout_entries(group)
-        del control_entries
+            for group in chunked(control_entries, policy.rollout_batch_size):
+                validate_rollout_entries(group)
+            del control_entries
+        else:
+            logical, trace, helios_request = (training_startup[key] for key in ("logical", "trace", "request"))
+            helios_native_grid = {"source":"admitted_fresh_training_cohort", "task":trace.task.to_dict()}
+        args.original_helios_request = helios_request
         result["contract"] = base.dataclasses_asdict(contract)
         result["identities"] = {
             "logical_manifest_hash": logical.manifest_hash,
@@ -1359,17 +1481,32 @@ def main() -> int:
             "rank_control_validation": trace.rank_control_validation,
             "cross_step_rollout_batchability": "PASS",
         }
+        if helios_native_grid is not None:
+            result["identities"]["original_helios_native_grid"] = helios_native_grid
         if args.validate_only:
             result.update(status="PASS", validate_only=True)
             base._atomic_json(output, result)
             dist.barrier()
             return 0
+        from distillschedule.training.helios_lifecycle import (
+            admit_original_rank, current_training, seed_original_runtime,
+        )
+        if training_startup is None:
+            admit_original_rank(torch=torch, dist=dist, rank=rank, args=args, policy=policy)
+        else:
+            checked_original_runtime(
+                lambda: seed_original_runtime(torch=torch, rank=rank), "Helios original runtime RNG",
+            )
         if args.variant == "gan" and args.gan_config is None:
             raise ValueError("GAN variant requires --gan-config")
-        negative = NegativePromptAsset.load(args.negative_prompt).embedding.to(
+        negative_asset = (NegativePromptAsset.load(args.negative_prompt)
+                          if training_startup is None else training_startup["negative"])
+        negative = negative_asset.embedding.to(
             device=device, dtype=torch.bfloat16
         )
         cfg = load_official_config(args.gan_config) if args.variant == "gan" else None
+        if helios_request is not None and cfg is not None:
+            cfg = helios_request.bind_official_config(cfg)
         generator_engine, critic_engine, build = _build_engines(
             args=args,
             package=logical,
@@ -1411,6 +1548,33 @@ def main() -> int:
             "ema_step": int(ema.optimization_step),
             "memory": base._memory(device),
         }
+        from distillschedule.search.helios_implementation import current_implementation
+
+        if current_training() is not None:
+            from distillschedule.training.helios_lifecycle import run_training_cycles
+
+            run_training_cycles(
+                p0=sys.modules[__name__], args=args, policy=policy, result=result,
+                output=output, rank=rank, device=device, logical=logical,
+                generator_engine=generator_engine, critic_engine=critic_engine,
+                ema=ema, diagnostics=diagnostics, negative=negative,
+            )
+            base._atomic_json(output, result)
+            dist.barrier()
+            return 0
+        if current_implementation() is not None:
+            from distillschedule.runtime.helios_planner_cycle import run_two_cycles
+
+            run_two_cycles(
+                p0=sys.modules[__name__], args=args, policy=policy, result=result,
+                output=output, rank=rank, device=device, logical=logical, trace=trace,
+                negative=negative, cfg=cfg, generator_engine=generator_engine,
+                critic_engine=critic_engine, ema=ema, diagnostics=diagnostics,
+                generator_free_memory=generator_free_memory,
+            )
+            base._atomic_json(output, result)
+            dist.barrier()
+            return 0
         dist.barrier()
         torch.cuda.synchronize(device)
         started_perf = time.perf_counter()
@@ -1722,10 +1886,11 @@ def main() -> int:
             result["memory_failure"] = base._memory(device)
         except BaseException:
             pass
-        base._atomic_json(output, result)
+        if owns_failure_output:
+            base._atomic_json(output, result)
         raise
     finally:
-        if dist.is_initialized():
+        if dist.is_initialized() and not owns_original_process_group():
             try:
                 dist.destroy_process_group()
             except BaseException:

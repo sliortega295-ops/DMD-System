@@ -1,0 +1,5 @@
+{
+  "status": "FAIL_EXISTING_FORMATTED_SUMMARY_DIFFERENT_BYTES",
+  "cause": "Local summary is a reformatted stdout-derived copy, do not overwrite; native pool contract and CSV passed exact hashes",
+  "resolution": "Preserve old summary; fetch exact remote summary in separate immutable directory"
+}

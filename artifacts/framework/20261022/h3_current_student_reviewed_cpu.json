@@ -1,0 +1,81 @@
+{
+  "schema_version": "distillschedule.original_w6_current_student_cpu.v1",
+  "status": "PASS_REVIEWED_INSTALLED_CPU_SCOPE_ONLY",
+  "source_head": "9094e6ed9a3a2a848fda9eae4a6f8b466f586bcc",
+  "prior_framework_acceptance": "public_original_reviewed_cpu.json",
+  "source_files_sha256": {
+    ".github/workflows/h3-cached-reference-cpu.yml": "3b2a20a65a7b36f407fb2828150b03fb1ab2185fd3b1e7e9888d3a29df871237",
+    "docs/guides/native_workloads.md": "baa7dfb3643f4f6da23cac3799c974639928b2e4df8ae21547a89c731853f0a8",
+    "docs/guides/support_matrix.md": "dbf11b2d01917c866a525116f59e930274bcb15848b4182436914036eab0a266",
+    "recipes/h3_ar/CPU_REFERENCE.md": "8d0c9037f9d1d4e2d695e38e794dc2c76fa0dcf528708dd0b6a0cc3216fcd8bc",
+    "recipes/h3_ar/PORTABLE_INFERENCE_CPU.md": "294be44cc9fa5c5e43946c2d16a3d308a7008a43ed289d8f68fc289ba673a526",
+    "recipes/h3_ar/inference.cpu-latents.template.json": "52f9a581f622779574d4778d688806edcd81ed3585ea1576de78be191d7c4360",
+    "src/distillschedule/training/h3_cached_inference.py": "abe5da9ee63a2a647e85e939b0b1526d2e8290765453042730666992dc6db4b9",
+    "src/distillschedule/training/h3_cached_public.py": "d5dcf90c6c74b12710875b708d55a907e02be2669e6364fb9db65efbf267335e",
+    "tests/test_training_cpu_workflows.py": "bf42d9aa3323a8092977584a6efb71739099e1328573a61747525e0ed419921a",
+    "tests/test_training_h3_cached_inference_cpu.py": "ca5f78ab51977d86138c81f5eb8a554ebf10db9de3dc6fb92ec33e6c39ead75a"
+  },
+  "runtime": {
+    "python": "3.12.3",
+    "torch": "2.10.0+cpu",
+    "cuda_initialized": false
+  },
+  "suites": {
+    "original_and_common": {
+      "tests": 232,
+      "skips": 0,
+      "failures": 0,
+      "errors": 0,
+      "junit_sha256": "0ccc3152f84065548d95e4307a80c882ec2fc2fff46798bc714b526ba9acb7a3"
+    },
+    "refactor": {
+      "tests": 2238,
+      "skips": 85,
+      "failures": 0,
+      "errors": 0,
+      "junit_sha256": "d0c3b6ba9da8036d433961874fb3fc69c94c2bcb70315d7b577dd530985f6687"
+    },
+    "inference_ci_rng_hardening": {
+      "tests": 72,
+      "skips": 0,
+      "failures": 0,
+      "errors": 0,
+      "junit_sha256": "15c3862fb9d2d2ff342fcfede3aae33ddeacc124928ad09bc9c0aba523b681f8"
+    }
+  },
+  "review": {
+    "status": "complete",
+    "run_id": "20261022-142654-8b8ec328",
+    "lenses": 9,
+    "actionable_findings": 0,
+    "cross_model_corroboration": false,
+    "review_sha256": "cd373f94978914135c6c9f3d227e24073e5b32128b388868d066966934cb9df5",
+    "post_review_delta": "two test-only RNG snapshot/assertion lines; all72 focused tests passed"
+  },
+  "installed": {
+    "status": "PASS_INSTALLED_ORIGINAL_W6_CPU_LIFECYCLE_AND_NEW_AV_LATENT_INFERENCE",
+    "wheel_sha256": "d330e9896c1eff974336746c1358997162c279c9bd4ddd1b68d7710d8ebd8e43",
+    "source_note": "Same production bytes as source_head; wheel predates two test-only assertions",
+    "three_fresh_processes": true,
+    "exact_resume_state_rng_cursor": true,
+    "original_dit_calls": 8,
+    "new_conditions": true,
+    "old_training_payloads_deleted": true,
+    "optimizer_constructions": 0,
+    "discriminator_constructions": 0,
+    "original_helpers": true
+  },
+  "original_source_manifest_sha256": "527591fce99ba50753db9e148b9bc07029c04ebd417c0e262bbf6d6211234089",
+  "gpu_experiments_started": 0,
+  "ssh_sessions_started": 0,
+  "model_payload_downloads": 0,
+  "main_changed": false,
+  "quality_validation": "NOT_RUN",
+  "limitations": [
+    "CPU1 FP32 original tiny model, not pretrained/GPU/capacity quality",
+    "Native outputs are named video BCTHW and stereo audio SCT latent diagnostics; encoder/decoder not provided",
+    "GAN_START_2 is explicitly a transition fixture; canonical GAN_START_500 unchanged",
+    "Full-base and unmerged current Student export, not EMA/merged weights or a resumable checkpoint",
+    "W1/W2/W4/W5 native output callbacks and optimized C51 physical recovery remain incomplete"
+  ]
+}

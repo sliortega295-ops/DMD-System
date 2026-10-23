@@ -1,0 +1,12 @@
+{
+  "calibration": "NOT_RUN",
+  "canonical_winner_updated": false,
+  "correctness_runs": 3,
+  "model_search": "NOT_RUN",
+  "native_timing_validation": "NOT_RUN",
+  "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+  "status": "BLOCKED_NUMERICAL_GATE",
+  "strict_winner": null,
+  "threshold_changes": false,
+  "timing_attempts": 0
+}

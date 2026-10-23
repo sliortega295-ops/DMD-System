@@ -1,0 +1,15 @@
+{
+  "schema_version": "distillschedule.original_wan_sources.v1",
+  "features": [
+    "./assets/encoded/rank-00.pt", "./assets/encoded/rank-01.pt",
+    "./assets/encoded/rank-02.pt", "./assets/encoded/rank-03.pt",
+    "./assets/encoded/rank-04.pt", "./assets/encoded/rank-05.pt",
+    "./assets/encoded/rank-06.pt", "./assets/encoded/rank-07.pt",
+    "./assets/encoded/rank-08.pt", "./assets/encoded/rank-09.pt",
+    "./assets/encoded/rank-10.pt", "./assets/encoded/rank-11.pt",
+    "./assets/encoded/rank-12.pt", "./assets/encoded/rank-13.pt",
+    "./assets/encoded/rank-14.pt", "./assets/encoded/rank-15.pt"
+  ],
+  "seed": 42,
+  "cohort": 0
+}

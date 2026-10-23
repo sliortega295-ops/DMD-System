@@ -1,0 +1,42 @@
+{
+  "schema_version": "distillschedule.livewan_state_cpu.v1",
+  "status": "PASS_CPU_RESIDENT_OWNER_SEAM_ONLY",
+  "parent_head": "30bc826699c0c948dc5eee961838b8b2cb6d034e",
+  "source_files": {
+    "src/distillschedule/training/native_state.py": "07aa59d7fd477b8af9da9e0aba39b9070ea5cd36681f38a44bbf6ed8ca93e0b9",
+    "src/distillschedule/training/livewan_state.py": "87f760d1d848f1ba0846ba368f16e3f8225dd45dc526b66f8972fd4f6394d13b",
+    "tests/test_training_native_state.py": "ec9d3afb37a003c63bb630a8a6e33b8a3a0952266884008433247b511c7279ba",
+    "tests/test_training_livewan_state.py": "e76481ef77aa9b2c4182db0fec5d69fe8a32e25849a87f178974fd2ca021fd0d",
+    ".github/workflows/livewan-native-inputs-cpu.yml": "9a58763d0e76251601710400bd943c93ab7d37eaf42628bcf7536750d36f17e2"
+  },
+  "source": {
+    "livewan_head": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5",
+    "lora_sha256": "71bbcdc932e1290734df55e15cf5ed998bda1f41a3cb607684f28da71fcf0824"
+  },
+  "runtime": {
+    "torch": "2.14.0+cpu",
+    "cuda_initialized": false
+  },
+  "checks": {
+    "w4-state-parent-focused": {
+      "tests": 123,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "ec8e260adf76a049224a962fcb8b789b3267174f6e035fff4051dc40162e31ad"
+    },
+    "w4-state-after-simplify": {
+      "tests": 51,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "79dfa4905ccdf69f398df02bed75b64415a268126ee534a929001bf0767978ff"
+    }
+  },
+  "fixture": "Actual original LoRALinear and real AdamW on tiny named CPU modules; actual ModelBundle serialization views. Not a full Wan model or native DMD cycle.",
+  "gpu_execution": "NOT_RUN",
+  "physical_drain": "NOT_IMPLEMENTED",
+  "public_fresh_w4_training": "REJECTED",
+  "claimable_speedup": false,
+  "pretrained_quality": "NOT_RUN"
+}

@@ -1,0 +1,47 @@
+{
+  "utc": "2026-09-07T23:12:52.665734+00:00",
+  "results": [
+    {
+      "node": 0,
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, GPU-cad55364-e014-c35f-337e-db899afd1c6a, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, GPU-a904c6f6-6410-dc0f-c7c3-efc068004617, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, GPU-79ab3e5e-e382-1f9c-bede-1900666e9283, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, GPU-bab43db0-a051-0419-39f7-e33effa9445b, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, GPU-01fff32a-1dd6-93a7-1aae-60d378382961, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n",
+      "apps": {
+        "code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "cgroup": {
+        "memory.current": "6997049344\n",
+        "memory.peak": {
+          "status": "UNAVAILABLE",
+          "error": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'"
+        },
+        "memory.max": "962072674304\n",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+      },
+      "status": "IDLE_OBSERVED"
+    },
+    {
+      "node": 1,
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, GPU-a7668680-c210-ecdd-c247-a8337b735231, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, GPU-2d8db9f8-6454-f744-0d9b-0f553205267d, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, GPU-75e465e8-461a-dfde-2e54-6d79c23fc521, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6, 40960 MiB, 0 MiB, 40339 MiB, 535.161.08\n",
+      "apps": {
+        "code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "cgroup": {
+        "memory.current": "6726066176\n",
+        "memory.peak": {
+          "status": "UNAVAILABLE",
+          "error": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'"
+        },
+        "memory.max": "816043786240\n",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+      },
+      "status": "IDLE_OBSERVED"
+    }
+  ],
+  "lock": "NOT_ACQUIRED_READ_ONLY_AUDIT",
+  "prior_failure": "r1 remote Python preflight failed on optional memory.peak; SSH actually CONNECTED; no GPU run"
+}

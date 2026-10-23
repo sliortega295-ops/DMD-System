@@ -183,7 +183,7 @@ read_cgroup() { [[ -r "$1" ]] && cat "$1" || echo unavailable; }
 RENDERED_CONFIG="${OUT}/resolved_helios_config.node${NODE_RANK}.yaml"
 [[ -f "${RENDERED_CONFIG}" ]] || { echo rendered_config_missing >&2; exit 84; }
 
-"${PYTHON}" "${ROOT}/scripts/distillschedule/build_gan_baseline_contract.py" node \
+"${PYTHON}" "${ROOT}/tools/assets/build_gan_baseline_contract.py" node \
   --node-rank "${NODE_RANK}" \
   --plan "${PLAN}" \
   --compiled-preflight "${COMPILED_PREFLIGHT}" \
@@ -206,14 +206,14 @@ for _ in $(seq 1 600); do
 done
 [[ -f "${PREREG_DIR}/node_0_contract.json" && -f "${PREREG_DIR}/node_1_contract.json" ]] || { echo peer_node_contract_timeout >&2; exit 85; }
 if [[ "${NODE_RANK}" == 0 ]]; then
-  "${PYTHON}" "${ROOT}/scripts/distillschedule/build_gan_baseline_contract.py" finalize \
+  "${PYTHON}" "${ROOT}/tools/assets/build_gan_baseline_contract.py" finalize \
     --node-contract "${PREREG_DIR}/node_0_contract.json" \
     --node-contract "${PREREG_DIR}/node_1_contract.json" \
     --output "${FINAL_CONTRACT}" >"${NODE_LOG}/contract_finalize.json"
 fi
 for _ in $(seq 1 300); do [[ -f "${FINAL_CONTRACT}" ]] && break; sleep 1; done
 [[ -f "${FINAL_CONTRACT}" ]] || { echo finalized_contract_timeout >&2; exit 86; }
-"${PYTHON}" "${ROOT}/scripts/distillschedule/build_gan_baseline_contract.py" check "${FINAL_CONTRACT}" >"${NODE_LOG}/contract_check.json"
+"${PYTHON}" "${ROOT}/tools/assets/build_gan_baseline_contract.py" check "${FINAL_CONTRACT}" >"${NODE_LOG}/contract_check.json"
 {
   echo evidence_contract_path="${FINAL_CONTRACT}"
   echo evidence_contract_sha256="$(sha256sum "${FINAL_CONTRACT}" | awk '{print $1}')"

@@ -23,7 +23,7 @@ def test_context_has_no_device_sync_value_read_or_rng():
 
 def test_plan_only_does_not_load_torch_assets_or_create_output(tmp_path):
     root = Path(__file__).resolve().parents[1]
-    p = subprocess.run([sys.executable, str(root/'scripts/distillschedule/canary_livewan_context_staging.py'),
+    p = subprocess.run([sys.executable, str(root/'benchmarks/kernels/canary_livewan_context_staging.py'),
                         '--plan-only', '--trace', '/nonexistent/trace', '--output', str(tmp_path/'output.json')],
                        check=True, capture_output=True, text=True)
     assert json.loads(p.stdout)['status'] == 'NOT_RUN'
@@ -34,7 +34,7 @@ def test_canary_uses_complete_original_operation_rows():
     import importlib.util
     from types import SimpleNamespace
     root = Path(__file__).resolve().parents[1]
-    spec = importlib.util.spec_from_file_location('context_canary', root/'scripts/distillschedule/canary_livewan_context_staging.py')
+    spec = importlib.util.spec_from_file_location('context_canary', root/'benchmarks/kernels/canary_livewan_context_staging.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     rows = [SimpleNamespace(dataset_index=i, operation_key=f'op{k}') for k, i in enumerate([2, 2, 7, 8, 9])]

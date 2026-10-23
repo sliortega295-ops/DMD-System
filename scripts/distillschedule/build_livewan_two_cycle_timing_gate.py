@@ -137,6 +137,9 @@ def _trajectory(
         "summary": {"path": str(resolved_path), "sha256": _sha256(resolved_path)},
         "anchors": anchor_bindings,
     }
+    if variant == "c51-continuous-b16-generator-fused-rms":
+        from distillschedule.runtime.livewan_c51_bundle import validate_summary_effective_plans
+        value["_artifact_binding"]["c51_effective_plans"] = validate_summary_effective_plans(value)
     return value
 
 
@@ -146,7 +149,7 @@ def main() -> int:
     parser.add_argument("--pipeline-trajectory-summary", type=Path, required=True)
     parser.add_argument("--trajectory-comparison", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"), default=PIPELINE_VARIANT)
+    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c51-continuous-b16-generator-fused-rms"), default=PIPELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--integration-receipt", type=Path,
                         help="Optional canonical correctness coordinator receipt; bind, never waive native gates")

@@ -14,14 +14,33 @@ from distillschedule.runtime import DistillExecutor
 def _default_repo_root() -> Path:
     current = Path.cwd().resolve()
     for candidate in (current, *current.parents):
-        if (candidate / "train_helios.py").is_file() and (candidate / "runtime").is_dir():
+        if ((candidate / "pyproject.toml").is_file()
+                and (candidate / "src/distillschedule").is_dir()):
             return candidate
     return current
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="distillctl")
+    parser = argparse.ArgumentParser(prog="distillctl",
+        epilog="Six protocols: workloads list; original pinned profiles: workloads list --legacy.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    for name, help_text in (
+        ("doctor", "inspect environment and a training request without loading models"),
+        ('models', 'discover model adapters and their capabilities'),
+        ('algorithms', 'discover registered distillation workflows'),
+        ('strategies', 'describe supported physical execution paths'),
+        ('capabilities', 'describe optimization conditions and actual implementations'),
+        ("data", "prepare raw media or import native features"),
+        ("config", "validate or show a public training configuration"),
+        ("train", "train continuously and save/resume complete cycles"),
+        ("evaluate", "generate/decode from a complete training checkpoint"),
+        ("export", "export inference weights from a training checkpoint"),
+        ("generate", "generate new prepared inputs from portable inference weights"),
+    ):
+        subparsers.add_parser(name, help=help_text)
+
+    subparsers.add_parser("workloads", help="six workloads, native planning, and legacy profiles")
 
     validate = subparsers.add_parser("validate", help="validate and compile a plan")
     validate.add_argument("plan")
@@ -124,6 +143,19 @@ def _run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] in {"models", "algorithms", "strategies", "capabilities", "doctor", "data", "train", "evaluate", "export", "generate", "config"}:
+        from distillschedule.training.cli import main as training_main
+        return training_main(argv)
+    if len(argv) > 1 and argv[0] == "workloads":
+        if argv[1:] == ["list", "--legacy"]:
+            from distillschedule.workloads.best_known.cli import main as legacy_main
+            return legacy_main(["list"])
+        if argv[1] in {"list", "describe", "verify-catalog", "--help", "-h"}:
+            from distillschedule.workloads.catalog import main as catalog_main
+            return catalog_main(argv[1:])
+    if argv[:2] == ["workloads", "native"]:
+        from distillschedule.native.cli import main as native_main
+        return native_main(argv[2:])
     if argv and argv[0] == "workloads":
         from distillschedule.workloads.best_known.cli import main as workloads_main
         return workloads_main(argv[1:])

@@ -34,7 +34,6 @@ from .fa3_replay_cache import (
     trim_allocator_before_backward,
     validate_cycle as validate_fa3_replay_cache_cycle,
 )
-from .lora_scale1_elision import validate_cycle as validate_lora_scale1_cycle
 from .trainer_runtime import PreparedFakeUpdate
 
 
@@ -42,14 +41,23 @@ class H3A100LoopMixin:
     """Optimized one-Student/five-Fake DMD scheduling."""
 
     def train(self):
-        resume_ckpt_path, current_iter = self._resolve_resume_a100()
+        lifecycle = getattr(self, "grid_training_lifecycle", None)
+        if lifecycle is None:
+            resume_ckpt_path, current_iter = self._resolve_resume_a100()
+        else:
+            resume_ckpt_path, current_iter = None, lifecycle.start(self)
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.validate_start(
+                self, current_iter=current_iter, resume_ckpt_path=resume_ckpt_path
+            )
         self.setup(resume_ckpt_path=resume_ckpt_path)
         if is_main_process():
             os.makedirs(self.output_train_dir, exist_ok=True)
         barrier()
 
         grad_accum_iters = max(1, int(self.gradient_accumulation_iters))
-        samples = self._iter_train_samples()
+        samples = self._iter_train_samples() if lifecycle is None else lifecycle.after_setup(self)
         logger.info(
             "[h3-a100] train start iter={}/{} world={} grad_accum={} fake_ratio={} reorder={}",
             current_iter,
@@ -61,6 +69,8 @@ class H3A100LoopMixin:
         )
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
+        if planner_observer is not None:
+            planner_observer.after_setup(self)
 
         while current_iter < self.max_train_iters:
             if self.matched_compute_enabled:
@@ -74,10 +84,22 @@ class H3A100LoopMixin:
             self._begin_fa3_replay_cache_cycle()
             self._begin_lora_scale1_cycle()
             runtime_state_start = self.shared_model.runtime_state_stats()
-            with self._nvtx("h3/student_step"):
-                running_dmd = self._student_step(samples, grad_accum_iters, current_iter)
-            with self._nvtx("h3/critic_phase"):
-                running_fake = self._fake_steps(samples, grad_accum_iters)
+            action_program = None
+            if planner_observer is not None:
+                planner_observer.before_cycle(self, current_iter)
+                action_program = planner_observer.prepare_actions(self, samples, grad_accum_iters, current_iter)
+                planner_observer.start_cycle(current_iter)
+            if action_program is None:
+                with self._nvtx("h3/student_step"):
+                    running_dmd = self._student_step(samples, grad_accum_iters, current_iter)
+                with self._nvtx("h3/critic_phase"):
+                    running_fake = self._fake_steps(samples, grad_accum_iters)
+            else:
+                action_outputs = action_program.run()
+                running_dmd = action_outputs["g"]
+                running_fake = [loss for i in range(5) for loss in action_outputs[f"c{i}"]]
+            if planner_observer is not None:
+                planner_observer.stop_cycle(current_iter)
             if self.matched_compute_enabled:
                 self._validate_matched_cycle(current_iter)
             self._validate_boundary_offload_cycle(current_iter)
@@ -106,6 +128,8 @@ class H3A100LoopMixin:
                 runtime_state_end["physical_role"],
                 runtime_state_end["physical_training_mode"],
             )
+            if planner_observer is not None:
+                planner_observer.after_cycle(self, current_iter, running_dmd, running_fake)
 
             current_iter += 1
             # Scalar logging is outside the model-compute/timing range.  Keep
@@ -133,7 +157,9 @@ class H3A100LoopMixin:
                 self.shared_model.log_adaln_stats()
                 self._log_cuda_memory(f"iter_{current_iter}")
 
-            if self.save_every_iters and current_iter % self.save_every_iters == 0:
+            if lifecycle is not None:
+                lifecycle.after_cycle(self, current_iter)
+            elif self.save_every_iters and current_iter % self.save_every_iters == 0:
                 self.save_checkpoint_a100(current_iter)
 
         logger.info("[h3-a100] train finished iter={}/{}", current_iter, self.max_train_iters)
@@ -188,6 +214,9 @@ class H3A100LoopMixin:
         torch.nn.utils.clip_grad_norm_(self.trainable_params, self.max_grad_norm)
         self._log_residency("before_student_optimizer")
         self.optimizer.step()
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.note_update("student")
         self.lr_scheduler.step()
         self._log_residency("after_student_optimizer")
         self.optimizer.zero_grad(set_to_none=True)
@@ -266,6 +295,9 @@ class H3A100LoopMixin:
         torch.nn.utils.clip_grad_norm_(self.fake_trainable_params, self.max_grad_norm)
         self._log_residency("before_fake_optimizer")
         self.fake_optimizer.step()
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.note_update("fake")
         self.fake_lr_scheduler.step()
         self._log_residency("after_fake_optimizer")
         self.fake_optimizer.zero_grad(set_to_none=True)
@@ -448,6 +480,7 @@ class H3A100LoopMixin:
         registration = getattr(self, "lora_scale1_elision_registration", None)
         if registration is None or not registration.enabled:
             return
+        from .lora_scale1_elision import validate_cycle as validate_lora_scale1_cycle
         start = self._lora_scale1_cycle_start
         if start is None:
             raise RuntimeError("H3 LoRA scale-one cycle baseline is missing")

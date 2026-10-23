@@ -1,0 +1,29 @@
+{
+  "status": "PASS_CPU_CHECKS",
+  "final_controller_source": "a7dbfc264acde942fc0fbf90ba8e65399a4372b4",
+  "gpu_execution_at_final_controller_head": "NOT_RUN_RUNTIME_HEADS_RETAINED",
+  "focused": {
+    "result": "108 passed in 12.89s",
+    "command": "PYTHONPATH=src:tests PYTHONDONTWRITEBYTECODE=1 <CPU_PY> -m pytest -q -p no:cacheprovider tests/test_refactor_helios_search_bridge.py tests/test_refactor_helios_planner_native.py tests/test_refactor_model_validation.py tests/test_refactor_model_validation_anchor_rejection.py tests/test_refactor_model_planning.py"
+  },
+  "full": {
+    "result": "1003 passed, 17 skipped in 58.03s",
+    "command": "PYTHONPATH=src:tests PYTHONDONTWRITEBYTECODE=1 <CPU_PY> -m pytest -q -p no:cacheprovider tests/test_refactor_*.py"
+  },
+  "cpu_python": "/tmp/lyy-experiments/DMD-System/livewan_c34_main_integration_20260906/cpu-env/bin/python",
+  "compile": {
+    "status": "PASS",
+    "files": 350,
+    "paths": [
+      "src",
+      "runtime",
+      "scripts/distillschedule"
+    ]
+  },
+  "shell": {
+    "status": "PASS",
+    "command": "bash -n scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
+  },
+  "diff_check": "PASS",
+  "initial_final_test_error": "Wrong filename; zero tests collected. Corrected command and full suite both PASS."
+}

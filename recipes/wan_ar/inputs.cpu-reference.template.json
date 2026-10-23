@@ -1,0 +1,34 @@
+{
+  "schema_version": "distillschedule.wan_cpu_reference_inputs.v1",
+  "scope": "CPU1_RANK0_PER_SAMPLE_ORIGINAL_W1_NOT_WORLD16",
+  "evidence_kind": "FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY",
+  "source": "REPLACE_WITH_CURRENT_wan_planning.source_fingerprint()",
+  "input_config": {"path": "/ABSOLUTE/LOCAL/W1/original-capture.yaml", "bytes": 0, "sha256": "REPLACE"},
+  "task": {
+    "schema_version": "distillschedule.original_wan_task.v1",
+    "model_family": "wan21-t2v-1.3b-helios-pyramid",
+    "video_height": 128,
+    "video_width": 128,
+    "video_frames": 33,
+    "fake_updates": 5,
+    "first_step": 0,
+    "lora_rank": 1,
+    "denoising_step_list": [1000, 750, 500, 250],
+    "stage2_inference_steps": [1, 1, 1],
+    "ema_every": 1,
+    "world_size": 16,
+    "physical_batch": 1
+  },
+  "cohorts": [
+    {
+      "root": "/ABSOLUTE/LOCAL/W1/original-capture-0",
+      "bundle_hash": "REPLACE_WITH_ORIGINAL_BUNDLE_HASH",
+      "task": "REPLACE_WITH_COMPLETE_TASK_ABOVE_FIRST_STEP_0"
+    },
+    {
+      "root": "/ABSOLUTE/LOCAL/W1/original-capture-1",
+      "bundle_hash": "REPLACE_WITH_SECOND_DISTINCT_ORIGINAL_BUNDLE_HASH",
+      "task": "REPLACE_WITH_COMPLETE_TASK_ABOVE_FIRST_STEP_5"
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+    "workload": "livewan_crossscale_pipeline_best"
+  },
+  "calibrated_implementations": 3,
+  "canonical_winner_updated": false,
+  "confirmation_speedup_diagnostic": 1.3288018741927172,
+  "memory_scope": "Sampled driver/allocator highwater only; minimum free is very small; no robust headroom assertion",
+  "new_better_candidate_found": false,
+  "numerical_contract": "REVIEW_NOT_STRICT_EQUIVALENCE",
+  "operation_costs": 30,
+  "physical_batching": "Existing baseline B1 vs existing pipeline Critic B2; global B16, sample-weighted logical census matched; not an untested B1-only pipeline claim",
+  "prediction_errors": [
+    {
+      "candidate_id": "joint-livewan1-fsdp-m0-g0-r0",
+      "measured_cycle2_seconds": 62.6378984375,
+      "phase": "baseline",
+      "predicted_cycle2_seconds": 62.416109375,
+      "relative_prediction_error": -0.0035408126395125583
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "measured_cycle2_seconds": 47.066531250000004,
+      "phase": "incumbent",
+      "predicted_cycle2_seconds": 47.097269532,
+      "relative_prediction_error": 0.0006530815248890764
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r0",
+      "measured_cycle2_seconds": 48.44161328125,
+      "phase": "candidate",
+      "predicted_cycle2_seconds": 48.404250001,
+      "relative_prediction_error": -0.0007713054483357018
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "measured_cycle2_seconds": 47.13862890625,
+      "phase": "confirmation",
+      "predicted_cycle2_seconds": 47.097269532,
+      "relative_prediction_error": -0.0008773987536263572
+    }
+  ],
+  "profiler": "NOT_RUN",
+  "rank_stage_observations": 320,
+  "rediscovered_incumbent": true,
+  "rows": [
+    {
+      "candidate_id": "joint-livewan1-fsdp-m0-g0-r0",
+      "cycle1_seconds": 83.7087734375,
+      "cycle2_seconds": 62.6378984375,
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "measurement_sha256": "380bae909270489bea4acadae4a9b1847c231bac5aa655742f5d6099cbcd4a3b",
+      "min_driver_free_bytes": 12582912,
+      "numerical_status": "REVIEW",
+      "peak_allocated_bytes": 23525647872,
+      "phase": "baseline",
+      "rank_count": 16,
+      "run_id": "jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0",
+      "semantics_status": "PASS",
+      "strict_eligible": false
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "cycle1_seconds": 53.7502578125,
+      "cycle2_seconds": 47.066531250000004,
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "measurement_sha256": "44f4a050fdd5a187dbfe41d1c013953d114b6d60e12c0ba97b9bd428bb72b096",
+      "min_driver_free_bytes": 8388608,
+      "numerical_status": "REVIEW",
+      "peak_allocated_bytes": 37744473088,
+      "phase": "incumbent",
+      "rank_count": 16,
+      "run_id": "jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1",
+      "semantics_status": "PASS",
+      "strict_eligible": false
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r0",
+      "cycle1_seconds": 55.41442578125,
+      "cycle2_seconds": 48.44161328125,
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "measurement_sha256": "65011d2a804554bd16157172a2a0460ad3979908bcb88dafb157d2c2c1236064",
+      "min_driver_free_bytes": 8388608,
+      "numerical_status": "REVIEW",
+      "peak_allocated_bytes": 37743617024,
+      "phase": "candidate",
+      "rank_count": 16,
+      "run_id": "jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0",
+      "semantics_status": "PASS",
+      "strict_eligible": false
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "cycle1_seconds": 53.61407421875,
+      "cycle2_seconds": 47.13862890625,
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "measurement_sha256": "870e32ea275f8c21ccd0f1a2a5a9ddb6deeadc7c754baef5e9a109b473142847",
+      "min_driver_free_bytes": 8388608,
+      "numerical_status": "REVIEW",
+      "peak_allocated_bytes": 37744473088,
+      "phase": "confirmation",
+      "rank_count": 16,
+      "run_id": "jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1",
+      "semantics_status": "PASS",
+      "strict_eligible": false
+    }
+  ],
+  "scope": "Measured coupled commit macros for registered fsdp000/pipeline110/pipeline111; no arbitrary pool DAG, no independently estimated overlap",
+  "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+  "source_result_sha256": "be6fbd677e40b8993accca77882bda8f913ee99fa682ecb2e456d173e9545df7",
+  "status": "COMPLETE_NATIVE_VALIDATION",
+  "strict_winner": null,
+  "timing_attempts": 4,
+  "workload": "livewan_crossscale_pipeline_best"
+}

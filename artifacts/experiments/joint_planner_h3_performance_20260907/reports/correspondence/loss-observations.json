@@ -1,0 +1,1922 @@
+[
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 0,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.19972436130046844,
+    "confirmation": 0.19972436130046844,
+    "cycle": 1,
+    "index": 0,
+    "rank": 0,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00030601024627685547,
+    "calibration": 0.48521023988723755,
+    "confirmation": 0.4855162501335144,
+    "cycle": 1,
+    "index": 1,
+    "rank": 0,
+    "relative_error": 0.0006302780724490772,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00670015811920166,
+    "calibration": 0.31449538469314575,
+    "confirmation": 0.3077952265739441,
+    "cycle": 1,
+    "index": 2,
+    "rank": 0,
+    "relative_error": 0.02130447200596927,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0010035932064056396,
+    "calibration": 0.1783326268196106,
+    "confirmation": 0.17732903361320496,
+    "cycle": 1,
+    "index": 3,
+    "rank": 0,
+    "relative_error": 0.0056276477518654375,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0014397203922271729,
+    "calibration": 0.27682340145111084,
+    "confirmation": 0.278263121843338,
+    "cycle": 1,
+    "index": 4,
+    "rank": 0,
+    "relative_error": 0.00517395328094441,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 6.841158028692007e-05,
+    "calibration": 0.0014637274434790015,
+    "confirmation": 0.0015321390237659216,
+    "cycle": 2,
+    "index": 0,
+    "rank": 0,
+    "relative_error": 0.04465102658815373,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.00017814338207244873,
+    "calibration": 0.23531517386436462,
+    "confirmation": 0.23513703048229218,
+    "cycle": 2,
+    "index": 0,
+    "rank": 0,
+    "relative_error": 0.0007570416269676275,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0007543563842773438,
+    "calibration": 0.3114263415336609,
+    "confirmation": 0.31218069791793823,
+    "cycle": 2,
+    "index": 1,
+    "rank": 0,
+    "relative_error": 0.0024164094362926903,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0045888423919677734,
+    "calibration": 0.578553318977356,
+    "confirmation": 0.5739644765853882,
+    "cycle": 2,
+    "index": 2,
+    "rank": 0,
+    "relative_error": 0.007931580792033061,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.039810895919799805,
+    "calibration": 0.9410378932952881,
+    "confirmation": 0.9012269973754883,
+    "cycle": 2,
+    "index": 3,
+    "rank": 0,
+    "relative_error": 0.042305305879226214,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.008548423647880554,
+    "calibration": 0.1612146645784378,
+    "confirmation": 0.16976308822631836,
+    "cycle": 2,
+    "index": 4,
+    "rank": 0,
+    "relative_error": 0.05035501967591617,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 1,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.22231273353099823,
+    "confirmation": 0.22231273353099823,
+    "cycle": 1,
+    "index": 0,
+    "rank": 1,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004727303981781006,
+    "calibration": 0.25276297330856323,
+    "confirmation": 0.25749027729034424,
+    "cycle": 1,
+    "index": 1,
+    "rank": 1,
+    "relative_error": 0.01835915527191161,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000590398907661438,
+    "calibration": 0.23679420351982117,
+    "confirmation": 0.23620380461215973,
+    "cycle": 1,
+    "index": 2,
+    "rank": 1,
+    "relative_error": 0.002493299662261445,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 2.3126602172851562e-05,
+    "calibration": 0.24525371193885803,
+    "confirmation": 0.24527683854103088,
+    "cycle": 1,
+    "index": 3,
+    "rank": 1,
+    "relative_error": 9.428775383119941e-05,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.014268100261688232,
+    "calibration": 0.7500768899917603,
+    "confirmation": 0.735808789730072,
+    "cycle": 1,
+    "index": 4,
+    "rank": 1,
+    "relative_error": 0.019022183528204648,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 1.7595011740922928e-05,
+    "calibration": 0.0018361466936767101,
+    "confirmation": 0.0018185516819357872,
+    "cycle": 2,
+    "index": 0,
+    "rank": 1,
+    "relative_error": 0.009582574094714939,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0027684420347213745,
+    "calibration": 0.20184914767742157,
+    "confirmation": 0.20461758971214294,
+    "cycle": 2,
+    "index": 0,
+    "rank": 1,
+    "relative_error": 0.013529834060776656,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0029376596212387085,
+    "calibration": 0.1951502561569214,
+    "confirmation": 0.19221259653568268,
+    "cycle": 2,
+    "index": 1,
+    "rank": 1,
+    "relative_error": 0.015053321881763355,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00019099563360214233,
+    "calibration": 0.11335784196853638,
+    "confirmation": 0.11316684633493423,
+    "cycle": 2,
+    "index": 2,
+    "rank": 1,
+    "relative_error": 0.0016848912283911961,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0009581446647644043,
+    "calibration": 0.2109157145023346,
+    "confirmation": 0.211873859167099,
+    "cycle": 2,
+    "index": 3,
+    "rank": 1,
+    "relative_error": 0.004522241056688085,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0005010813474655151,
+    "calibration": 0.17840127646923065,
+    "confirmation": 0.17790019512176514,
+    "cycle": 2,
+    "index": 4,
+    "rank": 1,
+    "relative_error": 0.0028087318509289814,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 2,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.817559540271759,
+    "confirmation": 0.817559540271759,
+    "cycle": 1,
+    "index": 0,
+    "rank": 2,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0012490153312683105,
+    "calibration": 0.5161735415458679,
+    "confirmation": 0.5149245262145996,
+    "cycle": 1,
+    "index": 1,
+    "rank": 2,
+    "relative_error": 0.0024197585322325577,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0011614114046096802,
+    "calibration": 0.22715817391872406,
+    "confirmation": 0.22831958532333374,
+    "cycle": 1,
+    "index": 2,
+    "rank": 2,
+    "relative_error": 0.00508677958119516,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 8.547306060791016e-05,
+    "calibration": 0.4349711537361145,
+    "confirmation": 0.4348856806755066,
+    "cycle": 1,
+    "index": 3,
+    "rank": 2,
+    "relative_error": 0.00019650282524198007,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 3.707408905029297e-05,
+    "calibration": 0.23511528968811035,
+    "confirmation": 0.23507821559906006,
+    "cycle": 1,
+    "index": 4,
+    "rank": 2,
+    "relative_error": 0.00015768472182082756,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00026872125454247,
+    "calibration": 0.002815766492858529,
+    "confirmation": 0.002547045238316059,
+    "cycle": 2,
+    "index": 0,
+    "rank": 2,
+    "relative_error": 0.09543449544698136,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.003299534320831299,
+    "calibration": 0.12538720667362213,
+    "confirmation": 0.12208767235279083,
+    "cycle": 2,
+    "index": 0,
+    "rank": 2,
+    "relative_error": 0.026314760559423372,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.013242125511169434,
+    "calibration": 1.305795669555664,
+    "confirmation": 1.2925535440444946,
+    "cycle": 2,
+    "index": 1,
+    "rank": 2,
+    "relative_error": 0.010141039536205126,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004106670618057251,
+    "calibration": 0.31310173869132996,
+    "confirmation": 0.3089950680732727,
+    "cycle": 2,
+    "index": 2,
+    "rank": 2,
+    "relative_error": 0.013116090109310427,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0008768439292907715,
+    "calibration": 0.2934149503707886,
+    "confirmation": 0.2925381064414978,
+    "cycle": 2,
+    "index": 3,
+    "rank": 2,
+    "relative_error": 0.0029884091733659228,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0018366426229476929,
+    "calibration": 0.20542767643928528,
+    "confirmation": 0.20359103381633759,
+    "cycle": 2,
+    "index": 4,
+    "rank": 2,
+    "relative_error": 0.008940580231361949,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 3,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.44956111907958984,
+    "confirmation": 0.44956111907958984,
+    "cycle": 1,
+    "index": 0,
+    "rank": 3,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0006612390279769897,
+    "calibration": 0.18724048137664795,
+    "confirmation": 0.18790172040462494,
+    "cycle": 1,
+    "index": 1,
+    "rank": 3,
+    "relative_error": 0.0035190685138650505,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0006073117256164551,
+    "calibration": 0.26513826847076416,
+    "confirmation": 0.2645309567451477,
+    "cycle": 1,
+    "index": 2,
+    "rank": 3,
+    "relative_error": 0.0022905472269968497,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00038170814514160156,
+    "calibration": 0.25918471813201904,
+    "confirmation": 0.25880300998687744,
+    "cycle": 1,
+    "index": 3,
+    "rank": 3,
+    "relative_error": 0.0014727262775854463,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00015176832675933838,
+    "calibration": 0.1403740495443344,
+    "confirmation": 0.14022228121757507,
+    "cycle": 1,
+    "index": 4,
+    "rank": 3,
+    "relative_error": 0.0010811708236101382,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0004277941770851612,
+    "calibration": 0.004568678326904774,
+    "confirmation": 0.0041408841498196125,
+    "cycle": 2,
+    "index": 0,
+    "rank": 3,
+    "relative_error": 0.09363630933828225,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0022148489952087402,
+    "calibration": 0.7602956295013428,
+    "confirmation": 0.758080780506134,
+    "cycle": 2,
+    "index": 0,
+    "rank": 3,
+    "relative_error": 0.0029131418217692496,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0049179792404174805,
+    "calibration": 0.3017351031303406,
+    "confirmation": 0.30665308237075806,
+    "cycle": 2,
+    "index": 1,
+    "rank": 3,
+    "relative_error": 0.016037599238840884,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.007190406322479248,
+    "calibration": 0.14670664072036743,
+    "confirmation": 0.13951623439788818,
+    "cycle": 2,
+    "index": 2,
+    "rank": 3,
+    "relative_error": 0.04901213937673509,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0014571845531463623,
+    "calibration": 0.15677353739738464,
+    "confirmation": 0.158230721950531,
+    "cycle": 2,
+    "index": 3,
+    "rank": 3,
+    "relative_error": 0.009209239110985881,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0017030537128448486,
+    "calibration": 0.14965525269508362,
+    "confirmation": 0.14795219898223877,
+    "cycle": 2,
+    "index": 4,
+    "rank": 3,
+    "relative_error": 0.01137984589364698,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 4,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.2305326759815216,
+    "confirmation": 0.2305326759815216,
+    "cycle": 1,
+    "index": 0,
+    "rank": 4,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 2.22623348236084e-05,
+    "calibration": 0.17831286787986755,
+    "confirmation": 0.17833513021469116,
+    "cycle": 1,
+    "index": 1,
+    "rank": 4,
+    "relative_error": 0.00012483426454904081,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 3.59266996383667e-05,
+    "calibration": 0.19007164239883423,
+    "confirmation": 0.19003571569919586,
+    "cycle": 1,
+    "index": 2,
+    "rank": 4,
+    "relative_error": 0.0001890166212326424,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 3.9964914321899414e-05,
+    "calibration": 0.13350161910057068,
+    "confirmation": 0.13346165418624878,
+    "cycle": 1,
+    "index": 3,
+    "rank": 4,
+    "relative_error": 0.00029935902344220013,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.008424520492553711,
+    "calibration": 1.0442036390304565,
+    "confirmation": 1.0357791185379028,
+    "cycle": 1,
+    "index": 4,
+    "rank": 4,
+    "relative_error": 0.008067890378524137,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0013199648819863796,
+    "calibration": 0.004496559966355562,
+    "confirmation": 0.005816524848341942,
+    "cycle": 2,
+    "index": 0,
+    "rank": 4,
+    "relative_error": 0.22693359289312565,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.003208160400390625,
+    "calibration": 1.3019791841506958,
+    "confirmation": 1.2987710237503052,
+    "cycle": 2,
+    "index": 0,
+    "rank": 4,
+    "relative_error": 0.0024640642795555638,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0008862018585205078,
+    "calibration": 0.4455840587615967,
+    "confirmation": 0.44469785690307617,
+    "cycle": 2,
+    "index": 1,
+    "rank": 4,
+    "relative_error": 0.0019888544957903384,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000578075647354126,
+    "calibration": 0.15724775195121765,
+    "confirmation": 0.15666967630386353,
+    "cycle": 2,
+    "index": 2,
+    "rank": 4,
+    "relative_error": 0.0036762092950839774,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0015688389539718628,
+    "calibration": 0.16035068035125732,
+    "confirmation": 0.15878184139728546,
+    "cycle": 2,
+    "index": 3,
+    "rank": 4,
+    "relative_error": 0.009783799797638722,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.006081581115722656,
+    "calibration": 0.25802695751190186,
+    "confirmation": 0.2641085386276245,
+    "cycle": 2,
+    "index": 4,
+    "rank": 4,
+    "relative_error": 0.023026825059591433,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 5,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.24058324098587036,
+    "confirmation": 0.24058324098587036,
+    "cycle": 1,
+    "index": 0,
+    "rank": 5,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004882633686065674,
+    "calibration": 0.47664251923561096,
+    "confirmation": 0.48152515292167664,
+    "cycle": 1,
+    "index": 1,
+    "rank": 5,
+    "relative_error": 0.010139934864129242,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0010432302951812744,
+    "calibration": 0.18374380469322205,
+    "confirmation": 0.18478703498840332,
+    "cycle": 1,
+    "index": 2,
+    "rank": 5,
+    "relative_error": 0.00564558165699636,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0019469857215881348,
+    "calibration": 0.314447820186615,
+    "confirmation": 0.31250083446502686,
+    "cycle": 1,
+    "index": 3,
+    "rank": 5,
+    "relative_error": 0.006191760911023836,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0014418959617614746,
+    "calibration": 0.12247379124164581,
+    "confirmation": 0.12103189527988434,
+    "cycle": 1,
+    "index": 4,
+    "rank": 5,
+    "relative_error": 0.011773098122818414,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0001146064605563879,
+    "calibration": 0.0021296110935509205,
+    "confirmation": 0.0020150046329945326,
+    "cycle": 2,
+    "index": 0,
+    "rank": 5,
+    "relative_error": 0.05381567597175347,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.003951996564865112,
+    "calibration": 0.3032667636871338,
+    "confirmation": 0.2993147671222687,
+    "cycle": 2,
+    "index": 0,
+    "rank": 5,
+    "relative_error": 0.013031419984229473,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.008413851261138916,
+    "calibration": 0.34141111373901367,
+    "confirmation": 0.3498249650001526,
+    "cycle": 2,
+    "index": 1,
+    "rank": 5,
+    "relative_error": 0.02405160323859461,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00038324296474456787,
+    "calibration": 0.13611017167568207,
+    "confirmation": 0.1357269287109375,
+    "cycle": 2,
+    "index": 2,
+    "rank": 5,
+    "relative_error": 0.0028156820318891674,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.024854272603988647,
+    "calibration": 0.24475058913230896,
+    "confirmation": 0.2696048617362976,
+    "cycle": 2,
+    "index": 3,
+    "rank": 5,
+    "relative_error": 0.09218777600642375,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.001385122537612915,
+    "calibration": 0.17041000723838806,
+    "confirmation": 0.16902488470077515,
+    "cycle": 2,
+    "index": 4,
+    "rank": 5,
+    "relative_error": 0.008128176038835882,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 6,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.1524050235748291,
+    "confirmation": 0.1524050235748291,
+    "cycle": 1,
+    "index": 0,
+    "rank": 6,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0028105080127716064,
+    "calibration": 0.4554978609085083,
+    "confirmation": 0.4583083689212799,
+    "cycle": 1,
+    "index": 1,
+    "rank": 6,
+    "relative_error": 0.0061323514981554824,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.002439558506011963,
+    "calibration": 0.3850986361503601,
+    "confirmation": 0.38753819465637207,
+    "cycle": 1,
+    "index": 2,
+    "rank": 6,
+    "relative_error": 0.006295014374454383,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00025369226932525635,
+    "calibration": 0.12786345183849335,
+    "confirmation": 0.1281171441078186,
+    "cycle": 1,
+    "index": 3,
+    "rank": 6,
+    "relative_error": 0.0019801586360039245,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00045180320739746094,
+    "calibration": 0.16032549738883972,
+    "confirmation": 0.16077730059623718,
+    "cycle": 1,
+    "index": 4,
+    "rank": 6,
+    "relative_error": 0.0028101181306189617,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0008601060835644603,
+    "calibration": 0.0021514734253287315,
+    "confirmation": 0.0012913673417642713,
+    "cycle": 2,
+    "index": 0,
+    "rank": 6,
+    "relative_error": 0.3997753694926729,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.008922308683395386,
+    "calibration": 0.266543984413147,
+    "confirmation": 0.27546629309654236,
+    "cycle": 2,
+    "index": 0,
+    "rank": 6,
+    "relative_error": 0.03238983827421816,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.009578019380569458,
+    "calibration": 0.3083961308002472,
+    "confirmation": 0.31797415018081665,
+    "cycle": 2,
+    "index": 1,
+    "rank": 6,
+    "relative_error": 0.03012200638046488,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0014694035053253174,
+    "calibration": 0.17703118920326233,
+    "confirmation": 0.175561785697937,
+    "cycle": 2,
+    "index": 2,
+    "rank": 6,
+    "relative_error": 0.008300252130364378,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004572808742523193,
+    "calibration": 0.1580839455127716,
+    "confirmation": 0.1535111367702484,
+    "cycle": 2,
+    "index": 3,
+    "rank": 6,
+    "relative_error": 0.028926458836098293,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004807144403457642,
+    "calibration": 0.260844349861145,
+    "confirmation": 0.2560372054576874,
+    "cycle": 2,
+    "index": 4,
+    "rank": 6,
+    "relative_error": 0.018429168222415488,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 7,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.19255828857421875,
+    "confirmation": 0.19255828857421875,
+    "cycle": 1,
+    "index": 0,
+    "rank": 7,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 6.985664367675781e-05,
+    "calibration": 0.8382282257080078,
+    "confirmation": 0.8382980823516846,
+    "cycle": 1,
+    "index": 1,
+    "rank": 7,
+    "relative_error": 8.333150838278001e-05,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0001271069049835205,
+    "calibration": 0.1615794599056244,
+    "confirmation": 0.1617065668106079,
+    "cycle": 1,
+    "index": 2,
+    "rank": 7,
+    "relative_error": 0.0007860342810467875,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0029678940773010254,
+    "calibration": 0.2872348129749298,
+    "confirmation": 0.29020270705223083,
+    "cycle": 1,
+    "index": 3,
+    "rank": 7,
+    "relative_error": 0.01022696896058541,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00013592839241027832,
+    "calibration": 0.18456736207008362,
+    "confirmation": 0.18443143367767334,
+    "cycle": 1,
+    "index": 4,
+    "rank": 7,
+    "relative_error": 0.0007364703644551402,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00018265633843839169,
+    "calibration": 0.003264467231929302,
+    "confirmation": 0.0030818108934909105,
+    "cycle": 2,
+    "index": 0,
+    "rank": 7,
+    "relative_error": 0.055952878513178296,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0005850791931152344,
+    "calibration": 0.18642228841781616,
+    "confirmation": 0.18583720922470093,
+    "cycle": 2,
+    "index": 0,
+    "rank": 7,
+    "relative_error": 0.003138461597488463,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 8.51750373840332e-05,
+    "calibration": 0.16177773475646973,
+    "confirmation": 0.16186290979385376,
+    "cycle": 2,
+    "index": 1,
+    "rank": 7,
+    "relative_error": 0.0005262171395071971,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0008367300033569336,
+    "calibration": 0.39742469787597656,
+    "confirmation": 0.39658796787261963,
+    "cycle": 2,
+    "index": 2,
+    "rank": 7,
+    "relative_error": 0.002105379982242699,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0002631247043609619,
+    "calibration": 0.20825457572937012,
+    "confirmation": 0.20799145102500916,
+    "cycle": 2,
+    "index": 3,
+    "rank": 7,
+    "relative_error": 0.001263476221059826,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0008119344711303711,
+    "calibration": 0.20111066102981567,
+    "confirmation": 0.20192259550094604,
+    "cycle": 2,
+    "index": 4,
+    "rank": 7,
+    "relative_error": 0.004021018396262478,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 8,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.1982220858335495,
+    "confirmation": 0.1982220858335495,
+    "cycle": 1,
+    "index": 0,
+    "rank": 8,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0005312263965606689,
+    "calibration": 0.23222199082374573,
+    "confirmation": 0.2327532172203064,
+    "cycle": 1,
+    "index": 1,
+    "rank": 8,
+    "relative_error": 0.002282358984786237,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 6.3925981521606445e-06,
+    "calibration": 0.2244289517402649,
+    "confirmation": 0.22442255914211273,
+    "cycle": 1,
+    "index": 2,
+    "rank": 8,
+    "relative_error": 2.848383910627938e-05,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00015786290168762207,
+    "calibration": 0.2569718658924103,
+    "confirmation": 0.25681400299072266,
+    "cycle": 1,
+    "index": 3,
+    "rank": 8,
+    "relative_error": 0.0006143197860956365,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0007254630327224731,
+    "calibration": 0.19739215075969696,
+    "confirmation": 0.1966666877269745,
+    "cycle": 1,
+    "index": 4,
+    "rank": 8,
+    "relative_error": 0.00367523749009475,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 7.356214337050915e-05,
+    "calibration": 0.0013292207149788737,
+    "confirmation": 0.0014027828583493829,
+    "cycle": 2,
+    "index": 0,
+    "rank": 8,
+    "relative_error": 0.05244014990108145,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0015763789415359497,
+    "calibration": 0.19553637504577637,
+    "confirmation": 0.19711275398731232,
+    "cycle": 2,
+    "index": 0,
+    "rank": 8,
+    "relative_error": 0.007997346237866564,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.05275413393974304,
+    "calibration": 0.33506083488464355,
+    "confirmation": 0.3878149688243866,
+    "cycle": 2,
+    "index": 1,
+    "rank": 8,
+    "relative_error": 0.13602913291268956,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0015095323324203491,
+    "calibration": 0.11424154043197632,
+    "confirmation": 0.11575107276439667,
+    "cycle": 2,
+    "index": 2,
+    "rank": 8,
+    "relative_error": 0.013041195181775102,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004802823066711426,
+    "calibration": 0.16788411140441895,
+    "confirmation": 0.16308128833770752,
+    "cycle": 2,
+    "index": 3,
+    "rank": 8,
+    "relative_error": 0.02860796668924686,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0032258331775665283,
+    "calibration": 0.2938183844089508,
+    "confirmation": 0.29704421758651733,
+    "cycle": 2,
+    "index": 4,
+    "rank": 8,
+    "relative_error": 0.010859774358768554,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 9,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.22368884086608887,
+    "confirmation": 0.22368884086608887,
+    "cycle": 1,
+    "index": 0,
+    "rank": 9,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00020797550678253174,
+    "calibration": 0.21804779767990112,
+    "confirmation": 0.21825577318668365,
+    "cycle": 1,
+    "index": 1,
+    "rank": 9,
+    "relative_error": 0.0009528980780024602,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0005795806646347046,
+    "calibration": 0.22704781591892242,
+    "confirmation": 0.22762739658355713,
+    "cycle": 1,
+    "index": 2,
+    "rank": 9,
+    "relative_error": 0.002546181493676017,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00031834840774536133,
+    "calibration": 0.14354747533798218,
+    "confirmation": 0.14386582374572754,
+    "cycle": 1,
+    "index": 3,
+    "rank": 9,
+    "relative_error": 0.002212814687024065,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000498846173286438,
+    "calibration": 0.1698152720928192,
+    "confirmation": 0.16931642591953278,
+    "cycle": 1,
+    "index": 4,
+    "rank": 9,
+    "relative_error": 0.00293758133257752,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0005421729292720556,
+    "calibration": 0.003707257332280278,
+    "confirmation": 0.0031650844030082226,
+    "cycle": 2,
+    "index": 0,
+    "rank": 9,
+    "relative_error": 0.14624637047749076,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.004336714744567871,
+    "calibration": 1.3268080949783325,
+    "confirmation": 1.3311448097229004,
+    "cycle": 2,
+    "index": 0,
+    "rank": 9,
+    "relative_error": 0.0032578835246862654,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0018760710954666138,
+    "calibration": 0.17275846004486084,
+    "confirmation": 0.17088238894939423,
+    "cycle": 2,
+    "index": 1,
+    "rank": 9,
+    "relative_error": 0.010859503465008007,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.006096512079238892,
+    "calibration": 0.1751287877559662,
+    "confirmation": 0.1690322756767273,
+    "cycle": 2,
+    "index": 2,
+    "rank": 9,
+    "relative_error": 0.03481159298455316,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.02152341604232788,
+    "calibration": 0.24176007509231567,
+    "confirmation": 0.2202366590499878,
+    "cycle": 2,
+    "index": 3,
+    "rank": 9,
+    "relative_error": 0.08902800031853564,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000711493194103241,
+    "calibration": 0.11050576716661453,
+    "confirmation": 0.11121726036071777,
+    "cycle": 2,
+    "index": 4,
+    "rank": 9,
+    "relative_error": 0.006397327103685267,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 10,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.21046069264411926,
+    "confirmation": 0.21046069264411926,
+    "cycle": 1,
+    "index": 0,
+    "rank": 10,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0015914738178253174,
+    "calibration": 0.14399802684783936,
+    "confirmation": 0.14558950066566467,
+    "cycle": 1,
+    "index": 1,
+    "rank": 10,
+    "relative_error": 0.010931240306126314,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0011099278926849365,
+    "calibration": 0.1290915608406067,
+    "confirmation": 0.12798163294792175,
+    "cycle": 1,
+    "index": 2,
+    "rank": 10,
+    "relative_error": 0.008597989562271995,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 9.366869926452637e-05,
+    "calibration": 0.17576876282691956,
+    "confirmation": 0.17567509412765503,
+    "cycle": 1,
+    "index": 3,
+    "rank": 10,
+    "relative_error": 0.0005329086793241097,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0011533498764038086,
+    "calibration": 0.43515634536743164,
+    "confirmation": 0.43400299549102783,
+    "cycle": 1,
+    "index": 4,
+    "rank": 10,
+    "relative_error": 0.002650426424162465,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00844160420820117,
+    "calibration": 0.004414650145918131,
+    "confirmation": 0.0128562543541193,
+    "cycle": 2,
+    "index": 0,
+    "rank": 10,
+    "relative_error": 0.6566145920640079,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.003371208906173706,
+    "calibration": 0.16572614014148712,
+    "confirmation": 0.16909734904766083,
+    "cycle": 2,
+    "index": 0,
+    "rank": 10,
+    "relative_error": 0.01993649767521498,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.030875563621520996,
+    "calibration": 0.6583410501480103,
+    "confirmation": 0.6274654865264893,
+    "cycle": 2,
+    "index": 1,
+    "rank": 10,
+    "relative_error": 0.046899040572632465,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0016500502824783325,
+    "calibration": 0.24999016523361206,
+    "confirmation": 0.24834011495113373,
+    "cycle": 2,
+    "index": 2,
+    "rank": 10,
+    "relative_error": 0.006600460785872857,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.012895256280899048,
+    "calibration": 0.2937787175178528,
+    "confirmation": 0.28088346123695374,
+    "cycle": 2,
+    "index": 3,
+    "rank": 10,
+    "relative_error": 0.04389445358687499,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00538972020149231,
+    "calibration": 0.2896519601345062,
+    "confirmation": 0.2842622399330139,
+    "cycle": 2,
+    "index": 4,
+    "rank": 10,
+    "relative_error": 0.01860757372050745,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 11,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.19274958968162537,
+    "confirmation": 0.19274958968162537,
+    "cycle": 1,
+    "index": 0,
+    "rank": 11,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00943252444267273,
+    "calibration": 0.2590055465698242,
+    "confirmation": 0.2495730221271515,
+    "cycle": 1,
+    "index": 1,
+    "rank": 11,
+    "relative_error": 0.03641823338377757,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 5.0708651542663574e-05,
+    "calibration": 0.17307837307453156,
+    "confirmation": 0.17312908172607422,
+    "cycle": 1,
+    "index": 2,
+    "rank": 11,
+    "relative_error": 0.0002928950528536568,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0014068633317947388,
+    "calibration": 0.1355433315038681,
+    "confirmation": 0.13695019483566284,
+    "cycle": 1,
+    "index": 3,
+    "rank": 11,
+    "relative_error": 0.01027281000573196,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.002609565854072571,
+    "calibration": 0.14453749358654022,
+    "confirmation": 0.1471470594406128,
+    "cycle": 1,
+    "index": 4,
+    "rank": 11,
+    "relative_error": 0.017734407089023532,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0013623740524053574,
+    "calibration": 0.008065760135650635,
+    "confirmation": 0.006703386083245277,
+    "cycle": 2,
+    "index": 0,
+    "rank": 11,
+    "relative_error": 0.16890832723671861,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0010460317134857178,
+    "calibration": 0.19070497155189514,
+    "confirmation": 0.18965893983840942,
+    "cycle": 2,
+    "index": 0,
+    "rank": 11,
+    "relative_error": 0.005485078364624956,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00034905970096588135,
+    "calibration": 0.11668770760297775,
+    "confirmation": 0.11703676730394363,
+    "cycle": 2,
+    "index": 1,
+    "rank": 11,
+    "relative_error": 0.0029824790021701114,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00025090575218200684,
+    "calibration": 0.3279915750026703,
+    "confirmation": 0.3282424807548523,
+    "cycle": 2,
+    "index": 2,
+    "rank": 11,
+    "relative_error": 0.0007643914693948333,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.002948388457298279,
+    "calibration": 0.2115117609500885,
+    "confirmation": 0.20856337249279022,
+    "cycle": 2,
+    "index": 3,
+    "rank": 11,
+    "relative_error": 0.013939595812802226,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0009317696094512939,
+    "calibration": 0.19586284458637238,
+    "confirmation": 0.19493107497692108,
+    "cycle": 2,
+    "index": 4,
+    "rank": 11,
+    "relative_error": 0.004757255575548422,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 12,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.13571056723594666,
+    "confirmation": 0.13571056723594666,
+    "cycle": 1,
+    "index": 0,
+    "rank": 12,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000186920166015625,
+    "calibration": 0.20775339007377625,
+    "confirmation": 0.20794031023979187,
+    "cycle": 1,
+    "index": 1,
+    "rank": 12,
+    "relative_error": 0.0008989126052571196,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 4.470348358154297e-06,
+    "calibration": 0.31941866874694824,
+    "confirmation": 0.3194231390953064,
+    "cycle": 1,
+    "index": 2,
+    "rank": 12,
+    "relative_error": 1.3995067391847518e-05,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.009059250354766846,
+    "calibration": 0.3647691011428833,
+    "confirmation": 0.37382835149765015,
+    "cycle": 1,
+    "index": 3,
+    "rank": 12,
+    "relative_error": 0.024233716673637024,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.004757806658744812,
+    "calibration": 0.24858973920345306,
+    "confirmation": 0.24383193254470825,
+    "cycle": 1,
+    "index": 4,
+    "rank": 12,
+    "relative_error": 0.019139191641578113,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0003183677326887846,
+    "calibration": 0.0027518924325704575,
+    "confirmation": 0.003070260165259242,
+    "cycle": 2,
+    "index": 0,
+    "rank": 12,
+    "relative_error": 0.10369405703503395,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0021216869354248047,
+    "calibration": 1.18547785282135,
+    "confirmation": 1.1833561658859253,
+    "cycle": 2,
+    "index": 0,
+    "rank": 12,
+    "relative_error": 0.0017897313985034355,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0012953877449035645,
+    "calibration": 0.24849951267242432,
+    "confirmation": 0.24720412492752075,
+    "cycle": 2,
+    "index": 1,
+    "rank": 12,
+    "relative_error": 0.005212838170073853,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.002297341823577881,
+    "calibration": 0.14253154397010803,
+    "confirmation": 0.14023420214653015,
+    "cycle": 2,
+    "index": 2,
+    "rank": 12,
+    "relative_error": 0.016118129079270224,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0004737377166748047,
+    "calibration": 0.30053240060806274,
+    "confirmation": 0.30005866289138794,
+    "cycle": 2,
+    "index": 3,
+    "rank": 12,
+    "relative_error": 0.001576328261832329,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0038777291774749756,
+    "calibration": 0.1938527524471283,
+    "confirmation": 0.19773048162460327,
+    "cycle": 2,
+    "index": 4,
+    "rank": 12,
+    "relative_error": 0.01961118561799162,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 13,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 1.4850990772247314,
+    "confirmation": 1.4850990772247314,
+    "cycle": 1,
+    "index": 0,
+    "rank": 13,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.000598713755607605,
+    "calibration": 0.149198979139328,
+    "confirmation": 0.1486002653837204,
+    "cycle": 1,
+    "index": 1,
+    "rank": 13,
+    "relative_error": 0.004012854237082293,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0027254819869995117,
+    "calibration": 0.3224610686302185,
+    "confirmation": 0.325186550617218,
+    "cycle": 1,
+    "index": 2,
+    "rank": 13,
+    "relative_error": 0.008381287546568054,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0002690553665161133,
+    "calibration": 0.7611125707626343,
+    "confirmation": 0.7613816261291504,
+    "cycle": 1,
+    "index": 3,
+    "rank": 13,
+    "relative_error": 0.0003533778033021175,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00044627487659454346,
+    "calibration": 0.13978281617164612,
+    "confirmation": 0.14022909104824066,
+    "cycle": 1,
+    "index": 4,
+    "rank": 13,
+    "relative_error": 0.0031824700086019882,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.001579549629241228,
+    "calibration": 0.006765035446733236,
+    "confirmation": 0.008344585075974464,
+    "cycle": 2,
+    "index": 0,
+    "rank": 13,
+    "relative_error": 0.18929037392033196,
+    "role": "student"
+  },
+  {
+    "absolute_error": 1.3381242752075195e-05,
+    "calibration": 0.40331828594207764,
+    "confirmation": 0.40330490469932556,
+    "cycle": 2,
+    "index": 0,
+    "rank": 13,
+    "relative_error": 3.317787270869473e-05,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0030841678380966187,
+    "calibration": 0.1182338148355484,
+    "confirmation": 0.12131798267364502,
+    "cycle": 2,
+    "index": 1,
+    "rank": 13,
+    "relative_error": 0.025422182022209142,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0002789795398712158,
+    "calibration": 0.2792479991912842,
+    "confirmation": 0.27896901965141296,
+    "cycle": 2,
+    "index": 2,
+    "rank": 13,
+    "relative_error": 0.000999038634758903,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.020265132188796997,
+    "calibration": 0.3902493119239807,
+    "confirmation": 0.3699841797351837,
+    "cycle": 2,
+    "index": 3,
+    "rank": 13,
+    "relative_error": 0.0519286814085263,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00034596025943756104,
+    "calibration": 0.1532529890537262,
+    "confirmation": 0.15290702879428864,
+    "cycle": 2,
+    "index": 4,
+    "rank": 13,
+    "relative_error": 0.0022574454278100706,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 14,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.2660461962223053,
+    "confirmation": 0.2660461962223053,
+    "cycle": 1,
+    "index": 0,
+    "rank": 14,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00017902255058288574,
+    "calibration": 0.28489798307418823,
+    "confirmation": 0.2850770056247711,
+    "cycle": 1,
+    "index": 1,
+    "rank": 14,
+    "relative_error": 0.0006279796232268618,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0002541840076446533,
+    "calibration": 0.2596113681793213,
+    "confirmation": 0.25935718417167664,
+    "cycle": 1,
+    "index": 2,
+    "rank": 14,
+    "relative_error": 0.0009790942878475217,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0010643750429153442,
+    "calibration": 0.18087443709373474,
+    "confirmation": 0.18193881213665009,
+    "cycle": 1,
+    "index": 3,
+    "rank": 14,
+    "relative_error": 0.0058501813352277825,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0003021657466888428,
+    "calibration": 0.21705341339111328,
+    "confirmation": 0.21675124764442444,
+    "cycle": 1,
+    "index": 4,
+    "rank": 14,
+    "relative_error": 0.001392126214317412,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00045736972242593765,
+    "calibration": 0.0038916971534490585,
+    "confirmation": 0.004349066875874996,
+    "cycle": 2,
+    "index": 0,
+    "rank": 14,
+    "relative_error": 0.1051650240107928,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.002682432532310486,
+    "calibration": 0.1237853467464447,
+    "confirmation": 0.12110291421413422,
+    "cycle": 2,
+    "index": 0,
+    "rank": 14,
+    "relative_error": 0.02167003286588547,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.00010345876216888428,
+    "calibration": 0.19282451272010803,
+    "confirmation": 0.19292797148227692,
+    "cycle": 2,
+    "index": 1,
+    "rank": 14,
+    "relative_error": 0.0005362558957833048,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0012393444776535034,
+    "calibration": 0.20893152058124542,
+    "confirmation": 0.21017086505889893,
+    "cycle": 2,
+    "index": 2,
+    "rank": 14,
+    "relative_error": 0.0058968424443901196,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0027731657028198242,
+    "calibration": 0.48369282484054565,
+    "confirmation": 0.4864659905433655,
+    "cycle": 2,
+    "index": 3,
+    "rank": 14,
+    "relative_error": 0.005700636337850248,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0013076364994049072,
+    "calibration": 0.1322340965270996,
+    "confirmation": 0.13354173302650452,
+    "cycle": 2,
+    "index": 4,
+    "rank": 14,
+    "relative_error": 0.00979196892064727,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.0,
+    "confirmation": 0.0,
+    "cycle": 1,
+    "index": 0,
+    "rank": 15,
+    "relative_error": 0.0,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.0,
+    "calibration": 0.42190900444984436,
+    "confirmation": 0.42190900444984436,
+    "cycle": 1,
+    "index": 0,
+    "rank": 15,
+    "relative_error": 0.0,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0007255375385284424,
+    "calibration": 0.18003050982952118,
+    "confirmation": 0.18075604736804962,
+    "cycle": 1,
+    "index": 1,
+    "rank": 15,
+    "relative_error": 0.004013904647135408,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 4.534423351287842e-05,
+    "calibration": 0.18455395102500916,
+    "confirmation": 0.18450860679149628,
+    "cycle": 1,
+    "index": 2,
+    "rank": 15,
+    "relative_error": 0.00024569635741222227,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 7.149577140808105e-05,
+    "calibration": 0.15272338688373566,
+    "confirmation": 0.15265189111232758,
+    "cycle": 1,
+    "index": 3,
+    "rank": 15,
+    "relative_error": 0.0004681389855668204,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0016481876373291016,
+    "calibration": 0.33562976121902466,
+    "confirmation": 0.33398157358169556,
+    "cycle": 1,
+    "index": 4,
+    "rank": 15,
+    "relative_error": 0.004910731489790413,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 1.797830918803811e-05,
+    "calibration": 0.0006006761686876416,
+    "confirmation": 0.0005826978594996035,
+    "cycle": 2,
+    "index": 0,
+    "rank": 15,
+    "relative_error": 0.029930118964628067,
+    "role": "student"
+  },
+  {
+    "absolute_error": 0.002630561590194702,
+    "calibration": 0.18136638402938843,
+    "confirmation": 0.17873582243919373,
+    "cycle": 2,
+    "index": 0,
+    "rank": 15,
+    "relative_error": 0.014504129882020742,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.016225218772888184,
+    "calibration": 0.8352798819541931,
+    "confirmation": 0.8190546631813049,
+    "cycle": 2,
+    "index": 1,
+    "rank": 15,
+    "relative_error": 0.019424888739003505,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.0024597644805908203,
+    "calibration": 1.8011730909347534,
+    "confirmation": 1.8036328554153442,
+    "cycle": 2,
+    "index": 2,
+    "rank": 15,
+    "relative_error": 0.0013637833626757596,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.001398727297782898,
+    "calibration": 0.13070933520793915,
+    "confirmation": 0.13210806250572205,
+    "cycle": 2,
+    "index": 3,
+    "rank": 15,
+    "relative_error": 0.01058775120346886,
+    "role": "fake"
+  },
+  {
+    "absolute_error": 0.001758277416229248,
+    "calibration": 0.34416159987449646,
+    "confirmation": 0.3424033224582672,
+    "cycle": 2,
+    "index": 4,
+    "rank": 15,
+    "relative_error": 0.0051088715791373284,
+    "role": "fake"
+  }
+]

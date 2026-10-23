@@ -107,7 +107,7 @@ def test_rank_trace_bundle_rejects_out_of_range_rank(tmp_path):
 
 
 def test_prepare_m1_calibration_assets_reuses_one_operation_trace(tmp_path):
-    from scripts.distillschedule.prepare_m1_calibration_assets import prepare
+    from tools.assets.prepare_m1_calibration_assets import prepare
     from runtime.operation_trace import load_operation_trace_bundle_manifest
 
     trace_root = tmp_path / "source_trace"

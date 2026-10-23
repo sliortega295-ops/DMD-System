@@ -1,0 +1,31 @@
+{
+  "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "status": "CONFIRMATION_PRELAUNCH_FAIL_NO_GPU",
+  "diagnosis": [
+    {
+      "hash_seed": "0",
+      "raw_equal": false,
+      "unordered_dependencies_equal": false,
+      "differing_operations": [],
+      "predicted_cycle2_ns": 771399059042,
+      "memory_identical": false
+    },
+    {
+      "hash_seed": "1",
+      "raw_equal": false,
+      "unordered_dependencies_equal": false,
+      "differing_operations": [],
+      "predicted_cycle2_ns": 771399059042,
+      "memory_identical": false
+    },
+    {
+      "hash_seed": "2",
+      "raw_equal": false,
+      "unordered_dependencies_equal": false,
+      "differing_operations": [],
+      "predicted_cycle2_ns": 771399059042,
+      "memory_identical": false
+    }
+  ],
+  "changes": "NONE"
+}

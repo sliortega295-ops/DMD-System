@@ -1,4 +1,4 @@
-from scripts.distillschedule.analyze_w16_pool_nsys import (
+from tools.profiling.analyze_w16_pool_nsys import (
     classify_kernel,
     merge_interval_nanoseconds,
 )

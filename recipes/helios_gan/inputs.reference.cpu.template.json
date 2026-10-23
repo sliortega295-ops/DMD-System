@@ -1,0 +1,15 @@
+{
+  "schema_version": "distillschedule.helios_native_inputs.v1",
+  "evidence_kind": "LOCAL_PRETRAINED_NATIVE_FEATURES_UNVERIFIED_QUALITY",
+  "producer": {"REPLACE_WITH": "exact helios_native_inputs.producer_identity() value"},
+  "precision": "CPU_FP32_FROM_NATIVE",
+  "args": {"path": "/absolute/local/helios-reference/effective-args.json", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"},
+  "geometry": {"noise_shape": [1, 16, 9, 16, 16], "prompt_shape": [1, 2, 4]},
+  "records": [
+    {"id": "native-0", "features": {"path": "/absolute/local/helios-reference/source-0.pt", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}, "seed": 811, "epoch": 0, "native_index": 0},
+    {"id": "native-1", "features": {"path": "/absolute/local/helios-reference/source-1.pt", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}, "seed": 811, "epoch": 0, "native_index": 1},
+    {"id": "native-2", "features": {"path": "/absolute/local/helios-reference/source-2.pt", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}, "seed": 811, "epoch": 0, "native_index": 2},
+    {"id": "native-3", "features": {"path": "/absolute/local/helios-reference/source-3.pt", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}, "seed": 811, "epoch": 0, "native_index": 3},
+    {"id": "native-4", "features": {"path": "/absolute/local/helios-reference/source-4.pt", "bytes": 0, "sha256": "REPLACE_WITH_SHA256"}, "seed": 811, "epoch": 0, "native_index": 4}
+  ]
+}

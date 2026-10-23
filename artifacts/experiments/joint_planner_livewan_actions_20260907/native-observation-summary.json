@@ -1,0 +1,2289 @@
+{
+  "status": "PASS_NATIVE_ACTION_OBSERVATIONS",
+  "source_head": "78e501bc1727013d94e356f697051b4d11cba4be",
+  "rank_count": 16,
+  "rank_summaries": [
+    {
+      "rank": 0,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 6589600,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 1,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 6353440,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 2,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 6663872,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 3,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 6547712,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 4,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 5295424,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 5,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 4976640,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 6,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 5265952,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 7,
+      "helper_counts": {
+        "generator_rollout": 20,
+        "fake_velocity": 4,
+        "generator_backward": 4
+      },
+      "copy_kind": "latent_d2h",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 5324128,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "latent_d2h": 17,
+        "sender_copy_ready_wait": 17,
+        "gloo_send_completion": 17,
+        "streamer_reuse_copy_wait": 13,
+        "shadow_receiver_transfer_wait": 1,
+        "shadow_target_load": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 8,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 7477056,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 9,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 8739648,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 10,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 10312736,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 11,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 9927232,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 12,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 7615296,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 13,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 8538848,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 14,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 10081664,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    },
+    {
+      "rank": 15,
+      "helper_counts": {
+        "teacher_velocity": 4,
+        "critic_backward_b2": 10
+      },
+      "copy_kind": "latent_h2d",
+      "copy_count": 17,
+      "copy_bytes": 84080640,
+      "copy_sum_duration_ns": 8429920,
+      "byte_residual": 0,
+      "event_residual": 0,
+      "reconciliation_scope": "ACTUAL_LATENT_COPY_ONLY",
+      "transport_phase_counts": {
+        "gloo_receive_wait": 17,
+        "latent_h2d": 17,
+        "shadow_source_pack": 1,
+        "shadow_source_completion_wait": 1
+      },
+      "shadow_event_residual": 0,
+      "host_event_residual": 0
+    }
+  ],
+  "helpers": [
+    {
+      "rank": 0,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1887122071,
+      "median_duration_ns": 943561035.5
+    },
+    {
+      "rank": 0,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3433685547,
+      "median_duration_ns": 1716842773.5
+    },
+    {
+      "rank": 0,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 28777769702,
+      "median_duration_ns": 2837777343.5
+    },
+    {
+      "rank": 0,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1841484376,
+      "median_duration_ns": 920742188.0
+    },
+    {
+      "rank": 0,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3422578124,
+      "median_duration_ns": 1711289062.0
+    },
+    {
+      "rank": 0,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26722445313,
+      "median_duration_ns": 2690304688.0
+    },
+    {
+      "rank": 1,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1867731445,
+      "median_duration_ns": 933865722.5
+    },
+    {
+      "rank": 1,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3460762696,
+      "median_duration_ns": 1730381348.0
+    },
+    {
+      "rank": 1,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 29017708998,
+      "median_duration_ns": 2674741211.0
+    },
+    {
+      "rank": 1,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1839230469,
+      "median_duration_ns": 919615234.5
+    },
+    {
+      "rank": 1,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3281445312,
+      "median_duration_ns": 1640722656.0
+    },
+    {
+      "rank": 1,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26958972657,
+      "median_duration_ns": 2671121094.0
+    },
+    {
+      "rank": 2,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1878932128,
+      "median_duration_ns": 939466064.0
+    },
+    {
+      "rank": 2,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3587576172,
+      "median_duration_ns": 1793788086.0
+    },
+    {
+      "rank": 2,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 29098727801,
+      "median_duration_ns": 2669617187.5
+    },
+    {
+      "rank": 2,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1838687500,
+      "median_duration_ns": 919343750.0
+    },
+    {
+      "rank": 2,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3626749999,
+      "median_duration_ns": 1813374999.5
+    },
+    {
+      "rank": 2,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26988507814,
+      "median_duration_ns": 2675203125.0
+    },
+    {
+      "rank": 3,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1867250976,
+      "median_duration_ns": 933625488.0
+    },
+    {
+      "rank": 3,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3487396485,
+      "median_duration_ns": 1743698242.5
+    },
+    {
+      "rank": 3,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 28622439182,
+      "median_duration_ns": 2815375000.0
+    },
+    {
+      "rank": 3,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1838535157,
+      "median_duration_ns": 919267578.5
+    },
+    {
+      "rank": 3,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3624359376,
+      "median_duration_ns": 1812179688.0
+    },
+    {
+      "rank": 3,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26567964846,
+      "median_duration_ns": 2674199219.0
+    },
+    {
+      "rank": 4,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1880103027,
+      "median_duration_ns": 940051513.5
+    },
+    {
+      "rank": 4,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3448228516,
+      "median_duration_ns": 1724114258.0
+    },
+    {
+      "rank": 4,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 28025461269,
+      "median_duration_ns": 2674572265.5
+    },
+    {
+      "rank": 4,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1843355469,
+      "median_duration_ns": 921677734.5
+    },
+    {
+      "rank": 4,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3575804687,
+      "median_duration_ns": 1787902343.5
+    },
+    {
+      "rank": 4,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 25968824219,
+      "median_duration_ns": 2510333984.5
+    },
+    {
+      "rank": 5,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1875248047,
+      "median_duration_ns": 937624023.5
+    },
+    {
+      "rank": 5,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3272813476,
+      "median_duration_ns": 1636406738.0
+    },
+    {
+      "rank": 5,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 28805039452,
+      "median_duration_ns": 2674949218.5
+    },
+    {
+      "rank": 5,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1843753905,
+      "median_duration_ns": 921876952.5
+    },
+    {
+      "rank": 5,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3547789064,
+      "median_duration_ns": 1773894532.0
+    },
+    {
+      "rank": 5,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26617027344,
+      "median_duration_ns": 2668679687.0
+    },
+    {
+      "rank": 6,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1874223633,
+      "median_duration_ns": 937111816.5
+    },
+    {
+      "rank": 6,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3462437499,
+      "median_duration_ns": 1731218749.5
+    },
+    {
+      "rank": 6,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 28651909014,
+      "median_duration_ns": 2669885009.5
+    },
+    {
+      "rank": 6,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1848222656,
+      "median_duration_ns": 924111328.0
+    },
+    {
+      "rank": 6,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3565687500,
+      "median_duration_ns": 1782843750.0
+    },
+    {
+      "rank": 6,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 26660488282,
+      "median_duration_ns": 2671492188.0
+    },
+    {
+      "rank": 7,
+      "cycle": 1,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1872469728,
+      "median_duration_ns": 936234864.0
+    },
+    {
+      "rank": 7,
+      "cycle": 1,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3541632812,
+      "median_duration_ns": 1770816406.0
+    },
+    {
+      "rank": 7,
+      "cycle": 1,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 27352414721,
+      "median_duration_ns": 2338550781.0
+    },
+    {
+      "rank": 7,
+      "cycle": 2,
+      "family": "fake_velocity",
+      "count": 2,
+      "sum_duration_ns": 1840953125,
+      "median_duration_ns": 920476562.5
+    },
+    {
+      "rank": 7,
+      "cycle": 2,
+      "family": "generator_backward",
+      "count": 2,
+      "sum_duration_ns": 3449476563,
+      "median_duration_ns": 1724738281.5
+    },
+    {
+      "rank": 7,
+      "cycle": 2,
+      "family": "generator_rollout",
+      "count": 10,
+      "sum_duration_ns": 25318785156,
+      "median_duration_ns": 2344625000.0
+    },
+    {
+      "rank": 8,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27940998046,
+      "median_duration_ns": 5471484374
+    },
+    {
+      "rank": 8,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18487878418,
+      "median_duration_ns": 9243939209.0
+    },
+    {
+      "rank": 8,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27483695313,
+      "median_duration_ns": 5469742188
+    },
+    {
+      "rank": 8,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274671875,
+      "median_duration_ns": 8637335937.5
+    },
+    {
+      "rank": 9,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28038232422,
+      "median_duration_ns": 5480484375
+    },
+    {
+      "rank": 9,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18480596680,
+      "median_duration_ns": 9240298340.0
+    },
+    {
+      "rank": 9,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27562515625,
+      "median_duration_ns": 5491515625
+    },
+    {
+      "rank": 9,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274722656,
+      "median_duration_ns": 8637361328.0
+    },
+    {
+      "rank": 10,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28284757811,
+      "median_duration_ns": 5483835937
+    },
+    {
+      "rank": 10,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18495760741,
+      "median_duration_ns": 9247880370.5
+    },
+    {
+      "rank": 10,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27867703124,
+      "median_duration_ns": 5483859375
+    },
+    {
+      "rank": 10,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17273007813,
+      "median_duration_ns": 8636503906.5
+    },
+    {
+      "rank": 11,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28158656249,
+      "median_duration_ns": 5495746094
+    },
+    {
+      "rank": 11,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18488748048,
+      "median_duration_ns": 9244374024.0
+    },
+    {
+      "rank": 11,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27704117186,
+      "median_duration_ns": 5495367187
+    },
+    {
+      "rank": 11,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274460938,
+      "median_duration_ns": 8637230469.0
+    },
+    {
+      "rank": 12,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28140507813,
+      "median_duration_ns": 5496496094
+    },
+    {
+      "rank": 12,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18496414551,
+      "median_duration_ns": 9248207275.5
+    },
+    {
+      "rank": 12,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27698210938,
+      "median_duration_ns": 5499593750
+    },
+    {
+      "rank": 12,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274753906,
+      "median_duration_ns": 8637376953.0
+    },
+    {
+      "rank": 13,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28294857423,
+      "median_duration_ns": 5486652344
+    },
+    {
+      "rank": 13,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18493868164,
+      "median_duration_ns": 9246934082.0
+    },
+    {
+      "rank": 13,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27897929686,
+      "median_duration_ns": 5490601562
+    },
+    {
+      "rank": 13,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274558593,
+      "median_duration_ns": 8637279296.5
+    },
+    {
+      "rank": 14,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28118626953,
+      "median_duration_ns": 5500203125
+    },
+    {
+      "rank": 14,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18481594238,
+      "median_duration_ns": 9240797119.0
+    },
+    {
+      "rank": 14,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27687218750,
+      "median_duration_ns": 5505304687
+    },
+    {
+      "rank": 14,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274839844,
+      "median_duration_ns": 8637419922.0
+    },
+    {
+      "rank": 15,
+      "cycle": 1,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 28134332032,
+      "median_duration_ns": 5501203125
+    },
+    {
+      "rank": 15,
+      "cycle": 1,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 18491236816,
+      "median_duration_ns": 9245618408.0
+    },
+    {
+      "rank": 15,
+      "cycle": 2,
+      "family": "critic_backward_b2",
+      "count": 5,
+      "sum_duration_ns": 27703359374,
+      "median_duration_ns": 5507351562
+    },
+    {
+      "rank": 15,
+      "cycle": 2,
+      "family": "teacher_velocity",
+      "count": 2,
+      "sum_duration_ns": 17274792968,
+      "median_duration_ns": 8637396484.0
+    }
+  ],
+  "matched_rank_sample_identities": 160,
+  "formal_timing_eligible": false,
+  "planner_costs_ready": false,
+  "independent_link_service_admitted": false,
+  "remaining": [
+    "WORKSPACE_AND_OUTPUT_LIFETIMES",
+    "CONTEXTUAL_SERVICE_COST_ADMISSION",
+    "EXECUTABLE_ACTION_DAG_LOWERING_AND_HELDOUT_NATIVE_FEEDBACK"
+  ],
+  "run_id": "jointp_livewan_actions_20260907_r1-native-observation",
+  "native_summary_status": "PASS",
+  "native_collection_mode": "TRAJECTORY_WITH_ORIGINAL_CORRECTNESS_PROBES",
+  "final_versions": {
+    "generator": 2,
+    "critic": 10,
+    "ema": 0
+  },
+  "physical_critic_batch": 2,
+  "global_batch": 16,
+  "cycles": 2,
+  "max_allocated_bytes": 37743737856,
+  "max_reserved_bytes": 40883978240,
+  "resources": [
+    {
+      "node": 0,
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "sampled_cgroup_peak_bytes": 80381321216,
+      "sampled_min_driver_free_bytes": 461373440,
+      "cleanup": "PASS"
+    },
+    {
+      "node": 1,
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "sampled_cgroup_peak_bytes": 479524003840,
+      "sampled_min_driver_free_bytes": 8388608,
+      "cleanup": "PASS"
+    }
+  ],
+  "transport": [
+    {
+      "rank": 0,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 1018272393,
+      "duration_median_ns": 31154387,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140576009778752
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 0,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 6589600,
+      "duration_median_ns": 400704,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140611345101888
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 0,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 958072343,
+      "duration_median_ns": 56245831,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140576009778752
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 0,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 7354368,
+      "duration_median_ns": 7354368,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140611345101888
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 0,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1373088,
+      "duration_median_ns": 1373088,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140611345101888
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 0,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 368975,
+      "duration_median_ns": 9899,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140611345101888
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 1,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 1432837293,
+      "duration_median_ns": 76959907,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140675504924224
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 1,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 6353440,
+      "duration_median_ns": 336416,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140702859068480
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 1,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 978992223,
+      "duration_median_ns": 57848188,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140675504924224
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 1,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 11462048,
+      "duration_median_ns": 11462048,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140702859068480
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 1,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1368832,
+      "duration_median_ns": 1368832,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140702859068480
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 1,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 307374,
+      "duration_median_ns": 12253,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140702859068480
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 2,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 663735083,
+      "duration_median_ns": 31378944,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140686108124736
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 2,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 6663872,
+      "duration_median_ns": 398592,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140713477723200
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 2,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 958602484,
+      "duration_median_ns": 56794903,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140686108124736
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 2,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 6706784,
+      "duration_median_ns": 6706784,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140713477723200
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 2,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1635744,
+      "duration_median_ns": 1635744,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140713477723200
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 2,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 1160117,
+      "duration_median_ns": 14908,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140713477723200
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 3,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 590446843,
+      "duration_median_ns": 22790906,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139906747725376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 3,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 6547712,
+      "duration_median_ns": 402208,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139955543487552
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 3,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 984125196,
+      "duration_median_ns": 57965868,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139906747725376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 3,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 11963008,
+      "duration_median_ns": 11963008,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139955543487552
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 3,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1380288,
+      "duration_median_ns": 1380288,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139955543487552
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 3,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 154186,
+      "duration_median_ns": 10820,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139955543487552
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 4,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 1062329548,
+      "duration_median_ns": 58421825,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139996824589888
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 4,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 5295424,
+      "duration_median_ns": 315776,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140024181412928
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 4,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 989988489,
+      "duration_median_ns": 58367151,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139996824589888
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 4,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 5526240,
+      "duration_median_ns": 5526240,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140024181412928
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 4,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1398240,
+      "duration_median_ns": 1398240,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140024181412928
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 4,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 166941,
+      "duration_median_ns": 11571,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140024181412928
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 5,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 828736602,
+      "duration_median_ns": 41681823,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140324986934848
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 5,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 4976640,
+      "duration_median_ns": 302912,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140352354829376
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 5,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 979264209,
+      "duration_median_ns": 57712370,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140324986934848
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 5,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 6716864,
+      "duration_median_ns": 6716864,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140352354829376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 5,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1461312,
+      "duration_median_ns": 1461312,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140352354829376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 5,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 158976,
+      "duration_median_ns": 12252,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140352354829376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 6,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 1640505576,
+      "duration_median_ns": 84781426,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140494973687360
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 6,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 5265952,
+      "duration_median_ns": 314784,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140522104370240
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 6,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 978818890,
+      "duration_median_ns": 58023756,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140494973687360
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 6,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 12905152,
+      "duration_median_ns": 12905152,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140522104370240
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 6,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1358624,
+      "duration_median_ns": 1358624,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140522104370240
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 6,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 157703,
+      "duration_median_ns": 12033,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140522104370240
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 7,
+      "kind": "gloo_send_completion",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 892350309,
+      "duration_median_ns": 28494579,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140066787718720
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 7,
+      "kind": "latent_d2h",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 5324128,
+      "duration_median_ns": 319872,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140102332011584
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 7,
+      "kind": "sender_copy_ready_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 976137289,
+      "duration_median_ns": 57748900,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140066787718720
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 7,
+      "kind": "shadow_receiver_transfer_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 14016960,
+      "duration_median_ns": 14016960,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140102332011584
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 7,
+      "kind": "shadow_target_load",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 1414720,
+      "duration_median_ns": 1414720,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140102332011584
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 7,
+      "kind": "streamer_reuse_copy_wait",
+      "count": 13,
+      "counted_bytes": 64296960,
+      "duration_sum_ns": 836284,
+      "duration_median_ns": 12833,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140102332011584
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 8,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3713828173,
+      "duration_median_ns": 13346,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139819688420416
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 8,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 7477056,
+      "duration_median_ns": 416416,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139819688420416
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 8,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3072,
+      "duration_median_ns": 3072,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139819688420416
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 8,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3723264,
+      "duration_median_ns": 3723264,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139819688420416
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 9,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3677250490,
+      "duration_median_ns": 15529,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140246608753728
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 9,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 8739648,
+      "duration_median_ns": 458656,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140246608753728
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 9,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 4096,
+      "duration_median_ns": 4096,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140246608753728
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 9,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3506176,
+      "duration_median_ns": 3506176,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140246608753728
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 10,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 2848866382,
+      "duration_median_ns": 12514,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139625879069760
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 10,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 10312736,
+      "duration_median_ns": 498496,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139625879069760
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 10,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3072,
+      "duration_median_ns": 3072,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139625879069760
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 10,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3525632,
+      "duration_median_ns": 3525632,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139625879069760
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 11,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3515794912,
+      "duration_median_ns": 12103,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        139971978974272
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 11,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 9927232,
+      "duration_median_ns": 558272,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139971978974272
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 11,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 4096,
+      "duration_median_ns": 4096,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139971978974272
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 11,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3512320,
+      "duration_median_ns": 3512320,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        139971978974272
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 12,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3560069988,
+      "duration_median_ns": 12394,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140703790429248
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 12,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 7615296,
+      "duration_median_ns": 463040,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140703790429248
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 12,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 6144,
+      "duration_median_ns": 6144,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140703790429248
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 12,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3245056,
+      "duration_median_ns": 3245056,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140703790429248
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 13,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 2843916331,
+      "duration_median_ns": 14748,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140333526246464
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 13,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 8538848,
+      "duration_median_ns": 481888,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140333526246464
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 13,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 8192,
+      "duration_median_ns": 8192,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140333526246464
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 13,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3334144,
+      "duration_median_ns": 3334144,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140333526246464
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 14,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3663717465,
+      "duration_median_ns": 17974,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140127377568832
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 14,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 10081664,
+      "duration_median_ns": 485056,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140127377568832
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 14,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 4096,
+      "duration_median_ns": 4096,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140127377568832
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 14,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3357696,
+      "duration_median_ns": 3357696,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140127377568832
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 15,
+      "kind": "gloo_receive_wait",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 3672826820,
+      "duration_median_ns": 14547,
+      "clock": "HOST_MONOTONIC_LOCAL_PROCESS",
+      "issuing_threads": [
+        140386611213376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 15,
+      "kind": "latent_h2d",
+      "count": 17,
+      "counted_bytes": 84080640,
+      "duration_sum_ns": 8429920,
+      "duration_median_ns": 360576,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140386611213376
+      ],
+      "byte_scope": "ACTUAL_LATENT_COPY"
+    },
+    {
+      "rank": 15,
+      "kind": "shadow_source_completion_wait",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 4096,
+      "duration_median_ns": 4096,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140386611213376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    },
+    {
+      "rank": 15,
+      "kind": "shadow_source_pack",
+      "count": 1,
+      "counted_bytes": 127795200,
+      "duration_sum_ns": 3319808,
+      "duration_median_ns": 3319808,
+      "clock": "CUDA_EXPLICIT_STREAM_DURATION_ONLY",
+      "issuing_threads": [
+        140386611213376
+      ],
+      "byte_scope": "REPEATED_PAYLOAD_METADATA_NOT_ADDITIONAL_COPY_BYTES"
+    }
+  ],
+  "sources": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native-inputs/execution-plan.json",
+      "sha256": "f30077644cb1750356b058b80328929ae7d4bfb3a809463e0c59785a1586402b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/bound-summary.json",
+      "sha256": "2b4befaee8a97f0efa85ce6d1174f6e5439d92387d15a1e7634f6f371380a475"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_000.json",
+      "sha256": "ff76101403dd30711f1138df74b76e625ef888198e9380dba711f1962e62db4f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_000.json",
+      "sha256": "0b9af98c7b2dcc6403f77a426864e42d5ff4cbfe4172ed01483d2c6df2c32754"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_001.json",
+      "sha256": "8d18f8de51175cc6780adf4d052b4d2828424d2fab24b0d454090857953c7c5c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_001.json",
+      "sha256": "9572be750dc5c64ead00a1d35af2f90652c426d29c671e11e42cfc374b38473d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_002.json",
+      "sha256": "d30d0bb8136fac46b220f8b9d21ebe2cc02622ec631e60ddb45d5a2173be4b5a"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_002.json",
+      "sha256": "5ace5dbaf35d98ed2e11b4097e134bf7827a4f1b69a27513af4628a5f76f1bca"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_003.json",
+      "sha256": "0911d06b9e0616f393cb8dea67c3181746a7881bf260e9bdfc747ea94a6ac012"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_003.json",
+      "sha256": "229e781898bc77ca57c15d6f5eab1f098da4997f73a85fa1d9a5043365747d47"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_004.json",
+      "sha256": "38da8e0a3b8d1eb02ed4030c1551c20a16043d50512b0ba4f6286d0f1feca5ae"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_004.json",
+      "sha256": "b5892718cb6f5bd5d4ba7cb9c11c1ce4081d2a75181ba38a4cb9f64ecdda227d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_005.json",
+      "sha256": "dfe040d295cff685ed6137807afbdecb9cae09c37ce714145cf462cefc6724ba"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_005.json",
+      "sha256": "5e82bb46bd3f497620cbdb7cac1ddc8158a11aba8a3d387dd564b746f4b9f069"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_006.json",
+      "sha256": "3332bf8d1ff09c05c9d17b75283f2567ebafe4b7ceb43fbe5b4a1616815bd1ee"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_006.json",
+      "sha256": "984eec867df8147d73c42106bb0fa3dfb8036ba14c5af55b982dc8c65982185b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_007.json",
+      "sha256": "e30a8aad1e4c477a3b20884a578aea1645833ef36c4aba38fc6d376645c7e8cc"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_007.json",
+      "sha256": "d494aba8bd233d51689382c109a31bcfedac1109de477de8a84cc19dd8cb5ca2"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_008.json",
+      "sha256": "b884226299c0bf87458abc602d57b611587536007496ecd7e025e94bebd6628a"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_008.json",
+      "sha256": "e16102bbc27f41d0de47cb55df367864514c30c846b15b9f8f1fb6fd8700171d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_009.json",
+      "sha256": "eeabf36d3071603f0193ad0813a76f30718c789de775b45f775f7650ecee9453"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_009.json",
+      "sha256": "8f5ccce0293cf243f04fa91ad55223b735b5026d7df13edd3f780f9d6c815cf6"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_010.json",
+      "sha256": "9392db8876c46b1f605f29ddd6b2d7ab953e0ea6d46dcb69e022fd1b51d06b79"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_010.json",
+      "sha256": "a4a7fddaf9818b8ade18b523085ad25a51d63bbea42f0772801f8937ca5ae340"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_011.json",
+      "sha256": "56b448d25248ac6a3f42155d6426b24597373bf0ac7edc042d0100f7802ae111"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_011.json",
+      "sha256": "db64ac7eca9f6cb82a8d959eb6d3b2f48a297fb75b2b4eda2abea1507206ac74"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_012.json",
+      "sha256": "8146034d605b5119da171b73a21b6009deddadaa9ecc1b172131fd9a691c5e5c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_012.json",
+      "sha256": "ae8dc9530ec2fff7783af08cf6eedf084fb6c7907da609aff465df6015bf3063"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_013.json",
+      "sha256": "21ce7f64bdd191456f8e6a7cc98f0a7a80734b56983c5f42b8cc100fd5664fcb"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_013.json",
+      "sha256": "3b25e28461cd989ff6020c40bb2d0bba9b395ae3b8eae7ea1bc99ed6a0511616"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_014.json",
+      "sha256": "fad0972ca4d2a2939d0d232ab273c6b8a2aedd21fa9cacb99c06dae69f8bfc8c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_014.json",
+      "sha256": "02995858cb073a8ae4f5f3858be9bef81207bb6ef6b40f7500f8557fe8b228da"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/operation_calibration/rank_015.json",
+      "sha256": "9e26a0c67b6fd6ac97a28bffa1ed5da3e07d7725b4b6dc24dde15e7b7c209801"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/receipts/rank_015.json",
+      "sha256": "46f85ffc8a030a9ab1ff57956766b1c4de552b87c1e6432c5a92d06a9eb95be8"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/search-resources.node0.json",
+      "sha256": "5dba4ac046c3469e640a9529ea824ba6011def12d961bcebec79b83b7efc0ea8"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/node-exit.0.json",
+      "sha256": "3e07c04e99445043198566e09def2698da43dee5c1995e2d9ff9d5d90ab99279"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/cleanup-readback.node0.json",
+      "sha256": "e3cc5fd5f6e9dbbcd7f5ff413f4c94df02b255fb6791ae2e5c5dbe0a923a0c7d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/launcher/node_0/cgroup_memory_events_before.txt",
+      "sha256": "e34143b646422b82ffa6b737945694a865153e3d3e65f75f16ad33b010eeba43"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/launcher/node_0/cgroup_memory_events_after.txt",
+      "sha256": "e34143b646422b82ffa6b737945694a865153e3d3e65f75f16ad33b010eeba43"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/search-resources.node1.json",
+      "sha256": "8b9da4134468a42449590f8912d49857eb3532d5c654c1ea5f777cb8732a8284"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/node-exit.1.json",
+      "sha256": "3e07c04e99445043198566e09def2698da43dee5c1995e2d9ff9d5d90ab99279"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/cleanup-readback.node1.json",
+      "sha256": "8679c4545abf9cf92b12d3d0188a1cbeccb66cdba49ee362f609b15ad0e9fb25"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/launcher/node_1/cgroup_memory_events_before.txt",
+      "sha256": "e34143b646422b82ffa6b737945694a865153e3d3e65f75f16ad33b010eeba43"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/launcher/node_1/cgroup_memory_events_after.txt",
+      "sha256": "e34143b646422b82ffa6b737945694a865153e3d3e65f75f16ad33b010eeba43"
+    }
+  ],
+  "performance_timing": "NOT_RUN",
+  "new_speedup": null,
+  "numerical_parity": "NOT_REASSERTED_NO_NEW_BASELINE_MATRIX",
+  "claim_boundary": "Native action identity and copy/wait accounting only. Contextual trajectory envelopes are not independent service costs."
+}

@@ -79,6 +79,33 @@ def _build_model_fair(
     bootstrap: Any,
     device: torch.device,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
+    from distillschedule.search.wan_implementation import verify_execution_precision
+    planner_precision = verify_execution_precision(torch)
+    native_task = getattr(args, "original_wan_task", None)
+    if native_task is not None:
+        from distillschedule.strategies.wan_task import OriginalWanTask
+        if not isinstance(native_task, OriginalWanTask):
+            raise TypeError("original_wan_task must be a validated native task")
+        if int(bootstrap.manifest["lora_rank"]) != native_task.lora_rank:
+            raise ValueError("native task/loaded bootstrap rank mismatch")
+    from distillschedule.search.wan_implementation import current_implementation
+    implementation = current_implementation()
+    bundle = None if implementation is None else implementation.candidate_bundle
+    if implementation is None:
+        from distillschedule.search.wan_candidate_bundle import CAPABILITIES
+        # Legacy standalone cast-cache support is unchanged. New mechanisms
+        # cannot enter any untyped worker via inherited environment flags.
+        if any(os.environ.get(env, "0") != "0" for name, env in CAPABILITIES.items()
+               if name != "generator_nograd_lora_cast_cache"):
+            raise ValueError("incumbent mechanisms require an explicit typed candidate bundle")
+    if bundle is not None and bundle.enabled:
+        if native_task is None:
+            raise ValueError("incumbent bundle is admitted only by task-bound OriginalWanSession")
+        bundle.validate_task(native_task)
+        from distillschedule.search.wan_candidate_bundle import ASSETS
+        if bootstrap.manifest_hash != ASSETS["bootstrap_hash"] or bootstrap.manifest["model_identity_sha256"] != ASSETS["model_identity_sha256"]:
+            raise ValueError("incumbent bundle bootstrap identity changed")
+    requested_rank = 256 if native_task is None else native_task.lora_rank
     seed = int(bootstrap.component(role)["seed"])
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
@@ -88,7 +115,7 @@ def _build_model_fair(
                 model_root=args.model_root,
                 subfolder="transformer",
                 precast_model_root=None,
-                lora_rank=256,
+                lora_rank=requested_rank,
                 enable_gan=False,
                 chunked_residual_storage="cuda_out_of_place",
                 missing_pyramid_patch_seed=base.WAN13B_PYRAMID_PATCH_SEED,
@@ -100,6 +127,8 @@ def _build_model_fair(
         model, placement=args.placement
     )
     metadata = dict(metadata)
+    if planner_precision is not None:
+        metadata["planner_execution_precision"] = planner_precision
     metadata["modulation_chunk_runtime"] = modulation_chunk
 
     # Use the same non-reentrant checkpoint wrapper on every arm. Disabling the
@@ -228,6 +257,17 @@ def _build_model_fair(
         role=role,
     )
     metadata["generator_nograd_lora_fused_epilogue"] = lora_fused_epilogue
+    from distillschedule.runtime.wan13b_lora_grad_epilogue import install_grad_lora_fused_epilogue
+    from distillschedule.runtime.wan13b_norm_policy import install as install_norm_policy
+    from distillschedule.runtime.wan13b_rollout_cuda_graph import install as install_rollout_graph
+    from distillschedule.runtime.wan13b_critic_grad_graph import install as install_critic_graph
+    metadata["grad_lora_fused_epilogue"] = install_grad_lora_fused_epilogue(model, role=role)
+    metadata["modulated_norm_fusion"] = install_norm_policy(role=role, placement=args.placement, device=device)
+    metadata["generator_rollout_cuda_graph"] = install_rollout_graph(model, role=role, placement=args.placement)
+    metadata["critic_grad_cuda_graph"] = install_critic_graph(model, role=role, placement=args.placement, reference_checks=False)
+    if bundle is not None:
+        metadata["candidate_bundle"] = bundle.to_dict()
+        metadata["candidate_bundle_sources"] = bundle.source_identity()
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

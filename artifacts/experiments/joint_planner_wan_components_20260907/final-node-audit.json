@@ -1,0 +1,39 @@
+{
+  "status": "PASS_OWNED_RUN_TEARDOWN_READBACK",
+  "nodes": [
+    {
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "gpu_processes": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "lock": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "listening_ports": [
+        22
+      ],
+      "cgroup_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+    },
+    {
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "gpu_processes": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "lock": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "listening_ports": [
+        22
+      ],
+      "cgroup_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n"
+    }
+  ]
+}

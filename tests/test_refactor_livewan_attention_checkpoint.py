@@ -50,7 +50,7 @@ def test_plan_only_has_no_cuda_import(tmp_path):
     import sys
     from pathlib import Path
     root=Path(__file__).resolve().parents[1]
-    p=subprocess.run([sys.executable,str(root/'scripts/distillschedule/canary_livewan_attention_checkpoint.py'),
+    p=subprocess.run([sys.executable,str(root/'benchmarks/kernels/canary_livewan_attention_checkpoint.py'),
                       '--plan-only','--output',str(tmp_path/'canary.json')],check=True,capture_output=True,text=True)
     d=json.loads(p.stdout)
     assert d['world16']=='NOT_RUN' and not (tmp_path/'canary.json').exists()
@@ -95,3 +95,26 @@ def test_runtime_sac_census_cannot_be_inferred_only_from_config():
         assert runtime_receipt_errors(dict(r,**{k:v}),rank=8,expected_calls=300)
     assert runtime_receipt_errors(r,rank=0,expected_calls=300)
     assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE','checkpoint_calls':0},rank=0,expected_calls=300)
+    assert runtime_receipt_errors(r,rank=8,expected_calls=300,query_tokens=16560)
+    assert not runtime_receipt_errors(dict(r,query_tokens=16560,key_tokens=16560),rank=8,
+                                      expected_calls=300,query_tokens=16560)
+
+
+def test_request_attention_policy_uses_actual_new_sequence_metadata(monkeypatch):
+    torch=pytest.importorskip('torch')
+    import torch.utils.checkpoint as checkpoint
+    captured=[]
+    monkeypatch.setattr(checkpoint,'create_selective_checkpoint_contexts',
+                        lambda policy,**kw:captured.append(policy) or ('original','replay'))
+    op=object();contexts=AttentionCheckpointContexts(SimpleNamespace(bfloat16='bf16'),op,{},
+        self_attention_only=True,query_tokens=16560)
+    assert contexts()==('original','replay')
+    q,k,v,*tail=inputs()
+    q.shape=(2,16560,12,128)
+    policy=captured[0];ctx=SimpleNamespace(is_recompute=False)
+    assert policy(ctx,op,q,k,v,*tail)==checkpoint.CheckpointPolicy.PREFER_RECOMPUTE
+    k.shape=v.shape=q.shape
+    assert policy(ctx,op,q,k,v,*tail)==checkpoint.CheckpointPolicy.MUST_SAVE
+    q.shape=(2,19320,12,128)
+    with pytest.raises(RuntimeError,match='sequence shape'):
+        policy(ctx,op,q,k,v,*tail)

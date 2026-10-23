@@ -39,7 +39,7 @@ def test_plan_only_no_assets_or_cuda(tmp_path):
     root = Path(__file__).resolve().parents[1]
     out = tmp_path/'unused.json'
     p = subprocess.run([sys.executable,
-        str(root/'scripts/distillschedule/canary_livewan_generator_gate.py'),
+        str(root/'benchmarks/kernels/canary_livewan_generator_gate.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(out),'--plan-only'],
         text=True,capture_output=True,check=True,timeout=20)
     v = json.loads(p.stdout)
@@ -63,7 +63,7 @@ def test_layout_ablation_default_preserved_and_invalid_rejected():
 def test_c34_plan_only_remains_canary(tmp_path):
     root = Path(__file__).resolve().parents[1]
     p = subprocess.run([sys.executable,
-        str(root/'scripts/distillschedule/canary_livewan_generator_gate.py'),
+        str(root/'benchmarks/kernels/canary_livewan_generator_gate.py'),
         '--trace','/unread','--bootstrap','/unread','--output',str(tmp_path/'unused.json'),
         '--row-major-ablation','--plan-only'], text=True,capture_output=True,check=True,timeout=20)
     v = json.loads(p.stdout)

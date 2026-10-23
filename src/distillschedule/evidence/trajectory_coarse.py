@@ -1099,8 +1099,14 @@ def write_trajectory_report(
     output_dir: Path | str,
     *,
     overwrite: bool = False,
+    render_png: bool = True,
 ) -> dict[str, Path]:
-    """Write JSON, CSV, Markdown, PNG, and hashes without silent overwrite."""
+    """Write numerical evidence and optional PNG without silent overwrite.
+
+    Headless comparison must not require a plotting package in the training
+    environment. Disabling rendering does not skip any numerical calculation.
+    The default continues to require and produce the historical PNG report.
+    """
 
     root = Path(output_dir)
     outputs = {
@@ -1113,6 +1119,8 @@ def write_trajectory_report(
     existing = [path for path in outputs.values() if path.exists()]
     if existing and not overwrite:
         raise FileExistsError(f"trajectory report would overwrite existing artifacts: {existing}")
+    if not render_png:
+        del outputs["png"]
     root.mkdir(parents=True, exist_ok=True)
     nonce = f"{os.getpid()}.{os.urandom(4).hex()}"
     temporary = {key: path.with_name(f".{path.name}.{nonce}.tmp") for key, path in outputs.items()}
@@ -1123,15 +1131,16 @@ def write_trajectory_report(
         )
         temporary["csv"].write_text(_render_csv(result), encoding="utf-8")
         temporary["markdown"].write_text(_render_markdown(result), encoding="utf-8")
-        _render_png(result, temporary["png"])
+        if render_png:
+            _render_png(result, temporary["png"])
         hashes = {
             outputs[key].name: hashlib.sha256(temporary[key].read_bytes()).hexdigest()
-            for key in ("json", "csv", "markdown", "png")
+            for key in outputs if key != "sha256"
         }
         temporary["sha256"].write_text(
             json.dumps(hashes, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        for key in ("json", "csv", "markdown", "png", "sha256"):
+        for key in outputs:
             os.replace(temporary[key], outputs[key])
     finally:
         for path in temporary.values():

@@ -1,14 +1,27 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "distillschedule"
-version = "0.2.0"
-description = "A typed runtime and planning layer for multi-component DMD workloads"
+version = "0.3.0"
+description = "Extensible training, state management and execution planning for DMD workflows"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY.md",
+    "third_party/helios_compat/NOTICE",
+    "third_party/helios_compat/LICENSE.txt",
+    "third_party/licenses/H3-DMD-for-A100-LICENSE",
+    "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0",
+    "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md",
+    "licenses/livewan-wan21-reference/Wan2.1-LICENSE.txt",
+    "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt",
+    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md",
+]
 authors = [{name = "DistillSchedule contributors"}]
 dependencies = []
 
@@ -16,14 +29,73 @@ dependencies = []
 config = ["omegaconf>=2.3"]
 helios = ["omegaconf>=2.3"]
 profiling = ["matplotlib>=3.7", "numpy>=1.24"]
-test = ["pytest>=7", "omegaconf>=2.3"]
+test = ["pytest>=7", "omegaconf>=2.3", "setuptools>=77.0.0", "wheel"]
+# CPU qualification of licensed original Helios input/rollout helpers. This is
+# not the CUDA training environment and does not replace native-wan's pins.
+test-helios = [
+    "diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "kernels==0.9.0",
+    # The licensed original SDPA receipt imports JIT definitions, but these
+    # Linux/x86 CPU tests never compile or launch them. Not a public train dep.
+    "triton==3.6.0; platform_system == 'Linux' and platform_machine == 'x86_64'",
+]
+# Public full-original Helios CPU reference runtime. Distinct from the 0.34
+# helper and 0.35 Wan environments; users need no pytest/test extra to train.
+helios-reference = [
+    "torch>=2.10", "numpy>=1.24", "omegaconf>=2.3", "diffusers==0.37.1",
+    "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "httpx==0.28.1", "safetensors>=0.4",
+]
+# Compatibility qualification alias. Metadata regression keeps these runtime
+# requirements equal, avoiding an implicit dependency on pytest's environment.
+test-helios-model = [
+    "torch>=2.10", "numpy>=1.24", "omegaconf>=2.3", "diffusers==0.37.1",
+    "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "httpx==0.28.1", "safetensors>=0.4",
+]
+test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
+# Maintained cached-only source reference, independent of full-SFT/native H3.
+h3-cached-reference = ["torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"]
+# Full original Wan2.1/LiveWan source, explicit all-FP32 CPU numerical reference.
+# Separate from native-wan and the unrelated Helios-backed Wan provider.
+livewan-wan21-reference = ["torch>=2.10", "diffusers==0.35.2", "einops==0.8.1"]
+# Separate optional stacks: do not combine these with each other or native
+# experiment environments. Upstream source and weights remain explicit assets.
+dmd2 = [
+    "torch==2.10.0", "diffusers==0.37.1", "transformers==4.51.3",
+    "peft==0.17.1", "accelerate>=1.1,<2", "safetensors>=0.4", "numpy>=1.24",
+    # CLIP otherwise silently uses a different BasicTokenizer normalizer.
+    "ftfy==6.3.1",
+]
+self-forcing-official = [
+    "torch==2.10.0", "diffusers==0.37.1", "transformers==4.51.3", "peft==0.17.1",
+    "accelerate>=1.1,<2", "omegaconf>=2.3", "einops==0.8.1", "ftfy==6.3.1",
+    "regex>=2024.1", "sentencepiece==0.2.2", "safetensors>=0.4", "numpy>=1.24",
+]
+# LTX-2.5/Gemma4 uses Python >=3.11 (CI: 3.12), not the Transformers4 lane.
+# scipy/colour retain their own Requires-Python checks; never silently omit them.
+ltx25 = [
+    "torch==2.10.0", "torchaudio==2.10.0", "torchvision==0.25.0",
+    "transformers==5.14.1", "tokenizers==0.22.2", "huggingface-hub==1.7.1",
+    "safetensors==0.8.0", "scipy==1.16.3", "colour-science==0.4.7",
+    "einops==0.8.1", "numpy==2.5.3", "Pillow>=10", "httpx==0.28.1",
+]
+media = ["numpy>=1.24", "Pillow>=10"]
+train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
+native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]
+native-wan = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24", "diffusers==0.35.2", "accelerate>=1.1,<2"]
 
 [project.scripts]
 distillctl = "distillschedule.cli:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "src", "runtime" = "runtime"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["distillschedule*"]
+where = ["src", "."]
+include = ["distillschedule*", "runtime*"]
+
+[tool.setuptools.package-data]
+"distillschedule.workloads" = ["catalog.json"]
+"distillschedule.reference.diffsynth_h3_cached" = ["source_manifest.json"]
+"distillschedule.reference.livewan_wan21" = ["source_manifest.json", "licenses/*.txt", "licenses/*.md"]

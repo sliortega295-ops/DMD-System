@@ -1,0 +1,10 @@
+{
+  "status": "PASS_CPU_AND_READONLY_REVIEW",
+  "final_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "unit_commit": "d730a89b11efe21074f411a865b3feda44f818f3",
+  "tests": "319 focused pass; subsequent provenance patch 33 focused pass",
+  "read_only_review": "All three blockers fixed; stripped-metadata repro rejected",
+  "native_core": "32 files byte-identical to 878aff490ce28c661ac1d927f08f8846992baf45",
+  "old_preflight_status": "SOURCE_SUPERSEDED_BY_COST_PROVENANCE_FIX_NO_GPU_RUN",
+  "gpu_execution": "NOT_RUN"
+}

@@ -18,6 +18,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = "distillschedule.trajectory_numeric_state_sketch.v1"
+ALL_RANKS_SCHEMA_VERSION = "distillschedule.trajectory_numeric_state_sketch.v2"
 
 
 def canonical_state_name(name: str) -> str:
@@ -134,6 +135,7 @@ def _local_samples(
     count: int,
     rank: int,
     primary_rank: int,
+    verify_all_replicas: bool = False,
 ) -> dict[str, Any]:
     logical = value if layout_source is None else layout_source
     local = value.detach().to_local() if hasattr(value, "to_local") else value.detach()
@@ -167,7 +169,7 @@ def _local_samples(
             )
             owned_global.append(flat_index)
             owned_local.append(local_index)
-    if representation == "FULL_REPLICA" and rank != primary_rank:
+    if representation == "FULL_REPLICA" and rank != primary_rank and not verify_all_replicas:
         owned_global.clear()
         owned_local.clear()
     if owned_local:
@@ -200,20 +202,25 @@ def collect_numeric_state_sketch(
     samples_per_tensor: int = 16,
     max_tensors: int = 96,
     primary_rank: int = 0,
+    object_collective_group: Any | None = None,
+    verify_all_replicas: bool = False,
 ) -> dict[str, Any]:
     """Collect a canonical numeric sketch on every rank.
 
     Each input tuple is ``(logical name, stored value, layout source)``.  The
     layout source is normally the corresponding FSDP2 DTensor parameter for a
     local Adam/EMA tensor; it is ``None`` when ``value`` itself describes the
-    global layout.
+    global layout. Wan's audited v2 evidence opts into all-rank replica checks
+    and a separate Gloo object group. Defaults preserve the v1 partial-owner
+    policy used by LiveWan's disjoint role pools; neither is strict P0 parity.
     """
 
     dist = torch.distributed
     if not dist.is_initialized():
         raise RuntimeError("numeric trajectory state sketch requires distributed")
-    rank = int(dist.get_rank())
-    world_size = int(dist.get_world_size())
+    group_kwargs = {} if object_collective_group is None else {"group": object_collective_group}
+    rank = int(dist.get_rank(**group_kwargs))
+    world_size = int(dist.get_world_size(**group_kwargs))
     if not 0 <= primary_rank < world_size:
         raise ValueError("numeric sketch primary rank is outside the process group")
     local_items = sorted(
@@ -235,17 +242,18 @@ def collect_numeric_state_sketch(
             count=samples_per_tensor,
             rank=rank,
             primary_rank=primary_rank,
+            verify_all_replicas=verify_all_replicas,
         )
         for item_index in _inventory_indices(len(local_items), max_tensors)
         for name, value, layout_source in (local_items[item_index],)
     ]
     local_envelope = {"inventory_names": inventory_names, "rows": local_rows}
     gathered: list[dict[str, Any] | None] = [None] * world_size
-    dist.all_gather_object(gathered, local_envelope)
+    dist.all_gather_object(gathered, local_envelope, **group_kwargs)
     nonempty_inventories = {
         tuple(str(name) for name in contributor["inventory_names"])
         for contributor in gathered
-        if contributor is not None and contributor["inventory_names"]
+        if contributor is not None and (verify_all_replicas or contributor["inventory_names"])
     }
     if len(nonempty_inventories) > 1:
         raise AssertionError("state sketch tensor inventory differs across owner ranks")
@@ -287,6 +295,13 @@ def collect_numeric_state_sketch(
     coordinates: list[dict[str, Any]] = []
     for name in sorted(by_name):
         row = by_name[name]
+        if verify_all_replicas and row["representation"] == "FULL_REPLICA":
+            contributors = sorted(set(row["contributor_ranks"]))
+            if contributors != list(range(world_size)):
+                raise AssertionError(
+                    f"full-replica state sketch did not verify every rank for {name}: "
+                    f"observed={contributors} expected={list(range(world_size))}"
+                )
         missing = [
             index
             for index in row["requested_indices"]
@@ -305,8 +320,8 @@ def collect_numeric_state_sketch(
         row["values"] = [
             float(row["values"][str(index)]) for index in row["requested_indices"]
         ]
-    return {
-        "schema_version": SCHEMA_VERSION,
+    result = {
+        "schema_version": ALL_RANKS_SCHEMA_VERSION if verify_all_replicas else SCHEMA_VERSION,
         "coordinate_schema": "canonical_tensor_name/global_flat_index/value_fp32",
         "samples_per_tensor": int(samples_per_tensor),
         "max_tensors": int(max_tensors),
@@ -321,3 +336,113 @@ def collect_numeric_state_sketch(
         "coordinates": coordinates,
         "comparison": "align (tensor, flat_index), then compute cosine and normalized_l2",
     }
+    if verify_all_replicas:
+        result.pop("primary_rank_for_replicas")
+        result.update(world_size=world_size, replica_reference_rank=int(primary_rank),
+                      replica_validation="ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH",
+                      replica_agreement_scope="SAMPLED_COORDINATES_NOT_FULL_TENSOR_PROOF")
+    return result
+
+
+def _vector_metrics(reference: list[float], candidate: list[float]) -> tuple[float, float, float]:
+    if len(reference) != len(candidate) or not reference:
+        raise ValueError("numeric sketch vectors must be equally sized and non-empty")
+    dot = sum(left * right for left, right in zip(reference, candidate, strict=True))
+    reference_norm = math.sqrt(sum(value * value for value in reference))
+    candidate_norm = math.sqrt(sum(value * value for value in candidate))
+    delta_norm = math.sqrt(
+        sum(
+            (left - right) * (left - right)
+            for left, right in zip(reference, candidate, strict=True)
+        )
+    )
+    if reference_norm == 0.0 and candidate_norm == 0.0:
+        return 1.0, 0.0, 1.0
+    cosine = 0.0 if reference_norm == 0.0 or candidate_norm == 0.0 else dot / (
+        reference_norm * candidate_norm
+    )
+    denominator = max(reference_norm, 1e-30)
+    return cosine, delta_norm / denominator, candidate_norm / denominator
+
+
+def compare_numeric_state_sketches(
+    reference: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    cycle: int,
+    component: str,
+    state_kind: str = "numeric_state_sketch",
+) -> Any:
+    """Build a schema-pinned coarse comparison from two topology-independent sketches."""
+
+    from distillschedule.evidence.trajectory_coarse import TrajectoryStateComparison
+
+    for label, value in (("reference", reference), ("candidate", candidate)):
+        if value.get("schema_version") != ALL_RANKS_SCHEMA_VERSION:
+            raise ValueError(f"{label} numeric sketch schema is not {ALL_RANKS_SCHEMA_VERSION}")
+        if value.get("coordinate_schema") != "canonical_tensor_name/global_flat_index/value_fp32":
+            raise ValueError(f"{label} numeric sketch coordinate schema changed")
+        if value.get("replica_validation") != (
+            "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
+        ):
+            raise ValueError(f"{label} numeric sketch lacks sampled replica-agreement evidence")
+        if value.get("replica_agreement_scope") != "SAMPLED_COORDINATES_NOT_FULL_TENSOR_PROOF":
+            raise ValueError(f"{label} numeric sketch replica-agreement scope changed")
+    identity_fields = (
+        "inventory_tensor_count",
+        "inventory_sha256",
+        "tensor_count",
+        "coordinate_count",
+        "samples_per_tensor",
+        "max_tensors",
+    )
+    for field in identity_fields:
+        if reference.get(field) != candidate.get(field):
+            raise ValueError(f"numeric sketch {field} mismatch")
+
+    def indexed(value: dict[str, Any]) -> dict[tuple[str, int], float]:
+        result: dict[tuple[str, int], float] = {}
+        for row in value.get("coordinates", ()):
+            key = (str(row["tensor"]), int(row["flat_index"]))
+            if key in result:
+                raise ValueError(f"duplicate numeric sketch coordinate {key}")
+            number = float(row["value_fp32"])
+            if not math.isfinite(number):
+                raise ValueError(f"non-finite numeric sketch coordinate {key}")
+            result[key] = number
+        return result
+
+    reference_values = indexed(reference)
+    candidate_values = indexed(candidate)
+    if reference_values.keys() != candidate_values.keys():
+        raise ValueError("numeric sketch coordinate inventory mismatch")
+    keys = sorted(reference_values)
+    aggregate = _vector_metrics(
+        [reference_values[key] for key in keys],
+        [candidate_values[key] for key in keys],
+    )
+    tensor_names = sorted({name for name, _index in keys})
+    named_cosines = []
+    for name in tensor_names:
+        named_keys = [key for key in keys if key[0] == name]
+        named_cosines.append(
+            _vector_metrics(
+                [reference_values[key] for key in named_keys],
+                [candidate_values[key] for key in named_keys],
+            )[0]
+        )
+    return TrajectoryStateComparison(
+        cycle=cycle,
+        component=component,
+        state_kind=state_kind,
+        cosine=aggregate[0],
+        normalized_l2=aggregate[1],
+        norm_ratio=aggregate[2],
+        min_named_tensor_cosine=min(named_cosines),
+        reference_digest=hashlib.sha256(
+            json.dumps(reference, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        candidate_digest=hashlib.sha256(
+            json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    )
