@@ -22,18 +22,18 @@
     "runtime/gst_pool_helios.py": {
       "target": "runtime/gst_pool_helios.py",
       "original_integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
-      "reviewed_source_sha256": "5ce9b3dc39f5f1a49f434ba4f57eb93d936f129d47440085a336baf61581d182",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "5ce9b3dc39f5f1a49f434ba4f57eb93d936f129d47440085a336baf61581d182",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "da754a01af8aac2dd179326aa7a28007caf85c960b9e2b374042239ae76c0ab3",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "da754a01af8aac2dd179326aa7a28007caf85c960b9e2b374042239ae76c0ab3",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=8f24de9f352c8ddac4170d9a5e8201777e3da4f616516d3593310d86ec02d25f; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:5ce9b3dc39f5f1a49f434ba4f57eb93d936f129d47440085a336baf61581d182; current_branch_integration_or_cli_discovery"
     },
     "runtime/static_fsdp2_p0_helios.py": {
       "target": "runtime/static_fsdp2_p0_helios.py",
       "original_integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
-      "reviewed_source_sha256": "8d9f719d0ae1ddf354f57fbeef0804ed641923c767746aeb8df085d2d3eea047",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "8d9f719d0ae1ddf354f57fbeef0804ed641923c767746aeb8df085d2d3eea047",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=ddf64fb854a0456f6ceb3380d0f98e08a9b599ba5b63073e8cd3f43e1500739a; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:8d9f719d0ae1ddf354f57fbeef0804ed641923c767746aeb8df085d2d3eea047; current_branch_integration_or_cli_discovery"
     },
     "runtime/static_world16_trace.py": {
       "target": "runtime/static_world16_trace.py",
@@ -54,10 +54,10 @@
     "scripts/distillschedule/probe_static_fsdp2_p0_world16.py": {
       "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
       "original_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
-      "reviewed_source_sha256": "800fc17a7af70712823fa87d669716a9895937c16e7f871e336099b2f21a8167",
-      "source_commit": "48829ae3e536a0c8a11f8802fe5a612de3afcfdd",
-      "integrated_sha256": "800fc17a7af70712823fa87d669716a9895937c16e7f871e336099b2f21a8167",
-      "change": "opt_in_original_W2_failure_receipt_entry_ownership_only; default_benchmark_math_and_publication_unchanged; previous_overlay=68ff42d1efed85887f6db8d4a2b70f310833818b:dcb835e25de997a845b719ed5ef6908340961ce3d4662a2112e7a61e7151abe8; opt_in_portable_original_W2_assets_and_collective_public_to_P0_startup; previous_overlay=f096c7a01fafac5ed714b082df87e8875baa5b2c:fb0833f2202f6982049e40be66cd70b31832091320e3de41f89c4f9eeaac56e4; opt_in_original_W2_persistent_training_hooks; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4; canonical_two_cycle_math_unchanged"
+      "reviewed_source_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+      "integrated_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "change": "parent_compat_fix_valid_CUDA_device_string_predicate_only; previous_development_telemetry_sha=1cb97b32f10844d2c7237ba46b546c2a2ceb982afdab657045394cb91e677a44; opt_in_W1_CPU1_rank0_per_sample_telemetry_only; no_allocator_or_timing_fabrication; CPU_trace_source_and_world1_admitted; original_BF16_math_and_CUDA_defaults_unchanged; previous_overlay=48829ae3e536a0c8a11f8802fe5a612de3afcfdd:800fc17a7af70712823fa87d669716a9895937c16e7f871e336099b2f21a8167; opt_in_original_W2_failure_receipt_entry_ownership_only; default_benchmark_math_and_publication_unchanged; previous_overlay=68ff42d1efed85887f6db8d4a2b70f310833818b:dcb835e25de997a845b719ed5ef6908340961ce3d4662a2112e7a61e7151abe8; opt_in_portable_original_W2_assets_and_collective_public_to_P0_startup; previous_overlay=f096c7a01fafac5ed714b082df87e8875baa5b2c:fb0833f2202f6982049e40be66cd70b31832091320e3de41f89c4f9eeaac56e4; opt_in_original_W2_persistent_training_hooks; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:05f022fc95fa889a8c16ac3af90bf98ce25fb8c3ed3d9226aea96153cf66abf4; canonical_two_cycle_math_unchanged"
     },
     "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py": {
       "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",

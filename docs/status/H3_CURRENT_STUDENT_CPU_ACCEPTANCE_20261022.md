@@ -38,6 +38,17 @@ change live Parameter identities, role selection, module modes, RNG or the next
 actual training update. Shape/dtype/source/runtime/topology/capacity and
 checkpoint-weight corruption reject before mutation or real model allocation.
 
+## Subsequent hosted CPU portability check
+
+At test-only compatibility commit `40f5f6b`, the actual hosted original-H3
+workflow completed **148 tests without skips on both Python3.10 and3.12**, with
+minimum Torch2.10 CPU. Its required-case consumer also passed. The
+[separate receipt](../../artifacts/framework/20261022/h3_current_student_hosted_cpu.json)
+binds the run/jobs and raw-log hashes. The original manifest and all numerical
+source bytes are unchanged: only the test canonicalizes empty PEP695 AST fields
+that older Python parsers omit. This H3 result does not resolve the separate
+distributed Gloo abort or establish that every CI workflow is green.
+
 ## Limits
 
 This is tiny real-original-model **CPU** execution, not pretrained quality,

@@ -1,0 +1,101 @@
+{
+  "schema_version": "distillschedule.wan_original_public_cpu_acceptance.v1",
+  "status": "PASS_BOUNDED_ORIGINAL_CPU_REFERENCE",
+  "behavior_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+  "observed_at": "2026-10-23T00:57:44.711481+00:00",
+  "environment": {
+    "python": "3.12.3",
+    "torch": "2.10.0+cpu",
+    "diffusers": "0.37.1",
+    "peft": "0.17.1"
+  },
+  "scope": "CPU1_SOURCE_RANK0_B1_PER_SAMPLE_NOT_WORLD16",
+  "precision": {
+    "model": "ORIGINAL_MIXED_BF16_BASE_FP32_ONLY_MODULES_FP32_LORA",
+    "new_input_native_latents": "torch.float32"
+  },
+  "proofs": {
+    "actual_original_full_model": true,
+    "original_p0_full5_dispatch": true,
+    "genuine_cold_g0_c0_ema0": true,
+    "g1_c5_ema5": true,
+    "all_three_generator_pyramid_adapters": true,
+    "fresh_source_cohorts": true,
+    "real_gradients_and_original_adam": true,
+    "fresh_process_full4_vs_split3_resume_exact": true,
+    "staged_all_owner_restore": true,
+    "invalid_integer_flags_rejected_before_mutation": true,
+    "partial_native_failure_poison_and_safe_previous_boundary_recovery": true,
+    "current_full_unmerged_generator_projection": true,
+    "projection_does_not_change_next_update": true,
+    "fresh_process_inference_old_training_payloads_removed": true,
+    "new_prompt_original_native_run_generator": true,
+    "cuda_uninitialized": true
+  },
+  "suites": {
+    "parent-final-byte.xml": {
+      "passed": 9,
+      "skipped": 0,
+      "sha256": "d4720df4b7370f9d3595a099245cfcd23158e1ffcb838d101f91a34e96b6dea6",
+      "source_scope": "FINAL_BEHAVIOR_AND_FINALIZED_LAYOUT",
+      "diffusers_lane": "0.37.1"
+    },
+    "parent-native-wan-final.xml": {
+      "passed": 173,
+      "skipped": 0,
+      "sha256": "445964f98ee2f0b1e4ee88982d5c2df205886d82254e5f4a5669b8060305b5ab",
+      "source_scope": "FINAL_BEHAVIOR_AND_FINALIZED_LAYOUT",
+      "diffusers_lane": "0.35.2"
+    },
+    "parent-w3-w6-regression.xml": {
+      "passed": 7,
+      "skipped": 0,
+      "sha256": "07beb0b601ae1edde364f8315d0dddc531067b041bc8b8ab78073bed942cd182",
+      "source_scope": "FINAL_BEHAVIOR_AND_FINALIZED_LAYOUT",
+      "diffusers_lane": "0.37.1"
+    },
+    "parent-general.xml": {
+      "passed": 971,
+      "skipped": 279,
+      "sha256": "b750e35635478a6eec67eaf949f7ee460073a448c95c424b58efe17ea502e003",
+      "source_scope": "BEFORE_NARROW_RESTORE_OR_LEGACY_FIXTURE_FOLLOWUPS; final affected tests separately recorded",
+      "diffusers_lane": "0.34.0"
+    },
+    "parent-refactor-final.xml": {
+      "passed": 2153,
+      "skipped": 85,
+      "sha256": "4b390720ced0f237d45fedc31ded1a440ab16383bd3e3f239688d227806f29bb",
+      "source_scope": "BEFORE_NARROW_RESTORE_OR_LEGACY_FIXTURE_FOLLOWUPS; final affected tests separately recorded",
+      "diffusers_lane": "existing CPU regression lane; no new full-original model qualification inferred"
+    },
+    "parent-full-original.xml": {
+      "passed": 196,
+      "skipped": 0,
+      "sha256": "a918c41f58603bebee3b204d33d01b2aeea89a0dcaf28aba4d2ff029291301da",
+      "source_scope": "BEFORE_NARROW_RESTORE_OR_LEGACY_FIXTURE_FOLLOWUPS; final affected tests separately recorded",
+      "diffusers_lane": "0.37.1"
+    }
+  },
+  "source_layout": {
+    "source_commit": "1b00120d5070e434de00c0343ac3ec362648f240",
+    "lock_sha256": "c600a7ea7998e1140252f30ab68015ed35ddad256e43dc212a0e1f68cdeeefa8",
+    "original_map_unchanged": true
+  },
+  "review": {
+    "status": "complete",
+    "lenses": 9,
+    "confirmed_findings": 2,
+    "applied_and_verified": 2,
+    "external_provider_review": "NOT_RUN_PREFLIGHT_SCOPE_FAILURE",
+    "independent_validation_batch": "2/2 confirmed; fixes tested"
+  },
+  "not_validated": [
+    "pretrained quality",
+    "decoded video",
+    "world16 numerical equivalence",
+    "CUDA training",
+    "performance",
+    "native distributed restart"
+  ],
+  "main_changed": false
+}

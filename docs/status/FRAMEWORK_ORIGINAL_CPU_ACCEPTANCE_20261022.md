@@ -31,14 +31,14 @@ is not a pretrained-quality measurement. See the [quick start](../../README.md),
 
 | Workload | Original-model integration | Current boundary |
 | --- | --- | --- |
-| W1 Wan | Fresh original-engine cohorts, real optimizer/state ownership, continuous progress and common restart | Literal historical winner bundles retain their separate bounded trace contract; pretrained/CUDA restart not newly qualified. |
+| W1 Wan | Fresh original-engine cohorts and common restart; separate full original mixed-precision CPU Program/current-G output | CPU1/source-rank0 per-sample is not world16 numerical proof. Historical winner bundles retain their separate contract. |
 | W2 Helios No-GAN | Fresh direct reference input/update/state and common restart | Requires an explicit original Step10 warm checkpoint; arbitrary cold native startup is not claimed. |
 | W3 Helios GAN | Actual full original tiny transformer/PEFT, history19 producer, original G1/C5/GAN/EMA, both backward policies, common training/restart and current unmerged-G export | CPU1 FP32/dense-SDPA reference; native latent output is zero-history diagnostic only; no VAE/decoded media or pretrained quality. |
 | W4 Self-Forcing | Actual original input/LoRA/Adam/reference ownership, fresh cohorts and common same-topology restart | Optimized C51 transport/shadow/two-slot restart is not implemented by this reference route. |
 | W5 full-sequence H3 | Original finite fresh-input G1/F5 loop, two-LoRA Adam/scheduler/state and common restart | Grid1000 is explicitly approximate; historical optimized numerical FAIL remains unchanged. |
-| W6 autoregressive H3 | Actual cached previous/current AV parser, MiniMaxH3DiT, independent LoRA64 adapters and original 8-step/G1F1/continuous-sigma update through common checkpoints | Maintained cached-only licensed derivative, not a complete DiffSynth/SFT package. No AV encoder/decoder, portable export or new CUDA backend. |
+| W6 autoregressive H3 | Actual cached previous/current AV parser, MiniMaxH3DiT, independent LoRA64 adapters and original 8-step/G1F1/continuous-sigma update through common checkpoints; separate current-Student output companion | Maintained cached-only licensed derivative, not a complete DiffSynth/SFT package. No AV encoder/decoder or new CUDA backend. |
 
-W3/W6 now have separately versioned **public CPU reference lifecycles**; earlier
+W1/W3/W6 now have separately versioned **public CPU reference lifecycles**; earlier
 reports saying those references were entirely missing are no longer current.
 The frozen selected-plan benchmark workers are not widened or relabeled as
 arbitrary-length production trainers. Native reference limits, dependency lanes
@@ -62,7 +62,17 @@ GAN start500 is preserved; the separate GAN-start2 fixture exists only to test
 real transition/restart behavior. See [source/license provenance](../../licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md)
 and [CPU reference use](../../recipes/h3_ar/CPU_REFERENCE.md).
 
-## Verification
+## Later source-scoped additions
+
+The foundation counts below describe their named commits, not every later
+source byte. The [W6 current-Student acceptance](H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md)
+adds installed-wheel export/new-input original AV rollout and hosted
+Python3.10/3.12 CPU qualification. The [W1 Full5 acceptance](WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md)
+adds actual mixed-precision original-model training, exact fresh-process
+continuation and current unmerged G output. Each has its own source and receipt;
+their tests are not summed into a new all-source claim.
+
+## Foundation verification
 
 Source acceptance is split honestly: the general/refactor/Wan/Self-Forcing
 regressions ran on `2a341e6a`; the complete original Helios lane ran on
@@ -114,8 +124,9 @@ assertion, numerical tolerance or canonical protocol was relaxed to pass it.
 - The original W1/W2/W4/W5 owners have source/CPU proofs, not new pretrained
   distributed-CUDA or convergence results. W3/W6 exercise real tiny original
   models, not production-sized pretrained execution.
-- W1/W2/W4/W5 have no unified native generate/export callback here; existing
-  upstream tools are distinct. W6 lacks those callbacks and AV encoding/decoding.
+- W2/W4/W5 still have no unified native generate/export callback here; existing
+  upstream tools are distinct. W1/W3/W6 now have separate CPU Program output
+  companions, not new CUDA-native output backends. W6 lacks AV encoding/decoding.
   Original Helios export requires the admitted editable source checkout and
   runtime; the lightweight wheel is not that native source bundle.
 - Complete-cycle, same-topology recovery is supported. Mid-cycle/cross-topology

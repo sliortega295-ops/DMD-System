@@ -6,6 +6,7 @@ The machine-readable source of truth is `src/distillschedule/workloads/catalog.j
 
 
 Separately versioned local CPU references preserve the actual original
+[W1 No-GAN Full5](wan_ar/CPU_REFERENCE.md),
 [Helios GAN](helios_gan/REFERENCE_TRAINING_CPU.md) and
 [H3 cached previous/current AV](h3_ar/CPU_REFERENCE.md) models and training
 helpers through Program/common checkpoints. They are not renamed benchmark

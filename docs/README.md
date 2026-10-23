@@ -2,11 +2,14 @@
 
 ## Current use
 
+- [Installation and environment selection](guides/installation.md), [troubleshooting](guides/troubleshooting.md).
 - [Framework architecture](architecture/framework.md), [training and recovery](guides/training.md),
   [data preparation](guides/data.md), [new-model extension](guides/extensions.md),
   [native integration](guides/native_workloads.md), and [support matrix](guides/support_matrix.md).
 - [Complete offline media-to-training example](../examples/framework/README.md).
 - [Current framework and original-model CPU acceptance](status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md).
+- [Original Wan Full5 public training/restart/current-G output acceptance](status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md).
+- [Original H3 current-Student export and installed-wheel acceptance](status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md).
 - [Earlier source-scoped framework acceptance](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
 - [Original W2/W5 reference lifecycle and CPU evidence](status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md).
 - [Original W4 reference lifecycle and reviewed CPU boundaries](status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md).

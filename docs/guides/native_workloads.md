@@ -181,6 +181,16 @@ contract and matched admission; do not crop, pad or rewrite historical locks.
 
 ## Explicit full-original Helios model reference
 
+W1 additionally has a separately versioned [CPU1 original Full5 reference](../../recipes/wan_ar/CPU_REFERENCE.md).
+It calls the original parameterized Wan cycle and P0 helpers through one
+nonreplayable Program call, preserving native mixed BF16/FP32 parameters,
+FP32 LoRA and genuine cold-zero Adam/EMA. Its complete-cycle save/recovery
+and current-G export are common lifecycle operations, not a CUDA native
+benchmark extension. The complete world16 input trace is admitted, but actual
+CPU execution is only source-rank0 per-sample; it does not claim global-B16
+reduction parity. Neither W2's Step10 warm bootstrap nor W3's GAN state is
+silently substituted.
+
 The separate model provider imports the **whole unchanged original**
 `HeliosTransformer3DModel`, not an extracted head or a stand-in model:
 

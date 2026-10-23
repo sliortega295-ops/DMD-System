@@ -1,0 +1,28 @@
+{
+  "schema_version": "distillschedule.h3_original_hosted_cpu.v1",
+  "status": "PASS_HOSTED_ORIGINAL_W6_ONLY",
+  "head": "40f5f6b75264b1943bfc4bee7a07f232b361364c",
+  "run_id": 39868456953,
+  "other_successful_run": 39868462118,
+  "torch": "2.10.0+cpu",
+  "jobs": [
+    {
+      "python": "3.10",
+      "job_id": 120136535574,
+      "result": "148_PASS_ZERO_SKIP_REQUIRED_CASE_GATE_PASS",
+      "result_line": "2026-10-22T22:58:25.0260992Z 148 passed in 83.88s (0:01:23)",
+      "log_sha256": "cf0a3871053950aab4756f7a47b9d2cbb08dbef6c7127ccc75fd2feaaf632de0"
+    },
+    {
+      "python": "3.12",
+      "job_id": 120136535234,
+      "result": "148_PASS_ZERO_SKIP_REQUIRED_CASE_GATE_PASS",
+      "result_line": "2026-10-22T22:58:59.5936209Z 148 passed in 105.76s (0:01:45)",
+      "log_sha256": "8c278374f98bf4e4d12e2ef91942a3ce679949a9f589b27074835ad46d32a5be"
+    }
+  ],
+  "quality_validation": "NOT_RUN",
+  "gpu_experiments_started": 0,
+  "not_all_ci_green": true,
+  "original_numerical_sources_and_goldens_unchanged": true
+}

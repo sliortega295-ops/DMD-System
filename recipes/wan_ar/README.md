@@ -40,3 +40,10 @@ Use [`training.json`](training.json) with your explicit qualified native inputs
 and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
 for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
 operations. This binding does not replace the original protocol or certify GPU execution.
+
+The separately versioned [original CPU reference](CPU_REFERENCE.md) instead
+uses Program/common checkpoints with the actual full original model, native
+mixed BF16/FP32 parameters and original G1/C5/EMA5 actions. It supports current
+full unmerged G export and new-input native latent diagnostics. It is CPU1,
+rank0 per-sample, not world16 numerical or pretrained-quality qualification,
+and does not replace this native selected-plan route.

@@ -84,7 +84,8 @@ available for [Wan](docs/workloads/original_wan_fresh_training.md),
 [Helios No-GAN](recipes/helios_nogan/REFERENCE_TRAINING.md),
 [Self-Forcing](recipes/self_forcing/REFERENCE_TRAINING.md), and
 [Grid1000 H3](recipes/h3-grid-original-training.md). Separately versioned CPU
-Program references connect the actual original [Helios GAN model and trainer](recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
+Program references connect the actual original [W1 No-GAN Full5 model and trainer](recipes/wan_ar/CPU_REFERENCE.md),
+[Helios GAN model and trainer](recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
 and [cached previous/current H3 AR source](recipes/h3_ar/CPU_REFERENCE.md),
 including real gradients and safe fresh-process continuation. Their input/checkpoint
 contracts remain explicit; they do not turn all six historical two-cycle
@@ -186,7 +187,10 @@ minimum Torch 2.10 CPU on Python 3.10/3.12 and requires the actual full-source
 flow/GAN, fresh-process model save/load, and true PEFT/original-helper restart
 tests without skips. That dedicated dependency lane also requires the actual
 original public W3 data, both GAN backward policies, checkpoint continuation
-and portable current-G tests. The general 0.34 helper lane is not repinned.
+and portable current-G tests. It also requires W1's actual original
+BF16-base/FP32-LoRA Full5, fresh-process continuation and current-G inference;
+that CPU1 per-sample diagnostic is not world16 numerical qualification.
+The general 0.34 helper lane is not repinned.
 CPU full-class execution does not qualify pretrained, CUDA or performance behavior.
 
 The independent `.[train,test,h3-cached-reference]` extra admits only the
