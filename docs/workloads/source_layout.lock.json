@@ -128,8 +128,8 @@
       "original_integrated_sha256": "9b33e0ec3872cdf5403ddb062504db3714c99785d86bddc55df9002bf050c31c",
       "reviewed_source_sha256": "d7d57f130e954d0669350adf9ecf95c1104fc6237401fdf90283a985787e68fb",
       "source_commit": "e61eed95894e698b0d9dddff82b5d0122a1b8fda",
-      "integrated_sha256": "d7d57f130e954d0669350adf9ecf95c1104fc6237401fdf90283a985787e68fb",
-      "change": "reviewed_W4_opt_in_input_owner_integration; historical_C27_context_method_restored_byte_exact; source_input_dispatch_only_no_training_math; previous_overlay=ef4e1cb111c7e4692adc02ea84367197293eb5df:aa5c4caf48b4ef363a3b39a8e77f131b0b6b2b11494b7d1369b847b01b62100e; current_branch_integration_or_cli_discovery"
+      "integrated_sha256": "08f44a79194d046c5f30b0e88be2dd046602ac8034e3fe4a850e25ba00c3f294",
+      "change": "offered_W4_additive_CPU1_FP32_reference_context_hooks; native_None_path_preserved; no_GPU_math_or_C51_contract_change; previous_overlay=c2d6ca959c8f25dd1d3f13558b0cc874371d87cc:d7d57f130e954d0669350adf9ecf95c1104fc6237401fdf90283a985787e68fb; reviewed_W4_opt_in_input_owner_integration; historical_C27_context_method_restored_byte_exact; source_input_dispatch_only_no_training_math; previous_overlay=ef4e1cb111c7e4692adc02ea84367197293eb5df:aa5c4caf48b4ef363a3b39a8e77f131b0b6b2b11494b7d1369b847b01b62100e; current_branch_integration_or_cli_discovery"
     },
     "scripts/distillschedule/check_best_known_integration.py": {
       "target": "scripts/distillschedule/check_best_known_integration.py",
@@ -144,8 +144,8 @@
       "original_integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
       "reviewed_source_sha256": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
       "source_commit": "04ecbee34d88c7160016e6af065a5175c6bfb8d7",
-      "integrated_sha256": "8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4",
-      "change": "public_training_lifecycle_routes_and_portable_inference_generate; previous_overlay=e6317e64232d4bdd53a3bbb57ff911121f21bc62:3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e; canonical_math_unchanged"
+      "integrated_sha256": "1f566ffb5432b0bf1b0597618666c283dbf1c472268ed9844fca00f9deeed3ed",
+      "change": "registered_model_workflow_discovery_and_public_training_parameters_dispatch; original_native_commands_preserved; previous_overlay=c2d6ca959c8f25dd1d3f13558b0cc874371d87cc:8ddf4e932a9d26c6d88f0d235d8eb4de67210231993fddb4b7fd4dbeaca417c4; public_training_lifecycle_routes_and_portable_inference_generate; previous_overlay=e6317e64232d4bdd53a3bbb57ff911121f21bc62:3c8a10d5ac536418ade2c063e5406392c8e3f48b001e464b385d1fc5e216247e; canonical_math_unchanged"
     },
     "src/distillschedule/workloads/best_known/cli.py": {
       "target": "src/distillschedule/workloads/best_known/cli.py",

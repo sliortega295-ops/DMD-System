@@ -44,3 +44,11 @@ For reference-first finite training rather than selected C51 replay, use
 2..64-cycle route uses genuine zero-step assets, original model/update owners,
 fresh TeacherLatents cohorts and complete-cycle same-topology restart. It is
 not a C51 pipeline checkpoint implementation and has CPU/source evidence only.
+
+For the separately bounded original LiveWan **CPU1 FP32,32px/81-frame**
+training/current-G export/new-input generation route, see
+[CPU_PUBLIC.md](CPU_PUBLIC.md). Native latents work without a decoder; actual
+video requires a separately pinned original Wan2.1 codec and supplied safe
+weights. Random full-class CPU tests do not establish pretrained quality,
+native world16/C51 qualification or performance, and are not the separately
+integrated official `guandeh17/Self-Forcing` route.

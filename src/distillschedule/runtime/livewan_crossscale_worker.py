@@ -148,9 +148,35 @@ _operation_calibrator = None  # process-local, explicit diagnostic opt-in only
 _observed_latent_shapes: set[tuple[int, ...]] = set()
 
 
-def _record_latent_metadata(value):
+def _cpu_reference_context(torch, context):
+    """Admit only the separately named CPU1 FP32 reference, never native world16."""
+    if context is None:
+        return None
+    from distillschedule.training.livewan_public import LiveWanCPUContext
+    _require(type(context) is LiveWanCPUContext, "unadmitted CPU reference context")
+    context.validate()
+    return context
+
+
+def _action_reference_context(kwargs):
+    context = kwargs.get("reference_context")
+    for name in ("bundle", "prepared", "score_context"):
+        owner = kwargs.get(name)
+        candidate = getattr(owner, "reference_context", None)
+        if candidate is not None:
+            _require(context is None or context is candidate, "CPU reference providers differ")
+            context = candidate
+    return context
+
+
+def _record_latent_metadata(value, reference_context=None):
     if value is None:
         return
+    if reference_context is not None:
+        context = _cpu_reference_context(None, reference_context)
+        _require(_operation_calibrator is None, "CPU reference cannot enter native calibration")
+        context.validate_latent(value)
+        return  # CPU fixture geometry must not contaminate native observations.
     shape = tuple(int(v) for v in value.shape)
     _require(shape[0] in (1, 2) and shape[1:] == latent_shape()[1:],
              f"actual native latent shape differs from request: {shape}")
@@ -167,13 +193,14 @@ def _observe_native_action(kind: str):
     def decorate(function):
         @wraps(function)
         def call(*args, **kwargs):
+            reference_context = _action_reference_context(kwargs)
             x0 = kwargs.get('x0')
             if x0 is not None:
-                _record_latent_metadata(x0)
+                _record_latent_metadata(x0, reference_context)
             if _operation_calibrator is None:
                 result = function(*args, **kwargs)
                 if isinstance(result, PreparedRollout):
-                    _record_latent_metadata(result.x0)
+                    _record_latent_metadata(result.x0, getattr(result, "reference_context", None))
                 return result
             rows = kwargs.get('rows')
             if rows is None:
@@ -745,6 +772,7 @@ class ModelBundle:
     score_group_size: int
     critic_group_size: int
     metadata: dict[str, Any]
+    reference_context: Any | None = None
 
 
 def _parameter_sequence_sha256(torch: Any, parameters: Sequence[Any]) -> str:
@@ -1787,7 +1815,15 @@ def _mean_replicated_gradients(
     group: Any,
     group_size: int,
     bucket_mib: int,
+    reference_context: Any | None = None,
 ) -> dict[str, int]:
+    if reference_context is not None:
+        context = _cpu_reference_context(torch, reference_context)
+        _require(group is None and group_size == 1, "CPU reference reduction is world1 only")
+        gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
+        for gradient in gradients:
+            context.validate_tensor(gradient)
+        return {"gradient_tensors": len(gradients), "buckets": 0}
     import torch.distributed as dist
     gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
     buckets: list[list[Any]] = []
@@ -2066,6 +2102,7 @@ class PreparedRollout:
     new_blocks: int
     raw_context: Any
     context_lens: Any
+    reference_context: Any | None = None
 
 
 class InputLoader:
@@ -2128,7 +2165,11 @@ class InputLoader:
         return context.to(device, non_blocking=True).unsqueeze(0)
 
 
-def _build_streamers(torch: Any, *, student: Any, count: int, device: Any):
+def _build_streamers(torch: Any, *, student: Any, count: int, device: Any,
+                     reference_context: Any | None = None):
+    if reference_context is not None:
+        context = _cpu_reference_context(torch, reference_context)
+        return context.build_streamers(student=student, count=count, device=device)
     from wanstreamer.core import latent_geometry, make_rope_table
     from wanstreamer.stream import FewStepStreamer
 
@@ -2163,12 +2204,18 @@ def prepare_rollout(
     loader: InputLoader,
     device: Any,
     elide_full_context_lens: bool = False,
+    reference_context: Any | None = None,
 ) -> PreparedRollout:
     from distillschedule.runtime.livewan_rollout_cast_cache import model_rollout_cast_cache_scope
     from distillschedule.runtime.livewan_generator_rms_epilogue import model_runtime_scope as generator_rms_scope
     from distillschedule.runtime.livewan_generator_modulation import model_runtime_scope as generator_modulation_scope
     from distillschedule.runtime.livewan_generator_gate import model_runtime_scope as generator_gate_scope
 
+    reference_context = _cpu_reference_context(torch, reference_context)
+    if reference_context is not None:
+        reference_context.validate_streamer(streamer, student)
+        _require(loader.reference_context is reference_context and not elide_full_context_lens,
+                 "CPU reference loader/full-context ownership changed")
     latent, context, _ = loader.load(row)
     z_teacher = latent.to(device, non_blocking=True).unsqueeze(0)
     raw_context = context.to(device, non_blocking=True).unsqueeze(0)
@@ -2190,7 +2237,8 @@ def prepare_rollout(
         blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
     new = torch.cat([value.detach() for value in blocks], dim=2)
     x0 = torch.cat([z_teacher[:, :, : row.world_frames], new], dim=2)
-    _require(tuple(x0.shape) == latent_shape(), f"rollout shape mismatch at {row.operation_key}")
+    expected_shape = latent_shape() if reference_context is None else reference_context.latent_shape
+    _require(tuple(x0.shape) == expected_shape, f"rollout shape mismatch at {row.operation_key}")
     return PreparedRollout(
         row=row,
         streamer=streamer,
@@ -2200,6 +2248,7 @@ def prepare_rollout(
         new_blocks=row.new_blocks,
         raw_context=raw_context,
         context_lens=context_lens,
+        reference_context=reference_context,
     )
 
 
@@ -2207,15 +2256,21 @@ def prepare_rollout(
 class ScoreContext:
     rope: Any
     negative_teacher_context: Any
+    reference_context: Any | None = None
 
 
 @dataclass
 class ScoreSampleContext:
     teacher: Any | None
     critic: Any | None
+    reference_context: Any | None = None
 
 
 def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader, device: Any) -> ScoreContext:
+    if getattr(bundle, "reference_context", None) is not None:
+        context = _cpu_reference_context(torch, getattr(bundle, "reference_context", None))
+        _require(loader.reference_context is context, "CPU score/source providers differ")
+        return context.build_score_context(bundle=bundle, loader=loader, device=device)
     from wanstreamer.core import latent_geometry, make_rope_table
     critic_model = (
         bundle.critic if bundle.critic is not None else bundle.critic_shadow
@@ -2249,19 +2304,21 @@ def prepare_score_sample_context(
     order while omitting that projection from Critic-only steps.
     """
 
+    reference_context = _cpu_reference_context(torch, getattr(bundle, "reference_context", None))
+    dtype = torch.bfloat16 if reference_context is None else torch.float32
     with torch.no_grad():
         teacher_context = (
-            bundle.teacher.text_embedding(raw_context.to(torch.bfloat16))
+            bundle.teacher.text_embedding(raw_context.to(dtype))
             if include_teacher
             else None
         )
         selected_critic = critic_model if critic_model is not None else bundle.critic
         critic_context = (
-            selected_critic.text_embedding(raw_context.to(torch.bfloat16))
+            selected_critic.text_embedding(raw_context.to(dtype))
             if selected_critic is not None
             else None
         )
-    return ScoreSampleContext(teacher=teacher_context, critic=critic_context)
+    return ScoreSampleContext(teacher=teacher_context, critic=critic_context, reference_context=reference_context)
 
 
 @dataclass
@@ -2273,7 +2330,7 @@ class DMDFlowInputs:
 
 @_observe_native_action('dmd_flow_inputs')
 def _dmd_flow_inputs(
-    torch: Any, *, row: OperationTraceRow, x0: Any
+    torch: Any, *, row: OperationTraceRow, x0: Any, reference_context: Any | None = None
 ) -> DMDFlowInputs:
     t = _sample_flow_t(torch, seed=row.seeds["generator_dmd_t"], device=x0.device)
     noise = _randn(
@@ -2298,8 +2355,15 @@ def _dmd_teacher_velocity(
     sample_context: ScoreSampleContext,
     context_lens: Any,
 ) -> Any:
-    from wanstreamer import dmd as D
-    from wanstreamer.lora import lora_enabled
+    reference_context = _cpu_reference_context(torch, getattr(bundle, "reference_context", None))
+    if reference_context is None:
+        from wanstreamer import dmd as D
+        from wanstreamer.lora import lora_enabled
+    else:
+        _require(getattr(score_context, "reference_context", None) is sample_context.reference_context is reference_context,
+                 "CPU Teacher providers differ")
+        D, lora_enabled = reference_context.api.dmd, reference_context.api.lora.lora_enabled
+    dtype = torch.bfloat16 if reference_context is None else torch.float32
 
     _require(bundle.teacher is not None, "DMD Teacher model is missing")
     _require(sample_context.teacher is not None, "DMD requires Teacher context")
@@ -2313,25 +2377,25 @@ def _dmd_teacher_velocity(
                 torch,
                 D,
                 model=bundle.teacher,
-                z=flow.z_t.to(torch.bfloat16),
+                z=flow.z_t.to(dtype),
                 t=flow.t,
                 rope=score_context.rope,
                 context_positive=sample_context.teacher,
                 context_negative=score_context.negative_teacher_context,
-                dtype=torch.bfloat16,
+                dtype=dtype,
                 guidance=5.0,
                 time_scale=TIME_SCALE,
             )
         else:
             velocity = D.cfg_velocity(
                 bundle.teacher,
-                flow.z_t.to(torch.bfloat16),
+                flow.z_t.to(dtype),
                 flow.t,
                 score_context.rope,
                 sample_context.teacher,
                 score_context.negative_teacher_context,
                 context_lens,
-                torch.bfloat16,
+                dtype,
                 5.0,
                 TIME_SCALE,
             )
@@ -2348,20 +2412,25 @@ def _dmd_fake_velocity(
     critic_context: Any,
     context_lens: Any,
 ) -> Any:
-    from wanstreamer import dmd as D
-    from wanstreamer.lora import lora_enabled
+    reference_context = _cpu_reference_context(torch, getattr(score_context, "reference_context", None))
+    if reference_context is None:
+        from wanstreamer import dmd as D
+        from wanstreamer.lora import lora_enabled
+    else:
+        D, lora_enabled = reference_context.api.dmd, reference_context.api.lora.lora_enabled
+    dtype = torch.bfloat16 if reference_context is None else torch.float32
 
     _require(critic_model is not None, "DMD Fake-Score model is missing")
     _require(critic_context is not None, "DMD Fake-Score context is missing")
     with torch.no_grad(), lora_enabled(critic_model, True):
         velocity = D.bidirectional_velocity(
             critic_model,
-            flow.z_t.to(torch.bfloat16),
+            flow.z_t.to(dtype),
             flow.t,
             score_context.rope,
             critic_context,
             context_lens,
-            torch.bfloat16,
+            dtype,
             TIME_SCALE,
         )
     return velocity.float()
@@ -2375,6 +2444,7 @@ def _combine_dmd_gradient(
     flow: DMDFlowInputs,
     v_real: Any,
     v_fake: Any,
+    reference_context: Any | None = None,
 ) -> Any:
     with torch.no_grad():
         x0_real = (flow.z_t - flow.t_view * v_real).float()
@@ -2433,7 +2503,7 @@ def dmd_gradient_for_sample(
     sample_context: ScoreSampleContext,
     context_lens: Any,
 ) -> Any:
-    flow = _dmd_flow_inputs(torch, row=row, x0=x0)
+    flow = _dmd_flow_inputs(torch, row=row, x0=x0, reference_context=getattr(bundle, "reference_context", None))
     v_real = _dmd_teacher_velocity(
         torch,
         bundle=bundle,
@@ -2451,7 +2521,7 @@ def dmd_gradient_for_sample(
         context_lens=context_lens,
     )
     return _combine_dmd_gradient(
-        torch, x0=x0, flow=flow, v_real=v_real, v_fake=v_fake
+        torch, x0=x0, flow=flow, v_real=v_real, v_fake=v_fake, reference_context=getattr(bundle, "reference_context", None)
     )
 
 
@@ -2592,16 +2662,23 @@ def critic_backward_for_sample(
     sample_weight: float,
     reducer_accumulation: tuple[int, int] | None = None,
 ) -> Any:
-    from wanstreamer import dmd as D
-    from wanstreamer.lora import lora_enabled
+    reference_context = _cpu_reference_context(torch, getattr(bundle, "reference_context", None))
+    if reference_context is None:
+        from wanstreamer import dmd as D
+        from wanstreamer.lora import lora_enabled
+    else:
+        _require(getattr(score_context, "reference_context", None) is sample_context.reference_context is reference_context,
+                 "CPU Critic providers differ")
+        D, lora_enabled = reference_context.api.dmd, reference_context.api.lora.lora_enabled
+    dtype = torch.bfloat16 if reference_context is None else torch.float32
 
     t = _sample_flow_t(torch, seed=row.seeds["critic_t"], device=x0.device)
     noise = _randn(torch, x0.shape, seed=row.seeds["critic_noise"], device=x0.device)
     with lora_enabled(bundle.critic, True):
         loss = D.critic_loss(
-            bundle.critic, x0.to(torch.bfloat16), t,
+            bundle.critic, x0.to(dtype), t,
             score_context.rope, sample_context.critic, context_lens,
-            torch.bfloat16, TIME_SCALE, grad_checkpoint=True, noise=noise,
+            dtype, TIME_SCALE, grad_checkpoint=True, noise=noise,
         )
     scaled_loss = loss * sample_weight
     if bundle.critic_gradient_reducer is None:
@@ -2708,8 +2785,13 @@ def generator_backward_for_sample(
     dmd_gradient: Any,
     sample_weight: float,
 ) -> list[Any]:
-    from wanstreamer import blockcausal as bc
-    from wanstreamer import dmd as D
+    reference_context = _cpu_reference_context(torch, getattr(prepared, "reference_context", None))
+    if reference_context is None:
+        from wanstreamer import blockcausal as bc
+        from wanstreamer import dmd as D
+    else:
+        reference_context.validate_streamer(prepared.streamer, prepared.streamer.model)
+        bc, D = reference_context.api.blockcausal, reference_context.api.dmd
 
     prefix = bc.BufferPrefixKV(prepared.streamer.cache)
     generator = torch.Generator(device=prepared.x0.device).manual_seed(
@@ -5418,7 +5500,7 @@ def _run_baseline(
             ):
                 prepared = prepare_rollout(
                     torch, row=row, streamer=streamers[0], student=bundle.student,
-                    loader=loader, device=device,
+                    loader=loader, device=device, reference_context=getattr(bundle, "reference_context", None),
                 )
                 _record_output(torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind)
             with _profile_range(
@@ -5493,7 +5575,7 @@ def _run_baseline(
             ):
                 sync = _mean_replicated_gradients(
                     torch, bundle.critic_lora_params, group=bundle.score_group,
-                    group_size=bundle.score_group_size, bucket_mib=128,
+                    group_size=bundle.score_group_size, bucket_mib=128, reference_context=getattr(bundle, "reference_context", None),
                 )
                 evidence.gradient_sync.append({"step": global_step, "role": "critic", **sync})
                 critic_pre_clip = (
