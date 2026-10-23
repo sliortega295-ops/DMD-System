@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import random
 
-from distillschedule.workloads.best_known.registry import fingerprint, file_sha256
+from distillschedule.workloads.best_known.registry import canonical_bytes as _canonical, file_sha256
 from distillschedule.training.livewan_public import (require, checked_pin, read_json, local_file,
     content_digest, SCOPE, PRECISION, GEOMETRY, EVIDENCE_KINDS, CPUReferenceRequest, _safe_shapes)
 
@@ -63,10 +63,6 @@ def _operation(seed, cycle, step, entry):
         sample_path=entry["source"]["path"], sample_sha256=entry["source"]["sha256"], operation_key=key,
         world_frames=world, rope_gap=gap, seeds={name: _seed(seed, key, name) for name in STREAMS},
         generator_update=step == 0, critic_update=True)
-
-
-def _canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def descriptor(row):

@@ -6,6 +6,47 @@ import pytest
 import torch
 
 
+@pytest.mark.parametrize('dtype', [torch.float32, torch.bfloat16, torch.int64, torch.bool, torch.complex64])
+@pytest.mark.parametrize('layout', ['scalar', 'empty', 'transposed'])
+def test_owner_content_hashes_preserve_exact_serialized_tensor_bytes(dtype, layout):
+    """Buffer hashing preserves persisted digests without another full bytes copy."""
+    import hashlib
+    from distillschedule.training.dmd2_owner import _hash_tensor
+    from distillschedule.training.self_forcing_owner import _hash
+    from distillschedule.training.livewan_public import tensor_content
+    value = torch.arange(12).to(dtype).reshape(3, 4).T
+    if layout == 'scalar':
+        value = value[0, 0]
+    elif layout == 'empty':
+        value = value[:0]
+    raw = value.detach().contiguous().reshape(-1).view(torch.uint8).cpu().numpy().tobytes()
+    expected = hashlib.sha256(raw).hexdigest()
+    assert _hash_tensor(value) == _hash(value) == tensor_content(value)['sha256'] == expected
+
+
+@pytest.mark.parametrize('policy', ['all_steps', 'last_step'])
+@pytest.mark.parametrize('outer_grad', [False, True])
+def test_ltx_rollout_context_preserves_callers_grad_mode(policy, outer_grad):
+    """Local control-flow characterization; native-model acceptance is separate."""
+    from types import SimpleNamespace
+    from distillschedule.training.ltx import LTXRole
+    modes = []
+    weight = torch.nn.Parameter(torch.tensor(2.))
+
+    def denoise(value, sigma, feeds, *, conditional):
+        assert conditional
+        modes.append(torch.is_grad_enabled())
+        return {name: tensor * weight for name, tensor in value.items()}
+
+    role = SimpleNamespace(validate_feeds=lambda feeds: None,
+                           apply_conditioning=lambda value, feeds: value, denoise=denoise)
+    with torch.set_grad_enabled(outer_grad):
+        output = LTXRole.rollout(role, {'latents': {'video': torch.ones(1, 2)}},
+                                 [1., .75, .5, .25, 0.], policy)
+    assert modes == ([outer_grad] * 4 if policy == 'all_steps' else [False] * 3 + [outer_grad])
+    assert output['video'].requires_grad is outer_grad
+
+
 def test_cleared_model_contract_cannot_reuse_prevalidated_metadata():
     from distillschedule.training.adapters import ModelComponents
     from distillschedule.training.prediction import PredictionSpec

@@ -6,7 +6,6 @@ guess FPS or reuse an encoding cache. The common prepared dataset is the output.
 """
 from __future__ import annotations
 
-from copy import deepcopy
 from pathlib import Path
 
 from .manifest import raw_record, source_identity

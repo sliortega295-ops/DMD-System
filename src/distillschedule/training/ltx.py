@@ -7,6 +7,7 @@ CURRENT Student and those owned codecs, not a reloaded base/Teacher/EMA.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 from copy import deepcopy
 import importlib.metadata
 import json
@@ -300,12 +301,8 @@ class LTXRole(nn.Module):
         require(gradient_policy in ('all_steps', 'last_step'), 'explicit rollout gradient policy required')
         value = self.apply_conditioning({name: torch.randn_like(latent) for name, latent in feeds['latents'].items()}, feeds)
         for index, (sigma, following) in enumerate(zip(schedule, schedule[1:])):
-            if gradient_policy == 'last_step' and index < len(schedule) - 2:
-                with torch.no_grad():
-                    prediction = self.denoise(value, next(iter(value.values())).new_full((value['video'].shape[0],), sigma),
-                                              feeds, conditional=True)
-                    value = self.apply_conditioning({k: x + (following - sigma) * prediction[k] for k, x in value.items()}, feeds)
-            else:
+            context = torch.no_grad() if gradient_policy == 'last_step' and index < len(schedule) - 2 else nullcontext()
+            with context:
                 prediction = self.denoise(value, next(iter(value.values())).new_full((value['video'].shape[0],), sigma),
                                           feeds, conditional=True)
                 value = self.apply_conditioning({k: x + (following - sigma) * prediction[k] for k, x in value.items()}, feeds)

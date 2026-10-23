@@ -20,7 +20,7 @@ def stream_counts(args):
 
 def _hash(value):
     import torch
-    return hashlib.sha256(value.detach().contiguous().reshape(-1).view(torch.uint8).cpu().numpy().tobytes()).hexdigest()
+    return hashlib.sha256(value.detach().contiguous().reshape(-1).view(torch.uint8).cpu().numpy()).hexdigest()
 
 
 def plain_tensors(model):

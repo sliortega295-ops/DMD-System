@@ -28,7 +28,6 @@ from .checkpoint import (
 from .config import TrainingConfig, digest
 from .plugins import load_callable
 from .policy import CyclePolicy, cycle_structure
-from .sampling import ProgramSampling
 from .data_streams import training_data, training_sampling, data_progress, validate_data_progress
 from .validation import Validation, admit_scope
 

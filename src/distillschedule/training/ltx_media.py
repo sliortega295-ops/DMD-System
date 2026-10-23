@@ -8,13 +8,13 @@ quality evidence. Official monolithic 22B checkpoint conversion is NOT provided.
 from __future__ import annotations
 
 from copy import deepcopy
-import hashlib
 import inspect
 import json
 from pathlib import Path
 
 import torch
 from torch import nn
+from distillschedule.workloads.best_known.registry import file_sha256 as _file_sha256
 
 from .ltx_source import require
 
@@ -34,11 +34,7 @@ def media_binding(manifest, source):
 
 def file_sha256(path):
     """Stream even multi-GB local assets; never read a checkpoint into one bytes object."""
-    value = hashlib.sha256()
-    with Path(path).open('rb') as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-            value.update(chunk)
-    return value.hexdigest()
+    return _file_sha256(Path(path))
 
 
 def json_object(path):
