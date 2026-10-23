@@ -105,7 +105,10 @@ def _admit(parameters):
     dimensions = {'num_attention_heads','attention_head_dim','freq_dim','ffn_dim','num_layers','rope_dim'}
     fixed = _json({k:v.default for k,v in constructor.items() if k != 'self' and k not in dimensions})
     fixed.update(TRANSFORMER_ADDITIONAL_KWARGS)
-    require(all(architecture[k] == v and type(architecture[k]) is type(v) for k,v in fixed.items())
+    # JSON int/float spelling is equivalent only for a native fixed FLOAT
+    # option at its exact value. In particular, bool is never numeric here.
+    require(all(architecture[k] == v and (type(architecture[k]) in (int,float) if type(v) is float
+                else type(architecture[k]) is type(v)) for k,v in fixed.items())
             and all(type(architecture[k]) is int and 0 < architecture[k] <= budget['max_parameters']
                 for k in dimensions-{'rope_dim'}) and architecture['num_layers'] <= 128
             and isinstance(architecture['rope_dim'],list) and len(architecture['rope_dim']) == 3

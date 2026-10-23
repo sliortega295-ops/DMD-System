@@ -27,7 +27,7 @@ POLICY = MappingProxyType(dict(lora_rank=256,gradient_clip=1.,generator_lr=2e-6,
 READER_ONLY = 'STATE_READER_FIXTURE_ONLY'
 ORIGINAL = 'OPERATOR_SUPPLIED_ORIGINAL_W2_STEP10'
 CPU_WARM = 'ACTUAL_ORIGINAL_W2_CPU_TEST_WARM_NOT_HISTORICAL_STEP10'
-CPU_WARM_RECEIPT = 'distillschedule.helios_nogan_actual_cpu_warm_receipt.v1'
+CPU_WARM_RECEIPT = 'distillschedule.helios_nogan_actual_cpu_warm_receipt.v2'
 
 
 def native_policy():
@@ -182,8 +182,9 @@ def _validate_cpu_warm_receipt(inputs,value,manifest):
     """Admit a distinct test warm boundary, never invent historical step0 data.
 
     Pinned actual observer action/forward/backward/commit records and complete
-    source documents bind the serialized moments, masters and EMA. This is a
-    CPU test fixture, not provenance for an operator's pretrained Step10.
+    source documents bind the executed frozen bases, serialized moments,
+    masters and EMA. This is a CPU test fixture, not provenance for an
+    operator's pretrained Step10.
     """
     from distillschedule.runtime.helios_planner_cycle import _cycle_graph, _validate_action
     from distillschedule.search.helios_implementation import HeliosImplementation
@@ -191,7 +192,7 @@ def _validate_cpu_warm_receipt(inputs,value,manifest):
     require(len(inputs)==1, 'actual original CPU warm receipt required')
     receipt = read_json(inputs[0])
     fields = {'schema_version','evidence_kind','source','runtime','request','framework_source','execution',
-              'physical_initial','physical_final','cycles','input_documents','prepared_inputs','logical_payloads','ema_manifest'}
+              'physical_initial','physical_final','cycles','bases','input_documents','prepared_inputs','logical_payloads','ema_manifest'}
     require(set(receipt)==fields and receipt['schema_version']==CPU_WARM_RECEIPT
             and receipt['evidence_kind']==CPU_WARM and receipt['source']==value['source']
             and receipt['runtime']==value['runtime'] and receipt['request']==value['request']
@@ -202,6 +203,8 @@ def _validate_cpu_warm_receipt(inputs,value,manifest):
             and receipt['physical_final']==dict(generator=2,critic=10,ema=10)
             and isinstance(receipt['cycles'],list) and len(receipt['cycles'])==2,
             'actual original CPU warm receipt/source required')
+    require(fingerprint(receipt['bases'])==fingerprint({r:value[r] for r in ('generator','critic')}),
+            'actual original CPU warm receipt base binding changed')
     impl = HeliosImplementation('no-gan','world16-fsdp',512,1,False)
     from distillschedule.data import PreparedDataset
     from distillschedule.data.helios_nogan_reference_inputs import decode, descriptor
@@ -352,8 +355,9 @@ def _stage_ema(model, metadata, root, package):
             'original EMA10 current decay changed')
     normalized = [n[7:] if n.startswith('module.') else n for n in ema.names]
     require(normalized==package.component('generator')['parameter_names'], 'sparse EMA named order changed')
+    parameters = list(model.parameters())
     for shadow,index in zip(ema.shadows,ema.indices,strict=True):
-        parameter = list(model.parameters())[index]
+        parameter = parameters[index]
         require(isinstance(shadow,torch.Tensor) and shadow.device.type=='cpu' and shadow.dtype==torch.float32
                 and shadow.shape==parameter.shape and bool(shadow.isfinite().all()), 'nonfinite/malformed EMA shadow')
     by_name = dict(zip(ema.names,ema.shadows,strict=True))

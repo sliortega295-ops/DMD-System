@@ -39,6 +39,53 @@ def test_inference_rejects_non_fp32_default_before_model_construction():
     assert not torch.cuda.is_initialized()
 
 
+def _constructor_admission_parameters():
+    """Admission-only config, not a warm execution receipt or training owner."""
+    import inspect
+    from distillschedule.adapters.helios.reference_model import load_reference_model_class
+    from distillschedule.training import helios_nogan_inference as inference
+    from distillschedule.training.helios_inference import _json,content_runtime
+    from distillschedule.training.helios_inputs import HeliosCohortTask
+    _stack()
+    source = inference.inference_source()
+    from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS,_all_linear_targets
+    cls = load_reference_model_class(backend='torch-sdpa')
+    architecture = _json({k:p.default for k,p in inspect.signature(cls.__init__).parameters.items() if k != 'self'})
+    architecture.update(num_attention_heads=1,attention_head_dim=16,freq_dim=16,ffn_dim=32,
+                        num_layers=1,rope_dim=[4,6,6],**TRANSFORMER_ADDITIONAL_KWARGS)
+    with torch.device('meta'):
+        probe = cls(**architecture)
+    targets = sorted(set(_all_linear_targets(probe)+['patch_short','patch_mid','patch_long']))
+    task = HeliosCohortTask(0)
+    return dict(schema_version=inference.SCHEMA,scope=inference.SCOPE,precision=inference.PRECISION,
+        source=source,runtime=content_runtime(),task=task.to_dict(),
+        boundary=dict(cycle=1,versions=dict(generator=3,critic=15,ema=15),
+            warm_kind='ACTUAL_ORIGINAL_W2_CPU_TEST_WARM_NOT_HISTORICAL_STEP10'),architecture=architecture,
+        peft=dict(r=256,lora_alpha=256.,lora_dropout=0.,init_lora_weights='gaussian',
+            target_modules=targets,exclude_modules=['down','up']),
+        native=dict(args=dict(base_seq_len=256,max_seq_len=4096,base_shift=.5,max_shift=1.15),
+            scheduler=dict(shift=1.,stages=3,stage_range=[0,1/3,2/3,1],gamma=1/3),rollout=inference._rollout(task)),
+        geometry=dict(noise_shape=list(task.latent_shape),prompt_shape=[1,512,4096]),
+        budget=dict(max_parameters=20000000,max_loaded_bytes=400000000),evidence_kind=FIXTURE,seed=773)
+
+
+@pytest.mark.parametrize('theta',[10000,10000.0])
+def test_fixed_float_constructor_accepts_exact_json_number_representations(theta):
+    from distillschedule.training.helios_nogan_inference import _admit
+    p = _constructor_admission_parameters(); p['architecture']['rope_theta'] = theta
+    admitted,_ = _admit(p)
+    assert type(admitted['architecture']['rope_theta']) is type(theta)
+    assert admitted['architecture']['rope_theta'] == theta
+
+
+@pytest.mark.parametrize('theta',[10001,10000.00000001,True,False,'10000',None])
+def test_fixed_float_constructor_rejects_wrong_value_bool_and_nonnumeric(theta):
+    from distillschedule.training.helios_nogan_inference import _admit
+    p = _constructor_admission_parameters(); p['architecture']['rope_theta'] = theta
+    with pytest.raises(ValueError,match='architecture/conditioning/pyramid'):
+        _admit(p)
+
+
 def byte_equal(left, right):
     """Bytewise tensors, including signed zero; no tolerant numerical test."""
     if isinstance(left, torch.Tensor):

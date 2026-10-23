@@ -67,7 +67,7 @@ def _capture(root, config, *, count, seed_base):
     return dict(stream=str(root/'stream/stream.json'),source=str(source),prepared=str(prepared),document=stream)
 
 
-def _cold(root):
+def _cold(root, *, rope_theta=None):
     from safetensors.torch import save_file
     from distillschedule.adapters.helios.reference_model import load_reference_model_class
     from distillschedule.training.helios_public_assets import FIXTURE
@@ -78,6 +78,7 @@ def _cold(root):
     from runtime.sparse_ema import SparseShardEMA
     from runtime.gst_pool_contract import write_negative_prompt_asset
     cls, roles, rows, engines = load_reference_model_class(backend='torch-sdpa'),{},{},{}
+    constructor_options = {} if rope_theta is None else dict(rope_theta=rope_theta)
     with torch.random.fork_rng(devices=[]):
         for index,(role,native,folder) in enumerate((('generator','generator','transformer_ode'),('critic','score','transformer'))):
             torch.manual_seed(314+index)
@@ -85,7 +86,8 @@ def _cold(root):
             if not source.exists():
                 model = cls(patch_size=(1,2,2),num_attention_heads=1,attention_head_dim=16,in_channels=16,
                     out_channels=16,text_dim=4096,freq_dim=16,ffn_dim=32,num_layers=1,rope_dim=(4,6,6),
-                    is_use_gan=False,is_use_gan_final=False,is_use_gan_hooks=False,**TRANSFORMER_ADDITIONAL_KWARGS)
+                    is_use_gan=False,is_use_gan_final=False,is_use_gan_hooks=False,
+                    **TRANSFORMER_ADDITIONAL_KWARGS,**constructor_options)
                 with torch.no_grad():
                     model.proj_out.weight.normal_(0.,.02)
                 for name,p in model.named_parameters():
@@ -106,6 +108,8 @@ def _cold(root):
                 rows[key] = dict(path=str(directory),identity_file=identity,sha256=file_sha256(directory/identity))
             value = {role:roles[role], 'base_evidence_kind':FIXTURE}
             model,_ = _model(cls,value,role,100000000)
+            if rope_theta is not None:
+                assert type(model.config.rope_theta) is type(rope_theta) and model.config.rope_theta == rope_theta
             optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad],
                 lr=2e-6 if role=='generator' else 4e-7,betas=(0.,.999),eps=1e-8,weight_decay=1e-3)
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,lambda _:1.)
@@ -150,7 +154,7 @@ def _original_cycle(engines,ema,feeds,index):
         actions=observer.actions,semantic_validation=validation)
 
 
-def original_capacity_canary(root):
+def original_capacity_canary(root, *, rope_theta=None):
     """One ORIGINAL full-geometry cycle; shell imposes wall/address-space bounds."""
     import yaml
     from omegaconf import OmegaConf
@@ -173,7 +177,8 @@ def original_capacity_canary(root):
     args.training_config.max_train_steps = 25
     args.validation_config.use_kv_cache = False
     args_path = _write(root/'args.json',OmegaConf.to_container(args,resolve=True))
-    engines,ema,roles,rows = _cold(root)
+    engines,ema,roles,rows = _cold(root,rope_theta=rope_theta)
+    executed_bases = deepcopy(roles)  # Captured from the actual cold loaders BEFORE the original warm updates.
     warm = _capture(root/'warm-inputs',config,count=2,seed_base=41)
     dataset = PreparedDataset(warm['prepared'])
     first = _original_cycle(engines,ema,dataset.sample(0),0)
@@ -183,13 +188,14 @@ def original_capacity_canary(root):
         assert any(torch.count_nonzero(s['exp_avg']) for s in engines[role].optimizer.state.values())
     torch.save(dict(native={k:cpu_tree(v.state_dict()) for k,v in views.items()},rng=cpu_tree(rng_state())),root/'canary-state.pt')
     _write(root/'canary-cycle.json',first)
-    _write(root/'canary.json',dict(source=source_fingerprint(),warm=warm,roles=roles,rows=rows,args=_pin(args_path),
+    _write(root/'canary.json',dict(source=source_fingerprint(),warm=warm,roles=executed_bases,rows=rows,args=_pin(args_path),
         versions=dict(generator=1,critic=5,ema=5),geometry=[1,16,9,48,80],heads=1,head_dim=16,layers=1,ffn=32,
         policy='ORIGINAL_NO_GAN_LORA256_CLIP1',cuda_initialized=torch.cuda.is_initialized()))
     print('W2_ORIGINAL_FULL_GEOMETRY_CPU_ONE_COLD_CYCLE_G1_C5_EMA5_CAPACITY_PASS',flush=True)
 
 
-def fixture_files(root):
+def fixture_files(root, *, rope_theta=None):
+    from distillschedule.strategies.wan_capture import native_primitives
     from distillschedule.training import helios_nogan_bootstrap as bootstrap
     from distillschedule.training.helios_public_assets import FIXTURE,runtime_identity
     from distillschedule.training.helios_inputs import HeliosCohortTask,source_fingerprint
@@ -199,16 +205,23 @@ def fixture_files(root):
     from distillschedule.data import PreparedDataset
     from distillschedule.training.helios_nogan_public import SCHEMA
     from distillschedule.data.helios_nogan_reference_inputs import SCOPE,PRECISION
-    _stack(); root = Path(root)
+    _stack(); native_primitives(source_only=True); root = Path(root)
     if (root/'complete.json').exists():
         result = json.loads((root/'complete.json').read_text())
         assert result['source'] == source_fingerprint(), 'source changed: preserve old fixture, use a new explicit directory'
+        if rope_theta is not None:
+            value = json.loads(Path(result['warm']).read_text())
+            for role in ('generator','critic'):
+                pin = value[role]['config']; assert _pin(Path(pin['path'])) == pin
+                theta = json.loads(Path(pin['path']).read_text())['rope_theta']
+                assert type(theta) is type(rope_theta) and theta == rope_theta, 'preserve existing fixture constructor representation'
         return result
     if not (root/'canary.json').exists():
-        original_capacity_canary(root)
+        original_capacity_canary(root,rope_theta=rope_theta)
     canary = json.loads((root/'canary.json').read_text())
     assert canary['source'] == source_fingerprint()
-    engines,ema,roles,rows = _cold(root)
+    engines,ema,roles,rows = _cold(root,rope_theta=rope_theta)
+    assert roles == canary['roles'], 'warm continuation must use the exact executed cold bases'
     saved = torch.load(root/'canary-state.pt',weights_only=True)
     views = engine_state(engines); views['ema'] = _SparseEMAView(ema,engines['generator'])
     for name,view in views.items():
@@ -249,11 +262,15 @@ def fixture_files(root):
     input_documents += [_pin(dataset.path), *[_pin(dataset.path.parent/r['features']['path']) for r in dataset.manifest['records']]]
     # Every actual feature/control/payload is pinned, not a string-only claim.
     assert len(input_documents) >= 65
+    for spec in canary['roles'].values():
+        for pin in [spec['config'],*spec['weights']]:
+            assert _pin(Path(pin['path'])) == pin, 'executed base changed during the original warm updates'
     receipt = dict(schema_version=bootstrap.CPU_WARM_RECEIPT,evidence_kind=bootstrap.CPU_WARM,
         source=bootstrap.source_identity(),runtime=runtime_identity(),request=HeliosCohortTask(0).request.to_dict(),
         framework_source=source_fingerprint(),execution=dict(device='cpu',world_size=1,source_rank=0,source_world_size=16,
             historical_step0_inputs=False,pretrained_quality='NOT_RUN'),physical_initial=dict(generator=0,critic=0,ema=0),
         physical_final=dict(generator=2,critic=10,ema=10),cycles=[json.loads((root/'canary-cycle.json').read_text()),second],
+        bases=deepcopy(canary['roles']),
         input_documents=input_documents,prepared_inputs=_pin(dataset.path),logical_payloads={r:{k:p['sha256'] for k,p in c['payloads'].items()}
             for r,c in manifest['components'].items()},ema_manifest=_pin(logical/'ema/sparse_ema_manifest.json'))
     receipt_path = _write(root/'actual-warm-receipt.json',receipt)
@@ -289,7 +306,8 @@ def fixture_files(root):
 @pytest.fixture(scope='module')
 def fixture_assets(tmp_path_factory):
     root = os.environ.get('HELIOS_NOGAN_PUBLIC_FIXTURE')
-    return fixture_files(Path(root) if root else tmp_path_factory.mktemp('helios-nogan-original')/'local')
+    # Explicit representation-only fixture parameter, not a changed native default.
+    return fixture_files(Path(root) if root else tmp_path_factory.mktemp('helios-nogan-original')/'local',rope_theta=10000)
 
 
 def config_for(files,output,cycles=3,resume=None):
@@ -329,8 +347,12 @@ def run_capturing(config,monkeypatch):
 
 
 def test_actual_original_warm_public_two_fresh_cycles(fixture_assets,tmp_path,monkeypatch):
+    from distillschedule.training import session
     from distillschedule.training.checkpoint import read_checkpoint
-    result,owner,receipts,hooks = run_capturing(config_for(fixture_assets,tmp_path/'train',2),monkeypatch)
+    from distillschedule.training.helios_nogan_inference import build_inference_model
+    from distillschedule.training.inference import restore_modules
+    config = config_for(fixture_assets,tmp_path/'train',2)
+    result,owner,receipts,hooks = run_capturing(config,monkeypatch)
     assert result['status'] == 'COMPLETE' and result['cursor'] == 2 and owner.cycle == 2
     assert owner.versions == dict(generator=4,critic=20,ema=20) and result['final_versions'] == dict(native_cycle=2)
     assert len(receipts) == 2 and any(hooks)
@@ -356,6 +378,23 @@ def test_actual_original_warm_public_two_fresh_cycles(fixture_assets,tmp_path,mo
         assert any(torch.count_nonzero(s['exp_avg']) for s in e.optimizer.state.values())
     snapshot = read_checkpoint(result['checkpoint'],identity=result['identity'])
     assert snapshot['cursor'] == snapshot['cycle'] == 2
+    # Reuse these real original updates for the bootstrap-to-current-G export
+    # regression: never mutate a sealed owner/config or run a second loop.
+    assert all(type(e.module.config.rope_theta) is int and e.module.config.rope_theta == 10000
+               for e in owner._engines.values())
+    exported = session.export(config,result['checkpoint'],tmp_path/'int-rotary-export')
+    parameters = exported['model']['parameters']
+    assert type(parameters['architecture']['rope_theta']) is int and parameters['architecture']['rope_theta'] == 10000
+    inference = build_inference_model(parameters)
+    restore_modules(inference,tmp_path/'int-rotary-export',exported)
+    assert type(inference.state['generator'].config.rope_theta) is int
+    assert _equal(owner.generator.module.state_dict(),inference.state['generator'].state_dict())
+    if os.environ.get('HELIOS_NOGAN_PUBLIC_EVIDENCE'):
+        _write(Path(os.environ['HELIOS_NOGAN_PUBLIC_EVIDENCE'])/'artifacts/int-rotary-current-generator-export.json',
+            dict(status='PASS_ACTUAL_ORIGINAL_INT_CONFIG_WARM_TO_CURRENT_G_EXPORT_AND_INFERENCE_ADMISSION',
+                warm_receipt=fixture_assets['warm_receipt'],export=str(tmp_path/'int-rotary-export/export.json'),
+                export_sha256=file_sha256(tmp_path/'int-rotary-export/export.json'),rope_theta=10000,
+                versions=owner.versions,current_generator_exact=True,cuda_initialized=torch.cuda.is_initialized()))
     assert not torch.cuda.is_initialized()
 
 
@@ -604,7 +643,8 @@ def test_complete_warm_outer_zero_state_is_staged_restorable(fixture_assets):
     assert _equal(snapshot,owner.state_dict())
 
 
-@pytest.mark.parametrize('corruption',['descriptor','rank_controls','prepared_inputs','coverage','commits','logical_payload'])
+@pytest.mark.parametrize('corruption',['descriptor','rank_controls','prepared_inputs','coverage','commits','logical_payload',
+                                      'unbound_v1','missing_bases'])
 def test_genuine_cpu_warm_receipt_is_bound_to_inputs_actions_and_serialized_state(fixture_assets,tmp_path,monkeypatch,corruption):
     from distillschedule.training import helios_nogan_bootstrap as bootstrap
     value = json.loads(Path(fixture_assets['warm']).read_text())
@@ -620,8 +660,12 @@ def test_genuine_cpu_warm_receipt_is_bound_to_inputs_actions_and_serialized_stat
         receipt['input_documents'] = receipt['input_documents'][:-1]
     elif corruption == 'commits':
         receipt['cycles'][0]['actions'][0]['counts']['generator_optimizer'] = 0
-    else:
+    elif corruption == 'logical_payload':
         receipt['logical_payloads']['critic']['first_moment'] = '0'*64
+    else:
+        del receipt['bases']
+        if corruption == 'unbound_v1':
+            receipt['schema_version'] = 'distillschedule.helios_nogan_actual_cpu_warm_receipt.v1'
     proof['inputs'] = [_pin(_write(tmp_path/'receipt.json',receipt))]
     value['provenance'] = _pin(_write(tmp_path/'proof.json',proof))
     path = _write(tmp_path/'warm.json',value)
@@ -630,6 +674,59 @@ def test_genuine_cpu_warm_receipt_is_bound_to_inputs_actions_and_serialized_stat
     monkeypatch.setattr(bootstrap,'_model',forbidden)
     with pytest.raises(ValueError):
         bootstrap.materialize_bootstrap(path)
+
+
+@pytest.mark.parametrize('role',['generator','critic'])
+@pytest.mark.parametrize('replacement',['weights','config'])
+def test_actual_warm_receipt_rejects_rebased_envelope_before_model_or_master_copy(
+        fixture_assets,tmp_path,monkeypatch,role,replacement):
+    from safetensors.torch import load_file,save_file
+    from distillschedule.training import helios_nogan_bootstrap as bootstrap
+    from runtime import critic_pool_checkpoint
+    value = json.loads(Path(fixture_assets['warm']).read_text())
+    proof = json.loads(Path(value['provenance']['path']).read_text())
+    receipt_pin = deepcopy(proof['inputs'][0])
+    logical_pin = deepcopy(value['native_assets']['assets']['logical_checkpoint'])
+    if replacement == 'weights':
+        original = load_file(value[role]['weights'][0]['path'])
+        tensors = {n:t.clone() for n,t in original.items()}
+        tensors['patch_embedding.weight'].flatten()[0] += 1
+        assert all(t.isfinite().all() for t in tensors.values())
+        assert all((t.shape,t.dtype) == (original[n].shape,original[n].dtype) for n,t in tensors.items())
+        assert not torch.equal(tensors['patch_embedding.weight'],original['patch_embedding.weight'])
+        path = tmp_path/'different-finite-base.safetensors'
+        save_file(tensors,path,metadata={'evidence_kind':value['base_evidence_kind']})
+        value[role]['weights'] = [_pin(path)]
+    else:
+        native_role = 'generator_model' if role == 'generator' else 'score_model'
+        row = value['native_assets']['assets'][native_role]
+        native_root = tmp_path/'different-config-owner'
+        path = native_root/row['identity_file']; path.parent.mkdir(parents=True)
+        path.write_bytes(Path(value[role]['config']['path']).read_bytes())
+        value[role]['config'] = _pin(path)
+        row['path'] = str(native_root)
+    # Rehash only the independently editable envelope/proof. Preserve the
+    # genuine original execution receipt, logical masters/moments and EMA.
+    proof['bases'] = {r:value[r] for r in ('generator','critic')}
+    proof['native_assets'] = value['native_assets']
+    value['provenance'] = _pin(_write(tmp_path/'rebased-proof.json',proof))
+    path = _write(tmp_path/'rebased-assets.json',value)
+    constructed,copied = [],[]
+    model,copy_master = bootstrap._model,critic_pool_checkpoint.load_logical_master_into_trainables
+    def model_witness(*args,**kwargs):
+        constructed.append(True)
+        return model(*args,**kwargs)
+    def copy_witness(*args,**kwargs):
+        copied.append(True)
+        return copy_master(*args,**kwargs)
+    monkeypatch.setattr(bootstrap,'_model',model_witness)
+    monkeypatch.setattr(critic_pool_checkpoint,'load_logical_master_into_trainables',copy_witness)
+    with pytest.raises(ValueError,match='actual original CPU warm receipt base binding'):
+        bootstrap.materialize_bootstrap(path)
+    assert not constructed and not copied
+    assert proof['inputs'] == [receipt_pin] and _pin(Path(receipt_pin['path'])) == receipt_pin
+    assert value['native_assets']['assets']['logical_checkpoint'] == logical_pin
+    assert not torch.cuda.is_initialized()
 
 
 @pytest.mark.parametrize('tamper',['decay','names','indices','shadow_layout'])

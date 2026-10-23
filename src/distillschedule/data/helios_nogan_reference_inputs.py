@@ -207,7 +207,7 @@ def prepare_inputs(source_manifest, output):
         return feeds,control,trace
 
     for index in range(count):
-        _,control,trace = load(index)
+        feeds,control,trace = load(index)
         row = descriptor(control)
         content = conditioning_fingerprint(row['content'])
         require(row['bundle_hash'] not in seen_hashes and content not in seen_content
@@ -222,6 +222,8 @@ def prepare_inputs(source_manifest, output):
             require(identity['sha256'] == native['sha256'], 'W2 source feature bytes changed')
             documents.append(identity)
         rows.append(dict(id=f'helios-nogan-reference-{index:06d}',metadata=dict(cycle=index,trace=row)))
+        # Keep payloads scoped to this admission, not the next row/publication.
+        del feeds, trace
 
     def produce(row):
         feeds,control,_ = load(row['metadata']['cycle'])
