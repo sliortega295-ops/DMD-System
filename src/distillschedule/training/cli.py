@@ -13,7 +13,8 @@ from .config import TrainingConfig, load_training_config
 
 def doctor(config=None):
     packages = {}
-    for name in ("distillschedule", "torch", "numpy", "Pillow", "omegaconf", "diffusers", "deepspeed"):
+    for name in ("distillschedule", "torch", "numpy", "Pillow", "omegaconf", "diffusers", "deepspeed",
+                 "transformers", "peft", "sentencepiece", "torchaudio", "safetensors"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -68,8 +69,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="distillctl",
         description="DMD-System data, continuous training, checkpoint and export lifecycle")
     sub = parser.add_subparsers(dest="command", required=True)
-    for kind in ('models', 'algorithms'):
-        catalog = sub.add_parser(kind, help='list registered factories without importing model code')
+    for kind in ('models', 'algorithms', 'strategies', 'capabilities'):
+        catalog = sub.add_parser(kind, help='discover adapters and capabilities without importing model code')
         catalog.add_argument('action', choices=('list', 'show'), nargs='?', default='list')
         catalog.add_argument('name', nargs='?')
     check = sub.add_parser("doctor", help="inspect installed dependencies without loading models")
@@ -107,6 +108,14 @@ def main(argv=None):
                 if not args.name:
                     raise ValueError('show requires a registered name')
                 result = resolve('model' if args.command == 'models' else 'algorithm', args.name)
+            else:
+                result = describe()[args.command]
+        elif args.command in ('strategies', 'capabilities'):
+            from .strategy_catalog import describe, resolve
+            if args.action == 'show':
+                if not args.name:
+                    raise ValueError('show requires a registered name')
+                result = resolve('strategy' if args.command == 'strategies' else 'capability', args.name)
             else:
                 result = describe()[args.command]
         elif args.command == "doctor":

@@ -19,11 +19,57 @@ import venv
 from pathlib import Path
 
 
+def dependency_roots(checkout, *, paths=None):
+    """Keep dependency-only import roots in the invoking interpreter's order.
+
+    An overlay may intentionally provide Torch 2.10 before a base environment's
+    Torch 2.14. site.getsitepackages() alone discards that qualification. Never
+    expose the checkout or another framework/runtime tree to an installed-wheel
+    acceptance, and never emit executable or multi-line .pth directives.
+    """
+    checkout = Path(checkout).resolve()
+    ordered = list(sys.path if paths is None else paths)
+    if paths is None:
+        ordered.extend(site.getsitepackages())
+    result = []
+    for item in ordered:
+        if not isinstance(item, str) or not item or any(c in item for c in ('\n', '\r')):
+            continue
+        root = Path(item).resolve()
+        if (not root.is_dir() or root.is_relative_to(checkout) or
+                (root / 'distillschedule').exists() or (root / 'runtime').exists()):
+            continue
+        if not (root.name in ('site-packages', 'dist-packages') or
+                next(root.glob('*.dist-info'), None) is not None):
+            continue
+        if str(root) not in result:
+            result.append(str(root))
+    return result
+
+
+def qualified_dependencies(roots):
+    """Record the real imported numerical stack, rather than guessing versions."""
+    import importlib
+    import importlib.metadata
+    packages = {'torch':'torch', 'numpy':'numpy', 'Pillow':'PIL', 'safetensors':'safetensors'}
+    result = {}
+    for distribution, name in packages.items():
+        module = importlib.import_module(name)
+        origin = Path(module.__file__).resolve()
+        if not any(origin.is_relative_to(Path(root)) for root in roots):
+            raise RuntimeError('dependency origin is not a reusable package root: ' + str(origin))
+        version = str(module.__version__) if hasattr(module, '__version__') else importlib.metadata.version(distribution)
+        result[name] = {'version':version, 'origin':str(origin)}
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    dependency_sites = dependency_roots(root)
+    qualified = qualified_dependencies(dependency_sites)
     env = {key: value for key, value in os.environ.items() if key not in ("PYTHONPATH", "PYTHONHOME")}
     env.update(CUDA_VISIBLE_DEVICES="", HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1",
                OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
@@ -47,7 +93,6 @@ def main():
                        cwd=work, env=env, check=True, stdout=subprocess.PIPE, text=True)
         package_site = Path(subprocess.check_output([str(python), "-I", "-c",
                             "import sysconfig; print(sysconfig.get_paths()['purelib'])"], text=True).strip())
-        dependency_sites = [path for path in site.getsitepackages() if Path(path).is_dir()]
         (package_site / "reused-dependencies.pth").write_text("\n".join(dependency_sites) + "\n")
         script = r'''
 import json, os, shutil, subprocess, sys, sysconfig
@@ -66,6 +111,12 @@ from distillschedule.data import PreparedDataset, prepare
 from distillschedule.training.config import digest, load_training_config, TrainingConfig
 from distillschedule.training.session import train, evaluate, export
 import torch
+expected_dependencies = json.loads(sys.argv[2])
+import importlib
+for name, expected in expected_dependencies.items():
+    module = importlib.import_module(name)
+    assert str(module.__version__) == expected['version'], (name, module.__version__, expected)
+    assert str(Path(module.__file__).resolve()) == expected['origin'], (name, module.__file__, expected)
 assert not torch.cuda.is_initialized()
 def run_cli(*args):
     result = subprocess.run([sys.executable, '-I', '-m', 'distillschedule', *map(str, args)],
@@ -177,7 +228,8 @@ print(json.dumps(dict(status='PASS_INSTALLED_FRAMEWORK_CPU',
     source=dict(working_directory_outside_checkout=True, site_packages=str(site),
         module_paths={'distillschedule':str(Path(distillschedule.__file__).resolve()),
                       'runtime':str(Path(runtime.__file__).resolve())},
-        python_version=sys.version.split()[0], torch_version=torch.__version__),
+        python_version=sys.version.split()[0], torch_version=torch.__version__,
+        qualified_dependencies=expected_dependencies),
     inference=dict(kind=generated['kind'], sample_id=generated['sample_id'],
         input_identity=generated['input_identity'], training_input_identity=training_inputs.identity,
         prepared_features_disjoint=True, encoded_feeds_disjoint=True,
@@ -189,7 +241,7 @@ print(json.dumps(dict(status='PASS_INSTALLED_FRAMEWORK_CPU',
     gpu_execution='NOT_RUN', pretrained_quality='NOT_RUN', quality_validation='NOT_RUN',
     native_pretrained_lifecycles='NOT_RUN')))
 '''
-        result = subprocess.run([str(python), "-I", "-c", script, str(root)], cwd=work, env=env,
+        result = subprocess.run([str(python), "-I", "-c", script, str(root), json.dumps(qualified)], cwd=work, env=env,
                                 text=True, capture_output=True, check=False)
         if result.returncode:
             raise RuntimeError("installed framework acceptance failed:\n" + result.stdout + result.stderr)
