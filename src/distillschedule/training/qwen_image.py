@@ -25,11 +25,12 @@ def classes():
 
 
 def validate_architecture(config, media):
+    text = common.architecture(classes()[2], media['text_encoder']).text_config
     require(config.get('_class_name') == 'QwenImageTransformer2DModel' and config.get('patch_size') == 2
             and all(config.get(key) is False for key in ('guidance_embeds', 'zero_cond_t', 'use_additional_t_cond', 'use_layer3d_rope'))
             and config['in_channels'] == media['vae']['z_dim'] * 4
             and config['out_channels'] == media['vae']['z_dim']
-            and config['joint_attention_dim'] == media['text_encoder']['text_config']['hidden_size'],
+            and config['joint_attention_dim'] == text.hidden_size,
             'original T2I Qwen-Image with matched VAE/VL widths only; edit/extra time/causal variants rejected')
     require(type(media['text_max_length']) is int and 1 <= media['text_max_length'] <= 1024
             and len(media['vae']['latents_mean']) == len(media['vae']['latents_std']) == media['vae']['z_dim']

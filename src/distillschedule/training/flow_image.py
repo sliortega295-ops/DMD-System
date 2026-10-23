@@ -58,9 +58,19 @@ def runtime_identity(api):
             and versions['transformers'] == '5.14.1' and versions['peft'] == '0.18.1',
             'use the isolated modern-flow pinned lane, not the Transformers4/PEFT0.17 lane')
     classes = api.classes()
-    files = {cls.__module__ + '.' + cls.__name__: file_sha256(Path(inspect.getfile(cls))) for cls in classes}
-    from transformers import conversion_mapping, core_model_loading
-    files.update({module.__name__: file_sha256(Path(module.__file__)) for module in (conversion_mapping, core_model_loading)})
+    config_classes = set()
+    def configs(cls):
+        config_classes.add(cls)
+        for child in getattr(cls, 'sub_configs', {}).values():
+            configs(child)
+    for cls in classes:
+        if hasattr(cls, 'config_class'):
+            configs(cls.config_class)
+    files = {cls.__module__ + '.' + cls.__name__: file_sha256(Path(inspect.getfile(cls))) for cls in (*classes, *config_classes)}
+    from transformers import configuration_utils, conversion_mapping, core_model_loading, modeling_rope_utils, modeling_utils
+    from . import flow_text_config
+    files.update({module.__name__: file_sha256(Path(module.__file__)) for module in
+                  (configuration_utils, conversion_mapping, core_model_loading, modeling_rope_utils, modeling_utils, flow_text_config)})
     files.update({name: file_sha256(path) for name,path in {
         'adapter': Path(api.__file__), 'shared_native_plumbing': Path(__file__),
         'feature_encoder': Path(__file__).parent.parent/'data/flow_image_inputs.py',
@@ -87,14 +97,8 @@ def asset_files(base, spec):
 
 
 def _text_config(config_class, config):
-    require(isinstance(config, dict), 'explicit native text config object required')
-    known = set(config_class().to_dict()) | {'torch_dtype', '_commit_hash'}
-    require(set(config) <= known, 'unknown native text config fields: ' + ', '.join(sorted(set(config) - known)))
-    require(config.get('model_type', config_class.model_type) == config_class.model_type, 'wrong native text submodel type')
-    for name, child in getattr(config_class, 'sub_configs', {}).items():
-        if name in config:
-            _text_config(child, config[name])
-    return config_class.from_dict(config)
+    from .flow_text_config import text_config
+    return text_config(config_class, config)
 
 
 def architecture(cls, config):
@@ -117,6 +121,18 @@ def shell(cls, config):
     return value
 
 
+def _parameter_alias_groups(model, layout):
+    # Only identical actual Parameter slots are a proof of a missing alias.
+    # Equal shapes, values, storage pointers (meta!), or native key hints are not.
+    slots = {}
+    for name, parameter in model.named_parameters(remove_duplicate=False):
+        if name in layout:
+            slots.setdefault(id(parameter), set()).add(name)
+    groups = list(slots.values())
+    covered = set().union(*groups) if groups else set()
+    return groups + [{key} for key in layout.keys() - covered]
+
+
 def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
     import safetensors
     from safetensors.torch import load_file
@@ -127,6 +143,9 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
     require(0 < sum(p.numel() for p in model.parameters()) <= max_parameters,
             'native model exceeds explicit CPU parameter budget')
     layout = model.state_dict()
+    alias_groups = _parameter_alias_groups(model, layout)
+    def complete(keys):
+        return keys <= layout.keys() and all(keys & group for group in alias_groups)
     rename = lambda name: name
     if hasattr(cls, 'config_class'):
         # Transformers5's actual Qwen2.5-VL save format uses original checkpoint
@@ -146,7 +165,8 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
     if indices:
         index = json_object(indices[0]); weight_map = index.get('weight_map')
         require(set(index) <= {'metadata', 'weight_map'} and isinstance(weight_map, dict)
-                and {rename(k) for k in weight_map} == set(layout) and len(weight_map) == len(layout)
+                and len({rename(k) for k in weight_map}) == len(weight_map) and complete({rename(k) for k in weight_map})
+                and all(isinstance(value, str) for value in weight_map.values())
                 and set(weight_map.values()) == {p.name for p in weights}, 'incomplete safe weight shard index')
     else:
         require(len(weights) == 1, 'multiple safe shards need an explicit complete index')
@@ -155,14 +175,20 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
         with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
             for raw_key in handle.keys():
                 key = rename(raw_key)
-                require(key in layout and key not in state and (weight_map is None or weight_map[raw_key] == path.name),
+                require(key in layout and key not in state and (weight_map is None or weight_map.get(raw_key) == path.name),
                         'unexpected/duplicate/wrong-shard native safe weight: ' + key)
                 header = handle.get_slice(raw_key)
+                expected_dtype = layout[key].dtype
+                allowed_dtype = permitted_float if expected_dtype == torch.float32 else {
+                    torch.int64: ('I64',), torch.bool: ('BOOL',)}.get(expected_dtype, ())
                 require(tuple(header.get_shape()) == tuple(layout[key].shape)
-                        and header.get_dtype() in (*permitted_float, 'I64', 'BOOL'),
+                        and header.get_dtype() in allowed_dtype,
                         'native safetensor shape/dtype mismatch; FP32-only qualification: ' + key)
                 # Record headers before loading any payload from this shard.
                 state[key] = None
+    require(complete(set(state)) and (weight_map is None or set(state) == {rename(k) for k in weight_map}),
+            'incomplete native weights; random fallback forbidden')
+    for path in weights:
         payload = {rename(key): tensor for key, tensor in load_file(path, device='cpu').items()}
         for key, tensor in payload.items():
             if tensor.is_floating_point():
@@ -173,6 +199,12 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
                 payload[key] = tensor.float()
             require(payload[key].dtype == layout[key].dtype, 'native weight dtype differs from FP32 compute layout: ' + key)
         state.update(payload)
+    for group in alias_groups:
+        supplied = sorted(group & state.keys())
+        value = state[supplied[0]]
+        require(all(torch.equal(value, state[key]) for key in supplied), 'contradictory native tied weight aliases')
+        for key in group:
+            state[key] = value
     require(set(state) == set(layout) and all(t is not None for t in state.values()),
             'incomplete native weights; random fallback forbidden')
     # Native nonpersistent RoPE caches must be initialized by the actual CPU
@@ -180,6 +212,8 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32'):
     native_config = architecture(cls, config)
     with torch.device('cpu'):
         model = (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
+    require({frozenset(group) for group in _parameter_alias_groups(model, model.state_dict())}
+            == {frozenset(group) for group in alias_groups}, 'native constructor parameter aliases changed')
     model.load_state_dict(state, strict=True)
     require(all(not p.is_meta for p in (*model.parameters(), *model.buffers())), 'uninitialized meta native state')
     model.eval()

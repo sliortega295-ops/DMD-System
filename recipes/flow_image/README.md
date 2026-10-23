@@ -76,6 +76,26 @@ Budgets are parameter-count limits, **not** a promise that three large models,
 Adam, EMA, text/VAE and temporary loading state fit your RAM. Full pretrained
 multi-billion-parameter CPU construction has not been exercised.
 
+The strict text loader admits the pinned public legacy JSON ABI through the
+actual native Config parser: Qwen RoPE aliases, Qwen2.5-VL flat text fields and
+the audited T5/UMT5 encoder metadata. Unknown fields, conflicting aliases and
+unsupported metadata values are refused before weight payload loading. Widths
+come from parsed native configs, not assumed JSON nesting. Original config bytes
+and hashes remain asset-bound; export reconstruction retains the raw document,
+including T5's legacy tying/decoder-scaling intent, rather than normalizing and
+reparsing `Config.to_dict()`. Native config classes and compatibility source are
+also runtime-bound, so old prepared data/exports need regeneration when that
+source identity changes.
+
+Native safe saves can omit redundant tied keys (for example T5/UMT5
+`encoder.embed_tokens.weight`). Completion is allowed only when the actual
+constructor proves the slots hold the **identical Parameter object**. At least
+one tensor per alias group must exist, and all supplied aliases must agree
+exactly. Independent equal-shaped/equal-valued tensors are never filled. Exact
+indices, headers, dtype policy and finite payload checks still apply; ordinary
+optimizer enumeration remains unique. This format compatibility is not video
+training, pretrained-weight execution, GPU or quality qualification.
+
 Copy the family's `training.template.json`, replace the three absolute asset/data/output
 paths, and select actual existing native Linear LoRA targets. Its explicit
 G1/F5/four-step policy is a CPU reference recipe, not tuned pretrained quality.
@@ -189,7 +209,8 @@ latent diagnostics (FLUX is still BN-normalized patchified BCHW at that boundary
 
 ```sh
 DMD_MODERN_FLOW_CPU=1 "$PY" -m pytest -q \
-  tests/test_training_flow_images_cpu.py tests/test_training_model_algorithm_compatibility.py
+  tests/test_training_flow_images_cpu.py tests/test_training_native_text_assets_cpu.py \
+  tests/test_training_model_algorithm_compatibility.py
 ```
 
 Opt-in missing dependencies are failures, not hidden skips. Outside the isolated

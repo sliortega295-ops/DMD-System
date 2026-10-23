@@ -25,19 +25,21 @@ def classes():
 
 
 def validate_architecture(config, media):
+    text = common.architecture(classes()[2], media['text_encoder'])
     require(config.get('_class_name') == 'Flux2Transformer2DModel' and config.get('patch_size') == 1
             and config.get('guidance_embeds') is False and config.get('out_channels') == config.get('in_channels')
             and config['in_channels'] == media['vae']['latent_channels'] * 4
-            and config['joint_attention_dim'] == media['text_encoder']['hidden_size'] * 3,
+            and config['joint_attention_dim'] == text.hidden_size * 3,
             'only native klein Base, no embedded guidance, and matched VAE/Qwen3 width admitted')
-    require(media['text_encoder']['num_hidden_layers'] >= 27
+    require(text.num_hidden_layers >= 27
             and media['vae'].get('patch_size') == [2, 2]
             and type(media['text_max_length']) is int and 1 <= media['text_max_length'] <= 512,
             'native klein text layers 9/18/27, 2x2 codec and explicit max length <=512 required')
 
 
 def empty_shape(media):
-    return (1, media['text_max_length'], media['text_encoder']['hidden_size'] * 3)
+    text = common.architecture(classes()[2], media['text_encoder'])
+    return (1, media['text_max_length'], text.hidden_size * 3)
 
 
 def unpack(tokens, shape):
