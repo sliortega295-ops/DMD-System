@@ -77,6 +77,41 @@ def test_actual_original_loader_configurator_keyops_and_builder_execute(native_c
     assert torch.cuda.is_initialized() is False
 
 
+def test_original_architecture_rejected_before_native_materialization_if_not_reconstructable(
+        native_checkpoint, tmp_path, monkeypatch):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    from safetensors.torch import save_file
+    api, _, _, _, metadata = native_checkpoint
+    config = json.loads(metadata['config'])['transformer']; config['num_layers'] = 17
+    configurator = api.source.import_module('ltx_core.model.transformer.model_configurator')
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(732)
+        native = configurator.LTXModelConfigurator.from_metadata({'config': {'transformer': config}})
+        for name, parameter in native.named_parameters():
+            if 'scale_shift_table' in name:
+                torch.nn.init.normal_(parameter, std=.02)
+    count = sum(parameter.numel() for parameter in native.parameters())
+    assert count < 3_000_000, 'the original-format rejection fixture must remain CPU-small'
+    state = {'model.diffusion_model.' + name: value.detach().contiguous()
+             for name, value in native.state_dict().items()}
+    path = tmp_path / 'seventeen-narrow-layers.safetensors'
+    save_file(state, path, metadata=dict(metadata, config=json.dumps({'transformer': config})))
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    actual_meta, actual_build = builder.meta_model, builder.build
+    calls = []
+    def meta(self, *args, **kwargs):
+        calls.append('meta_model'); return actual_meta(self, *args, **kwargs)
+    def build(self, *args, **kwargs):
+        calls.append('build'); return actual_build(self, *args, **kwargs)
+    monkeypatch.setattr(builder, 'meta_model', meta)
+    monkeypatch.setattr(builder, 'build', build)
+    with pytest.raises(ValueError, match='bounded explicit CPU native architecture'):
+        load_original_transformer(api.source, path, file_sha256(path),
+            max_parameters=count + 1, dtype_policy='strict_fp32')
+    assert not calls, 'reject before even the native meta-model sizing/materialization stage'
+
+
 @pytest.mark.parametrize('case', ['empty', 'missing', 'shape', 'nonfinite', 'dtype', 'metadata', 'budget', 'hash'])
 def test_incomplete_or_changed_original_checkpoint_refused(native_checkpoint, tmp_path, case):
     from distillschedule.training.ltx import load_original_transformer

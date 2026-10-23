@@ -78,6 +78,11 @@ Inference LoRA fusion is disabled and the native registry has no model/weight
 cache. Both real native attention paths are then explicitly pinned to MATH SDPA.
 
 The caller must supply an explicit CPU `cpu_max_parameters` budget.
+Original-format and explicit-config roles share the current-G reconstruction
+contract: 1..16 layers and video/audio head inner widths at most 1024. Original
+metadata outside that bounded contract is rejected before native meta-model
+construction or weight materialization; a larger parameter budget does not
+override it. Projection checks the same contract before publishing an export.
 `strict_fp32` rejects other precisions; `cast_native_float_to_fp32` explicitly
 permits native FP16/BF16 and uses the original builder's FP32 cast, never an
 implicit cast. Locally generated tiny **original-format** safetensors test the
@@ -121,6 +126,20 @@ The first recipe fixes:
   once per **actual role update**, not once per nominal cycle. Optional
   post-G-update EMA and actual `[cycles,G_updates,F_updates]` clocks are saved.
 
+Complete-cycle admission uses the algorithm-owned `DMDClocks` stateful schema
+`distillschedule.dmd_clocks.v1` and actual native `ExponentialLR` subclasses
+(`distillschedule.dmd_exponential_lr.v1`), not shadow scheduler copies. Before
+any live restore, and before save publication, counters must equal `[c,c,c*N]`,
+each scheduler's `last_epoch`/`_step_count` must equal its actual role updates
+and updates plus one, and every logical version must match the declared
+Program write count times `c`. The first Student call also rejects inconsistent
+live complete-cycle counters/scheduler clocks before updating a role. Immutable
+ratio/version-stride bindings are rebuilt from the Program, not serialized
+caches. Native scheduler step arithmetic and all numerical expectations remain
+unchanged. Older plain-tensor clock checkpoints/fixtures are provenance only:
+the new explicit stateful schema and framework source identity do not admit
+them as current resumable checkpoints.
+
 This is an explicit No-GAN flow-DMD policy, **not** official DMD2 or official
 Self-Forcing loss/normalizer/gradient semantics.
 
@@ -142,6 +161,10 @@ prepare_inputs("inputs.json", "prepared")
 No resize, frame padding, guessed FPS, waveform resampling or implicit latent
 conversion occurs. Prompt-only needs explicit native AV latent shapes, FPS and
 zero conditioning-prefix lengths, plus the actual local Gemma assets.
+Image-only records may request clean video conditioning only through the actual
+image-backed encoded latent frames (one frame for the native image intake).
+An explicit longer video shape does not make its zero-filled tail observed
+conditioning; a longer requested prefix is rejected, never padded or shortened.
 Preencoded rows preserve every tensor exactly, but must carry both native
 projected/null contexts, physical coords, clean conditioning masks, native
 shapes and matching codec/source identity. Changed source/codec bindings,

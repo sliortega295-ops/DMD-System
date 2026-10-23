@@ -157,6 +157,9 @@ def encode_record(record, parameters, *, media=None):
         if image_latent is not None:
             require(policy['video_prefix_latent_frames'] >= 1 and image_latent.shape[3:] == latents['video'].shape[3:],
                     'image must be explicit first-frame conditioning at the same native geometry')
+            if not (mode == 'raw' and 'video' in record):
+                require(policy['video_prefix_latent_frames'] <= image_latent.shape[2],
+                        'conditioning prefix exceeds actual image-backed native latent frames')
         patch = api.patchifiers
         video_shape, audio_shape = list(latents['video'].shape), list(latents['audio'].shape)
         tokens = {'video': patch.VideoLatentPatchifier(1).patchify(latents['video']),

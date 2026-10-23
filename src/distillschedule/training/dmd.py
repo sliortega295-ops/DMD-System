@@ -11,8 +11,11 @@ policy is required in the algorithm parameters, not borrowed from another paper.
 """
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 import math
+
+import torch
+from torch.optim.lr_scheduler import ExponentialLR
 
 from distillschedule.open_workload.dmd import DMDHook, DMDHooks, build_dmd_workload, dmd_inputs
 from distillschedule.training.prediction import PredictionSpec
@@ -69,6 +72,129 @@ def _policy(parameters):
     return p
 
 
+@dataclass(frozen=True)
+class _CycleProgress:
+    """Live-only immutable contract derived from this algorithm's Program writes."""
+    fake_updates: int
+    version_strides: tuple[tuple[str, int], ...]
+
+    def validate(self, progress):
+        require(isinstance(progress, dict) and type(progress.get('cycle')) is int and progress['cycle'] >= 0,
+                'complete-cycle checkpoint progress required')
+        cycle, versions = progress['cycle'], progress.get('versions')
+        expected = {name: cycle * stride for name, stride in self.version_strides}
+        require(isinstance(versions, dict) and versions.keys() == expected.keys()
+                and all(type(value) is int for value in versions.values()) and versions == expected,
+                'logical state versions do not describe the declared complete-cycle updates')
+        return cycle
+
+
+class DMDClocks:
+    """One owned counter tensor, validated before checkpoint restore or updates."""
+    SCHEMA = 'distillschedule.dmd_clocks.v1'
+
+    def __init__(self):
+        self._counters = torch.zeros(3, dtype=torch.int64)
+        self._progress = None
+
+    def bind_progress(self, progress):
+        require(self._progress is None or self._progress == progress, 'complete-cycle clock contract changed')
+        self._progress = progress
+
+    def __getitem__(self, index):
+        return self._counters[index]
+
+    def __setitem__(self, index, value):
+        self._counters[index] = value
+
+    def tolist(self):
+        return self._counters.tolist()
+
+    def runtime_tensors(self):
+        yield self._counters
+
+    def state_dict(self):
+        return {'schema_version': self.SCHEMA, 'counters': self._counters}
+
+    def validate_state_dict(self, value):
+        require(isinstance(value, dict) and set(value) == {'schema_version', 'counters'}
+                and value['schema_version'] == self.SCHEMA, 'complete-cycle clock state schema changed')
+        counter = value['counters']
+        require(type(counter) is torch.Tensor and counter.dtype == torch.int64 and counter.shape == (3,)
+                and not counter.is_meta and counter.layout == torch.strided and not counter.requires_grad
+                and bool((counter >= 0).all()), 'complete-cycle counters must be a nonnegative int64 triple')
+
+    def load_state_dict(self, value):
+        self.validate_state_dict(value)
+        self._counters.copy_(value['counters'].to(self._counters.device))
+
+    def _validate_cycle(self, value, cycle):
+        self.validate_state_dict(value)
+        require(self._progress is not None, 'complete-cycle clock contract is not bound to a Program')
+        require(value['counters'].tolist() == [cycle, cycle, cycle * self._progress.fake_updates],
+                'complete-cycle counters must equal [cycle, cycle, cycle * fake_updates]')
+
+    def validate_cycle(self, cycle):
+        self._validate_cycle(self.state_dict(), cycle)
+
+    def validate_checkpoint_boundary(self):
+        self.validate_cycle(int(self._counters[0]))
+
+    def validate_checkpoint_progress(self, value, progress):
+        require(self._progress is not None, 'complete-cycle clock contract is not bound to a Program')
+        self._validate_cycle(value, self._progress.validate(progress))
+
+
+class DMDExponentialLR(ExponentialLR):
+    """The actual native scheduler, with per-role complete-cycle admission only.
+
+    Native step/get_lr arithmetic is unchanged. Role/Program bindings are live
+    immutable configuration, not a second serialized scheduler or mutable cache.
+    """
+    SCHEMA = 'distillschedule.dmd_exponential_lr.v1'
+
+    def __init__(self, optimizer, *, gamma, role):
+        self._dmd_role, self._dmd_progress = role, None
+        super().__init__(optimizer, gamma=gamma)
+
+    def bind_progress(self, progress):
+        require(self._dmd_progress is None or self._dmd_progress == progress, 'complete-cycle scheduler contract changed')
+        self._dmd_progress = progress
+
+    def state_dict(self):
+        value = {key: item for key, item in super().state_dict().items()
+                 if key not in ('_dmd_role', '_dmd_progress')}
+        return dict(value, dmd_schema_version=self.SCHEMA, dmd_role=self._dmd_role)
+
+    def validate_state_dict(self, value):
+        require(isinstance(value, dict) and value.keys() == self.state_dict().keys()
+                and value['dmd_schema_version'] == self.SCHEMA and value['dmd_role'] == self._dmd_role
+                and value['gamma'] == self.gamma and value['base_lrs'] == self.base_lrs,
+                'scheduler clock schema/role/policy changed')
+        require(type(value['last_epoch']) is int and value['last_epoch'] >= 0
+                and type(value['_step_count']) is int and value['_step_count'] >= 1,
+                'scheduler clock must contain actual nonnegative update counts')
+
+    def load_state_dict(self, value):
+        self.validate_state_dict(value)
+        super().load_state_dict({key: item for key, item in value.items()
+                                if key not in ('dmd_schema_version', 'dmd_role')})
+
+    def _validate_cycle(self, value, cycle):
+        self.validate_state_dict(value)
+        require(self._dmd_progress is not None, 'complete-cycle scheduler contract is not bound to a Program')
+        updates = cycle * (1 if self._dmd_role == 'student' else self._dmd_progress.fake_updates)
+        require(value['last_epoch'] == updates and value['_step_count'] == updates + 1,
+                'scheduler clock differs from actual complete-cycle role updates: ' + self._dmd_role)
+
+    def validate_cycle(self, cycle):
+        self._validate_cycle(self.state_dict(), cycle)
+
+    def validate_checkpoint_progress(self, value, progress):
+        require(self._dmd_progress is not None, 'complete-cycle scheduler contract is not bound to a Program')
+        self._validate_cycle(value, self._dmd_progress.validate(progress))
+
+
 def training_state(student, fake, teacher, *, student_lr, fake_lr, scheduler_gamma, ema_decay=None):
     """Visible ordinary modules, AdamW, actual per-update schedulers and clocks.
 
@@ -82,7 +208,7 @@ def training_state(student, fake, teacher, *, student_lr, fake_lr, scheduler_gam
     require(all(not p.requires_grad for p in teacher.parameters()), 'Teacher must already be frozen')
     state = {'student': student, 'fake': fake, 'teacher': teacher,
              'student_grad': None, 'fake_grad': None,
-             'dmd_counters': torch.zeros(3, dtype=torch.int64),
+             'dmd_counters': DMDClocks(),
              'dmd_lifecycle': {'ema_decay': ema_decay, 'scheduler': 'per_actual_role_update'}}
     for role, lr in (('student', student_lr), ('fake', fake_lr)):
         params = [p for p in state[role].parameters() if p.requires_grad]
@@ -90,7 +216,7 @@ def training_state(student, fake, teacher, *, student_lr, fake_lr, scheduler_gam
         optimizer = torch.optim.AdamW(params, lr=_number(lr, role + '_lr'),
                                       betas=(.9, .999), eps=1e-8, weight_decay=0.)
         state[role + '_optimizer'] = optimizer
-        state[role + '_scheduler'] = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
+        state[role + '_scheduler'] = DMDExponentialLR(optimizer, gamma=gamma, role=role)
     if ema_decay is not None:
         state['student_ema'] = {name: p.detach().clone() for name, p in student.named_parameters()}
     return state
@@ -157,6 +283,10 @@ def _student(ctx):
     values = dmd_inputs(ctx)
     counters = ctx.state['dmd_counters']
     require(int(counters[0]) == ctx.attributes['cycle'], 'complete-cycle clock differs from requested cycle')
+    if ctx.attributes['phase'] == 'student':
+        counters.validate_cycle(ctx.attributes['cycle'])
+        for role in ('student', 'fake'):
+            ctx.state[role + '_scheduler'].validate_cycle(ctx.attributes['cycle'])
     p = ctx.attributes['flow_policy']
     return _payload(ctx.state['student'].rollout(values['feeds'], p['rollout_sigmas'], p['gradient_policy']))
 
@@ -253,9 +383,14 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
     base_names = {'student', 'fake', 'teacher', 'student_optimizer', 'fake_optimizer', 'student_grad', 'fake_grad'}
     required = {'dmd_counters', 'dmd_lifecycle', 'student_scheduler', 'fake_scheduler'}
     require(base_names | required <= state.keys(), 'complete role/optimizer/scheduler/counter state required')
+    require(type(state['dmd_counters']) is DMDClocks
+            and all(type(state[role + '_scheduler']) is DMDExponentialLR
+                    and state[role + '_scheduler'].optimizer is state[role + '_optimizer']
+                    and state[role + '_scheduler']._dmd_role == role for role in ('student', 'fake')),
+            'owned complete-cycle clocks and native per-role schedulers required')
     require(('student_ema' in state) == (state['dmd_lifecycle']['ema_decay'] is not None), 'EMA state/policy mismatch')
     student_effects = ('student_scheduler', 'dmd_counters', *(('student_ema',) if 'student_ema' in state else ()))
-    hooks = DMDHooks(student_forward=DMDHook(_student, reads=('dmd_counters',)),
+    hooks = DMDHooks(student_forward=DMDHook(_student, reads=('dmd_counters', 'student_scheduler', 'fake_scheduler')),
         teacher_forward=_teacher, fake_forward=_fake,
         noise=DMDHook(_noise, reads=('student',)), student_loss=_student_loss, fake_loss=_fake_loss,
         student_update=DMDHook(_update, reads=(*student_effects, 'dmd_lifecycle'), writes=student_effects),
@@ -273,4 +408,8 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
     workload.program = replace(workload.program, calls=(*calls, commit),
         parameters={**workload.program.parameters, 'algorithm': 'explicit_nogan_rectified_flow_dmd.v1', 'policy': p})
     workload.bindings = {**workload.bindings, 'commit_cycle': _commit}
+    progress = _CycleProgress(p['fake_updates'], tuple((name,
+        sum(name in call.writes for call in workload.program.calls)) for name in sorted(state)))
+    for name in ('dmd_counters', 'student_scheduler', 'fake_scheduler'):
+        state[name].bind_progress(progress)
     return workload.validate()

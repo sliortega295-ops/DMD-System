@@ -62,9 +62,8 @@ def trainable_scope(native, config):
         native.set_submodule(name, TrainableLowRankLinear(module, rank=config['rank'], alpha=config['alpha']))
 
 
-def native_transformer(source, architecture):
-    from torch.nn.attention import SDPBackend
-    from .ltx_media import constructor
+def _validate_architecture(architecture):
+    """One bounded contract for local/original roles and current-G reconstruction."""
     require(isinstance(architecture, dict), 'explicit actual LTXModel constructor config required')
     essential = {'model_type', 'num_attention_heads', 'attention_head_dim', 'audio_num_attention_heads',
         'audio_attention_head_dim', 'in_channels', 'out_channels', 'audio_in_channels', 'audio_out_channels',
@@ -75,10 +74,20 @@ def native_transformer(source, architecture):
     require(architecture['model_type'] == 'ltx av model' and architecture['use_middle_indices_grid'] is True
             and all(architecture[k] == 128 for k in ('in_channels', 'out_channels', 'audio_in_channels', 'audio_out_channels')),
             'this admitted route requires actual AV width128 tokens and native bound coordinates')
-    require(1 <= architecture['num_layers'] <= 16
+    require(all(type(architecture[k]) is int and architecture[k] > 0 for k in (
+                'num_layers', 'num_attention_heads', 'attention_head_dim',
+                'audio_num_attention_heads', 'audio_attention_head_dim'))
+            and architecture['num_layers'] <= 16
             and architecture['num_attention_heads'] * architecture['attention_head_dim'] <= 1024
             and architecture['audio_num_attention_heads'] * architecture['audio_attention_head_dim'] <= 1024,
             'bounded explicit CPU native architecture required; full pretrained 22B route is NOT_RUN')
+    return essential
+
+
+def native_transformer(source, architecture):
+    from torch.nn.attention import SDPBackend
+    from .ltx_media import constructor
+    essential = _validate_architecture(architecture)
     api = source.import_module('ltx_core.model.transformer.model')
     attention = source.import_module('ltx_core.model.transformer.attention')
     config = deepcopy(architecture)
@@ -115,6 +124,7 @@ def _original_architecture(metadata):
         'audio_num_attention_heads', 'audio_attention_head_dim', 'num_layers', 'cross_attention_dim', 'audio_cross_attention_dim'))
         and all(config[k] == 128 for k in ('in_channels', 'out_channels', 'audio_in_channels', 'audio_out_channels'))
         and config['use_middle_indices_grid'] is True, 'original native AV shape contract is incompatible')
+    _validate_architecture(architecture)
     return architecture
 
 
@@ -425,6 +435,7 @@ def _inference_components(api, student, media, parameters):
 
 def project_current_generator(components, effective_training_parameters):
     student = components.state['student']; media = components.state['media']
+    _validate_architecture(student.architecture)
     parameters = _inference_parameters(student)
     api = original(parameters['source_root'])
     return InferenceProjection(components=_inference_components(api, student, media, parameters),

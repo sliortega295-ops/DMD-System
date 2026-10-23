@@ -92,7 +92,10 @@ def test_fresh_process_exact_resume_and_current_generator_av_export(assets, tmp_
     a = torch.load(Path(resumed['checkpoint']) / 'state.pt', weights_only=True)
     b = torch.load(Path(whole['checkpoint']) / 'state.pt', weights_only=True)
     assert equal(a, b), 'all state, RNG, named Adam, schedulers, EMA, data and logical versions must be exact'
-    assert a['state']['dmd_counters']['value'].tolist() == [3, 3, 15]
+    clocks = a['state']['dmd_counters']
+    assert clocks['kind'] == 'stateful' and clocks['class'] == 'distillschedule.training.dmd.DMDClocks'
+    assert clocks['value']['schema_version'] == 'distillschedule.dmd_clocks.v1'
+    assert clocks['value']['counters'].tolist() == [3, 3, 15]
     assert a['state']['student_scheduler']['value']['last_epoch'] == 3
     assert a['state']['fake_scheduler']['value']['last_epoch'] == 15
     assert set(a['state']) >= {'student', 'fake', 'teacher', 'student_optimizer', 'fake_optimizer', 'student_ema'}
@@ -151,7 +154,8 @@ def test_fresh_process_exact_resume_and_current_generator_av_export(assets, tmp_
     (tmp_path / 'acceptance-proof.json').write_text(json.dumps(dict(
         schema_version='distillschedule.ltx25_cpu_acceptance_proof.v1',
         config_key=config_key, exact_payload_equality=True, compared_payload_fields=sorted(a),
-        final_versions=whole['final_versions'], final_counters=a['state']['dmd_counters']['value'].tolist(),
+        final_versions=whole['final_versions'], final_counters=clocks['value']['counters'].tolist(),
+        clock_schema=clocks['value']['schema_version'], scheduler_schema='distillschedule.dmd_exponential_lr.v1',
         verified_checkpoint=str(tmp_path / 'verified-checkpoint'), new_prepared=str(new_prepared),
         export=str(tmp_path / 'export'), generated=portable, generation_matches_current_restored_student=True,
         original_training_bases_hidden_and_training_checkpoints_removed_during_portable_generation=True,
@@ -183,6 +187,83 @@ def test_preencoded_exact_prompt_intake_and_no_invented_conditions(assets, tmp_p
     source.write_text(json.dumps(value))
     with pytest.raises(ValueError, match='explicit native latent shape'):
         prepare_inputs(source, tmp_path / 'must-not-publish')
+
+
+@pytest.mark.parametrize('prefix', [1, 2])
+def test_image_only_clean_prefix_uses_only_actual_encoded_frames(assets, tmp_path, prefix):
+    from distillschedule.data.ltx_inputs import prepare_inputs, SCHEMA
+    root = Path(assets['root'])
+    value = dict(schema_version=SCHEMA, mode='raw', source_root=os.environ['LTX_SOURCE_ROOT'],
+        assets=str(Path(assets['assets']) / 'assets.json'), records=[dict(
+            id='image-only', image=str(root / 'raw/image.png'), text={'value': 'a cat runs'},
+            metadata=dict(geometry=dict(fps=8., video_shape=[1, 128, 2, 2, 2],
+                audio_shape=[1, 8, 11, 16], conditioning=dict(
+                    video_prefix_latent_frames=prefix, audio_prefix_latent_frames=0))))])
+    source = tmp_path / 'image-only.json'; source.write_text(json.dumps(value))
+    output = tmp_path / 'prepared'
+    if prefix == 2:
+        with pytest.raises(ValueError, match='image-backed'):
+            prepare_inputs(source, output)
+        assert not output.exists() and not list(tmp_path.glob('.prepared*'))
+    else:
+        prepared = prepare_inputs(source, output)
+        row = PreparedDataset(prepared).sample(0)
+        reference = PreparedDataset(assets['prepared']).sample(0)
+        assert row['conditioning_mask']['video'].tolist() == [[True] * 4 + [False] * 4]
+        assert not row['conditioning_mask']['audio'].any()
+        assert torch.equal(row['conditioning']['video'][:, :4], reference['conditioning']['video'][:, :4])
+        assert torch.count_nonzero(row['conditioning']['video'][:, :4]) > 0
+        assert not row['conditioning']['video'][:, 4:].any()
+        assert not row['latents']['video'].any()
+
+
+@pytest.fixture(scope='module')
+def complete_native_checkpoint(assets, tmp_path_factory):
+    from distillschedule.training.checkpoint import save_checkpoint
+    from distillschedule.training.policy import CyclePolicy
+    config = load_training_config(assets['config'])
+    model, dataset, algorithm, identity = construct(config)
+    root = tmp_path_factory.mktemp('ltx-clock-checkpoint')
+    workload = build_cycle(config, model, dataset, algorithm, cycle=0, cursor=0)
+    policy = CyclePolicy(config.execution)
+    session, _ = policy.run(workload, root)
+    path = save_checkpoint(root / 'complete', model.state, identity=identity, cycle=1, cursor=1,
+        versions=session.receipt['dispatcher']['final_versions'], policy=policy.bound)
+    return config, path
+
+
+@pytest.mark.parametrize('entrypoint', ['restore', 'output'])
+@pytest.mark.parametrize('fault', ['counter', 'scheduler', 'version'])
+def test_native_inconsistent_checkpoint_rejected_before_restore_or_output_mutation(
+        complete_native_checkpoint, tmp_path, monkeypatch, entrypoint, fault):
+    import shutil
+    import distillschedule.training.session as lifecycle
+    from distillschedule.training.checkpoint import pack_state, restore_checkpoint
+    from test_training_dmd_flow import _rehash_checkpoint
+    config, source = complete_native_checkpoint
+    path = tmp_path / 'inconsistent'; shutil.copytree(source, path)
+    payload = torch.load(path / 'state.pt', weights_only=True)
+    if fault == 'counter':
+        payload['state']['dmd_counters']['value']['counters'][2] = 4  # G1/F5, not four Fake updates.
+    elif fault == 'scheduler':
+        payload['state']['fake_scheduler']['value']['_step_count'] = 5  # Native count must be 5 + 1.
+    else:
+        payload['versions']['fake'] = 4
+    _rehash_checkpoint(path, payload)
+    model, dataset, algorithm, identity = construct(config)
+    build_cycle(config, model, dataset, algorithm, cycle=0, cursor=0)
+    with torch.no_grad():
+        next(model.state['student'].parameters()).fill_(-.75)
+    before = pack_state(model.state)
+    if entrypoint == 'output':
+        monkeypatch.setattr(lifecycle, 'construct', lambda _: (model, dataset, algorithm, identity))
+    with pytest.raises(ValueError, match='complete-cycle|scheduler clock|logical.*version'):
+        if entrypoint == 'restore':
+            restore_checkpoint(path, model.state, identity=identity)
+        else:
+            lifecycle._load_for_output(config, path)
+    assert equal(before, pack_state(model.state)), 'native AV roles/Adam/schedulers must remain untouched'
+    assert not torch.cuda.is_initialized()
 
 
 def test_native_unapplicable_controls_and_incomplete_checkpoint_fail_closed(assets, tmp_path):
