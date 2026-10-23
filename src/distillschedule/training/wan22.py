@@ -175,7 +175,7 @@ class Media(nn.Module):
         return {'video': ((pixels[0].permute(1,2,3,0).clamp(-1,1)+1)*127.5).round().to(torch.uint8).contiguous()}
 
 
-class Role(nn.Module):
+class Role(safe.QualifiedNativeFlowTrials, nn.Module):
     def __init__(self, native, *, config, media_config, binding, empty, trainable, schedule):
         super().__init__()
         self.native = native
@@ -287,6 +287,7 @@ def load_media_bundle(assets):
 
 def _components(state, descriptor, *, training):
     from distillschedule.data.wan22_inputs import encode_export_input
+    safe.qualify_trial_roles(state, descriptor['evidence_kind'])
     immutable = ['teacher','media'] if training else ['media']
     if training:
         for role in ('student','fake'):

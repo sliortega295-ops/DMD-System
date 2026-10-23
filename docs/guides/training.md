@@ -110,6 +110,48 @@ sampling policy and seed that select its first record), use
 `{"mode":"plan","plan":"path/to/selected-plan.json"}`. Changed model,
 input, source or calibration hashes reject through the original planner.
 
+### Modern native flow qualification and capacity
+
+FLUX.2-klein-base, Qwen-Image, Wan2.2 TI2V-5B T2V and HunyuanVideo1.5 T2V
+retain their native model/text/VAE classes and source-bound local assets.
+Their current admitted execution is CPU1 FP32; GPU, distributed, full-pretrained
+training and quality qualification are **NOT_RUN**. The actual automatic and
+saved-plan acceptance uses explicitly `SYNTHETIC_TEST_ONLY` tiny native
+FLUX/Qwen/Wan fixtures, real gradients, G1/F5 Adam/scheduler/EMA updates,
+fresh text records, and complete-cycle restart in new processes. It is not an
+alternate model-name planner or an official DMD2/Self-Forcing recipe.
+
+The family Role clone boundary explicitly refuses
+`LOCAL_PRETRAINED_UNVERIFIED` (or missing/unqualified) provenance before copying
+the native role graph. This covers both public auto/saved-plan training and
+direct common-ABI calibration/paired execution. CPU1 reference and manual
+persistent non-clone execution remain available with the declared local asset
+and parameter-budget checks. `SYNTHETIC_TEST_ONLY` is a trusted caller label,
+**not** a verified payload-size/origin check or a memory-safety guarantee. Do not
+relabel pretrained weights to bypass this qualification refusal. Existing
+official CUDA whole-owner clone refusals remain in force.
+
+`memory_limit_bytes` bounds the **selected plan's tracked tensor storage** and
+measured retained/workspace terms. It is not a host RSS, model-construction,
+CPU staging, concurrent reference/selected snapshot, or whole-role clone budget.
+All image role, VAE and text parameter budgets are now meta-checked before any
+concrete component is constructed; Wan/Hunyuan retain their analogous
+all-component preflight. Parameter counts still do not bound RSS or staging.
+Large/full-pretrained clone trials are unsupported, not implicitly admitted by
+supplying a large selected-plan limit. No new offload backend is provided.
+
+Inspect the actual inventory rather than assuming a physical option exists.
+These G1/F5 fixtures currently admit two candidates: private and immutable-base
+sharing. No replay-safe binding is declared, so checkpoint choices are not
+invented. With one sample each, calibration performs three program runs, then
+the mandatory selected-plan reference gate performs two more. The latter's
+selected execution is the first formal training cycle. Thus three formal auto
+cycles require seven program runs total, not eight; a saved-plan run needs four.
+`max_program_runs` bounds calibration only, not the subsequent paired admission
+or formal cycles. Selection may legally choose private storage; there is no
+speedup or optimality claim. The original loss/state/source/resource gates are
+unchanged.
+
 ## Complete-cycle restart
 
 ```sh

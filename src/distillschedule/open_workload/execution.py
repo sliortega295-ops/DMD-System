@@ -33,7 +33,11 @@ class ExecutionBackend:
         return gather(value)
 
     def identity(self):
-        if not self.distributed: return self.workload.identity
+        if not self.distributed:
+            # Calibration/plan artifacts use JSON, including algorithm-native
+            # tuples. Compare that same complete canonical identity locally,
+            # just as below for replicas; never drop source/state/policy fields.
+            return json.loads(json.dumps(self.workload.identity, allow_nan=False))
         from .replicated import identity
         rows=identity(self.workload)
         first=rows['ranks'][0]

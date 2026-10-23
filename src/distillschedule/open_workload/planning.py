@@ -318,11 +318,14 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False,persi
         plan_memory_limit(workload.device,distributed=backend.distributed,
             consensus=backend.consensus,requested=document['memory_limit_bytes'],
             reserve_bytes=reserve)
-    require(workload.program.compile().to_dict()==manifest['graph'],'wrong callable program',path='open.run')
+    # Program/Call metadata may contain native tuples. Admission compares the
+    # complete JSON wire contract, not Python tuple-vs-list spelling after save.
+    require(json.loads(json.dumps(workload.program.compile().to_dict(),allow_nan=False))==manifest['graph'],
+            'wrong callable program',path='open.run')
     selected=document['selected'];matches=[v for v in variants if v[0]['id']==selected['candidate_id']]
     require(len(matches)==1 and selected['implementation']==matches[0][0]['implementation'],'unmeasured implementation',path='open.run')
     row,g,rules,costs,lives=matches[0]
-    require(backend.graph(row['implementation']).to_dict()==g.to_dict(),
+    require(json.loads(json.dumps(backend.graph(row['implementation']).to_dict(),allow_nan=False))==g.to_dict(),
             'execution constraints differ from native backend',path='open.run')
     order=verify_order(selected,g,rules,costs,lives,row['static_bytes'],document['memory_limit_bytes'])
     root=Path(output).resolve();backend.mkdir(root)

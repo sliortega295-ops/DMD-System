@@ -37,6 +37,11 @@ def owned(assets):
     return config,*construct(config)
 
 
+def test_unqualified_pretrained_trials_refused_before_copy(assets, tmp_path, monkeypatch):
+    from test_training_modern_flow_planning_cpu import assert_unqualified_trials_refused
+    assert_unqualified_trials_refused(assets, tmp_path, monkeypatch)
+
+
 def test_native_dual_text_temporal4_codec_forward_gradient_and_euler_oracles(assets):
     import torch
     from diffusers import HunyuanVideo15Transformer3DModel, AutoencoderKLHunyuanVideo15, HunyuanVideo15Pipeline

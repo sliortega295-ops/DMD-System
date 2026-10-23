@@ -262,7 +262,37 @@ class ImageMedia(nn.Module):
         return {'image': ((pixels[0].permute(1, 2, 0).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)}
 
 
-class ImageRole(nn.Module):
+class QualifiedNativeFlowTrials:
+    """Qualification refusal, not a parameter-count or host-capacity estimator.
+
+    Whole-role paired clones are currently tested only with explicitly labeled
+    synthetic CPU fixtures. A manifest label is trusted provenance, not a
+    verified model size/origin or a bound on simultaneous clones and CPU RSS.
+    Reference/manual persistent execution does not enter this copy boundary.
+    """
+    def __deepcopy__(self, memo):
+        require(getattr(self, '_trial_evidence_kind', None) == 'SYNTHETIC_TEST_ONLY',
+                'pretrained or unqualified native flow clone trials are not admitted; '
+                'SYNTHETIC_TEST_ONLY CPU fixtures only; selected plan bytes are not a clone/RSS budget')
+        cpu1()
+        require(all(t.device.type == 'cpu' and (not t.is_floating_point() or t.dtype == torch.float32)
+                    for t in (*self.parameters(), *self.buffers())),
+                'native flow clone trials require CPU1 FP32 tensors')
+        result = type(self).__new__(type(self))
+        memo[id(self)] = result
+        # Preserve native Module getstate/setstate behavior (including compiled
+        # state handling) and the shared Parameter/optimizer graph's copy memo.
+        result.__setstate__(deepcopy(self.__getstate__(), memo))
+        return result
+
+
+def qualify_trial_roles(state, evidence_kind):
+    for name in ('student', 'fake', 'teacher'):
+        if name in state:
+            state[name]._trial_evidence_kind = evidence_kind
+
+
+class ImageRole(QualifiedNativeFlowTrials, nn.Module):
     def __init__(self, native, *, api, config, media_config, binding, empty, trainable, schedule):
         super().__init__()
         self.native = native
@@ -331,6 +361,7 @@ def _metadata(api, descriptor):
 
 def _components(api, state, descriptor, *, training):
     from distillschedule.data.flow_image_inputs import encode_export_input
+    qualify_trial_roles(state, descriptor['evidence_kind'])
     immutable = ['teacher', 'media'] if training else ['media']
     if training:
         # Reuse the existing exact immutable alias mechanism, including actual
@@ -373,6 +404,20 @@ def load_media_bundle(assets, api):
     require(all(config == role_configs[0] for config in role_configs), 'same-family role architectures must match before loading')
     for config in role_configs:
         api.validate_architecture(config, preview)
+    # Refuse every role/media parameter budget before any concrete constructor
+    # or safetensor payload load. This is meta parameter sizing, NOT host RSS or
+    # a bound on checkpoint staging or paired calibration clones.
+    transform = getattr(api, 'transformer_config', None)
+    for name, cls in [('student', native_cls), ('fake', native_cls), ('teacher', native_cls),
+                      ('vae', vae_cls), ('text_encoder', text_cls)]:
+        config = json_object(roots[name]/'config.json')
+        if name in manifest['roles'] and transform is not None:
+            config = transform(deepcopy(config))
+        witness = shell(cls, config)
+        count = sum(p.numel() for p in witness.parameters())
+        spec = (manifest['roles'] if name in manifest['roles'] else manifest['media'])[name]
+        require(0 < count <= spec['max_parameters'], 'native model exceeds explicit CPU parameter budget: ' + name)
+        del witness
     binding = fingerprint(dict(family=api.FAMILY, source=manifest['source'], media=manifest['media'],
         text_max_length=manifest['text_max_length'], runtime=runtime, dtype='FP32', codec_policy=api.CODEC_POLICY,
         transformer_config_sha256=file_sha256(roots['student']/'config.json')))

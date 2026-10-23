@@ -25,6 +25,32 @@ def test_real_measurements_to_dp_to_native_execution(tmp_path):
     assert not out['claimable_speedup'] and out['gpu_execution']=='NOT_RUN'
 
 
+def test_serialized_identity_retains_nested_tuple_semantics_for_local_execution(tmp_path):
+    """Algorithm-native tuples cross the same JSON boundary as replicated identity."""
+    workload = build(n=1)
+    workload.identity_extra = {'algorithm': {'sigmas': (1., .5, 0.), 'nested': [(('exact', 7),)]}}
+    workload.program = replace(workload.program,
+        parameters={**workload.program.parameters, 'algorithm_sigmas': (1., .5, 0.)},
+        calls=tuple(replace(call, attributes={**call.attributes, 'algorithm_contract': {'sigmas': (1., .5, 0.)}})
+                    for call in workload.program.calls))
+    manifest = calibrate(workload, tmp_path/'costs', samples=1, max_candidates=1, max_program_runs=2)
+    document = plan(tmp_path/'costs/calibration.json', memory_limit_bytes=10**8)
+    assert manifest['identity'] == document['identity'] == json.loads(json.dumps(workload.identity))
+    write_new_json(tmp_path/'plan.json', document)
+    assert run(workload, tmp_path/'plan.json', tmp_path/'run')[0]['reference_gate']['status'] == 'PASS'
+
+
+@pytest.mark.parametrize('value', [{1, 2}, float('nan')])
+def test_non_json_identity_rejected_before_trial_construction(tmp_path, monkeypatch, value):
+    from distillschedule.open_workload.torch_backend import Session
+    workload = build(n=1); workload.identity_extra = {'not_json': value}
+    def forbidden(*args, **kwargs): raise AssertionError('invalid identity reached native trial construction')
+    monkeypatch.setattr(Session, '__init__', forbidden)
+    with pytest.raises((TypeError, ValueError)):
+        calibrate(workload, tmp_path/'rejected', samples=1, max_candidates=1, max_program_runs=2)
+    assert not (tmp_path/'rejected').exists()
+
+
 def test_capacity_can_select_shared_implementation_not_hardcoded_winner(tmp_path):
     w=build(n=1,width=64,length=1)
     m=calibrate(w,tmp_path/'costs',samples=1)

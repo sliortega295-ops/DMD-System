@@ -526,6 +526,38 @@ def test_asset_capabilities_and_source_rejected_before_native_load(assets,tmp_pa
         with pytest.raises(ValueError):api.build_model(parameters)
 
 
+@pytest.mark.parametrize('component', ['student', 'fake', 'teacher', 'vae', 'text_encoder'])
+def test_all_parameter_budgets_precede_any_concrete_constructor(assets, tmp_path, monkeypatch, component):
+    """Parameter-count admission is not an RSS budget, but must precede allocation."""
+    from functools import wraps
+    import json
+    import shutil
+    import torch
+    from distillschedule.training.config import load_training_config
+    api = importlib.import_module('distillschedule.training.' +
+        ('flux' if assets['family'] == 'flux2-klein-base' else 'qwen_image'))
+    root = tmp_path/'assets'; shutil.copytree(assets['root'], root)
+    manifest = json.loads((root/'assets.json').read_text())
+    section = 'roles' if component in manifest['roles'] else 'media'
+    manifest[section][component]['max_parameters'] = 1
+    (root/'assets.json').write_text(json.dumps(manifest))
+    parameters = dict(load_training_config(assets['config']).model['parameters'], assets=str(root/'assets.json'))
+    calls = []
+    def meta_only(original):
+        @wraps(original)
+        def checked(self, *args, **kwargs):
+            device = torch.get_default_device().type
+            calls.append(device)
+            assert device == 'meta', 'concrete native constructor preceded all-component budget admission'
+            return original(self, *args, **kwargs)
+        return checked
+    for cls in api.classes()[:3]:
+        monkeypatch.setattr(cls, '__init__', meta_only(cls.__init__))
+    with pytest.raises(ValueError, match='parameter budget'):
+        api.build_model(parameters)
+    assert calls and set(calls) == {'meta'}
+
+
 def test_preencoded_happy_path_and_transactional_invalid_binding(assets,tmp_path):
     from copy import deepcopy
     import json
