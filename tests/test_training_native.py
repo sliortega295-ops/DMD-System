@@ -55,7 +55,7 @@ def replace_config(config, **sections):
     return TrainingConfig.from_dict(raw, source=config.source)
 
 
-def search_fixture(tmp_path, workload):
+def search_fixture(tmp_path, workload, *, implementation=None):
     """Real original compiler/validator with small serialized CPU assets.
 
     Identity files here do NOT represent pretrained checkpoints or native
@@ -82,6 +82,7 @@ def search_fixture(tmp_path, workload):
         impl = H3Implementation(cache_policy="cpu_staged_trim")
         task = H3Request()
         profile_id = "minimax_h3_grid1000_best"
+    impl = implementation or impl
     profile = impl.lower_profile()
     assets = dict(schema_version=1, nodes=[dict(host=f"cpu-fixture-node{i}",
         repo_root="/srv/fixture/DMD-System", python_env="/srv/fixture/python") for i in (0, 1)],

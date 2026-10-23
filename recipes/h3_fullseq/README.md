@@ -33,10 +33,18 @@ Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORREC
 
 ## Public training configuration
 
-Use [`training.json`](training.json) with your explicit qualified native inputs
-and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
-for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
-operations. This binding does not replace the original protocol or certify GPU execution.
+[`training.json`](training.json) selects `h3_fullseq.cpu_staged_trim.v1` with explicit
+`mode: manual` and `execution.preset`; supply your qualified original assets
+and output directory, **not a historical saved plan**. The existing typed
+implementation is bound against the current source/assets and enters the same
+native runner and gates. This is exactly two fixed-contract cycles with no
+checkpoint/resume, not continuous training. FAIL unresolved; explicit research reproduction only, not stable or timing-eligible.
+
+Read the [direct preset guide](../../docs/guides/native_presets.md) for the
+complete source/mechanism/runtime mapping and the
+[native training guide](../../docs/guides/native_workloads.md) for separate
+reference/fresh-input and saved-plan paths. CPU admission does not certify
+GPU execution, numerical parity, quality or speedup.
 
 For finite fresh-data training and complete-cycle restart without a selected
 benchmark plan, use the separate [original Grid1000 reference lifecycle](../h3-grid-original-training.md).

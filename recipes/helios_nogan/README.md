@@ -44,7 +44,15 @@ separate [`training.reference.json`](training.reference.json) and
 [direct-reference guide](REFERENCE_TRAINING.md). This requires an actual pinned
 original Step10 G2/C10/EMA10 package; it does not invent a default checkpoint.
 
-Use [`training.json`](training.json) with your explicit qualified native inputs
-and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
-for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
-operations. This binding does not replace the original protocol or certify GPU execution.
+[`training.json`](training.json) selects `helios_nogan.safe_ed8.v1` with explicit
+`mode: manual` and `execution.preset`; supply your qualified original assets
+and output directory, **not a historical saved plan**. The existing typed
+implementation is bound against the current source/assets and enters the same
+native runner and gates. This is exactly two fixed-contract cycles with no
+checkpoint/resume, not continuous training. REVIEW; original warm No-GAN task, not fresh-stream optimized training.
+
+Read the [direct preset guide](../../docs/guides/native_presets.md) for the
+complete source/mechanism/runtime mapping and the
+[native training guide](../../docs/guides/native_workloads.md) for separate
+reference/fresh-input and saved-plan paths. CPU admission does not certify
+GPU execution, numerical parity, quality or speedup.

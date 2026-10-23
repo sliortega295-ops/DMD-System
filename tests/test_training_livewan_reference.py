@@ -73,7 +73,8 @@ def test_public_reference_recipe_preserves_selected_c51_and_explicit_contract():
                                          source=root / "training.reference.json")
     selected = TrainingConfig.from_dict(json.loads((root / "training.json").read_text()),
                                         source=root / "training.json")
-    assert _options(reference, "W4") == "reference" and _options(selected, "W4") == "plan"
+    assert _options(reference, "W4") == "reference" and _options(selected, "W4") == "manual"
+    assert selected.execution["preset"] == "self_forcing.c51.v1" and "plan" not in selected.execution
     assert reference.trainer["cycles"] == 2
     assert reference.trainer["checkpoint_every"] == 1 and reference.trainer["seed"] == 20260830
     assert describe_native(reference)["capabilities"]["checkpoint"]["supported"] is True

@@ -6,6 +6,11 @@ the small Program example, infer a historical winner, invent costs, reserve
 GPUs, or change native numerical gates. For the extensible model/algorithm
 factory lifecycle, use the Program training adapter instead.
 
+The six default `training.json` recipes explicitly select
+[versioned manual optimization presets](native_presets.md), without requiring
+a saved plan. They remain bounded two-cycle research bindings; W5's numerical
+FAIL is unresolved. Reference and saved-plan modes below remain separate.
+
 ## Start with an explicit request
 
 Each recipe contains a portable `training.json` and its original task/request
@@ -44,10 +49,10 @@ passed. A source/layout change requires new source-bound admission and costs.
 | Recipe | Original algorithm | Real API | Admitted cycle count |
 | --- | --- | --- | --- |
 | [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..64 fresh cohorts with a compatible saved policy or explicit manual/reference strategy; literal incumbent bundle remains fixed-trace/two-cycle |
-| [W2 selected](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Selected: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Selected: 2. Direct reference: 2..64 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
+| [W2 optimized](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Preset/plan: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Preset/plan: 2. Direct reference: 2..64 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
 | [W3](../../recipes/helios_gan/training.json) | Helios14B DMD + GAN-G/GAN-D, G1/C5/EMA1 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
-| [W4 selected](../../recipes/self_forcing/training.json) / [original reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) | Self-Forcing, continuous sigma, G1/C5/EMA0 | Selected: `search.execution.run_plan`; reference: original baseline ModelBundle and update helper | Selected: 2. Original reference: 2..64 finite teacher cohorts, explicit genuine zero-step assets |
-| [W5 selected](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-grid-original-training.md) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | Selected: `search.execution.run_plan`; original reference: `grid_entrypoint` and original Grid trainer | Selected: 2. Original reference: 2..64 finite cached-condition cycles |
+| [W4 optimized](../../recipes/self_forcing/training.json) / [original reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) | Self-Forcing, continuous sigma, G1/C5/EMA0 | Preset/plan: `search.execution.run_plan`; reference: original baseline ModelBundle and update helper | Preset/plan: 2. Original reference: 2..64 finite teacher cohorts, explicit genuine zero-step assets |
+| [W5 optimized](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-grid-original-training.md) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | Preset/plan: `search.execution.run_plan`; original reference: `grid_entrypoint` and original Grid trainer | Preset/plan: 2. Original reference: 2..64 finite cached-condition cycles |
 | [W6](../../recipes/h3_ar/training.json) | Original DiffSynth previous+current AV, continuous sigma, 8-step, G1/F1, LoRA64, ZeRO-3 | `strategies.h3_ar_cli.main` -> `h3_ar_worker.run_worker` | Exactly 2 native updates |
 
 These are integrations of original native owners, **not** six arbitrary
@@ -62,7 +67,7 @@ with independent record/prompt identities and a complete-cycle data cursor.
 It is admitted only by the explicit original reference lifecycle, not by a
 selected C51 plan. C51's physical drain/save/resume seam remains unsupported.
 
-## Reference before planning; no hidden winner
+## Explicit presets, reference or saved plans; no hidden winner
 
 W1 and W6 have real direct-reference entrypoints:
 
@@ -89,7 +94,8 @@ lifecycle](../../recipes/h3-grid-original-training.md). None inherits a
 measured winner. Both require their own qualified original assets and data,
 and execute inside an operator-owned world16 allocation, not a shell launcher.
 
-The other W2-W5 bindings accept saved-plan mode only. To run their corresponding
+W2-W5 additionally accept explicit manual presets through the
+[direct preset path](native_presets.md). To run their corresponding bounded
 reference first, explicitly resolve the intended generated reference candidate
 through the existing [native calibration workflow](../runbooks/native_planner_workflow.md),
 then provide its source-bound resolved receipt for W2/W3/W5. W4's public C51
@@ -107,8 +113,9 @@ selected-plan validators, including hashed costs, source, operation order,
 versions and measured capacity. A CPU-fixture plan cannot launch a GPU worker.
 
 W4 requires an explicit `c51_full_v1` selected implementation; the old C34
-compatibility profile is not a fallback. The saved selection remains the source
-of mesh, retention, precision and kernel policy for every workload.
+compatibility profile is not a fallback. A saved selection remains authoritative for its mesh, retention, precision
+and kernel policy. Direct presets explicitly bind the versioned implementation
+instead; neither path silently selects the other.
 
 ## Required inputs and portable configuration
 
@@ -118,6 +125,7 @@ of mesh, retention, precision and kernel policy for every workload.
 | `execution.task` | Original Wan/H3-AR task JSON (W1/W6), `OriginalHeliosRequest` (W2/W3), `LiveWanRequest` (W4), or `H3Request` (W5) |
 | `execution.assets` | Exact native asset JSON; selected W2-W5 must be byte-equivalent as JSON to the saved plan's `asset_config`. W2/W5 direct references use their separately documented asset schemas, not that dispatcher manifest |
 | `execution.plan` | Selected source-bound native plan for plan mode; omitted for explicit reference/manual mode |
+| `execution.preset` | Explicit versioned native preset in manual mode; no saved plan or implementation override; exact two-cycle research scope |
 | `execution.implementation` | Explicit Wan strategy JSON path or W6 `zero3-native` / `zero3-ap` enum; reference/manual only |
 | `execution.capacity_policy` | W6's existing common host/GPU capacity-policy JSON (equal to saved plan in plan mode); W4 direct reference requires its explicit versioned common capacity policy |
 | `execution.transport` | Optional existing SHA-bound reviewed R9 deployment for its supported W5 subspace; never a generic shell-command transport |
@@ -126,8 +134,10 @@ of mesh, retention, precision and kernel policy for every workload.
 | `trainer.cycles` | Actual supported native count, checked against selected contract; not a timing normalization |
 | `trainer.checkpoint_every` | W1/W2/W4/W5 explicit fresh-input lifecycles: supported at complete cycles; all selected benchmark bindings still require `0` |
 
-For W2-W5, extract `asset_config` from the plan you actually compiled; do not
-edit a path in a saved receipt to make it fit another machine. Asset locations
+For W2-W5 direct presets, supply a qualified native dispatcher asset manifest
+matching the exact preset's required assets. No historic plan is needed. For
+saved-plan mode, use its exact `asset_config`; do not edit a path in a saved
+receipt to make it fit another machine. Asset locations
 inside a native manifest follow its original API (usually explicit absolute
 paths), not the training-config path rules. Existing original asset preparation
 remains authoritative: [Wan asset template](../../configs/distillschedule/original_wan/assets.template.json),

@@ -1,7 +1,8 @@
 """Public training requests lowered to the *existing* original-model runtimes.
 
-This is deliberately not a model-name -> best-profile dispatcher. A plan-mode
-request must supply the selected, source-bound native plan. The original
+This is deliberately not a model-name -> best-profile dispatcher. Explicit
+versioned manual presets bind current assets through the same native lowerers;
+plan-mode requests still supply their selected, source-bound native plan. The original
 worker still owns physical assets, rank/trace tensors, capacity, optimizer and
 numerical gates. CPU admission never claims those GPU gates passed.
 """
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
+from .native_presets import describe_preset, preset_implementation
 
 
 _FAMILIES = {
@@ -53,9 +55,9 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         source=dict(catalog_index=catalog["source_index"],
                     native_code=row["code"], selected_plan_is_authoritative=True),
         launch=("enter on each world16 torchrun rank; this API does not reserve or start nodes"
-                if worker else "existing two-node dispatcher; explicit saved-plan asset/transport owners"),
+                if worker else "existing two-node dispatcher; explicit native asset/transport owners"),
         capabilities=dict(
-            modes=["reference", "manual", "plan"] if worker else ["plan"],
+            modes=["reference", "manual", "plan"] if worker else ["manual", "plan"],
             cycles=(dict(min=2, max=64, fresh_inputs="original_wan_cohort_stream.v1",
                          reference_manual_fixed_trace=2, incumbent_bundle=2)
                     if workload == "W1" else dict(exact=2, arbitrary_training=False)),
@@ -73,6 +75,17 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                 if workload == "W1" else dict(supported=False,
                     reason="native sampled/fingerprint receipts are not tensor checkpoints"))),
         historical_note=row["note"], gpu_execution="NOT_RUN", claimable_speedup=False)
+    if "preset" in config.execution:
+        result["preset"] = describe_preset(workload, config.execution["preset"])
+        if workload == "W1":
+            result["native_api"] = result["preset"]["runtime"]
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(
+            cycles=dict(exact=2, arbitrary_training=False, scope="explicit bounded optimized preset"),
+            checkpoint=dict(supported=False, reason="not exposed by this bounded optimized preset"),
+            resume=dict(supported=False, reason="not exposed by this bounded optimized preset"))
+    if not worker:
+        result["capabilities"]["manual_requires_preset"] = True
     if helios_stream:
         result.update(native_api="distillschedule.training.helios_worker:run_reference",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
@@ -166,7 +179,7 @@ def _options(config, workload):
     """Do not accept a public knob that the native call would silently ignore."""
     for section, allowed in (
         ("model", {"workload"}), ("algorithm", {"name"}),
-        ("execution", {"adapter", "mode", "task", "assets", "plan", "implementation",
+        ("execution", {"adapter", "mode", "task", "assets", "plan", "implementation", "preset",
                        "capacity_policy", "transport", "expected_head"}),
         ("data", {"prepared", "input_kind", "replay_fixed_trace"}),
         ("trainer", {"cycles", "output_dir", "checkpoint_every", "resume_from", "seed", "generate", "export"}),
@@ -174,6 +187,17 @@ def _options(config, workload):
         _require(not set(getattr(config, section)) - allowed,
                  f"unsupported {section} fields: {sorted(set(getattr(config, section)) - allowed)}; "
                  "original shape/math belong in execution.task")
+    if "preset" in config.execution:
+        describe_preset(workload, config.execution["preset"])
+        _require(config.execution.get("mode") == "manual", "execution.preset requires explicit manual mode")
+        _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
+                 "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
+        _require(config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
+                 and not config.trainer.get("resume_from"),
+                 "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
+        if workload == "W1":
+            _require(set(config.data) == {"replay_fixed_trace"} and config.data["replay_fixed_trace"] is True,
+                     "W1 literal graph preset requires explicit fixed-trace replay, not a fresh input stream")
     _require(not config.algorithm.get("name") or config.algorithm["name"] == (
         "original_self_forcing_reference.v1" if _livewan_reference(config, workload) else _FAMILIES[workload][0]),
              "algorithm.name does not match the original workload")
@@ -218,7 +242,8 @@ def _options(config, workload):
     _require((workload == "W1" and 2 <= cycles <= 64) or (workload != "W1" and cycles == 2),
              f"{workload} cycles must be {'2..64' if workload == 'W1' else 'exactly 2'}; requested count is never ignored")
     mode = config.execution.get("mode", "reference")
-    _require(mode in (("reference", "manual", "plan") if workload in ("W1", "W6") else ("plan",)),
+    _require(mode in (("reference", "manual", "plan") if workload in ("W1", "W6") else
+                     ("manual", "plan") if "preset" in config.execution else ("plan",)),
              f"{workload} supports {describe_native(config)['capabilities']['modes']}; no implicit best/auto recipe")
     _require(mode != "plan" or not config.execution.get("implementation"),
              "plan mode uses the selected plan, not an implementation override")
@@ -277,7 +302,8 @@ def _wan(config, mode, task_value, assets_value, paths):
         _require(config.trainer["cycles"] == 2 or config.data.get("prepared"),
                  "Wan reference/manual supports exactly 2 cycles without a fresh native stream")
         plan = None
-        strategy = WanStrategy.from_dict(_object(paths["implementation"], "execution.implementation"))
+        strategy = (preset_implementation("W1", config.execution["preset"]) if "preset" in config.execution
+                    else WanStrategy.from_dict(_object(paths["implementation"], "execution.implementation")))
         strategy.validate_for(task)
         _require(mode != "reference" or strategy == WanStrategy("fsdp", 512, False),
                  "reference mode requires the explicit original FSDP strategy, not an optimized bundle")
@@ -312,6 +338,12 @@ def _wan(config, mode, task_value, assets_value, paths):
         command = "run" if mode == "plan" else "benchmark-manual"
     _require(not strategy.candidate_bundle.enabled or (config.trainer["cycles"] == 2 and prepared is None),
              "Wan incumbent literal bundle only supports 2 fixed-trace cycles")
+    if "preset" in config.execution:
+        # The existing CLI requires a strategy *file*. Enter its same typed
+        # worker instead; do not create a new launcher or a hidden saved plan.
+        return dict(task=task.to_dict(), selected=strategy.to_dict(), plan=None, assets=deepcopy(assets_value),
+                    native_worker="distillschedule.strategies.wan_worker:run_worker",
+                    validation_scope="CPU_TASK_BOOTSTRAP_IDENTITIES; ORIGINAL_IMMUTABLE_MODEL_TRACE_GRAPH_AND_CAPACITY_GATES_DEFERRED_TO_WORKER")
     args = [command, "--task", str(paths["task"]), "--assets", str(paths["assets"]),
             "--output", str(paths["output"]), "--execute"]
     if mode == "plan":
@@ -346,7 +378,8 @@ def _h3_ar(config, mode, task_value, assets_value, paths):
         impl = H3ARImplementation.from_dict(plan["selected"]["implementation"])
     else:
         plan = None
-        impl = H3ARImplementation(config.execution.get("implementation"))
+        impl = (preset_implementation("W6", config.execution["preset"]) if "preset" in config.execution
+                else H3ARImplementation(config.execution.get("implementation")))
         _require(mode != "reference" or impl.id == "zero3-native", "W6 reference requires zero3-native")
     args = ["run" if mode == "plan" else "benchmark-manual", "--task", str(paths["task"]),
             "--assets", str(paths["assets"]), "--capacity-policy", str(paths["capacity_policy"]),
@@ -365,7 +398,16 @@ def _search(config, workload, task_value, assets_value, paths):
     # An immutable LiveWan lowering intentionally includes the unresolved
     # source template beside fully resolved node plans. Its ${ENV:...}
     # expressions are compiler inputs, not unfilled user asset placeholders.
-    plan = _object(paths["plan"], "execution.plan", placeholders=False)
+    if "preset" in config.execution:
+        from distillschedule.search.execution import resolve_candidate
+        impl = preset_implementation(workload, config.execution["preset"])
+        # A new asset/source binding, not a copied experiment plan or cost.
+        # Output ownership/non-overwrite remains with the original dispatcher.
+        run_id = "native-preset-" + fingerprint(dict(config=config.identity, output=str(paths["output"])))[:24]
+        plan = resolve_candidate(_FAMILIES[workload][1], impl.id, root=root,
+                                 assets_path=paths["assets"], run_id=run_id, mode="correctness")
+    else:
+        plan = _object(paths["plan"], "execution.plan", placeholders=False)
     _require(plan.get("profile_id") == _FAMILIES[workload][1], "saved plan belongs to another workload")
     _require(plan.get("integration_head") == git_head(root), "saved plan belongs to another source HEAD")
     transport = _object(paths["transport"], "execution.transport") if paths.get("transport") else None
@@ -423,7 +465,7 @@ def _admit(config):
     paths = {key: _path(config, "execution", key, required=(key in ("task", "assets")
                or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload))))
              for key in ("task", "assets", "plan", "capacity_policy", "transport")}
-    if workload == "W1" and mode != "plan":
+    if workload == "W1" and mode != "plan" and "preset" not in config.execution:
         paths["implementation"] = _path(config, "execution", "implementation")
     paths["output"] = _path(config, "trainer", "output_dir")
     from distillschedule.workloads.best_known.registry import repository_root
@@ -465,13 +507,19 @@ def _report(config, workload, source, paths, admitted):
                   native_completion="NOT_RUN; process success alone is not numerical parity")
     if _livewan_reference(config, workload):
         result["hardware"] = admitted["hardware"]
+    elif "native_worker" in admitted:
+        result["native_worker"] = admitted["native_worker"]
+        result["hardware"] = dict(world_size=16, nodes=2, gpus_per_node=8,
+                                  current_runtime="NOT_PROBED_BY_CPU_DOCTOR")
     elif "argv" in admitted:
         result["native_argv"] = admitted["argv"]
         result["hardware"] = dict(world_size=16, nodes=2, gpus_per_node=8,
                                   current_runtime="NOT_PROBED_BY_CPU_DOCTOR")
     else:
         result.update(hardware=admitted["hardware"], native_run_id=admitted["plan"]["run_id"],
-                      native_mode=admitted["plan"]["mode"], selected_plan=str(paths["plan"]))
+                      native_mode=admitted["plan"]["mode"])
+        if "preset" not in config.execution:
+            result["selected_plan"] = str(paths["plan"])
     if "capacity_policy" in admitted:
         result["capacity_policy"] = admitted["capacity_policy"]
     if "lifecycle" in admitted:
@@ -507,6 +555,14 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
         return result
     _require(not source["identity"]["dirty"], "execution requires a clean committed source checkout")
     if workload == "W1":
+        if "native_worker" in admitted:
+            from distillschedule.strategies.wan_task import OriginalWanTask
+            from distillschedule.strategies.wan_strategy import WanStrategy
+            from distillschedule.strategies.wan_worker import OriginalWanAssets, run_worker
+            return run_worker(OriginalWanTask.from_dict(admitted["task"]),
+                OriginalWanAssets.from_dict(admitted["assets"]),
+                output=paths["output"], mode="manual", strategy=WanStrategy.from_dict(admitted["selected"]),
+                cycles=config.trainer["cycles"])
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
     if workload == "W6":

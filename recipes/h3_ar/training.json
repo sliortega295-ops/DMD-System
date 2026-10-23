@@ -9,11 +9,11 @@
   },
   "execution": {
     "adapter": "native",
-    "mode": "plan",
+    "mode": "manual",
     "task": "../../configs/distillschedule/original_h3_ar/w6_reference.json",
     "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
-    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json",
-    "capacity_policy": "REPLACE_WITH_NATIVE_CAPACITY_POLICY.json"
+    "capacity_policy": "REPLACE_WITH_NATIVE_CAPACITY_POLICY.json",
+    "preset": "h3_ar.zero3_ap.v1"
   },
   "trainer": {
     "cycles": 2,

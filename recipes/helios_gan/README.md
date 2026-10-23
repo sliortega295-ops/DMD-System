@@ -33,10 +33,18 @@ Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORREC
 
 ## Public training configuration
 
-Use [`training.json`](training.json) with your explicit qualified native inputs
-and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
-for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
-operations. This binding does not replace the original protocol or certify GPU execution.
+[`training.json`](training.json) selects `helios_gan.fa3_down40_nomerge.v1` with explicit
+`mode: manual` and `execution.preset`; supply your qualified original assets
+and output directory, **not a historical saved plan**. The existing typed
+implementation is bound against the current source/assets and enters the same
+native runner and gates. This is exactly two fixed-contract cycles with no
+checkpoint/resume, not continuous training. REVIEW; merged-LoRA/N70 remains off and runtime merge counts must be zero.
+
+Read the [direct preset guide](../../docs/guides/native_presets.md) for the
+complete source/mechanism/runtime mapping and the
+[native training guide](../../docs/guides/native_workloads.md) for separate
+reference/fresh-input and saved-plan paths. CPU admission does not certify
+GPU execution, numerical parity, quality or speedup.
 
 Portable current-Generator CPU export and explicit native latent diagnostics:
 [PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Default generation still
