@@ -310,6 +310,136 @@ def test_unknown_native_text_config_fields_are_rejected_before_weights(assets):
         architecture(api.classes()[2],config)
 
 
+@pytest.mark.parametrize('spelling', ['public', 'omitted'])
+def test_native_raw_default_configs_load_forward_gradient_and_portable_restore(assets, tmp_path, spelling):
+    """Tiny native weights with source-derived null/omission, never public weights."""
+    from copy import deepcopy
+    import json
+    import shutil
+    import torch
+    from distillschedule.data.flow_image_inputs import prepare_inputs
+    from distillschedule.training.config import TrainingConfig
+    from distillschedule.training import flow_image as safe
+    from distillschedule.training.inference import publish_export, read_export, restore_modules
+    from distillschedule.training.plugins import load_callable
+    from distillschedule.training.session import construct
+    from distillschedule.workloads.best_known.registry import file_sha256
+    from test_training_end_to_end import equal
+
+    original, explicit, explicit_data, _, _ = owned(assets)
+    api = explicit.state['student'].api
+    root = tmp_path/'raw-default-assets'; shutil.copytree(assets['root'], root)
+    manifest = json.loads((root/'assets.json').read_text())
+    documents = {}
+    for folder in ('base', 'fake'):
+        path = root/folder/'config.json'; raw = json.loads(path.read_text())
+        if assets['family'] == 'flux2-klein-base':
+            if spelling == 'public': raw['out_channels'] = None
+            else: raw.pop('out_channels')
+        else:
+            for key in ('zero_cond_t', 'use_additional_t_cond', 'use_layer3d_rope'):
+                raw.pop(key)
+            if spelling == 'public': raw['pooled_projection_dim'] = 768  # audited historical unused field
+            else: raw.pop('guidance_embeds')
+        documents[path] = (json.dumps(raw, indent=3)+'\n').encode()
+        path.write_bytes(documents[path])
+    for role, folder in (('student','base'), ('teacher','base'), ('fake','fake')):
+        manifest['roles'][role]['files']['config.json'] = file_sha256(root/folder/'config.json')
+    (root/'assets.json').write_text(json.dumps(manifest))
+    source = json.loads((root/'raw.json').read_text()); source['assets'] = str(root/'assets.json')
+    (root/'raw.json').write_text(json.dumps(source))
+    prepared = prepare_inputs(root/'raw.json', root/'raw-default-prepared')
+    config = original.to_dict()
+    config['model']['parameters']['assets'] = str(root/'assets.json'); config['data']['prepared'] = str(prepared)
+    config = TrainingConfig.from_dict(config, source=root/'train.json')
+    components, dataset, _, _ = construct(config)
+    row, explicit_row = dataset.sample(0), explicit_data.sample(0)
+    role = components.state['student']; reference = explicit.state['student']
+    assert all(path.read_bytes() == raw for path, raw in documents.items())
+    assert role.architecture == json.loads(documents[root/'base/config.json'])
+    assert equal(role.state_dict(), reference.state_dict())
+    assert equal({k:v for k,v in row.items() if k != 'encoder_identity'},
+                 {k:v for k,v in explicit_row.items() if k != 'encoder_identity'})
+    sigma = torch.tensor([.625])
+    actual = role.denoise(row['latents'], sigma, row, conditional=True)['image']
+    expected = reference.denoise(explicit_row['latents'], sigma, explicit_row, conditional=True)['image']
+    assert torch.equal(actual, expected)
+    a = torch.autograd.grad(actual.square().mean(), tuple(p for p in role.parameters() if p.requires_grad))
+    b = torch.autograd.grad(expected.square().mean(), tuple(p for p in reference.parameters() if p.requires_grad))
+    assert equal(a,b) and any(g.any() for g in a)
+    # Unmodified native Diffusers owns the raw saved ABI; the safe loader must
+    # produce identical full parameters, forward and gradients (not just LoRA).
+    native_cls = api.classes()[0]
+    native = native_cls.from_pretrained(root/'base', local_files_only=True).float().eval()
+    loaded, retained = safe.load_native(native_cls,root/'base',10_000_000,
+        config_transform=getattr(api,'transformer_config',None))
+    assert retained == role.architecture and equal(native.state_dict(),loaded.state_dict())
+    with torch.device('meta'):
+        native_meta = native_cls.from_config(deepcopy(retained))
+    effective = retained if not hasattr(api,'transformer_config') else api.transformer_config(retained)
+    safe_meta = safe.shell(native_cls,effective)
+    assert {k:v.shape for k,v in native_meta.state_dict().items()} == {k:v.shape for k,v in safe_meta.state_dict().items()}
+    def forward(model):
+        kwargs = dict(hidden_states=row['latents']['image'],encoder_hidden_states=row['context'],
+            timestep=sigma,guidance=None,return_dict=False)
+        kwargs.update(dict(img_ids=row['img_ids'],txt_ids=row['txt_ids']) if assets['family'] == 'flux2-klein-base' else
+            dict(encoder_hidden_states_mask=row['context_mask'],img_shapes=[[(1,2,2)]]))
+        return model(**kwargs)[0]
+    native_value,safe_value = forward(native),forward(loaded)
+    assert torch.equal(native_value,safe_value)
+    a = torch.autograd.grad(native_value.square().sum(),tuple(native.parameters()),allow_unused=True)
+    b = torch.autograd.grad(safe_value.square().sum(),tuple(loaded.parameters()),allow_unused=True)
+    assert equal(a,b) and any(g is not None and g.any() for g in a)
+    projection = components.inference_projection(components, config.model['parameters']).validate()
+    assert projection.parameters['architecture'] == role.architecture
+    _, identity = load_callable(projection.factory)
+    model = dict(factory=projection.factory, source=identity, parameters=projection.parameters,
+                 metadata=deepcopy(projection.components.metadata))
+    publish_export(projection.components, tmp_path/'export', model=model,
+                   identity=dict(model=identity, model_metadata=model['metadata']), cycle=0)
+    factory, _ = load_callable(projection.factory)
+    restored = factory(projection.parameters)
+    export_root, exported = read_export(tmp_path/'export'); restore_modules(restored, export_root, exported)
+    restored.state['student'].eval()
+    assert restored.metadata['architecture'] == role.architecture
+    assert torch.equal(actual, restored.state['student'].denoise(row['latents'],sigma,row,conditional=True)['image'])
+    assert equal(components.state['media'].encode_text(['a violet kite']), restored.state['media'].encode_text(['a violet kite']))
+    assert all(path.read_bytes() == raw for path, raw in documents.items())
+    assert not torch.cuda.is_initialized()
+    (tmp_path/'raw-config-proof.json').write_text(json.dumps(dict(
+        evidence_kind='SYNTHETIC_TINY_NATIVE_CPU_ONLY', family=assets['family'], spelling=spelling,
+        raw_config_sha256={str(path.relative_to(root)):file_sha256(path) for path in documents},
+        raw_bytes_unchanged=True, native_safe_parameter_forward_gradient_exact=True,
+        native_meta_layout_exact=True, explicit_config_lora_forward_gradient_exact=True,
+        portable_raw_descriptor_and_new_text_exact=True, cuda_initialized=False,
+        pretrained_execution='NOT_RUN', quality_validation='NOT_RUN'),indent=2)+'\n')
+
+
+def test_native_default_admission_preserves_variant_type_and_geometry_refusals(assets):
+    from copy import deepcopy
+    from distillschedule.training import flow_image as safe
+    module = 'flux' if assets['family'] == 'flux2-klein-base' else 'qwen_image'
+    api = importlib.import_module('distillschedule.training.'+module)
+    config = safe.json_object(assets['root']/'base/config.json')
+    media = dict(vae=safe.json_object(assets['root']/'vae/config.json'),
+                 text_encoder=safe.json_object(assets['root']/'text_encoder/config.json'), text_max_length=48)
+    changes = [('patch_size', True), ('in_channels', True), ('out_channels', True),
+               ('out_channels', 3), ('guidance_embeds', True), ('guidance_embeds', None),
+               ('guidance_embeds', 0), ('unknown_default_field', False)]
+    if module == 'flux': changes += [('out_channels', 0), ('out_channels', False), ('out_channels', '16')]
+    else:
+        changes += [(key, value) for key in ('zero_cond_t','use_additional_t_cond','use_layer3d_rope') for value in (True,None,0)]
+        changes += [('out_channels', None), ('pooled_projection_dim', True), ('pooled_projection_dim', 769)]
+    for key, value in changes:
+        current = deepcopy(config); current[key] = value
+        with pytest.raises(ValueError): api.validate_architecture(current,media)
+    if module == 'qwen_image':
+        historical = deepcopy(config); historical['pooled_projection_dim'] = 768
+        with pytest.raises(ValueError,match='unknown'): safe.architecture(api.classes()[0],historical)
+        assert 'pooled_projection_dim' not in api.transformer_config(historical)
+        assert historical['pooled_projection_dim'] == 768
+
+
 def test_invalid_native_features_and_null_encoding_are_rejected(assets):
     from copy import deepcopy
     import torch

@@ -372,7 +372,7 @@ def load_media_bundle(assets, api):
     role_configs = [json_object(roots[name]/'config.json') for name in ('student', 'fake', 'teacher')]
     require(all(config == role_configs[0] for config in role_configs), 'same-family role architectures must match before loading')
     for config in role_configs:
-        architecture(native_cls, config); api.validate_architecture(config, preview)
+        api.validate_architecture(config, preview)
     binding = fingerprint(dict(family=api.FAMILY, source=manifest['source'], media=manifest['media'],
         text_max_length=manifest['text_max_length'], runtime=runtime, dtype='FP32', codec_policy=api.CODEC_POLICY,
         transformer_config_sha256=file_sha256(roots['student']/'config.json')))
@@ -410,7 +410,8 @@ def build_family(parameters, api):
         roles = {}; config = None
         for role in ('student', 'fake', 'teacher'):
             native, current = load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
-                dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'))
+                dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'),
+                config_transform=getattr(api, 'transformer_config', None))
             api.validate_architecture(current, media_config)
             config = current if config is None else config
             require(current == config, 'first recipe requires exact same-family role architectures')
@@ -490,7 +491,9 @@ def build_inference_family(parameters, api):
             return (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
     with torch.device('cpu'), torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(parameters.get('seed', 0))
-        native = layout(native_cls, config); trainable_scope(native, descriptor['trainable'])
+        transform = getattr(api, 'transformer_config', None)
+        native = layout(native_cls, config if transform is None else transform(config))
+        trainable_scope(native, descriptor['trainable'])
         media = api.Media(layout(vae_cls, media_config['vae']), layout(text_cls, media_config['text_encoder']),
             restore_tokenizer(media_config['tokenizer']), config=media_config, binding=descriptor['binding'])
         empty_shape = api.empty_shape(media_config)

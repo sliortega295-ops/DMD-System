@@ -69,9 +69,12 @@ def validate_architecture(config, media):
             and v.get('in_channels') == v.get('out_channels') == 3 and v.get('scaling_factor') == 1.03682
             and media.get('text_policy') == TEXT_POLICY and primary.num_hidden_layers >= 3,
             'native temporal4 RGB VAE/scaling and exact crop108/hidden-3/1000+256 text policy required')
-    require(primary.pad_token_id is not None and primary.bos_token_id is not None and primary.eos_token_id is not None
+    # Native Qwen text permits padding_idx=None. The actual tokenizer owns pad
+    # IDs and the native pipeline passes its explicit attention mask; setting a
+    # model pad ID here would alter embedding/gradient semantics.
+    require((primary.pad_token_id is None or type(primary.pad_token_id) is int and 0 <= primary.pad_token_id < primary.vocab_size)
             and all(type(n) is int and 0 <= n < primary.vocab_size for n in
-                (primary.pad_token_id, primary.bos_token_id, primary.eos_token_id)),
+                (primary.bos_token_id, primary.eos_token_id)),
             'valid native primary text special-token IDs required')
 
 
@@ -101,6 +104,9 @@ def tokenizer_state(tokenizer, *, secondary=False):
     require(type(tokenizer) is cls and tokenizer.padding_side == tokenizer.truncation_side == 'right'
             and tokenizer.backend == ('custom' if secondary else 'tokenizers'),
             'actual native Qwen-fast/ByT5-slow tokenizer and right padding/truncation required')
+    require(type(tokenizer.pad_token_id) is int and tokenizer.pad_token_id >= 0
+            and tokenizer.pad_token_id in tokenizer.get_vocab().values(),
+            'actual native tokenizer must own a valid padding token; model pad_token_id is not a substitute')
     options = {key: deepcopy(getattr(tokenizer,key)) for key in ('model_max_length','padding_side','truncation_side',
         'pad_token','bos_token','eos_token','unk_token','chat_template','clean_up_tokenization_spaces',
         'split_special_tokens','model_input_names')}

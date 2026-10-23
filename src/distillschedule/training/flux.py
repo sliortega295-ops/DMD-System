@@ -25,9 +25,17 @@ def classes():
 
 
 def validate_architecture(config, media):
-    text = common.architecture(classes()[2], media['text_encoder'])
-    require(config.get('_class_name') == 'Flux2Transformer2DModel' and config.get('patch_size') == 1
-            and config.get('guidance_embeds') is False and config.get('out_channels') == config.get('in_channels')
+    native, vae, text_cls, _ = classes()
+    common.architecture(native, config)
+    text = common.architecture(text_cls, media['text_encoder'])
+    # Pinned native __init__: omitted/None output uses in_channels. Do not use
+    # truthiness here: zero/False are not admitted native output geometries.
+    output = config.get('out_channels')
+    output = config.get('in_channels') if output is None else output
+    require(type(config.get('patch_size')) is int and config['patch_size'] == 1
+            and all(type(n) is int and n > 0 for n in (config.get('in_channels'), output,
+                config.get('joint_attention_dim'), media['vae'].get('latent_channels')))
+            and config.get('guidance_embeds') is False and output == config['in_channels']
             and config['in_channels'] == media['vae']['latent_channels'] * 4
             and config['joint_attention_dim'] == text.hidden_size * 3,
             'only native klein Base, no embedded guidance, and matched VAE/Qwen3 width admitted')

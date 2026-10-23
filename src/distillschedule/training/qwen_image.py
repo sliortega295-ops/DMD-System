@@ -4,6 +4,7 @@ Native text uses the actual QwenImagePipeline template and crop34, its mask and
 Qwen2.5-VL model. Native CFG norm-rescaling is NOT the common algorithm's linear
 CFG; the first admitted recipe therefore requires teacher_cfg=fake_cfg=1.
 """
+from copy import deepcopy
 import sys
 
 import torch
@@ -24,10 +25,27 @@ def classes():
     return QwenImageTransformer2DModel, AutoencoderKLQwenImage, Qwen2_5_VLForConditionalGeneration, QwenImagePipeline
 
 
+def transformer_config(config):
+    """Audited pinned source's inert legacy field; never rewrite raw assets."""
+    result = deepcopy(config)
+    if 'pooled_projection_dim' in result:
+        value = result.pop('pooled_projection_dim')
+        # Diffusers0.37.1 extract_init_dict reports precisely this public saved
+        # field as unused. No model parameter/input consumes it.
+        require(type(value) is int and value == 768, 'unsupported historical Qwen pooled_projection_dim metadata')
+    return result
+
+
 def validate_architecture(config, media):
-    text = common.architecture(classes()[2], media['text_encoder']).text_config
-    require(config.get('_class_name') == 'QwenImageTransformer2DModel' and config.get('patch_size') == 2
-            and all(config.get(key) is False for key in ('guidance_embeds', 'zero_cond_t', 'use_additional_t_cond', 'use_layer3d_rope'))
+    native, vae, text_cls, _ = classes()
+    common.architecture(native, transformer_config(config))
+    text = common.architecture(text_cls, media['text_encoder']).text_config
+    require(type(config.get('patch_size')) is int and config['patch_size'] == 2
+            and all(type(n) is int and n > 0 for n in (config.get('in_channels'), config.get('out_channels'),
+                config.get('joint_attention_dim'), media['vae'].get('z_dim')))
+            # All four defaults are exactly False in the pinned native class.
+            # Explicit null/0/True remain distinct and are rejected.
+            and all(config.get(key, False) is False for key in ('guidance_embeds', 'zero_cond_t', 'use_additional_t_cond', 'use_layer3d_rope'))
             and config['in_channels'] == media['vae']['z_dim'] * 4
             and config['out_channels'] == media['vae']['z_dim']
             and config['joint_attention_dim'] == text.hidden_size,

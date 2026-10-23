@@ -262,6 +262,91 @@ def test_primary_nondefault_native_option_survives_export():
     assert restored.add_prefix_space is tokenizer.add_prefix_space is True
 
 
+@pytest.mark.parametrize('spelling', ['omitted', 'null'])
+def test_native_primary_model_pad_none_uses_tokenizer_pad_mask_and_portable_restore(assets,tmp_path,spelling):
+    from copy import deepcopy
+    import json
+    import shutil
+    import torch
+    from diffusers import HunyuanVideo15Pipeline
+    from distillschedule.training import hunyuan_video as api, flow_image as safe
+    from distillschedule.training.inference import publish_export, read_export, restore_modules
+    from distillschedule.training.plugins import load_callable
+    from distillschedule.training.config import load_training_config
+    from distillschedule.workloads.best_known.registry import file_sha256
+    from test_training_end_to_end import equal
+    root = tmp_path/'raw-default-assets'; shutil.copytree(assets['root'],root)
+    path = root/'text_encoder/config.json'; raw = json.loads(path.read_text())
+    if spelling == 'omitted': raw.pop('pad_token_id')
+    else: raw['pad_token_id'] = None
+    document = (json.dumps(raw,indent=3)+'\n').encode(); path.write_bytes(document)
+    manifest = json.loads((root/'assets.json').read_text())
+    manifest['media']['text_encoder']['files']['config.json'] = file_sha256(path)
+    (root/'assets.json').write_text(json.dumps(manifest))
+    parameters = deepcopy(load_training_config(assets['config']).model['parameters'])
+    parameters['assets'] = str(root/'assets.json')
+    components = api.build_model(parameters); media = components.state['media']
+    assert media.text_encoder.config.pad_token_id is None and media.text_encoder.embed_tokens.padding_idx is None
+    assert type(media.tokenizer.pad_token_id) is int
+    assert media.architecture['text_encoder'] == raw and path.read_bytes() == document
+    prompts = ['a bird', 'a violet kite']
+    actual = media.encode_text(prompts)
+    expected = HunyuanVideo15Pipeline._get_mllm_prompt_embeds(media.text_encoder,media.tokenizer,prompts,device=torch.device('cpu'))
+    assert torch.equal(actual[0],expected[0]) and torch.equal(actual[1],expected[1].bool())
+    assert actual[1].dtype == torch.bool and actual[1].any() and not actual[1].all()
+    # The exact raw model semantics, including embedding padding_idx=None, are
+    # independently constructed by the native parser and used for all gradients.
+    native = api.classes()[2](api.classes()[2].config_class.from_dict(deepcopy(raw))).float().eval()
+    native.load_state_dict(media.text_encoder.state_dict(),strict=True)
+    loaded,_ = safe.load_native(api.classes()[2],root/'text_encoder',10_000_000)
+    inputs = dict(input_ids=torch.tensor([[4,5,media.tokenizer.pad_token_id]]), attention_mask=torch.tensor([[1,1,0]]))
+    a = native(**inputs).last_hidden_state; b = loaded(**inputs).last_hidden_state
+    assert torch.equal(a,b)
+    a.square().sum().backward(); b.square().sum().backward()
+    assert all((x.grad is None and y.grad is None) or torch.equal(x.grad,y.grad)
+               for x,y in zip(native.parameters(),loaded.parameters(),strict=True))
+    projection = components.inference_projection(components,parameters).validate()
+    _, source = load_callable(projection.factory)
+    model = dict(factory=projection.factory,source=source,parameters=projection.parameters,metadata=deepcopy(projection.components.metadata))
+    publish_export(projection.components,tmp_path/'export',model=model,
+                   identity=dict(model=source,model_metadata=model['metadata']),cycle=0)
+    restored = api.build_inference_model(projection.parameters)
+    export_root,exported = read_export(tmp_path/'export'); restore_modules(restored,export_root,exported)
+    assert restored.state['media'].text_encoder.config.pad_token_id is None
+    assert restored.state['media'].tokenizer.pad_token_id == media.tokenizer.pad_token_id
+    assert equal(actual,restored.state['media'].encode_text(prompts))
+    assert path.read_bytes() == document and not torch.cuda.is_initialized()
+    (tmp_path/'raw-config-proof.json').write_text(json.dumps(dict(
+        evidence_kind='SYNTHETIC_TINY_NATIVE_CPU_ONLY', family=api.FAMILY, spelling=spelling,
+        raw_primary_config_sha256=file_sha256(path), raw_bytes_unchanged=True,
+        model_pad_token_id=None, native_embedding_padding_idx=None,
+        tokenizer_pad_token_id=media.tokenizer.pad_token_id, token_ids_are_synthetic=True,
+        native_text_forward_gradient_exact=True, native_mask_values_exact=True,
+        portable_raw_descriptor_tokenizer_and_new_text_exact=True, cuda_initialized=False,
+        pretrained_execution='NOT_RUN', quality_validation='NOT_RUN'),indent=2)+'\n')
+
+
+def test_primary_tokenizer_not_model_config_must_own_valid_padding():
+    from transformers import Qwen2TokenizerFast
+    from distillschedule.training.hunyuan_video import tokenizer_state
+    tokenizer = Qwen2TokenizerFast(vocab={'<|endoftext|>':0,'a':1},merges=[],pad_token=None,chat_template='{{ messages }}')
+    assert tokenizer.pad_token_id is None
+    with pytest.raises(ValueError,match='pad|padding'): tokenizer_state(tokenizer)
+
+
+def test_optional_primary_model_pad_does_not_admit_invalid_special_token_ids(assets):
+    from copy import deepcopy
+    from distillschedule.training import hunyuan_video as api, flow_image as safe
+    config = safe.json_object(assets['root']/'base/config.json')
+    media = {name:safe.json_object(assets['root']/name/'config.json') for name in ('vae','text_encoder','text_encoder_2')}
+    media['text_policy'] = deepcopy(api.TEXT_POLICY)
+    for key,values in {'pad_token_id':(False,-1,media['text_encoder']['vocab_size']),
+                       'bos_token_id':(None,False,-1),'eos_token_id':(None,False,-1)}.items():
+        for value in values:
+            current = deepcopy(media); current['text_encoder'][key] = value
+            with pytest.raises(ValueError): api.validate_architecture(config,current)
+
+
 def test_native_masks_empty_prompt_overflow_geometry_and_refusals(assets):
     from copy import deepcopy
     import torch
