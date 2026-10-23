@@ -35,7 +35,8 @@ class ModelComponents:
                 or any(not isinstance(item, str) or not item for item in self.capabilities)
                 or len(set(self.capabilities)) != len(self.capabilities)):
             raise ValueError('capabilities must be unique nonempty strings')
-        if self.prediction is not None or self.capabilities:
+        if (self.prediction is not None or self.capabilities
+                or '_distillschedule_model_contract' in self.metadata):
             contract = {'prediction': self.prediction.kind if self.prediction is not None else None,
                         'capabilities': sorted(self.capabilities)}
             metadata = dict(self.metadata)

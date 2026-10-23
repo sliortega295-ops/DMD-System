@@ -15,6 +15,8 @@ import json
 from pathlib import Path, PurePosixPath
 import sys
 
+from distillschedule.workloads.best_known.registry import file_sha256
+
 
 class _Imports(ast.NodeTransformer):
     def __init__(self, namespace, roots):
@@ -80,6 +82,7 @@ class PinnedSource(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         if set(self.definition_globals) - set(self.definitions):
             raise ValueError('definition globals require an explicit definition selection')
         self.identity = {'files': dict(sorted(self.files.items())),
+                         'importer_sha256': file_sha256(Path(__file__)),
                          'import_roots': list(self.import_roots),
                          'definitions': {key: list(value) for key, value in sorted(self.definitions.items())}}
         if self.python_roots != ('',):
@@ -90,11 +93,13 @@ class PinnedSource(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         self.validate()
 
     def validate(self):
+        if file_sha256(Path(__file__)) != self.identity['importer_sha256']:
+            raise ValueError('pinned source importer implementation changed')
         for name, digest in self.files.items():
             path = self.root / name
             if not path.resolve().is_relative_to(self.root) or not path.is_file():
                 raise ValueError('pinned source file is missing or escapes root: ' + name)
-            if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            if file_sha256(path) != digest:
                 raise ValueError('pinned source SHA256 mismatch: ' + name)
         return self.identity
 

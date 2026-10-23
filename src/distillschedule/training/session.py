@@ -410,6 +410,8 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, pre
                 raise ValueError("model adapter does not implement generation")
             return inputs.sample(sample_index + rank), inputs.sample_id(sample_index + rank), inputs.identity
         feeds, sample_id, input_identity = distributed.checked(admit, "evaluation input admission")
+        if any(row != input_identity for row in distributed.gather(input_identity)):
+            raise ValueError('ranks disagree on evaluation input identity')
         # All ranks execute native forwards (and any FSDP all-gathers), not just
         # rank zero. Each receives its own rank-strided prepared sample.
         values = distributed.checked(lambda: _generate_values(config, components, feeds, parameters), "checkpoint generation")

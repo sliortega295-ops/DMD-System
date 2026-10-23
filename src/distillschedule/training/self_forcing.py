@@ -307,7 +307,7 @@ def build_model(parameters):
         lifecycle=f'COMMON_PROGRAM_ATOMIC_NATIVE_G1_C{args.dfake_gen_update_ratio}; CURRENT_G_EXPORT_NOT_EMA')
     owner = SelfForcingOwner(model, args, api.source, negative, identity=metadata)
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata, prediction=PredictionSpec('flow'),
-        capabilities=('video', 'flow', 'official-self-forcing'), generate=generate,
+        capabilities=('video', 'causal', 'kv_cache', 'flow', 'official-self-forcing'), generate=generate,
         decode=_decode, inference_projection=project_current_generator, admit_training=admit_training,
         collect_metrics=collect_metrics).validate()
 

@@ -366,7 +366,8 @@ class Session:
                 k=storage_key(t)
                 if k not in excluded: saved[k]=physical_tensor(t).untyped_storage().nbytes()
                 return t
-            self.synchronize()
+            if measure:
+                self.synchronize()
             if measure and self.device.type=='cuda':
                 before=torch.cuda.memory_allocated(self.device); torch.cuda.reset_peak_memory_stats(self.device)
             start_event = end_event = None
@@ -394,7 +395,9 @@ class Session:
             if self.lifecycle is not None: self.lifecycle.after_call(self, c)
             if end_event is not None:
                 end_event.record(torch.cuda.current_stream(self.device))
-            self.synchronize(); duration=max(1,time.perf_counter_ns()-start)
+            if measure:
+                self.synchronize()
+            duration=max(1,time.perf_counter_ns()-start)
             gpu_event_ns = (max(1,int(round(start_event.elapsed_time(end_event)*1_000_000)))
                             if start_event is not None else None)
             for t in tensors(value):
@@ -407,7 +410,9 @@ class Session:
                 retained=max(retained,after-before,0)
                 workspace=max(0,torch.cuda.max_memory_allocated(self.device)-before-retained)
             self.static_bytes=max(self.static_bytes,storage_bytes((self.state,self.feeds)))
-            self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace}
+            self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace,
+                'timing_method':('synchronized_component_host_wall' if measure
+                                 else 'host_dispatch_wall_not_gpu_completion')}
             if gpu_event_ns is not None:
                 self.profile[c.id].update(cuda_event_ns=gpu_event_ns,
                     timing_method='synchronized_cuda_event_and_host_wall',

@@ -79,7 +79,8 @@ def native_effect_evidence(implementation, effects):
     program. Admission uses measured native forward saves/bytes on every rank.
     PyTorch 2.14 can skip replay callbacks, so replay hits are NOT a gate.
     """
-    policy = implementation.get('checkpoint_policy', 'recompute')
+    local = implementation.get('local', implementation)
+    policy = local.get('checkpoint_policy', 'recompute')
     if policy == 'recompute':
         return {'status': 'NOT_REQUIRED', 'policy': policy, 'active': True}
     rows = effects.get('replica_effects', [effects])

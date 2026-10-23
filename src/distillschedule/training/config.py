@@ -85,8 +85,8 @@ class TrainingConfig:
             if bool(parts['data'].get('prepared')) == bool(parts['data'].get('streams')):
                 raise ValueError('exactly one of data.prepared or data.streams is required')
             if 'streams' in parts['data']:
-                if 'sampling' in parts['data'] or 'validation' in trainer:
-                    raise ValueError('streams use per-stream sampling; periodic validation needs a single prepared input')
+                if 'sampling' in parts['data']:
+                    raise ValueError('streams use per-stream sampling, not data.sampling')
                 streams = parts['data']['streams']
                 if not isinstance(streams, dict) or not streams:
                     raise ValueError('data.streams must be a nonempty object')

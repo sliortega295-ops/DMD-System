@@ -43,6 +43,23 @@ def doctor(config=None):
     return result
 
 
+def _generation_parameters_file(path):
+    if path is None:
+        return None
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate generation parameter: ' + key)
+            result[key] = value
+        return result
+    value = json.loads(Path(path).read_text(), object_pairs_hook=unique)
+    if not isinstance(value, dict):
+        raise ValueError('generation parameters must be a JSON object')
+    from .session import _generation_parameters
+    return _generation_parameters(value)
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "data":
@@ -77,6 +94,7 @@ def main(argv=None):
             p.add_argument("--checkpoint", type=Path, required=True)
         if name in ("evaluate", "generate"):
             p.add_argument("--sample-index", type=int, default=0)
+            p.add_argument('--parameters', type=Path, help='explicit finite JSON generation parameters')
         if name == 'evaluate':
             p.add_argument('--prepared', type=Path, help='explicit physical evaluation inputs')
             p.add_argument('--stream', help='physical training input stream (default generator when present)')
@@ -120,9 +138,11 @@ def main(argv=None):
             if args.command == "generate":
                 result = generate_from_export(config, args.weights, args.output,
                                               prepared=args.prepared, sample_index=args.sample_index,
+                                              parameters=_generation_parameters_file(args.parameters),
                                               output_kind=args.output_kind)
             elif args.command == "evaluate":
                 result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
+                                  parameters=_generation_parameters_file(args.parameters),
                                   prepared=args.prepared, stream=args.stream)
             else:
                 result = export(config, args.checkpoint, args.output)
