@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import tarfile
 import venv
 import zipfile
 from email.parser import BytesParser
@@ -15,12 +16,15 @@ ROOT = Path(__file__).resolve().parents[1]
 LICENSE_SHA256 = {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "NOTICE": "9247ab500279666c898a4ac7e943989ea8c4316c3211d7fda88ed5a28151366b",
-    "THIRD_PARTY.md": "ccad27b7badea5d6f8bd37b8b08164dd603a27e8fbab30d8ded4c5a2b2347eb6",
+    "THIRD_PARTY.md": "ad3c9c495953db196445748006743cab300439713e6f4793058279497cf60ca4",
     "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
     "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
     "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0": "d43b96112d60d83595395649e61c6bc215f568052a979320489556c6c1262eb1",
     "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md": "ebdee8bac7e36ed9b18d5d323c12c7b98bad5ab5de3dede4b2679cba688cf4c1",
+    "licenses/livewan-wan21-reference/Wan2.1-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631",
 }
 
 
@@ -115,6 +119,70 @@ def test_cached_h3_reference_has_its_own_small_dependency_closure(wheel_metadata
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
     for package in ("torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"):
         assert f'{package};extra=="h3-cached-reference"' in requirements
+
+
+def test_livewan_wan21_reference_packages_exact_sources_licenses_and_independent_runtime(framework_wheel, wheel_metadata):
+    package = "distillschedule/reference/livewan_wan21/"
+    with zipfile.ZipFile(framework_wheel) as wheel:
+        manifest = json.loads(wheel.read(package + "source_manifest.json"))
+        assert manifest["scope"] == "FULL_ORIGINAL_WAN21_LIVEWAN_CPU_FP32_REFERENCE"
+        for row in manifest["files"] + manifest["licenses"]:
+            assert hashlib.sha256(wheel.read(package + row["path"])).hexdigest() == row["sha256"]
+        assert package + "__init__.py" in wheel.namelist()
+        metadata = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        prefix = metadata.removesuffix("METADATA") + "licenses/licenses/livewan-wan21-reference/"
+        for row in manifest["licenses"]:
+            assert wheel.read(package + row["path"]) == wheel.read(prefix + Path(row["path"]).name)
+    requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
+    for dependency in ("torch>=2.10", "diffusers==0.35.2"):
+        assert f'{dependency};extra=="livewan-wan21-reference"' in requirements
+
+
+def test_livewan_wan21_wheel_source_closure_loads_outside_checkout_without_native_imports(framework_wheel, tmp_path):
+    # Extract the built artifact into an ordinary isolated directory. No new
+    # environment, package installation, upstream checkout or download needed.
+    target = tmp_path / "wheel"
+    with zipfile.ZipFile(framework_wheel) as wheel:
+        wheel.extractall(target)
+    roots = [entry for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+             if entry and not Path(entry).resolve().is_relative_to(ROOT)]
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(target), *roots]), CUDA_VISIBLE_DEVICES="",
+               HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1",
+               PYTHONDONTWRITEBYTECODE="1")
+    result = subprocess.run([sys.executable, "-B", "-c", '''
+import sys
+from pathlib import Path
+from distillschedule.reference import livewan_wan21 as provider
+root = Path(sys.argv[1])
+assert Path(provider.__file__).is_relative_to(root)
+identity = provider.source_identity()
+assert 'torch' not in sys.modules
+api = provider.load_cpu(backend='torch-sdpa-cpu', precision='float32')
+assert Path(api.model.__file__).is_relative_to(root)
+assert api.model.WanModel.__module__.startswith(provider.__name__)
+assert not any(n == 'wan' or n.startswith('wan.') or n == 'wanstreamer' or n.startswith('wanstreamer.') for n in sys.modules)
+assert not sys.modules['torch'].cuda.is_initialized()
+assert identity == provider.source_identity()
+''', str(target)], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_livewan_wan21_sdist_preserves_source_inventory_and_original_licenses(tmp_path):
+    result = subprocess.run([sys.executable, "-B", "-c", (
+        "import sys; from setuptools.build_meta import build_sdist; build_sdist(sys.argv[1])"
+    ), str(tmp_path)], cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    archives = list(tmp_path.glob("distillschedule-*.tar.gz"))
+    assert len(archives) == 1
+    with tarfile.open(archives[0]) as archive:
+        prefix = archive.getnames()[0] + "/"
+        package = prefix + "src/distillschedule/reference/livewan_wan21/"
+        manifest = json.load(archive.extractfile(package + "source_manifest.json"))
+        for row in manifest["files"] + manifest["licenses"]:
+            data = archive.extractfile(package + row["path"]).read()
+            assert hashlib.sha256(data).hexdigest() == row["sha256"]
+        for path, digest in LICENSE_SHA256.items():
+            assert hashlib.sha256(archive.extractfile(prefix + path).read()).hexdigest() == digest
 
 
 

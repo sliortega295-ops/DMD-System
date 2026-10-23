@@ -1,0 +1,692 @@
+{
+  "backend": "torch-sdpa-cpu",
+  "checkpoint_trust": "Original TeacherLatents explicitly loads trusted pickle; no untrusted ingestion admitted",
+  "files": [
+    {
+      "allowed_transformations": [
+        "new maintained source, not upstream numerical body"
+      ],
+      "bytes": 123,
+      "kind": "maintained_cpu_import_backend_bridge",
+      "path": "wan/__init__.py",
+      "sha256": "13630c18655f002df78392525d7a009739d0b6224963bb51d913c7bf8f2217c1"
+    },
+    {
+      "allowed_transformations": [
+        "new maintained source, not upstream numerical body"
+      ],
+      "bytes": 124,
+      "kind": "maintained_cpu_import_backend_bridge",
+      "path": "wan/modules/__init__.py",
+      "sha256": "cdeb50d010213c2db51cb383cabab179c2dd7a7f87fa819ccd9086b7a54ba059"
+    },
+    {
+      "allowed_transformations": [
+        "new maintained source, not upstream numerical body"
+      ],
+      "bytes": 5038,
+      "kind": "maintained_cpu_import_backend_bridge",
+      "path": "wan/modules/attention.py",
+      "sha256": "4e2b7a2bcfe6ff48978a4be2aeee69c4346fe713d8fbe92459704a5609ab88bb"
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 21289,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "wan21",
+        "path": "wan/modules/model.py",
+        "sha256": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a"
+      },
+      "path": "wan/modules/model.py",
+      "sha256": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a",
+      "symbols": [
+        {
+          "ast_sha256": "0037ec94fd137fa2b40fe11fbfcf5540681e0ac9f5754b967d7c630f314f0df0",
+          "end_line": 28,
+          "source_sha256": "443a29aa7a713fdc6608a393a43bb9551240436e4cf1554452d9cdc46489a453",
+          "start_line": 18,
+          "symbol": "sinusoidal_embedding_1d"
+        },
+        {
+          "ast_sha256": "53cba3c5674ac4b2635e0fcb682080029692bc6d148a08655dabd9a8e756cba6",
+          "end_line": 39,
+          "source_sha256": "9f0045507f0170b7288e06ed797a7dd2f073217f3d4b1b565bb041740a2e2aeb",
+          "start_line": 31,
+          "symbol": "rope_params"
+        },
+        {
+          "ast_sha256": "47ab5cacf595badd364e4c2ec0baeeb0add2d788041238998cc5652c7dab57e4",
+          "end_line": 70,
+          "source_sha256": "f2b833c280691d306e3f15c46e14c968f8f24014a88ad3fb79c6f8b7d2e08e54",
+          "start_line": 42,
+          "symbol": "rope_apply"
+        },
+        {
+          "ast_sha256": "f92100ec781694365e57e368bd24bf9bef1385f7bee1cc468d4aa30d86a2617e",
+          "end_line": 89,
+          "source_sha256": "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e",
+          "start_line": 73,
+          "symbol": "WanRMSNorm"
+        },
+        {
+          "ast_sha256": "818d2c53e17d40d263104cef726c5d14964fbcf39ac8acf056fc830d46d6cf69",
+          "end_line": 102,
+          "source_sha256": "17d4c9908c060202755a6f1bfd7830ec5aca655c28ff90a3e4278ee483c0282b",
+          "start_line": 92,
+          "symbol": "WanLayerNorm"
+        },
+        {
+          "ast_sha256": "0db626da653c8d1d938095fa57b028dba6f0b82750361d3b5cde45a8f534bafa",
+          "end_line": 159,
+          "source_sha256": "5a8e7c7dcb9a9ca3a829350a4225e4682332ab7ef56721ad10fa103e9314019e",
+          "start_line": 105,
+          "symbol": "WanSelfAttention"
+        },
+        {
+          "ast_sha256": "f493c4a14dfc242e6a1c07cb559c01f809f84ed588a1640afe12fde1fdd95fb7",
+          "end_line": 184,
+          "source_sha256": "39e0484a5fee9856120d1d48c787a98538d62480b6645a44672e9a1bcb21a223",
+          "start_line": 162,
+          "symbol": "WanT2VCrossAttention"
+        },
+        {
+          "ast_sha256": "b60fb4995782a6de96bff9e1d4f557b6572e9f20ce2018b1c979441cacb40633",
+          "end_line": 229,
+          "source_sha256": "22c457f09a2013eb082d3d5d93720f789acc0ebc20e0f5c61dedf48daaf85dc9",
+          "start_line": 187,
+          "symbol": "WanI2VCrossAttention"
+        },
+        {
+          "ast_sha256": "a51586e13233e33a15c66dbdc6bad9836032ffd162daa1d3ff9f68699fec2eff",
+          "end_line": 317,
+          "source_sha256": "0ee8edd3c590e904b3f78efa14186dbb0a1140e57117644cdc41b403dc1a0192",
+          "start_line": 238,
+          "symbol": "WanAttentionBlock"
+        },
+        {
+          "ast_sha256": "d4fbaa000c32249e4a2b012828096fbfa1f013cc0ae67837089323b43cbfff79",
+          "end_line": 347,
+          "source_sha256": "33e9f4407b1c446c65529738f0a17b8cd58c3c7292ff0a745bf4948fc9083463",
+          "start_line": 320,
+          "symbol": "Head"
+        },
+        {
+          "ast_sha256": "9cb8ebf01e09193d8fc0c37af174cffa48e3769af1a2e26a3f331eda46865bd3",
+          "end_line": 369,
+          "source_sha256": "c13cea0c514c4799f6eeb4d46802aed48737c7fa0851cce6f420e6182373f027",
+          "start_line": 350,
+          "symbol": "MLPProj"
+        },
+        {
+          "ast_sha256": "8f52b3d6943aff4efef8e1ced7f71bb670e8229b348cfff666eb452ccd10b9f5",
+          "end_line": 631,
+          "source_sha256": "7fec5c8885162bb5bab3f770cc6cd14aa4fd665115790e913efc0fff91370039",
+          "start_line": 372,
+          "symbol": "WanModel"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "static selected definitions with explicit imports and CPU-only math context"
+      ],
+      "bytes": 4535,
+      "kind": "selected_definition_derivative",
+      "origin": {
+        "component": "livewan",
+        "path": "wan21_patches/modules/attention.py",
+        "sha256": "6d90e04f270732a7bd19f61745ae7988f9a0277673d229ba9cc89c0035978e82"
+      },
+      "path": "wan/modules/sdpa_original.py",
+      "sha256": "713021cc0d71657dfb4a4fafad4da2ac2a4139d5daa153b573148e51461c2cfa",
+      "symbols": [
+        {
+          "ast_sha256": "63c3afef1c6001018a2a642b2b9f05827eca9e91af6fa643948026436f427a95",
+          "end_line": 72,
+          "source_sha256": "a1d4498d2f1a01e2745a46742294e4358d355de2a40606202dadcc139491bb0b",
+          "start_line": 68,
+          "symbol": "_needs_mask"
+        },
+        {
+          "ast_sha256": "96dcb04c13b3196444cbf3ebd7f10773224c7623b5448891d403833fdc0fd4f4",
+          "end_line": 176,
+          "source_sha256": "883bcef6164cfeee4ab52b805e71eeb6e8b0af164c190350a5810def391aeebf",
+          "start_line": 75,
+          "symbol": "sdpa_attention"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        "new maintained source, not upstream numerical body"
+      ],
+      "bytes": 123,
+      "kind": "maintained_cpu_import_backend_bridge",
+      "path": "wanstreamer/__init__.py",
+      "sha256": "13630c18655f002df78392525d7a009739d0b6224963bb51d913c7bf8f2217c1"
+    },
+    {
+      "allowed_transformations": [
+        {
+          "original": "from wan.modules.attention import flash_attention",
+          "shipped": "from ..wan.modules.attention import flash_attention"
+        },
+        {
+          "original": "from wan.modules.model import sinusoidal_embedding_1d",
+          "shipped": "from ..wan.modules.model import sinusoidal_embedding_1d"
+        }
+      ],
+      "bytes": 13534,
+      "kind": "static_namespace_relocation",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/blockcausal.py",
+        "sha256": "bde44405af4f38ee05ed911c9ab0f626c41ca14c5ad95539f2a3ccf47ca4ce96"
+      },
+      "path": "wanstreamer/blockcausal.py",
+      "sha256": "196211ce84c0430d1f344f75bc65938fd2a34b6f90509f3f351144c820d0fd7e",
+      "symbols": [
+        {
+          "ast_sha256": "352095a20f1035b75e77897005cea8fcf3fdad28abb0827682a1fdeece05322d",
+          "end_line": 24,
+          "source_sha256": "f2f374b2df59ac98294a8755043d357ad4a157a28485210557c6805154ab088a",
+          "start_line": 13,
+          "symbol": "time_embed"
+        },
+        {
+          "ast_sha256": "9d04d7a6b186f7b44b13a179d62dcc3e96e148da9afecf4ba638915331dfebf5",
+          "end_line": 35,
+          "source_sha256": "3c1679a8676aab40af919386c89772e55b435d8652bc599a273e5bc546c7efdb",
+          "start_line": 27,
+          "symbol": "Modulation"
+        },
+        {
+          "ast_sha256": "1faf49b1cb2685f74f6e5a60ee5bafcc5dab967068d53708aeec2b3b4fe0495a",
+          "end_line": 47,
+          "source_sha256": "e90971f0d7516fa31688d8ae996d91327b278e9ad18602e283b4dd0260252300",
+          "start_line": 38,
+          "symbol": "_bcast"
+        },
+        {
+          "ast_sha256": "449db7b128598ad15a56fc6e0284b88cc257b55d388bd320fbb3dd0cddc5221a",
+          "end_line": 54,
+          "source_sha256": "aa881922c14f3ea17c03589c571ccd206f4f4d2d42675223f38744faec5ed529",
+          "start_line": 50,
+          "symbol": "_as_frames"
+        },
+        {
+          "ast_sha256": "1278009a8910a2813e7e73b483517753e278c56c11503d3b2104d10ce1e4480d",
+          "end_line": 61,
+          "source_sha256": "3e882b4a7e0935a058d3a0dbc60f7d7ed81b27521399570b6d6b259920fdcf17",
+          "start_line": 57,
+          "symbol": "_modulate"
+        },
+        {
+          "ast_sha256": "288ac4f1552406a08812ef3f078344b9b87ad31315fe19fc89092a3ea3f6d77f",
+          "end_line": 72,
+          "source_sha256": "10a9a0721bbff6c72aa41c4b16fe61143ee1be41705619d609ed57a52f63e73c",
+          "start_line": 64,
+          "symbol": "_gate"
+        },
+        {
+          "ast_sha256": "3ad408b7f4c097763aaa723018ed9c1b7da679b09eafe90ac7ee071015a63a08",
+          "end_line": 81,
+          "source_sha256": "c14792bf053057917eed0e0fa97785dc8e6198a87838df0a07badc16f1b3837f",
+          "start_line": 75,
+          "symbol": "_head_from"
+        },
+        {
+          "ast_sha256": "810a1787109dbcce080d7f0c9c02932786f69f05fcbe32d4f398425d1329c543",
+          "end_line": 85,
+          "source_sha256": "ff3f7ff868fbde982d8d7cca29ddf49cb974c67d3d1b828c7a5dd0fcf498a3de",
+          "start_line": 84,
+          "symbol": "_head"
+        },
+        {
+          "ast_sha256": "cbb80bcb8456298dc2dce41d6a4e4fdca4ea9a01bfa6021b979f6ff8c8e65a42",
+          "end_line": 98,
+          "source_sha256": "1cdec64495b8992822f0727cfc30bb8c2d5cf023c1d25229bf19095131f7e800",
+          "start_line": 88,
+          "symbol": "apply_rope"
+        },
+        {
+          "ast_sha256": "303bb8c5e8d5dcd6d30b69622c18e74fd2d418226e6017a1678974bb2939e4b0",
+          "end_line": 111,
+          "source_sha256": "d3da30b5f2af7cfa5d0e40b3e03f60fa16e1eefe7edebf5850efa4e7973851bd",
+          "start_line": 102,
+          "symbol": "BufferKV"
+        },
+        {
+          "ast_sha256": "29dedb66a810c513f3624b8ccfc16f4d516e0c762a0a6dbedfed8d364b07d218",
+          "end_line": 130,
+          "source_sha256": "a9b34eb12b5811d18e8a8283ded0a46a1c1e10dc3c0e514beee50ac099eda90e",
+          "start_line": 114,
+          "symbol": "BufferPrefixKV"
+        },
+        {
+          "ast_sha256": "624dde475973f920af6157f6f6164f83aa14abd580c357b4263c4d0ea43087cf",
+          "end_line": 168,
+          "source_sha256": "445d59974b58337538ef791d721ae752e68015bbbb652e2e8e0a1da73b82848b",
+          "start_line": 133,
+          "symbol": "TrainKV"
+        },
+        {
+          "ast_sha256": "53df7f14c576cdb5555607a0c6604e68c9ac9c007930f9c719cf7cda41d6c281",
+          "end_line": 189,
+          "source_sha256": "853352eea37a4107063b82911d90d7a9e22446262e9672c005622d774c7f9ba8",
+          "start_line": 172,
+          "symbol": "_layer"
+        },
+        {
+          "ast_sha256": "e03c65d178ec10628a767c17de07c99f2939611e726cc50079e239962a7e91c1",
+          "end_line": 222,
+          "source_sha256": "6fc2b044f63d7f98fd0e162b4b21a1a22d3ecd49bc14b5278b1a1051831a62e3",
+          "start_line": 192,
+          "symbol": "_run"
+        },
+        {
+          "ast_sha256": "4a93c5f20d484451a25ae2233b92ad960bd96ddd9c9716e7e959cc9b9fe24e3b",
+          "end_line": 235,
+          "source_sha256": "be5248df456ff4b2d09f8279e5775901bf52eb8e169fa61abcc0fd295d46413a",
+          "start_line": 225,
+          "symbol": "_unpatchify"
+        },
+        {
+          "ast_sha256": "f660964c2de97570ff2bc5a20a3811acf3e3b40a3fa10a2237e719505583cf95",
+          "end_line": 269,
+          "source_sha256": "cbe52c64a9ae4b40f5791c6d809bdb2118e819d8e79122baac6438190475222c",
+          "start_line": 239,
+          "symbol": "block_forward"
+        },
+        {
+          "ast_sha256": "2f58ae64b4e04e744617948d34972b174de845c20e4d7e44ca037231d8243714",
+          "end_line": 294,
+          "source_sha256": "c5250bc2cc8400d67a5fcedb178801bf289b1ba731d240c59c2bb03a6314fc88",
+          "start_line": 272,
+          "symbol": "build_clean_kv"
+        },
+        {
+          "ast_sha256": "222e4dd6275dc4895e78fd13d1aeb58d1fdf1caf515eb0e091533c4dd85a4a04",
+          "end_line": 303,
+          "source_sha256": "951cf3c3f96f29db5850b901e23728f044134dcf8c35389b9e583da4210e5a2f",
+          "start_line": 297,
+          "symbol": "event_rope_index"
+        },
+        {
+          "ast_sha256": "dd34116dd3155adc55e65c12df3587c4261d5fb14d5aaca848991a8864e6a82a",
+          "end_line": 335,
+          "source_sha256": "74b70e2acf5dfb19b6ea3afb29c5e7fb401d195b405a66614f29c55ff2c15840",
+          "start_line": 306,
+          "symbol": "parallel_blocks_forward"
+        },
+        {
+          "ast_sha256": "68f640d5f211888c7bd84f18a797ce050644cdcddee87c3cf95ca061d9fe1054",
+          "end_line": 340,
+          "source_sha256": "9130373625b6f9be07e5245988326ba9f87a959edf2d4a61e595f795c313011b",
+          "start_line": 338,
+          "symbol": "block_starts"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [
+        {
+          "original": "from wan.modules.attention import flash_attention",
+          "shipped": "from ..wan.modules.attention import flash_attention"
+        }
+      ],
+      "bytes": 4682,
+      "kind": "static_namespace_relocation",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/core.py",
+        "sha256": "9336fd4422cfc684ff052856e3cc925b710dedcb1cf90276c655f1cc97b55198"
+      },
+      "path": "wanstreamer/core.py",
+      "sha256": "8d5ae3c28aad251ab0eb402512d1d7bd94f8fd9294f556c7a945ffd623ff518c",
+      "symbols": [
+        {
+          "ast_sha256": "13db5b9cc0f53043adf05361af7fb21c6db06d3a8045374f36b76983f2283efc",
+          "end_line": 12,
+          "source_sha256": "32e28e645eec5b09f38187f6a6cef0f6365c1642050d4741fba085fe6ecb0c66",
+          "start_line": 10,
+          "symbol": "timestep_to_train_scale"
+        },
+        {
+          "ast_sha256": "27fa6c759f921e975073ab16a37c5cdd98669239fb4a396bae6eda54834da980",
+          "end_line": 25,
+          "source_sha256": "c108cf5261aa1675266da30a02c8307f1f8b987399d19a2e960fe3f573bcf377",
+          "start_line": 15,
+          "symbol": "ModulationCache"
+        },
+        {
+          "ast_sha256": "d223989abbe898e2aa5955af6687a76941166c318196242e8d8e890a616438a6",
+          "end_line": 64,
+          "source_sha256": "2051df2380ffd1bd5ae9965e01bcf5ca656ec1ad7c24d8efd8c5db91be25c388",
+          "start_line": 28,
+          "symbol": "block_forward"
+        },
+        {
+          "ast_sha256": "b4e513793a19e7ac7d0790dca4159da72191b72b25c249a133093a001dbc5f41",
+          "end_line": 83,
+          "source_sha256": "e3b2d2c5d9ae2c131f26fe759b505eb9ddf2334a5ebc6ea1cfd559e665879d49",
+          "start_line": 67,
+          "symbol": "frame_forward"
+        },
+        {
+          "ast_sha256": "a4af348ccce1da5c492c59f61c1116e0a4100c9df5201332a24276f3867312bc",
+          "end_line": 101,
+          "source_sha256": "1289f5b5eca8f88a92c08c8b31588c14de68c2e89f9579027bb8353127d587ea",
+          "start_line": 86,
+          "symbol": "sequence_forward"
+        },
+        {
+          "ast_sha256": "3f6154581f9f9793197439038a57fd2a7b63b2106603baee02d10c70de5d4c04",
+          "end_line": 105,
+          "source_sha256": "1575bfc47ecca237b26fe22803bee9f310196b5cdfca0e464859408b56446049",
+          "start_line": 104,
+          "symbol": "make_rope_table"
+        },
+        {
+          "ast_sha256": "f865b1c669f643eebd4d54febce08d6f01d4c65ac2d3b7241cee62ffb6e27134",
+          "end_line": 115,
+          "source_sha256": "6e0115dfe5ba849ad7b8680e2382dfd1dff6cdf41ebb4a6c291ce96b98472751",
+          "start_line": 108,
+          "symbol": "make_cache"
+        },
+        {
+          "ast_sha256": "d2b91ac54fef746b0919a3f30d71b7c1ddaed54ddd1da3e92bd774bd08f52dd3",
+          "end_line": 129,
+          "source_sha256": "d0b56addedf24684f58a2710cf5ac69bc83b074b9310909d836bf85abd7f7506",
+          "start_line": 118,
+          "symbol": "latent_geometry"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2255,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/data.py",
+        "sha256": "57f6913207ef7f998d264e329b0b30a16f79125bdbc0b61bd4fc7e1adf444b93"
+      },
+      "path": "wanstreamer/data.py",
+      "sha256": "57f6913207ef7f998d264e329b0b30a16f79125bdbc0b61bd4fc7e1adf444b93",
+      "symbols": [
+        {
+          "ast_sha256": "a5fab2acd78d54336efc304ce96ebc309e7f6cc268b15ad02f62755586e71588",
+          "end_line": 31,
+          "source_sha256": "1b8570224d95a8a2c297113a8787ffe8a48c0b2cf4655e5ec3b71fbcd7da2f23",
+          "start_line": 9,
+          "symbol": "TeacherLatents"
+        },
+        {
+          "ast_sha256": "580966c00f0f529a7bdaed3b5816734f9609c661b0ea2435d462fed2bb6f5796",
+          "end_line": 43,
+          "source_sha256": "9bf2649227ca15725a7a21a3a70381de27925d9e67a6a953964e0089f9a78e3a",
+          "start_line": 34,
+          "symbol": "shifted_uniform_t"
+        },
+        {
+          "ast_sha256": "0c931582ff8ba63e490fd32de2bb91cef1c0734427f6c2576c81e986447b24f1",
+          "end_line": 58,
+          "source_sha256": "cafceb29b61b0ee6739d5d23763b5050f741dc1a70643778663801e5bcd34f29",
+          "start_line": 46,
+          "symbol": "add_noise"
+        },
+        {
+          "ast_sha256": "c94cdc0069c3baf5c980bd9cb971c5a511a7c5205857adaff2a8b0c3a082c275",
+          "end_line": 65,
+          "source_sha256": "a469a1ece4a693360dcbd7a62afaa96f3dbe1b0681bbef81f50aacaf3de17471",
+          "start_line": 61,
+          "symbol": "x0_from_velocity"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2667,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/dmd.py",
+        "sha256": "b248ebb3da5e1ea654917ff560fa6890109f7c1018a99fb25da1f8b8ac76bb8c"
+      },
+      "path": "wanstreamer/dmd.py",
+      "sha256": "b248ebb3da5e1ea654917ff560fa6890109f7c1018a99fb25da1f8b8ac76bb8c",
+      "symbols": [
+        {
+          "ast_sha256": "d9d0639da5bc9a26bfcada71d84d2f155365f4309115ffd9e1567e9b3ead9f05",
+          "end_line": 20,
+          "source_sha256": "9ead096c2fcad72246931be1cc5c05fe524c6040929e8a5e741739293f1141d5",
+          "start_line": 15,
+          "symbol": "bidirectional_velocity"
+        },
+        {
+          "ast_sha256": "019e9aa8ad6c897f0369fb658e4489997795187bb49949dea0072ca65df618b7",
+          "end_line": 34,
+          "source_sha256": "53cc84a65c20d8aa4b3fca72644b1c0eb120f0decad531999aafa1e8b643010b",
+          "start_line": 23,
+          "symbol": "cfg_velocity"
+        },
+        {
+          "ast_sha256": "558f26e4a48a99ff80217a772756a407fdbf1bfd8aa2fff71768f71b27a30c8d",
+          "end_line": 48,
+          "source_sha256": "90d02781fcd1b0dc29bbb56244c60e092d29cae27d17d0bc615b0fdefcda1df7",
+          "start_line": 37,
+          "symbol": "dmd_gradient"
+        },
+        {
+          "ast_sha256": "8124222e37b7387cb75b8817bedf173eed55a8ccb5246713396d884fcb44a684",
+          "end_line": 54,
+          "source_sha256": "083aece3bc54d63272be940f6558b6df7493c6a13f3956878a95ab177cd70756",
+          "start_line": 51,
+          "symbol": "dmd_surrogate"
+        },
+        {
+          "ast_sha256": "469ff8c0419b08e0717496af5a09be404b63b0f0d422b4731542c33fe94ae81b",
+          "end_line": 63,
+          "source_sha256": "94bdce1e244d30e24aa3d6f5c4fbf142bfadff0227d601c4bb49b6b8251bd9c6",
+          "start_line": 57,
+          "symbol": "critic_loss"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2141,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/graphrunner.py",
+        "sha256": "3ad291015565b2cef7439f51c9e20d19bd81f4fd8da4f0047cc6e11ef9a954e0"
+      },
+      "path": "wanstreamer/graphrunner.py",
+      "sha256": "3ad291015565b2cef7439f51c9e20d19bd81f4fd8da4f0047cc6e11ef9a954e0",
+      "symbols": [
+        {
+          "ast_sha256": "617d923096c5a993ff79b0c5907127bb56191f6acbfe7ed15175e2d794bb5bf9",
+          "end_line": 42,
+          "source_sha256": "957a0652c9d34cfc6afafbab6a3dbefcfb433fb3eb6560f8edfde0e59f0c3d9b",
+          "start_line": 5,
+          "symbol": "GraphedForward"
+        },
+        {
+          "ast_sha256": "1067b47f44b34ce8fad9db06cccbe7b7decfce748311d12671216b0eea3572f7",
+          "end_line": 66,
+          "source_sha256": "41e2910aab52df3b6c87c2889fa5901ff1403272abbd9956460cd663d0b12b48",
+          "start_line": 45,
+          "symbol": "SteadyStateGraphs"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2931,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/kvcache.py",
+        "sha256": "d90531f56c93d87a0b51c8f854f063138d536b252615bb9c305495c84ca6ed9c"
+      },
+      "path": "wanstreamer/kvcache.py",
+      "sha256": "d90531f56c93d87a0b51c8f854f063138d536b252615bb9c305495c84ca6ed9c",
+      "symbols": [
+        {
+          "ast_sha256": "1edee6ed707ac51ee394b10f3ed8dc7f15f070e0d939893701eff92a5f548932",
+          "end_line": 78,
+          "source_sha256": "5467c18e2df2fb1878b23a30366bc4c17ed9c6bc5179ed51273974c8ef1cd7c3",
+          "start_line": 9,
+          "symbol": "StreamingKVCache"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2633,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/lora.py",
+        "sha256": "71bbcdc932e1290734df55e15cf5ed998bda1f41a3cb607684f28da71fcf0824"
+      },
+      "path": "wanstreamer/lora.py",
+      "sha256": "71bbcdc932e1290734df55e15cf5ed998bda1f41a3cb607684f28da71fcf0824",
+      "symbols": [
+        {
+          "ast_sha256": "2c96d024cc9f5f888c565b58c9a77d632baa91770facbb0078cf2a80f95b6fce",
+          "end_line": 27,
+          "source_sha256": "0793acc64f42ef574b646438dbb16593b208f284553fb41493430ca0f34671b7",
+          "start_line": 8,
+          "symbol": "LoRALinear"
+        },
+        {
+          "ast_sha256": "d4bb895e52b137fd2af2b1edf544cd15471dd242dcd3aac25adc8cb18b5413f3",
+          "end_line": 56,
+          "source_sha256": "44f5403ff44387bbd4770bf58499dc222151aaab85a85da1867eeed350d2e214",
+          "start_line": 34,
+          "symbol": "inject_lora"
+        },
+        {
+          "ast_sha256": "9f60170478153b472f86e9996ebdb0779957c10ac9126a6c38b62ebcb2690afc",
+          "end_line": 62,
+          "source_sha256": "f23dd007297804ac449eadb35cd33e12785ef5897c4acb87c6b87afb710ffb75",
+          "start_line": 59,
+          "symbol": "set_lora"
+        },
+        {
+          "ast_sha256": "32a0d420de62392d8c1016b54f4e1d4b012d95754f792cb67c104ec384253b4a",
+          "end_line": 74,
+          "source_sha256": "47f6d9eded1c0e4824283e5fcb9a56474f0ef7d15ae7aefdb835fb24d838e9e7",
+          "start_line": 65,
+          "symbol": "lora_enabled"
+        },
+        {
+          "ast_sha256": "d99a56177095a5de50a7af3c1058e37a788864adb72f14dce9b83a566b5ba292",
+          "end_line": 79,
+          "source_sha256": "81ab3e0d2b40e9aa58358fe4e7a7be5ab6741341580536ae5ce1667e329f18a7",
+          "start_line": 77,
+          "symbol": "lora_state_dict"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 2617,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/rope.py",
+        "sha256": "550ac7c7956c7da2bcf5fd6a1f7a9d14b5232b33f4cb8a04b58e64ca46109c2f"
+      },
+      "path": "wanstreamer/rope.py",
+      "sha256": "550ac7c7956c7da2bcf5fd6a1f7a9d14b5232b33f4cb8a04b58e64ca46109c2f",
+      "symbols": [
+        {
+          "ast_sha256": "daaf67e48fb08a063fe1ee4030feae6da73bc1d3f240a35d0c1a30cbc1c5c5cb",
+          "end_line": 47,
+          "source_sha256": "6150dd267757087a988eb168ca4e1579bf3a4fc692ecf1dfe857639440fd1151",
+          "start_line": 5,
+          "symbol": "RopeTable"
+        },
+        {
+          "ast_sha256": "dea8aa3178abe85e2ac80f1865808f0bee2f16472a074f2e32ee2d6782ccb453",
+          "end_line": 59,
+          "source_sha256": "079719d96952168b8037486f0e07b1e1e9a93873f46c74193d3344a9ff9638a7",
+          "start_line": 50,
+          "symbol": "apply_rope"
+        }
+      ]
+    },
+    {
+      "allowed_transformations": [],
+      "bytes": 9540,
+      "kind": "unchanged_whole_module",
+      "origin": {
+        "component": "livewan",
+        "path": "wanstreamer/stream.py",
+        "sha256": "f7db20a1cec986640b4a9df374a9a25ea5817f4c1e47498939514972db248144"
+      },
+      "path": "wanstreamer/stream.py",
+      "sha256": "f7db20a1cec986640b4a9df374a9a25ea5817f4c1e47498939514972db248144",
+      "symbols": [
+        {
+          "ast_sha256": "6b4efe38672b7fa593bb55fc50709a0837fc5e2c98f19cfd43e462e698afd2f4",
+          "end_line": 23,
+          "source_sha256": "4ac523c0a216a49c7e0fbe0a6aa6cc22f733a3c83006fc4797ed5e1c26ba194e",
+          "start_line": 18,
+          "symbol": "few_step_schedule"
+        },
+        {
+          "ast_sha256": "70a4fd4a7251e1b8309cb96c293e38cf80139c8aa63b255b2d57ff5ceb9e868c",
+          "end_line": 223,
+          "source_sha256": "fbfc80b34f4b3ccc93a326bd9a2ab5a1daa0412e15ea9a663e27461e3712b9b2",
+          "start_line": 26,
+          "symbol": "FewStepStreamer"
+        }
+      ]
+    }
+  ],
+  "licenses": [
+    {
+      "bytes": 11357,
+      "path": "licenses/LiveWan-LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "bytes": 2710,
+      "path": "licenses/ORIGIN_AND_CHANGES.md",
+      "sha256": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631"
+    },
+    {
+      "bytes": 11357,
+      "path": "licenses/Wan2.1-LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ],
+  "origins": {
+    "livewan": {
+      "repository": "https://github.com/JonathanColetti/LiveWan.git",
+      "revision": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5"
+    },
+    "wan21": {
+      "repository": "https://github.com/Wan-Video/Wan2.1.git",
+      "revision": "9737cba9c1c3c4d04b33fcad41c111989865d315"
+    }
+  },
+  "precision": "float32",
+  "schema_version": "distillschedule.livewan_wan21_reference.v1",
+  "scope": "FULL_ORIGINAL_WAN21_LIVEWAN_CPU_FP32_REFERENCE",
+  "unsupported": [
+    "GPU/FlashAttention/BF16",
+    "CUDA graphs and CUDA-timed stream()",
+    "pretrained1.3B/14B and native368x640/81-frame capacity",
+    "world16/C51",
+    "Program/optimizer/checkpoint restart",
+    "VAE decode/quality",
+    "untrusted pickle"
+  ]
+}
