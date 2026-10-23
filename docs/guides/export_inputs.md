@@ -60,6 +60,9 @@ contract (sorted supported filenames and file hashes), not a hash of directory
 metadata. Raw RGB and native spatial/temporal compression divisibility are
 required; no automatic color conversion, truncation, resizing or resampling.
 Input references are local only and relative to the manifest.
+RGB frame directories require Pillow; container video files require both
+`ffmpeg` and `ffprobe` on PATH. Missing executables refuse rather than guessing
+frame count or silently resizing, resampling or skipping raw-video preparation.
 
 ## 2. Prepare and validate using the public entrypoint
 

@@ -8,6 +8,7 @@ dependency-only .pth path. Actual framework imports must be in the new venv.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -47,40 +48,221 @@ def dependency_roots(checkout, *, paths=None):
     return result
 
 
-def qualified_dependencies(roots):
+def qualified_dependencies(roots, *, modern=False):
     """Record the real imported numerical stack, rather than guessing versions."""
     import importlib
     import importlib.metadata
     packages = {'torch':'torch', 'numpy':'numpy', 'Pillow':'PIL', 'safetensors':'safetensors'}
+    if modern:
+        packages.update({'diffusers':'diffusers', 'transformers':'transformers', 'peft':'peft',
+                         'tokenizers':'tokenizers', 'accelerate':'accelerate', 'huggingface-hub':'huggingface_hub'})
     result = {}
+    modern_pins = dict(torch='2.10.0', diffusers='0.37.1', transformers='5.14.1', peft='0.18.1',
+                       tokenizers='0.22.2', accelerate='1.14.0', huggingface_hub='1.7.1', safetensors='0.8.0')
     for distribution, name in packages.items():
         module = importlib.import_module(name)
         origin = Path(module.__file__).resolve()
         if not any(origin.is_relative_to(Path(root)) for root in roots):
             raise RuntimeError('dependency origin is not a reusable package root: ' + str(origin))
         version = str(module.__version__) if hasattr(module, '__version__') else importlib.metadata.version(distribution)
+        if modern and name in modern_pins and version.split('+')[0] != modern_pins[name]:
+            raise RuntimeError('modern-flow requires ' + name + '==' + modern_pins[name] + ', found ' + version)
         result[name] = {'version':version, 'origin':str(origin)}
     return result
+
+
+MODERN_FLOW_ACCEPTANCE = r'''
+import contextlib, hashlib, importlib, io, json, shutil, subprocess, sys, sysconfig
+from pathlib import Path
+import distillschedule, runtime
+site = Path(sysconfig.get_paths()['purelib']).resolve()
+checkout = Path(sys.argv[1]).resolve()
+assert not Path.cwd().resolve().is_relative_to(checkout)
+assert Path(distillschedule.__file__).resolve().is_relative_to(site)
+assert Path(runtime.__file__).resolve().is_relative_to(site)
+assert all(not Path(path).resolve().is_relative_to(checkout) for path in sys.path if path)
+from distillschedule.recipes import directory
+recipes = directory()
+assert recipes.is_relative_to(Path(sys.prefix)) and not recipes.is_relative_to(checkout)
+queries = []
+query_phase = True
+def audit(event, args):
+    if query_phase and event == 'open' and isinstance(args[0], (str, bytes)):
+        assert Path(str(args[0])).suffix not in ('.pt', '.bin', '.safetensors'), args[0]
+sys.addaudithook(audit)
+from distillschedule.cli import main
+for arguments in (['doctor'], ['workloads','list'], ['models','list'], ['capabilities','list'],
+                  ['config','validate',str(recipes/'flux_dmd/training.template.json')]):
+    with contextlib.redirect_stdout(io.StringIO()) as output:
+        assert main(arguments) == 0
+    queries.append(dict(arguments=arguments, output=output.getvalue()))
+assert not any(name in sys.modules for name in ('torch','diffusers','transformers','peft'))
+query_phase = False
+import numpy as np
+import torch
+from PIL import Image
+from distillschedule.data import PreparedDataset
+from distillschedule.data.manifest import source_identity
+from distillschedule.training.config import load_training_config
+from distillschedule.training.session import _load_for_output
+expected_dependencies = json.loads(sys.argv[2])
+for name, expected in expected_dependencies.items():
+    module = importlib.import_module(name)
+    assert str(module.__version__) == expected['version'], (name, module.__version__, expected)
+    assert str(Path(module.__file__).resolve()) == expected['origin'], (name, module.__file__, expected)
+assert not torch.cuda.is_initialized()
+commands = []
+def command(arguments):
+    argv = [sys.executable, '-I', *map(str, arguments)]
+    result = subprocess.run(argv, text=True, capture_output=True)
+    commands.append(dict(argv=argv, cwd=str(Path.cwd()), returncode=result.returncode))
+    with Path('subprocess.log').open('a') as stream:
+        stream.write(json.dumps(commands[-1])+'\n'+result.stdout+result.stderr+'\n')
+    if result.returncode:
+        raise RuntimeError(result.stdout + result.stderr)
+    return json.loads(result.stdout)
+def cli(*arguments):
+    return command(['-m','distillschedule',*arguments])
+def equal(x,y):
+    if isinstance(x,torch.Tensor): return isinstance(y,torch.Tensor) and torch.equal(x,y)
+    if isinstance(x,dict): return isinstance(y,dict) and x.keys()==y.keys() and all(equal(v,y[k]) for k,v in x.items())
+    if isinstance(x,(tuple,list)): return isinstance(y,type(x)) and len(x)==len(y) and all(equal(a,b) for a,b in zip(x,y))
+    return x == y
+families = {}
+for family, recipe, shape, kind, size, preparer in (
+        ('flux2-klein-base','flow_image',[1,4,4,4],'image',8,'flow_image_inputs'),
+        ('wan22-ti2v5b-t2v','wan22_dmd',[1,4,2,2,2],'video',32,'wan22_inputs')):
+    root = Path(family).resolve(); root.mkdir()
+    helper = recipes/recipe/'create_cpu_fixture.py'
+    arguments = [helper,root/'assets','--cycles',3]
+    if kind == 'image': arguments += ['--family',family]
+    assets = command(arguments)
+    config = Path(assets['config'])
+    prepared = cli('data','prepare',root/'assets/raw.json','--output',root/'assets/prepared-cli',
+        '--preparer','distillschedule.data.'+preparer+':prepare_inputs')
+    assets['prepared'] = prepared['manifest']
+    request = json.loads(config.read_text()); request['data']['prepared'] = assets['prepared']
+    config.write_text(json.dumps(request))
+    cli('data','validate',assets['prepared'],'--sources')
+    first = cli('train',config,'--cycles',1,'--output',root/'partial')
+    resumed = cli('train',config,'--cycles',3,'--resume',first['checkpoint'],'--output',root/'resumed')
+    whole = cli('train',config,'--cycles',3,'--output',root/'whole')
+    a = torch.load(Path(resumed['checkpoint'])/'state.pt',weights_only=True)
+    b = torch.load(Path(whole['checkpoint'])/'state.pt',weights_only=True)
+    assert equal(a,b), 'complete state/RNG/Adam/schedulers/EMA/data/versions must match'
+    assert a['state']['dmd_counters']['value']['counters'].tolist() == [3,3,15]
+    rows = [json.loads(line) for line in (root/'whole/metrics.jsonl').read_text().splitlines()]
+    continued = [json.loads(line) for line in (root/'resumed/metrics.jsonl').read_text().splitlines()]
+    assert [row['sample_id'] for row in continued] == [row['sample_id'] for row in rows][1:]
+    current = _load_for_output(load_training_config(config),resumed['checkpoint'])[0]
+    training_feeds = PreparedDataset(assets['prepared']).sample(0)
+    with torch.no_grad():
+        sigma = torch.tensor([.5])
+        student = current.state['student'].denoise(training_feeds['latents'],sigma,training_feeds,conditional=True)
+        teacher = current.state['teacher'].denoise(training_feeds['latents'],sigma,training_feeds,conditional=True)
+    assert not equal(student,teacher), 'current Student must be an actual updated model'
+    exported = cli('export',config,'--checkpoint',resumed['checkpoint'],'--output',root/'export')
+    assert set(exported['model']['modules']) == {'student','media'}
+    native_class = type(current.state['student'].native)
+    source_path = Path(importlib.import_module(native_class.__module__).__file__).resolve()
+    for folder in ('partial','resumed','whole'):
+        shutil.rmtree(root/folder)
+    shutil.rmtree(root/'assets')
+    assert not list(root.rglob('state.pt')) and not config.exists()
+    source = dict(schema_version='distillschedule.export_inputs.v1', weights='export',mode='prompts',
+        records=[dict(id='NEW_AFTER_DELETION',prompt='a violet kite',latent_shape=shape)])
+    (root/'new.json').write_text(json.dumps(source))
+    prepared_result = cli('data','prepare',root/'new.json','--output',root/'new-prepared',
+        '--preparer','distillschedule.data.export_inputs:prepare_inputs')
+    dataset = PreparedDataset(prepared_result['manifest']); assert dataset.validate(sources=True)['status']=='PASS'
+    feeds = dataset.sample(0)
+    assert not equal(feeds['context'],training_feeds['context'])
+    assert equal(tuple(feeds[key] for key in ('context','context_mask')),current.state['media'].encode_text(['a violet kite']))
+    inference = dict(schema_version='distillschedule.training.v1',
+        model=dict(factory=exported['model']['factory'],parameters=exported['model']['parameters']),
+        algorithm=dict(name='dmd'),data=dict(prepared=str(dataset.path)),execution=dict(mode='reference'),
+        trainer=dict(cycles=1,seed=909,device='cpu',output_dir=str(root/'unused')))
+    (root/'inference.json').write_text(json.dumps(inference))
+    actual = cli('generate',root/'inference.json','--weights',root/'export','--prepared',prepared_result['manifest'],
+        '--output',root/'generation','--output-kind',kind)
+    for value in current.state.values():
+        if isinstance(value,torch.nn.Module): value.eval()
+    torch.random.default_generator.manual_seed(909)
+    with torch.no_grad():
+        generated=current.generate(current.state,feeds,{})
+        expected=dict(generated=generated,decoded=current.decode(generated,{}))
+    artifact=torch.load(actual['artifact'],weights_only=True)
+    assert equal(expected,artifact), 'fresh portable output must equal native CURRENT Student'
+    pixels=((np.arange(size*size*3).reshape(size,size,3)*11+37)%256).astype('uint8')
+    if kind=='image':
+        media=root/'new-image.png'; Image.fromarray(pixels).save(media)
+        assert Path(actual['image']['path']).is_file() and artifact['decoded']['image'].shape==(8,8,3)
+    else:
+        media=root/'new-frames'; media.mkdir()
+        for i in range(5): Image.fromarray(np.roll(pixels,i,axis=0)).save(media/f'{i:04d}.png')
+        assert len(list(Path(actual['video']['frames']).glob('*.png')))==5
+        assert artifact['decoded']['video'].shape==(5,32,32,3)
+    source.update(mode='raw',records=[dict(id='NEW_RAW_AFTER_DELETION',prompt='a teal bird',
+        **{kind:dict(path=media.name,sha256=source_identity(media,frames=kind=='video')['sha256'])})])
+    (root/'raw.json').write_text(json.dumps(source))
+    raw=cli('data','prepare',root/'raw.json','--output',root/'raw-prepared',
+        '--preparer','distillschedule.data.export_inputs:prepare_inputs')
+    raw_actual=cli('generate',root/'inference.json','--weights',root/'export','--prepared',raw['manifest'],
+        '--output',root/'raw-generation','--output-kind',kind)
+    assert raw_actual['sample_id']=='NEW_RAW_AFTER_DELETION'
+    families[family]=dict(evidence_kind='SYNTHETIC_TEST_ONLY', native_class=native_class.__name__,
+        native_source=str(source_path),native_source_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(),
+        recipe=str(helper),recipe_sha256=hashlib.sha256(helper.read_bytes()).hexdigest(),
+        complete_state_rng_data_equal=True,fresh_process_resume=True,clocks=[3,3,15],
+        sample_ids=[row['sample_id'] for row in rows],training_assets_checkpoints_deleted=True,
+        current_student_differs_from_teacher=True,public_export_only_new_prompt=True,
+        public_export_only_new_raw_media=True,exact_current_student_decode=True,
+        generated=actual,raw_generated=raw_actual,export_manifest_sha256=actual['export_manifest_sha256'])
+for name,module in tuple(sys.modules.items()):
+    if (name=='distillschedule' or name.startswith('distillschedule.') or name=='runtime' or name.startswith('runtime.')) and getattr(module,'__file__',None):
+        assert Path(module.__file__).resolve().is_relative_to(site), (name,module.__file__)
+assert not torch.cuda.is_initialized()
+print(json.dumps(dict(status='PASS_INSTALLED_MODERN_FLOW_CPU',families=families,commands=commands,
+    queries_without_torch_cuda_or_weights=True,queries=queries,scope='SYNTHETIC_TEST_ONLY',
+    source=dict(working_directory_outside_checkout=True,site_packages=str(site),recipes=str(recipes),
+        python_search_path=sys.path,
+        module_paths=dict(distillschedule=str(Path(distillschedule.__file__).resolve()),runtime=str(Path(runtime.__file__).resolve())),
+        python_version=sys.version.split()[0],qualified_dependencies=expected_dependencies),
+    gpu_execution='NOT_RUN',pretrained_quality='NOT_RUN',capacity_validation='NOT_RUN',quality_validation='NOT_RUN')))
+'''
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--modern-flow", action="store_true", help="actual tiny native image and video CPU acceptance")
+    parser.add_argument("--wheel", type=Path, help="validate this already-built wheel without rebuilding")
+    parser.add_argument("--work-dir", type=Path, help="preserve installation/media/logs in a NEW directory outside checkout")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     dependency_sites = dependency_roots(root)
-    qualified = qualified_dependencies(dependency_sites)
+    qualified = qualified_dependencies(dependency_sites, modern=args.modern_flow)
     env = {key: value for key, value in os.environ.items() if key not in ("PYTHONPATH", "PYTHONHOME")}
     env.update(CUDA_VISIBLE_DEVICES="", HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1",
                OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
-    with tempfile.TemporaryDirectory(prefix="dmd-framework-wheel-") as scratch:
+    if args.work_dir:
+        args.work_dir = args.work_dir.resolve()
+        if args.work_dir.is_relative_to(root):
+            raise ValueError('installed acceptance work directory must be outside the checkout')
+        args.work_dir.mkdir(parents=True, exist_ok=False)
+    context = nullcontext(str(args.work_dir)) if args.work_dir else tempfile.TemporaryDirectory(prefix="dmd-framework-wheel-")
+    with context as scratch:
         work = Path(scratch)
         wheels = work / "wheels"
         wheels.mkdir()
         # Invoke the already installed PEP 517 backend directly. Validated uv
         # environments need not carry pip, and this must not modify them just
         # to build a wheel or fetch isolated build dependencies.
-        subprocess.run([sys.executable, "-c", ("import sys; from setuptools.build_meta import build_wheel; "
+        if args.wheel:
+            import shutil
+            shutil.copy2(args.wheel.resolve(), wheels / args.wheel.name)
+        else:
+            subprocess.run([sys.executable, "-c", ("import sys; from setuptools.build_meta import build_wheel; "
                         "build_wheel(sys.argv[1])"), str(wheels)],
                        cwd=root, env=env, check=True, stdout=subprocess.PIPE, text=True)
         files = list(wheels.glob("distillschedule-*.whl"))
@@ -241,6 +423,8 @@ print(json.dumps(dict(status='PASS_INSTALLED_FRAMEWORK_CPU',
     gpu_execution='NOT_RUN', pretrained_quality='NOT_RUN', quality_validation='NOT_RUN',
     native_pretrained_lifecycles='NOT_RUN')))
 '''
+        if args.modern_flow:
+            script = MODERN_FLOW_ACCEPTANCE
         result = subprocess.run([str(python), "-I", "-c", script, str(root), json.dumps(qualified)], cwd=work, env=env,
                                 text=True, capture_output=True, check=False)
         if result.returncode:

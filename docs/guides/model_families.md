@@ -15,6 +15,8 @@ An execution policy chooses only admitted physical changes. The command remains
 | LTX-2.5 / generic No-GAN DMD | Actual AV LTX Transformer; explicit rectified-flow surrogate and Fake regression policy | Actual Gemma4/connectors, native video/audio VAEs, vocoder; AV or explicit latents | isolated `train,ltx25`, Python >=3.11 |
 | FLUX.2 klein Base 4B / explicit flow DMD | Actual Flux2 Transformer, no guidance embeddings, normalized sigma; not official DMD2 | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`, CPU1 FP32 only |
 | Original Qwen-Image T2I / explicit flow DMD | Actual QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Actual Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`, CPU1 FP32 only |
+| Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Actual native Wan Transformer, expanded normalized timestep, CFG=1; not experts/I2V or official Self-Forcing | Actual UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`, CPU1 FP32/B1 only |
+| HunyuanVideo-1.5 T2V / explicit flow DMD | Actual Hunyuan15 native Transformer/dual text/temporal4 VAE; not I2V/meanflow/distilled | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`, CPU1 FP32/B1 only |
 | Existing W1–W6 | Their distinct original contracts, not aliases of the above algorithms | See each recipe and six-workload support matrix | Existing separate qualified lanes |
 
 Official Self-Forcing is **not W4 LiveWan**. W4 retains the cross-scale
@@ -44,6 +46,8 @@ See the runnable source-specific guides:
 - [LTX-2.5](../../recipes/ltx25/README.md)
 - [FLUX.2 klein Base 4B](../../recipes/flux_dmd/README.md)
 - [Original Qwen-Image](../../recipes/qwen_image_dmd/README.md)
+- [Wan2.2 TI2V-5B T2V](../../recipes/wan22_dmd/README.md)
+- [HunyuanVideo-1.5 T2V](../../recipes/hunyuan_video_dmd/README.md)
 
 ## Native iterations and public cycles
 
@@ -131,6 +135,12 @@ fetches the hash-locked source/license closures, supplies those roots and
 requires actual named proofs with **zero skips**. A missing upstream root may
 skip optional cases in a broad generic test collection; that is not provider
 acceptance. Each provider lane must execute its original native tests.
+The separate [modern-flow CI](../../.github/workflows/modern-flow-cpu.yml)
+requires actual native image/video, raw container decode, measured three-family
+plans, export-only inputs and installed-wheel lifecycle proofs without skips.
+Its TF5 lane does not run the original W2 SafeBundle/Helios TF4 fixtures.
+Optional actual-CUDA files under `tests/gpu` are outside the mandatory official
+CPU globs and have their own honest **NOT_RUN** receipt, not a CPU gate waiver.
 The older generic `.34` helper job uses a tested explicit file selector before
 starting pytest to exclude W4's three `.35.2` public full-class files; their
 dedicated job actually runs them instead. Shell-expanded files are not

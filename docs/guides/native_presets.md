@@ -35,7 +35,7 @@ manifest. This change introduces no launcher or node reservation service.
 
 ## Exact bindings, not a new training contract
 
-All presets require **exactly two native cycles, `checkpoint_every: 0`, no
+The six original presets below require **exactly two native cycles, `checkpoint_every: 0`, no
 resume, and their original fixed input contract**. They are not continuous
 training, new-input generation or inference-export tutorials. Fresh-input
 reference lifecycles remain separate in the [native guide](native_workloads.md).
@@ -54,6 +54,20 @@ HEAD**. [`native_presets.py`](../../src/distillschedule/training/native_presets.
 contains the versioned metadata, mechanism owners and exact typed factories.
 No frozen profile, source-import map, historical FAIL or publication receipt
 is rewritten. Future changes to a preset's contract require a new preset ID.
+
+### Separate W2 fresh-stream opt-in
+
+`helios_nogan.safe_stream_ed8.v1` is a **new**, separately versioned manual
+preset; the original `safe_ed8.v1` and reference route are unchanged. It binds
+the actual SafeBundle and original producer/worker/lifecycle for 2..64 fresh
+cohorts, with complete-cycle same-topology save/resume. It refuses saved-plan,
+transport, replay and incompatible source/backend/control/cache state rather
+than using an old benchmark payload. See the W2 recipe's
+[fresh-stream guide](../../recipes/helios_nogan/SAFE_STREAM.md).
+Original helper CPU updates and two-rank Gloo state/failure tests are source/
+CPU evidence only: CUDA telemetry/kernel counters in the tiny fixtures are
+explicit simulations, not actual FA2/Triton, node-HSDP, capacity or pretrained
+validation. Native GPU execution remains **NOT_RUN**, status **REVIEW**.
 
 ## Shared lowering and runtime gates
 
@@ -92,7 +106,9 @@ Presets require `mode: manual`. Combining a preset with `plan`,
 `implementation` or `transport` is rejected, as are mismatched workloads,
 unsupported shapes, altered source assertions or lifecycle requests. In
 particular, W1's literal graph cannot consume a fresh stream; W2/W4/W5 fresh
-streams cannot silently become optimized benchmark replay.
+streams cannot silently become optimized benchmark replay. The new W2
+fresh-stream preset above is an explicit different contract, not an exception
+to a frozen benchmark's gates.
 
 Saved plans remain supported unchanged: select `mode: plan`, supply `plan`,
 and omit `preset`. The original selected plan is authoritative, including its

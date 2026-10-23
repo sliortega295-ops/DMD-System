@@ -49,6 +49,10 @@ but architecture/latent domain must match. Source identity remains explicitly
 
 ## Inputs and public lifecycle
 
+RGB frame directories require Pillow. Container video files additionally require
+**both ffmpeg and ffprobe** already on PATH; a missing tool is an error, not a
+download, guessed frame rate or optional skip.
+
 Copy/edit the raw, prompt or preencoded templates. Raw input is a self-contained
 video supported by existing ffmpeg/ffprobe, or a sorted RGB frame directory; no
 resize/crop/frame resample. Raw `F=(Flatent-1)*4+1`; H/W divisible by32 (native

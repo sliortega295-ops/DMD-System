@@ -109,3 +109,28 @@ independent clones. Only the admitted selected session becomes live state.
 Its native SD15/SDXL loss/gradient/Adam/scheduler/RNG and fresh-process
 continuation tests execute actual upstream classes; they do not qualify FSDP,
 AMP or arbitrary opaque owners.
+
+## Modern native flow planning is a separately qualified CPU slice
+
+The FLUX.2 klein Base, original Qwen-Image and Wan2.2 T2V tiny actual-class
+fixtures use the same common reference/manual/auto/saved-plan runner. Their
+real measured candidates and selected sessions preserve losses, gradients,
+updates, optimizer/scheduler/EMA, input/RNG clocks and fresh-process restore.
+No model-name winner, historical cost, kernel timing or speedup is substituted.
+
+Clone-based trials admit only the declared **SYNTHETIC_TEST_ONLY CPU1 FP32**
+layout and verified owned alias/module state. A local asset manifest labeled
+`LOCAL_PRETRAINED_UNVERIFIED` is not proof of model size, source authenticity or
+snapshot safety: auto/plan trial cloning refuses it **before copying or
+executing**. Its independently admitted non-clone reference/manual lifecycle
+remains available; changing a trust label is not a capacity qualification.
+`memory_limit_bytes` constrains selected **tracked tensor storage**, not host
+RSS, temporary paired-clone construction, CPU staging or large-model OOM risk.
+
+Saved plans bind source/runtime, complete effective architecture and graph,
+parameter values, algorithm, input geometry/dtype, hardware and cache state;
+drift refuses before a formal update. Transient caches are rebuilt on restore,
+never treated as portable immutable model state. Opaque native CUDA owners
+remain reference-only until capacity-bounded backend-native snapshot/restore
+and paired comparison are qualified. No whole-owner deepcopy is an admitted
+CUDA fallback. See [bounded release notes](release_notes.md).

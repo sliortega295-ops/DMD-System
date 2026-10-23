@@ -71,6 +71,9 @@ identities travel with export. Overflow rejects rather than silently truncates.
 Copy one [raw](inputs.raw.template.json), [prompts](inputs.prompts.template.json)
 or [preencoded](inputs.preencoded.template.json) input manifest and replace
 every placeholder. Raw RGB videos/frame directories must have
+Pillow available for RGB frame directories; container video files additionally
+require both **ffmpeg and ffprobe** on PATH. Missing tools fail, never trigger a
+download, guessed frame rate or optional skip. Their geometry must have
 `Fraw=(Flatent-1)*4+1`, H/W divisible by the actual VAE spatial compression;
 no crop/resize/frame truncation/resampling. The native VAE encodes its posterior
 mode times `scaling_factor` and decodes the exact inverse. Tiny CPU fixture:

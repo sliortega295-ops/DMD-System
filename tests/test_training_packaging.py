@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LICENSE_SHA256 = {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "NOTICE": "bc15142557d3efcc5a4bc60eef15e8d58a718953e36f231110ac87ac0631bad4",
-    "THIRD_PARTY.md": "a3f3d359b4fda88614805efc9ca7ceb1ad84fa89220ed208d88fa574aaee9209",
+    "THIRD_PARTY.md": "95595d8f994a10d713f7f7e47a1cde7103a3a9a45f44267a6367003ca1746ca7",
     "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
     "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
