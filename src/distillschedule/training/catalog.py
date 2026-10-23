@@ -56,7 +56,7 @@ for _name, _factory, _caps, _description in (
 
 for _name, _factory, _description in (
     ('dmd2', 'dmd2:build_dmd2', 'Official SD DMD2 with native iteration and guidance updates'),
-    ('self-forcing', 'self_forcing:build_algorithm', 'Official causal self-rollout DMD'),
+    ('self-forcing', 'self_forcing:build_self_forcing', 'Official causal self-rollout DMD'),
     ('dmd', 'dmd:build_algorithm', 'No-GAN DMD with model-owned denoising and predictions'),
 ):
     register_algorithm(_name, factory='distillschedule.training.' + _factory, description=_description)

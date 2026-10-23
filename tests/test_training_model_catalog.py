@@ -95,3 +95,11 @@ def build(parameters):
     monkeypatch.setenv('TEST_PRED_KIND', 'flow'); monkeypatch.setenv('TEST_MODEL_CAP', 'audio')
     with pytest.raises(ValueError, match='identity'):
         train(TrainingConfig.from_dict(value, source=config.source))
+
+
+def test_official_self_forcing_registered_workflow_resolves_to_actual_factory():
+    from distillschedule.training.catalog import resolve
+    from distillschedule.training.plugins import load_callable
+    from distillschedule.training.self_forcing import build_self_forcing
+    factory, _ = load_callable(resolve('algorithm', 'self-forcing')['factory'])
+    assert factory is build_self_forcing
