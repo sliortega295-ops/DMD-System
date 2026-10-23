@@ -46,7 +46,7 @@ The version differences come from the original source implementations.
 | Common Program training and external model template | `train` (plus `test` for tests) | Model-specific encoders/checkpoints are supplied separately |
 | Licensed original Helios helper CPU regression | `train,test,test-helios` | Diffusers0.34.0; Triton definitions may import on Linux/x86, but these CPU tests do not launch kernels |
 | Native Wan/source-qualified Self-Forcing regression | `train,test,native-wan` | Diffusers0.35.2; not the Helios0.34 or full-model0.37 lane |
-| Full original Helios CPU model/public GAN reference | `train,helios-reference` | Diffusers0.37.1; add `test` separately, not a test-only runtime dependency |
+| Full original Helios CPU model and W1/W2/W3 Program references | `train,helios-reference` | Diffusers0.37.1; add `test` separately, not a test-only runtime dependency |
 | Maintained original cached H3 AV CPU reference | `train,h3-cached-reference` | Independent small cached-only source closure; not the full DiffSynth/SFT distribution |
 | Original Grid H3 CPU source qualification | Dedicated [workflow](../../.github/workflows/h3-grid-native-cpu.yml) | Additional exact upstream source/dependency pins; no pretrained-model validation |
 

@@ -181,6 +181,14 @@ contract and matched admission; do not crop, pad or rewrite historical locks.
 
 ## Explicit full-original Helios model reference
 
+W2 has an independent [warm No-GAN CPU Program reference](../../recipes/helios_nogan/CPU_REFERENCE.md).
+It uses the original full-model constructor, mixed native BF16/FP32 precision,
+FP32 LoRA256, real G2/C10/EMA10 warm state and original subsequent No-GAN
+actions. The common checkpoint and current-G output APIs are connected;
+fresh-process CPU continuation is tested. Its CPU1 source-rank0 execution is
+not a new FSDP2/CUDA backend or world16 numerical qualification. The existing
+direct native reference and selected plans retain their separate contracts.
+
 W1 additionally has a separately versioned [CPU1 original Full5 reference](../../recipes/wan_ar/CPU_REFERENCE.md).
 It calls the original parameterized Wan cycle and P0 helpers through one
 nonreplayable Program call, preserving native mixed BF16/FP32 parameters,

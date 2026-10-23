@@ -1,6 +1,11 @@
 """Dependency-separated CI must actually execute the native CPU proofs."""
 from pathlib import Path
+import os
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,3 +81,115 @@ def test_original_wan_ci_requires_mixed_precision_update_restart_and_current_g()
         'test_partial_cycle_poison_and_safe_all_owner_restore',
         'test_fresh_process_new_prompt_only_no_old_assets_training_or_optimizer'))
     assert "('skipped', 'failures', 'errors')" in commands
+
+
+def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output():
+    value = job('helios-nogan-reference-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert value['env']['HELIOS_NOGAN_PUBLIC_REQUIRE_STACK'] == '1'
+    assert value['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert value['strategy']['matrix']['python'] == ['3.10', '3.12']
+    assert 'tests' in value['env']['PYTHONPATH'].split(':')
+    assert 'runner.temp' in value['env']['HELIOS_NOGAN_PUBLIC_FIXTURE']
+    assert "'.[train,test,helios-reference]'" in commands
+    assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
+    assert all(name in commands for name in (
+        'tests/test_training_helios_nogan_bootstrap_cpu.py',
+        'tests/test_training_helios_nogan_public_cpu.py',
+        'tests/test_data_helios_nogan_reference_inputs.py',
+        'tests/test_training_helios_nogan_inference_cpu.py',
+        'test_actual_original_warm_public_two_fresh_cycles',
+        'test_fresh_process_exact_uninterrupted3_vs1_plus2',
+        'test_outer_zero_actual_warm_boundary_recovers_first_partial_cycle',
+        'test_actual_restored_full_current_generator_projection_and_export',
+        'test_fresh_process_new_prompt_without_old_paths_owners_or_optimizer'))
+    assert "('skipped', 'failures', 'errors')" in commands
+    assert 'native-wan' not in commands and 'test-helios]' not in commands
+
+
+def test_nogan_ci_releases_its_large_training_fixture_before_independent_output():
+    value = job('helios-nogan-reference-cpu.yml')
+    runs = [step.get('run', '') for step in value['steps']]
+    train = next(i for i, text in enumerate(runs)
+                 if 'pytest' in text and 'test_training_helios_nogan_public_cpu.py' in text)
+    output = next(i for i, text in enumerate(runs)
+                  if 'pytest' in text and 'test_training_helios_nogan_inference_cpu.py' in text)
+    cleanup = next(i for i, text in enumerate(runs) if 'shutil.rmtree' in text)
+    assert train < cleanup < output
+    assert 'helios-nogan-training.xml' in runs[train]
+    assert 'helios-nogan-inference.xml' in runs[output]
+    assert 'RUNNER_TEMP' in runs[cleanup] and 'resolve() == path' in runs[cleanup]
+    assert 'test_training_helios_nogan_inference_cpu.py' not in runs[train]
+
+
+@pytest.mark.parametrize('mutation', [None, 'suite-skip', 'suite-failure', 'suite-error',
+                                     'case-skip', 'missing-proof', 'missing-file', 'empty'])
+def test_nogan_actual_xml_gate_rejects_false_green_reports(tmp_path, mutation):
+    """SYNTHETIC_TEST_ONLY: run the real YAML consumer, not model qualification."""
+    value = job('helios-nogan-reference-cpu.yml')
+    command = next(step['run'] for step in value['steps']
+                   if step.get('name') == 'Require real full-source proofs without skips')
+    names = [
+        'test_complete_original_layout_real_adam_reader_state_and_next_commit',
+        'test_actual_original_warm_public_two_fresh_cycles',
+        'test_fresh_process_exact_uninterrupted3_vs1_plus2',
+        'test_partial_g_teacher_c_and_restore_failures_poison_all_owners',
+        'test_outer_zero_actual_warm_boundary_recovers_first_partial_cycle',
+        'test_actual_restored_full_current_generator_projection_and_export',
+        'test_fresh_process_new_prompt_without_old_paths_owners_or_optimizer',
+    ]
+    for index, filename in enumerate(('helios-nogan-training.xml', 'helios-nogan-inference.xml')):
+        root = ET.Element('testsuites')
+        suite = ET.SubElement(root, 'testsuite', tests=str(5 if index == 0 else 2),
+                              failures='0', errors='0', skipped='0')
+        for name in (names[:5] if index == 0 else names[5:]):
+            ET.SubElement(suite, 'testcase', name=name)
+        if index == 1:
+            if mutation in ('suite-skip', 'suite-failure', 'suite-error'):
+                suite.set({'suite-skip':'skipped', 'suite-failure':'failures',
+                           'suite-error':'errors'}[mutation], '1')
+            elif mutation == 'case-skip':
+                ET.SubElement(suite[0], 'skipped')
+            elif mutation == 'missing-proof':
+                suite.remove(suite[-1])
+            elif mutation == 'empty':
+                root.remove(suite)
+            elif mutation == 'missing-file':
+                continue
+        ET.ElementTree(root).write(tmp_path / filename)
+    binary = tmp_path / 'bin'
+    binary.mkdir()
+    (binary / 'python').symlink_to(sys.executable)
+    result = subprocess.run(['bash', '-e', '-c', command], cwd=tmp_path,
+        env={**os.environ, 'PATH':str(binary) + os.pathsep + os.environ.get('PATH', '')},
+        capture_output=True, text=True, timeout=30)
+    assert (result.returncode == 0) is (mutation is None), result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('alias', [False, True])
+def test_nogan_ci_cleanup_is_owned_and_refuses_symlink_targets(tmp_path, alias):
+    value = job('helios-nogan-reference-cpu.yml')
+    command = next(step['run'] for step in value['steps']
+                   if step.get('name') == "Release only this job's completed training fixture")
+    root, outside = tmp_path / 'runner', tmp_path / 'not-this-jobs-data'
+    root.mkdir()
+    outside.mkdir()
+    (outside / 'keep').write_text('unrelated input')
+    fixture = root / 'helios-nogan-reference'
+    if alias:
+        fixture.symlink_to(outside, target_is_directory=True)
+    else:
+        fixture.mkdir()
+    temporary = root / 'helios-nogan-training-pytest'
+    temporary.mkdir()
+    binary = tmp_path / 'bin'
+    binary.mkdir()
+    (binary / 'python').symlink_to(sys.executable)
+    result = subprocess.run(['bash', '-e', '-c', command], cwd=tmp_path,
+        env={**os.environ, 'RUNNER_TEMP':str(root),
+             'PATH':str(binary) + os.pathsep + os.environ.get('PATH', '')},
+        capture_output=True, text=True, timeout=30)
+    assert (result.returncode == 0) is (not alias), result.stdout + result.stderr
+    assert (outside / 'keep').read_text() == 'unrelated input'
+    assert temporary.exists() is alias
+    assert fixture.exists() is alias

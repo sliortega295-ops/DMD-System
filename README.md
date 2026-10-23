@@ -85,6 +85,7 @@ available for [Wan](docs/workloads/original_wan_fresh_training.md),
 [Self-Forcing](recipes/self_forcing/REFERENCE_TRAINING.md), and
 [Grid1000 H3](recipes/h3-grid-original-training.md). Separately versioned CPU
 Program references connect the actual original [W1 No-GAN Full5 model and trainer](recipes/wan_ar/CPU_REFERENCE.md),
+[W2 warm No-GAN model and trainer](recipes/helios_nogan/CPU_REFERENCE.md),
 [Helios GAN model and trainer](recipes/helios_gan/REFERENCE_TRAINING_CPU.md)
 and [cached previous/current H3 AR source](recipes/h3_ar/CPU_REFERENCE.md),
 including real gradients and safe fresh-process continuation. Their input/checkpoint

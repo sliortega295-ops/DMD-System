@@ -33,6 +33,12 @@ Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORREC
 
 ## Public training configuration
 
+For the complete original tiny model on CPU, use the separately versioned
+[warm No-GAN Program reference](CPU_REFERENCE.md). It connects genuine original
+G2/C10/EMA10 state, original subsequent updates, common safe recovery and
+current full-Generator export/new-prompt latent inference. CPU1 source-rank0
+execution is not world16 reduction or pretrained quality validation.
+
 For fresh native cohorts without historical SSH/HF/flash/trace assets, use the
 separate [`training.reference.json`](training.reference.json) and
 [direct-reference guide](REFERENCE_TRAINING.md). This requires an actual pinned

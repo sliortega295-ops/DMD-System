@@ -1,0 +1,102 @@
+name: helios-nogan-reference-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/**'
+      - 'runtime/**'
+      - 'third_party/helios_compat/**'
+      - 'scripts/distillschedule/probe_static_fsdp2_p0_world16.py'
+      - 'tests/test_training_helios_nogan_*'
+      - 'tests/test_data_helios_nogan_reference_inputs.py'
+      - 'tests/test_training_cpu_workflows.py'
+      - 'pyproject.toml'
+      - '.github/workflows/helios-nogan-reference-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  original-warm-nogan:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    env:
+      PYTHONPATH: 'src:.:tests'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HELIOS_NOGAN_PUBLIC_REQUIRE_STACK: '1'
+      HELIOS_NOGAN_PUBLIC_FIXTURE: '${{ runner.temp }}/helios-nogan-reference'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install the minimum CPU runtime, not a cluster environment
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[train,test,helios-reference]'
+      - name: Original warm updates and exact restart
+        run: >-
+          python -m pytest -q tests/test_training_helios_nogan_bootstrap_cpu.py
+          tests/test_training_helios_nogan_public_cpu.py
+          tests/test_data_helios_nogan_reference_inputs.py
+          --basetemp="${RUNNER_TEMP}/helios-nogan-training-pytest"
+          --junitxml=helios-nogan-training.xml
+      - name: Release only this job's completed training fixture
+        run: |
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']).resolve()
+          for name in ('helios-nogan-reference', 'helios-nogan-training-pytest'):
+              path = root / name
+              assert path.parent == root and path.resolve() == path and path.is_dir()
+              shutil.rmtree(path)
+          PY
+      - name: Independent current-G output without old training payloads
+        run: >-
+          python -m pytest -q
+          tests/test_training_helios_nogan_inference_cpu.py
+          --basetemp="${RUNNER_TEMP}/helios-nogan-inference-pytest"
+          --junitxml=helios-nogan-inference.xml
+      - name: Require real full-source proofs without skips
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          names = set()
+          for filename in ('helios-nogan-training.xml', 'helios-nogan-inference.xml'):
+              root = ET.parse(filename).getroot()
+              suites = list(root.iter('testsuite'))
+              assert suites and all(int(s.get(field, '0')) == 0 for s in suites
+                                    for field in ('skipped', 'failures', 'errors'))
+              cases = list(root.iter('testcase'))
+              assert cases and all(case.find('skipped') is None for case in cases)
+              names.update(case.get('name') for case in cases)
+          required = {
+              'test_complete_original_layout_real_adam_reader_state_and_next_commit',
+              'test_actual_original_warm_public_two_fresh_cycles',
+              'test_fresh_process_exact_uninterrupted3_vs1_plus2',
+              'test_partial_g_teacher_c_and_restore_failures_poison_all_owners',
+              'test_outer_zero_actual_warm_boundary_recovers_first_partial_cycle',
+              'test_actual_restored_full_current_generator_projection_and_export',
+              'test_fresh_process_new_prompt_without_old_paths_owners_or_optimizer',
+          }
+          assert required <= names, f'missing original No-GAN proofs: {sorted(required - names)}'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: helios-nogan-reference-cpu-py${{ matrix.python }}
+          path: |
+            helios-nogan-training.xml
+            helios-nogan-inference.xml
+          if-no-files-found: error
