@@ -29,7 +29,19 @@ Single-step SDXL is **not** inferred from a base SDXL bundle: an explicit
 `generator_checkpoint` is mandatory. The original `conditioning_timestep:399`
 case is admitted only together with that actual single-step checkpoint; set
 `denoising:false`, `backward_simulation:false`, `num_denoising_step:1` for that
-pure-generation path. No checkpoint is downloaded or invented.
+pure-generation path. `training.single_step.json` supplies this actual
+configuration template: independent `generator: 1` and `guidance: 4` streams,
+no denoising stream, the explicit local initializing generator checkpoint,
+and native timestep399. The checkpoint must contain the actual strict native
+generator state for that case, not just a base SDXL bundle or an owner restart
+checkpoint. Its bytes are stream-hashed before and after loading. No checkpoint
+is downloaded or invented, and no pretrained-quality claim is made.
+
+`images.template.json` uses the shared explicit offline actual-VAE intake for
+1024-square RGB batches (or other explicitly declared compatible geometry).
+Both native local CLIP tokenizers are mandatory even for raw-image records;
+omitting `tokenizer_2` fails rather than substituting a single CLIP tokenizer.
+Pinned preencoded latents remain an unchanged alternative.
 
 ```sh
 python recipes/dmd2_sd15/create_cpu_fixture.py /PROJECT/random-sdxl \

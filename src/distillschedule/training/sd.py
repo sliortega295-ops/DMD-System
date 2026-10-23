@@ -6,13 +6,13 @@ Both factories instantiate its actual SDUniModel/SDGuidance numerical classes.
 from __future__ import annotations
 
 from copy import deepcopy
-import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 
 from .adapters import ModelComponents
 from .prediction import PredictionSpec
 from .upstream import PinnedSource
+from distillschedule.workloads.best_known.registry import file_sha256
 
 REVISION = '8d8fa55633d47cfb81bbc7a892e7248f9518763f'
 REPOSITORY = 'https://github.com/tianweiy/DMD2'
@@ -58,7 +58,7 @@ def local_bundle_identity(model_id, *, sdxl):
         require(bool(entries), 'empty local pretrained subfolder: ' + folder)
         for path in entries:
             require(path.resolve().is_relative_to(root), 'asset symlink escapes model bundle')
-            files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+            files[path.relative_to(root).as_posix()] = file_sha256(path)
     return {'root': str(root), 'files': files}
 
 
@@ -175,9 +175,11 @@ def _build(parameters, *, sdxl):
     checkpoint_identity = None
     if parameters.get('generator_checkpoint'):
         path = Path(parameters['generator_checkpoint']).expanduser().resolve(strict=True)
+        checkpoint_identity = {'path': str(path), 'sha256': file_sha256(path)}
         value = torch.load(path, map_location='cpu', weights_only=True)
         model.feedforward_model.load_state_dict(value, strict=True)
-        checkpoint_identity = {'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+        require(file_sha256(path) == checkpoint_identity['sha256'], 'generator checkpoint changed during load')
+    require(local_bundle_identity(args.model_id, sdxl=sdxl) == bundle, 'local model bundle changed during load')
     uncond = None
     if not sdxl:
         tokenizer = CLIPTokenizer.from_pretrained(args.model_id, subfolder='tokenizer', local_files_only=True)
@@ -190,7 +192,7 @@ def _build(parameters, *, sdxl):
         bundle=bundle, generator_checkpoint=checkpoint_identity, settings=deepcopy(vars(args)),
         runtime=runtime_identity(), precision='FP32_CPU1', ema='NONE', quality_validation='NOT_RUN',
         cpu_execution='CPU_IMPLEMENTATION_TESTED_ON_RANDOM_TINY_ASSETS_ONLY', gpu_execution='NOT_RUN',
-        placement_limit='CURRENT_GENERIC_STATEFUL_TRAVERSAL_INCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA')
+        placement_limit='CPU1_ONLY_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA_CUDA_NOT_VALIDATED')
     owner = DMD2Owner(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),

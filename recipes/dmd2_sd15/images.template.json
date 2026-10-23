@@ -1,0 +1,31 @@
+{
+  "schema_version": "distillschedule.sd_inputs.v1",
+  "variant": "sd15",
+  "model_id": "/ABSOLUTE/LOCAL/SD15_BUNDLE",
+  "vae_encoding": {
+    "resolution": [
+      512,
+      512
+    ],
+    "latent_shape": [
+      4,
+      64,
+      64
+    ],
+    "posterior": "sample",
+    "seed": 193,
+    "dtype": "float32"
+  },
+  "records": [
+    {
+      "id": "real-0001",
+      "prompt": "A small sailboat at sunrise",
+      "images": [
+        {
+          "path": "/ABSOLUTE/LOCAL/RGB/exact_512_sailboat.png",
+          "sha256": "REPLACE_WITH_SHA256_OF_IMAGE_BYTES"
+        }
+      ]
+    }
+  ]
+}

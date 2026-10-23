@@ -11,6 +11,7 @@ import hashlib
 from .checkpoint import (rng_state, restore_rng, validate_rng, cpu_tree,
                          _validate_layout, _validate_optimizer_layout)
 from .sd import require
+from distillschedule.workloads.best_known.registry import fingerprint
 
 SCHEMA = 'distillschedule.official_dmd2_owner.v1'
 
@@ -42,6 +43,10 @@ def _hash_tensor(value):
     return hashlib.sha256(value.detach().contiguous().cpu().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
 
 
+def _tensor_identity(value):
+    return dict(shape=list(value.shape), dtype=str(value.dtype), sha256=_hash_tensor(value))
+
+
 class DMD2Owner:
     def __init__(self, model, args, source, uncond_embedding, *, identity, seed):
         import torch
@@ -69,6 +74,9 @@ class DMD2Owner:
         self.initial_masks = {name: p.requires_grad for name, p in model.named_parameters()}
         self.frozen_hashes = {name: _hash_tensor(parameter) for name, parameter in model.named_parameters()
                               if not parameter.requires_grad}
+        self._settings_hash = fingerprint(vars(args))
+        self._frozen_identity = self._frozen_tensors_identity()
+        self._constants_hash = fingerprint(self._native_constants())
         self._rng = _clone(rng_state())
         self.observer = None  # Optional diagnostics; never serialized or used for math.
         self._validate_live()
@@ -95,11 +103,13 @@ class DMD2Owner:
     def runtime_tensors(self):
         """Device-owned tensors, excluding host-only RNG/Adam step metadata.
 
-        This explicit placement seam is not yet consumed by the common generic
-        backend; until it is, admission reports the mixed-device CPU1 boundary.
+        The common backend consumes this live-tensor seam, not state_dict's
+        cloned host metadata. This does not admit CUDA: native placement and
+        checkpoint restore remain validated only on CPU1/FP32.
         """
         yield from self.model.parameters()
         yield from self.model.buffers()
+        yield from self._plain_tensors().values()
         for parameter in self.model.parameters():
             if parameter.grad is not None:
                 yield parameter.grad
@@ -109,12 +119,62 @@ class DMD2Owner:
                     if name != 'step':
                         yield tensor
 
+    def _plain_tensors(self):
+        import torch
+        result = {}
+        for prefix, owner in (('model', self.model), ('scheduler', self.model.noise_scheduler)):
+            result.update({prefix + '.' + name: value for name, value in vars(owner).items()
+                           if isinstance(value, torch.Tensor)})
+        if self.uncond_embedding is not None:
+            result['uncond_embedding'] = self.uncond_embedding
+        return result
+
+    def _frozen_tensors_identity(self):
+        # Initial masks, not current masks: upstream deliberately toggles the
+        # entire guidance module to requires_grad=True after the first G turn.
+        # Those Teacher tensors remain immutable and outside the optimizer.
+        tensors = dict(self.model.named_parameters())
+        result = {name: _tensor_identity(tensors[name]) for name in self.frozen_hashes}
+        for name, value in self.model.named_buffers():
+            if not name.startswith(('feedforward_model.', 'guidance_model.fake_unet.',
+                                    'guidance_model.cls_pred_branch.')):
+                result[name] = _tensor_identity(value)
+        return result
+
+    def _native_constants(self):
+        from .sd import _plain
+        # Bound args.gradient_checkpointing remains mathematical identity. The
+        # native model's actual flags/callbacks are physical execution state;
+        # admission here must not preempt a separately scoped capability owner.
+        model_fields = ('num_train_timesteps', 'num_visuals', 'conditioning_timestep', 'use_fp16',
+            'backward_simulation', 'cls_on_clean_image', 'denoising',
+            'denoising_timestep', 'num_denoising_step', 'timestep_interval', 'sdxl', 'not_sdxl_vae')
+        guidance_fields = ('gan_alone', 'num_train_timesteps', 'min_step', 'max_step',
+            'real_guidance_scale', 'fake_guidance_scale', 'use_fp16', 'cls_on_clean_image',
+            'gen_cls_loss', 'sdxl', 'diffusion_gan', 'diffusion_gan_max_timestep')
+        return dict(model={name: getattr(self.model, name) for name in model_fields},
+            guidance={name: getattr(self.model.guidance_model, name) for name in guidance_fields},
+            tensors={name: _tensor_identity(value) for name, value in self._plain_tensors().items()},
+            scheduler=_plain(dict(self.model.noise_scheduler.config)),
+            scheduler_fields={name: value for name, value in vars(self.model.noise_scheduler).items()
+                if not name.startswith('_') and type(value) in (str, bool, int, float, type(None))},
+            vae=_plain(dict(self.model.vae.config)))
+
     def _masks(self, native_step):
         return {name: (True if native_step > 0 and name.startswith('guidance_model.') else value)
                 for name, value in self.initial_masks.items()}
 
     def _validate_live(self):
         self.source.validate()
+        require(fingerprint(vars(self.args)) == self._settings_hash
+                and fingerprint(self.identity['settings']) == self._settings_hash
+                and self.model.args is self.args and self.model.guidance_model.args is self.args
+                and self.ratio == self.args.dfake_gen_update_ratio, 'live mathematical settings changed')
+        require(self._frozen_tensors_identity() == self._frozen_identity,
+                'live frozen Teacher/CLIP/VAE/base-LoRA tensors changed')
+        require(self.model.noise_scheduler is self.model.guidance_model.scheduler
+                and fingerprint(self._native_constants()) == self._constants_hash,
+                'live native conditioning/scheduler constants changed')
         require(self.native_step % self.ratio == 0 and self.generator_updates == self.cycle
                 and self.guidance_updates == self.native_step, 'not a complete native macrocycle')
         names = {id(p): name for name, p in self.model.named_parameters()}

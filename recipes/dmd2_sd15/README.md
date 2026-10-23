@@ -43,6 +43,24 @@ may be one string or a list of strings. Tokens remain int64 B1L. Optional
 `latents: {path, sha256}` loads an existing FP32 B4HW tensor unchanged; this
 adapter never secretly encodes, resizes or renormalizes image latents.
 
+For raw local images, use `images.template.json` with the same preparer. Its
+explicit `vae_encoding` declares `[height, width]`, `[channels, latent_height,
+latent_width]`, `posterior: sample` or `mode`, independent integer `seed`, and
+`dtype: float32`. Each record's `images: [{path, sha256}, ...]` aligns exactly
+with its prompt batch; `images` and `latents` are mutually exclusive. Only
+single-frame eight-bit RGB files at the **exact** declared size are admitted:
+no resizing, cropping, EXIF rotation or RGB conversion is implicit. Pixels
+normalize to [-1,1], then the actual local `AutoencoderKL` posterior is scaled
+by its actual `scaling_factor`. Declared geometry is checked against both the
+native VAE configuration and actual encoded output, never an assumed scale8.
+Sampling uses a separate CPU generator seeded by the explicit seed plus
+unique record ID; reordering records does not change samples or consume the
+training RNG. Local tokenizer/VAE weights, encoder source, image bytes and
+source manifest are hashed into provenance and rechecked before publication.
+Only VAE and native CLIP tokenizers are loaded; no Teacher/Fake is constructed.
+The optional fields extend the existing v1 schema; old pinned latent tensors
+remain bitwise unchanged.
+
 Fill the explicit paths in `training.json`, then use the existing common
 `distillctl train`, `export` and `generate` lifecycle. A cycle performs ten
 native iterations: G at step zero then once per ten steps, guidance every
@@ -57,6 +75,13 @@ choose `gen_cls_loss`, `gen_cls_loss_weight`, `guidance_cls_loss_weight` and
 optional diffusion-GAN settings. The 1280-channel, 52,437,761-parameter SD1.5
 head is not resized to fit a tiny fixture. The default recipe leaves GAN off;
 it is not a reproduction claim for a paper's complete training configuration.
+`training.gan.json` is a concrete GAN-enabled template with independent
+`generator: 1`, `guidance: 9`, `real: 10` native streams and explicit nonzero
+generator/guidance classifier weights. These example weights are declared
+choices, not a claim to reproduce a paper configuration. Prepare the `real`
+stream from `images.template.json` or pinned latents, and replace all paths.
+The separate 1280-channel GAN-head forward/backward test is **not** full-GAN
+training acceptance; full-GAN/pretrained quality and GPU execution are NOT_RUN.
 
 ## CPU starter and evidence boundary
 
@@ -72,10 +97,15 @@ and tokenizers. It does not download a pretrained model and does not establish
 image quality, training convergence, throughput, or production parity.
 
 CPU1 FP32 is the validated integration boundary. CUDA/AMP, distributed/FSDP and
-GPU scheduling are NOT_RUN. Current generic stateful tensor traversal mixes
-CUDA model state with host RNG/Adam step metadata, so this adapter rejects
-CUDA rather than pretending it works. `DMD2Owner.runtime_tensors()` exposes a
-narrow future placement seam; it is not yet common-backend wiring.
+GPU scheduling are NOT_RUN. The common backend consumes the owner's live
+`runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
+including native plain conditioning/scheduler tensors. That wiring is not
+CUDA validation: the adapter still rejects CUDA/AMP/distributed placement.
+Before update or checkpoint save, live mathematical settings, initially
+frozen Teacher/CLIP/VAE/base-LoRA tensors and native conditioning/scheduler
+tables must match their initial fingerprints. Upstream's post-first-guidance
+`requires_grad=True` behavior is preserved; the Teacher still never enters
+the optimizer. Mutable G/Fake weights are not incorrectly treated as frozen.
 
 Export projects **current G + CLIP + VAE only**, with architecture configs and
 named module weights. `distillschedule.training.sd:build_inference_model`
