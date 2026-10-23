@@ -1,6 +1,7 @@
 """Independent W2 source/rank/control/freshness admission, no numerical stand-in."""
 from copy import deepcopy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -8,10 +9,16 @@ import torch
 
 from test_training_helios_nogan_public_cpu import fixture_assets as fixture_assets
 from test_training_helios_nogan_bootstrap_cpu import _write,_pin
+from test_training_helios_public_cpu import STACK_AVAILABLE
 from distillschedule.data import PreparedDataset
 from distillschedule.data import helios_nogan_reference_inputs as inputs
 from distillschedule.training.helios_inputs import HeliosCohortTask
 from distillschedule.workloads.best_known.registry import fingerprint
+
+if os.environ.get('HELIOS_NOGAN_PUBLIC_REQUIRE_STACK') == '1' and not STACK_AVAILABLE:
+    raise RuntimeError('required full W2 CPU stack missing: Diffusers0.37.1/PEFT0.17.1')
+pytestmark = pytest.mark.skipif(not STACK_AVAILABLE,
+    reason='separate full original Diffusers0.37.1/PEFT0.17.1 W2 CPU proof')
 
 
 def _document(feeds):

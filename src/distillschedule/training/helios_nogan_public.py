@@ -1,8 +1,8 @@
 """Independent W2 warm No-GAN owner over the ORIGINAL complete P0 cycle.
 
 CPU1/source-rank0 diagnostics only. One external-grad Program call owns G1,
-five independent post-G B1 rollouts, C5 and native sparse EMA5. No inference,
-native distributed launcher, numerical-equivalence or performance claim.
+five independent post-G B1 rollouts, C5 and native sparse EMA5. Current full-G
+export is a separate inference projection, not a distributed/quality claim.
 """
 from collections.abc import Mapping
 from contextlib import contextmanager
@@ -121,6 +121,7 @@ def admit_assets(parameters):
 
 
 def build_model(parameters):
+    from .helios_nogan_inference import project_current_generator
     from runtime.gst_pool_contract import NegativePromptAsset
     path,assets,args = admit_assets(parameters)
     warm = bootstrap.materialize_bootstrap(checked_pin(assets['bootstrap']))
@@ -131,9 +132,9 @@ def build_model(parameters):
         asset_manifest=dict(path=str(path),bytes=path.stat().st_size,sha256=file_sha256(path)),
         bootstrap=identity,owner_identity=deepcopy(owner.identity),
         quality_validation='NOT_RUN',distributed_execution='NOT_RUN',claimable_speedup=False,
-        inference_export='NOT_IMPLEMENTED_BY_L1A')
+        inference_export='CURRENT_FULL_UNMERGED_G_NATIVE_ZERO_HISTORY_LATENTS_ONLY')
     return ModelComponents(state={'native_cycle':owner},metadata=metadata,admit_training=admit_training,
-                           collect_metrics=collect_metrics).validate()
+                           collect_metrics=collect_metrics,inference_projection=project_current_generator).validate()
 
 
 class _BoundEMA:
