@@ -18,14 +18,15 @@ from .tensors import tensor_tree
 SCHEMA = 'distillschedule.official_self_forcing_inputs.v1'
 
 
-def validate_row(row, *, shape=None):
+def validate_row(row, *, shape=None, device='cpu'):
     import torch
     from distillschedule.training.self_forcing_source import require
     require(isinstance(row, dict) and set(row) == {'prompt_embeds'}, 'native condition is exactly {prompt_embeds: BLC tensor}')
     value = row['prompt_embeds']
-    require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device.type == 'cpu'
+    require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device == torch.device(device)
             and value.layout == torch.strided and value.ndim == 3 and all(n > 0 for n in value.shape)
-            and not value.requires_grad and bool(value.isfinite().all()), 'finite detached dense CPU FP32 BLC condition required')
+            and not value.requires_grad and bool(value.isfinite().all()),
+            'finite detached dense FP32 BLC condition on the explicit device required')
     require(shape is None or tuple(value.shape) == tuple(shape), 'condition differs from actual native Wan context geometry')
     return row
 

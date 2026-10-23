@@ -1,8 +1,9 @@
 """Actual official Self-Forcing Wan, explicitly local assets and common Program.
 
 Importing this factory is lightweight: models/Torch are loaded only on explicit
-construction. CPU1/FP32 cached T2V with 21 latent frames is the qualified scope;
-CUDA, FSDP, AMP, I2V and >21-frame decode/reencode training are NOT admitted.
+construction. One explicit CPU/CUDA device, FP32 MATH attention and cached
+21-frame T2V is the source scope; actual CUDA/pretrained acceptance is NOT_RUN.
+FSDP, AMP, I2V and >21-frame decode/reencode training are NOT admitted.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from types import SimpleNamespace
 from .adapters import ModelComponents, InferenceProjection
 from .prediction import PredictionSpec
 from .self_forcing_source import REVISION, REPOSITORY, SOURCE_FILES, original, require
+from .single_device import execution_device, device_scope as _device_scope, construction_rng as _construction_rng
 
 ASSET_SCHEMA = 'distillschedule.official_self_forcing_assets.v1'
 
@@ -45,13 +47,19 @@ def runtime_identity():
                                ('torch', 'diffusers', 'einops', 'numpy', 'transformers')}
     result['cpu_policy'] = dict(threads=torch.get_num_threads(), mkldnn=torch.backends.mkldnn.enabled,
         deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+        deterministic_warn_only=torch.is_deterministic_algorithms_warn_only_enabled(),
         float32_matmul_precision=torch.get_float32_matmul_precision())
+    # These are policy reads, not CUDA initialization or global overrides.
+    # FP32 parameter storage/MATH SDPA is not a claim that TF32 is disabled.
+    result['cuda_policy'] = dict(matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
+        cudnn_allow_tf32=torch.backends.cudnn.allow_tf32, cudnn_deterministic=torch.backends.cudnn.deterministic,
+        cudnn_benchmark=torch.backends.cudnn.benchmark)
     return result
 
 
 def _bridge_identity(*, inference=False):
     root = Path(__file__).resolve().parent
-    names = ['self_forcing.py', 'self_forcing_source.py', 'upstream.py']
+    names = ['self_forcing.py', 'self_forcing_source.py', 'single_device.py', 'upstream.py']
     if not inference:
         names += ['self_forcing_owner.py']
     files = {name: _sha(root / name) for name in names}
@@ -59,23 +67,28 @@ def _bridge_identity(*, inference=False):
     return files
 
 
-def _cpu(parameters):
+def _execution_device(value):
+    return execution_device(value, require=require)
+
+
+def _admit_device(parameters):
     import os
     import torch
-    require(parameters.get('device', 'cpu') == 'cpu' and not torch.distributed.is_initialized(),
-            'this owner admits CPU1 only; GPU/distributed execution is NOT_RUN')
+    device = _execution_device(parameters.get('device', 'cpu'))
+    require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(all(int(os.environ.get(key, default)) == int(default) for key, default in
                 (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
             'one actual process/rank required')
     require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
             and not torch.is_autocast_enabled('cuda'), 'explicit FP32 with no autocast required')
+    return device
 
 
 def _arguments(parameters):
     require(isinstance(parameters, dict) and set(parameters) <= {'source_root', 'assets', 'settings', 'seed', 'device'}
             and isinstance(parameters.get('source_root'), str) and isinstance(parameters.get('assets'), str),
             'source_root and explicit local assets manifest required')
-    _cpu(parameters)
+    _admit_device(parameters)
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid construction seed')
     settings = dict(mixed_precision=False, denoising_loss_type='flow', num_train_timestep=1000,
@@ -109,7 +122,7 @@ def _arguments(parameters):
             and settings['num_train_timestep'] == 1000 and settings['num_training_frames'] == 21
             and settings['independent_first_frame'] is False and settings['i2v'] is False
             and settings['backward_simulation'] is True and settings['gradient_checkpointing'] is False,
-            'CPU scope is native flow/T2V/21-frame cached rollout; no AMP/I2V/flex/checkpointed or longer-frame substitution')
+            'resident scope is native flow/T2V/21-frame cached rollout; no AMP/I2V/flex/checkpointed or longer-frame substitution')
     for key in ('batch_size', 'num_frame_per_block', 'dfake_gen_update_ratio', 'train_iters'):
         require(type(settings[key]) is int and settings[key] > 0, 'positive native integer required: ' + key)
     require(settings['batch_size'] == 1 and type(settings['num_train_timestep']) is int
@@ -219,24 +232,53 @@ def _vae_wrapper(api, config):
     return wrapper, config
 
 
-def preencoded_conditioner():
+def preencoded_conditioner(device='cpu'):
     import torch
+    device = torch.device(device)
     class NativeEmbeddingBoundary(torch.nn.Module):
         def forward(self, text_prompts):
             require(isinstance(text_prompts, list) and text_prompts
                     and all(type(tensor) is torch.Tensor and tensor.ndim == 2
-                            and tensor.dtype == torch.float32 and tensor.device.type == 'cpu'
+                            and tensor.dtype == torch.float32 and tensor.device == device
                             for tensor in text_prompts),
                     'this explicit preencoded boundary accepts native LC embeddings, not prompt strings')
             return {'prompt_embeds': torch.stack(text_prompts)}
     return NativeEmbeddingBoundary().eval()
 
 
+def _place_native_tensors(model, device):
+    """Place the known native plain tensors without changing their dtypes.
+
+The scheduler object shared by DMD and G stays aliased. Module.to alone misses
+the complex128 RoPE, schedule and VAE normalization tensors. This helper also
+accepts the inference-only G/VAE namespace, never inventing missing roles.
+    """
+    for role in ('generator', 'real_score', 'fake_score', 'vae'):
+        wrapper = getattr(model, role, None)
+        if wrapper is None:
+            continue
+        wrapper.to(device)
+        if role == 'vae':
+            for name in ('mean', 'std'):
+                setattr(wrapper, name, getattr(wrapper, name).to(device))
+        else:
+            wrapper.model.freqs = wrapper.model.freqs.to(device)
+            for name in ('timesteps', 'sigmas', 'linear_timesteps_weights'):
+                setattr(wrapper.scheduler, name, getattr(wrapper.scheduler, name).to(device))
+    if hasattr(model, 'denoising_step_list'):
+        model.denoising_step_list = model.denoising_step_list.to(device)
+
+
 def build_model(parameters):
-    import torch
-    from .session import _seed
-    from .self_forcing_owner import SelfForcingOwner
     args = _arguments(parameters)
+    device = _admit_device(parameters)
+    with _construction_rng(device, parameters.get('seed', 0)):
+        return _build_placed(parameters, args, device)
+
+
+def _build_placed(parameters, args, device):
+    import torch
+    from .self_forcing_owner import SelfForcingOwner
     api = original(parameters['source_root'])
     manifest = Path(parameters['assets']).expanduser().resolve(strict=True)
     root = manifest.parent
@@ -246,7 +288,6 @@ def build_model(parameters):
             and bundle['evidence_kind'] in ('RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED',
                                            'EXPLICIT_LOCAL_NATIVE_WEIGHTS_QUALITY_NOT_VERIFIED'),
             'unsupported explicit native asset manifest')
-    _seed(parameters.get('seed', 0))
     children, configs, assets = {}, {}, {}
     for role in ('generator', 'real_score', 'fake_score', 'vae'):
         spec = bundle[role]
@@ -283,7 +324,7 @@ def build_model(parameters):
     def initialize_models(model, native_args, device):
         for name, module in children.items():
             setattr(model, name, module)
-        model.text_encoder = preencoded_conditioner()
+        model.text_encoder = preencoded_conditioner(device)
         model.scheduler = model.generator.get_scheduler()
         model.scheduler.timesteps = model.scheduler.timesteps.to(device)
 
@@ -293,17 +334,24 @@ def build_model(parameters):
 
     bridge = type('NativeDMDWithExplicitLocalAssets', (api.dmd.DMD,),
                  {'_initialize_models': initialize_models, '_initialize_inference_pipeline': initialize_pipeline})
-    model = bridge(args, torch.device('cpu')).eval()
+    model = bridge(args, device).eval()
+    _place_native_tensors(model, device)  # Before native AdamW owns Parameters.
+    negative = negative.to(device)
     metadata = dict(schema_version='distillschedule.official_self_forcing_wan.v1',
         upstream=dict(repository=REPOSITORY, revision=REVISION, license='Apache-2.0', **api.source.identity),
         bridge=_bridge_identity(), boundary_port=api.boundary_identity, runtime=runtime_identity(),
         assets=dict(manifest=str(manifest), sha256=_sha(manifest), files=assets, evidence_kind=bundle['evidence_kind']),
-        architecture=configs, settings=deepcopy(vars(args)), precision='FP32_CPU1_SDPA_MATH_REFERENCE',
+        architecture=configs, settings=deepcopy(vars(args)),
+        precision='FP32_CPU1_SDPA_MATH_REFERENCE' if device.type == 'cpu' else 'FP32_CUDA1_SDPA_MATH_REFERENCE',
+        precision_policy='FP32_PARAMETERS_NATIVE_FP64_COMPLEX128; TF32_POLICY_RECORDED_NOT_OVERRIDDEN',
+        placement=dict(device=str(device), layout='SINGLE_DEVICE_RESIDENT', distributed=False, amp=False),
         conditioning='EXACT_PREENCODED_NATIVE_PROMPT_EMBEDS; RAW_PROMPTS_USE_EXPLICIT_LOCAL_NATIVE_T5_PREPARATION',
         cpu_execution='ACTUAL_RANDOM_TINY_NATIVE_CLASSES_ONLY', gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
+        placement_limit='COMPUTE_RESIDENT; NATIVE_EMA_SHADOW_CPU_FP32; RNG_AND_ADAM_STEP_HOST',
+        cuda_trial_snapshot='UNAVAILABLE_AUTO_PLAN_AND_OWNER_EXECUTION_REJECTED_BEFORE_TRIAL',
         native_recipe=dict(default='configs/default_config.yaml', override='configs/self_forcing_dmd.yaml',
-            cpu_exceptions=['mixed_precision=false', 'gradient_checkpointing=false', 'CPU1_no_FSDP',
-                            'explicit_local_weights_and_preencoded_conditioning']),
+            reference_exceptions=['mixed_precision=false', 'gradient_checkpointing=false', 'single_process_no_FSDP',
+                                  'explicit_local_weights_and_preencoded_conditioning']),
         lifecycle=f'COMMON_PROGRAM_ATOMIC_NATIVE_G1_C{args.dfake_gen_update_ratio}; CURRENT_G_EXPORT_NOT_EMA')
     owner = SelfForcingOwner(model, args, api.source, negative, identity=metadata)
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata, prediction=PredictionSpec('flow'),
@@ -314,7 +362,9 @@ def build_model(parameters):
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
     from .self_forcing_owner import stream_counts
-    owner = state['native_cycle']; _cpu(request.trainer)
+    owner = state['native_cycle']
+    require(_admit_device(request.trainer) == owner.device, 'trainer/model device placement must match')
+    owner.admit_execution(request.execution.get('mode', 'reference'), request.execution.get('implementation', {}))
     require(request.execution.get('adapter', 'program') == 'program'
             and request.algorithm['factory'] == 'distillschedule.training.self_forcing:build_self_forcing'
             and not request.algorithm.get('parameters'), 'common official Self-Forcing Program algorithm required')
@@ -347,8 +397,8 @@ def build_self_forcing(components, feeds, parameters, cycle, seed):
         attributes={'cycle': cycle})
     return Workload(program=Program((call,), initial_versions={'native_cycle': cycle}, feeds=tuple(sorted(feeds)),
         outputs=(call.id,)), bindings={'official_self_forcing_cycle': _native_cycle}, state=components.state,
-        feeds=feeds, seed=seed, identity_extra=dict(scope='OFFICIAL_SELF_FORCING_CPU1_NATIVE_FLOW',
-                                                  upstream=owner.source.identity, ratio=owner.ratio))
+        feeds=feeds, seed=seed, identity_extra=dict(scope='OFFICIAL_SELF_FORCING_NATIVE_FP32_SINGLE_DEVICE',
+            placement=deepcopy(owner.identity['placement']), upstream=owner.source.identity, ratio=owner.ratio))
 
 
 def collect_metrics(outputs):
@@ -388,7 +438,7 @@ def project_current_generator(components, effective_training_parameters):
 
 def build_inference_model(parameters):
     """Only architecture G + actual VAE; no teacher, fake, Adam, EMA or data."""
-    _cpu(parameters)
+    device = _admit_device(parameters)
     require(set(parameters) <= {'source_root', 'upstream', 'bridge', 'runtime', 'architecture', 'shape',
                                'settings', 'seed', 'device'}, 'unknown inference construction setting')
     require(parameters['bridge'] == _bridge_identity(inference=True)
@@ -398,14 +448,16 @@ def build_inference_model(parameters):
     require(set(parameters['architecture']) == {'generator', 'vae'}, 'inference architecture is current G/VAE only')
     shape = parameters['shape']
     require(isinstance(shape, list) and len(shape) == 5 and shape[:3] == [1, 21, 16]
-            and all(type(n) is int and n > 0 for n in shape), 'inference CPU scope requires one native BFCHW/21-frame sample')
+            and all(type(n) is int and n > 0 for n in shape), 'inference scope requires one native BFCHW/21-frame sample')
     require(set(parameters['settings']) == {'denoising_step_list', 'warp_denoising_step', 'num_frame_per_block',
             'independent_first_frame', 'context_noise', 'scheduler_shift'}
             and parameters['settings']['independent_first_frame'] is False,
             'inference must retain the exported native causal T2V schedule')
-    generator, _ = _wrapper(api, parameters['architecture']['generator'], causal=True,
-        shape=parameters['shape'], scheduler_shift=parameters['settings']['scheduler_shift'])
-    vae, _ = _vae_wrapper(api, parameters['architecture']['vae'])
+    with _construction_rng(device, parameters.get('seed', 0)):
+        generator, _ = _wrapper(api, parameters['architecture']['generator'], causal=True,
+            shape=parameters['shape'], scheduler_shift=parameters['settings']['scheduler_shift'])
+        vae, _ = _vae_wrapper(api, parameters['architecture']['vae'])
+        _place_native_tensors(SimpleNamespace(generator=generator, vae=vae), device)
     generator.eval(); vae.eval()
     return _inference_components(dict(generator=generator, vae=vae), parameters)
 
@@ -422,17 +474,24 @@ def _generate(state, feeds, parameters, settings):
     from contextlib import redirect_stdout
     from distillschedule.data.self_forcing_inputs import validate_row
     require(not parameters, 'generation uses every official exported denoising step; no random-exit override')
+    require(settings['runtime'] == runtime_identity(), 'inference numerical runtime/precision policy changed')
     row = feeds['generator'][0] if 'generator' in feeds else feeds
     generator = state['generator']
-    validate_row(row, shape=(settings['shape'][0], generator.model.text_len, generator.model.text_dim))
+    device = next(generator.parameters()).device
+    _admit_device({'device': str(device)})
+    require(all(t.device == device and (not t.is_floating_point() or t.dtype == torch.float32)
+                for module in state.values() for t in (*module.parameters(), *module.buffers())),
+            'inference module device/FP32 placement changed')
+    validate_row(row, shape=(settings['shape'][0], generator.model.text_len, generator.model.text_dim), device=device)
     api = original(settings['source_root'])
     generator.eval(); state['vae'].eval()
     args = SimpleNamespace(**settings['settings'])
-    noise = torch.randn(settings['shape'], dtype=torch.float32, device='cpu')
     # Native diagnostics go to stderr so distillctl's JSON stdout stays valid.
-    with torch.no_grad(), redirect_stdout(sys.stderr):
-        pipeline = api.InferencePipeline(args, torch.device('cpu'), generator=generator,
-            text_encoder=preencoded_conditioner(), vae=state['vae'])
+    with _device_scope(device), torch.no_grad(), redirect_stdout(sys.stderr):
+        noise = torch.randn(settings['shape'], dtype=torch.float32, device=device)
+        pipeline = api.InferencePipeline(args, device, generator=generator,
+            text_encoder=preencoded_conditioner(device), vae=state['vae'])
+        pipeline.denoising_step_list = pipeline.denoising_step_list.to(device)
         pipeline.configure_geometry(shape=settings['shape'])
         video, latents = pipeline.inference(noise=noise, text_prompts=list(row['prompt_embeds'].unbind(0)),
                                            return_latents=True)

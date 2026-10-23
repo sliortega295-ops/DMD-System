@@ -57,3 +57,20 @@ def test_cpu_attention_is_math_sdpa_with_varlen_and_bottom_right_causal_masks():
     assert padded.shape == q.shape and torch.equal(padded[:, 2:], torch.zeros_like(padded[:, 2:]))
     with pytest.raises(ValueError, match='FP32'):
         cpu_attention(q.detach().double(), k.detach().double(), v.detach().double())
+
+
+def test_math_attention_clones_packed_cache_reads_and_rejects_cross_device_inputs():
+    import torch
+    from distillschedule.training.self_forcing_source import fp32_attention
+    q = torch.linspace(-.4, .8, 24).reshape(1, 3, 2, 4).requires_grad_(True)
+    k = torch.linspace(.1, .9, 40).reshape(1, 5, 2, 4)
+    v = k.flip(1).clone()
+    expected = fp32_attention(q, k.clone(), v.clone(), causal=True, window_size=(2, 0))
+    expected_grad, = torch.autograd.grad(expected.sum(), (q,))
+    actual = fp32_attention(q, k, v, causal=True, window_size=(2, 0))
+    # Native subsequent block writes must not invalidate backward saved views.
+    k.add_(2); v.mul_(3)
+    actual_grad, = torch.autograd.grad(actual.sum(), (q,))
+    torch.testing.assert_close(actual_grad, expected_grad, rtol=0, atol=0)
+    with pytest.raises(ValueError, match='single-device'):
+        fp32_attention(q, k.to('meta'), v)

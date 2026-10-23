@@ -5,7 +5,6 @@ Both factories instantiate its actual SDUniModel/SDGuidance numerical classes.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,6 +12,7 @@ from types import SimpleNamespace
 from .adapters import ModelComponents
 from .prediction import PredictionSpec
 from .upstream import PinnedSource
+from .single_device import execution_device, device_scope as _device_scope, construction_rng as _construction_rng
 from distillschedule.workloads.best_known.registry import file_sha256
 
 REVISION = '8d8fa55633d47cfb81bbc7a892e7248f9518763f'
@@ -83,39 +83,7 @@ class _LocalAccelerator:
 
 
 def _execution_device(value):
-    import torch
-    require(isinstance(value, str), 'device must be cpu or a single CUDA device')
-    try:
-        device = torch.device(value)
-    except (RuntimeError, ValueError) as error:
-        raise ValueError('official DMD2: invalid device') from error
-    require(device.type in ('cpu', 'cuda') and (device.type != 'cpu' or device.index is None),
-            'device must be cpu or a single CUDA device')
-    if device.type == 'cuda':
-        require(torch.cuda.is_available(), 'requested CUDA device is unavailable')
-        index = device.index if device.index is not None else torch.cuda.current_device()
-        require(0 <= index < torch.cuda.device_count(), 'requested CUDA device index is unavailable')
-        device = torch.device('cuda', index)
-    return device
-
-
-def _device_scope(device):
-    import torch
-    return torch.cuda.device(device) if device.type == 'cuda' else nullcontext()
-
-
-@contextmanager
-def _construction_rng(device, seed):
-    """Initialize only the owned generators, leaving caller/unowned RNG intact."""
-    from .checkpoint import rng_state, restore_rng
-    from .session import _seed
-    with _device_scope(device):
-        outer = rng_state(device=device)
-        try:
-            _seed(seed, device=device)
-            yield
-        finally:
-            restore_rng(outer)
+    return execution_device(value, require=require)
 
 
 def _place_native_tensors(model, device):

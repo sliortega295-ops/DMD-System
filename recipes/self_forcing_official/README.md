@@ -18,7 +18,7 @@ generator wrapper scheduler shift5, `ts_schedule=false`, G LR `2e-6`, C LR
 `4e-7`, real CFG3/fake CFG0, G1/C5, EMA.99 starting at200, block3 and21 latent
 frames. Its actual teacher is Wan14B, generator/fake Wan1.3B with explicit
 `ode_init.pt` initialization; public assets must supply the matching native
-configs and strict local states. This CPU owner does not silently manufacture
+configs and strict local states. This owner does not silently manufacture
 those pretrained states or download them. Documented CPU-only exceptions are
 FP32 instead of mixed precision, native gradient checkpointing disabled, no
 FSDP/global batch64 claim, and explicit local prepared conditioning/weights.
@@ -86,18 +86,51 @@ the training dataset or training model assets.
 
 ## Qualification boundary
 
-CPU1/FP32, batch1 only; no autocast or distributed layout. Native T2V, minimum 21 latent
+The source path accepts one explicit `cpu` or `cuda:N` device, FP32 MATH SDPA,
+batch1 only; no autocast or distributed layout. **Actual CUDA execution remains
+NOT_RUN** in the CPU-only qualification lane. Native T2V, exactly 21 latent
 frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer-frame
 training, I2V, independent first frame, uncached causal/flex training and native
 gradient-checkpointed cache execution are explicitly rejected, not emulated.
 
-CPU compatibility ports are private, source-locked and explicit: constructor
+Single-device compatibility ports are private, source-locked and explicit: constructor
 asset injection, true-singleton broadcast, FP32 math SDPA attention (native
 layers/cache body unchanged), geometry-derived allocations, and exactly six
 training-boundary `.cuda()` lookups changed to `noise.device`. Uncached causal
 execution is rejected rather than quietly removing its causal mask. No global
 Torch/CUDA/module monkeypatches are installed. GPU and pretrained media quality
 remain `NOT_RUN` regardless of tiny CPU test results.
+
+Modules, native non-buffer schedules, complex128 RoPE, VAE normalization and
+negative/unconditional embeddings are resident before AdamW construction.
+Placement does not cast native plain tensor dtypes: upstream FP64 conversion
+and target-loss arithmetic remain FP64, and RoPE remains complex128. The
+runtime identity records matmul/cuDNN TF32, float32 matmul precision and
+determinism policies without changing caller-global settings; live training
+and inference reject policy drift. FP32 storage/MATH SDPA does not imply TF32
+is disabled, and is not native FA/BF16 qualification. The
+original `EMA_FSDP` shadow deliberately stays detached CPU FP32, as do Adam's
+noncapturable scalar step and host RNG metadata. CPU construction and updates
+never initialize or seed unrelated CUDA generators; a CUDA owner scopes only
+its own current device and generator. Offline native T5 preparation stays CPU.
+
+The common Program moves prepared embeddings to the explicitly selected
+trainer device. Direct owner/inference calls must already supply exact native
+embeddings on that device; wrong-device rows are rejected, never silently
+copied. Factory and trainer device identity must agree. Checkpoints restore
+only the same training device/topology and complete G/C cycle; scheduler aliases,
+native plain tensors, moments, negative context and RNG are validated before
+mutation, while ephemeral rollout caches are rebuilt. Only current-G/VAE
+inference exports allow an explicit device relocation.
+
+CUDA admits only the resident `reference` path or supported manual physical
+choices without `owner_execution`. Whole-owner deep-copy, `auto`, saved `plan`
+trials and owner-selected trials are rejected before cloning: a capacity-bounded
+snapshot/restore ABI is not yet available. No silent execution downgrade is
+performed. CUDA source support is not pretrained/capacity/AMP/BF16/native-FA,
+distributed, quality, continuous-training or full-U6 acceptance. Optional actual
+tiny CUDA regressions are in `tests/gpu/test_training_self_forcing_lifecycle.py`;
+CPU-only Torch reports their deliberate `NOT_RUN` skips.
 
 ## Unified runnable entry
 
