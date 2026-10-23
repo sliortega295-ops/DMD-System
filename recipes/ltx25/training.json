@@ -1,0 +1,66 @@
+{
+  "algorithm": {
+    "name": "dmd",
+    "parameters": {
+      "fake_cfg": 1.0,
+      "fake_loss": "flow_velocity_mse",
+      "fake_sample_policy": "reuse_student",
+      "fake_updates": 5,
+      "gradient_policy": "all_steps",
+      "max_grad_norm": 1.0,
+      "modality_weights": {
+        "audio": 1.0,
+        "video": 1.0
+      },
+      "normalizer": "per_modality_mean_abs",
+      "normalizer_epsilon": 1e-05,
+      "rollout_sigmas": [
+        1.0,
+        0.75,
+        0.5,
+        0.25,
+        0.0
+      ],
+      "sigma_max": 0.9,
+      "sigma_min": 0.1,
+      "student_loss": "flow_x0_surrogate",
+      "teacher_cfg": 2.0
+    }
+  },
+  "data": {
+    "prepared": "/REPLACE_WITH/native-prepared/manifest.json"
+  },
+  "execution": {
+    "adapter": "program",
+    "mode": "reference"
+  },
+  "model": {
+    "name": "ltx25",
+    "parameters": {
+      "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+      "ema_decay": 0.9,
+      "fake_lr": 0.0002,
+      "generation_sigmas": [
+        1.0,
+        0.75,
+        0.5,
+        0.25,
+        0.0
+      ],
+      "scheduler_gamma": 0.98,
+      "source_root": "/REPLACE_WITH/pinned-ltx25-source",
+      "student_lr": 0.0001,
+      "trainable": {
+        "mode": "full"
+      }
+    }
+  },
+  "schema_version": "distillschedule.training.v1",
+  "trainer": {
+    "checkpoint_every": 1,
+    "cycles": 3,
+    "device": "cpu",
+    "output_dir": "/REPLACE_WITH/ltx25-full",
+    "seed": 17
+  }
+}

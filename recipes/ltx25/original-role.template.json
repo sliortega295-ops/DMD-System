@@ -1,0 +1,9 @@
+{
+  "format": "ltx_original_safetensors",
+  "checkpoint": {
+    "path": "REPLACE_WITH_LOCAL_ORIGINAL_LTX_2_5.safetensors",
+    "sha256": "REPLACE_WITH_STREAMING_SHA256"
+  },
+  "cpu_max_parameters": 200000,
+  "dtype_policy": "strict_fp32"
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillschedule.ltx25_inputs.v1",
+  "mode": "raw",
+  "source_root": "/REPLACE_WITH/pinned-ltx25-source",
+  "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+  "records": [{
+    "id": "native-av-0000",
+    "image": "first-image.png",
+    "video": "frames",
+    "audio": "stereo-16000.wav",
+    "text": {"value": "a cat runs"},
+    "metadata": {"geometry": {
+      "fps": 8.0,
+      "conditioning": {"video_prefix_latent_frames": 1, "audio_prefix_latent_frames": 1}
+    }}
+  }]
+}
