@@ -10,16 +10,20 @@ pytestmark = pytest.mark.skipif(os.environ.get('DMD_MODERN_FLOW_CPU') != '1',
     reason='requires opt-in isolated modern-flow native CPU stack')
 
 
-@pytest.fixture(scope='module', params=['flux2-klein-base', 'qwen-image', 'wan22-ti2v-5b'])
+@pytest.fixture(scope='module', params=['flux2-klein-base', 'qwen-image', 'wan22-ti2v-5b', 'hunyuan-video-1.5'])
 def native_assets(request, tmp_path_factory):
     from distillschedule.training.plugins import load_callable
     repo = Path(__file__).resolve().parents[1]
-    image = request.param != 'wan22-ti2v-5b'
-    recipe = 'flow_image' if image else 'wan22_dmd'
+    video_recipes = {'wan22-ti2v-5b': 'wan22_dmd', 'hunyuan-video-1.5': 'hunyuan_video_dmd'}
+    image = request.param not in video_recipes
+    recipe = 'flow_image' if image else video_recipes[request.param]
     build, _ = load_callable(str(repo/'recipes'/recipe/'create_cpu_fixture.py')+':build_fixture')
     options = {'family': request.param} if image else {}
     result = build(tmp_path_factory.mktemp(request.param)/'fixture', **options)
-    return dict(result, family=json.loads(Path(result['assets']).read_text())['family'])
+    # Native Hunyuan's crop1000 + glyph256 attention has a larger *tracked*
+    # CPU fixture peak. This explicit test budget is not a production/RSS gate.
+    return dict(result, family=json.loads(Path(result['assets']).read_text())['family'],
+                planning_limit_bytes=200_000_000 if request.param == 'hunyuan-video-1.5' else 100_000_000)
 
 
 def owned(assets):
@@ -29,9 +33,14 @@ def owned(assets):
     return config, *construct(config)
 
 
-def automatic():
-    return dict(mode='auto', memory_limit_bytes=100_000_000,
+def automatic(assets):
+    return dict(mode='auto', memory_limit_bytes=assets.get('planning_limit_bytes', 100_000_000),
                 max_candidates=4, samples=1, max_program_runs=5)
+
+
+def context_key(feeds):
+    """Image/video single text context or actual AV modality contexts."""
+    return 'context' if 'context' in feeds else 'contexts'
 
 
 def test_real_measured_policy_preserves_every_update_and_persistent_owner(native_assets, tmp_path, monkeypatch):
@@ -105,17 +114,17 @@ def test_real_measured_policy_preserves_every_update_and_persistent_owner(native
             assert bool(session.effects['checkpoint_calls']) == bool(implementation['checkpoint_bindings'])
             rows.append(dict(state=pack_state(session.state), outputs={k:v.detach().clone() for k,v in outputs.items()},
                 gradients=observed[id(session)], rng=rng_state(device='cpu'), versions=versions,
-                sample_id=dataset.sample_id(cycle), context=workload.feeds['context'].clone(),
+                sample_id=dataset.sample_id(cycle), context=deepcopy(workload.feeds[context_key(workload.feeds)]),
                 effects=deepcopy(session.effects), aliases=aliases, storage=session.initial_storage,
                 storage_witness=dict(first=list(a), second=list(b), same_parameter=source is target,
                     source_data_ptr=source.data_ptr(), target_data_ptr=target.data_ptr()),
                 program_runs=len(runs)-run_offset))
         assert len({row['sample_id'] for row in rows}) == 3
-        assert not torch.equal(rows[0]['context'], rows[2]['context']), 'later cycles need genuinely new text features'
+        assert not equal(rows[0]['context'], rows[2]['context']), 'later cycles need genuinely new text features'
         return rows, policy
 
     reference, _ = cycles(dict(mode='reference'), tmp_path/'reference')
-    measured, policy = cycles(automatic(), tmp_path/'auto')
+    measured, policy = cycles(automatic(native_assets), tmp_path/'auto')
     plan_path = tmp_path/'auto/planning/selected-plan.json'
     document = json.loads(plan_path.read_text())
     calibration = json.loads((plan_path.parent/'calibration/calibration.json').read_text())
@@ -164,7 +173,7 @@ def test_public_auto_saved_plan_and_new_process_resume(native_assets, tmp_path):
                 'resume_cycle','cursor','final_versions','numerical_status','gpu_execution')}))
         return result
     config = json.loads(Path(native_assets['config']).read_text())
-    config['execution'] = automatic()
+    config['execution'] = automatic(native_assets)
     auto_config = tmp_path/'auto.json'; auto_config.write_text(json.dumps(config))
     first = cli('train', auto_config, '--cycles', 1, '--output', tmp_path/'auto-first')
     continued = cli('train', auto_config, '--cycles', 3, '--resume', first['checkpoint'], '--output', tmp_path/'auto-resumed')
@@ -276,14 +285,17 @@ def test_qualified_clone_preserves_parameter_optimizer_aliases_and_native_module
 
 @pytest.fixture(scope='module')
 def native_plan(native_assets, tmp_path_factory):
+    return measured_plan(native_assets, tmp_path_factory.mktemp('modern-native-plan'))
+
+
+def measured_plan(native_assets, root):
     from distillschedule.open_workload.planning import calibrate, plan
     from distillschedule.training.session import build_cycle
     config, components, dataset, algorithm, _ = owned(native_assets)
     workload = build_cycle(config, components, dataset, algorithm, cycle=0, cursor=0)
-    root = tmp_path_factory.mktemp('modern-native-plan')
     calibrate(workload, root/'calibration', max_candidates=2, samples=1, max_program_runs=3, profile_hardware=False)
     path = root/'plan.json'
-    path.write_text(json.dumps(plan(root/'calibration/calibration.json', memory_limit_bytes=100_000_000)))
+    path.write_text(json.dumps(plan(root/'calibration/calibration.json', memory_limit_bytes=native_assets['planning_limit_bytes'])))
     return path
 
 
@@ -305,7 +317,10 @@ def test_saved_native_plan_rejects_drift_before_any_update(native_assets, native
     elif field == 'shape':
         modality = next(iter(workload.feeds['latents']))
         workload.feeds['latents'][modality] = workload.feeds['latents'][modality][..., :-1]
-    elif field == 'dtype': workload.feeds['context'] = workload.feeds['context'].double()
+    elif field == 'dtype':
+        key = context_key(workload.feeds)
+        value = workload.feeds[key]
+        workload.feeds[key] = {k:v.double() for k,v in value.items()} if isinstance(value, dict) else value.double()
     elif field == 'model-parameter':
         with torch.no_grad(): next(components.state['student'].parameters()).add_(.01)
     elif field == 'algorithm':
@@ -359,7 +374,7 @@ def assert_unqualified_trials_refused(assets, tmp_path, monkeypatch):
         with pytest.raises(ValueError, match='pretrained.*clone trials.*not admitted'):
             calibrate(workload, tmp_path/'direct', samples=1, max_candidates=1, max_program_runs=2, profile_hardware=False)
         with pytest.raises(ValueError, match='pretrained.*clone trials.*not admitted'):
-            CyclePolicy(automatic()).run(workload, tmp_path/'public-auto')
+            CyclePolicy(automatic(assets)).run(workload, tmp_path/'public-auto')
     after = dict(state=pack_state(components.state), rng=rng_state(device='cpu'),
                  identity=workload.identity, feeds=workload.feeds,
                  samples=[dataset.sample_id(i) for i in range(3)])

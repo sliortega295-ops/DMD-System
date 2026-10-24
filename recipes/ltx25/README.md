@@ -149,6 +149,44 @@ named native Linear targets, zero initial B, frozen unmerged base. Teacher and
 codecs remain frozen. No PEFT dependency, inference `builder.loras`, or weight
 merging is used. Unknown/non-Linear targets fail before training.
 
+## Direct and measured execution use the same native model
+
+The reference remains the default. To enable the existing exact immutable
+sharing implementation, use this `execution` object:
+
+```json
+{"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
+```
+
+The adapter declares frozen Teacher/media and each Student/Fake LoRA **base**.
+Only equal frozen tensors may alias; A/B, gradients and optimizer owners stay
+independent. No weights are merged and no forward/update is removed. Different
+checkpoint weights do not become shareable just because their shapes match.
+
+For `create_cpu_fixture.py`'s explicitly random actual-class LoRA configuration,
+the existing common planner also supports:
+
+```json
+{"mode":"auto","memory_limit_bytes":100000000,"max_candidates":4,"samples":1,"max_program_runs":5}
+```
+
+This performs actual bounded CPU calibration and paired reference checks,
+selects among measured candidates and writes `planning/selected-plan.json`.
+Use `{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}` to execute the
+saved policy. Complete-cycle resume preserves the policy without recalibration.
+Three fresh-cycle and new-process tests compare real gradients, role state,
+Adam/schedulers/EMA, RNG, AV inputs and update clocks to reference execution.
+Each saved plan binds the source/runtime, actual parameters, geometry, dtype,
+algorithm, hardware and cache state; mismatches fail before a formal update.
+
+Only the original `RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED` fixture
+label admits whole-role trial copies, with CPU1 FP32 tensors. Other local
+weights may use the separately admitted non-clone reference/manual route, but
+**not** auto/saved-plan clone trials. A label is provenance, not proof of model
+size or source authenticity. The 100 MB test limit is selected tracked storage,
+not total CPU RSS or simultaneous construction/copy capacity. GPU, pretrained
+and performance acceptance remain NOT_RUN; the planner does not promise a gain.
+
 ## Data preparation
 
 `inputs.raw.template.json`, `inputs.prompts.template.json`, and
@@ -204,7 +242,8 @@ diagnostics use `--output-kind latents`; no latent reshape is called a decoder.
 ```sh
 LTX_SOURCE_ROOT="$LTX_SOURCE_ROOT" "$PY" -m pytest -q \
   tests/test_training_dmd_flow.py tests/test_training_ltx_source.py \
-  tests/test_training_ltx_original_checkpoint.py tests/test_training_ltx_cpu.py
+  tests/test_training_ltx_original_checkpoint.py tests/test_training_ltx_cpu.py \
+  tests/test_training_ltx_planning.py
 ```
 
 Tests exercise actual native raw codecs and text, AV forwards/backwards, loss

@@ -17,6 +17,7 @@ import torch
 from torch import nn
 
 from .adapters import InferenceProjection, ModelComponents
+from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
 from .prediction import PredictionSpec
 
@@ -191,7 +192,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
     return native, architecture, receipt
 
 
-class LTXRole(nn.Module):
+class LTXRole(QualifiedNativeFlowTrials, nn.Module):
     """Model-owned native ABI, conditioning and differentiable Euler rollout."""
     def __init__(self, native, source, *, architecture, media_architecture, binding, empty_context,
                  generation_sigmas, trainable):
@@ -337,13 +338,22 @@ def build_model(parameters):
         state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
             fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
     state['media'] = media
+    # Keep the original evidence label in public metadata. Whole-role trial
+    # copies are qualified only for our explicit random actual-class fixture;
+    # this provenance label is not a pretrained/host-RSS capacity guarantee.
+    qualify_trial_roles(state, 'SYNTHETIC_TEST_ONLY'
+        if manifest['evidence_kind'] == 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED' else None)
+    immutable = ['teacher', 'media']
+    for role in ('student', 'fake'):
+        immutable.extend(role+'.'+path+'.base' for path, module in state[role].named_modules()
+                         if isinstance(module, TrainableLowRankLinear))
     metadata = _metadata(api, architecture=architecture, media_architecture=media.architecture, binding=binding,
         trainable=parameters['trainable'], generation_sigmas=schedule)
     metadata.update(asset_identity={**identity, 'roles': role_receipts},
                     evidence_kind=manifest['evidence_kind'],
                     optimizer='AdamW(beta=.9,.999; eps=1e-8; weight_decay=0); scheduler per ACTUAL role update',
                     ema_decay=parameters['ema_decay'])
-    return ModelComponents(state=state, immutable_modules=('teacher', 'media'), metadata=metadata,
+    return ModelComponents(state=state, immutable_modules=tuple(immutable), metadata=metadata,
         prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1'),
         generate=generate, decode=media.decode, inference_projection=project_current_generator,
         admit_training=admit_training).validate()

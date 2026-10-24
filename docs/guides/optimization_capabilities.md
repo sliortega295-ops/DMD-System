@@ -134,14 +134,25 @@ for configuration, instrumentation and evidence boundaries.
 
 ## Modern native flow planning is a separately qualified CPU slice
 
-The FLUX.2 klein Base, original Qwen-Image and Wan2.2 T2V tiny actual-class
+The FLUX.2 klein Base, original Qwen-Image, Wan2.2 T2V and HunyuanVideo-1.5 tiny actual-class
 fixtures use the same common reference/manual/auto/saved-plan runner. Their
 real measured candidates and selected sessions preserve losses, gradients,
 updates, optimizer/scheduler/EMA, input/RNG clocks and fresh-process restore.
 No model-name winner, historical cost, kernel timing or speedup is substituted.
 
+LTX-2.5's actual tiny AV fixture now exercises that same measured planner in
+its **separate pinned environment**, including LoRA-base immutable declarations,
+three complete G1/F5 updates and public saved-plan/new-process recovery. The
+original `RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED` label is retained;
+only that declared fixture is qualified for whole-role CPU trial copies. Actual
+frozen tensors must match exactly before sharing; mutable A/B and Adam state
+remain separate. The reference mathematical program and common searcher do not
+branch on the model name. Full-parameter reference training remains independent
+of LoRA-specific sharing.
+
 Clone-based trials admit only the declared **SYNTHETIC_TEST_ONLY CPU1 FP32**
-layout and verified owned alias/module state. A local asset manifest labeled
+layout (or the explicit LTX random-native fixture above) and verified owned
+alias/module state. A local asset manifest labeled
 `LOCAL_PRETRAINED_UNVERIFIED` is not proof of model size, source authenticity or
 snapshot safety: auto/plan trial cloning refuses it **before copying or
 executing**. Its independently admitted non-clone reference/manual lifecycle

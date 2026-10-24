@@ -94,7 +94,10 @@ jobs:
               python scripts/check_cpu_receipt.py provider-cpu.xml \
                 --require test_real_native_media_text_and_modality_abi \
                 --require 'test_fresh_process_exact_resume_and_current_generator_av_export[config]' \
-                --require 'test_fresh_process_exact_resume_and_current_generator_av_export[lora_config]'
+                --require 'test_fresh_process_exact_resume_and_current_generator_av_export[lora_config]' \
+                --require test_actual_measured_ltx_policy_preserves_all_updates \
+                --require test_public_ltx_auto_saved_plan_and_new_process_resume \
+                --require test_ltx_unqualified_pretrained_trials_refuse_before_copy
               ;;
             livewan-public)
               python -m pytest -q tests/test_training_livewan_reference_inputs.py tests/test_training_livewan_public_cpu.py tests/test_training_livewan_inference_cpu.py --junitxml=provider-cpu.xml

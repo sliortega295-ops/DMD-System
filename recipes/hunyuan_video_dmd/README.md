@@ -119,6 +119,31 @@ The native CPU tests actually execute shared and unshared cycles and compare
 all gradients/Adam/schedulers/EMA/outputs, measure actual shared aliases and
 bytes, resume sharing in a fresh process and reject immutable mutation.
 
+### Measured planning on the native tiny fixture
+
+The same `train` entry can calibrate its real admissible candidates, select a
+plan, and execute it, rather than reverting to the manual command above:
+
+```json
+{"mode":"auto","memory_limit_bytes":200000000,"max_candidates":4,"samples":1,"max_program_runs":5}
+```
+
+Use this `execution` object with the **random tiny CPU fixture**, not with a
+full pretrained checkpoint. The explicit 200 MB test limit covers selected
+tracked tensor storage for its long text/glyph attention; it is **not** a host
+RSS, trial-copy, construction or GPU capacity guarantee. Unqualified pretrained
+whole-role trial copies reject before execution. Reference/manual training has
+its own existing asset and parameter-capacity admission.
+
+`train` writes `planning/selected-plan.json`; another run can use
+`{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}`. A resumed complete
+checkpoint reuses its bound policy without recalibrating. The shared CPU tests
+check three fresh samples, actual gradients, all role/Adam/scheduler/EMA state,
+RNG and clocks, source/hardware/input drift refusal, and **six fresh CLI
+processes** for auto, saved-plan and uninterrupted/resumed comparisons. The
+selected candidate need not win over the reference; these are execution and
+recovery proofs, not performance claims.
+
 Prepare a **new** prompt manifest with a novel ID/prompt/geometry before
 removing training assets. Export projects current Student + all native codecs
 and both tokenizers, not EMA/Teacher/Fake/base-reload fallback. The returned
@@ -142,7 +167,7 @@ Its actual tiny native CPU proof does not qualify pretrained/GPU/quality use.
 export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 DMD_MODERN_FLOW_CPU=1
 python recipes/hunyuan_video_dmd/create_cpu_fixture.py /ABSOLUTE/NEW_TEST_ONLY_DIRECTORY
-python -m pytest -q tests/test_training_hunyuan_video_cpu.py
+python -m pytest -q tests/test_training_hunyuan_video_cpu.py tests/test_training_modern_flow_planning_cpu.py
 ```
 
 The explicitly random actual-class fixture is **SYNTHETIC_TEST_ONLY**. Native

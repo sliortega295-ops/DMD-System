@@ -57,6 +57,7 @@ jobs:
             --require 'test_public_auto_saved_plan_and_new_process_resume[flux2-klein-base]' \
             --require 'test_public_auto_saved_plan_and_new_process_resume[qwen-image]' \
             --require 'test_public_auto_saved_plan_and_new_process_resume[wan22-ti2v-5b]' \
+            --require 'test_public_auto_saved_plan_and_new_process_resume[hunyuan-video-1.5]' \
             --require 'test_legacy_native_effective_config_forward_gradient_raw_restore_and_safe_reload[flux]' \
             --require 'test_alias_shard_index_remains_exact_and_header_failures_precede_payload[wrong-shard]' \
             --require test_installed_modern_wheel_actual_image_video_restart_and_export_only_inputs
