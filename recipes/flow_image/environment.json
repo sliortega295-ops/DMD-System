@@ -1,5 +1,5 @@
 {
-  "scope": "CPU1_FP32_REFERENCE_ONLY_SEPARATE_FROM_TRANSFORMERS4_LANES",
+  "scope": "CPU1_AND_CUDA1_FP32_REFERENCE_SEPARATE_FROM_TRANSFORMERS4_LANES",
   "qualified_python": "3.12",
   "optional_extra": "modern-flow",
   "versions": {
@@ -12,8 +12,12 @@
     "safetensors": "0.8.0",
     "accelerate": "1.14.0"
   },
-  "cuda": "NOT_RUN",
+  "cuda": "PASS_ACTUAL_TINY_A100_REFERENCE_ONLY",
   "distributed": "NOT_RUN",
   "amp": "NOT_RUN",
-  "full_pretrained_training_and_quality": "NOT_RUN"
+  "full_pretrained_training_and_quality": "NOT_RUN",
+  "cuda_qualified_python": "3.13.11",
+  "cuda_qualified_torch": "2.10.0+cu128",
+  "cuda_planning": "NOT_ADMITTED_UNBOUNDED_TRIAL_SNAPSHOTS",
+  "cuda_receipt": "artifacts/framework/20261024/modern_image_cuda_acceptance.json"
 }

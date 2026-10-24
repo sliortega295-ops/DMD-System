@@ -1,4 +1,4 @@
-# Native image flow-DMD: shared CPU reference lifecycle
+# Native image flow-DMD: shared single-device reference lifecycle
 
 **Implemented, not a production GPU claim:** actual local Diffusers Transformer,
 native Qwen text encoder/tokenizer and native VAE; unmerged same-family LoRA;
@@ -8,8 +8,10 @@ No second trainer, kernel search, inference LoRA merge, or approximate cache.
 The first admitted recipe is batch-one for raw, prompt-only and preencoded
 inputs alike; unsupported preencoded batching is rejected before training.
 The tests use randomly initialized **actual upstream tiny classes**, explicitly
-`SYNTHETIC_TEST_ONLY`. Full pretrained execution, V3–V5 GPU/long-run/quality,
-AMP/distributed and performance are **NOT_RUN**, not inferred from those tests.
+`SYNTHETIC_TEST_ONLY`. Both families have actual A100 FP32 reference update,
+restart and new-input output evidence. Full pretrained execution/capacity,
+long-run quality, AMP/distributed and performance are **NOT_RUN**, not inferred
+from those tests.
 
 Read the family contracts: [FLUX.2 klein Base](../flux_dmd/README.md) and
 [original Qwen-Image](../qwen_image_dmd/README.md).
@@ -23,11 +25,34 @@ Self-Forcing or Helios Transformers4 / PEFT0.17 lanes. PEFT0.18.1 is required
 for the qualified Diffusers/Transformers5 import lane; trainable LoRA itself
 uses the framework's explicit native Linear `W*x + (alpha/r)*B(A*x)`.
 
-Set `CUDA_VISIBLE_DEVICES=''`, `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`,
-`OMP_NUM_THREADS=1`, and `MKL_NUM_THREADS=1`. Nothing in construction, preparation,
-training, export or generation downloads assets, installs dependencies or
-initializes a CUDA generator. Unsupported CUDA/distributed/autocast requests
-are rejected. Catalog and known-compatibility queries do not import Torch.
+For the CPU path set `CUDA_VISIBLE_DEVICES=''`, `HF_HUB_OFFLINE=1`,
+`TRANSFORMERS_OFFLINE=1`, `OMP_NUM_THREADS=1`, and `MKL_NUM_THREADS=1`.
+That path does not initialize CUDA. Neither path downloads assets or installs
+dependencies. Distributed/autocast requests are rejected. Catalog and
+known-compatibility queries do not import Torch.
+
+### Explicit single-GPU reference
+
+Use the same pinned packages with a compatible CUDA Torch2.10 build, keep the
+offline settings, and expose the GPU you own. The acceptance environment was
+Python3.13.11 / Torch2.10.0+cu128 on one A100-40GB. Prepare inputs on CPU as below;
+set `trainer.device` to `cuda:0` in a copy of the recipe and retain
+`execution.mode: reference`. If `model.parameters.device` is also specified,
+it must agree. The same `distillctl train`, resume, export and generate commands
+then use the owned device; no separate trainer or experimental launcher is needed.
+
+CUDA reference owns all role/media tensors, Adam state and EMA, including
+Qwen's complex RoPE buffers without a lossy dtype conversion. Automatic
+planning, saved plans and manual optimization policies on this CUDA path still
+**fail closed**: the current whole-role trial copies are not capacity-bounded.
+CPU planning remains independently supported for the documented tiny fixtures.
+Do not infer full pretrained models fit merely from the parameter-count budget.
+
+[The exact acceptance receipt](../../artifacts/framework/20261024/modern_image_cuda_acceptance.json)
+records native-oracle loss/gradient/Adam/EMA checks, new-process C1-to-C3 restart,
+and current-Student new-prompt PNG generation with training assets removed.
+Exact CUDA comparisons use an explicit deterministic **test** policy, not a
+changed production default or a promise of default-kernel determinism.
 
 ## First run with actual tiny native classes
 

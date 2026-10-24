@@ -109,11 +109,13 @@ for _name, _module, _model_id, _revision in (
 ):
     register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
-        description='Pinned native T2I, CPU1 FP32 local safe assets; explicit flow DMD, not official DMD2',
+        description='Pinned native T2I, CPU1/CUDA1 FP32 reference; explicit flow DMD, not official DMD2',
+        execution_constraints={'cuda': {'modes': ['reference'],
+                                       'forbidden_fields': ['implementation', 'order', 'plan']}},
         source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
         validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
         compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
-            devices=['cpu'], distributed=False,
+            devices=['cpu', 'cuda'], distributed=False,
             model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
                 'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 
@@ -166,11 +168,14 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
         contract = entry.get('compatibility')
         if contract is None:
             continue
+        def admitted_device(value):
+            return value in contract['devices'] or (isinstance(value, str) and 'cuda' in contract['devices']
+                and value.startswith('cuda:') and value[5:].isascii() and value[5:].isdecimal())
         if (algorithm.get('factory') not in contract['algorithm_factories']
-                or trainer.get('device', 'cpu') not in contract['devices']
+                or not admitted_device(trainer.get('device', 'cpu'))
                 or not contract['distributed'] and 'distributed' in trainer
                 or set(model.get('parameters', {})) - set(contract['model_parameters'])
-                or model.get('parameters', {}).get('device', 'cpu') not in contract['devices']):
+                or not admitted_device(model.get('parameters', {}).get('device', 'cpu'))):
             raise ValueError('incompatible model/algorithm/backend or unsupported model capability: ' + model['factory'])
 
 

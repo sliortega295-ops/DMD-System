@@ -1,0 +1,774 @@
+{
+  "schema_version": "distillschedule.native_flow_functional_acceptance.v1",
+  "evidence_status": "PASS_ACTUAL_TINY_CUDA_REFERENCE_NOT_PRETRAINED_NOT_PERFORMANCE",
+  "run_id": "native-flow-gpu-r1",
+  "base_head": "3d7bb03982890e1b5bd46f8510243009902a3d47",
+  "patch_sha256": "4d284f1776ee55a2b6a9303e867c67b721de9552e76f9318f7f0382ea70e71ae",
+  "source_files": {
+    "src/distillschedule/data/flow_image_inputs.py": "09a656ebf5836779b254b19e599293d6dec61170ac894344480223aded6977a8",
+    "src/distillschedule/data/ltx_inputs.py": "f6368dd2de10e29b2cdc813360308c24856a135dbf0940b5b5741e5f3274f30f",
+    "src/distillschedule/training/catalog.py": "ee760c373f82fffa46ed30a018d8e6eeef655bae8c4e77696a48964b5c2801d0",
+    "src/distillschedule/training/config.py": "7f1e11779309ee152e7cd8c3a2b6dcba5d599a5a374e0da489e00820283277f4",
+    "src/distillschedule/training/flow_image.py": "b159a9cfb37415c1bcd030c2aeae5f49b7b93899ee0760d4bef307b61e62c0b4",
+    "src/distillschedule/training/flux.py": "1200eb1352a40f9e5efb5114b21d09aaca41c2e21c3a20a6d3a015ab27c5f2ba",
+    "src/distillschedule/training/ltx.py": "388e4351585874636aaa6d962a0a06e7488aef62c12e3bb9696c6df3282bf996",
+    "src/distillschedule/training/ltx_media.py": "b6b291c78d8fad64eef931b4ebd0e80d8597b4bdba0bedf769621465d7867848",
+    "src/distillschedule/training/ltx_source.py": "7200a39dc19ba81217ee20be29064169b383ecad7d27c99916c4cad0ffb581ea",
+    "src/distillschedule/training/qwen_image.py": "f09849f6cf5302fe4c24b05d771dab7a3deb37437116f0156b29b5b9f1b1f233",
+    "src/distillschedule/training/session.py": "e6387a27e0253ea5c9c40c17a132afd5f7a4e1b7a6d84524edc8b87b6c02013d",
+    "src/distillschedule/training/single_device.py": "1070f50bb841e556ec5e28580acb6d2bf2076a4531ca3e42dc8872ac4fc31d12",
+    "tests/gpu/native_flow_oracle.py": "e89d899d9b6296fe554f75889d2644a280d571df8e7edbfe3441972845b8362a",
+    "tests/gpu/test_training_flow_image_lifecycle.py": "ad6ef3711638745b23328d078518a2b5bf7bc00770b1c04be3e22c581ea42101",
+    "tests/gpu/test_training_ltx_lifecycle.py": "7f294c766a9b548bdca22c347fc6d4f4d158d7b35116485851594492207615b0",
+    "tests/test_training_flow_image_device.py": "6b4657cd6313bff5794cfc0089ecdfc375b2c220497b1413f50e0f993ac3e319",
+    "tests/test_training_ltx_constructor.py": "ca97291beab911a28572736e9966adf9b5c2e4a7e3cdb734c9097730bda3dea8",
+    "tests/test_training_ltx_cpu.py": "85814dc2b64009cf0201f5a821059d0f1265bb7372610b3a0a178758e6abaadb",
+    "tests/test_training_ltx_device.py": "cf2e709bdbd082dfec51853979a6dcff2008b236c48b69f9d435972e23d5ca97",
+    "tests/test_training_ltx_export_inputs.py": "fc1d7e2ab1d74bcd53049babbdeb72ebb8cd3eefcc106ef0d2bfc2803e6c8e1d",
+    "tests/test_training_ltx_original_checkpoint.py": "7518c3a74bccee2a77760040a4d922ed756958d74d9da19a10ee2d98c2817d9f",
+    "tests/test_training_model_algorithm_compatibility.py": "08d7c46cc308651db28ebc0bfd19defa16d7ece1ed2d40d4837d226744c34749"
+  },
+  "source_identity_note": "Snapshot base plus patch, not a claim that subsequent CI/docs edits were GPU executed",
+  "hardware": "One A100-SXM4-40GB, second authorized node, single-device FP32 reference",
+  "runtime": {
+    "python": "3.13.11 | packaged by Anaconda, Inc. | (main, Dec 10 2025, 21:28:48) [GCC 14.3.0]",
+    "versions": {
+      "torch": "2.10.0+cu128",
+      "diffusers": "0.37.1",
+      "transformers": "5.14.1",
+      "peft": "0.18.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "gpu": {
+    "counts": {
+      "tests": 8,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "8",
+        "time": "850.610",
+        "timestamp": "2026-10-24T19:05:12.625371+00:00",
+        "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0"
+      }
+    ],
+    "cases": [
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_roles_gradients_adam_ema_and_refusals[flux2-klein-base]",
+        "time": "69.110"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_fresh_process_resume_export_and_new_prompt[flux2-klein-base]",
+        "time": "171.155"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_roles_gradients_adam_ema_and_refusals[qwen-image]",
+        "time": "26.798"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_fresh_process_resume_export_and_new_prompt[qwen-image]",
+        "time": "169.733"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[config]",
+        "time": "42.738"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[lora_config]",
+        "time": "7.553"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_new_process_resume_export_and_new_input_av[config]",
+        "time": "178.702"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_new_process_resume_export_and_new_input_av[lora_config]",
+        "time": "176.644"
+      }
+    ],
+    "status": "PASS",
+    "exit": "0"
+  },
+  "cpu": {
+    "counts": {
+      "tests": 100,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "100",
+        "time": "991.292",
+        "timestamp": "2026-10-24T18:46:55.603910+00:00",
+        "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0"
+      }
+    ],
+    "cases": [
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_native_tensor_placement_preserves_complex_rope_and_parameter_owners",
+        "time": "0.037"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_ema_restoration_validates_every_tensor_before_mutation",
+        "time": "1.277"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution0-model-flux2-klein-base]",
+        "time": "0.037"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution0-model-qwen-image]",
+        "time": "0.020"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution0-trainer-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution0-trainer-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution1-model-flux2-klein-base]",
+        "time": "0.020"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution1-model-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution1-trainer-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution1-trainer-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution2-model-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution2-model-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution2-trainer-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution2-trainer-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution3-model-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution3-model-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution3-trainer-flux2-klein-base]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_cuda_clone_policies_refused_by_metadata_before_native_import[execution3-trainer-qwen-image]",
+        "time": "0.019"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_single_cuda_reference_catalog_and_invalid_device_refusal[flux2-klein-base]",
+        "time": "0.068"
+      },
+      {
+        "classname": "tests.test_training_flow_image_device",
+        "name": "test_single_cuda_reference_catalog_and_invalid_device_refusal[qwen-image]",
+        "time": "0.069"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_actual_transformer_saved_format_has_a_common_flow_adapter[flux-Flux2Transformer2DModel-config0]",
+        "time": "17.866"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_actual_transformer_saved_format_has_a_common_flow_adapter[qwen_image-QwenImageTransformer2DModel-config1]",
+        "time": "0.064"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_actual_forward_text_masks_pack_and_native_vae_roundtrip[flux2-klein-base]",
+        "time": "2.119"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_real_common_g1_f5_and_existing_immutable_sharing_parity[flux2-klein-base]",
+        "time": "2.382"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_fresh_process_cli_resume_current_student_export_and_new_prompt[flux2-klein-base]",
+        "time": "342.459"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_text_cohort_geometry_is_fixed_without_truncating_native_features[flux2-klein-base]",
+        "time": "1.069"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_unknown_native_text_config_fields_are_rejected_before_weights[flux2-klein-base]",
+        "time": "0.002"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_raw_default_configs_load_forward_gradient_and_portable_restore[flux2-klein-base-public]",
+        "time": "3.708"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_raw_default_configs_load_forward_gradient_and_portable_restore[flux2-klein-base-omitted]",
+        "time": "3.549"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_default_admission_preserves_variant_type_and_geometry_refusals[flux2-klein-base]",
+        "time": "0.027"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_invalid_native_features_and_null_encoding_are_rejected[flux2-klein-base]",
+        "time": "0.688"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_preencoded_batch_two_rejected_before_training[flux2-klein-base]",
+        "time": "0.690"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_sharded_safe_weights_complete_missing_and_malformed[flux2-klein-base]",
+        "time": "0.244"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_asset_capabilities_and_source_rejected_before_native_load[flux2-klein-base]",
+        "time": "0.485"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[flux2-klein-base-student]",
+        "time": "0.373"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[flux2-klein-base-fake]",
+        "time": "0.373"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[flux2-klein-base-teacher]",
+        "time": "0.361"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[flux2-klein-base-vae]",
+        "time": "0.373"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[flux2-klein-base-text_encoder]",
+        "time": "0.413"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_preencoded_happy_path_and_transactional_invalid_binding[flux2-klein-base]",
+        "time": "1.151"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_stale_actual_codec_and_cfg_recipe_rejected[flux2-klein-base]",
+        "time": "1.433"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_actual_forward_text_masks_pack_and_native_vae_roundtrip[qwen-image]",
+        "time": "1.849"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_real_common_g1_f5_and_existing_immutable_sharing_parity[qwen-image]",
+        "time": "2.450"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_fresh_process_cli_resume_current_student_export_and_new_prompt[qwen-image]",
+        "time": "221.244"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_text_cohort_geometry_is_fixed_without_truncating_native_features[qwen-image]",
+        "time": "0.859"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_unknown_native_text_config_fields_are_rejected_before_weights[qwen-image]",
+        "time": "0.007"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_raw_default_configs_load_forward_gradient_and_portable_restore[qwen-image-public]",
+        "time": "2.881"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_raw_default_configs_load_forward_gradient_and_portable_restore[qwen-image-omitted]",
+        "time": "2.870"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_default_admission_preserves_variant_type_and_geometry_refusals[qwen-image]",
+        "time": "0.478"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_invalid_native_features_and_null_encoding_are_rejected[qwen-image]",
+        "time": "0.847"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_preencoded_batch_two_rejected_before_training[qwen-image]",
+        "time": "0.829"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_native_sharded_safe_weights_complete_missing_and_malformed[qwen-image]",
+        "time": "0.260"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_asset_capabilities_and_source_rejected_before_native_load[qwen-image]",
+        "time": "0.541"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[qwen-image-student]",
+        "time": "0.472"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[qwen-image-fake]",
+        "time": "0.496"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[qwen-image-teacher]",
+        "time": "0.486"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[qwen-image-vae]",
+        "time": "0.538"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_all_parameter_budgets_precede_any_concrete_constructor[qwen-image-text_encoder]",
+        "time": "0.523"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_preencoded_happy_path_and_transactional_invalid_binding[qwen-image]",
+        "time": "1.226"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_stale_actual_codec_and_cfg_recipe_rejected[qwen-image]",
+        "time": "1.715"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_explicit_safe_storage_dtype_policy_is_not_compute_precision[flux]",
+        "time": "0.113"
+      },
+      {
+        "classname": "tests.test_training_flow_images_cpu",
+        "name": "test_explicit_safe_storage_dtype_policy_is_not_compute_precision[qwen_image]",
+        "time": "0.144"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution0-trainer]",
+        "time": "0.086"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution0-model]",
+        "time": "0.077"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution1-trainer]",
+        "time": "0.078"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution1-model]",
+        "time": "0.080"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution2-trainer]",
+        "time": "0.071"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_public_request_refuses_cuda_trials_before_any_ownership[execution2-model]",
+        "time": "0.076"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_execution_constraints_are_declarative_and_cpu_discovery_stays_open",
+        "time": "0.068"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_rank_environment_rejected_before_source_or_allocation[WORLD_SIZE-2]",
+        "time": "0.006"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_rank_environment_rejected_before_source_or_allocation[LOCAL_WORLD_SIZE-2]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_rank_environment_rejected_before_source_or_allocation[RANK-1]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_rank_environment_rejected_before_source_or_allocation[LOCAL_RANK-1]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_active_distributed_owner_rejected_before_source_or_allocation",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_autocast_rejected_before_source_or_allocation",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_default_precision_rejected_before_source_or_allocation",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_invalid_device_rejected_before_source_or_allocation[meta]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_invalid_device_rejected_before_source_or_allocation[cpu:0]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_invalid_device_rejected_before_source_or_allocation[not-a-device]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_unavailable_cuda_rejected_before_source_or_allocation",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_inference_autocast_rejected_before_source_or_allocation",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_cuda_clone_refused_before_traversing_native_state",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_plain_tensor_ownership_checkpoint_and_negative_placement",
+        "time": "0.002"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_unregistered_tensor_container_is_not_silently_left_on_cpu",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_resident_ema_restore_preserves_live_tensor_ownership[shape]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_resident_ema_restore_preserves_live_tensor_ownership[dtype]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_resident_ema_restore_preserves_live_tensor_ownership[missing]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_device",
+        "name": "test_ltx_resident_ema_restore_preserves_live_tensor_ownership[nonfinite]",
+        "time": "0.001"
+      },
+      {
+        "classname": "tests.test_training_ltx_constructor",
+        "name": "test_native_cpu_media_never_probes_visible_cuda",
+        "time": "6.386"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_actual_export_callback_owns_native_media",
+        "time": "4.126"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_current_g_export_only_raw_prompt_prepare_and_av_generate[config]",
+        "time": "166.809"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_current_g_export_only_raw_prompt_prepare_and_av_generate[lora_config]",
+        "time": "180.581"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_export_inputs_reject_missing_conditions_without_mutation[missing_geometry]",
+        "time": "1.610"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_export_inputs_reject_missing_conditions_without_mutation[invent_history]",
+        "time": "1.585"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_export_inputs_reject_missing_conditions_without_mutation[wrong_binding]",
+        "time": "1.555"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_export_inputs_reject_missing_conditions_without_mutation[preencoded]",
+        "time": "1.513"
+      },
+      {
+        "classname": "tests.test_training_ltx_export_inputs",
+        "name": "test_export_inputs_reject_missing_conditions_without_mutation[missing_media]",
+        "time": "1.473"
+      },
+      {
+        "classname": "tests.test_training_model_algorithm_compatibility",
+        "name": "test_new_flow_family_catalog_is_lazy_and_precise",
+        "time": "0.386"
+      },
+      {
+        "classname": "tests.test_training_model_algorithm_compatibility",
+        "name": "test_declared_flow_compatibility_rejects_before_torch_or_asset_loading",
+        "time": "0.533"
+      },
+      {
+        "classname": "tests.test_training_model_algorithm_compatibility",
+        "name": "test_static_device_cache_rejections_and_unknown_plugin_extension_are_lazy",
+        "time": "0.815"
+      }
+    ],
+    "status": "PASS",
+    "exit": "0"
+  },
+  "native_cpu_cuda_initialized": false,
+  "cleanup": {
+    "checked_at_utc": "2026-10-24T19:20:15.661173+00:00",
+    "processes_after": "",
+    "lock_available": true,
+    "cgroup_before": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_after": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_deltas": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    }
+  },
+  "sampled_driver_memory_peak_MiB": {
+    "0": 1364,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0
+  },
+  "memory_scope": "Whole test-process sampling, not per-workload allocated/reserved or capacity qualification",
+  "verified": [
+    "Actual pinned tiny Flux2/QwenImage with their native text/VAE classes, G1/F5 unmerged LoRA",
+    "Exact native oracle loss/gradients/Adam/schedulers/EMA and RNG under the same explicit deterministic test policy",
+    "All owned CUDA role/media tensors, complex Qwen RoPE without imaginary-part loss, CUDA Adam steps and EMA",
+    "New-process C1->C3 equals uninterrupted C3 full state, RNG, cursor and update clocks",
+    "Current-Student export plus novel prompt; original training assets absent for CUDA and CPU PNG generation",
+    "Corrupt EMA/Adam/clocks/source/input rejected, unbounded CUDA trial cloning/unsupported execution rejected",
+    "Shared LTX ownership helper regression: actual native full/LoRA AV oracle, restart, export and output"
+  ],
+  "not_verified": [
+    "pretrained capacity/quality",
+    "multi-rank",
+    "AMP/BF16",
+    "CUDA trial planning",
+    "performance"
+  ],
+  "raw_evidence": "framework_maturation_20261023/r9_modern_cuda_reference; weights and test artifacts remain in remote persistent storage",
+  "actual_gpu_attempts": 1,
+  "receipt_hashes": {
+    "reports/native-cpu-r2.xml": "341ace8abc9178da50ef612dd692c3c49a567311f28259fc6fe3624e6bfd6b24",
+    "reports/native-flow-gpu-r1.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "reports/native-cpu-r2.json": "3f346c8d21a1cc403effd72a62289fb87ee2f77b92233901bccd503c7f267d2a",
+    "reports/source-modern-r2.json": "9369b88ddb16b355d048e9a2c58afd43ddd3a515a3e9b85c636b384a032505a3",
+    "reports/native-flow-gpu-r1.xml": "76bd750884a48d0fc9b260109e8e969f6e2b59e204456d7d5130261e9d205d3d",
+    "reports/native-flow-gpu-r1-start.json": "c60fd87458312fcdf283492ff6db1dfd571860b0da27c6d55716e4d518cdef70",
+    "reports/native-cpu-r1.xml": "4c11189af2a6a6a4f792d01a73ba6f06862105487e909e545818bc99300e5d84",
+    "reports/attempt_ledger.jsonl": "018150ad75c6d48c24945e17cafe83f86998664a0ec987083cc7115d061a3c9a",
+    "reports/target-environment-r2.json": "bb9fdfef01d024a8ae3fba46f46a4efa1920960315c5d2e577162ec0af7add42",
+    "logs/native-flow-cgroup-before-r2.txt": "ee9a242c9df97e91efefee580800288b08eb0e28e1f5376ebbda4005e75babe5",
+    "logs/native-flow-cgroup-after-r2.txt": "ee9a242c9df97e91efefee580800288b08eb0e28e1f5376ebbda4005e75babe5",
+    "logs/native-flow-gpu-processes-after-r2.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/native-flow-gpu-r1.log": "09d9087b461a32188763dbd075507593ae0cc08942085f9c7e2031a1546ca538"
+  },
+  "shared_cpu_regression": {
+    "initial_core": {
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "13",
+          "failures": "2",
+          "skipped": "87",
+          "tests": "2304",
+          "time": "1252.486",
+          "timestamp": "2026-10-24T19:05:54.827126+00:00",
+          "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0"
+        }
+      ],
+      "sha256": "8d35ec23c9dd5cdf5bbc19fcc5693a5bff532ea74f3bf3e2b9f78651316f3471"
+    },
+    "initial_failures_retained": true,
+    "failure_causes": [
+      "Gloo spawn could not import stdin-based pytest __main__; file-backed runner fixes harness without changing source",
+      "Original Python3.10 packaging pulled unrelated kernels entrypoint through incompatible hub overlay; original environment unchanged",
+      "Existing isolated Python3.13 setuptools needed process-local SETUPTOOLS_USE_DISTUTILS=local; no package installation/change"
+    ],
+    "gloo_followup": {
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "1",
+          "time": "3.223",
+          "timestamp": "2026-10-24T19:28:38.820021+00:00",
+          "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0"
+        }
+      ],
+      "sha256": "340b7724299634c01007e7f70a41e5ca2c4e5c429fdb226b543c6c0e850c13f2"
+    },
+    "packaging_followup": {
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "1",
+          "tests": "30",
+          "time": "106.031",
+          "timestamp": "2026-10-24T19:29:29.583794+00:00",
+          "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0"
+        }
+      ],
+      "sha256": "becbd66a8eab227342a1ccae27d5deb23a0cdee421bf4be1479f004e068b0c7c"
+    },
+    "post_ci_docs_local": {
+      "suites": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "0",
+          "skipped": "0",
+          "tests": "29",
+          "time": "5.581",
+          "timestamp": "2026-10-24T12:22:44.008511-07:00",
+          "hostname": "lyy-Alienware-m16-R2"
+        }
+      ],
+      "sha256": "043a421189b6732dc2b60a9b6c7714bf79ccbf1692c9bcc4ded0a6c6d49de550"
+    },
+    "source_code_changed_for_failures": false,
+    "gpu_added": 0,
+    "core_followup_target_cuda_initialized": false,
+    "scope": "2182 initial passing core tests retained; failed Gloo and packaging groups completed separately; not a new monolithic clean full-suite claim"
+  }
+}

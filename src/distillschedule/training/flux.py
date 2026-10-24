@@ -71,9 +71,9 @@ class Media(common.ImageMedia):
             count = len(self.tokenizer(text, truncation=False)['input_ids'])
             require(count <= self.architecture['text_max_length'], 'native klein prompt exceeds explicit length; truncation refused')
         with torch.no_grad():
-            context, _ = self.pipeline().encode_prompt(prompts, device=torch.device('cpu'),
+            context, _ = self.pipeline().encode_prompt(prompts, device=self.device,
                 max_sequence_length=self.architecture['text_max_length'])
-        return context.float().detach(), torch.ones(context.shape[:2], dtype=torch.bool)
+        return context.float().detach(), torch.ones(context.shape[:2], dtype=torch.bool, device=self.device)
 
     def encode_image(self, pixels):
         pixels = self.image(pixels)

@@ -83,9 +83,9 @@ class Media(common.ImageMedia):
             require(len(full) <= pipe.tokenizer_max_length + pipe.prompt_template_encode_start_idx,
                     'native Qwen prompt exceeds tokenizer length; truncation refused')
         with torch.no_grad():
-            context, mask = pipe.encode_prompt(prompts, device=torch.device('cpu'), max_sequence_length=1024)
+            context, mask = pipe.encode_prompt(prompts, device=self.device, max_sequence_length=1024)
         if mask is None:
-            mask = torch.ones(context.shape[:2], dtype=torch.bool)
+            mask = torch.ones(context.shape[:2], dtype=torch.bool, device=self.device)
         limit = self.architecture['text_max_length']
         require(0 < context.shape[1] <= limit, 'native Qwen features exceed explicit length; truncation refused')
         # Native encoder already right-pads multi-prompt batches. Make that

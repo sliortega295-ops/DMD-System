@@ -24,45 +24,20 @@ MEDIA_KEYS = {'video_encoder', 'video_decoder', 'audio_encoder', 'audio_decoder'
 
 
 def place_module(module, device):
-    """Own native plain tensor attributes as checkpointed buffers before moving.
-
-    Merely calling Module.to would leave any unregistered native tensor behind.
-    Run only after strict upstream weight loading; portable reconstruction repeats this
-    ownership step before the common loader restores every exported tensor.
-    """
-    from torch.utils._pytree import tree_leaves
-    for child in module.modules():
-        for name, value in tuple(vars(child).items()):
-            if name in ('_parameters', '_buffers', '_modules'):
-                continue  # Module's registered parameters/buffers/children.
-            if type(value) is torch.Tensor:
-                require(not value.requires_grad, 'unregistered native trainable tensor: ' + name)
-                delattr(child, name)
-                child.register_buffer(name, value)
-            elif isinstance(value, (dict, list, tuple)):
-                require(not any(isinstance(item, torch.Tensor) for item in tree_leaves(value)),
-                        'unowned native tensor container requires an explicit placement adapter: ' + name)
-    module.to(device)
-    validate_placement(module, torch.device(device))
-    return module
+    """Keep the native LTX public alias and error prefix for shared ownership."""
+    from .single_device import place_module as place
+    return place(module, device, require=require)
 
 
 def validate_placement(module, device):
-    require(all(value.device == device and not value.is_meta
-                and (not value.is_floating_point() or value.dtype == torch.float32)
-                for value in (*module.parameters(), *module.buffers())),
-            'native parameters, buffers and owned plain tensors require one FP32 device')
-    from torch.utils._pytree import tree_leaves
-    require(not any(isinstance(item, torch.Tensor)
-                    for child in module.modules() for name, value in vars(child).items()
-                    if name not in ('_parameters', '_buffers', '_modules')
-                    for item in tree_leaves(value)),
-            'unowned native plain tensor requires an explicit placement adapter')
+    from .single_device import validate_placement as validate
+    return validate(module, device, require=require)
 
 
 def encoding_sources():
     """Shared helper identity for prepared features and portable exports."""
     paths = (Path(__file__), Path(__file__).with_name('ltx_source.py'),
+             Path(__file__).with_name('single_device.py'),
              Path(__file__).parents[1] / 'data' / 'ltx_inputs.py')
     return {path.name: file_sha256(path) for path in paths}
 

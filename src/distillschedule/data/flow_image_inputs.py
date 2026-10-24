@@ -23,44 +23,50 @@ def family_api(name):
     return importlib.import_module('distillschedule.training.' + references[name])
 
 
-def _tensor(value, *, dtype, shape=None):
+def _tensor(value, *, dtype, shape=None, device='cpu'):
     import torch
-    return (type(value) is torch.Tensor and value.device.type == 'cpu' and value.dtype == dtype
+    return (type(value) is torch.Tensor and value.device == torch.device(device) and value.dtype == dtype
             and value.layout == torch.strided and not value.requires_grad
             and (shape is None or tuple(value.shape) == tuple(shape))
             and (not value.is_floating_point() or bool(torch.isfinite(value).all())))
 
 
-def validate_row(row, *, api, config, media_config, binding, empty):
+def validate_row(row, *, api, config, media_config, binding, empty, device='cpu'):
     import torch
+    from functools import partial
+    from torch.utils._pytree import tree_leaves
     from distillschedule.training.flow_image import require
+    device = torch.device(device)
+    require(device.type in ('cpu', 'cuda') and all(type(value) is torch.Tensor and value.device == device
+            for value in tree_leaves(row)), 'every native image feature must be on the owned device')
+    tensor = partial(_tensor, device=device)
     shape = row.get('latent_shape') if isinstance(row, dict) else None
-    require(_tensor(shape, dtype=torch.int64, shape=(4,)) and bool((shape > 0).all()), 'explicit positive native BCHW geometry required')
+    require(tensor(shape, dtype=torch.int64, shape=(4,)) and bool((shape > 0).all()), 'explicit positive native BCHW geometry required')
     b, c, h, w = shape.tolist()
     require(b == 1, 'this admitted T2I route requires batch-one native BCHW geometry')
     require(h % 2 == w % 2 == 0 and c * 4 == config['in_channels'], 'incompatible native VAE/packing geometry')
     require(isinstance(row.get('latents'), dict) and set(row['latents']) == {'image'}
-            and _tensor(row['latents']['image'], dtype=torch.float32, shape=(b, h//2 * (w//2), c*4)),
+            and tensor(row['latents']['image'], dtype=torch.float32, shape=(b, h//2 * (w//2), c*4)),
             'finite detached FP32 native image BNC payload required')
     for context_key, mask_key in (('context', 'context_mask'), ('null_context', 'null_context_mask')):
         context, mask = row.get(context_key), row.get(mask_key)
-        require(_tensor(context, dtype=torch.float32) and context.ndim == 3 and context.shape[0] == b
+        require(tensor(context, dtype=torch.float32) and context.ndim == 3 and context.shape[0] == b
                 and context.shape[1] == media_config['text_max_length'] and context.shape[2] == config['joint_attention_dim'],
                 'missing/invalid actual native text context or text width')
-        require(_tensor(mask, dtype=torch.bool, shape=context.shape[:2]) and bool(mask.any(dim=1).all())
+        require(tensor(mask, dtype=torch.bool, shape=context.shape[:2]) and bool(mask.any(dim=1).all())
                 and (context.shape[1] < 2 or bool((mask[:, 1:].int() <= mask[:, :-1].int()).all())),
                 'native text mask must be nonempty BL bool, right padded, 1=valid')
     require(torch.equal(row['null_context'], empty[0].expand(b, -1, -1))
             and torch.equal(row['null_context_mask'], empty[1].expand(b, -1)),
             'unconditional context is not the actual native empty-prompt encoding')
     identity = row.get('encoder_identity')
-    require(_tensor(identity, dtype=torch.uint8, shape=(32,)) and bytes(identity.tolist()).hex() == binding,
+    require(tensor(identity, dtype=torch.uint8, shape=(32,)) and bytes(identity.tolist()).hex() == binding,
             'wrong family/source/config/codec/dtype binding; stale conditions refused')
     metadata = api.geometry(row, shape=shape.tolist(), context=row['context'], null_context=row['null_context'])
     keys = {'latents', 'context', 'context_mask', 'null_context', 'null_context_mask', 'latent_shape', 'encoder_identity'}
     require(set(row) == keys | set(metadata), 'unknown/missing fields; edit/reference images and causal caches are not supported')
     for name, expected in metadata.items():
-        require(_tensor(row[name], dtype=expected.dtype, shape=expected.shape) and torch.equal(row[name], expected),
+        require(tensor(row[name], dtype=expected.dtype, shape=expected.shape) and torch.equal(row[name], expected.to(device)),
                 'stale/heterogeneous/non-native image or text geometry: ' + name)
     # Klein native text encoding intentionally retains every padded hidden state;
     # the native forward has no arbitrary text-mask input.

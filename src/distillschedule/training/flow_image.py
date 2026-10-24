@@ -19,9 +19,12 @@ from distillschedule.workloads.best_known.registry import file_sha256, fingerpri
 from .adapters import InferenceProjection, ModelComponents
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
+from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
 
 ASSET_SCHEMA = 'distillschedule.flow_image_assets.v1'
 INPUT_SCHEMA = 'distillschedule.flow_image_inputs.v1'
+CUDA_TRIAL_LIMIT = ('CUDA native image trial cloning requires a capacity-bounded snapshot/restore; '
+                    'auto/plan/calibration and non-reference execution are not admitted')
 
 
 def require(condition, message):
@@ -74,7 +77,8 @@ def runtime_identity(api):
     files.update({name: file_sha256(path) for name,path in {
         'adapter': Path(api.__file__), 'shared_native_plumbing': Path(__file__),
         'feature_encoder': Path(__file__).parent.parent/'data/flow_image_inputs.py',
-        'unmerged_lora': Path(__file__).parent/'low_rank.py'}.items()})
+        'unmerged_lora': Path(__file__).parent/'low_rank.py',
+        'device_ownership': Path(__file__).parent/'single_device.py'}.items()})
     import platform
     return dict(python=platform.python_version(), versions=versions, source_files=files)
 
@@ -246,12 +250,16 @@ class ImageMedia(nn.Module):
         self.architecture = deepcopy(config)
         self.binding = binding
 
+    @property
+    def device(self):
+        return next(self.parameters()).device
+
     def image(self, pixels):
         require(type(pixels) is torch.Tensor and pixels.dtype == torch.float32 and pixels.device.type == 'cpu'
                 and pixels.ndim == 4 and pixels.shape[:2] == (1, 3) and min(pixels.shape) > 0
                 and not pixels.requires_grad and bool(torch.isfinite(pixels).all()) and bool((pixels.abs() <= 1).all()),
                 'native codec needs explicit normalized [-1,1] FP32 BCHW RGB; no implicit resize')
-        return pixels
+        return pixels.to(self.device)
 
     def decode(self, generated, parameters):
         require(isinstance(parameters, dict) and set(parameters) <= {'rollout_sigmas'}, 'unsupported native decoding option')
@@ -306,6 +314,14 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
         self.register_buffer('empty_context_mask', empty[1].detach().clone())
 
     @property
+    def device(self):
+        return next(self.native.parameters()).device
+
+    def __deepcopy__(self, memo):
+        require(self.device.type != 'cuda', CUDA_TRIAL_LIMIT)
+        return super().__deepcopy__(memo)
+
+    @property
     def api(self):
         import importlib
         return importlib.import_module(self.api_entry)
@@ -313,7 +329,7 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
     def validate_feeds(self, feeds):
         from distillschedule.data.flow_image_inputs import validate_row
         return validate_row(feeds, api=self.api, config=self.architecture, media_config=self.media_config,
-                            binding=self.binding, empty=(self.empty_context, self.empty_context_mask))
+                            binding=self.binding, empty=(self.empty_context, self.empty_context_mask), device=self.device)
 
     def sample_template(self, feeds):
         return feeds['latents']
@@ -330,9 +346,9 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
         cpu1()
         self.apply_conditioning(sample, feeds)
         value = sample['image']
-        require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device.type == 'cpu'
-                and bool(torch.isfinite(value).all()), 'native flow sample must be finite FP32 CPU')
-        require(type(sigma) is torch.Tensor and sigma.dtype == torch.float32 and sigma.device.type == 'cpu'
+        require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device == self.device
+                and bool(torch.isfinite(value).all()), 'native flow sample must be finite FP32 on the owned device')
+        require(type(sigma) is torch.Tensor and sigma.dtype == torch.float32 and sigma.device == self.device
                 and sigma.shape == (sample['image'].shape[0],) and bool(torch.isfinite(sigma).all())
                 and bool(((sigma >= 0) & (sigma <= 1)).all()), 'normalized per-batch sigma must be FP32 in [0,1]')
 
@@ -353,7 +369,7 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
 def _metadata(api, descriptor):
     return dict(schema_version='distillschedule.native_flow_image.v1', family=api.FAMILY,
         source=dict(model_id=api.MODEL_ID, revision=api.REVISION, license='Apache-2.0'),
-        **deepcopy(descriptor), precision='FP32_CPU1', gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
+        **deepcopy(descriptor), precision='FP32_NATIVE_SINGLE_DEVICE', gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
         prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
         algorithm='EXPLICIT_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA')
@@ -440,18 +456,20 @@ def load_media_bundle(assets, api):
 
 def build_family(parameters, api):
     from .dmd import sigmas, training_state
-    cpu1()
     allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
             and allowed - {'device', 'seed'} <= parameters.keys(), 'complete explicit native image model parameters required; unknown options rejected')
-    require(parameters.get('device', 'cpu') == 'cpu', 'CPU1 FP32 only; CUDA/distributed/AMP NOT_RUN')
+    device = admit_fp32(parameters, require=require)
     require(type(parameters.get('seed', 0)) is int, 'integer construction seed required')
     require(isinstance(parameters['trainable'], dict) and parameters['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
     schedule = sigmas(parameters['generation_sigmas'])
     media, manifest, roots, runtime, binding, media_config, empty, documents = load_media_bundle(parameters['assets'], api)
     native_cls = api.classes()[0]
-    with torch.device('cpu'), torch.random.fork_rng(devices=[]):
-        torch.random.default_generator.manual_seed(parameters.get('seed', 0))
+    with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
+        # Offline preparation owns the exact CPU null-prompt encoding. Move it,
+        # rather than substituting nearly-equal CUDA text arithmetic on resume.
+        empty = tuple(tensor.to(device) for tensor in empty)
+        place_module(media, device, require=require)
         roles = {}; config = None
         for role in ('student', 'fake', 'teacher'):
             native, current = load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
@@ -465,12 +483,15 @@ def build_family(parameters, api):
             else:
                 trainable_scope(native, parameters['trainable'])
                 native.train()
+            place_module(native, device, require=require)
             roles[role] = api.Role(native, api=api, config=config, media_config=media_config,
                 binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule)
             if role == 'teacher':
                 roles[role].eval()
-        state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
-            fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
+        with torch.device(device):
+            state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
+                fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
+        resident_flow_state(state, device)
     state['media'] = media
     descriptor = dict(architecture=config, media_config=media_config, binding=binding, runtime=runtime,
         trainable=deepcopy(parameters['trainable']), generation_sigmas=list(schedule), evidence_kind=manifest['evidence_kind'],
@@ -483,9 +504,12 @@ def build_family(parameters, api):
 
 
 def admit_training(api, *, state, request, prepared_identity, prepared_manifest):
-    cpu1()
-    require(request.trainer.get('device', 'cpu') == 'cpu' and 'distributed' not in request.trainer,
-            'only CPU1 FP32 topology admitted')
+    device = admit_fp32({'device': request.trainer.get('device', 'cpu')}, require=require)
+    require('distributed' not in request.trainer
+            and all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
+            'matching single-device FP32 ownership required; distributed execution NOT_RUN')
+    require(device.type != 'cuda' or (request.execution.get('mode', 'reference') == 'reference'
+            and not set(request.execution) & {'implementation', 'order', 'plan'}), CUDA_TRIAL_LIMIT)
     require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
             and request.execution.get('adapter', 'program') == 'program', 'use existing common flow DMD Program, not DMD2/Self-Forcing')
     require('streams' not in request.data and prepared_manifest.get('metadata', {}).get('schema_version') == INPUT_SCHEMA
@@ -520,10 +544,10 @@ def project_current_generator(api, components, effective_training_parameters):
 
 def build_inference_family(parameters, api):
     from .dmd import sigmas
-    cpu1()
     keys = {'architecture', 'media_config', 'binding', 'runtime', 'trainable', 'generation_sigmas', 'evidence_kind'}
-    require(isinstance(parameters, dict) and keys <= parameters.keys() and set(parameters) <= keys | {'device', 'seed'}
-            and parameters.get('device', 'cpu') == 'cpu', 'export reconstructs only CURRENT Student and codecs, not training/base paths')
+    require(isinstance(parameters, dict) and keys <= parameters.keys() and set(parameters) <= keys | {'device', 'seed'},
+            'export reconstructs only CURRENT Student and codecs, not training/base paths')
+    device = admit_fp32(parameters, require=require)
     descriptor = {k: deepcopy(parameters[k]) for k in keys}
     require(descriptor['runtime'] == runtime_identity(api), 'export native source/runtime changed')
     config = descriptor['architecture']; media_config = descriptor['media_config']; api.validate_architecture(config, media_config)
@@ -534,15 +558,17 @@ def build_inference_family(parameters, api):
         native_config = architecture(cls, cfg)
         with torch.device('cpu'):
             return (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
-    with torch.device('cpu'), torch.random.fork_rng(devices=[]):
-        torch.random.default_generator.manual_seed(parameters.get('seed', 0))
+    with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
         transform = getattr(api, 'transformer_config', None)
         native = layout(native_cls, config if transform is None else transform(config))
         trainable_scope(native, descriptor['trainable'])
+        place_module(native, device, require=require)
         media = api.Media(layout(vae_cls, media_config['vae']), layout(text_cls, media_config['text_encoder']),
             restore_tokenizer(media_config['tokenizer']), config=media_config, binding=descriptor['binding'])
+        place_module(media, device, require=require)
         empty_shape = api.empty_shape(media_config)
-        empty = (torch.empty(empty_shape, dtype=torch.float32), torch.empty(empty_shape[:2], dtype=torch.bool))
+        empty = (torch.empty(empty_shape, dtype=torch.float32, device=device),
+                 torch.empty(empty_shape[:2], dtype=torch.bool, device=device))
         role = api.Role(native, api=api, config=config, media_config=media_config, binding=descriptor['binding'], empty=empty,
             trainable=descriptor['trainable'], schedule=sigmas(descriptor['generation_sigmas']))
     return _components(api, {'student': role, 'media': media}, descriptor, training=False)

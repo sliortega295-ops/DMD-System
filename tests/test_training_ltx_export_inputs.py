@@ -130,7 +130,7 @@ def test_current_g_export_only_raw_prompt_prepare_and_av_generate(assets, tmp_pa
         assert equal(expected_raw, PreparedDataset(in_process).sample(0))
         from distillschedule.training import ltx_media
         original_sha = ltx_media.file_sha256
-        for helper in ('ltx_inputs.py', 'ltx_media.py', 'ltx_source.py'):
+        for helper in ('ltx_inputs.py', 'ltx_media.py', 'ltx_source.py', 'single_device.py'):
             with monkeypatch.context() as patch:
                 patch.setattr(ltx_media, 'file_sha256', lambda path: '0' * 64
                               if Path(path).name == helper else original_sha(path))

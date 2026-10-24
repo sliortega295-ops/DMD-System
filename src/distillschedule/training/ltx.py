@@ -20,7 +20,8 @@ from .adapters import InferenceProjection, ModelComponents
 from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
 from .prediction import PredictionSpec
-from .single_device import execution_device, construction_rng
+from .single_device import admit_fp32, construction_rng, resident_flow_state
+from .single_device import ResidentEMA as _ResidentEMA
 
 
 # Backwards-compatible public aliases; the arithmetic and ownership are unchanged.
@@ -32,43 +33,12 @@ CUDA_TRIAL_LIMIT = ('CUDA LTX trial cloning requires a capacity-bounded snapshot
 
 
 def _admit_device(parameters):
-    import os
-    require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
-    require(all(os.environ.get(key, default) == default for key, default in
-                (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
-            'one actual process/rank required')
-    require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
-            and not torch.is_autocast_enabled('cuda'), 'explicit FP32 with no autocast required')
-    return execution_device(parameters.get('device', 'cpu'), require=require)
+    return admit_fp32(parameters, require=require)
 
 
-class ResidentEMA(dict):
-    """Placement-preserving serialization for the shared flow-DMD EMA mapping.
-
-    This is not an EMA algorithm: dmd._update still owns every lerp and clock.
-    Native EMAState wraps a different upstream owner with _shadows/_parameters;
-    this small view retains the mapping ABI consumed by the shared flow recipe.
-    """
-    def state_dict(self):
-        return dict(self)
-
-    def runtime_tensors(self):
-        yield from self.values()
-
-    def validate_state_dict(self, value):
-        from .checkpoint import _validate_layout
-        _validate_layout(dict(self), value, 'resident flow EMA')
-        require(all(type(tensor) is torch.Tensor and not tensor.is_meta
-                    and tensor.layout == torch.strided and not tensor.requires_grad
-                    and bool(torch.isfinite(tensor).all()) for tensor in value.values()),
-                'resident flow EMA requires finite detached dense tensors')
-
-    def load_state_dict(self, value):
-        # Validate the entire mapping before the first live tensor can change.
-        self.validate_state_dict(value)
-        with torch.no_grad():
-            for name, live in self.items():
-                live.copy_(value[name])
+class ResidentEMA(_ResidentEMA):
+    """Preserve the LTX checkpoint class identity while sharing device ownership."""
+    _require = staticmethod(require)
 
 
 def _validate_architecture(architecture):
@@ -411,18 +381,7 @@ def build_model(parameters):
         with torch.device(device):
             state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
                 fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
-        if device.type == 'cuda':
-            if 'student_ema' in state:
-                state['student_ema'] = ResidentEMA(state['student_ema'])
-            # The common resident Program deliberately requires one device for
-            # every live tensor, including Adam's step scalar. Native capturable
-            # AdamW keeps its step on the owned device; no CPU-step exception is
-            # added to the common backend and no optimizer math is reimplemented.
-            for role in ('student', 'fake'):
-                optimizer = state[role + '_optimizer']
-                optimizer.defaults['capturable'] = True
-                for group in optimizer.param_groups:
-                    group['capturable'] = True
+        resident_flow_state(state, device, ema_class=ResidentEMA)
     state['media'] = media
     # Keep the original evidence label in public metadata. Whole-role trial
     # copies are qualified only for our explicit random actual-class fixture;

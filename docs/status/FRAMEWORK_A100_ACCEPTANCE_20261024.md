@@ -150,8 +150,8 @@ See the [portable stream acceptance index](../../artifacts/framework/20261024/wa
 - No production-size capacity, long-run quality or convergence validation.
 - No AMP/BF16/FSDP qualification for these official single-device owners.
 - CUDA automatic-plan trials still reject unsupported whole-owner snapshots.
-- Modern FLUX/Qwen/Wan2.2/Hunyuan paths keep their previous CPU-only
-  qualification boundaries. LTX has the separately scoped tiny native CUDA
+- Modern Wan2.2/Hunyuan paths keep their previous CPU-only qualification
+  boundaries. FLUX/Qwen and LTX have separately scoped tiny native CUDA
   acceptance below, not pretrained capacity or quality qualification.
 - Passing these tests does not qualify all six large native workloads or
   their optimized long-training checkpoint paths.
@@ -231,3 +231,36 @@ Keep default-mode nondeterminism distinct from deterministic restart proof.
 Before a pretrained deployment, admit original assets and capacity, then
 validate that production configuration independently; do not reuse tiny
 capacity or quality labels.
+
+
+## FLUX / Qwen native image reference: actual CUDA PASS
+
+[Portable receipt](../../artifacts/framework/20261024/modern_image_cuda_acceptance.json).
+Exact source is `3d7bb039` plus the frozen `source-modern-r2` patch
+`4d284f1776ee55a2b6a9303e867c67b721de9552e76f9318f7f0382ea70e71ae`.
+Later CI/documentation additions are separately CPU checked, not relabeled as
+that GPU snapshot.
+
+- **8 PASS, zero failures/skips**, 850.71 s suite wall: two FLUX cases, two
+  Qwen-Image cases and four LTX full/LoRA shared-ownership regression cases.
+- Actual random-tiny upstream Transformers, text models and codecs on one
+  A100, FP32 reference, unmerged image LoRA, unchanged four-step G1/F5 math.
+- Native oracle and public Program agree exactly on losses, gradients, Adam,
+  scheduler, EMA, clocks and RNG under the same explicit deterministic test
+  policy. This is not a change to production defaults.
+- Qwen complex RoPE retains its imaginary component. CUDA owns role/media
+  tensors, Adam steps/moments and EMA; invalid state restoration fails before
+  mutation. New-process C1-to-C3 equals uninterrupted C3 complete state.
+- Exported current-Student weights generate a new-prompt PNG on CUDA, and
+  relocate to CPU, with the original training assets absent.
+- Target native CPU regression: **100 PASS, zero skips**, CUDA uninitialized.
+  This suite covers the changed image/LTX owners, not native video-family GPU.
+- One GPU suite launch. Fresh completion audit: no compute processes, node lock
+  released, zero additional cgroup OOM/OOM-kill events. Sampled process-driver
+  peak was 1,364 MiB; this is not per-workload allocated/reserved capacity.
+
+The existing `distillctl` recipe now admits explicit `cuda:0` reference training,
+resume and generation. CPU default and offline preparation remain unchanged.
+CUDA auto/manual/saved-plan trials, AMP, distributed ownership and large
+pretrained capacity/quality remain unqualified and fail closed where required.
+Native Wan2.2/Hunyuan CUDA is not established by this image/LTX suite.

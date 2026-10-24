@@ -1,4 +1,4 @@
-# Original Qwen-Image T2I: initial native CPU flow-DMD slice
+# Original Qwen-Image T2I: native single-device flow-DMD slice
 
 Fixed source candidate:
 [Qwen/Qwen-Image](https://huggingface.co/Qwen/Qwen-Image/tree/75e0b4be04f60ec59a75f475837eced720f823b6),
@@ -29,9 +29,11 @@ different prompt lengths through persistent common training.
 Transformers5's original-format text checkpoint key changes use its **actual
 WeightRenaming/PrefixChange operations**, not guessed aliases; every selected
 safe weight key/shape/dtype remains exact. Unknown converters/config fields,
-reference-image/edit, causal/KV, full-parameter, CUDA, AMP and distributed
-requests fail closed.
+reference-image/edit, causal/KV, full-parameter, AMP and distributed requests
+fail closed. Explicit single-device FP32 CUDA reference training is qualified
+on actual tiny classes, including complex RoPE ownership. CUDA trial planning
+and optimization policies still reject unbounded role cloning.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
-`qwen-image`. Source/actual tiny CPU behavior is not full pretrained V3–V5
+`qwen-image`. Source/actual tiny CPU and A100 reference behavior is not full pretrained V3–V5
 qualification; those gates remain **NOT_RUN**, including quality/convergence.

@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/distillschedule/**'
       - 'tests/test_training_*.py'
+      - 'tests/gpu/**'
       - 'tests/test_owner_execution_capability.py'
       - 'recipes/**'
       - 'scripts/check_cpu_receipt.py'
