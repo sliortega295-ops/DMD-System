@@ -27,6 +27,10 @@ class WanStrategy:
         # Original native admission remains unchanged. In particular, FSDP only
         # supports its control kernel configuration until another arm is validated.
         WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue, candidate_bundle=self.candidate_bundle)
+        require(not self.candidate_bundle.continuous or (not self.retained_critic_blocks
+                and self.rollout_graph_pool_policy == 'isolated.v1'
+                and self.retention_execution == 'manual-only.v1' and self.retention_policy == 'retain4.v1'),
+                'stream lifecycle does not admit retention/shared-pool experiments', path='wan.strategy')
         require(self.rollout_graph_pool_policy in ('isolated.v1', 'shared-scratch.v1'),
                 'unknown rollout graph pool policy', path='wan.strategy')
         require(self.rollout_graph_pool_policy == 'isolated.v1' or

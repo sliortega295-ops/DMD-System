@@ -13,13 +13,14 @@ from typing import Any, Mapping
 
 from .contracts import Candidate, require
 from .precision import ExecutionPrecision
-from .wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT
+from .wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT, STREAM_INCUMBENT
 
 WAN = "wan13b_nogan_resident_best"
 PREFIX = "joint-wan1-"
 PATTERN = re.compile(r"joint-wan1-(fsdp|resident)-c(512|1024|2048)-e([01])$")
 BUNDLE_PREFIX = "joint-wan3-"
 BUNDLE_PATTERN = re.compile(r"joint-wan3-resident-c2048-e1-bincumbent21a-v1(?:-w([1-5]))?$")
+STREAM_PATTERN = re.compile(r"joint-wan3-resident-c2048-e1-bincumbent21a-stream-v2(?:-w([1-5]))?$")
 SCHEDULE_PREFIX = "joint-wan2-"
 SCHEDULE_PATTERN = re.compile(r"joint-wan2-(fsdp|resident)-c(512|1024|2048)-e([01])-w([1-5])$")
 PRECISION = ExecutionPrecision("bfloat16", "float32", "float32", True, True,
@@ -69,6 +70,9 @@ class WanImplementation:
 
     @classmethod
     def parse(cls, key: str) -> "WanImplementation":
+        stream = STREAM_PATTERN.fullmatch(key)
+        if stream is not None:
+            return cls("resident", 2048, True, int(stream[1]) if stream[1] else None, STREAM_INCUMBENT)
         bundle = BUNDLE_PATTERN.fullmatch(key)
         if bundle is not None:
             return cls("resident", 2048, True, int(bundle[1]) if bundle[1] else None, INCUMBENT)
@@ -93,7 +97,8 @@ class WanImplementation:
     def candidate(self) -> Candidate:
         kernels = (f"modulation_chunk{self.chunk_tokens}",) + (("lora_nograd_epilogue",) if self.lora_epilogue else ())
         if self.candidate_bundle.enabled:
-            kernels += ("incumbent21a_coupled_bundle_v1",)
+            kernels += ("incumbent21a_stream_bundle_v2" if self.candidate_bundle.continuous
+                        else "incumbent21a_coupled_bundle_v1",)
         return Candidate(self.id, WAN, self.native_placement, kernels,
                          ("nccl", "pointwise"), mechanism="joint_placement_and_existing_kernel_parameters")
 

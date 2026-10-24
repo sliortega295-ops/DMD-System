@@ -11,6 +11,7 @@ from copy import deepcopy
 
 SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
+WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 _PRESETS = {
     "W1": dict(id="wan_ar.incumbent21a.v1", numerical_status="REVIEW",
         source_origin="21a0993db64137489e120dd6614c48a1bf1a6002",
@@ -62,8 +63,20 @@ def describe_preset(workload: str, preset_id: str) -> dict:
     """Metadata only: no Torch, model, asset access or numerical promotion."""
     value = _PRESETS.get(workload)
     stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
-    if value is None or value["id"] != preset_id and not stream:
+    wan_stream = workload == "W1" and preset_id == WAN_INCUMBENT_STREAM
+    if value is None or value["id"] != preset_id and not (stream or wan_stream):
         raise ValueError(f"native training: unknown or mismatched preset {preset_id!r} for {workload}")
+    if wan_stream:
+        value = dict(deepcopy(value), id=WAN_INCUMBENT_STREAM,
+            implementation_paths=[*value['implementation_paths'], 'runtime/wan_bundle_lifecycle.py'])
+        return dict(schema_version=SCHEMA, workload=workload, **value,
+            opt_in='execution.mode=manual; explicit fresh finite stream; not stable/recommended',
+            source_archived=True, runtime_binding='ORIGINAL_NATIVE_FRESH_STREAM_FULL_INCUMBENT_BUNDLE',
+            continuous_training=True, cycles=dict(min=2, max=64, finite_prepared_stream=True),
+            lifecycle_verification='SOURCE_AND_CPU_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN',
+            gpu_execution='NOT_RUN', mechanism_execution='NOT_RUN; requires actual graph/cast/norm/epilogue counters',
+            source_binding='current source/assets/stream/topology; historical two-cycle contract unchanged',
+            reference_alternative='explicit original FSDP reference with the same native fresh stream')
     if stream:
         value = dict(deepcopy(value), id=HELIOS_SAFE_STREAM,
             runtime="distillschedule.training.helios_worker:run_safe_stream",
@@ -90,8 +103,9 @@ def preset_implementation(workload: str, preset_id: str):
     describe_preset(workload, preset_id)
     if workload == "W1":
         from distillschedule.strategies.wan_strategy import WanStrategy
-        from distillschedule.search.wan_candidate_bundle import INCUMBENT
-        return WanStrategy("resident", 2048, True, 5, INCUMBENT)
+        from distillschedule.search.wan_candidate_bundle import INCUMBENT, STREAM_INCUMBENT
+        return WanStrategy("resident", 2048, True, 5,
+                           STREAM_INCUMBENT if preset_id == WAN_INCUMBENT_STREAM else INCUMBENT)
     if workload in ("W2", "W3"):
         from distillschedule.search.helios_implementation import HeliosImplementation
         if workload == "W2":

@@ -48,6 +48,15 @@ world16 gradient reduction is not being qualified. Its exported current
 unmerged G can generate explicit native latents from new prompt tensors
 without old training payloads. The original native W1 recipe remains separate.
 
+The separate [W1 complete-incumbent stream preset](../../recipes/wan_ar/INCUMBENT_STREAM.md)
+now binds that original native session, its complete Graph/cast/fusion bundle,
+fresh 2..64-cohort input owner and common all-rank checkpoint path. CPU scalar
+autograd/Adam/EMA and fresh-process restart tests exercise the actual dispatcher
+and controller lifecycle with explicitly fake CUDA capture drivers. This is
+**not** actual Wan/CUDA/world16 proof. Captures are bounded to the first cycle
+of each process; a valid stream with a later novel signature is rejected rather
+than silently falling back. The original fixed-trace v1 preset stays unchanged.
+
 The separately versioned [W2 CPU reference](../../recipes/helios_nogan/CPU_REFERENCE.md)
 preserves its distinct warm G2/C10/EMA10 initialization, LoRA256, mixed native
 precision, original clipping and G1/C5/EMA5 updates. It admits all source controls

@@ -165,6 +165,9 @@ def bind_cohort(session, base_task, document, index, selected_order):
     require(entry['task'] == current.to_dict(), 'stream task changed', path='wan.stream')
     trace = load_original_trace(current, entry['trace_bundle'], expected_hash=entry['trace_hash'])
     session.strategy.validate_for(current)
+    lifecycle = getattr(session, 'bundle_lifecycle', None)
+    if lifecycle is not None:
+        lifecycle.begin(task=current, trace=trace, document=document, index=index)
     session.task, session.trace = current, trace
     session._stream_binding = (document['stream_sha256'], index)
     if session.runtime_cache is not None:

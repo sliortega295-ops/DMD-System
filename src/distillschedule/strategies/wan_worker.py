@@ -190,12 +190,16 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
         if cohort is not None:
             record['cohort'] = dict(cohort['receipt'])
             record['input_and_execution_wall_ns'] = clock() - wall_start
+        del prepared, result
+        lifecycle = getattr(session, 'bundle_lifecycle', None)
+        if lifecycle is not None:
+            lifecycle.finish(record)
+            record['input_and_execution_wall_ns'] = clock() - wall_start
         records.append(record)
         if progress is not None:
             progress(records, expected)
         if after_cycle is not None:
             after_cycle(cycle, session, record)
-        del prepared, result
     return {'cycles': records, 'initial_versions': initial, 'warm_initial_versions': warm,
             'final_versions': session.versions(), 'finite': True}
 
@@ -278,7 +282,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             or strategy.retention_execution == 'planner-retain4.v1',
             'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
             path='wan.worker')
-    require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
+    require(not strategy.candidate_bundle.continuous or (mode == 'train' and stream_path is not None),
+            'stream bundle requires explicit fresh native training; no fixed replay/calibration/old plan', path='wan.worker')
+    require(not strategy.candidate_bundle.enabled or strategy.candidate_bundle.continuous or (cycles == 2 and stream_path is None),
             'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
     if stream_path is not None:
@@ -326,6 +332,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 strategy.candidate_bundle.validate_model_files(bootstrap.manifest, asset_identity["model_files"])
                 strategy.candidate_bundle.validate_assets({**asset_identity,
                     'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
+                if strategy.candidate_bundle.continuous:
+                    strategy.candidate_bundle.validate_bootstrap(bootstrap, task)
+                    require(trace.bundle_hash == stream['cohorts'][0]['trace_hash'],
+                            'initial asset trace differs from fresh stream cohort zero', path='wan.worker')
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
             verify_execution_precision(torch)
@@ -455,6 +465,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     started = time.perf_counter_ns()
                     destination = root/'checkpoints'/f'cycle-{cycle:06d}'
                     with control_plane(metadata_group):
+                        if strategy.candidate_bundle.continuous:
+                            checked(current.bundle_lifecycle.validate_checkpoint_boundary,
+                                    'incumbent stream checkpoint quiescence')
                         save_checkpoint(destination, checkpoint_state, identity=checkpoint_identity,
                             cycle=cycle, cursor=cycle, versions=current.versions(), policy=checkpoint_policy)
                     record['checkpoint_outside_compute_ns'] = time.perf_counter_ns() - started

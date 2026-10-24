@@ -40,6 +40,11 @@ class CriticGradGraph:
             raise ValueError("Critic grad graph requires original mode state machine")
         self.pointer_contract = self.parameter_identity()
         self.cache: dict[Any, Any] = {}
+        self._stream_binding = None
+        self._cold_version = None
+        self._stream_storage = None
+        self._cycle_start = 0
+        self.version_reader = None
         self._audit_source()
         self.receipt: dict[str, Any] = dict(
             requested=True, enabled=True, role="critic",
@@ -68,6 +73,23 @@ class CriticGradGraph:
         for name, child in self.source.named_modules():
             if isinstance(child, torch.nn.modules.dropout._DropoutNd) and child.p:
                 raise ValueError(name + ": stochastic dropout forbidden")
+
+    def bind_stream_cycle(self, *, version, logical_steps, source):
+        from .wan_bundle_lifecycle import validate_capture_transition, capture_storage_identity
+        self._audit_source()
+        if (self.receipt['replay_calls'] != self.receipt['backward_replay_calls']
+                or self.parameter_identity() != self.pointer_contract):
+            raise ValueError('Critic stream has pending backward or changed parameter addresses')
+        self._stream_binding = validate_capture_transition(self._stream_binding,
+            version=version, logical_steps=logical_steps, source=source, increment=5)
+        self._cycle_start = self.receipt['replay_calls']
+        if self._cold_version is None:
+            if self.cache or self._cycle_start:
+                raise ValueError('stream admission requires a fresh uncaptured Critic controller')
+            self._cold_version = version
+            self._stream_storage = capture_storage_identity(self.source)
+            self.receipt['stream_lifecycle'] = dict(source=source, first_version=version,
+                                                   versions=[], rng_checked_captures=0)
 
     def _capture(self, keys: Any, values: Any) -> Any:
         import torch
@@ -102,6 +124,16 @@ class CriticGradGraph:
             raise ValueError("Pinned Critic kwargs / tuple output required")
         if not self.source.training or not self.state.training or not self.state.adapter_enabled:
             raise ValueError("Critic grad graph must use original adapter-on train scope")
+        if self._stream_binding is not None:
+            from .wan_bundle_lifecycle import capture_storage_identity
+            offset = self.receipt['replay_calls'] - self._cycle_start
+            version = self._stream_binding['version'] + offset
+            if (offset >= 5 or self.version_reader is None or self.version_reader() != version
+                    or self.receipt['replay_calls'] != self.receipt['backward_replay_calls']):
+                raise ValueError('Critic stream version/order/pending backward changed')
+            if (self.parameter_identity() != self.pointer_contract
+                    or capture_storage_identity(self.source) != self._stream_storage):
+                raise ValueError('Critic stream parameter addresses changed')
         if self.receipt["replay_calls"] % 5 == 0 and self.parameter_identity() != self.pointer_contract:
             raise ValueError("Critic grad graph parameter addresses changed")
         keys = tuple(sorted(k for k in kwargs if k != "return_dict"))
@@ -110,9 +142,18 @@ class CriticGradGraph:
             raise ValueError("Detached tensor inputs required")
         key = (keys, signature(values))
         if key not in self.cache:
-            if self.receipt["replay_calls"] >= 5 or len(self.cache) >= 3:
+            cold = (self.receipt['replay_calls'] < 5 if self._stream_binding is None else
+                    self._stream_binding['version'] == self._cold_version)
+            if not cold or len(self.cache) >= 3:
                 raise ValueError("New Critic grad graph signature after cold cycle")
-            self.cache[key] = self._capture(keys, values)
+            if self._stream_binding is None:
+                self.cache[key] = self._capture(keys, values)
+            else:
+                from .wan_bundle_lifecycle import capture_rng_guard
+                with capture_rng_guard(self.source):
+                    entry = self._capture(keys, values)
+                self.cache[key] = entry
+                self.receipt['stream_lifecycle']['rng_checked_captures'] += 1
         output = self.cache[key](*values)
         if not output.requires_grad:
             raise ValueError("Critic graph output lost autograd")
@@ -123,6 +164,8 @@ class CriticGradGraph:
 
         output.register_hook(backward_count)
         self.receipt["replay_calls"] += 1
+        if self._stream_binding is not None:
+            self.receipt['stream_lifecycle']['versions'].append(version)
         if self.reference_checks:
             from .p0_parity import require_tensor_parity
             reference = self.original_forward(*args, **kwargs)[0]

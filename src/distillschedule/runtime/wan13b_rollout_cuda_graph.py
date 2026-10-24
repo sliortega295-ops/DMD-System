@@ -82,6 +82,9 @@ class RolloutCudaGraph:
         self.graph_pool = IndependentRolloutPool()
         self._audit_source()
         self._version: int | None = None
+        self._stream_binding = None
+        self._cold_version = None
+        self._stream_storage = None
         self._pointer_contract = self._parameter_identity()
         self._cache: dict[Any, tuple[Any, Any, Any, Any]] = {}
         self.receipt: dict[str, Any] = {
@@ -129,12 +132,36 @@ class RolloutCudaGraph:
                       str(parameter.dtype), str(parameter.device))
                      for name, parameter in self.source.named_parameters())
 
+    def bind_stream_cycle(self, *, version, logical_steps, source):
+        """Explicit v2 admission; the original unbound G3/G4 guard is intact."""
+        from .wan_bundle_lifecycle import validate_capture_transition, capture_storage_identity
+        if self.receipt['active'] or self._parameter_identity() != self._pointer_contract:
+            raise ValueError('rollout stream has active scope or changed parameter addresses')
+        self._stream_binding = validate_capture_transition(self._stream_binding,
+            version=version, logical_steps=logical_steps, source=source, increment=1)
+        if self._cold_version is None:
+            if self._cache or self._version is not None:
+                raise ValueError('stream admission requires a fresh uncaptured controller')
+            self._cold_version = version
+            self._stream_storage = capture_storage_identity(self.source)
+            self.receipt['cold_capture_scope'] = 'FIRST_PROCESS_CYCLE_INCLUDING_RESUME_ONLY'
+            self.receipt['stream_lifecycle'] = dict(source=source, first_version=version,
+                                                   rng_checked_captures=0)
+
     def begin_rollout(self, *, version: int, logical_steps: tuple[int, ...]) -> None:
         if self.receipt["active"] or len(logical_steps) != 1:
             raise ValueError("CUDA Graph requires non-nested post-G B1 scope")
         version = int(version)
+        if self._stream_binding is not None:
+            from .wan_bundle_lifecycle import capture_storage_identity
+            bound = self._stream_binding
+            if version != bound['version'] or logical_steps[0] not in bound['logical_steps']:
+                raise ValueError('rollout stream version/sample is not the bound fresh cohort')
+            if (self._parameter_identity() != self._pointer_contract
+                    or capture_storage_identity(self.source) != self._stream_storage):
+                raise ValueError('CUDA Graph parameter addresses/layout changed in stream')
         if self._version != version:
-            if version != (3 if self._version is None else self._version + 1):
+            if self._stream_binding is None and version != (3 if self._version is None else self._version + 1):
                 raise ValueError("CUDA Graph must bind consecutive G3/G4 commits")
             self._audit_source()
             if self._parameter_identity() != self._pointer_contract:
@@ -180,11 +207,18 @@ class RolloutCudaGraph:
         self.graph_pool.before_call(torch)
         key = signature((args, kwargs))
         if key not in self._cache:
-            if self._version != 3:
+            if self._version != (self._cold_version if self._stream_binding is not None else 3):
                 raise ValueError("new CUDA Graph signature after warmup cycle is forbidden")
             if len(self._cache) >= MAX_GRAPH_ENTRIES:
                 raise ValueError("CUDA Graph cache capacity exceeded")
-            self._cache[key] = self._capture(args, kwargs)
+            if self._stream_binding is None:
+                self._cache[key] = self._capture(args, kwargs)
+            else:
+                from .wan_bundle_lifecycle import capture_rng_guard
+                with capture_rng_guard(self.source):
+                    entry = self._capture(args, kwargs)
+                self._cache[key] = entry
+                self.receipt['stream_lifecycle']['rng_checked_captures'] += 1
             self.receipt["cache_entry_count"] += 1
             self.receipt["cache_entries"].append({
                 "input_signature": repr(key),

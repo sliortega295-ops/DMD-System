@@ -9,6 +9,13 @@ No new throughput, speedup, convergence or quality result is claimed.
 * All six original direct manual research presets retain their exact two-cycle
   contracts and source/numerical statuses. W3 merged-LoRA/N70 stays OFF; W5's
   optimized numerical **FAIL** remains unresolved, never a stable default.
+* W1's separate `wan_ar.incumbent21a_stream.v2` retains the complete coupled
+  incumbent bundle on the original fresh-cohort session and checkpoint owner.
+  Actual-dispatch CPU scalar state/restart tests use fake CUDA capture drivers;
+  world16, Graph/Triton, HBM and pretrained numerical validation are NOT_RUN.
+  Only bounded 2..64-cohort streams with first-process-cycle capture coverage
+  are admitted; later novel signatures fail explicitly. See the
+  [stream recipe](../../recipes/wan_ar/INCUMBENT_STREAM.md) for exact limits.
 * W2's separate `helios_nogan.safe_stream_ed8.v1` binds the actual SafeBundle
   and original fresh-cohort lifecycle (2..64); original-helper CPU and Gloo
   recovery/failure tests are not FA2/Triton/node-HSDP CUDA validation. Its original

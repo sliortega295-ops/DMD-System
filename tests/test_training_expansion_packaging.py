@@ -101,6 +101,7 @@ def test_w2_safe_stream_is_mandatory_in_original_tf4_lane_not_modern():
 def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework_wheel, tmp_path):
     expected = {str(path.relative_to(ROOT)): path for path in (ROOT/'recipes').rglob('*')
                 if path.is_file() and path.suffix in ('.py', '.json', '.md', '.yaml', '.yml')}
+    assert {'recipes/wan_ar/training.incumbent-stream.json', 'recipes/wan_ar/INCUMBENT_STREAM.md'} <= expected.keys()
     with zipfile.ZipFile(framework_wheel) as wheel:
         prefix = next(name.split('.data/', 1)[0] + '.data/data/share/distillschedule/'
                       for name in wheel.namelist() if '.data/data/share/distillschedule/recipes/' in name)

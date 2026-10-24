@@ -53,6 +53,8 @@ def test_fused_cast_composition_output_gradient_input_version_and_scope(monkeypa
     monkeypatch.setenv(impl.FUSED_EPILOGUE_ENV, "1")
     monkeypatch.setenv("DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH", "1")
     cache = impl.install_generator_nograd_lora_cast_cache(model, role="generator", linear_type=Linear)
+    boundary = model._distillschedule_cast_cache_quiescence
+    boundary()
     impl.install_generator_nograd_lora_fused_epilogue(model, role="generator", linear_type=Linear,
         fused_epilogue=lambda a,b,s: (a+b*s).to(a.dtype))
     x = torch.randn(3, 4).to(torch.bfloat16)
@@ -63,6 +65,13 @@ def test_fused_cast_composition_output_gradient_input_version_and_scope(monkeypa
         assert torch.equal(model(x), reference(x))
     assert cache["cache_hit_count"] == 2 and cache["cache_miss_count"] == 2
     assert torch.equal(rng, torch.get_rng_state())
+    # Actual cache ContextVar, not a fabricated active flag. An exception inside
+    # the source call must release its single tensor slot before checkpoint.
+    hook = model.a.register_forward_hook(lambda *args: boundary())
+    with torch.no_grad(), pytest.raises(ValueError, match='active Generator cast cache'):
+        model(x)
+    hook.remove()
+    boundary()
     before = dict(cache)
     model(x).float().sum().backward(); reference(x).float().sum().backward()
     assert cache == before  # grad path never enters cast scope

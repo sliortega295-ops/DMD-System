@@ -336,7 +336,8 @@ def test_w6_reference_enters_real_task_and_capacity_api(tmp_path, monkeypatch):
         validate_native(conf)
 
 
-def test_w1_fresh_reference_stream_reaches_original_checkpoint_worker(tmp_path, monkeypatch):
+@pytest.mark.parametrize('optimized', [False, True])
+def test_w1_fresh_reference_stream_reaches_original_checkpoint_worker(tmp_path, monkeypatch, optimized):
     """Metadata wiring fixture; original tensor/capacity checks still run in worker."""
     from distillschedule.strategies.wan_task import OriginalWanTask
     from distillschedule.strategies.wan_stream import SCHEMA, WanCohortSources, task_at
@@ -359,16 +360,32 @@ def test_w1_fresh_reference_stream_reaches_original_checkpoint_worker(tmp_path, 
     raw = conf.to_dict()
     raw['data'] = {'prepared': 'stream.json', 'input_kind': 'original_wan_cohort_stream.v1'}
     raw['trainer'].update(cycles=3, checkpoint_every=1)
+    if optimized:
+        raw['execution'].pop('implementation')
+        raw['execution'].update(mode='manual', preset='wan_ar.incumbent21a_stream.v2')
     conf = TrainingConfig.from_dict(raw, source=conf.source)
-    argv = validate_native(conf)['native_argv']
-    assert argv[0] == 'train-stream' and argv[-2:] == ['--checkpoint-every', '1']
-    assert '--implementation' in argv and '--plan' not in argv
+    result = validate_native(conf)
+    if not optimized:
+        argv = result['native_argv']
+        assert argv[0] == 'train-stream' and argv[-2:] == ['--checkpoint-every', '1']
+        assert '--implementation' in argv and '--plan' not in argv
+    else:
+        assert result['selected']['candidate_bundle']['schema_version'] == 'distillschedule.wan_candidate_bundle.v2'
+        assert result['capabilities']['resume']['supported']
     calls = []
     monkeypatch.setattr(streams, 'load_stream', lambda *a: document)
     monkeypatch.setattr(worker, 'run_worker', lambda *a, **kw: calls.append(kw) or {'status': 'CPU_WIRING_ONLY'})
-    from distillschedule.strategies.wan_cli import main
-    assert main(argv) == 0
+    if optimized:
+        import distillschedule.training.native as native
+        observed = native._source(conf); observed['identity']['dirty'] = False  # Dispatch-only CPU fixture.
+        monkeypatch.setattr(native, '_source', lambda _: observed)
+        assert run_native(conf) == {'status': 'CPU_WIRING_ONLY'}
+    else:
+        from distillschedule.strategies.wan_cli import main
+        assert main(argv) == 0
     assert calls[0]['mode'] == 'train' and calls[0]['cycles'] == 3
-    assert calls[0]['checkpoint_every'] == 1 and calls[0]['strategy'].placement == 'fsdp'
-    assert calls[0]['stream_path'] == tmp_path / 'stream.json'
+    assert calls[0]['checkpoint_every'] == 1
+    assert calls[0]['strategy'].placement == ('resident' if optimized else 'fsdp')
+    assert calls[0]['strategy'].candidate_bundle.continuous is optimized
+    assert Path(calls[0]['stream_path']) == tmp_path / 'stream.json'
     assert not (tmp_path / 'run').exists()

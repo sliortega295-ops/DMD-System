@@ -86,6 +86,14 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             resume=dict(supported=False, reason="not exposed by this bounded optimized preset"))
     if not worker:
         result["capabilities"]["manual_requires_preset"] = True
+    if _wan_incumbent_stream(config, workload):
+        result['capabilities'].update(
+            cycles=dict(min=2, max=64, fresh_inputs='original_wan_cohort_stream.v1',
+                        arbitrary_training=False, later_novel_graph_signatures='REJECTED'),
+            checkpoint=dict(supported=True, scope='complete/drained native cohort; named Adam, scheduler, EMA, rank RNG',
+                            verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'),
+            resume=dict(supported=True, scope='same source/assets/stream/topology; recapture transient graphs',
+                        verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'))
     if helios_stream:
         result.update(native_api="distillschedule.training.helios_worker:run_reference",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
@@ -134,6 +142,11 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             resume=dict(supported=True, scope="versioned incomplete-target complete-cycle reference boundary; exact source/assets/input/horizon/precision/optimizer/topology",
                         verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; NOT_C51_PIPELINE_RESTART"))
     return result
+
+
+def _wan_incumbent_stream(config, workload):
+    from .native_presets import WAN_INCUMBENT_STREAM
+    return workload == 'W1' and config.execution.get('preset') == WAN_INCUMBENT_STREAM
 
 
 def _helios_stream(config, workload):
@@ -202,10 +215,16 @@ def _options(config, workload):
         _require(config.execution.get("mode") == "manual", "execution.preset requires explicit manual mode")
         _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
                  "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
-        _require(_helios_safe_stream(config, workload) or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
+        _require(_helios_safe_stream(config, workload) or _wan_incumbent_stream(config, workload)
+                 or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
                  and not config.trainer.get("resume_from"),
                  "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
-        if workload == "W1":
+        if _wan_incumbent_stream(config, workload):
+            _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
+                     and config.data.get('prepared') and not config.data.get('replay_fixed_trace')
+                     and 2 <= config.trainer['cycles'] <= 64,
+                     'W1 stream preset requires 2..64 explicit fresh cohorts')
+        elif workload == "W1":
             _require(set(config.data) == {"replay_fixed_trace"} and config.data["replay_fixed_trace"] is True,
                      "W1 literal graph preset requires explicit fixed-trace replay, not a fresh input stream")
     _require(not config.algorithm.get("name") or config.algorithm["name"] == (
@@ -353,12 +372,16 @@ def _wan(config, mode, task_value, assets_value, paths):
         _require(config.data.get("replay_fixed_trace") is True and not config.data.get("input_kind"),
                  "fixed trace is replay, not fresh training: set data.replay_fixed_trace=true or provide an explicit native cohort stream")
         command = "run" if mode == "plan" else "benchmark-manual"
-    _require(not strategy.candidate_bundle.enabled or (config.trainer["cycles"] == 2 and prepared is None),
+    _require(not strategy.candidate_bundle.continuous or (mode == 'manual' and prepared is not None),
+             'Wan stream bundle requires explicit manual strategy and fresh cohorts, not old plans/replay')
+    _require(not strategy.candidate_bundle.enabled or strategy.candidate_bundle.continuous
+             or (config.trainer["cycles"] == 2 and prepared is None),
              "Wan incumbent literal bundle only supports 2 fixed-trace cycles")
     if "preset" in config.execution:
         # The existing CLI requires a strategy *file*. Enter its same typed
         # worker instead; do not create a new launcher or a hidden saved plan.
         return dict(task=task.to_dict(), selected=strategy.to_dict(), plan=None, assets=deepcopy(assets_value),
+                    **({'stream': str(prepared)} if prepared else {}),
                     native_worker="distillschedule.strategies.wan_worker:run_worker",
                     validation_scope="CPU_TASK_BOOTSTRAP_IDENTITIES; ORIGINAL_IMMUTABLE_MODEL_TRACE_GRAPH_AND_CAPACITY_GATES_DEFERRED_TO_WORKER")
     args = [command, "--task", str(paths["task"]), "--assets", str(paths["assets"]),
@@ -580,8 +603,10 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
             from distillschedule.strategies.wan_worker import OriginalWanAssets, run_worker
             return run_worker(OriginalWanTask.from_dict(admitted["task"]),
                 OriginalWanAssets.from_dict(admitted["assets"]),
-                output=paths["output"], mode="manual", strategy=WanStrategy.from_dict(admitted["selected"]),
-                cycles=config.trainer["cycles"])
+                output=paths["output"], mode="train" if 'stream' in admitted else "manual",
+                strategy=WanStrategy.from_dict(admitted["selected"]), cycles=config.trainer["cycles"],
+                **(dict(stream_path=admitted['stream'], checkpoint_every=config.trainer.get('checkpoint_every', 0),
+                        resume_from=_path(config, 'trainer', 'resume_from', required=False)) if 'stream' in admitted else {}))
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
     if workload == "W6":
