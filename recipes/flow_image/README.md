@@ -209,6 +209,12 @@ check real storage reduction, actual aliases and exact loss/gradient/update/
 Adam/scheduler/EMA/Teacher equality against an unshared control. No approximate
 cache, guessed normalization kernel or inference weight merging is added.
 
+That exact policy is also admitted on the single-CUDA FP32 path; it installs
+sharing on the persistent live owner without CUDA trial cloning. See the
+[shared CUDA policy and capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
+All roles still materialize before sharing; this does not lower construction
+capacity requirements. CUDA auto/saved-plan trials remain refused.
+
 ## New input and portable output
 
 After exporting, the [common export-only preparer](../../docs/guides/export_inputs.md)

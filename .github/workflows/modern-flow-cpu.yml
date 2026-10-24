@@ -54,8 +54,8 @@ jobs:
           python scripts/check_cpu_receipt.py modern-flow-cpu.xml \
             --require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners \
             --require test_ema_restoration_validates_every_tensor_before_mutation \
-            --require 'test_catalog_admits_only_single_cpu_cuda_reference[wan22-ti2v5b-t2v-wan22]' \
-            --require 'test_catalog_admits_only_single_cpu_cuda_reference[hunyuan15-t2v-hunyuan_video]' \
+            --require 'test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual[wan22-ti2v5b-t2v-wan22]' \
+            --require 'test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual[hunyuan15-t2v-hunyuan_video]' \
             --require 'test_prepared_feature_device_contract_and_owned_native_tensors[wan22-ti2v5b-t2v-wan22]' \
             --require 'test_prepared_feature_device_contract_and_owned_native_tensors[hunyuan15-t2v-hunyuan_video]' \
             --require 'test_fresh_process_cli_resume_current_student_export_and_new_prompt[flux2-klein-base]' \
@@ -75,7 +75,7 @@ jobs:
       - name: Separate optional native-image and native-video CUDA lifecycle receipt
         run: |
           # CPU-hosted CI records explicit skips, never CUDA acceptance.
-          python -m pytest -q tests/gpu/test_training_flow_image_lifecycle.py tests/gpu/test_training_flow_video_lifecycle.py --junitxml=optional-modern-cuda.xml
+          DMD_CUDA_IMMUTABLE_SHARING=1 python -m pytest -q tests/gpu/test_training_flow_image_lifecycle.py tests/gpu/test_training_flow_video_lifecycle.py --junitxml=optional-modern-cuda.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

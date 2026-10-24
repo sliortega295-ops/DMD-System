@@ -19,8 +19,10 @@ inverse, native unpatchification and the actual VAE. Image IDs are native
 the native Transformer uses the first batch's IDs. No FLUX.1, distilled klein,
 reference-image/edit, embedded-guidance, causal/KV, full-parameter, AMP or
 distributed substitution is admitted. Explicit single-device FP32 CUDA
-reference training is qualified on actual tiny classes; CUDA trial planning
-and optimization policies remain rejected pending bounded snapshot support.
+reference training is qualified on actual tiny classes. The exact direct
+[immutable-sharing policy](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+uses the same persistent owner; CUDA trial planning and other optimization
+policies remain rejected pending bounded snapshot support.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
 `flux2-klein-base`; no alternate trainer is involved. Source and actual tiny

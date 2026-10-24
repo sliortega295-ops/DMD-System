@@ -20,6 +20,7 @@ from .flow_image import require
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
+from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 
 FAMILY = 'wan22-ti2v5b-t2v'
@@ -365,8 +366,7 @@ def admit_training(*,state,request,prepared_identity,prepared_manifest):
     require('distributed' not in request.trainer
             and all(state[name].device == device for name in ('student','fake','teacher','media')),
             'matching single-device FP32 ownership required; distributed execution NOT_RUN')
-    require(device.type != 'cuda' or (request.execution.get('mode','reference') == 'reference'
-            and not set(request.execution) & {'implementation','order','plan'}), safe.CUDA_TRIAL_LIMIT)
+    require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), safe.CUDA_TRIAL_LIMIT)
     require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
             and request.execution.get('adapter','program') == 'program', 'use existing common flow DMD Program, not Self-Forcing/DMD2')
     metadata = prepared_manifest.get('metadata',{})

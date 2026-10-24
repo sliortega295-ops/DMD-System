@@ -24,7 +24,7 @@ def cuda_bitwise_policy(monkeypatch):
         torch.use_deterministic_algorithms(enabled, warn_only=warn_only)
 
 
-def run_cli(*args):
+def run_cli(*args, expected_error=None):
     # Exercise the actual CLI in a new process, with no patched model/runtime.
     entry = ('import torch, runpy; torch.use_deterministic_algorithms(True); '
              'runpy.run_module("distillschedule", run_name="__main__", alter_sys=True)')
@@ -32,5 +32,9 @@ def run_cli(*args):
                             capture_output=True, text=True,
                             env={**os.environ, 'OMP_NUM_THREADS': '1',
                                  'CUBLAS_WORKSPACE_CONFIG': ':4096:8'})
+    if expected_error is not None:
+        assert result.returncode != 0, result.stdout + result.stderr
+        assert expected_error in result.stdout + result.stderr
+        return
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)

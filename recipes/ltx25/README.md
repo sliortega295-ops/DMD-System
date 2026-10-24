@@ -47,7 +47,7 @@ copying into the existing resident shadows. Exports may be reloaded on CPU or
 CUDA; this does not promise CPU/CUDA bitwise equivalence. Existing architecture
 and source/shape/precision limits remain in force.
 
-AMP, multi-rank ownership and CUDA auto/manual/saved-plan trials are rejected.
+AMP, multi-rank ownership, other manual policies and CUDA auto/saved-plan trials are rejected.
 The latter require a capacity-bounded snapshot owner, not whole-model CUDA
 copies. CPU measured planning remains separately supported. New CUDA acceptance
 tests use actual random-tiny upstream AV classes, full/LoRA updates, a direct
@@ -194,6 +194,11 @@ sharing implementation, use this `execution` object:
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
+
+This exact direct policy also admits the single-CUDA FP32 LoRA owner without
+trial cloning. It does not reduce construction peak: all roles initially load.
+See the [common capacity and evidence boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
+Full-parameter reference remains independent of this LoRA-specific policy.
 
 The adapter declares frozen Teacher/media and each Student/Fake LoRA **base**.
 Only equal frozen tensors may alias; A/B, gradients and optimizer owners stay

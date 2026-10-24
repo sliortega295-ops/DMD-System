@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import pytest
 import torch
+from test_training_flow_image_device import CUDA_MANUAL, CUDA_UNSUPPORTED
 
 
 def _parameters():
@@ -57,10 +58,14 @@ def test_ltx_public_request_refuses_cuda_trials_before_any_ownership(
 def test_ltx_execution_constraints_are_declarative_and_cpu_discovery_stays_open(tmp_path):
     from distillschedule.training.catalog import resolve, validate_compatibility
     declaration = resolve('model', 'ltx25')
-    assert declaration['execution_constraints']['cuda']['modes'] == ['reference']
+    assert declaration['execution_constraints']['cuda']['modes'] == ['reference', 'manual']
     for mode in ('reference', 'auto', 'manual', 'plan'):
         validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cpu'}, {'mode': mode})
     validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, {'mode': 'reference'})
+    validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, CUDA_MANUAL)
+    for execution in CUDA_UNSUPPORTED:
+        with pytest.raises(ValueError, match='CUDA execution requires'):
+            validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, execution)
     # Plugin factories without an execution declaration retain their own owner
     # admission; a generic planner must not branch on LTX's model name.
     validate_compatibility({'factory': 'external.adapter:build'}, {}, {'device': 'cuda:0'}, {'mode': 'auto'})

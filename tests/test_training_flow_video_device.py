@@ -5,19 +5,44 @@ import importlib
 
 import pytest
 import torch
+from test_training_flow_image_device import CUDA_MANUAL, CUDA_UNSUPPORTED
 
 
 FAMILIES = [('wan22-ti2v5b-t2v', 'wan22'), ('hunyuan15-t2v', 'hunyuan_video')]
 
 
+@pytest.mark.parametrize('execution_mode', ['reference', 'manual'])
+def test_native_video_acceptance_writer_uses_execution_not_input_mode(tmp_path, execution_mode):
+    """Execute the real test receipt writer without importing CUDA fixtures.
+
+    This is metadata-only SYNTHETIC_TEST_ONLY evidence, not a GPU qualification.
+    A completed raw-input loop must not overwrite the execution-policy identity.
+    """
+    import ast
+    import json
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    path = Path(__file__).parent / 'gpu/test_training_flow_video_lifecycle.py'
+    tree = ast.parse(path.read_text())
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                    and node.name == 'test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation')
+    writer = function.body[-1]
+    assert 'acceptance.json' in ast.unparse(writer)
+    namespace = dict(json=json, tmp_path=tmp_path, native_assets={'module': 'CPU_WRITER_FIXTURE'},
+                     config=SimpleNamespace(execution={'mode': execution_mode}),
+                     mode='raw', input_mode='raw', execution_mode=execution_mode,
+                     rows=[{'sample_id': 'SYNTHETIC_TEST_ONLY'}], whole={'final_versions': {}})
+    exec(compile(ast.Module(body=[writer], type_ignores=[]), str(path), 'exec'), namespace)
+    receipt = json.loads((tmp_path / 'acceptance.json').read_text())
+    assert receipt['evidence_kind'] == 'SYNTHETIC_TEST_ONLY'
+    assert receipt['execution_mode'] == execution_mode
+    assert not torch.cuda.is_initialized()
+
+
 @pytest.mark.parametrize('family,module', FAMILIES)
 @pytest.mark.parametrize('device_field', ['model', 'trainer'])
-@pytest.mark.parametrize('execution', [
-    {'mode': 'auto'}, {'mode': 'manual', 'implementation': {}},
-    {'mode': 'plan', 'plan': 'missing.json'}, {'mode': 'reference', 'order': []},
-    {'mode': 'reference', 'implementation': {}}, {'mode': 'reference', 'plan': 'missing.json'},
-    {'mode': 'calibrate'},
-])
+@pytest.mark.parametrize('execution', CUDA_UNSUPPORTED)
 def test_cuda_trial_refusal_is_metadata_only(family, module, device_field, execution):
     from distillschedule.training.catalog import describe, validate_compatibility
     model = dict(factory=describe()['models'][family]['factory'], parameters={})
@@ -55,14 +80,15 @@ def test_public_construct_refuses_trials_before_any_model_data_or_rng(family, mo
 
 
 @pytest.mark.parametrize('family,module', FAMILIES)
-def test_catalog_admits_only_single_cpu_cuda_reference(family, module):
+def test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual(family, module):
     from distillschedule.training.catalog import describe, validate_compatibility
     entry = describe()['models'][family]
     algorithm = dict(factory='distillschedule.training.dmd:build_algorithm')
     assert entry['validation']['gpu'] == entry['validation']['quality'] == 'NOT_RUN'
     for device in ('cpu', 'cuda', 'cuda:0', 'cuda:15'):
-        validate_compatibility(dict(factory=entry['factory'], parameters={'device': device}),
-                               algorithm, dict(device=device), dict(mode='reference'))
+        for execution in (dict(mode='reference'), CUDA_MANUAL):
+            validate_compatibility(dict(factory=entry['factory'], parameters={'device': device}),
+                                   algorithm, dict(device=device), execution)
     for device in ('cpu:0', 'cuda:-1', 'cuda:bad', 'mps', 'cuda:0:1'):
         with pytest.raises(ValueError, match='incompatible'):
             validate_compatibility(dict(factory=entry['factory'], parameters={'device': device}),

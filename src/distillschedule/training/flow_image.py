@@ -20,11 +20,13 @@ from .adapters import InferenceProjection, ModelComponents
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
+from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
 
 ASSET_SCHEMA = 'distillschedule.flow_image_assets.v1'
 INPUT_SCHEMA = 'distillschedule.flow_image_inputs.v1'
 CUDA_TRIAL_LIMIT = ('CUDA native image trial cloning requires a capacity-bounded snapshot/restore; '
-                    'auto/plan/calibration and non-reference execution are not admitted')
+                    'only reference or exact persistent manual immutable sharing is admitted; '
+                    'auto/plan/calibration and CUDA owner cloning remain unsupported')
 
 
 def require(condition, message):
@@ -508,8 +510,7 @@ def admit_training(api, *, state, request, prepared_identity, prepared_manifest)
     require('distributed' not in request.trainer
             and all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
             'matching single-device FP32 ownership required; distributed execution NOT_RUN')
-    require(device.type != 'cuda' or (request.execution.get('mode', 'reference') == 'reference'
-            and not set(request.execution) & {'implementation', 'order', 'plan'}), CUDA_TRIAL_LIMIT)
+    require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
     require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
             and request.execution.get('adapter', 'program') == 'program', 'use existing common flow DMD Program, not DMD2/Self-Forcing')
     require('streams' not in request.data and prepared_manifest.get('metadata', {}).get('schema_version') == INPUT_SCHEMA

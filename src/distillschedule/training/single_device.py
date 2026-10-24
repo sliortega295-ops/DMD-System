@@ -2,6 +2,37 @@
 from contextlib import contextmanager, nullcontext
 
 
+FLOW_CUDA_EXECUTION = {
+    'modes': ['reference', 'manual'],
+    'forbidden_fields': ['order', 'plan'],
+    'manual_implementation': {'backend': 'torch-callable-resident-v1',
+                              'share_immutable': True, 'checkpoint_bindings': []},
+}
+
+
+def execution_policy_matches(execution, constraints):
+    """Lazy metadata admission shared by discovery and native role owners.
+
+    The only CUDA optimization here is persistent immutable aliasing. It never
+    copies a training owner; construction still materializes all native roles.
+    Actual immutable inventory and optimizer ownership are checked by the
+    existing Session and common DMD builder, not inferred from this declaration.
+    """
+    mode = execution.get('mode', 'reference')
+    if mode not in constraints['modes'] or set(execution) & set(constraints.get('forbidden_fields', [])):
+        return False
+    if 'manual_implementation' not in constraints:
+        return True
+    if mode == 'reference':
+        return 'implementation' not in execution
+    expected = constraints['manual_implementation']
+    actual = execution.get('implementation')
+    return (mode == 'manual' and set(execution) <= {'adapter', 'mode', 'implementation'}
+            and execution.get('adapter', 'program') == 'program'
+            and type(actual) is dict and actual.keys() == expected.keys()
+            and all(type(actual[key]) is type(value) and actual[key] == value for key, value in expected.items()))
+
+
 def _require(condition, message):
     if not condition:
         raise ValueError(message)

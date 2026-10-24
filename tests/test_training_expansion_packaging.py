@@ -94,7 +94,7 @@ def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path()
     assert '--require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners' in commands
     assert '--require test_ema_restoration_validates_every_tensor_before_mutation' in commands
     for family in ('wan22-ti2v5b-t2v-wan22', 'hunyuan15-t2v-hunyuan_video'):
-        for name in ('test_catalog_admits_only_single_cpu_cuda_reference',
+        for name in ('test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual',
                      'test_prepared_feature_device_contract_and_owned_native_tensors'):
             assert f"--require '{name}[{family}]'" in commands
 

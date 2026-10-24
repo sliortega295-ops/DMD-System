@@ -305,3 +305,51 @@ complete-cycle same-device restart and portable generation. CUDA planning,
 manual strategies/trial cloning, AMP/distributed ownership, pretrained sizes,
 production geometry and generation quality remain independently unqualified.
 This does not complete U14/U15 or the whole mature-framework acceptance plan.
+
+
+## Five common-flow families: direct manual CUDA immutable sharing
+
+[Portable receipt](../../artifacts/framework/20261024/native_flow_cuda_immutable_sharing.json).
+Actual CUDA source: `2dcc112862548895972aae6567068192a07f7bbf` plus
+`source-sharing-r1`, patch
+`964a8fd4f675bc7ace5e1220f252856281dc4af761907e843272de148b79ecc5`.
+The integrated test-only follow-up (`source-sharing-r2`, patch
+`6d9ce79fc3c5fbaec54ca85fc9a658bf7f81e2144e7dc2d843235921302d25b4`)
+has identical production hashes and separate CPU proof; it was not rerun on GPU.
+
+- **10 PASS, zero failures/skips**, 1535.18 s test-suite wall, one serial launch.
+  LTX-2.5 LoRA, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo each exercise an
+  actual native reference/manual update comparison and fresh-process lifecycle.
+- Single A100 CUDA1, FP32, actual random-tiny upstream classes and native
+  codecs, four Euler steps, G1/F5. No model-weight merge or changed DMD math.
+- All three cycles match reference state, losses, gradients, Adam, scheduler,
+  EMA, sample identity, versions, RNG and outputs under the same deterministic
+  test-only policy. Immutable parameters really alias; mutable LoRAs and
+  optimizer ownership stay separate. Storage savings are measured from tracked
+  tensors, not inferred from configuration.
+- New-process C1-to-C3 matches uninterrupted C3; current-Student export works
+  on genuinely new inputs after removing original assets/checkpoints. Video
+  and image outputs additionally exercise independent CPU relocation.
+- Target CPU: R1 **313 PASS**, R2 **315 PASS**, no skips or CUDA initialization.
+  Reviewer #1 found an acceptance JSON field overwritten by a raw-input loop;
+  two CPU tests reproduced the wrong label before the writer was fixed.
+  R1 video JSONs stay unchanged. Their actual manual execution was already
+  verified by policy/effects assertions and separate native sharing proofs.
+- The first derived collector's explanatory text prematurely called two R2
+  GPU cases qualified. That sentence is explicitly corrected in the portable
+  receipt's erratum: R2 GPU is **NOT_RUN**, not a second test suite.
+- End audit: no GPU processes, node lock released, zero new cgroup OOM or
+  OOM-kill events. Maximum sampled driver allocation was 1634 MiB on CUDA1;
+  this is neither full-model capacity nor a speedup measurement.
+
+The complete required refactor regression also passed in the original target
+Torch2.10 lane: **2152 PASS, 86 explicit SKIP, 20 subtests**, CUDA uninitialized.
+The skips are not GPU qualification; prior environment collection failures
+remain in the raw record.
+
+Only the exact documented persistent manual policy is added. CUDA auto/saved
+plans still need capacity-bounded trial snapshots; AMP and distribution remain
+separate work. Sharing starts after constructing the roles and therefore does
+not yet reduce construction peak. This does not complete U2/U9 or the mature
+framework plan, and does not promote tiny fixture parity into user-workload
+numerical acceptance or pretrained quality.

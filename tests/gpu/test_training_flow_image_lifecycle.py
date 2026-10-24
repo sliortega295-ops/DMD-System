@@ -2,6 +2,7 @@
 
 This is functional FP32 qualification, not pretrained capacity, quality, a
 performance result or permission to clone CUDA roles for planning trials.
+All native fixtures are SYNTHETIC_TEST_ONLY, including explicit manual sharing.
 """
 from copy import deepcopy
 from dataclasses import replace
@@ -22,7 +23,8 @@ from distillschedule.training.policy import CyclePolicy
 from distillschedule.training.session import construct, build_cycle
 from test_training_end_to_end import equal
 from cuda_test_policy import cuda_bitwise_policy, run_cli
-from native_flow_oracle import _native_flow_oracle
+from native_flow_oracle import (_native_flow_oracle, assert_manual_cycles, assert_manual_restart_policy,
+                                manual_config, manual_sharing_only)
 
 pytestmark = [pytest.mark.skipif(not torch.cuda.is_available(), reason='native image CUDA NOT_RUN: no CUDA'),
               pytest.mark.usefixtures('cuda_bitwise_policy')]
@@ -136,10 +138,16 @@ def test_native_cuda_roles_gradients_adam_ema_and_refusals(native_assets, tmp_pa
     assert components.state['dmd_counters'].tolist() == [2, 2, 10]
 
 
-def test_native_cuda_fresh_process_resume_export_and_new_prompt(native_assets, tmp_path):
+@manual_sharing_only
+def test_native_cuda_manual_sharing_matches_reference(native_assets, tmp_path, monkeypatch):
+    assert_manual_cycles(_config(native_assets, tmp_path), tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize('mode', ['reference', pytest.param('manual', marks=manual_sharing_only)])
+def test_native_cuda_fresh_process_resume_export_and_new_prompt(native_assets, tmp_path, mode):
     from distillschedule.training.session import _load_for_output, _generate_values
     from distillschedule.training.single_device import device_scope
-    config = _config(native_assets, tmp_path)
+    config = manual_config(_config(native_assets, tmp_path), mode)
     partial = run_cli('train', config.source, '--cycles', 1, '--output', tmp_path / 'partial')
     resumed = run_cli('train', config.source, '--cycles', 3, '--resume', partial['checkpoint'], '--output', tmp_path / 'resumed')
     whole = run_cli('train', config.source, '--cycles', 3, '--output', tmp_path / 'whole')
@@ -148,6 +156,7 @@ def test_native_cuda_fresh_process_resume_export_and_new_prompt(native_assets, t
     b = torch.load(Path(whole['checkpoint']) / 'state.pt', weights_only=True)
     assert equal(a, b), 'roles, Adam, scheduler, EMA, RNG, cursor and clocks'
     assert a['cycle'] == a['cursor'] == 3 and a['state']['dmd_counters']['value']['counters'].tolist() == [3, 3, 15]
+    assert_manual_restart_policy(config, partial, resumed, whole, tmp_path)
     exported = run_cli('export', config.source, '--checkpoint', resumed['checkpoint'], '--output', tmp_path / 'export')
     assert set(exported['model']['modules']) == {'student', 'media'} and 'assets' not in exported['model']['parameters']
     shape = PreparedDataset(native_assets['prepared']).sample(0)['latent_shape'].tolist()
@@ -183,6 +192,7 @@ def test_native_cuda_fresh_process_resume_export_and_new_prompt(native_assets, t
     finally:
         retired.rename(original_assets)
     (tmp_path / 'acceptance.json').write_text(json.dumps(dict(family=native_assets['family'],
+        evidence_kind='SYNTHETIC_TEST_ONLY', execution_mode=mode,
         scope='TINY_NATIVE_CUDA_FP32_NOT_PRETRAINED_CAPACITY_OR_QUALITY',
         exact_restart=True, cycles=3, counts=[3, 3, 15], new_prompt_current_student=True,
         training_assets_absent_at_generation=True, portable_cpu_output=True), indent=2))

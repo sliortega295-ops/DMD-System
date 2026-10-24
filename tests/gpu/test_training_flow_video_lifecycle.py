@@ -2,6 +2,7 @@
 
 Functional FP32 only: not pretrained capacity/quality, long-run qualification,
 performance evidence, or permission to clone resident CUDA owners for trials.
+All native fixtures are SYNTHETIC_TEST_ONLY, including explicit manual sharing.
 """
 from contextlib import nullcontext
 from copy import deepcopy
@@ -26,7 +27,8 @@ from distillschedule.training.session import construct, build_cycle
 from distillschedule.training.single_device import device_scope, validate_placement
 from test_training_end_to_end import equal
 from cuda_test_policy import cuda_bitwise_policy, run_cli
-from native_flow_oracle import _native_flow_oracle
+from native_flow_oracle import (_native_flow_oracle, assert_manual_cycles, assert_manual_restart_policy,
+                                manual_config, manual_sharing_only)
 
 pytestmark = [pytest.mark.skipif(not torch.cuda.is_available(), reason='native video CUDA NOT_RUN: no CUDA'),
               pytest.mark.usefixtures('cuda_bitwise_policy')]
@@ -260,10 +262,16 @@ def test_native_cuda_video_dmd_adam_ema_restore_and_refusals(native_assets, tmp_
     _placement(components.state, device)
 
 
-def test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation(native_assets, tmp_path):
+@manual_sharing_only
+def test_native_cuda_video_manual_sharing_matches_reference(native_assets, tmp_path, monkeypatch):
+    assert_manual_cycles(_config(native_assets, tmp_path), tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize('execution_mode', ['reference', pytest.param('manual', marks=manual_sharing_only)])
+def test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation(native_assets, tmp_path, execution_mode):
     from distillschedule.training.session import _load_for_output, _generate_values, _construct_model
     from distillschedule.data.manifest import source_identity
-    config = _config(native_assets, tmp_path)
+    config = manual_config(_config(native_assets, tmp_path), execution_mode)
     partial = run_cli('train', config.source, '--cycles', 1, '--output', tmp_path / 'partial')
     resumed = run_cli('train', config.source, '--cycles', 3, '--resume', partial['checkpoint'], '--output', tmp_path / 'resumed')
     whole = run_cli('train', config.source, '--cycles', 3, '--output', tmp_path / 'whole')
@@ -273,6 +281,7 @@ def test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocati
     assert equal(a, b), 'complete roles/optimizer/scheduler/EMA/RNG/data/cursor/version restart'
     assert a['cycle'] == a['cursor'] == 3 and a['state']['dmd_counters']['value']['counters'].tolist() == [3, 3, 15]
     assert a['state']['student_scheduler']['value']['last_epoch'] == 3 and a['state']['fake_scheduler']['value']['last_epoch'] == 15
+    assert_manual_restart_policy(config, partial, resumed, whole, tmp_path)
     def read_metrics(name):
         return [json.loads(line) for line in (tmp_path / name / 'metrics.jsonl').read_text().splitlines()]
     rows, resumed_rows = read_metrics('whole'), read_metrics('resumed')
@@ -359,6 +368,7 @@ def test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocati
     finally:
         retired.rename(original_assets)
     (tmp_path / 'acceptance.json').write_text(json.dumps(dict(module=native_assets['module'],
+        evidence_kind='SYNTHETIC_TEST_ONLY', execution_mode=config.execution.get('mode', 'reference'),
         scope='TINY_NATIVE_CUDA_FP32_NOT_PRETRAINED_CAPACITY_LONG_RUN_OR_QUALITY', exact_restart=True,
         cycles=3, counts=[3, 3, 15], sample_ids=[row['sample_id'] for row in rows], versions=whole['final_versions'],
         new_prompt_and_raw_current_student=True, source_assets_and_checkpoints_absent=True, portable_cpu_output=True), indent=2))

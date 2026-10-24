@@ -116,18 +116,21 @@ encoders, VAE, Adam and EMA are owned by the requested device. Offline input
 preparation stays on CPU; its exact null-text/glyph conditions move to the owned
 device rather than being recomputed with potentially different arithmetic.
 Portable inference exports can relocate to CPU, unlike training checkpoints.
-CUDA manual/auto/saved plans, trial cloning, AMP and distributed execution remain
+CUDA auto/saved plans, other manual policies, trial cloning, AMP and distributed execution remain
 explicitly refused; native single-device reference support does not establish
 pretrained-model capacity.
 
-To execute the existing **CPU** immutable-sharing optimization, explicitly replace
+To execute the existing immutable-sharing optimization on CPU or the admitted
+single-CUDA FP32 owner, explicitly replace
 `execution` with the following; do not share mutable LoRA parameters:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
-The native CPU tests actually execute shared and unshared cycles and compare
+The [CUDA policy/capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+retains full-role construction and excludes CUDA trial cloning. The native CPU
+tests actually execute shared and unshared cycles and compare
 all gradients/Adam/schedulers/EMA/outputs, measure actual shared aliases and
 bytes, resume sharing in a fresh process and reject immutable mutation.
 

@@ -16,7 +16,7 @@ native weights under **SYNTHETIC_TEST_ONLY**, not pretrained or quality evidence
 The example learning rates/rank are fixture settings, not quality recommendations.
 
 Full pretrained memory capacity/training/quality, AMP and distributed execution
-are **NOT_RUN**. CUDA manual/auto/saved-plan execution and resident trial cloning,
+are **NOT_RUN**. CUDA auto/saved-plan execution, other manual policies and resident trial cloning,
 expert/high-low/A14B, Wan2.1, I2V, image/causal/cache fields,
 other codecs and incompatible algorithms explicitly reject. No automatic download,
 weight conversion to another family, implicit image condition or fallback trainer.
@@ -101,12 +101,15 @@ training asset bundle, Teacher/Fake or a training checkpoint. Source/runtime
 fingerprints must still match. A resumable complete-cycle checkpoint and a
 portable inference export are distinct artifacts, not interchangeable.
 
-To execute the existing **CPU** immutable-base optimization, explicitly select:
+To execute the existing immutable-base optimization on CPU or the admitted
+single-CUDA FP32 owner, explicitly select:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
+See the [CUDA policy/capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing):
+all roles materialize before sharing, and CUDA auto/saved-plan trials still refuse.
 This uses existing frozen-base capability inventory and runtime alias checks,
 not fixture hand-aliasing or merged LoRA. Teacher is frozen and Student/Fake
 optimizers own disjoint trainables. Immutable mutation invalidates execution;

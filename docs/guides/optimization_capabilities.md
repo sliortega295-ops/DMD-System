@@ -164,6 +164,45 @@ Saved plans bind source/runtime, complete effective architecture and graph,
 parameter values, algorithm, input geometry/dtype, hardware and cache state;
 drift refuses before a formal update. Transient caches are rebuilt on restore,
 never treated as portable immutable model state. Opaque native CUDA owners
-remain reference-only until capacity-bounded backend-native snapshot/restore
-and paired comparison are qualified. No whole-owner deepcopy is an admitted
-CUDA fallback. See [bounded release notes](release_notes.md).
+still refuse clone-based planning until capacity-bounded backend-native
+snapshot/restore and paired comparison are qualified. No whole-owner deepcopy
+is an admitted CUDA fallback. See [bounded release notes](release_notes.md).
+
+## Direct single-CUDA immutable sharing
+
+The five modern flow adapters (LTX-2.5, FLUX.2 klein Base, original Qwen-Image,
+Wan2.2 T2V and HunyuanVideo-1.5 T2V) also admit this **exact** explicit policy
+with an already-supported single-CUDA FP32 configuration:
+
+```json
+{
+  "mode": "manual",
+  "implementation": {
+    "backend": "torch-callable-resident-v1",
+    "share_immutable": true,
+    "checkpoint_bindings": []
+  }
+}
+```
+
+This is the existing persistent Session's real immutable-parameter aliasing,
+not a second trainer or a CUDA trial copy. Equal frozen LoRA base parameters
+may share storage; trainable A/B, gradients and Adam ownership remain separate.
+The runtime verifies the actual immutable inventory, precision and values,
+then checks that immutable state has not changed. A mismatched asset does not
+silently become shared. Normal loss, input/RNG order and update clocks remain
+unchanged. Complete-cycle restart reconstructs the same aliases before loading
+training state; export still owns the current Student, not a merged weight.
+
+**Capacity boundary:** all original roles are constructed before aliasing.
+Reduced tracked live storage is not a reduced construction peak, allocator
+capacity guarantee or a speedup claim. Admit the full original model construction
+on the target device first. This policy does not enable AMP, distributed roles,
+checkpoint replay, reordering or CUDA auto/saved-plan calibration. Such requests
+still fail rather than dropping fields or falling back to a fixed recipe.
+
+Manual training retains `initial_reference_gate.status=NOT_RUN`: it does not
+manufacture a per-user paired numerical admission. The separately recorded
+native tiny-model reference/manual and restart tests qualify only their tested
+scope; use the [hardware acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md)
+for actual evidence, not a catalog flag or a skipped optional CUDA test.

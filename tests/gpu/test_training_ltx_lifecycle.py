@@ -4,6 +4,7 @@ The raw-codec fixture, flow-DMD mathematics and Program are shared with CPU.
 CUDA uses native AdamW(capturable=True) for resident step tensors; exact oracle
 and restart checks compare that SAME CUDA implementation, not CPU arithmetic.
 No whole CUDA model is cloned and no tolerance or production math is changed.
+SYNTHETIC_TEST_ONLY: manual sharing uses real frozen native LoRA backbone slots.
 """
 from copy import deepcopy
 from dataclasses import replace
@@ -50,7 +51,8 @@ def _cuda_config(files, tmp_path, key='lora_config'):
     return load_training_config(path)
 
 
-from native_flow_oracle import _native_flow_oracle
+from native_flow_oracle import (_native_flow_oracle, assert_manual_cycles, assert_manual_restart_policy,
+                                manual_config, manual_sharing_only)
 
 
 @pytest.mark.parametrize('config_key', ['config', 'lora_config'])
@@ -185,12 +187,18 @@ def test_actual_cuda_native_flow_oracle_and_complete_resident_state(native_asset
     assert components.state['dmd_counters'].tolist() == [2, 2, 10]
 
 
-@pytest.mark.parametrize('config_key', ['config', 'lora_config'])
-def test_actual_cuda_new_process_resume_export_and_new_input_av(native_assets, tmp_path, config_key):
+@manual_sharing_only
+def test_actual_cuda_manual_lora_sharing_matches_reference(native_assets, tmp_path, monkeypatch):
+    assert_manual_cycles(_cuda_config(native_assets, tmp_path, 'lora_config'), tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize('config_key,mode', [('config', 'reference'), ('lora_config', 'reference'),
+    pytest.param('lora_config', 'manual', marks=manual_sharing_only)])
+def test_actual_cuda_new_process_resume_export_and_new_input_av(native_assets, tmp_path, config_key, mode):
     from distillschedule.data import PreparedDataset
     from distillschedule.data.ltx_inputs import prepare_inputs, SCHEMA
     from distillschedule.training.session import _load_for_output, _generate_values
-    config = _cuda_config(native_assets, tmp_path, config_key); path = config.source
+    config = manual_config(_cuda_config(native_assets, tmp_path, config_key), mode); path = config.source
     partial = run_cli('train', path, '--cycles', 1, '--output', tmp_path / 'partial')
     resumed = run_cli('train', path, '--cycles', 3, '--resume', partial['checkpoint'], '--output', tmp_path / 'resumed')
     full = run_cli('train', path, '--cycles', 3, '--output', tmp_path / 'full')
@@ -199,6 +207,7 @@ def test_actual_cuda_new_process_resume_export_and_new_input_av(native_assets, t
     b = torch.load(Path(full['checkpoint']) / 'state.pt', weights_only=True)
     assert equal(a, b), 'all roles, named Adam slots, clocks, EMA, RNG, data cursor and versions'
     assert a['cycle'] == a['cursor'] == 3 and a['state']['dmd_counters']['value']['counters'].tolist() == [3, 3, 15]
+    assert_manual_restart_policy(config, partial, resumed, full, tmp_path)
     exported = run_cli('export', path, '--checkpoint', resumed['checkpoint'], '--output', tmp_path / 'export')
     assert set(exported['model']['modules']) == {'student', 'media'}
     assert 'device' not in exported['model']['parameters'] and 'assets' not in exported['model']['parameters']
@@ -234,3 +243,8 @@ def test_actual_cuda_new_process_resume_export_and_new_input_av(native_assets, t
         assert torch.load(relocated['artifact'], weights_only=True)['decoded']['video'].shape == (3, 8, 8, 3)
     finally:
         hidden.rename(assets)
+    (tmp_path / 'acceptance.json').write_text(json.dumps(dict(evidence_kind='SYNTHETIC_TEST_ONLY',
+        execution_mode=mode, trainable_config=config_key, exact_restart=True, cycles=3, counts=[3, 3, 15],
+        new_prompt_current_student=True, training_assets_absent_at_generation=True,
+        capacity_scope='tiny native tensors only; pretrained construction/peak capacity NOT_RUN',
+        quality_validation='NOT_RUN', claimable_speedup=False), indent=2))

@@ -9,6 +9,7 @@ from copy import deepcopy
 import importlib.metadata
 import json
 import re
+from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -98,8 +99,7 @@ for _name, _factory, _caps, _description in (
 
 register_model('ltx25', factory='distillschedule.training.ltx:build_model',
     capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video',
-    execution_constraints={'cuda': {'modes': ['reference'],
-                                   'forbidden_fields': ['implementation', 'order', 'plan']}})
+    execution_constraints={'cuda': FLOW_CUDA_EXECUTION})
 
 # Source-qualified image families. Validation levels remain distinct: actual
 # tiny native CPU fixtures are not pretrained/GPU/quality acceptance.
@@ -110,8 +110,7 @@ for _name, _module, _model_id, _revision in (
     register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
         description='Pinned native T2I, CPU1/CUDA1 FP32 reference; explicit flow DMD, not official DMD2',
-        execution_constraints={'cuda': {'modes': ['reference'],
-                                       'forbidden_fields': ['implementation', 'order', 'plan']}},
+        execution_constraints={'cuda': FLOW_CUDA_EXECUTION},
         source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
         validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
         compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
@@ -123,8 +122,7 @@ for _name, _module, _model_id, _revision in (
 register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build_model',
     capabilities=('video', 'flow', 'lora', 'dmd_flow_v1'),
     description='Pinned native Wan2.2 TI2V-5B T2V only, CPU1/CUDA1 FP32 B1 reference, local safe assets; common flow DMD',
-    execution_constraints={'cuda': {'modes': ['reference'],
-                                   'forbidden_fields': ['implementation', 'order', 'plan']}},
+    execution_constraints={'cuda': FLOW_CUDA_EXECUTION},
     source=dict(model_id='Wan-AI/Wan2.2-TI2V-5B-Diffusers',
         revision='b8fff7315c768468a5333511427288870b2e9635', license='Apache-2.0'),
     validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
@@ -137,8 +135,7 @@ register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build
 register_model('hunyuan15-t2v', factory='distillschedule.training.hunyuan_video:build_model',
     capabilities=('video', 'flow', 'lora', 'dmd_flow_v1'),
     description='Pinned native HunyuanVideo1.5 T2V dual text/temporal4 VAE, CPU1/CUDA1 FP32 B1 reference; common flow DMD',
-    execution_constraints={'cuda': {'modes': ['reference'],
-                                   'forbidden_fields': ['implementation', 'order', 'plan']}},
+    execution_constraints={'cuda': FLOW_CUDA_EXECUTION},
     source=dict(model_id='hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v',
         revision='286be7ce72277246578a3e3cc2487e95ddae5bcf', license='Tencent Hunyuan Community License (model assets; not Apache-2.0)'),
     validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
@@ -165,10 +162,9 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
             policy = entry.get('execution_constraints', {}).get(family)
             if policy is not None:
                 settings = execution or {}
-                if (settings.get('mode', 'reference') not in policy['modes']
-                        or set(settings) & set(policy.get('forbidden_fields', []))):
+                if not execution_policy_matches(settings, policy):
                     raise ValueError(f'{family.upper()} execution requires {policy["modes"]} '
-                                     f'without strategy overrides: {model["factory"]}')
+                                     f'with the declared exact policy and original order: {model["factory"]}')
         contract = entry.get('compatibility')
         if contract is None:
             continue

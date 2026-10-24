@@ -118,7 +118,7 @@ jobs:
           case '${{ matrix.family }}' in
             dmd2) python -m pytest -q tests/gpu/test_training_dmd2_lifecycle.py --junitxml=optional-cuda.xml ;;
             official-self-forcing) python -m pytest -q tests/gpu/test_training_self_forcing_lifecycle.py --junitxml=optional-cuda.xml ;;
-            ltx25) python -m pytest -q tests/gpu/test_training_ltx_lifecycle.py --junitxml=optional-cuda.xml ;;
+            ltx25) DMD_CUDA_IMMUTABLE_SHARING=1 python -m pytest -q tests/gpu/test_training_ltx_lifecycle.py --junitxml=optional-cuda.xml ;;
           esac
       - uses: actions/upload-artifact@v4
         if: always()

@@ -166,6 +166,21 @@ RGB frames, with exact current-Student CPU relocation. None of these tiny-class
 receipts establishes pretrained capacity/quality or changes a frozen workload
 contract; CUDA planning remains separately unqualified.
 
+The five common-flow families above (LTX LoRA, FLUX, Qwen-Image, Wan2.2
+and HunyuanVideo) additionally have an explicit **single-CUDA manual immutable
+sharing** path through the existing Program runtime. The
+[separate native acceptance receipt](../../artifacts/framework/20261024/native_flow_cuda_immutable_sharing.json)
+records ten actual tiny-class CUDA tests: three-cycle reference/manual complete
+state, gradients, RNG and output parity; real frozen-parameter aliases and
+lower tracked resident storage; fresh-process restart and current-Student
+portable output. This is not CUDA auto/planning, AMP, multi-rank, pretrained
+capacity or quality. All roles still materialize before sharing, so reduced
+resident storage does **not** establish a lower construction peak. User runs
+retain `numerical_status: NOT_RUN` unless independently checked. The R1 video
+test receipt's policy-label error is preserved and corrected only by a later
+CPU-tested writer change, not relabeled as another GPU run. See the
+[exact policy](optimization_capabilities.md#direct-single-cuda-immutable-sharing).
+
 For DMD2, an actual scoped UNet checkpoint capability has real effects and
 same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
 qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source

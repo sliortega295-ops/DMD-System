@@ -31,8 +31,10 @@ WeightRenaming/PrefixChange operations**, not guessed aliases; every selected
 safe weight key/shape/dtype remains exact. Unknown converters/config fields,
 reference-image/edit, causal/KV, full-parameter, AMP and distributed requests
 fail closed. Explicit single-device FP32 CUDA reference training is qualified
-on actual tiny classes, including complex RoPE ownership. CUDA trial planning
-and optimization policies still reject unbounded role cloning.
+on actual tiny classes, including complex RoPE ownership. The exact direct
+[immutable-sharing policy](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+uses the same persistent owner; CUDA trial planning and other optimization
+policies still reject unbounded role cloning.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
 `qwen-image`. Source/actual tiny CPU and A100 reference behavior is not full pretrained V3–V5
