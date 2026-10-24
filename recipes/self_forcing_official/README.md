@@ -20,7 +20,7 @@ frames. Its actual teacher is Wan14B, generator/fake Wan1.3B with explicit
 `ode_init.pt` initialization; public assets must supply the matching native
 configs and strict local states. This owner does not silently manufacture
 those pretrained states or download them. Documented CPU-only exceptions are
-FP32 instead of mixed precision, native gradient checkpointing disabled, no
+FP32 instead of mixed precision, native gradient checkpointing disabled by default, no
 FSDP/global batch64 claim, and explicit local prepared conditioning/weights.
 The RANDOM tiny fixture additionally changes architecture/spatial size, both
 LRs, EMA start/decay, and negative-conditioning provenance for test speed;
@@ -90,8 +90,9 @@ The source path accepts one explicit `cpu` or `cuda:N` device, FP32 MATH SDPA,
 batch1 only; no autocast or distributed layout. **Actual CUDA execution remains
 NOT_RUN** in the CPU-only qualification lane. Native T2V, exactly 21 latent
 frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer-frame
-training, I2V, independent first frame, uncached causal/flex training and native
-gradient-checkpointed cache execution are explicitly rejected, not emulated.
+training, I2V, independent first frame and uncached causal/flex training are
+explicitly rejected, not emulated. The checkpoint-ON reference below is an
+explicit, separately identified source policy, not a replacement for the default.
 
 Single-device compatibility ports are private, source-locked and explicit: constructor
 asset injection, true-singleton broadcast, FP32 math SDPA attention (native
@@ -131,6 +132,69 @@ performed. CUDA source support is not pretrained/capacity/AMP/BF16/native-FA,
 distributed, quality, continuous-training or full-U6 acceptance. Optional actual
 tiny CUDA regressions are in `tests/gpu/test_training_self_forcing_lifecycle.py`;
 CPU-only Torch reports their deliberate `NOT_RUN` skips.
+
+## Explicit checkpoint-ON reference and Fake-only physical policy
+
+Set `model.parameters.settings.gradient_checkpointing` to `true` to choose
+the actual native Generator/Fake checkpoint-ON reference. The default remains
+`false`, including the existing `training.json` and fixture generator. **Never
+treat Generator ON/OFF as equivalent physical strategies:** the pinned causal
+source passes different cross-attention-cache arguments in those branches and
+changes the gradient path. The bound setting is algorithm/source identity and
+cannot be overridden by a plan or mixed across resumable checkpoints.
+
+The pinned models have the old `_set_gradient_checkpointing(module, value)`
+signature, which newer Diffusers enable APIs cannot call. During native model
+construction only, a private instance-local enable adapter invokes the original
+setter through `Module.apply`; it is removed even on failure. No source file,
+global Diffusers/Torch method, native forward, or checkpoint function is patched.
+
+For the actual random tiny fixture's exact architecture, 21x4x4 latent geometry,
+G1/C5 block3/official denoising schedule and qualified CPU1 FP32 stack
+(Torch2.10, Diffusers0.37.1, Transformers4.51.3, einops0.8.1), the ON reference
+offers **only noncausal Fake checkpoint OFF** as a physical alternative. Put
+this in the same config's `execution` field after selecting the ON reference:
+
+```json
+{
+  "adapter": "program",
+  "mode": "manual",
+  "implementation": {
+    "backend": "torch-callable-resident-v1",
+    "share_immutable": false,
+    "checkpoint_bindings": [],
+    "owner_execution": {"native_cycle": {"fake_gradient_checkpointing": false}}
+  }
+}
+```
+
+Explicit `fake_gradient_checkpointing: true` is also measurable against that
+same ON reference. `mode: auto` with `memory_limit_bytes`, `max_candidates: 2`,
+`samples: 2`, `max_program_runs: 5` uses the common measured planner; its saved
+`planning/selected-plan.json` is reusable via `mode: plan` and `plan: PATH` for
+the same initial bound workload. The winner may remain reference: it is never
+preselected by model name. Manual, auto, saved-plan and continued-cycle execution
+all use this one owner capability, the same runner and the same reference gate.
+After resuming an optimized policy, its first real update is paired again from
+the restored state. Calibration never advances live model/RNG/data state.
+
+The scoped option changes only the actual Fake flag and installs read-only
+block pre-hooks. Counters identify actual entry from the original native
+`custom_forward` called by Torch `checkpoint` versus its backward `recompute_fn`
+using inspected code objects. They do not infer requests from the option, or
+replay the optimizer-containing macrocall. OFF requires zero checkpoint/recompute
+entries **and actual direct grad-enabled Fake block execution**. Hooks and flags
+are restored on normal exit and errors; no modes, args, cache policy or RNG
+semantics are rewritten.
+
+Tests execute three actual tiny native cycles against the source's own
+`Trainer.train`: exact losses/gradients, model/Adam/EMA, rollout/cache traces,
+clocks and RNG. Public fresh-process manual restart and measured common planning
+are separately checked. This is **tiny CPU functional evidence only**, not
+pretrained, GPU capacity, memory savings, quality or speedup evidence. Other
+settings/architectures/runtimes expose baseline only; explicit unsupported
+overrides fail without silently changing the reference. CUDA copying and
+auto/plan/owner-execution trial guards remain unchanged.
 
 ## Unified runnable entry
 

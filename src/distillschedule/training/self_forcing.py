@@ -8,6 +8,7 @@ FSDP, AMP, I2V and >21-frame decode/reencode training are NOT admitted.
 from __future__ import annotations
 
 from copy import deepcopy
+from contextlib import contextmanager, nullcontext
 import inspect
 import json
 from pathlib import Path
@@ -121,8 +122,8 @@ def _arguments(parameters):
     require(settings['mixed_precision'] is False and settings['denoising_loss_type'] == 'flow'
             and settings['num_train_timestep'] == 1000 and settings['num_training_frames'] == 21
             and settings['independent_first_frame'] is False and settings['i2v'] is False
-            and settings['backward_simulation'] is True and settings['gradient_checkpointing'] is False,
-            'resident scope is native flow/T2V/21-frame cached rollout; no AMP/I2V/flex/checkpointed or longer-frame substitution')
+            and settings['backward_simulation'] is True,
+            'resident scope is native flow/T2V/21-frame cached rollout; no AMP/I2V/flex or longer-frame substitution')
     for key in ('batch_size', 'num_frame_per_block', 'dfake_gen_update_ratio', 'train_iters'):
         require(type(settings[key]) is int and settings[key] > 0, 'positive native integer required: ' + key)
     require(settings['batch_size'] == 1 and type(settings['num_train_timestep']) is int
@@ -276,6 +277,38 @@ def build_model(parameters):
         return _build_placed(parameters, args, device)
 
 
+@contextmanager
+def _native_checkpoint_enable(api, children):
+    """Private constructor-only bridge for the pinned old Diffusers setter ABI.
+
+    Native BaseModel/DMD still decides which wrappers to enable. Invoke the
+    source's original (module, value) setter, as the old enable API did. Do not
+    replace native forward/checkpoint bodies or any shared Diffusers method.
+    """
+    from types import MethodType
+    roots = [(children['generator'].model, api.causal.CausalWanModel),
+             (children['fake_score'].model, api.wan.WanModel)]
+    api.source.validate()
+    for root, cls in roots:
+        require(type(root) is cls and 'enable_gradient_checkpointing' not in vars(root)
+                and root._set_gradient_checkpointing.__func__ is cls._set_gradient_checkpointing
+                and list(inspect.signature(cls._set_gradient_checkpointing).parameters) == ['self', 'module', 'value'],
+                'native legacy checkpoint setter changed')
+
+    def enable(root, gradient_checkpointing_func=None):
+        require(gradient_checkpointing_func is None, 'native checkpoint callback override is not admitted')
+        root.apply(lambda module: root._set_gradient_checkpointing(module, value=True))
+
+    try:
+        for root, _ in roots:
+            root.enable_gradient_checkpointing = MethodType(enable, root)
+        yield
+    finally:
+        for root, _ in roots:
+            if 'enable_gradient_checkpointing' in vars(root):
+                del root.enable_gradient_checkpointing
+
+
 def _build_placed(parameters, args, device):
     import torch
     from .self_forcing_owner import SelfForcingOwner
@@ -334,7 +367,8 @@ def _build_placed(parameters, args, device):
 
     bridge = type('NativeDMDWithExplicitLocalAssets', (api.dmd.DMD,),
                  {'_initialize_models': initialize_models, '_initialize_inference_pipeline': initialize_pipeline})
-    model = bridge(args, device).eval()
+    with _native_checkpoint_enable(api, children) if args.gradient_checkpointing else nullcontext():
+        model = bridge(args, device).eval()
     _place_native_tensors(model, device)  # Before native AdamW owns Parameters.
     negative = negative.to(device)
     metadata = dict(schema_version='distillschedule.official_self_forcing_wan.v1',
@@ -350,9 +384,15 @@ def _build_placed(parameters, args, device):
         placement_limit='COMPUTE_RESIDENT; NATIVE_EMA_SHADOW_CPU_FP32; RNG_AND_ADAM_STEP_HOST',
         cuda_trial_snapshot='UNAVAILABLE_AUTO_PLAN_AND_OWNER_EXECUTION_REJECTED_BEFORE_TRIAL',
         native_recipe=dict(default='configs/default_config.yaml', override='configs/self_forcing_dmd.yaml',
-            reference_exceptions=['mixed_precision=false', 'gradient_checkpointing=false', 'single_process_no_FSDP',
-                                  'explicit_local_weights_and_preencoded_conditioning']),
+            reference_exceptions=['mixed_precision=false'] + ([] if args.gradient_checkpointing else
+                ['gradient_checkpointing=false']) + ['single_process_no_FSDP',
+                'explicit_local_weights_and_preencoded_conditioning']),
         lifecycle=f'COMMON_PROGRAM_ATOMIC_NATIVE_G1_C{args.dfake_gen_update_ratio}; CURRENT_G_EXPORT_NOT_EMA')
+    if args.gradient_checkpointing:
+        metadata['checkpoint_contract'] = dict(generator=True, fake_reference=True,
+            generator_policy='SOURCE_ALGORITHM_IDENTITY_NOT_A_PHYSICAL_OPTION',
+            generator_on_off_equivalence='NOT_EQUIVALENT_CACHE_AND_GRADIENT_PATH',
+            enable_compatibility='INSTANCE_LOCAL_ORIGINAL_LEGACY_SETTER_CONSTRUCTION_ONLY')
     owner = SelfForcingOwner(model, args, api.source, negative, identity=metadata)
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata, prediction=PredictionSpec('flow'),
         capabilities=('video', 'causal', 'kv_cache', 'flow', 'official-self-forcing'), generate=generate,

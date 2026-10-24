@@ -137,7 +137,7 @@ assets/checkpoints. Other adapters have no encoding hook and refuse. This is
 actual tiny-class **SYNTHETIC_TEST_ONLY** CPU evidence, not pretrained/GPU/quality
 qualification or a change to any frozen workload contract.
 
-For DMD2 only, an actual scoped UNet checkpoint capability has real effects and
+For DMD2, an actual scoped UNet checkpoint capability has real effects and
 same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
 qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source
 path now includes native tensor/RNG/Adam ownership, host-state restore and
@@ -151,3 +151,14 @@ physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
 working on opaque native owners. See [model families](model_families.md),
 [capabilities](optimization_capabilities.md) and their dedicated CI lanes.
+
+Official Self-Forcing also has a bounded **exact random tiny CPU profile**:
+explicit native checkpoint-ON reference, with only noncausal Fake checkpoint
+ON/OFF admitted through the same manual/measured-auto/saved-plan owner protocol.
+The causal Generator setting remains immutable algorithm identity; its ON/OFF
+paths are not equivalent. Real checkpoint/recompute and direct-execution counts,
+three-cycle independent native Trainer parity and fresh-process manual restart
+are CPU evidence only. The legacy OFF reference is unchanged and offers no
+checkpoint alternative. Other runtimes/profiles retain baseline; CUDA trial
+copying/auto/plan/owner execution remain rejected pending capacity-bounded
+snapshot support. This is not full U6, pretrained, GPU or quality acceptance.

@@ -17,6 +17,53 @@ CUDA_TRIAL_LIMIT = ('CUDA owner trials require a capacity-bounded snapshot/resto
                     'Teacher/VAE, native CPU EMA, optimizer and CPU staging; auto/plan/owner_execution are not admitted')
 
 
+def _nested_code(function, *names):
+    """Select an inspected source branch, without executing it or tracing RNG."""
+    from types import CodeType
+    code = function.__code__
+    for name in names:
+        found = [item for item in code.co_consts if isinstance(item, CodeType) and item.co_name == name]
+        require(len(found) == 1, 'native checkpoint instrumentation source branch changed: ' + name)
+        code = found[0]
+    return code
+
+
+def _checkpoint_observer(root, row):
+    """Read-only hooks: count actual native checkpoint entry and replay entry.
+
+    Wan calls a source-local custom_forward ONLY through torch checkpoint.
+    Its immediate caller is checkpoint for the original execution, recompute_fn
+    for backward. Match code objects, not names or a requested option. The hook
+    never stores frames/tensors, replaces a forward, or changes checkpoint RNG.
+    """
+    import inspect
+    import torch
+    from torch.utils import checkpoint
+    forward = type(root)._forward.__code__
+    custom = _nested_code(type(root)._forward, 'create_custom_forward', 'custom_forward')
+    initial = inspect.unwrap(checkpoint.checkpoint).__code__
+    recompute = _nested_code(checkpoint._checkpoint_without_reentrant_generator, 'recompute_fn')
+
+    def observe(module, inputs):
+        frame = inspect.currentframe()
+        try:
+            frame = frame.f_back
+            while frame is not None:
+                if frame.f_code is custom:
+                    caller = frame.f_back.f_code
+                    require(caller in (initial, recompute), 'unrecognized native checkpoint invocation')
+                    row['checkpoint_requests' if caller is initial else 'recompute_calls'] += 1
+                    return
+                if frame.f_code is forward:
+                    row['direct_grad_calls'] += int(torch.is_grad_enabled())
+                    return
+                frame = frame.f_back
+            raise ValueError('official Self-Forcing: block called outside the qualified native source branch')
+        finally:
+            del frame
+    return observe
+
+
 def stream_counts(args):
     return {'generator': 1, 'critic': args.dfake_gen_update_ratio}
 
@@ -80,6 +127,7 @@ class SelfForcingOwner:
             self._initialize_ema()
         self._rng = cpu_tree(rng_state(device=self.device))
         self.observer = None
+        self._active_fake_checkpoint = None
         self._validate_live()
 
     @property
@@ -102,6 +150,111 @@ class SelfForcingOwner:
     def admit_execution(self, mode, implementation):
         require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
                 and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
+
+    def execution_options(self):
+        """Pure source-bound tiny CPU capability; G policy is immutable math.
+
+        The old G-OFF reference is still available but never compared/searched
+        against G-ON: the pinned causal branches pass different cache arguments.
+        Only noncausal Fake checkpoint OFF is qualified against explicit G/F-ON.
+        """
+        import inspect
+        from pathlib import Path
+        import torch
+        from .self_forcing import runtime_identity, _native_config
+        from distillschedule.open_workload.torch_backend import code_signature
+        from distillschedule.workloads.best_known.registry import file_sha256
+        self._validate_live()
+        runtime = runtime_identity()
+        required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', einops='0.8.1')
+        stack = dict(runtime, torch=str(torch.__version__).split('+')[0])
+        api = original(self.source.root)
+        tiny = dict(model_type='t2v', patch_size=[1, 2, 2], text_len=8, in_dim=16, out_dim=16,
+            dim=32, ffn_dim=64, freq_dim=16, text_dim=16, num_heads=2, num_layers=1,
+            qk_norm=True, cross_attn_norm=True)
+        architecture = {'generator': _native_config(api.causal.CausalWanModel,
+                            dict(tiny, local_attn_size=-1, sink_size=0)),
+                        **{role: _native_config(api.wan.WanModel, tiny) for role in ('real_score', 'fake_score')},
+                        'vae': _native_config(api.vae.WanVAE_, dict(dim=4, z_dim=16, dim_mult=[1, 2, 2, 2],
+                            num_res_blocks=1, attn_scales=[], temperal_downsample=[True, True, False], dropout=0.))}
+        settings = dict(image_or_video_shape=[1, 21, 16, 4, 4], num_frame_per_block=3,
+            dfake_gen_update_ratio=5, denoising_step_list=[1000, 750, 500, 250], warp_denoising_step=True,
+            same_step_across_blocks=True, last_step_only=False, context_noise=0, fake_guidance_scale=0.,
+            real_guidance_scale=3., timestep_shift=5., scheduler_shift=5., ts_schedule=False,
+            ts_schedule_max=False, min_score_timestep=0)
+        if self.device.type == 'cuda':
+            status = 'UNAVAILABLE_CUDA_TRIAL_SNAPSHOT'
+        elif not self.args.gradient_checkpointing:
+            status = 'UNAVAILABLE_REFERENCE_POLICY'
+        elif (not all(stack[name] == value for name, value in required.items())
+                or runtime['cpu_policy']['threads'] != 1):
+            status = 'UNAVAILABLE_RUNTIME'
+        elif (self.identity['architecture'] != architecture
+                or any(getattr(self.args, key) != value for key, value in settings.items())
+                or self.identity['assets']['evidence_kind'] != 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED'):
+            status = 'UNAVAILABLE_TINY_PROFILE'
+        else:
+            status = 'AVAILABLE_TINY_CPU'
+        baseline = {'fake_gradient_checkpointing': self.args.gradient_checkpointing}
+        descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
+            options=[baseline], effect=dict(kind='native_checkpoint', enabled_key='fake_gradient_checkpointing',
+                                           components=['fake']),
+            identity=dict(source=deepcopy(self.source.identity), runtime=runtime,
+                provider_file_sha256=file_sha256(Path(__file__)), generator_checkpoint=self.args.gradient_checkpointing,
+                capability=dict(status=status, required_runtime=required, required_cpu_threads=1,
+                    architecture=architecture, settings=settings, gpu='NOT_RUN', pretrained='NOT_RUN'),
+                scope='TINY_CPU1_FP32_NONCAUSAL_FAKE_ONLY_G_FIXED_SOURCE_IDENTITY',
+                instrumentation='READ_ONLY_BLOCK_PRE_HOOK_NATIVE_CUSTOM_FORWARD_CHECKPOINT_AND_RECOMPUTE_CODE'))
+        if status != 'AVAILABLE_TINY_CPU':
+            return descriptor
+        roots = (self.model.generator.model, self.model.real_score.model, self.model.fake_score.model)
+        require(tuple(map(type, roots)) == (api.causal.CausalWanModel, api.wan.WanModel, api.wan.WanModel),
+                'checkpoint requires actual unmodified native model classes')
+        for root in roots:
+            require(all(name not in vars(root) for name in ('forward', '_forward', '_set_gradient_checkpointing',
+                        'enable_gradient_checkpointing', 'disable_gradient_checkpointing')),
+                    'native checkpoint model methods changed')
+        from torch.utils import checkpoint
+        helper_files = {type(module).__module__: inspect.getsourcefile(type(module))
+                        for root in roots for module in root.modules()}
+        helper_files['torch.utils.checkpoint'] = checkpoint.__file__
+        helper_files['torch.checkpoint_wrapper'] = inspect.getsourcefile(checkpoint.checkpoint)
+        require(all(path is not None for path in helper_files.values()), 'checkpoint helpers require source files')
+        descriptor['identity'].update(
+            helper_files={name: file_sha256(Path(path)) for name, path in sorted(helper_files.items())},
+            checkpoint_api=code_signature(inspect.unwrap(checkpoint.checkpoint)),
+            recompute_api=code_signature(checkpoint._checkpoint_without_reentrant_generator))
+        # Confirm the exact source branches the read-only observer will inspect.
+        _nested_code(api.wan.WanModel._forward, 'create_custom_forward', 'custom_forward')
+        _nested_code(checkpoint._checkpoint_without_reentrant_generator, 'recompute_fn')
+        descriptor['options'].append({'fake_gradient_checkpointing': False})
+        return descriptor
+
+    @contextmanager
+    def execution_scope(self, option, effects):
+        descriptor = self.execution_options()
+        require(self._active_fake_checkpoint is None and len(descriptor['options']) > 1
+                and type(option) is dict and set(option) == {'fake_gradient_checkpointing'}
+                and type(option['fake_gradient_checkpointing']) is bool and option in descriptor['options'],
+                'unsupported native execution option; Generator checkpoint policy is immutable')
+        root = self.model.fake_score.model
+        saved = root.gradient_checkpointing
+        row = dict(checkpoint_requests=0, recompute_calls=0, direct_grad_calls=0, disabled_verified=False)
+        effects['components'] = {'fake': row}
+        hooks = []
+        try:
+            root.gradient_checkpointing = self._active_fake_checkpoint = option['fake_gradient_checkpointing']
+            observer = _checkpoint_observer(root, row)
+            for block in root.blocks:
+                hooks.append(block.register_forward_pre_hook(observer))
+            yield
+        finally:
+            row['disabled_verified'] = (root.gradient_checkpointing is False and row['direct_grad_calls'] > 0
+                and row['checkpoint_requests'] == row['recompute_calls'] == 0)
+            for hook in hooks:
+                hook.remove()
+            root.gradient_checkpointing = saved
+            self._active_fake_checkpoint = None
 
     def _event(self, name, value):
         if self.observer is not None:
@@ -167,6 +320,12 @@ class SelfForcingOwner:
                 'owner is not at a complete native macrocycle')
         require(self.model.inference_pipeline is None, 'checkpoint requires discarded ephemeral rollout caches')
         require(vars(self.args) == self.identity['settings'], 'native settings mutated outside the owned lifecycle')
+        fake_checkpoint = (self.args.gradient_checkpointing if self._active_fake_checkpoint is None
+                           else self._active_fake_checkpoint)
+        require(self.model.generator.model.gradient_checkpointing is self.args.gradient_checkpointing
+                and self.model.fake_score.model.gradient_checkpointing is fake_checkpoint
+                and self.model.real_score.model.gradient_checkpointing is False,
+                'native checkpoint flags changed outside the Fake-only execution scope')
         require(all(p.grad is None for p in self.model.parameters()), 'checkpoint requires cleared gradients')
         require(self.masks == {name: p.requires_grad for name, p in self.model.named_parameters()},
                 'native role parameter masks changed')

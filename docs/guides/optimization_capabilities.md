@@ -110,6 +110,28 @@ Its native SD15/SDXL loss/gradient/Adam/scheduler/RNG and fresh-process
 continuation tests execute actual upstream classes; they do not qualify FSDP,
 AMP or arbitrary opaque owners.
 
+## Official Self-Forcing: Fake-only checkpoint policy
+
+The explicit native `settings.gradient_checkpointing: true` reference has a
+separate source identity from the unchanged default OFF reference. The causal
+Generator's ON/OFF branches differ in cross-attention-cache/gradient behavior;
+**Generator checkpoint is not a searched physical toggle**. On the exact
+qualified tiny CPU1 FP32 profile, the same `owner_execution.v1` protocol exposes
+only `owner_execution.native_cycle.fake_gradient_checkpointing` for the actual
+noncausal Fake model. Source/runtime/profile predicates, not a model-name branch
+in search, admit the alternative. Other profiles retain baseline only.
+
+Original native checkpoint and recompute entries are observed with read-only
+block hooks and source/Torch code-object checks. OFF is verified by zero entries
+plus real direct grad-enabled execution, not the requested boolean alone. The
+atomic G/C macrocall is never replayed; Generator policy, caches, modes, native
+RNG/data/update order and Adam/EMA remain source-owned. Three tiny CPU cycles
+match the independent original Trainer oracle, and public manual new-process
+restart and measured auto/saved-plan use the same capability. Unqualified CUDA
+trial copying still refuses; pretrained/GPU/performance remain NOT_RUN. See the
+[checkpoint recipe](../../recipes/self_forcing_official/README.md#explicit-checkpoint-on-reference-and-fake-only-physical-policy)
+for configuration, instrumentation and evidence boundaries.
+
 ## Modern native flow planning is a separately qualified CPU slice
 
 The FLUX.2 klein Base, original Qwen-Image and Wan2.2 T2V tiny actual-class
