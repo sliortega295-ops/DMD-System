@@ -122,24 +122,28 @@ for _name, _module, _model_id, _revision in (
 
 register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build_model',
     capabilities=('video', 'flow', 'lora', 'dmd_flow_v1'),
-    description='Pinned native Wan2.2 TI2V-5B T2V only, CPU1 FP32 B1 local safe assets; common flow DMD',
+    description='Pinned native Wan2.2 TI2V-5B T2V only, CPU1/CUDA1 FP32 B1 reference, local safe assets; common flow DMD',
+    execution_constraints={'cuda': {'modes': ['reference'],
+                                   'forbidden_fields': ['implementation', 'order', 'plan']}},
     source=dict(model_id='Wan-AI/Wan2.2-TI2V-5B-Diffusers',
         revision='b8fff7315c768468a5333511427288870b2e9635', license='Apache-2.0'),
     validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
     compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
-        devices=['cpu'], distributed=False, precision='FP32', batch_size=1,
+        devices=['cpu', 'cuda'], distributed=False, precision='FP32', batch_size=1,
         model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
             'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 
 
 register_model('hunyuan15-t2v', factory='distillschedule.training.hunyuan_video:build_model',
     capabilities=('video', 'flow', 'lora', 'dmd_flow_v1'),
-    description='Pinned native HunyuanVideo1.5 T2V dual text/temporal4 VAE, CPU1 FP32 B1; common flow DMD',
+    description='Pinned native HunyuanVideo1.5 T2V dual text/temporal4 VAE, CPU1/CUDA1 FP32 B1 reference; common flow DMD',
+    execution_constraints={'cuda': {'modes': ['reference'],
+                                   'forbidden_fields': ['implementation', 'order', 'plan']}},
     source=dict(model_id='hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v',
         revision='286be7ce72277246578a3e3cc2487e95ddae5bcf', license='Tencent Hunyuan Community License (model assets; not Apache-2.0)'),
     validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
     compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
-        devices=['cpu'], distributed=False, precision='FP32', batch_size=1,
+        devices=['cpu', 'cuda'], distributed=False, precision='FP32', batch_size=1,
         model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
             'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 

@@ -8,15 +8,16 @@ Source/revision/Apache-2.0 attribution is in [source.json](source.json).
 
 ## Verified boundary
 
-CPU1 FP32, batch one; same-family Teacher/Student/Fake; exact unmerged LoRA;
+CPU1 or single-CUDA FP32 reference, batch one; same-family Teacher/Student/Fake; exact unmerged LoRA;
 four explicit Euler steps; one Student/five Fake updates per complete cycle;
 Adam, scheduler, EMA, RNG/data order/clocks; independent current-Student export;
 THWC uint8 video decoded by the actual residual VAE. Tests create random tiny
 native weights under **SYNTHETIC_TEST_ONLY**, not pretrained or quality evidence.
 The example learning rates/rank are fixture settings, not quality recommendations.
 
-Full pretrained memory capacity/training/quality, GPU, AMP and distributed execution
-are **NOT_RUN**. CUDA, expert/high-low/A14B, Wan2.1, I2V, image/causal/cache fields,
+Full pretrained memory capacity/training/quality, AMP and distributed execution
+are **NOT_RUN**. CUDA manual/auto/saved-plan execution and resident trial cloning,
+expert/high-low/A14B, Wan2.1, I2V, image/causal/cache fields,
 other codecs and incompatible algorithms explicitly reject. No automatic download,
 weight conversion to another family, implicit image condition or fallback trainer.
 
@@ -81,6 +82,15 @@ python -m distillschedule export /ABSOLUTE/training.lora.json \
 ```
 
 Use the actual checkpoint path returned by the command (do not assume its name).
+For the single-device CUDA reference path, set `trainer.device` explicitly to
+`cuda:0` (or another available local CUDA index), keep `execution.mode` as
+`reference`, and use the same device for training and complete-cycle resume.
+Adam, scheduler, EMA and all native media/role tensors retain their owned device;
+the common DMD algorithm and update clocks are unchanged. Offline data preparation
+remains CPU-based. CUDA inference can also relocate a portable export to CPU;
+this is different from cross-device training-checkpoint resume, which is not
+admitted. No automatic precision conversion or distributed launch is implied.
+
 An inference config uses the returned export `model.factory`/`model.parameters`;
 prepare a **new** prompt with explicit compatible latent geometry, then generate
 with `--weights /ABSOLUTE/export --prepared /ABSOLUTE/new-prepared/manifest.json
@@ -91,7 +101,7 @@ training asset bundle, Teacher/Fake or a training checkpoint. Source/runtime
 fingerprints must still match. A resumable complete-cycle checkpoint and a
 portable inference export are distinct artifacts, not interchangeable.
 
-To execute the existing immutable-base optimization, explicitly select:
+To execute the existing **CPU** immutable-base optimization, explicitly select:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
@@ -120,6 +130,14 @@ manual native velocity/Euler/text/codec equality; real gradients and optimizer
 updates; shared/unshared parity; fresh-process exact complete restart; new-prompt
 portable decode while original assets are hidden and training checkpoints deleted;
 and explicit refusal cases. No fake denoiser/codec stands in for end-to-end proof.
+
+The separate [native CUDA acceptance](../../artifacts/framework/20261024/native_video_cuda_acceptance.json)
+covers three actual tiny Wan2.2 tests on a non-default owned CUDA device:
+native forward/gradient/Euler/text/VAE comparison; complete DMD/Adam/EMA/RNG
+state; and new-process restart plus export-only new-prompt RGB video generation.
+CPU inference relocation matches an independent CPU current-Student reference.
+The same explicit deterministic test policy applies to oracle and CLI processes;
+it does not change production defaults or establish pretrained quality/capacity.
 
 ## Third-party notice
 

@@ -150,9 +150,9 @@ See the [portable stream acceptance index](../../artifacts/framework/20261024/wa
 - No production-size capacity, long-run quality or convergence validation.
 - No AMP/BF16/FSDP qualification for these official single-device owners.
 - CUDA automatic-plan trials still reject unsupported whole-owner snapshots.
-- Modern Wan2.2/Hunyuan paths keep their previous CPU-only qualification
-  boundaries. FLUX/Qwen and LTX have separately scoped tiny native CUDA
-  acceptance below, not pretrained capacity or quality qualification.
+- Modern Wan2.2/Hunyuan, FLUX/Qwen and LTX have separately scoped tiny native
+  CUDA reference acceptance below, not pretrained capacity or quality
+  qualification. Their CUDA planning/trial paths remain refused.
 - Passing these tests does not qualify all six large native workloads or
   their optimized long-training checkpoint paths.
 
@@ -264,3 +264,44 @@ resume and generation. CPU default and offline preparation remain unchanged.
 CUDA auto/manual/saved-plan trials, AMP, distributed ownership and large
 pretrained capacity/quality remain unqualified and fail closed where required.
 Native Wan2.2/Hunyuan CUDA is not established by this image/LTX suite.
+
+## Wan2.2 / HunyuanVideo native reference: actual CUDA PASS
+
+[Portable receipt](../../artifacts/framework/20261024/native_video_cuda_acceptance.json).
+Exact source is `85e774aeb094eb5073440dea5ec7a6f7869eb7bc` plus
+`source-video-r2`, patch
+`5f660bbd8b8665f2b3afb03798136f3d4459c5608ed7c7834ac38ecd3ba8a773`.
+Subsequent CI/documentation changes are separately CPU checked, not relabeled as
+that GPU snapshot.
+
+- **10 PASS, zero failures/skips**, 684.04 s suite wall: three Wan2.2 TI2V-5B
+  T2V cases, three HunyuanVideo-1.5 T2V cases, two native FLUX/Qwen update cases
+  and two native LTX full/LoRA update regressions. This is one serial suite
+  launch, not ten distributed runs or a performance measurement.
+- Actual pinned tiny upstream Transformers, native text/tokenizer and VAE
+  classes; FP32 reference, B1, four Euler steps, G1/F5, unmerged LoRA.
+  Two devices were visible, but training used **only local CUDA1** to test
+  non-default device ownership; caller current-device selection stayed intact.
+- Independent native ABI/gradient/Euler/text/codec checks, followed by full
+  DMD loss, gradient, Adam, scheduler, EMA and RNG comparison, passed under the
+  existing explicit deterministic test policy. Production defaults are unchanged.
+- New-process C1-to-C3 restart exactly matched uninterrupted C3. Exported
+  current-Student weights generated new-prompt RGB frames with original assets
+  and checkpoints retired. CPU relocation exactly matched a separately
+  reconstructed CPU current-Student reference, not a cross-device tolerance.
+- Native null conditions are moved from the validated CPU preparation rather
+  than recomputed. VAE normalization and the exact inverse-input decoder are
+  compared to native operations; raw pre-normalization tensors are not falsely
+  assumed bitwise identical after an FP32 normalization round trip.
+- Target CPU **198 PASS**, then **51 PASS** for the test-only follow-up; both
+  zero skips, CUDA uninitialized. Production files were identical in the two
+  frozen source snapshots. CI now requires the video device-contract tests.
+- Fresh cleanup verified no remaining compute processes, node lock available,
+  and zero cgroup OOM/OOM-kill increments. Peak sampled driver allocation on
+  CUDA1 was 1,664 MiB, not a pretrained or per-workload capacity bound.
+
+Both public recipes now support explicit single-CUDA reference training,
+complete-cycle same-device restart and portable generation. CUDA planning,
+manual strategies/trial cloning, AMP/distributed ownership, pretrained sizes,
+production geometry and generation quality remain independently unqualified.
+This does not complete U14/U15 or the whole mature-framework acceptance plan.

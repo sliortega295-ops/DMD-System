@@ -1,6 +1,7 @@
-# HunyuanVideo-1.5 T2V: bounded native CPU flow-DMD reference
+# HunyuanVideo-1.5 T2V: bounded native flow-DMD reference
 
-**Not pretrained/GPU/quality acceptance.** The admitted slice is CPU1 FP32,
+**Not pretrained capacity or quality acceptance.** The admitted slice is CPU1
+or single-CUDA FP32 reference,
 batch1, same-family unmerged LoRA, four Euler steps, G1/F5 and CFG=1, through
 the existing common `training.dmd` Program, checkpoint and export interfaces.
 This is not official DMD2, Self-Forcing, I2V, meanflow or a distilled variant.
@@ -108,7 +109,18 @@ distillctl export /ABSOLUTE/train.json --checkpoint /ABSOLUTE/FINAL_COMPLETE_CHE
 Use the exact checkpoint path returned by `train`. Complete boundaries preserve real Adam,
 schedulers, EMA, RNG, data position/IDs, clocks and role versions. Teacher and
 all codecs remain frozen; Student/Fake own distinct trainable LoRA parameters.
-To execute the existing immutable-sharing optimization, explicitly replace
+For explicit single-device CUDA reference training, set `trainer.device` to
+`cuda:0` (or another available local index), retain `execution.mode: reference`,
+and use that device for complete-cycle training resume. Roles, both text
+encoders, VAE, Adam and EMA are owned by the requested device. Offline input
+preparation stays on CPU; its exact null-text/glyph conditions move to the owned
+device rather than being recomputed with potentially different arithmetic.
+Portable inference exports can relocate to CPU, unlike training checkpoints.
+CUDA manual/auto/saved plans, trial cloning, AMP and distributed execution remain
+explicitly refused; native single-device reference support does not establish
+pretrained-model capacity.
+
+To execute the existing **CPU** immutable-sharing optimization, explicitly replace
 `execution` with the following; do not share mutable LoRA parameters:
 
 ```json
@@ -174,6 +186,15 @@ The explicitly random actual-class fixture is **SYNTHETIC_TEST_ONLY**. Native
 forward/gradient/text/codec/Euler oracles, exact three-cycle fresh-process
 recovery, real sharing and portable novel-input decoding are bounded interface
 and lifecycle evidence, not long training or convergence. Full pretrained CPU,
-GPU/CUDA/distributed/AMP, full-model capacity, production video geometries,
+distributed/AMP, full-model capacity, production video geometries,
 performance and quality gates V3–V5 remain **NOT_RUN**. This does not complete
 the mature-framework plan or full U15 acceptance.
+
+The separate [native CUDA acceptance](../../artifacts/framework/20261024/native_video_cuda_acceptance.json)
+covers three actual tiny HunyuanVideo tests, including a non-default owned CUDA
+device, native forward/gradient/Euler/text/VAE comparison, complete-state
+fresh-process restart and current-Student video export. New-prompt export
+generation also relocates to CPU and matches an independently reconstructed CPU
+Student after original assets/checkpoints are retired. The explicit deterministic
+test policy is not a change to production defaults. This is functional proof,
+not pretrained training or a speedup measurement.

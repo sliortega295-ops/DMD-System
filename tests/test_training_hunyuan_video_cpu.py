@@ -42,7 +42,7 @@ def test_unqualified_pretrained_trials_refused_before_copy(assets, tmp_path, mon
     assert_unqualified_trials_refused(assets, tmp_path, monkeypatch)
 
 
-def test_native_dual_text_temporal4_codec_forward_gradient_and_euler_oracles(assets):
+def test_native_dual_text_temporal4_codec_forward_gradient_and_euler_oracles(assets, record_property):
     import torch
     from diffusers import HunyuanVideo15Transformer3DModel, AutoencoderKLHunyuanVideo15, HunyuanVideo15Pipeline
     from transformers import Qwen2_5_VLTextModel, T5EncoderModel, Qwen2TokenizerFast, ByT5Tokenizer
@@ -101,7 +101,11 @@ def test_native_dual_text_temporal4_codec_forward_gradient_and_euler_oracles(ass
         raw_latent = media.vae.encode(frames.permute(3,0,1,2).unsqueeze(0).float()/127.5-1).latent_dist.mode()
         assert torch.equal(encoded,raw_latent*media.vae.config.scaling_factor)
         assert torch.equal(encoded,row['latents']['video'])
-        torch.testing.assert_close(media.decode_latents(encoded),media.vae.decode(raw_latent,return_dict=False)[0],rtol=1e-5,atol=1e-6)
+        owned_decode = media.decode_latents(encoded)
+        native_decode = media.vae.decode(encoded/media.vae.config.scaling_factor,return_dict=False)[0]
+        assert torch.equal(owned_decode,native_decode)
+        raw_decode = media.vae.decode(raw_latent,return_dict=False)[0]
+        record_property('raw_roundtrip_decode_max_abs',float((owned_decode-raw_decode).abs().max()))
     assert media.decode({'video_latents':encoded},{})['video'].shape == (5,16,16,3)
     assert not torch.cuda.is_initialized()
 
@@ -544,7 +548,7 @@ def test_algorithm_codec_tokenizer_and_runtime_drift_refusals(assets,tmp_path,mo
     for parameter,value in (('teacher_cfg',2.),('fake_updates',4),('rollout_sigmas',[1.,.5,0.])):
         wrong = original.to_dict(); wrong['algorithm']['parameters'][parameter] = value
         with pytest.raises(ValueError,match='cfg|G1/F5|Euler'): construct(TrainingConfig.from_dict(wrong,source=original.source))
-    for key,value in (('device','cuda'),('precision','bf16'),('task','i2v'),('use_meanflow',True),('seed',True)):
+    for key,value in (('device','cuda:-1'),('precision','bf16'),('task','i2v'),('use_meanflow',True),('seed',True)):
         wrong = original.to_dict(); wrong['model']['parameters'][key] = value
         with pytest.raises(ValueError): construct(TrainingConfig.from_dict(wrong,source=original.source))
     for component in ('vae','tokenizer','tokenizer_2'):
@@ -594,10 +598,11 @@ from distillschedule.training.catalog import resolve,validate_compatibility
 row=resolve('model','hunyuan15-t2v')
 assert row['source']['revision']=='286be7ce72277246578a3e3cc2487e95ddae5bcf'
 assert 'Tencent' in row['source']['license'] and row['validation']['gpu']=='NOT_RUN'
-for algorithm,trainer in [('distillschedule.training.dmd2:build_dmd2',{'device':'cpu'}),('distillschedule.training.self_forcing:build_self_forcing',{'device':'cpu'}),('distillschedule.training.dmd:build_algorithm',{'device':'cuda'}),('distillschedule.training.dmd:build_algorithm',{'device':'cpu','distributed':{}})]:
+for algorithm,trainer in [('distillschedule.training.dmd2:build_dmd2',{'device':'cpu'}),('distillschedule.training.self_forcing:build_self_forcing',{'device':'cpu'}),('distillschedule.training.dmd:build_algorithm',{'device':'cpu','distributed':{}})]:
     try:validate_compatibility({'factory':row['factory'],'parameters':{}},{'factory':algorithm},trainer)
     except ValueError:pass
     else:raise AssertionError('unqualified capability admitted')
+validate_compatibility({'factory':row['factory'],'parameters':{}},{'factory':'distillschedule.training.dmd:build_algorithm'},{'device':'cuda:0'},{'mode':'reference'})
 assert 'torch' not in sys.modules and 'diffusers' not in sys.modules and 'transformers' not in sys.modules
 print('PASS_LAZY_NO_MODEL_TORCH_CUDA_OR_ASSET_LOAD')
 '''

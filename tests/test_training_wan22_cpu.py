@@ -57,7 +57,7 @@ def owned(assets):
     return config,*construct(config)
 
 
-def test_actual_native_forward_text_codec_and_manual_euler(assets):
+def test_actual_native_forward_text_codec_and_manual_euler(assets, record_property):
     import torch
     from diffusers import WanTransformer3DModel,AutoencoderKLWan,WanPipeline
     from transformers import UMT5EncoderModel,T5TokenizerFast
@@ -107,8 +107,13 @@ def test_actual_native_forward_text_codec_and_manual_euler(assets):
         normalized=(raw-raw.new_tensor(media.vae.config.latents_mean).view(1,-1,1,1,1))/raw.new_tensor(media.vae.config.latents_std).view(1,-1,1,1,1)
         decoded=media.vae.decode(raw,return_dict=False)[0]
         owned_decode=media.decode_latents(encoded)
+        # Compare the identical native input, not raw versus a FP32
+        # normalization/inverse-normalization roundtrip. These differ by ULPs.
+        native_decode=media.vae.decode(encoded*encoded.new_tensor(media.vae.config.latents_std).view(1,-1,1,1,1)
+            +encoded.new_tensor(media.vae.config.latents_mean).view(1,-1,1,1,1),return_dict=False)[0]
     assert torch.equal(normalized,encoded) and torch.equal(encoded,row['latents']['video'])
-    torch.testing.assert_close(owned_decode,decoded,rtol=1e-5,atol=1e-6)
+    assert torch.equal(owned_decode,native_decode)
+    record_property('raw_roundtrip_decode_max_abs',float((owned_decode-decoded).abs().max()))
     assert media.decode({'video_latents':encoded},{})['video'].shape==(5,32,32,3)
     assert not torch.cuda.is_initialized()
 
@@ -402,7 +407,7 @@ def test_wrong_codec_and_algorithm_recipe_are_not_silently_admitted(assets,tmp_p
     for parameter,value in (('teacher_cfg',2.),('fake_updates',4),('rollout_sigmas',[1.,.5,0.])):
         wrong=original.to_dict();wrong['algorithm']['parameters'][parameter]=value
         with pytest.raises(ValueError,match='cfg|G1/F5|Euler'):construct(TrainingConfig.from_dict(wrong,source=original.source))
-    for key,value in (('device','cuda'),('experts',True),('precision','bf16'),('task','i2v'),('seed',True)):
+    for key,value in (('device','cuda:-1'),('experts',True),('precision','bf16'),('task','i2v'),('seed',True)):
         wrong=original.to_dict();wrong['model']['parameters'][key]=value
         with pytest.raises(ValueError):construct(TrainingConfig.from_dict(wrong,source=original.source))
     root=tmp_path/'changed-codec';shutil.copytree(assets['root'],root)
@@ -442,10 +447,11 @@ row=resolve('model','wan22-ti2v5b-t2v')
 assert row['compatibility']['batch_size']==1 and row['compatibility']['precision']=='FP32'
 assert row['validation']['gpu']=='NOT_RUN'
 assert row['source']['revision']=='b8fff7315c768468a5333511427288870b2e9635'
-for algorithm,trainer in [('distillschedule.training.dmd2:build_dmd2',{'device':'cpu'}),('distillschedule.training.self_forcing:build_self_forcing',{'device':'cpu'}),('distillschedule.training.dmd:build_algorithm',{'device':'cuda'}),('distillschedule.training.dmd:build_algorithm',{'device':'cpu','distributed':{}})]:
+for algorithm,trainer in [('distillschedule.training.dmd2:build_dmd2',{'device':'cpu'}),('distillschedule.training.self_forcing:build_self_forcing',{'device':'cpu'}),('distillschedule.training.dmd:build_algorithm',{'device':'cpu','distributed':{}})]:
     try:validate_compatibility({'factory':row['factory'],'parameters':{}},{'factory':algorithm},trainer)
     except ValueError:pass
     else:raise AssertionError('unsupported capability admitted')
+validate_compatibility({'factory':row['factory'],'parameters':{}},{'factory':'distillschedule.training.dmd:build_algorithm'},{'device':'cuda:0'},{'mode':'reference'})
 assert 'torch' not in sys.modules and 'diffusers' not in sys.modules and 'transformers' not in sys.modules
 print('PASS_LAZY_NO_MODEL_TORCH_CUDA_OR_ASSET_LOAD')
 '''

@@ -1,0 +1,195 @@
+{
+  "schema_version": "distillschedule.native_video_functional_acceptance.v1",
+  "run_id": "native-video-gpu-r1",
+  "evidence_kind": "SYNTHETIC_TEST_ONLY_ACTUAL_NATIVE_CLASSES",
+  "source": {
+    "base_head": "85e774aeb094eb5073440dea5ec7a6f7869eb7bc",
+    "source_id": "85e774ae+native-wan22-hunyuan15-single-cuda-r2",
+    "time_utc": "2026-10-24T20:03:55.569994+00:00",
+    "patch_sha256": "5f660bbd8b8665f2b3afb03798136f3d4459c5608ed7c7834ac38ecd3ba8a773",
+    "files": {
+      "src/distillschedule/data/hunyuan_video_inputs.py": "70fc0612b928e50dc223a07dcf29472c12e1ff5d32c5eff0b1271061459c261a",
+      "src/distillschedule/data/wan22_inputs.py": "46ad0503ad5833d1a933f4261327fa507ef704ac39d149fc5e8de9e90a21a175",
+      "src/distillschedule/training/catalog.py": "63adbfec0629a111519181f34e00ee4eeffcb114baeb9f19ef6ae256907c073b",
+      "src/distillschedule/training/hunyuan_video.py": "9f043989a4bf3129fd0383984c4f63439a3a88ffe86545d82a8e661b0db8f021",
+      "src/distillschedule/training/wan22.py": "09ef6b58d598084070db749b3397fa36d8fe6fd1479c4280b8993ed16da5b440",
+      "tests/gpu/native_flow_oracle.py": "cbffdf0d8518f3f918562bc0503a7a3a48c2105d31d94950089a773eb62fc0b7",
+      "tests/gpu/test_training_flow_video_lifecycle.py": "c3388c6393801e5273704ae061925f298ea0b8e9983660d9440c4ba448ed5237",
+      "tests/test_training_flow_video_device.py": "057e205e4fdd2653e65bbe17187ccc801ccb1fc72488010786e178221c4a663c",
+      "tests/test_training_hunyuan_video_cpu.py": "663e1dd2d9bdb2af265146cb9a65813b935f44441d8233802d4812a52f6b5188",
+      "tests/test_training_model_algorithm_compatibility.py": "ca60482cb20879cb5fba40f0a2539e02b94f16b19d5cc45502425f990b7521aa",
+      "tests/test_training_wan22_cpu.py": "0cd3d2bff6a0e5a1f7a17636933dd65183079b53a748aaf0f96370e3a727dcc2"
+    },
+    "scope": "CUDA1_FP32_REFERENCE_ONLY_NO_MATH_OR_GENERIC_PLANNER_CHANGE",
+    "changes_from_r1": [
+      "tests/gpu/test_training_flow_video_lifecycle.py",
+      "tests/test_training_model_algorithm_compatibility.py"
+    ],
+    "production_identical_to_r1": true
+  },
+  "hardware": "single A100-SXM4-40GB, non-default local CUDA1; not distributed",
+  "runtime": {
+    "python": "3.13.11",
+    "torch": "2.10.0+cu128",
+    "diffusers": "0.37.1",
+    "transformers": "5.14.1",
+    "peft": "0.18.1"
+  },
+  "gpu": {
+    "counts": {
+      "tests": 10,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "status": "PASS",
+    "exit": "0",
+    "suite_wall_seconds": 684.04,
+    "cases": [
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_forward_gradient_euler_text_and_codec[wan22]",
+        "time": "46.190"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_dmd_adam_ema_restore_and_refusals[wan22]",
+        "time": "2.704"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation[wan22]",
+        "time": "242.958"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_forward_gradient_euler_text_and_codec[hunyuan_video]",
+        "time": "27.204"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_dmd_adam_ema_restore_and_refusals[hunyuan_video]",
+        "time": "4.727"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation[hunyuan_video]",
+        "time": "251.428"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_roles_gradients_adam_ema_and_refusals[flux2-klein-base]",
+        "time": "26.874"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_roles_gradients_adam_ema_and_refusals[qwen-image]",
+        "time": "26.368"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[config]",
+        "time": "42.407"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[lora_config]",
+        "time": "7.536"
+      }
+    ]
+  },
+  "cpu_native": {
+    "counts": {
+      "tests": 198,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "status": "PASS",
+    "exit": "0"
+  },
+  "cpu_followup": {
+    "counts": {
+      "tests": 51,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "status": "PASS",
+    "exit": "0"
+  },
+  "cpu_cuda_initialized": false,
+  "cleanup": {
+    "checked_at_utc": "2026-10-24T20:31:50.893562+00:00",
+    "processes_after": "",
+    "lock_available": true,
+    "cgroup_before": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_after": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_deltas": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    }
+  },
+  "sampled_driver_memory_peak_MiB": {
+    "0": 3,
+    "1": 1664,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0
+  },
+  "memory_scope": "Whole test-process sampling, not per-workload allocated/reserved or capacity qualification",
+  "verified": [
+    "native forward/gradient/Euler/text/codec exact oracles",
+    "native DMD losses, gradients, Adam, scheduler, EMA, clocks and RNG under explicit deterministic test policy",
+    "same-device new-process complete-cycle C1-to-C3 equals uninterrupted C3",
+    "export-only current-Student new-prompt video on CUDA and independently checked CPU relocation",
+    "owned non-default device, stale/shape/state policy refusal, no CUDA trial cloning"
+  ],
+  "not_verified": [
+    "pretrained capacity/quality",
+    "multi-rank",
+    "AMP/BF16",
+    "CUDA trial planning",
+    "performance",
+    "full pretrained dimensions",
+    "long-trajectory training",
+    "all six native lifecycles"
+  ],
+  "actual_gpu_attempts": 1,
+  "raw_artifacts_remain_remote": true,
+  "raw_evidence": "framework_maturation_20261023/r10_native_video_cuda",
+  "receipt_hashes": {
+    "reports/video-cpu-r2.xml": "2a54be2fe7f522d76633428b84155609220a545b252750dcf96d8b1b17684b74",
+    "reports/native-video-gpu-r1.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "reports/video-cpu-r2.json": "296deab13828eaebd66d67bee832859313c653f265a310030a6d40ccdbb7fc1d",
+    "reports/source-video-r1.json": "9539f4555e4203341e903f2f106d018fc77934fa89baecd9fdd4900b1a11d0ee",
+    "reports/native-video-gpu-r1.xml": "bfe585e0e1d340821a910d110ec2ddb7778f1d3e40de74333ff107d65aedd2e8",
+    "reports/native-video-gpu-r1-start.json": "c050c705df987da6f7a491e45d75cce94932afd00cb40dd1ed1cae362728a142",
+    "reports/video-cpu-r1.xml": "c9f03803146081901b07e1401b92e8bc065e1c2020b3fd8c4e9ab95dc7e0169c",
+    "reports/source-video-r2.json": "459bc27beb5c6d596a7f96e4e6115386608d59920bc0462a41aa3e5db8aca3ba",
+    "reports/attempt_ledger.jsonl": "59e5553fdaf36605601834b2f64a073b10b39b54c37f7205d7eb32772e287b9e",
+    "reports/video-cpu-r1.json": "296deab13828eaebd66d67bee832859313c653f265a310030a6d40ccdbb7fc1d",
+    "logs/native-video-cgroup-before-r1.txt": "ee9a242c9df97e91efefee580800288b08eb0e28e1f5376ebbda4005e75babe5",
+    "logs/native-video-cgroup-after-r1.txt": "ee9a242c9df97e91efefee580800288b08eb0e28e1f5376ebbda4005e75babe5",
+    "logs/native-video-gpu-processes-after-r1.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/native-video-gpu-r1.log": "33e77bcb647b66158f36c17e0cfe51ea776222343e0c6d4f5d310ed944ca4ecd"
+  }
+}

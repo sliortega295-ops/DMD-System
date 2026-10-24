@@ -76,6 +76,7 @@ def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path()
     commands = '\n'.join(step.get('run', '') for step in job['steps'])
     for value in ('torch==2.10.0', '.[test,modern-flow]', 'ffmpeg', 'ffprobe',
                   'tests/test_training_flow_image_device.py',
+                  'tests/test_training_flow_video_device.py',
                   'tests/test_training_flow_images_cpu.py', 'tests/test_training_wan22_cpu.py',
                   'tests/test_training_hunyuan_video_cpu.py', 'tests/test_training_modern_flow_planning_cpu.py',
                   'tests/test_training_native_text_assets_cpu.py',
@@ -87,10 +88,15 @@ def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path()
                   'scripts/check_framework_install.py --modern-flow'):
         assert value in commands, value
     assert '--deselect' not in commands and '-k ' not in commands
-    assert 'tests/gpu/test_training_flow_image_lifecycle.py --junitxml=optional-modern-cuda.xml' in commands
+    assert ('tests/gpu/test_training_flow_image_lifecycle.py tests/gpu/test_training_flow_video_lifecycle.py '
+            '--junitxml=optional-modern-cuda.xml') in commands
     assert 'scripts/check_cpu_receipt.py optional-modern-cuda.xml' not in commands
     assert '--require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners' in commands
     assert '--require test_ema_restoration_validates_every_tensor_before_mutation' in commands
+    for family in ('wan22-ti2v5b-t2v-wan22', 'hunyuan15-t2v-hunyuan_video'):
+        for name in ('test_catalog_admits_only_single_cpu_cuda_reference',
+                     'test_prepared_feature_device_contract_and_owned_native_tensors'):
+            assert f"--require '{name}[{family}]'" in commands
 
 
 def test_w2_safe_stream_is_mandatory_in_original_tf4_lane_not_modern():

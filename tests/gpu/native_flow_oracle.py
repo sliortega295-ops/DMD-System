@@ -1,4 +1,4 @@
-"""One direct native-role flow-DMD oracle shared by AV and image GPU tests."""
+"""One direct native-role flow-DMD oracle shared by AV, image and video GPU tests."""
 import torch
 
 from distillschedule.training.checkpoint import cpu_tree
@@ -17,13 +17,16 @@ def _native_flow_oracle(state, feeds, policy, seed):
     device = student.device
     losses, gradients = {}, []
 
+    def broadcast(sigma, value):
+        return sigma.reshape((-1,) + (1,) * (value.ndim - 1))
+
     def noise(generated, call):
         with torch.no_grad(), random_scope(seed, call, device):
             first = next(iter(generated.values()))
             sigma = torch.rand(first.shape[0], device=device, dtype=first.dtype)
             sigma = policy['sigma_min'] + (policy['sigma_max'] - policy['sigma_min']) * sigma
             epsilon = {name: torch.randn_like(value) for name, value in generated.items()}
-            noised = {name: (1 - sigma[:, None, None]) * value + sigma[:, None, None] * epsilon[name]
+            noised = {name: (1 - broadcast(sigma, value)) * value + broadcast(sigma, value) * epsilon[name]
                       for name, value in generated.items()}
             return student.apply_conditioning(noised, feeds), sigma, {
                 name: epsilon[name] - value for name, value in generated.items()}
@@ -55,9 +58,9 @@ def _native_flow_oracle(state, feeds, policy, seed):
             unconditional = teacher.denoise(noised, sigma, feeds, conditional=False)
             velocity = {name: unconditional[name] + policy['teacher_cfg'] * (value - unconditional[name])
                         for name, value in conditional.items()}
-        teacher_x0 = {name: value - sigma[:, None, None] * velocity[name] for name, value in noised.items()}
+        teacher_x0 = {name: value - broadcast(sigma, value) * velocity[name] for name, value in noised.items()}
         fake_velocity = fake.denoise(noised, sigma, feeds, conditional=True)
-        fake_x0 = {name: value - sigma[:, None, None] * fake_velocity[name] for name, value in noised.items()}
+        fake_x0 = {name: value - broadcast(sigma, value) * fake_velocity[name] for name, value in noised.items()}
     loss = student_objective(generated, teacher_x0, fake_x0, masks,
         weights=policy['modality_weights'], normalizer=policy['normalizer'], epsilon=policy['normalizer_epsilon'])
     losses['dmd.c0.student_loss'] = cpu_tree(loss)

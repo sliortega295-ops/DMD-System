@@ -54,25 +54,18 @@ for name in ('flux2-klein-base','qwen-image','wan22-ti2v5b-t2v','hunyuan15-t2v')
         algorithm=dict(name='dmd'),data=dict(prepared='MISSING'),execution=dict(mode='reference'),
         trainer=dict(cycles=1,output_dir='MISSING',device='cpu'))
     # Single-device CUDA reference is now an explicit, metadata-only capability
-    # for the two native image families, not for the video owners or policies.
-    cuda_reference = name in ('flux2-klein-base', 'qwen-image')
-    rejected = ('distributed','causal','kv_cache')
-    if not cuda_reference:
-        rejected += ('cuda','embedded-device')
-    else:
+    # for the four native flow families, never for trial cloning policies.
+    value=deepcopy(base)
+    value['trainer']['device']='cuda:0'
+    TrainingConfig.from_dict(value,source='train.json')
+    for mode in ('auto','manual','plan'):
+        value['execution']['mode']=mode
+        try:TrainingConfig.from_dict(value,source='train.json')
+        except ValueError:pass
+        else:raise AssertionError('unsupported CUDA policy accepted')
+    for kind in ('distributed','causal','kv_cache'):
         value=deepcopy(base)
-        value['trainer']['device']='cuda:0'
-        TrainingConfig.from_dict(value,source='train.json')
-        for mode in ('auto','manual','plan'):
-            value['execution']['mode']=mode
-            try:TrainingConfig.from_dict(value,source='train.json')
-            except ValueError:pass
-            else:raise AssertionError('unsupported CUDA policy accepted')
-    for kind in rejected:
-        value=deepcopy(base)
-        if kind=='cuda':value['trainer']['device']='cuda'
-        elif kind=='distributed':value['trainer']['distributed']={'backend':'gloo'}
-        elif kind=='embedded-device':value['model']['parameters']['device']='cuda'
+        if kind=='distributed':value['trainer']['distributed']={'backend':'gloo'}
         else:value['model']['parameters'][kind]=True
         try:TrainingConfig.from_dict(value,source='train.json')
         except ValueError as exc:assert 'incompatible' in str(exc),str(exc)

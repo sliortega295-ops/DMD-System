@@ -25,25 +25,31 @@ def validate_shape(shape, config):
     return shape
 
 
-def validate_row(row, *, config, media_config, binding, empty):
+def validate_row(row, *, config, media_config, binding, empty, device='cpu'):
     import torch
+    from functools import partial
+    from torch.utils._pytree import tree_leaves
     from distillschedule.training.flow_image import require
+    device = torch.device(device)
+    require(device.type in ('cpu', 'cuda') and all(type(value) is torch.Tensor and value.device == device
+            for value in tree_leaves(row)), 'every native video feature must be on the owned device')
+    tensor = partial(_tensor, device=device)
     keys = {'latents','context','context_mask','null_context','null_context_mask','latent_shape','encoder_identity'}
     require(isinstance(row,dict) and set(row) == keys, 'complete T2V fields required; I2V/causal/experts/unknown conditions refused')
-    require(_tensor(row['latent_shape'],dtype=torch.int64,shape=(5,)), 'explicit native BCFHW shape tensor required')
+    require(tensor(row['latent_shape'],dtype=torch.int64,shape=(5,)), 'explicit native BCFHW shape tensor required')
     shape = validate_shape(row['latent_shape'].tolist(),config)
     require(isinstance(row['latents'],dict) and set(row['latents']) == {'video'}
-            and _tensor(row['latents']['video'],dtype=torch.float32,shape=shape), 'finite detached native FP32 CPU video payload required')
+            and tensor(row['latents']['video'],dtype=torch.float32,shape=shape), 'finite detached native FP32 video payload on the owned device required')
     for ck,mk in (('context','context_mask'),('null_context','null_context_mask')):
         context,mask = row[ck],row[mk]
-        require(_tensor(context,dtype=torch.float32,shape=(1,226,config['text_dim']))
-                and _tensor(mask,dtype=torch.bool,shape=(1,226)) and bool(mask.any(dim=1).all())
+        require(tensor(context,dtype=torch.float32,shape=(1,226,config['text_dim']))
+                and tensor(mask,dtype=torch.bool,shape=(1,226)) and bool(mask.any(dim=1).all())
                 and bool((mask[:,1:].int() <= mask[:,:-1].int()).all()),
                 'actual native226 UMT5 context/right-padded boolean mask required')
         require(not bool(context[~mask].any()), 'native Wan context padded rows must be actual zeros')
     require(torch.equal(row['null_context'],empty[0]) and torch.equal(row['null_context_mask'],empty[1]),
             'unconditional context is not the genuine native empty-prompt encoding')
-    require(_tensor(row['encoder_identity'],dtype=torch.uint8,shape=(32,))
+    require(tensor(row['encoder_identity'],dtype=torch.uint8,shape=(32,))
             and bytes(row['encoder_identity'].tolist()).hex() == binding, 'native source/codec/dtype binding changed; stale conditions refused')
     return row
 
