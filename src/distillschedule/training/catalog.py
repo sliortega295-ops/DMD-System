@@ -87,7 +87,6 @@ for _name, _factory, _caps, _description in (
     ('sd15', 'sd:build_sd15', ('image', 'epsilon', 'gan'), 'Stable Diffusion 1.5'),
     ('sdxl', 'sd:build_sdxl', ('image', 'epsilon', 'lora', 'pooled_text'), 'Stable Diffusion XL'),
     ('self-forcing-wan', 'self_forcing:build_model', ('video', 'causal', 'kv_cache', 'flow'), 'Official Self-Forcing Wan'),
-    ('ltx25', 'ltx:build_model', ('video', 'audio', 'flow', 'lora'), 'LTX-2.5 audio-video'),
     ('wan13b', 'wan_public:build_model', ('video', 'history', 'lora'), 'Wan1.3B / W1'),
     ('helios-nogan', 'helios_nogan_public:build_model', ('video', 'history', 'lora'), 'Helios No-GAN / W2'),
     ('helios-gan', 'helios_public:build_model', ('video', 'history', 'lora', 'gan'), 'Helios GAN / W3'),
@@ -96,6 +95,11 @@ for _name, _factory, _caps, _description in (
 ):
     register_model(_name, factory='distillschedule.training.' + _factory,
                    capabilities=_caps, description=_description)
+
+register_model('ltx25', factory='distillschedule.training.ltx:build_model',
+    capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video',
+    execution_constraints={'cuda': {'modes': ['reference'],
+                                   'forbidden_fields': ['implementation', 'order', 'plan']}})
 
 # Source-qualified image families. Validation levels remain distinct: actual
 # tiny native CPU fixtures are not pretrained/GPU/quality acceptance.
@@ -138,7 +142,7 @@ register_model('hunyuan15-t2v', factory='distillschedule.training.hunyuan_video:
             'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 
 
-def validate_compatibility(model, algorithm, trainer):
+def validate_compatibility(model, algorithm, trainer, execution=None):
     """Optional declarative preconstruction contract; unknown plugins stay open.
 
     Metadata only: never import a model or allocate/load weights to reject a
@@ -147,6 +151,18 @@ def validate_compatibility(model, algorithm, trainer):
     """
     entries = [row for row in _registry('model').values() if row['factory'] == model.get('factory')]
     for entry in entries:
+        # Device-conditional policy admission is metadata-only. In particular,
+        # unsupported trial cloning must fail before model/codec ownership, not
+        # after a CUDA request has already materialized all native role weights.
+        for device in (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', 'cpu')):
+            family = device.split(':', 1)[0] if isinstance(device, str) else None
+            policy = entry.get('execution_constraints', {}).get(family)
+            if policy is not None:
+                settings = execution or {}
+                if (settings.get('mode', 'reference') not in policy['modes']
+                        or set(settings) & set(policy.get('forbidden_fields', []))):
+                    raise ValueError(f'{family.upper()} execution requires {policy["modes"]} '
+                                     f'without strategy overrides: {model["factory"]}')
         contract = entry.get('compatibility')
         if contract is None:
             continue

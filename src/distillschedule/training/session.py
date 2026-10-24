@@ -109,6 +109,8 @@ def _same_factory(current, original):
 
 
 def construct(config, *, include_validation=False):
+    from .catalog import validate_compatibility
+    validate_compatibility(config.model, config.algorithm, config.trainer, config.execution)
     dataset = training_data(config, world_size=distributed.rank_world()[1])
     _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config)

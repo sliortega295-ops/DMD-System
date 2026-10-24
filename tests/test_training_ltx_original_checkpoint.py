@@ -53,10 +53,13 @@ def test_actual_original_loader_configurator_keyops_and_builder_execute(native_c
     api, reference, path, _, _ = native_checkpoint
     builder_api = api.source.import_module('ltx_core.loader.single_gpu_model_builder')
     actual_build = builder_api.SingleGPUModelBuilder.build
-    calls = []
+    calls = []; builder_storage = {}; builder_parameters = {}
     def observed(self, *args, **kwargs):
         calls.append((type(self).__module__, self.model_sd_ops.name, kwargs))
-        return actual_build(self, *args, **kwargs)
+        model = actual_build(self, *args, **kwargs)
+        builder_storage.update({name: value.data_ptr() for name, value in model.state_dict().items()})
+        builder_parameters.update({name: id(value) for name, value in model.named_parameters(remove_duplicate=False)})
+        return model
     monkeypatch.setattr(builder_api.SingleGPUModelBuilder, 'build', observed)
     loaded, architecture, receipt = load_original_transformer(api.source, path, file_sha256(path),
         max_parameters=200_000, dtype_policy='strict_fp32')
@@ -70,6 +73,9 @@ def test_actual_original_loader_configurator_keyops_and_builder_execute(native_c
     assert architecture['num_layers'] == 1 and architecture['attention_head_dim'] == 24
     for name, value in reference.state_dict().items():
         assert torch.equal(value, loaded.state_dict()[name]), name
+        assert loaded.state_dict()[name].data_ptr() != builder_storage[name], 'own storage, not safetensors views'
+    assert {name: id(value) for name, value in loaded.named_parameters(remove_duplicate=False)} == builder_parameters
+    assert receipt['storage_ownership'] == 'INDEPENDENT_TORCH_STORAGE_PRESERVE_PARAMETER_OBJECTS'
     attention_api = api.source.import_module('ltx_core.model.transformer.attention')
     for child in loaded.modules():
         if isinstance(child, attention_api.Attention):
@@ -106,7 +112,7 @@ def test_original_architecture_rejected_before_native_materialization_if_not_rec
         calls.append('build'); return actual_build(self, *args, **kwargs)
     monkeypatch.setattr(builder, 'meta_model', meta)
     monkeypatch.setattr(builder, 'build', build)
-    with pytest.raises(ValueError, match='bounded explicit CPU native architecture'):
+    with pytest.raises(ValueError, match='bounded explicit native architecture'):
         load_original_transformer(api.source, path, file_sha256(path),
             max_parameters=count + 1, dtype_policy='strict_fp32')
     assert not calls, 'reject before even the native meta-model sizing/materialization stage'

@@ -11,15 +11,19 @@ and its pretrained/GPU milestones are not complete.
 **W1 native update:** the fixed-trace `wan_ar.incumbent21a.v1` preset has now
 completed actual public-entry execution on 16 A100s (32 rank-cycles), with
 real existing optimization counters and version/call/finite checks. This is
-pretrained-backbone plus synthetic feature replay, **not** numerical parity,
-fresh-data checkpoint recovery or quality. The separate stream preset remains
-unqualified and its native all-zero-history branch is confirmed blocked at
-CPU admission. See [GPU acceptance](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+pretrained-backbone plus synthetic feature replay, **not** numerical parity
+or quality. A subsequent explicit Resident stream source also completed two
+native RNG cohorts and fresh-process checkpoint continuation on all 16 ranks,
+including rank-local amplified zero-history. Its strict tensor comparison
+remains **REVIEW**; restart distances are no larger than the measured
+same-start repeat noise for the replicated role/optimizer/EMA state. These
+cohorts reuse synthetic features: this is not real-data or long-run quality
+acceptance. See [GPU acceptance](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 
 | Entry | Data | Execution | Continuous progress | Save/resume | Generate/export | Held-out validation | This integration's verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Public Program factories | Generic raw media + explicit encoder, or prepared native feature tree | Local and distributed reference/manual; existing measured auto/saved-plan path with admitted DDP/FSDP2/HSDP | Persistent models/wrappers/optimizer, versioned one-cycle Program and explicit rank-strided cursor | Complete cycle, same topology; all-rank atomic local-shard checkpoint | Same-topology distributed checkpoint `evaluate` and full-weight `export`; local-only `generate --weights` on new prepared inputs with source/layout-bound loading; PNGs require an explicit model decoder | Optional periodic local-only `validate_batch` diagnostics on explicit held-out records; no inferred quality gate | Real local and multi-process CPU autograd, fresh-process continuation, local-shard restart, distributed outputs and installed-wheel new-input inference |
-| W1 Wan | Original rank-qualified trace/fresh stream; separate complete-source-trace CPU reference | Native FSDP/Resident/saved plan; separate CPU1 rank0 per-sample original Full5 Program | Native stream: 2..64 fresh cohorts; CPU reference: finite original cohorts within fixed scheduler horizon | Native stream: all-rank atomic shards. CPU reference: actual original full mixed model, named Adam/LR/EMA, clocks, source cursor and inner/outer RNG through common complete-cycle checkpoint | CPU reference: current full unmerged G and new-prompt original native latent diagnostics; no decoder | Not exposed by either W1 binding | Fixed-trace full preset: actual world16 functional pass, not numerical parity/quality. Stream: scalar CPU restart only; actual native all-zero-history capture blocked. Separate original tiny mixed-precision CPU model/update/restart/export remains qualified |
+| W1 Wan | Original rank-qualified trace/cohort stream; separate complete-source-trace CPU reference | Native FSDP/Resident/saved plan; rank-local amplified history is Resident-stream only | Native stream: 2..64 explicit cohorts; CPU reference: finite original cohorts within fixed scheduler horizon | Native stream: all-rank atomic shards and actual world16 new-process restoration. Strict tensor comparison REVIEW; exact RNG/cursor/version/census. CPU reference: actual full mixed model and named state | CPU reference: current full unmerged G and new-prompt original native latent diagnostics; no native-stream decoder/export | Not exposed by either W1 binding | Fixed-trace and two-cohort full preset actually executed on world16. All-rank checkpoint comparison plus same-start repeat noise diagnostic; synthetic source features, no real-data/quality/long-run acceptance. Separate original tiny CPU update/restart/export remains qualified |
 | W2 Helios No-GAN | Original encoded assets/request or fresh cohort stream; separate original full-geometry CPU input owner | Selected plan; direct FSDP2/SDPA reference; new explicit SafeBundle fresh-stream preset; separate CPU1 rank0 per-sample original warm No-GAN Program | Original selected preset: two cycles. References/new SafeBundle stream: 2..64 fresh cohorts from explicit real G2/C10/EMA10 warm state | Complete cycle/same topology; original named G/C Adam, LR, SparseEMA, clocks, source cursor and inner/outer RNG. CPU Program stages all owners before restore | CPU reference: current full unmerged G export and new-prompt original native latent diagnostics; no decoder | Not exposed by native binding | Actual original full tiny mixed-BF16/FP32 model, LoRA256, original warm updates, fresh-process exact restart and independent current-G output; SafeBundle original-helper CPU/Gloo source/state tests with simulated CUDA telemetry/counters. Pretrained/world16 numerical/CUDA/quality NOT_RUN |
 | W3 Helios GAN | Native GAN/ODE/text request; separately, actual original history19 primary/secondary feature producer | Selected native plan; separate CPU1 FP32/full-original dense-SDPA Program reference | Selected: two cycles. CPU reference: finite five-row cycles within the explicit original scheduler horizon | CPU reference: safe common checkpoint with original G/C Adam, schedulers, SparseEMA, native/outer RNG and consumed-source chain; exact fresh-process continuation | CPU reference: full current unmerged G export and explicit original native latent diagnostic on new prompt tensors; no VAE/decoded video | Not exposed by native binding | Actual original full tiny models/PEFT/GAN/EMA, both backward policies, source-only imports and fresh-process restart/export. Pretrained/GPU/quality NOT_RUN |
 | W4 Self-Forcing / LiveWan | Original C51 continuous-sigma inputs; finite native Teacher cohorts; separately versioned exact FP32 public cohorts | C51 role pools; original world16 reference; separate CPU1 actual-original Wan2.1/LiveWan Program | Selected: two cycles. Native reference: 2..64 fresh G1/C5/EMA0. CPU Program: finite fresh five-record cycles | Native reference: all-rank complete-cycle. CPU Program: actual original G/C/Teacher, named Adam, inner/outer RNG, source cursor and versions, exact new-process continuation | CPU Program: current full unmerged G export; native four-step new-condition rollout; exact original Wan2.1 VAE optional decoder gives actual 81-frame video | No automatic quality gate | Actual original CPU FP32 classes/update/inputs/restart/current-G and optional codec tests; not world16/BF16/C51 pipeline recovery or pretrained quality |
@@ -60,8 +64,9 @@ The separate [W1 complete-incumbent stream preset](../../recipes/wan_ar/INCUMBEN
 now binds that original native session, its complete Graph/cast/fusion bundle,
 fresh 2..64-cohort input owner and common all-rank checkpoint path. CPU scalar
 autograd/Adam/EMA and fresh-process restart tests exercise the actual dispatcher
-and controller lifecycle with explicitly fake CUDA capture drivers. This is
-**not** actual Wan/CUDA/world16 proof. Captures are bounded to the first cycle
+and controller lifecycle with explicitly fake CUDA capture drivers. The later
+[actual world16 continuation](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation)
+is separate evidence, not a relabeling of those CPU tests. Captures are bounded to the first cycle
 of each process; a valid stream with a later novel signature is rejected rather
 than silently falling back. The original fixed-trace v1 preset stays unchanged.
 
@@ -159,12 +164,13 @@ For DMD2, an actual scoped UNet checkpoint capability has real effects and
 same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
 qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source
 path now includes native tensor/RNG/Adam ownership, host-state restore and
-current-G export/reload placement, but **actual CUDA lifecycle, capacity,
-pretrained quality and performance remain NOT_RUN**. Optional actual tiny CUDA
-tests skip honestly on CPU-only Torch. CUDA auto/plan/owner-selected trials and
+current-G export/reload placement. The seven-test A100 acceptance above covers
+actual random-tiny reference CUDA lifecycle; **pretrained capacity, quality and
+performance remain NOT_RUN**. Optional CUDA tests skip honestly on CPU-only
+Torch. CUDA auto/plan/owner-selected trials and
 whole-owner copying fail closed until budgeted resident snapshot/restore covers
 frozen roles, optimizer, comparison and CPU staging. This does not complete
-distributed/AMP owner support or the plan's GPU acceptance gates. Other
+distributed/AMP owner support or the plan's full pretrained acceptance gates. Other
 physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
 working on opaque native owners. See [model families](model_families.md),

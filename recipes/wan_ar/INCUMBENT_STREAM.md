@@ -95,9 +95,9 @@ autograd/Adam/scheduler/EMA/RNG and complete checkpoint restoration, with
 explicit scalar model/helpers and fake CUDA capture drivers. They verify
 orchestration/state and rejection boundaries, **not** real Wan math, Triton
 kernels, CUDA Graph capture, world16 communication, HBM capacity, pretrained
-quality, speedup or 100-cycle stability. All of those remain **NOT_RUN** for
-this v2 integration; numerical status remains **REVIEW**. W1/U3/U7 and the
-six-workload maturity plan are still partial.
+quality, speedup or 100-cycle stability. Subsequent real world16 evidence is
+listed below rather than being inferred from these CPU tests. W1/U3/U7 and
+the six-workload maturity plan are still partial.
 
 Target-environment follow-up (2026-10-24 UTC) confirmed a real admission gap:
 native history dropout can produce the unsupported all-zero-history amplified
@@ -106,6 +106,32 @@ no seed selection, dropout change or fixed-trace substitution was used. The
 separate v1 fixed-trace preset completed 16-rank functional execution, but this
 does not qualify v2 stream checkpoint/restart. See
 [actual GPU and stream boundary](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+
+### Resident native-history follow-up (2026-10-24)
+
+Source `3d7bb03982890e1b5bd46f8510243009902a3d47` adds the explicit
+`source_native_amplified_v1` input policy. It preserves the original
+all-zero-history doubled denoising horizon and rank-local random exits;
+the older normal-only and frozen strict-global policies are unchanged. This
+policy is admitted only by the Resident stream, whose gradient communication
+does not require identical per-rank forward counts. FSDP/HSDP must still refuse
+unequal forward collective sequences rather than silently replacing them.
+
+Two cohorts at seed42, with the original dropout and native input configuration,
+completed on 16 A100s. The first complete checkpoint was then restored by a
+new world16 process and the second cohort executed again. All-rank RNG,
+cursor, version, scalar metadata and call-census checks matched; complete
+G/C/Adam/scheduler/EMA tensor comparison is **REVIEW**, not bitwise PASS.
+A separate identical resumed run measured the default CUDA repeat noise:
+restart distances for replicated G, C, their Adam states and EMA were
+0.927–0.990 times the corresponding repeat distances. This is a bounded
+noise diagnostic, not a changed threshold or proof of long-term equivalence.
+
+The two cohorts deliberately reuse existing **synthetic source-shaped features**
+with distinct native RNG/cohort identities. They prove the execution and
+checkpoint lifecycle, not real-media training or quality. Native generation,
+export, arbitrary later Graph signatures and 100-cycle stability remain
+unqualified. [Detailed evidence and limits](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation).
 
 The original `training.json`/`wan_ar.incumbent21a.v1` two-cycle fixed-trace
 preset, immutable asset pins, G3/G4 rules and fixed call census are unchanged.

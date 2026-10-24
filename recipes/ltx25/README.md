@@ -3,8 +3,10 @@
 **Implemented boundary:** real upstream tiny native architectures, exact local
 FP32 state dictionaries, raw/preencoded AV and real Gemma4 text, full or
 unmerged trainable LoRA, G1/F5 training, common complete-cycle checkpoint/resume,
-and current-Student native AV generation/export. **Not a pretrained 22B quality,
-GPU, distributed, performance or official LTX distillation reproduction claim.**
+and current-Student native AV generation/export. A bounded single-device CUDA
+FP32 reference path is also implemented; its separate GPU acceptance is recorded
+below. **Not a pretrained 22B, distributed, performance or official LTX
+distillation reproduction claim.**
 
 ## Source and environment
 
@@ -21,6 +23,37 @@ The CPU acceptance environment is pinned in `environment.json`. Source imports
 use `PinnedSource(python_roots=('packages/ltx-core/src',),
 import_roots=('ltx_core',))`; no global `sys.path` installation or CUDA context is
 needed. Both native transformer attention paths are explicitly MATH SDPA.
+Text connectors retain the upstream CPU/Ampere SDPA priority order. In the
+adapter's private pinned-source namespace, the default provider resolves
+directly to that native factory, instead of probing CUDA0 while constructing
+CPU/meta codecs. The normal `ltx_core` namespace and Torch's device APIs are
+not modified. This constructor policy is source-bound; prepare features again
+after changing adapter source rather than reusing a stale condition binding.
+
+### Single-device CUDA reference
+
+Set `trainer.device` to an explicit visible device such as `cuda:0`, keeping
+`execution.mode: reference`. Use the same pinned package versions with matching
+CUDA builds of Torch, TorchAudio and TorchVision, in an isolated Python >=3.11
+environment. Do not upgrade a historical SD/Self-Forcing environment in place.
+The model, native codecs, constants, trainables, optimizer slots and EMA belong
+to that one device. CUDA uses native capturable AdamW so its step tensors remain
+on the owned device; CPU optimizer execution is unchanged. Model construction
+and offline preparation still load and validate source assets on CPU first.
+
+The common Program, flow objective, cycle clocks, checkpoint publication and
+current-Student export are unchanged. Restoration validates all EMA state before
+copying into the existing resident shadows. Exports may be reloaded on CPU or
+CUDA; this does not promise CPU/CUDA bitwise equivalence. Existing architecture
+and source/shape/precision limits remain in force.
+
+AMP, multi-rank ownership and CUDA auto/manual/saved-plan trials are rejected.
+The latter require a capacity-bounded snapshot owner, not whole-model CUDA
+copies. CPU measured planning remains separately supported. New CUDA acceptance
+tests use actual random-tiny upstream AV classes, full/LoRA updates, a direct
+flow-DMD oracle and fresh-process restore/export; **unexecuted or skipped tests
+are not acceptance**. See [the current hardware acceptance record](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md)
+for executed scope. Pretrained capacity and generation quality remain unverified.
 
 ```sh
 # PY is the Python executable in that isolated environment.
@@ -75,6 +108,10 @@ shapes, precision and finite values against the original configurator's internal
 meta layout, and refuses an incomplete/uninitialized/meta return. Metadata
 defaults must not invent missing production geometry. The exact native weights
 are compared again after builder loading; source and file hashes are rechecked.
+Before any optimizer is created, safetensors-backed views are copied into
+independently owned Torch storage without replacing Parameter objects or
+changing their values. This avoids different CPU GEMV reductions caused solely
+by file-offset alignment when reconstructing an exported current Generator.
 Inference LoRA fusion is disabled and the native registry has no model/weight
 cache. Both real native attention paths are then explicitly pinned to MATH SDPA.
 

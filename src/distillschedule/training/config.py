@@ -83,7 +83,7 @@ class TrainingConfig:
                 if not isinstance(parts[key].get("parameters", {}), dict):
                     raise ValueError(f"{key}.parameters must be an object")
             from .catalog import validate_compatibility
-            validate_compatibility(parts['model'], parts['algorithm'], trainer)
+            validate_compatibility(parts['model'], parts['algorithm'], trainer, execution)
             if bool(parts['data'].get('prepared')) == bool(parts['data'].get('streams')):
                 raise ValueError('exactly one of data.prepared or data.streams is required')
             if 'streams' in parts['data']:

@@ -71,7 +71,7 @@ those lifecycle operations. Its saved final state is evidence, not a complete
 restart checkpoint. Numerical comparison remains
 `NOT_RUN_REQUIRES_MATCHED_REFERENCE`.
 
-### Fresh-stream continuation: real implementation gap, not just untested GPU
+### Initial fresh-stream refusal (preserved historical result)
 
 A separate, single CPU admission attempted two fresh RNG cohorts using existing
 source-shaped synthetic features and the unchanged native input configuration.
@@ -88,6 +88,59 @@ turn off native history dropout, relabel the strict-global benchmark as normal
 training or replay a fixed trace to claim this gap closed. Supporting that
 valid branch needs explicit native sampler/collective alignment and Graph
 signature-lifetime work before the continuation acceptance can proceed.
+
+### Resident stream follow-up: actual world16 continuation
+
+The separate `3d7bb03982890e1b5bd46f8510243009902a3d47` source implemented
+the original rank-local amplified-history branch under the explicit
+`source_native_amplified_v1` policy. It did not disable history dropout,
+resample the seed, change the source-shaped features, substitute strict-global
+sampling, enable merged weights or alter the original loss/update handlers.
+The old refusal and all frozen fixed-trace contracts remain intact. Only the
+Resident stream admits this branch; FSDP/HSDP collective alignment is not
+inferred from it.
+
+| Native run | Completed ranks | Rank-cycles | Complete-cycle checkpoint |
+| --- | ---: | ---: | --- |
+| Uninterrupted, two cohorts | 16 | 32 | Cycle 1 and 2 |
+| New process, resume cycle 1 to 2 | 16 | 16 | Cycle 2 |
+| Same-start resumed repeat, noise diagnostic | 16 | 16 | No additional restart checkpoint; full final state evidence |
+
+Seed42 and the unchanged native input configuration yielded 62 and 58
+rank-local amplified-history entries in the two prepared cohorts. All runs
+completed G4/C20/EMA20. All-rank original call census, sample/cohort and
+committed-version checks matched. The uninterrupted/resumed comparison
+verified the complete 16-shard G/C/Adam/scheduler/EMA state plus RNG, cursor
+and versions: RNG and non-tensor metadata matched exactly, but floating
+tensor state did not satisfy the unchanged strict `rtol=1e-5, atol=1e-7`
+comparison. Its status remains **REVIEW**.
+
+To distinguish restoration defects from default CUDA execution noise, the
+same cycle-1 checkpoint was resumed one more time without changing the
+configuration. This repeat also received strict **REVIEW**. For complete
+replicated rank0 state, the restart distance divided by the same-start repeat
+distance was:
+
+| State | Restart / repeat L2 distance |
+| --- | ---: |
+| Generator trainables | 0.984 |
+| Critic trainables | 0.927 |
+| Generator Adam moments | 0.990 |
+| Critic Adam moments | 0.953 |
+| Generator EMA | 0.984 |
+
+These measurements support **noise-scale functional restart for this bounded
+test**, not bitwise equivalence, a relaxed numerical gate or a long-trajectory
+claim. The noise-distance scan covers full replicated rank0 tensors; the
+uninterrupted/resumed checkpoint/RNG comparison covers all 16 ranks. Do not
+conflate those scopes.
+
+All six node-owner receipts recorded completed cleanup and zero new cgroup
+OOM/OOM-kill events. Raw checkpoints remain in remote persistent storage.
+The source features are still **synthetic**, reused in two distinct native RNG
+cohorts. No real-data quality, 100-cycle stability, performance, native-stream
+generation/export or arbitrary later Graph signature has been qualified.
+See the [portable stream acceptance index](../../artifacts/framework/20261024/wan_stream_acceptance.json).
 
 ## What this does not establish
 
