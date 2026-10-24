@@ -2,8 +2,11 @@
 
 A local loss must already represent an equal-size rank-local mean. The system
 averages parameter gradients, not input/latent gradients, before updates.
-`module_bindings` declares ordinary module-forward interfaces; it does not tell
-which reduction implementation or bucket size to use. Arbitrary autograd.grad
+`module_bindings` declares model call ownership. Its legacy default requires
+ordinary module-forward interfaces; explicit private methods are safe only
+after backward, never with forward-dependent wrappers. Random streams remain
+shared by logical call unless explicitly rank-namespaced. Neither field selects
+a reducer implementation or bucket size. Arbitrary autograd.grad
 on trainable parameters and unequal-rank batches need different contracts.
 """
 from __future__ import annotations
@@ -18,10 +21,18 @@ class ReplicaSemantics:
     backward_calls: tuple[str, ...]
     local_batch_size: int
     objective: str = 'equal_rank_mean'
+    # Legacy constructors and serialized identities retain their original
+    # module-forward/shared-call contract unless explicitly opted in.
+    forward_interface: str = 'module_forward'
+    random_streams: str = 'shared_logical_call'
 
     def validate(self, workload):
         import torch
         require(self.objective == 'equal_rank_mean', 'unsupported replica objective', path='open.replica')
+        require(self.forward_interface in ('module_forward', 'private_methods'),
+                'unsupported replica forward interface', path='open.replica')
+        require(self.random_streams in ('shared_logical_call', 'rank_independent_v1'),
+                'unsupported replica random streams', path='open.replica')
         require(type(self.local_batch_size) is int and self.local_batch_size > 0,
                 'positive equal local batch required', path='open.replica')
         require(self.module_bindings and all(isinstance(k, str) and isinstance(v, str)
@@ -64,7 +75,9 @@ class ReplicaSemantics:
 
     def to_dict(self):
         return {'module_bindings': dict(self.module_bindings), 'backward_calls': list(self.backward_calls),
-                'local_batch_size': self.local_batch_size, 'objective': self.objective}
+                'local_batch_size': self.local_batch_size, 'objective': self.objective,
+                **({'forward_interface': self.forward_interface} if self.forward_interface != 'module_forward' else {}),
+                **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {})}
 
 
 def ddp_completion_edges(program, semantics, context_modules=None):
@@ -103,6 +116,8 @@ def ddp_completion_edges(program, semantics, context_modules=None):
 def execution_graph(program, semantics, reduction, context_modules=None):
     graph = program.compile()
     if reduction == 'post_backward': return graph
+    require(semantics.forward_interface == 'module_forward',
+            'private methods require post_backward reduction, not forward wrappers', path='open.replica')
     require(reduction == 'ddp_overlap', 'unknown reducer', path='open.replica')
     from distillschedule.core.graph import Dependency, ExecutionGraph
     edges = list(graph.dependencies)

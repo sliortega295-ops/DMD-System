@@ -1,4 +1,4 @@
-"""Small shared CPU/CUDA placement scopes; no distributed or offload policy."""
+"""Small FP32 placement scopes and explicit replica admission; no offload."""
 from contextlib import contextmanager, nullcontext
 
 
@@ -8,6 +8,23 @@ FLOW_CUDA_EXECUTION = {
     'manual_implementation': {'backend': 'torch-callable-resident-v1',
                               'share_immutable': True, 'checkpoint_bindings': []},
 }
+
+FLOW_REPLICATED_EXECUTION = {
+    'modes': ['reference', 'manual'],
+    'forbidden_fields': ['order', 'plan'],
+    'reference_fields': ['adapter', 'mode'],
+    'manual_implementation': {'backend': 'torch-callable-replicated-v1',
+        'reduction': 'post_backward', 'bucket_cap_mb': 0,
+        'local': FLOW_CUDA_EXECUTION['manual_implementation']},
+}
+
+
+def _exact_value(actual, expected):
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return actual.keys() == expected.keys() and all(_exact_value(actual[key], value) for key, value in expected.items())
+    return actual == expected
 
 
 def execution_policy_matches(execution, constraints):
@@ -24,13 +41,13 @@ def execution_policy_matches(execution, constraints):
     if 'manual_implementation' not in constraints:
         return True
     if mode == 'reference':
-        return 'implementation' not in execution
+        return 'implementation' not in execution and ('reference_fields' not in constraints or
+            (set(execution) <= set(constraints['reference_fields']) and execution.get('adapter', 'program') == 'program'))
     expected = constraints['manual_implementation']
     actual = execution.get('implementation')
     return (mode == 'manual' and set(execution) <= {'adapter', 'mode', 'implementation'}
             and execution.get('adapter', 'program') == 'program'
-            and type(actual) is dict and actual.keys() == expected.keys()
-            and all(type(actual[key]) is type(value) and actual[key] == value for key, value in expected.items()))
+            and _exact_value(actual, expected))
 
 
 def _require(condition, message):
@@ -38,17 +55,39 @@ def _require(condition, message):
         raise ValueError(message)
 
 
-def admit_fp32(parameters, *, require=_require):
+def admit_fp32(parameters, *, require=_require, allow_replicated=False):
     """Reject unsupported process/precision ownership before loading assets."""
     import os
     import torch
-    require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
-    require(all(os.environ.get(key, default) == default for key, default in
-                (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
-            'one actual process/rank required')
+    dist = torch.distributed
+    replicated = allow_replicated and (dist.is_initialized() or os.environ.get('WORLD_SIZE', '1') != '1')
+    if replicated:
+        require(dist.is_initialized() and dist.get_world_size() > 1,
+                'replicated ownership requires an initialized torchrun group')
+        keys = ('WORLD_SIZE', 'RANK', 'LOCAL_WORLD_SIZE', 'LOCAL_RANK', 'GROUP_RANK')
+        require(all(os.environ.get(key, '').isascii() and os.environ.get(key, '').isdecimal() for key in keys),
+                'explicit torchrun process/rank ownership required')
+        world, rank, local_world, local_rank, node = (int(os.environ[key]) for key in keys)
+        require(world == dist.get_world_size() and rank == dist.get_rank()
+                and 0 < local_world <= world and world % local_world == 0 and 0 <= local_rank < local_world
+                and rank == node * local_world + local_rank,
+                'torchrun rank/local ownership differs from initialized group')
+    else:
+        require(not dist.is_initialized(), 'distributed ownership is not admitted')
+        require(all(os.environ.get(key, default) == default for key, default in
+                    (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
+                'one actual process/rank required')
     require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
             and not torch.is_autocast_enabled('cuda'), 'explicit FP32 with no autocast required')
-    return execution_device(parameters.get('device', 'cpu'), require=require)
+    device = execution_device(parameters.get('device', 'cpu'), require=require)
+    if replicated:
+        require((device.type == 'cpu' and dist.get_backend() == 'gloo') or
+                (device.type == 'cuda' and dist.get_backend() == 'nccl'),
+                'replicated ownership requires CPU/Gloo or CUDA/NCCL')
+        if device.type == 'cuda':
+            require(device.index == local_rank == torch.cuda.current_device(),
+                    'CUDA device must equal actual torchrun LOCAL_RANK/current device')
+    return device
 
 
 def place_module(module, device, *, require=_require):

@@ -93,6 +93,7 @@ def ddp_order_admitted(workload, order, context_modules=None):
     Generic post-backward reduction remains available for valid programs outside
     this DDP execution family; do not weaken the mathematical Program contract.
     """
+    if workload.replica_semantics.forward_interface != 'module_forward': return False
     calls = {c.id:c for c in workload.program.calls}
     ancestors = {}
     for c in workload.program.calls:
@@ -150,7 +151,7 @@ def inventory(workload, *, limit=16, topology=None):
     total = local['total_candidates'] * len(modes) + unshared_count * (mixed_count +
                 (len(sharded_modes)+len(hybrid_modes) if admit_sharding else 0))
     return {'candidates':result, 'total_candidates':total, 'exhaustive':len(result)==total,
-            'capabilities':local['capabilities']+['post_backward_mean','ddp_async_mean']+
+            'capabilities':local['capabilities']+['post_backward_mean']+(['ddp_async_mean'] if len(modes) > 1 else [])+
                            (list(sharded_modes)+list(hybrid_modes) if admit_sharding else [])+(['per_module'] if mixed_count else []),
             'layout':'data_parallel_replicated_or_sharded', 'cross_call_overlap':False,
             'reused_hook':'distillschedule.runtime.wan13b_fair.ddp_sum_then_divide_hook',
@@ -256,6 +257,9 @@ class ReplicaLifecycle:
 def make_session(workload, implementation, *, copy_state=True, persistent=False):
     checked(lambda: workload.validate(), 'session preflight')
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
+    checked(lambda: require(workload.replica_semantics is not None and
+        (workload.replica_semantics.forward_interface == 'module_forward' or implementation.get('reduction') == 'post_backward'),
+        'private methods require post_backward reduction, not forward wrappers', path='open.replicated'), 'forward interface')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
     from .mixed_layout import MixedLifecycle, MODE as MIXED

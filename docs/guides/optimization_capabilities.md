@@ -206,3 +206,15 @@ manufacture a per-user paired numerical admission. The separately recorded
 native tiny-model reference/manual and restart tests qualify only their tested
 scope; use the [hardware acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md)
 for actual evidence, not a catalog flag or a skipped optional CUDA test.
+
+### Explicit image replication with immutable sharing
+
+The [FLUX/Qwen replica recipe](../../recipes/flow_image/README.md#explicit-replicated-training-not-model-sharding)
+uses the existing post-backward replica backend with distinct local-B1 samples
+and rank-specific noise. It averages gradients before clipping/Adam and keeps
+every role resident on each rank. Exact manual immutable sharing composes with
+this path; real alias/reduction counters and all-rank checkpoints are required.
+Actual tiny-class Gloo2 and A100 NCCL2 oracle/restart/export evidence is recorded
+separately. World16 is not yet accepted. This is not model sharding or support
+for DDP-forward hooks around private denoise methods. CUDA planning, AMP and
+full pretrained capacity remain unsupported or unqualified as documented.

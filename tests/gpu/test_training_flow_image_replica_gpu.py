@@ -1,0 +1,13 @@
+"""Opt-in actual tiny native FP32 NCCL2; SYNTHETIC_TEST_ONLY, no quality/timing claim."""
+import os
+import pytest
+import torch
+
+from test_training_flow_image_replicated import native_replica_case
+
+
+@pytest.mark.skipif(os.environ.get('DMD_NATIVE_FLOW_REPLICATED') != '1' or torch.cuda.device_count() < 2,
+    reason='native flow NCCL2 NOT_RUN: requires opt-in DMD_NATIVE_FLOW_REPLICATED=1 and two owned GPUs')
+@pytest.mark.parametrize('family',['flux2-klein-base','qwen-image'])
+def test_actual_native_flow_nccl2_independent_oracle_and_fresh_cli(tmp_path,family):
+    native_replica_case(tmp_path,family,'cuda')

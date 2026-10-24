@@ -266,8 +266,13 @@ def candidates(workload, *, limit=16):
 
 
 @contextmanager
-def random_scope(seed,key,device):
-    derived=int(fingerprint({'seed':seed,'logical_call':key})[:16],16)%(2**63)
+def random_scope(seed,key,device, *, namespace=None):
+    # Namespace is pure hash input, not another RNG draw. Omitting it preserves
+    # every historical logical-call seed byte. All ranks share the semantic
+    # namespace schema; only execution injects the actual owned rank/world.
+    binding = {'seed':seed,'logical_call':key}
+    if namespace is not None: binding['namespace'] = namespace
+    derived=int(fingerprint(binding)[:16],16)%(2**63)
     py=random.getstate()
     devices=[device.index if device.index is not None else torch.cuda.current_device()] if device.type=='cuda' else []
     try:
@@ -381,7 +386,14 @@ class Session:
                 if invocations>1: self.effects['recompute_calls']+=1
                 trace_context = (torch.profiler.record_function('distillschedule.call.'+c.id)
                                  if getattr(self,'deep_trace_labels',False) else nullcontext())
-                with trace_context, random_scope(self.workload.seed,c.id,self.device):
+                namespace = None
+                semantics = self.workload.replica_semantics
+                if semantics is not None and semantics.random_streams == 'rank_independent_v1':
+                    import torch.distributed as dist
+                    require(dist.is_initialized() and dist.get_world_size() > 1,
+                            'rank-independent streams require an actual replica group', path='open.runtime')
+                    namespace = dict(schema=semantics.random_streams, rank=dist.get_rank(), world_size=dist.get_world_size())
+                with trace_context, random_scope(self.workload.seed,c.id,self.device,namespace=namespace):
                     return self.workload.bindings[c.binding](Context(dict(zip(input_keys,values)),states,c.attributes))
             saved={}; excluded={storage_key(t) for t in tensors((self.state,self.feeds))}
             def pack(t):

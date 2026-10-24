@@ -181,6 +181,17 @@ test receipt's policy-label error is preserved and corrected only by a later
 CPU-tested writer change, not relabeled as another GPU run. See the
 [exact policy](optimization_capabilities.md#direct-single-cuda-immutable-sharing).
 
+FLUX and Qwen-Image additionally support explicit **equal-B1 post-backward
+replication**, reference or exact manual immutable sharing. The
+[replica acceptance](../../artifacts/framework/20261024/native_flow_image_replicated_acceptance.json)
+contains actual native Gloo2 and A100 NCCL2 evidence: an independent three-cycle
+gradient-mean oracle, full-rank fresh-process recovery, current-Student export
+and new-prompt PNG output. This is not FSDP/DDP-forward wrapping, AMP, CUDA
+planning or pretrained-capacity/quality evidence. World16 remains a separate
+pending acceptance. The additional-model rows above describe single-device
+evidence; this paragraph is the explicitly qualified replication exception for
+the two image families, not the other model families.
+
 For DMD2, an actual scoped UNet checkpoint capability has real effects and
 same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
 qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source

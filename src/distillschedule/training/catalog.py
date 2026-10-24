@@ -9,7 +9,7 @@ from copy import deepcopy
 import importlib.metadata
 import json
 import re
-from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
+from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -109,12 +109,12 @@ for _name, _module, _model_id, _revision in (
 ):
     register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
-        description='Pinned native T2I, CPU1/CUDA1 FP32 reference; explicit flow DMD, not official DMD2',
-        execution_constraints={'cuda': FLOW_CUDA_EXECUTION},
+        description='Pinned native T2I FP32; explicit post-backward B1 replication; flow DMD, not official DMD2',
+        execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
         source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
-        validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', quality='NOT_RUN'),
+        validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', replicated='NOT_RUN', quality='NOT_RUN'),
         compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
-            devices=['cpu', 'cuda'], distributed=False,
+            devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
             model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
                 'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
 
@@ -154,20 +154,29 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
     """
     entries = [row for row in _registry('model').values() if row['factory'] == model.get('factory')]
     for entry in entries:
+        replicated = ('distributed' in trainer and 'replicated' in entry.get('execution_constraints', {}))
         # Device-conditional policy admission is metadata-only. In particular,
         # unsupported trial cloning must fail before model/codec ownership, not
         # after a CUDA request has already materialized all native role weights.
         for device in (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', 'cpu')):
             family = device.split(':', 1)[0] if isinstance(device, str) else None
-            policy = entry.get('execution_constraints', {}).get(family)
+            policy_kind = 'replicated' if replicated else family
+            policy = entry.get('execution_constraints', {}).get(policy_kind)
             if policy is not None:
                 settings = execution or {}
                 if not execution_policy_matches(settings, policy):
-                    raise ValueError(f'{family.upper()} execution requires {policy["modes"]} '
+                    raise ValueError(f'{policy_kind.upper()} execution requires {policy["modes"]} '
                                      f'with the declared exact policy and original order: {model["factory"]}')
         contract = entry.get('compatibility')
         if contract is None:
             continue
+        if replicated:
+            devices = (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', trainer.get('device', 'cpu')))
+            distribution = trainer['distributed']
+            if (not isinstance(distribution, dict) or any(not isinstance(device, str) or
+                    contract['distributed_backends'].get(device.split(':', 1)[0]) != distribution.get('backend')
+                    for device in devices)):
+                raise ValueError('replicated device/backend mismatch: ' + model['factory'])
         def admitted_device(value):
             return value in contract['devices'] or (isinstance(value, str) and 'cuda' in contract['devices']
                 and value.startswith('cuda:') and value[5:].isascii() and value[5:].isdecimal())

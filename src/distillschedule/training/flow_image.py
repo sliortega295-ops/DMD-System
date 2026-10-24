@@ -20,7 +20,7 @@ from .adapters import InferenceProjection, ModelComponents
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
-from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
+from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
 
 ASSET_SCHEMA = 'distillschedule.flow_image_assets.v1'
 INPUT_SCHEMA = 'distillschedule.flow_image_inputs.v1'
@@ -345,7 +345,7 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
         return sample
 
     def check_denoise(self, sample, sigma, feeds):
-        cpu1()
+        admit_fp32({'device': str(self.device)}, require=require, allow_replicated=True)
         self.apply_conditioning(sample, feeds)
         value = sample['image']
         require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device == self.device
@@ -368,10 +368,13 @@ class ImageRole(QualifiedNativeFlowTrials, nn.Module):
         return value
 
 
-def _metadata(api, descriptor):
+def _metadata(api, descriptor, *, replicated=False):
     return dict(schema_version='distillschedule.native_flow_image.v1', family=api.FAMILY,
         source=dict(model_id=api.MODEL_ID, revision=api.REVISION, license='Apache-2.0'),
-        **deepcopy(descriptor), precision='FP32_NATIVE_SINGLE_DEVICE', gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
+        **deepcopy(descriptor),
+        **(dict(precision='FP32_NATIVE_RANK_LOCAL_REPLICATED', replication='EXPLICIT_EQUAL_RANK_LOCAL_B1_POST_BACKWARD_MEAN')
+           if replicated else dict(precision='FP32_NATIVE_SINGLE_DEVICE')),
+        gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
         prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
         algorithm='EXPLICIT_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA')
@@ -379,6 +382,7 @@ def _metadata(api, descriptor):
 
 def _components(api, state, descriptor, *, training):
     from distillschedule.data.flow_image_inputs import encode_export_input
+    from .distributed import rank_world
     qualify_trial_roles(state, descriptor['evidence_kind'])
     immutable = ['teacher', 'media'] if training else ['media']
     if training:
@@ -388,17 +392,24 @@ def _components(api, state, descriptor, *, training):
             for name, module in state[role].named_modules():
                 if isinstance(module, TrainableLowRankLinear):
                     immutable.append(role + '.' + name + '.base')
-    return ModelComponents(state=state, immutable_modules=tuple(immutable), metadata=_metadata(api, descriptor),
-        prediction=PredictionSpec('flow'), capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
+    # Single-device/inference capability identities remain unchanged. Only the
+    # explicitly launched training owner opts in to private-call replication.
+    replica_caps = ('dmd_flow_private_replicated_b1_v1',) if training and rank_world()[1] > 1 else ()
+    return ModelComponents(state=state, immutable_modules=tuple(immutable),
+        metadata=_metadata(api, descriptor, replicated=bool(replica_caps)),
+        prediction=PredictionSpec('flow'), capabilities=('image', 'flow', 'lora', 'dmd_flow_v1', *replica_caps),
         generate=api.generate, decode=state['media'].decode,
         encode_input=None if training else encode_export_input,
         inference_projection=api.project_current_generator if training else None,
         admit_training=api.admit_training if training else None).validate()
 
 
-def load_media_bundle(assets, api):
+def load_media_bundle(assets, api, *, device=None):
     from transformers import Qwen2TokenizerFast
-    cpu1()
+    if device is None:
+        cpu1()
+    else:
+        admit_fp32({'device': str(device)}, require=require, allow_replicated=True)
     runtime = runtime_identity(api)
     path = Path(assets).expanduser().resolve(strict=True)
     manifest = json_object(path)
@@ -461,11 +472,12 @@ def build_family(parameters, api):
     allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
             and allowed - {'device', 'seed'} <= parameters.keys(), 'complete explicit native image model parameters required; unknown options rejected')
-    device = admit_fp32(parameters, require=require)
+    device = admit_fp32(parameters, require=require, allow_replicated=True)
     require(type(parameters.get('seed', 0)) is int, 'integer construction seed required')
     require(isinstance(parameters['trainable'], dict) and parameters['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
     schedule = sigmas(parameters['generation_sigmas'])
-    media, manifest, roots, runtime, binding, media_config, empty, documents = load_media_bundle(parameters['assets'], api)
+    media, manifest, roots, runtime, binding, media_config, empty, documents = load_media_bundle(
+        parameters['assets'], api, device=device)
     native_cls = api.classes()[0]
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
         # Offline preparation owns the exact CPU null-prompt encoding. Move it,
@@ -506,11 +518,20 @@ def build_family(parameters, api):
 
 
 def admit_training(api, *, state, request, prepared_identity, prepared_manifest):
-    device = admit_fp32({'device': request.trainer.get('device', 'cpu')}, require=require)
-    require('distributed' not in request.trainer
-            and all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
-            'matching single-device FP32 ownership required; distributed execution NOT_RUN')
-    require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
+    from .distributed import rank_world
+    device = admit_fp32({'device': request.trainer.get('device', 'cpu')}, require=require, allow_replicated=True)
+    replicated = rank_world()[1] > 1
+    require(all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
+            'matching rank-local FP32 device ownership required')
+    if replicated:
+        require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
+                and request.data.get('sharding') == 'rank_strided',
+                'explicit distributed backend and rank_strided data required')
+        require(execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+                'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
+    else:
+        require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')
+        require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
     require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
             and request.execution.get('adapter', 'program') == 'program', 'use existing common flow DMD Program, not DMD2/Self-Forcing')
     require('streams' not in request.data and prepared_manifest.get('metadata', {}).get('schema_version') == INPUT_SCHEMA

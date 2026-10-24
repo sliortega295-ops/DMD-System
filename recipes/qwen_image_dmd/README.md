@@ -1,4 +1,4 @@
-# Original Qwen-Image T2I: native single-device flow-DMD slice
+# Original Qwen-Image T2I: native flow-DMD slice
 
 Fixed source candidate:
 [Qwen/Qwen-Image](https://huggingface.co/Qwen/Qwen-Image/tree/75e0b4be04f60ec59a75f475837eced720f823b6),
@@ -29,12 +29,17 @@ different prompt lengths through persistent common training.
 Transformers5's original-format text checkpoint key changes use its **actual
 WeightRenaming/PrefixChange operations**, not guessed aliases; every selected
 safe weight key/shape/dtype remains exact. Unknown converters/config fields,
-reference-image/edit, causal/KV, full-parameter, AMP and distributed requests
+reference-image/edit, causal/KV, full-parameter, AMP and unsupported distributed requests
 fail closed. Explicit single-device FP32 CUDA reference training is qualified
 on actual tiny classes, including complex RoPE ownership. The exact direct
 [immutable-sharing policy](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
 uses the same persistent owner; CUDA trial planning and other optimization
 policies still reject unbounded role cloning.
+Explicit equal-B1 post-backward replication on CPU/Gloo or CUDA/NCCL reuses
+the shared lifecycle and can retain exact frozen-state sharing. It does not
+wrap private role methods in DDP or shard model memory. Follow the
+[replica contract](../flow_image/README.md#explicit-replicated-training-not-model-sharding)
+for rank-specific data/noise and complete same-topology checkpoint recovery.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
 `qwen-image`. Source/actual tiny CPU and A100 reference behavior is not full pretrained V3–V5

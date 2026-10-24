@@ -1,4 +1,4 @@
-# FLUX.2 klein Base 4B: native single-device flow-DMD slice
+# FLUX.2 klein Base 4B: native flow-DMD slice
 
 Fixed source candidate:
 [black-forest-labs/FLUX.2-klein-base-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B/tree/a3b4f4849157f664bdbc776fd7453c2783562f4d),
@@ -17,12 +17,17 @@ mean/variance BN normalization, then BNC packing. Decode performs exact BN
 inverse, native unpatchification and the actual VAE. Image IDs are native
 `(0,h,w,0)` and text IDs `(0,0,0,l)`; uniform batch geometry is validated because
 the native Transformer uses the first batch's IDs. No FLUX.1, distilled klein,
-reference-image/edit, embedded-guidance, causal/KV, full-parameter, AMP or
-distributed substitution is admitted. Explicit single-device FP32 CUDA
+reference-image/edit, embedded-guidance, causal/KV, full-parameter or AMP
+substitution is admitted. Explicit single-device FP32 CUDA
 reference training is qualified on actual tiny classes. The exact direct
 [immutable-sharing policy](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
 uses the same persistent owner; CUDA trial planning and other optimization
 policies remain rejected pending bounded snapshot support.
+The shared recipe also exposes explicit equal-B1 post-backward replication on
+CPU/Gloo or CUDA/NCCL, optionally with the same exact frozen-state sharing.
+This is not DDP-forward wrapping or memory sharding; the
+[replica contract](../flow_image/README.md#explicit-replicated-training-not-model-sharding)
+defines rank-specific sampling, RNG and same-topology resume.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
 `flux2-klein-base`; no alternate trainer is involved. Source and actual tiny

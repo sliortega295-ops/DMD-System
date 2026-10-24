@@ -353,3 +353,39 @@ separate work. Sharing starts after constructing the roles and therefore does
 not yet reduce construction peak. This does not complete U2/U9 or the mature
 framework plan, and does not promote tiny fixture parity into user-workload
 numerical acceptance or pretrained quality.
+
+## FLUX / Qwen: native replicated training and restart
+
+[Portable receipt](../../artifacts/framework/20261024/native_flow_image_replicated_acceptance.json).
+Source is `8b4f90e0c98c2a90356f12e87979c62dad44b194` plus `source-r4`,
+patch `4f90b9af2a4a6dd7c273a69c7ec02c60f23225d39590ce0fe1e07320038cb076`.
+
+- **2 PASS, zero failures/skips**, actual two-A100 NCCL, 1072.908 s suite wall.
+  This is functional acceptance, not a workload performance measurement.
+- Actual random-tiny FLUX and Qwen-Image classes, FP32 LoRA, local B1 per rank,
+  G1/F5. Three cycles compare against an independent sequential native oracle
+  that averages distinct B1 gradients before clipping and Adam. Later Student
+  gradients are nonzero; reference/manual state and gradients match exactly.
+- The actual private native methods run without DDP forward wrappers. The
+  existing post-backward reducer, immutable-sharing implementation, Program,
+  data owner and checkpoint lifecycle execute the selected policy.
+- Each policy completes fresh CLI partial/resumed/uninterrupted training and
+  all-rank full-state comparison, current-Student export and new-prompt PNG
+  generation. Missing checkpoint shards are rejected. Rank-specific samples
+  and RNG are checked; single-process random streams remain unchanged.
+- Target CPU R4: **204 PASS**, zero skips. Both prior actual Gloo2 native
+  proofs are reused only because all production and native-helper bytes are
+  identical. The earlier stale static-test failure and two test-harness errors
+  remain preserved, not rewritten as successful runs. Original target refactor
+  regression is **2152 PASS / 86 optional SKIP**, production bytes unchanged.
+- First owner invocation failed before GPU construction solely on Git's
+  abbreviated diff-header formatting. The isolated owner pins the abbreviation;
+  all source hashes and numerical policies remain unchanged. Successful cleanup
+  confirmed no compute processes and no new cgroup OOM events. Peak sampled
+  driver allocation was 1236 MiB on each active GPU, not pretrained capacity.
+
+An actual two-node/world16 continuation is a separate pending acceptance, not
+implied by NCCL2. Replication does not shard model memory; all roles still
+materialize before immutable sharing. AMP, CUDA trial planning, pretrained
+capacity/quality and performance remain NOT_RUN. This is a bounded U2/U3
+delivery, not completion of the mature-framework plan.

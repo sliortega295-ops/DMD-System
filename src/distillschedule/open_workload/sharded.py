@@ -20,6 +20,10 @@ HSDP_MODES = ('hsdp2_reshard', 'hsdp2_keep_forward')
 
 
 def rejection(workload, module_keys=None):
+    if workload.replica_semantics is None:
+        return 'REPLICA_SEMANTICS_REQUIRED'
+    if workload.replica_semantics.forward_interface != 'module_forward':
+        return 'PRIVATE_METHODS_REQUIRE_POST_BACKWARD'
     try:
         from torch.distributed.fsdp import fully_shard
         from torch.distributed.tensor import DTensor

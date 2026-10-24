@@ -67,6 +67,16 @@ for name in ('flux2-klein-base','qwen-image','wan22-ti2v5b-t2v','hunyuan15-t2v')
         value=deepcopy(base)
         if kind=='distributed':value['trainer']['distributed']={'backend':'gloo'}
         else:value['model']['parameters'][kind]=True
+        if kind=='distributed' and name in ('flux2-klein-base','qwen-image'):
+            # Only these two image owners now admit explicit reference Gloo
+            # replication. Metadata discovery remains lazy; wrapper/trial
+            # policies and the video owners' distribution remain refused.
+            TrainingConfig.from_dict(value,source='train.json')
+            value['execution']['mode']='auto'
+            try:TrainingConfig.from_dict(value,source='train.json')
+            except ValueError as exc:assert 'REPLICATED' in str(exc),str(exc)
+            else:raise AssertionError('unsupported replicated trial accepted')
+            continue
         try:TrainingConfig.from_dict(value,source='train.json')
         except ValueError as exc:assert 'incompatible' in str(exc),str(exc)
         else:raise AssertionError('unsupported native image capability accepted')

@@ -367,7 +367,9 @@ def _commit(ctx):
 def build_algorithm(components, feeds, parameters, cycle, seed):
     """Build one genuine reusable Student1/FakeN graph; never selects a trainer."""
     from distillschedule.training.distributed import rank_world
-    require(rank_world()[1] == 1, 'this admitted algorithm is single-process; distributed flow parity is NOT_RUN')
+    replicated = rank_world()[1] > 1
+    require(not replicated or 'dmd_flow_private_replicated_b1_v1' in components.capabilities,
+            'distributed flow requires explicit private-method B1 replication capability')
     require(components.prediction == PredictionSpec('flow') and 'dmd_flow_v1' in components.capabilities,
             'model must explicitly implement the flow DMD protocol')
     require(type(cycle) is int and cycle >= 0, 'nonnegative cycle required')
@@ -378,6 +380,8 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
                 'role must provide model-owned diffusion seams: ' + role)
         state[role].validate_feeds(feeds)
     template = _payload(state['student'].sample_template(feeds))
+    require(not replicated or next(iter(template.values())).shape[0] == 1,
+            'private flow replication requires equal local batch-one B1')
     require(template.keys() == p['modality_weights'].keys(), 'modality weights differ from the model payload')
     _masks(state['student'].loss_masks(feeds, template), template)
     base_names = {'student', 'fake', 'teacher', 'student_optimizer', 'fake_optimizer', 'student_grad', 'fake_grad'}
@@ -408,6 +412,12 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
     workload.program = replace(workload.program, calls=(*calls, commit),
         parameters={**workload.program.parameters, 'algorithm': 'explicit_nogan_rectified_flow_dmd.v1', 'policy': p})
     workload.bindings = {**workload.bindings, 'commit_cycle': _commit}
+    if replicated:
+        from distillschedule.open_workload.replica_contract import ReplicaSemantics
+        workload.replica_semantics = ReplicaSemantics(
+            {'student_forward': 'student', 'fake_forward': 'fake'},
+            tuple(call.id for call in calls if call.backward_of), 1,
+            forward_interface='private_methods', random_streams='rank_independent_v1')
     progress = _CycleProgress(p['fake_updates'], tuple((name,
         sum(name in call.writes for call in workload.program.calls)) for name in sorted(state)))
     for name in ('dmd_counters', 'student_scheduler', 'fake_scheduler'):

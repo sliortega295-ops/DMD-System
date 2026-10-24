@@ -7,7 +7,10 @@ import json
 from pathlib import Path
 
 
-def build_fixture(root, family, *, cycles=3):
+def build_fixture(root, family, *, cycles=3, samples=None):
+    samples = cycles if samples is None else samples
+    if type(cycles) is not int or cycles < 1 or type(samples) is not int or samples < 1:
+        raise ValueError('positive explicit synthetic cycle/sample counts required')
     import numpy as np
     from PIL import Image
     import torch
@@ -89,7 +92,7 @@ def build_fixture(root, family, *, cycles=3):
     Image.fromarray(rgb).save(root / 'input.png')
     raw = dict(schema_version=SCHEMA,family=family,assets=str(root/'assets.json'),mode='raw',records=[
         dict(id=f'native-{i}',prompt=('a bird','a red bird','a bird by a blue lake')[i % 3],image=dict(path='input.png',sha256=file_sha256(root/'input.png')))
-        for i in range(cycles)])
+        for i in range(samples)])
     (root/'raw.json').write_text(json.dumps(raw,indent=2))
     # The standard preparer plugin is also exercised by public CLI tests.
     from distillschedule.data.flow_image_inputs import prepare_inputs
@@ -112,5 +115,6 @@ if __name__ == '__main__':
     parser.add_argument('output')
     parser.add_argument('--family',required=True,choices=['flux2-klein-base','qwen-image'])
     parser.add_argument('--cycles',type=int,default=3)
+    parser.add_argument('--samples',type=int)
     args=parser.parse_args()
-    print(json.dumps({key:str(value) for key,value in build_fixture(args.output,args.family,cycles=args.cycles).items()},indent=2))
+    print(json.dumps({key:str(value) for key,value in build_fixture(args.output,args.family,cycles=args.cycles,samples=args.samples).items()},indent=2))

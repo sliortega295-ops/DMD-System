@@ -1,4 +1,4 @@
-# Native image flow-DMD: shared single-device reference lifecycle
+# Native image flow-DMD: shared reference and replicated lifecycle
 
 **Implemented, not a production GPU claim:** actual local Diffusers Transformer,
 native Qwen text encoder/tokenizer and native VAE; unmerged same-family LoRA;
@@ -10,7 +10,7 @@ inputs alike; unsupported preencoded batching is rejected before training.
 The tests use randomly initialized **actual upstream tiny classes**, explicitly
 `SYNTHETIC_TEST_ONLY`. Both families have actual A100 FP32 reference update,
 restart and new-input output evidence. Full pretrained execution/capacity,
-long-run quality, AMP/distributed and performance are **NOT_RUN**, not inferred
+long-run quality, AMP/sharded ownership and performance are **NOT_RUN**, not inferred
 from those tests.
 
 Read the family contracts: [FLUX.2 klein Base](../flux_dmd/README.md) and
@@ -28,7 +28,7 @@ uses the framework's explicit native Linear `W*x + (alpha/r)*B(A*x)`.
 For the CPU path set `CUDA_VISIBLE_DEVICES=''`, `HF_HUB_OFFLINE=1`,
 `TRANSFORMERS_OFFLINE=1`, `OMP_NUM_THREADS=1`, and `MKL_NUM_THREADS=1`.
 That path does not initialize CUDA. Neither path downloads assets or installs
-dependencies. Distributed/autocast requests are rejected. Catalog and
+dependencies. Autocast and unsupported distributed policies are rejected. Catalog and
 known-compatibility queries do not import Torch.
 
 ### Explicit single-GPU reference
@@ -43,7 +43,7 @@ then use the owned device; no separate trainer or experimental launcher is neede
 
 CUDA reference owns all role/media tensors, Adam state and EMA, including
 Qwen's complex RoPE buffers without a lossy dtype conversion. Automatic
-planning, saved plans and manual optimization policies on this CUDA path still
+planning, saved plans and manual policies other than exact immutable sharing still
 **fail closed**: the current whole-role trial copies are not capacity-bounded.
 CPU planning remains independently supported for the documented tiny fixtures.
 Do not infer full pretrained models fit merely from the parameter-count budget.
@@ -214,6 +214,75 @@ sharing on the persistent live owner without CUDA trial cloning. See the
 [shared CUDA policy and capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
 All roles still materialize before sharing; this does not lower construction
 capacity requirements. CUDA auto/saved-plan trials remain refused.
+
+## Explicit replicated training, not model sharding
+
+FLUX and Qwen-Image can use the existing post-backward replica backend. Each
+rank owns complete Student, Fake Score and Teacher models; each consumes one
+distinct prepared record per cycle. Gradients are averaged across ranks **before**
+clipping and the single optimizer commit. Per-call noise has a deterministic
+rank/world namespace, without advancing the outer training RNG. The original
+single-rank seed stream is unchanged. This is equal-global-batch replication,
+not FSDP, tensor parallelism or a way to fit an oversized model.
+
+Copy a normal reference recipe and change only these sections:
+
+```json
+{
+  "data": {"prepared": "/absolute/prepared/manifest.json", "sharding": "rank_strided"},
+  "execution": {"mode": "reference"},
+  "trainer": {
+    "cycles": 3, "seed": 17, "device": "cuda",
+    "distributed": {"backend": "nccl", "timeout_seconds": 180},
+    "output_dir": "/absolute/run"
+  }
+}
+```
+
+Retain the recipe's model and algorithm sections. Prepare at least
+`world_size * cycles` distinct records; incomplete cohorts fail rather than
+padding, duplicating or dropping samples. Each record remains local B1; the
+global batch is the number of ranks. `cuda` resolves to the actual local rank;
+do not force every process to `cuda:0`.
+
+For example, run the following on **each** of two allocated eight-GPU nodes,
+with `NODE_RANK` set to 0/1 and a shared configuration/output filesystem:
+
+```sh
+"$PY" -m torch.distributed.run --nnodes=2 --nproc-per-node=8 \
+  --node-rank="$NODE_RANK" --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \
+  --module distillschedule train "$RUN/train.json" --cycles 1 --output "$RUN/partial"
+# Repeat the same torchrun prefix in new processes:
+# ... --module distillschedule train "$RUN/train.json" --cycles 3 \
+#       --resume "$RUN/partial/checkpoints/cycle-000001" --output "$RUN/resumed"
+# ... --module distillschedule export "$RUN/train.json" \
+#       --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/export"
+```
+
+Use the checkpoint path returned by the CLI. Resume/export require the **same
+topology** and all rank shards; `generate --weights` uses the exported Student
+in its separate single-device inference owner. CPU/Gloo follows the same path
+with `device: cpu` and `backend: gloo`.
+
+To combine replication with the already-supported exact frozen-state sharing,
+replace `execution` with this explicit policy:
+
+```json
+{"mode": "manual", "implementation": {
+  "backend": "torch-callable-replicated-v1",
+  "reduction": "post_backward", "bucket_cap_mb": 0,
+  "local": {"backend": "torch-callable-resident-v1",
+            "share_immutable": true, "checkpoint_bindings": []}
+}}
+```
+
+The effective receipt must show completed gradient reductions, replica state
+consensus and, for manual mode, real shared aliases. Private native rollout and
+denoise methods do not pass through a role's `forward`; DDP-overlap wrappers,
+FSDP/HSDP, auto/saved-plan trials, autocast and unrelated caches remain explicitly
+refused. Construction still materializes all roles. Tiny-model replica tests
+cannot establish that pretrained 4B/20B configurations fit or converge; see the
+[acceptance status](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 
 ## New input and portable output
 

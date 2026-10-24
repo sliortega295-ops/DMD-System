@@ -266,3 +266,124 @@ def test_flow_complete_cycle_contract_cannot_be_rebound_to_another_ratio():
     with pytest.raises(ValueError, match='clock contract changed'):
         build_algorithm(model, feeds, changed, 0, 22)
     assert equal(before, pack_state(model.state))
+
+
+def _private_flow_replica_worker(rank, rendezvous):
+    """Existing OtherFlow actual class, not evidence for native FLUX/Qwen."""
+    from dataclasses import replace
+    from datetime import timedelta
+    import os
+    import torch.distributed as dist
+    from distillschedule.training.dmd import build_algorithm
+    from distillschedule.training.single_device import admit_fp32
+    from distillschedule.open_workload.replicated import make_session, inventory, identity, checked
+    from distillschedule.training.checkpoint import pack_state, rng_state
+    from flow_replica_oracle import sequential_b1_oracle, observe_gradients
+    from test_training_end_to_end import equal
+    torch.set_num_threads(1)
+    os.environ.update(WORLD_SIZE='2', RANK=str(rank), LOCAL_RANK=str(rank), LOCAL_WORLD_SIZE='2', GROUP_RANK='0')
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=60))
+    try:
+        model = components()
+        model.capabilities += ('dmd_flow_private_replicated_b1_v1',)
+        model.metadata = {}
+        model.validate()
+        feeds = [dict(latent=torch.zeros(1, 3), condition=torch.full((1, 3), .15 + i * .1),
+                      null_condition=torch.full((1, 3), -.25)) for i in range(2)]
+        p = policy(); p.update(fake_updates=5, teacher_cfg=1., max_grad_norm=.01)
+        workload = build_algorithm(model, feeds[rank], p, 0, 22)
+        assert workload.replica_semantics.forward_interface == 'private_methods'
+        assert workload.replica_semantics.random_streams == 'rank_independent_v1'
+        assert admit_fp32({'device': 'cpu'}, allow_replicated=True) == torch.device('cpu')
+        with pytest.raises(ValueError, match='distributed'):
+            admit_fp32({'device': 'cpu'})
+        for key, wrong in [('RANK', str(1-rank)), ('LOCAL_RANK', '2'), ('WORLD_SIZE', '3'), ('GROUP_RANK', '1')]:
+            original = os.environ[key]; os.environ[key] = wrong
+            try:
+                with pytest.raises(ValueError, match='torchrun|rank|ownership'):
+                    admit_fp32({'device': 'cpu'}, allow_replicated=True)
+            finally:
+                os.environ[key] = original
+        # A failure on only one rank is exchanged before either rank can enter
+        # model/reducer collectives, and never mutates model/optimizer state.
+        before_state = pack_state(model.state)
+        for key, wrong in [('RANK', '0'), ('LOCAL_WORLD_SIZE', '0'), ('LOCAL_RANK', None)]:
+            original = os.environ[key]
+            if rank == 1:
+                if wrong is None: os.environ.pop(key)
+                else: os.environ[key] = wrong
+            try:
+                with pytest.raises(ValueError, match='rank failures'):
+                    checked(lambda: admit_fp32({'device': 'cpu'}, allow_replicated=True), 'flow ownership')
+            finally:
+                os.environ[key] = original
+        with pytest.raises(ValueError, match='rank failures'):
+            checked(lambda: build_algorithm(model, {key: (value.repeat(2, 1) if rank == 1 else value)
+                for key, value in feeds[rank].items()}, p, 0, 22), 'unequal local B1')
+        other_semantics = replace(workload.replica_semantics,
+            random_streams='shared_logical_call' if rank == 1 else 'rank_independent_v1')
+        with pytest.raises(ValueError, match='replica state.*differs'):
+            identity(replace(workload, replica_semantics=other_semantics))
+        assert equal(before_state, pack_state(model.state))
+        before = rng_state()
+        oracle = components()
+        # Bind the clocks without executing a Program on the oracle owner.
+        oracle.capabilities += ('dmd_flow_private_replicated_b1_v1',)
+        oracle.metadata = {}; oracle.validate()
+        build_algorithm(oracle, feeds[0], p, 0, 22)
+        expected = sequential_b1_oracle(oracle.state, feeds, p, 22)
+        expected_state = pack_state(oracle.state)
+        assert equal(before, rng_state())
+        assert not torch.equal(expected['stochastic'][0][3]['payload'], expected['stochastic'][1][3]['payload'])
+        # Same-role local gradients must genuinely differ; arithmetic cannot be
+        # accepted by comparing two reductions with shared stochastic inputs.
+        assert not equal(expected['gradients'][0]['local'][0], expected['gradients'][0]['local'][1])
+        options = inventory(workload, limit=100)
+        assert {option['reduction'] for option in options['candidates']} == {'post_backward'}
+        for kind in ('ddp_overlap', 'fsdp2_reshard', 'fsdp2_keep_forward', 'hsdp2_reshard', 'per_module'):
+            invalid = dict(options['candidates'][0], reduction=kind)
+            with pytest.raises(ValueError, match='private.*post.backward'):
+                make_session(workload, invalid, copy_state=False, persistent=True)
+        session = make_session(workload, options['candidates'][0], copy_state=False, persistent=True)
+        actual_grad, handles = observe_gradients(session)
+        result = session.run()
+        assert equal(expected['losses'][rank], result)
+        expected_grad = [{k: v for k, v in row.items() if k != 'local'} for row in expected['gradients']]
+        assert equal(expected_grad, actual_grad)
+        assert equal(expected_state, pack_state(model.state))
+        assert equal(before, rng_state()) and session.effects['replica_state_consensus']
+        assert model.state['dmd_counters'].tolist() == [1, 1, 5]
+        # Exercise the same oracle beyond initialization, with fresh rank-local
+        # samples/seeds and the real preceding optimizer/scheduler history.
+        for cycle in (1, 2):
+            later_feeds = [{**row, 'condition': row['condition'] + cycle * .07} for row in feeds]
+            seed = 22 + cycle
+            build_algorithm(oracle, later_feeds[0], p, cycle, seed)
+            expected = sequential_b1_oracle(oracle.state, later_feeds, p, seed)
+            assert any(value is not None and torch.count_nonzero(value) > 0
+                       for value in expected['gradients'][0]['mean'].values())
+            workload = build_algorithm(model, later_feeds[rank], p, cycle, seed)
+            workload.program = replace(workload.program,
+                initial_versions=session.receipt['dispatcher']['final_versions'])
+            session.bind_cycle(workload)
+            offset = len(actual_grad)
+            result = session.run()
+            assert equal(expected['losses'][rank], result)
+            assert equal([{k: v for k, v in row.items() if k != 'local'}
+                          for row in expected['gradients']], actual_grad[offset:])
+            assert equal(pack_state(oracle.state), pack_state(model.state)) and equal(before, rng_state())
+            assert model.state['dmd_counters'].tolist() == [cycle + 1, cycle + 1, 5 * (cycle + 1)]
+        for handle in handles: handle.remove()
+        with pytest.raises(ValueError, match='replicat'):
+            build_algorithm(components(), feeds[rank], p, 0, 22)
+        with pytest.raises(ValueError, match='batch.one|B1'):
+            widened = {key: value.repeat(2, 1) for key, value in feeds[rank].items()}
+            build_algorithm(oracle, widened, p, 0, 22)
+    finally:
+        dist.destroy_process_group()
+
+
+def test_private_common_flow_actual_gloo_matches_independent_b1_mean_before_clip(tmp_path):
+    import torch.multiprocessing as mp
+    mp.spawn(_private_flow_replica_worker, args=(str(tmp_path/'flow-rdzv'),), nprocs=2, join=True)
