@@ -1,4 +1,4 @@
-# Bounded framework source/CPU release notes
+# Bounded framework release notes
 
 This is release hardening of the existing **0.3.0** framework, not a declaration
 that the mature-framework plan or its GPU/pretrained milestones are complete.
@@ -9,6 +9,10 @@ No new throughput, speedup, convergence or quality result is claimed.
 * All six original direct manual research presets retain their exact two-cycle
   contracts and source/numerical statuses. W3 merged-LoRA/N70 stays OFF; W5's
   optimized numerical **FAIL** remains unresolved, never a stable default.
+  W1's unchanged fixed-trace preset now has actual public-entry world16
+  functional evidence: 16 ranks, two cycles, version/census/runtime-effect
+  checks complete. Its synthetic feature trace does not establish quality or
+  fresh-data continuation, and no new speedup or numerical-parity claim is made.
 * W1's separate `wan_ar.incumbent21a_stream.v2` retains the complete coupled
   incumbent bundle on the original fresh-cohort session and checkpoint owner.
   Actual-dispatch CPU scalar state/restart tests use fake CUDA capture drivers;
@@ -16,6 +20,9 @@ No new throughput, speedup, convergence or quality result is claimed.
   Only bounded 2..64-cohort streams with first-process-cycle capture coverage
   are admitted; later novel signatures fail explicitly. See the
   [stream recipe](../../recipes/wan_ar/INCUMBENT_STREAM.md) for exact limits.
+  A real target-environment CPU capture now confirms that the native all-zero
+  history amplified branch blocks an otherwise valid stream; it was not
+  bypassed. This is an implementation gap, not merely a missing GPU test.
 * W2's separate `helios_nogan.safe_stream_ed8.v1` binds the actual SafeBundle
   and original fresh-cohort lifecycle (2..64); original-helper CPU and Gloo
   recovery/failure tests are not FA2/Triton/node-HSDP CUDA validation. Its original
@@ -24,8 +31,13 @@ No new throughput, speedup, convergence or quality result is claimed.
 * Official DMD2 SD1.5/SDXL and official Self-Forcing retain actual pinned native
   owners and algorithms, now with explicit single-device CPU/CUDA FP32 source
   placement and safe host-state restore/export ownership. CPU original-model
-  tests are mandatory. Actual CUDA suites live separately in `tests/gpu` and
-  report **NOT_RUN** on CPU-only Torch; a skip there is never CPU/GPU proof.
+  tests are mandatory. The actual random-tiny CUDA suites in `tests/gpu`
+  passed **7/7 on A100 with Torch 2.10**, including native-oracle equality,
+  fresh-process restart and current-G generation/export. Exact assertions use
+  an explicit deterministic test policy in every process, not changed training
+  defaults. This does not qualify pretrained weights, full-GAN training or
+  production capacity. See the [GPU acceptance scope](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+  CPU-only Torch still reports these suites NOT_RUN; a skip is never GPU proof.
   Distributed/AMP and CUDA clone-based auto/plan trials remain refused.
 * Modern FLUX.2 klein Base T2I, original Qwen-Image T2I, Wan2.2 TI2V-5B's T2V
   subpath and HunyuanVideo-1.5 T2V use actual tiny upstream native Transformers,

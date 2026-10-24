@@ -61,9 +61,11 @@ heads are tested separately, not claimed as tiny full-GAN end-to-end training.
 CPU integration is not pretrained quality, CUDA, or distributed validation.
 The shared [single-device CUDA FP32 reference source path](../dmd2_sd15/README.md#cpu-starter-and-evidence-boundary)
 also places SDXL's actual dual CLIP, time IDs, denoising schedule and restored
-optimizer moments on the selected device. Its optional actual tiny CUDA
-lifecycle tests are NOT_RUN on CPU-only Torch. No AMP, distributed, capacity,
-pretrained-quality or full-GAN GPU result is implied.
+optimizer moments on the selected device. Its actual random-tiny CUDA
+oracle and lifecycle tests passed on A100/Torch 2.10 with an explicit
+deterministic test policy. They remain NOT_RUN on CPU-only Torch. No AMP,
+distributed, production-capacity, pretrained-quality or full-GAN GPU result
+is implied. See [acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 
 The shared [native UNet checkpoint policy](../dmd2_sd15/README.md#optional-native-unet-checkpoint-policy)
 also applies to SDXL's actual generator/fake UNets, including backward-simulation

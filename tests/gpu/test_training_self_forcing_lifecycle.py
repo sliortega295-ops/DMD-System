@@ -4,6 +4,8 @@ CPU-only Torch skips honestly. These tests are not pretrained, capacity,
 BF16/FlashAttention, distributed, quality or full-U6 acceptance evidence.
 Whole CUDA owners are never copied: native/Program comparisons and restart use
 sequential resident owners with explicit CPU snapshots.
+Exact comparisons use deterministic CUDA kernels in parent and CLI processes;
+production defaults and numerical thresholds are unchanged.
 """
 from copy import deepcopy
 import gc
@@ -19,11 +21,13 @@ from distillschedule.training.policy import CyclePolicy
 from distillschedule.training.self_forcing_owner import plain_tensors
 from distillschedule.training.session import construct, build_cycle
 from distillschedule.training.single_device import device_scope
-from test_training_end_to_end import equal, run_cli
+from test_training_end_to_end import equal
+from cuda_test_policy import cuda_bitwise_policy, run_cli
 from test_training_self_forcing_cpu import fixture_assets, source_root, _native_trainer_oracle
 
-pytestmark = pytest.mark.skipif(not torch.cuda.is_available(),
-    reason='actual CUDA official Self-Forcing NOT_RUN: CUDA-capable Torch/device required')
+pytestmark = [pytest.mark.skipif(not torch.cuda.is_available(),
+    reason='actual CUDA official Self-Forcing NOT_RUN: CUDA-capable Torch/device required'),
+    pytest.mark.usefixtures('cuda_bitwise_policy')]
 
 
 def _cuda_config(files):

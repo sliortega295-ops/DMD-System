@@ -2,6 +2,8 @@
 
 Run explicitly in the existing dmd2 dependency lane with DMD2_SOURCE_ROOT.
 CPU-only Torch must skip honestly; no substitute modules or CUDA simulations.
+Bitwise assertions use the same explicit deterministic policy in all processes;
+they do not assert that default CUDA kernels are deterministic.
 """
 from copy import deepcopy
 import json
@@ -18,10 +20,12 @@ from distillschedule.training.dmd2 import build_dmd2
 from distillschedule.training.session import construct, build_cycle
 from test_training_dmd2_cpu import source_root, _oracle
 from test_training_dmd2_owner_execution import native_assets
-from test_training_end_to_end import equal, run_cli
+from test_training_end_to_end import equal
+from cuda_test_policy import cuda_bitwise_policy, run_cli
 
-pytestmark = pytest.mark.skipif(not torch.cuda.is_available(),
-    reason='actual CUDA DMD2 lifecycle NOT_RUN: CUDA-capable Torch/device required')
+pytestmark = [pytest.mark.skipif(not torch.cuda.is_available(),
+    reason='actual CUDA DMD2 lifecycle NOT_RUN: CUDA-capable Torch/device required'),
+    pytest.mark.usefixtures('cuda_bitwise_policy')]
 
 
 def _cuda_config(files):

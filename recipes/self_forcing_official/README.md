@@ -87,8 +87,10 @@ the training dataset or training model assets.
 ## Qualification boundary
 
 The source path accepts one explicit `cpu` or `cuda:N` device, FP32 MATH SDPA,
-batch1 only; no autocast or distributed layout. **Actual CUDA execution remains
-NOT_RUN** in the CPU-only qualification lane. Native T2V, exactly 21 latent
+batch1 only; no autocast or distributed layout. Actual random-tiny CUDA
+oracle, lifecycle and attention tests passed on A100/Torch 2.10 under an
+explicit deterministic test policy; the CPU-only lane alone still cannot
+establish CUDA execution. Native T2V, exactly 21 latent
 frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer-frame
 training, I2V, independent first frame and uncached causal/flex training are
 explicitly rejected, not emulated. The checkpoint-ON reference below is an
@@ -99,8 +101,9 @@ asset injection, true-singleton broadcast, FP32 math SDPA attention (native
 layers/cache body unchanged), geometry-derived allocations, and exactly six
 training-boundary `.cuda()` lookups changed to `noise.device`. Uncached causal
 execution is rejected rather than quietly removing its causal mask. No global
-Torch/CUDA/module monkeypatches are installed. GPU and pretrained media quality
-remain `NOT_RUN` regardless of tiny CPU test results.
+Torch/CUDA/module monkeypatches are installed. Full pretrained GPU training
+and media quality remain `NOT_RUN`; tiny tests are not quality evidence. See
+[GPU acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 
 Modules, native non-buffer schedules, complex128 RoPE, VAE normalization and
 negative/unconditional embeddings are resident before AdamW construction.

@@ -99,5 +99,13 @@ quality, speedup or 100-cycle stability. All of those remain **NOT_RUN** for
 this v2 integration; numerical status remains **REVIEW**. W1/U3/U7 and the
 six-workload maturity plan are still partial.
 
+Target-environment follow-up (2026-10-24 UTC) confirmed a real admission gap:
+native history dropout can produce the unsupported all-zero-history amplified
+branch during fresh cohort capture. That capture failed before GPU execution;
+no seed selection, dropout change or fixed-trace substitution was used. The
+separate v1 fixed-trace preset completed 16-rank functional execution, but this
+does not qualify v2 stream checkpoint/restart. See
+[actual GPU and stream boundary](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+
 The original `training.json`/`wan_ar.incumbent21a.v1` two-cycle fixed-trace
 preset, immutable asset pins, G3/G4 rules and fixed call census are unchanged.

@@ -93,7 +93,7 @@ generator/guidance classifier weights. These example weights are declared
 choices, not a claim to reproduce a paper configuration. Prepare the `real`
 stream from `images.template.json` or pinned latents, and replace all paths.
 The separate 1280-channel GAN-head forward/backward test is **not** full-GAN
-training acceptance; full-GAN/pretrained quality and GPU execution are NOT_RUN.
+training acceptance; full-GAN/pretrained quality remain NOT_RUN.
 
 ## CPU starter and evidence boundary
 
@@ -108,15 +108,18 @@ The helper constructs local **random tiny real Diffusers UNet/CLIP/VAE** assets
 and tokenizers. It does not download a pretrained model and does not establish
 image quality, training convergence, throughput, or production parity.
 
-CPU1 FP32 is the validated integration boundary. A single-device resident
-CUDA FP32 **reference source path** is also implemented: explicitly select
+CPU1 FP32 and the separately tested random-tiny single-device CUDA FP32
+reference are validated within their documented scope. Explicitly select
 `trainer.device: "cuda:0"` (or the owned CUDA index) and `execution.mode:
 "reference"`. It places all native modules, scheduler/conditioning tensors,
 inputs and restored Adam moments on that device; RNG and noncapturable Adam
 step metadata stay on the host. Current-G generation and portable inference
-reload use their explicitly selected CPU/CUDA placement. This is **not CUDA
-validation**: GPU execution, capacity, pretrained quality and performance
-remain NOT_RUN; AMP and distributed/FSDP ownership remain rejected.
+reload use their explicitly selected CPU/CUDA placement. The A100 acceptance
+passed native-oracle and fresh-process continuation checks under an explicit
+deterministic test policy; production defaults were not changed. This is
+**not full pretrained CUDA validation**: production capacity, pretrained
+quality and performance remain NOT_RUN; AMP and distributed/FSDP ownership
+remain rejected. See [acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
 including native plain conditioning/scheduler tensors.
