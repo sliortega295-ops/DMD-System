@@ -268,6 +268,50 @@ on a new complete prepared native input with `--output-kind audio_video`.
 The original training weights/inputs/checkpoints are not required to load it;
 the pinned external source and isolated runtime remain required.
 
+### Prepare new inputs from the export alone
+
+After exporting, the common input preparer can use the exported Gemma, tokenizer,
+connectors and AV codecs directly. It does not reopen `assets.json`, the Teacher,
+or the original prepared dataset. For the **tiny fixture geometry**:
+
+```json
+{
+  "schema_version": "distillschedule.export_inputs.v1",
+  "weights": "export",
+  "mode": "prompts",
+  "records": [{
+    "id": "new-prompt",
+    "prompt": "a dog rests",
+    "geometry": {
+      "fps": 8.0,
+      "video_shape": [1, 128, 2, 2, 2],
+      "audio_shape": [1, 8, 11, 16],
+      "conditioning": {
+        "video_prefix_latent_frames": 0,
+        "audio_prefix_latent_frames": 0
+      }
+    }
+  }]
+}
+```
+
+```sh
+distillctl data prepare new-inputs.json --output new-prepared \
+  --preparer distillschedule.data.export_inputs:prepare_inputs
+distillctl generate inference.json --weights export \
+  --prepared new-prepared/manifest.json --output new-av --output-kind audio_video
+```
+
+Use the export's factory/parameters for `inference.json` as above. Preparation
+is CPU-only and preserves RNG; the resulting native features can be consumed
+by the admitted CPU or CUDA inference owner. Replace the example geometry with
+your explicitly supported native geometry, not a guessed image/video resize.
+For `mode: raw`, use the same `image`/`video`/`audio`/`text`/`metadata.geometry`
+records as the raw input manifest. Media paths resolve relative to the new
+manifest and are hashed; omitted media must have explicit latent shapes and
+cannot provide invented clean history. Preencoded data does not use this raw
+export-only preparer. Missing or stale conditions fail before publication.
+
 Decoded video comes from actual `decode_video` FHWC `[0,1]` chunks, then explicit
 uint8 conversion. Audio comes from actual `decode_audio` + Vocoder, exported as
 native-rate PCM WAV. The outputs are a frame directory + WAV + safe tensor

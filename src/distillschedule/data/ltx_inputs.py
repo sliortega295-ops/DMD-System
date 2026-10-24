@@ -121,15 +121,25 @@ def validate_row(row, *, source, media_architecture, binding, context_dimensions
 
 def encode_record(record, parameters, *, media=None):
     """Common raw-encoder plugin, or direct use by the specialized preparation."""
-    import torch
     from distillschedule.training.ltx_media import load_media, media_binding
-    from distillschedule.training.ltx_source import original, require
+    from distillschedule.training.ltx_source import original
     api = original(parameters['source_root'])
     if media is None:
         media, manifest, _ = load_media(api.source, parameters['assets'])
     else:
         manifest = parameters['asset_manifest']
     binding = media_binding(manifest, api.source)
+    return _encode_loaded(record, parameters, api=api, media=media, binding=binding)
+
+
+def _encode_loaded(record, parameters, *, api, media, binding):
+    """One native encoding path for prepared training and portable inference.
+
+    Callers own source/weight admission. This function never opens a training
+    bundle: an exported Student already owns the identical frozen codecs.
+    """
+    import torch
+    from distillschedule.training.ltx_source import require
     mode = parameters.get('mode', 'raw')
     if mode == 'preencoded':
         from distillschedule.training.ltx_media import asset_file
@@ -198,6 +208,52 @@ def encode_record(record, parameters, *, media=None):
         null_context={'video': empty['video_context'], 'audio': empty['audio_context'], 'mask': empty['context_mask']})
 
 
+def _input_metadata(mode):
+    return dict(schema_version=SCHEMA, mode=mode,
+        prediction='flow_epsilon_minus_x0', layout='NATIVE_BNC_AV_WIDTH128',
+        text='REAL_LOCAL_GEMMA4_FEATURE_EXTRACTOR_V2_DUAL_CONNECTORS', quality_validation='NOT_RUN')
+
+
+def encode_export_input(state, record, parameters):
+    """Encode NEW text/media from restored codecs, without the training assets.
+
+    Uses the common CPU export-input preparer. No preencoded fallback, guessed
+    geometry, new weight loading, device migration, or change to DMD execution.
+    """
+    from .decoding import decode_record
+    from .manifest import validate_source
+    from distillschedule.training.ltx_media import encoding_sources
+    from distillschedule.training.ltx_source import original, require
+    require(isinstance(parameters, dict) and set(parameters) == {'mode', 'source_dir', 'model_metadata'},
+            'explicit export mode/source/model metadata required')
+    mode = parameters['mode']
+    require(mode in ('raw', 'prompts'), 'export native input mode must be raw or prompts')
+    require(isinstance(record, dict) and isinstance(record.get('id'), str) and bool(record['id']),
+            'explicit native export record id required')
+    student, media = state['student'], state['media']
+    require(student.device.type == 'cpu' and all(t.device.type == 'cpu'
+            for t in (*media.parameters(), *media.buffers())), 'export preparation requires CPU-owned native codecs')
+    require(parameters['model_metadata'].get('media_binding') == student.binding,
+            'export native media binding changed')
+    require(parameters['model_metadata'].get('encoding_sources') == encoding_sources(),
+            'export native encoding helper source changed')
+    if mode == 'prompts':
+        require(set(record) == {'id', 'prompt', 'geometry'} and isinstance(record['prompt'], str),
+                'prompt-only export record requires text and explicit native geometry')
+        raw = dict(id=record['id'], text={'value': record['prompt']}, metadata={'geometry': record['geometry']})
+    else:
+        require(set(record) <= {'id', 'image', 'video', 'audio', 'text', 'metadata'}
+                and {'text', 'metadata'} <= record.keys(), 'raw native export record requires explicit text/media/geometry')
+        raw = record
+    resolved, identities = raw_record(raw, Path(parameters['source_dir']))
+    api = original(student.source.root)
+    row = _encode_loaded(decode_record(resolved), parameters, api=api, media=media, binding=student.binding)
+    student.validate_feeds(row)
+    for identity in identities['media'].values():
+        validate_source(identity)
+    return dict(features=row, metadata=_input_metadata(mode), sources=identities['media'])
+
+
 def prepare_inputs(source_manifest, output_dir):
     from .decoding import decode_record
     from .manifest import validate_source
@@ -244,9 +300,7 @@ def prepare_inputs(source_manifest, output_dir):
         return tensor_tree(encode_record(decoded, parameters, media=media))
     preencoded = value['mode'] == 'preencoded'
     result = _publish(output_dir, rows=rows, provenance=dict(mode='preencoded' if preencoded else 'raw', documents=documents,
-        sources=sources, encoder=None if preencoded else encoder), metadata=dict(schema_version=SCHEMA, mode=value['mode'],
-        prediction='flow_epsilon_minus_x0', layout='NATIVE_BNC_AV_WIDTH128',
-        text='REAL_LOCAL_GEMMA4_FEATURE_EXTRACTOR_V2_DUAL_CONNECTORS', quality_validation='NOT_RUN'), produce=produce)
+        sources=sources, encoder=None if preencoded else encoder), metadata=_input_metadata(value['mode']), produce=produce)
     for identity in documents:
         validate_source(identity)
     return result

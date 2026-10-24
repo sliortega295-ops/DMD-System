@@ -60,14 +60,19 @@ def validate_placement(module, device):
             'unowned native plain tensor requires an explicit placement adapter')
 
 
+def encoding_sources():
+    """Shared helper identity for prepared features and portable exports."""
+    paths = (Path(__file__), Path(__file__).with_name('ltx_source.py'),
+             Path(__file__).parents[1] / 'data' / 'ltx_inputs.py')
+    return {path.name: file_sha256(path) for path in paths}
+
+
 def media_binding(manifest, source):
     from distillschedule.workloads.best_known.registry import fingerprint
     # A prepared encoding must not survive a numerical change in our intake
     # helpers merely because the external source/weights stayed unchanged.
-    paths = (Path(__file__), Path(__file__).with_name('ltx_source.py'),
-             Path(__file__).parents[1] / 'data' / 'ltx_inputs.py')
     return fingerprint({'native_source': source.identity, 'media': manifest['media'],
-                        'adapter_sources': {path.name: file_sha256(path) for path in paths}})
+                        'adapter_sources': encoding_sources()})
 
 
 def file_sha256(path):

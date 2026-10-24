@@ -94,6 +94,8 @@ jobs:
               python scripts/check_cpu_receipt.py provider-cpu.xml \
                 --require test_real_native_media_text_and_modality_abi \
                 --require test_native_cpu_media_never_probes_visible_cuda \
+                --require 'test_current_g_export_only_raw_prompt_prepare_and_av_generate[config]' \
+                --require 'test_current_g_export_only_raw_prompt_prepare_and_av_generate[lora_config]' \
                 --require 'test_fresh_process_exact_resume_and_current_generator_av_export[config]' \
                 --require 'test_fresh_process_exact_resume_and_current_generator_av_export[lora_config]' \
                 --require test_actual_measured_ltx_policy_preserves_all_updates \

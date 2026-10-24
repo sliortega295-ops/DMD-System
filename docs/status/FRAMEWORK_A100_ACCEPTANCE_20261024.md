@@ -150,8 +150,9 @@ See the [portable stream acceptance index](../../artifacts/framework/20261024/wa
 - No production-size capacity, long-run quality or convergence validation.
 - No AMP/BF16/FSDP qualification for these official single-device owners.
 - CUDA automatic-plan trials still reject unsupported whole-owner snapshots.
-- Modern FLUX/Qwen/Wan2.2/Hunyuan/LTX paths keep their previous CPU-only
-  qualification boundaries.
+- Modern FLUX/Qwen/Wan2.2/Hunyuan paths keep their previous CPU-only
+  qualification boundaries. LTX has the separately scoped tiny native CUDA
+  acceptance below, not pretrained capacity or quality qualification.
 - Passing these tests does not qualify all six large native workloads or
   their optimized long-training checkpoint paths.
 
@@ -173,6 +174,54 @@ Large model states and generated test assets remain on the remote filesystem.
 - `reports/wan-native-functional-summary.json`: all rank identities, native
   execution effects, version/census and resource receipts.
 - `reports/wan-stream-admission-r1.json`: CPU-only fresh-stream refusal.
+
+## LTX native AV reference: actual CUDA PASS
+
+[Portable receipt](../../artifacts/framework/20261024/ltx_native_acceptance.json).
+Tested source is `3d7bb039` plus the explicit `source-ltx-r4` patch
+`fb5a8652f988902a261680f8ceee92d6abf09c169d6e8277c27f92734705d86d`;
+its production/test changes are recorded in local integration `6618f63a`.
+This is not an assertion that every later documentation/source change ran on
+that exact snapshot.
+
+- **4 PASS, zero failures/skips**, 503.32 s suite wall, one A100 on node1.
+- Actual random-tiny pinned upstream AV Transformer, Gemma4/connectors,
+  video/audio codecs; full-parameter and unmerged LoRA modes both exercised.
+- Direct flow-DMD oracle and public Program agree exactly on losses, gradients,
+  named Adam, scheduler, EMA, clocks and RNG under the explicit deterministic
+  test policy. No production tolerance or DMD mathematics changed.
+- Same-device new-process C1-to-C3 restart exactly matches uninterrupted C3.
+  Current-G export decodes a new prepared prompt on CUDA and can relocate to
+  CPU. Native raw-video/audio encoding also executes on the owned CUDA device.
+- Corrupt checkpoint/EMA/optimizer/counter/input identities fail closed.
+  Unbounded CUDA trial cloning and unsupported policies reject before owners
+  are constructed. CPU planning remains independently qualified.
+- Target CPU regression: **139 PASS, zero skips, CUDA uninitialized**. Shared
+  target Torch2.10 regression: 2152 PASS, 86 explicitly optional skips.
+
+The first GPU attempt failed in CPU fixture construction: native AUTOMATIC
+attention inspected CUDA0. The repair binds the native CPU/Ampere provider in
+the adapter's private source namespace; it does not hide CUDA or replace the
+attention math. Its parent-red test and original failure remain archived.
+Node0 was subsequently occupied by unidentified GPU processes; no job was
+stopped. Node1 passed fresh environment/hash/ownership checks under an atomic
+lock. After the suite, no compute processes remained there, the lock was
+available, and cgroup OOM/OOM-kill increments were zero (the prior OOM-kill
+counter of 3 is retained, not rewritten as zero).
+
+This does **not** validate the pretrained 22B pipeline, generation quality,
+multi-rank execution, CUDA planning, or performance. Export-only raw-input
+preparation is a separate CPU follow-up, not included in these four tests.
+
+That follow-up now passes **67/67 tests, zero skips**, in target Torch2.10 with
+CUDA uninitialized (`source-ltx-r6`, patch `0eeb45be…7bcb31`). For both full and
+LoRA Students, tests retire the original training assets/checkpoint and prepare
+genuinely new PNG image/frame, stereo WAV and text-by-path inputs, as well as
+new prompts, solely from the export. Both prepared branches generate decoded
+AV through the current trained Student. Same-process RNG is preserved and
+changed encoder-helper sources reject before any codec execution/publication.
+This is actual tiny native CPU coverage, not pretrained quality or another GPU
+result; its source and receipt hashes are separate in the portable index.
 
 ## Operational validation
 

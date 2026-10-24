@@ -344,9 +344,11 @@ def _runtime():
 
 
 def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas):
+    from .ltx_media import encoding_sources
     return dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
         architecture=deepcopy(architecture), media_architecture=deepcopy(media_architecture),
-        media_binding=binding, trainable=deepcopy(trainable), generation_sigmas=list(generation_sigmas),
+        media_binding=binding, encoding_sources=encoding_sources(),
+        trainable=deepcopy(trainable), generation_sigmas=list(generation_sigmas),
         precision='FP32_MATH_SDPA', runtime=_runtime(), quality_validation='NOT_RUN', gpu_execution='NOT_RUN',
         pretrained_quality='UNVERIFIED_LOCAL_WEIGHTS_OR_RANDOM_NATIVE_FIXTURE',
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA',
@@ -485,11 +487,12 @@ def _inference_parameters(student):
 
 
 def _inference_components(api, student, media, parameters):
+    from distillschedule.data.ltx_inputs import encode_export_input
     return ModelComponents(state={'student': student, 'media': media}, immutable_modules=('media',),
         metadata=_metadata(api, architecture=parameters['architecture'], media_architecture=parameters['media_architecture'],
             binding=parameters['binding'], trainable=parameters['trainable'], generation_sigmas=parameters['generation_sigmas']),
         prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1'),
-        generate=generate, decode=media.decode).validate()
+        generate=generate, decode=media.decode, encode_input=encode_export_input).validate()
 
 
 def project_current_generator(components, effective_training_parameters):
