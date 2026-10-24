@@ -6,18 +6,18 @@
     "scripts/distillschedule/probe_wan13b_fair_world16.py": {
       "target": "scripts/distillschedule/probe_wan13b_fair_world16.py",
       "original_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
-      "reviewed_source_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+      "source_commit": "d8fdbb5d6c80bed4a5dbf087136c0727e81774e4",
+      "integrated_sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+      "change": "explicit_v2_fresh_stream_cold_bootstrap_validation_legacy_v1_hash_guard_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475; original_import_receipt_preserved; CPU_source_lifecycle_not_native_GPU_validation"
     },
     "src/distillschedule/runtime/wan13b_lora_cast.py": {
       "target": "src/distillschedule/runtime/wan13b_lora_cast.py",
       "original_integrated_sha256": "82f43c793b34c3b532ff37f434b08a8581aa1b447d5156e0c259c6429bde26ba",
-      "reviewed_source_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+      "source_commit": "d8fdbb5d6c80bed4a5dbf087136c0727e81774e4",
+      "integrated_sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+      "change": "expose_existing_cast_ContextVar_quiescence_for_native_checkpoint_no_cast_math_change; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578; original_import_receipt_preserved; CPU_source_lifecycle_not_native_GPU_validation"
     },
     "runtime/gst_pool_helios.py": {
       "target": "runtime/gst_pool_helios.py",
