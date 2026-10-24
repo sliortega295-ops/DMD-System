@@ -10,12 +10,37 @@ import os
 from pathlib import Path
 import random
 import shutil
+import time
 import uuid
 from distillschedule.workloads.best_known.registry import file_sha256 as _sha
 from . import distributed
 from .tensor_state import pack, decode, layout, live_meshes
 
 SCHEMA = "distillschedule.training_checkpoint.v2"
+_STORAGE_VISIBILITY_TIMEOUT = 30.0
+
+
+def _await_shared_paths(paths, label, *, directory=False):
+    """Wait only for metadata whose producer already completed collectively.
+
+    A process-group barrier is not a shared-filesystem metadata barrier. Never
+    create a missing peer directory or accept an incomplete checkpoint here.
+    Hash mismatches and ordinary restart admission are not retried.
+    """
+    timeout = 0.0
+    if distributed.rank_world()[1] > 1:
+        from distillschedule.open_workload.replicated import metadata_timeout_seconds
+        # Peers can already be waiting in checked()/primary() while we poll.
+        # Leave most of the actual metadata timeout for I/O and that collective.
+        timeout = min(_STORAGE_VISIBILITY_TIMEOUT, metadata_timeout_seconds() / 4)
+    deadline = time.monotonic() + timeout
+    while True:
+        missing = [path for path in paths if not (path.is_dir() if directory else path.is_file())]
+        if not missing:
+            return
+        if time.monotonic() >= deadline:
+            raise ValueError(f"{label}: shared storage visibility timed out: {missing}")
+        time.sleep(min(0.1, max(0.0, deadline - time.monotonic())))
 
 
 def cpu_tree(value):
@@ -285,8 +310,7 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             payload['data_progress'] = data_progress
         filename = "state.pt" if world == 1 else f"rank-{rank:05d}.pt"
         def write_shard():
-            if not staging.is_dir():
-                raise ValueError("checkpoint output must be shared by all ranks")
+            _await_shared_paths([staging], "checkpoint output must be shared by all ranks", directory=True)
             with (staging / filename).open("xb") as handle:
                 torch.save(payload, handle)
                 handle.flush()
@@ -295,8 +319,10 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         shard = distributed.checked(write_shard, "checkpoint shard writing")
         files = {key: value for row in distributed.gather(shard) for key, value in row.items()}
         def publish():
-            if len(files) != world or any(not (staging / name).is_file() or _sha(staging / name) != sha
-                                          for name, sha in files.items()):
+            if len(files) != world:
+                raise ValueError("checkpoint shards incomplete on shared storage")
+            _await_shared_paths([staging / name for name in files], "checkpoint shards incomplete on shared storage")
+            if any(_sha(staging / name) != sha for name, sha in files.items()):
                 raise ValueError("checkpoint shards incomplete on shared storage")
             manifest = {"schema_version": SCHEMA, "kind": "RESUMABLE_COMPLETE_CYCLE",
                         "identity": identity, "cycle": cycle, "cursor": cursor,
@@ -304,10 +330,25 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                         "topology": allocated, "torch": torch.__version__, "files": files}
             if data_progress is not None:
                 manifest['data_progress'] = data_progress
-            (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-            (staging / "_SUCCESS").write_text(_sha(staging / "manifest.json") + "\n")
+            # Closing a buffered file does not make its contents durable on a
+            # remote filesystem. Flush both metadata files before the directory
+            # rename, just as for rank shards; never retry a checksum mismatch.
+            with (staging / "manifest.json").open("x") as handle:
+                handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            with (staging / "_SUCCESS").open("x") as handle:
+                handle.write(_sha(staging / "manifest.json") + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
             os.rename(staging, path)
         distributed.primary(publish, "checkpoint publication")
+        def visible_publication():
+            _await_shared_paths([path / name for name in (*files, "manifest.json", "_SUCCESS")],
+                                "checkpoint publication incomplete on shared storage")
+            if (path / "_SUCCESS").read_text().strip() != _sha(path / "manifest.json"):
+                raise ValueError("checkpoint manifest hash changed")
+        distributed.checked(visible_publication, "checkpoint shared publication visibility")
     except BaseException:
         if world == 1:
             shutil.rmtree(staging, ignore_errors=True)

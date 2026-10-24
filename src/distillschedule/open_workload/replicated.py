@@ -52,6 +52,33 @@ def broadcast(value):
     return box[0]
 
 
+def metadata_timeout_seconds():
+    """Actual control-group timeout, including externally owned groups.
+
+    PyTorch exposes this on the backend options, not the configured trainer.
+    Read the metadata group's backend so an NCCL data timeout cannot mask a
+    shorter Gloo control timeout. No group or device is created here.
+    """
+    group = _CONTROL_GROUP.get()
+    if group is None:
+        group = dist.group.WORLD
+    require(dist.is_initialized() and group is not None,
+            'initialized metadata group required', path='open.replicated')
+    backend = str(dist.get_backend(group))
+    require(backend in ('gloo', 'nccl'), 'unsupported metadata backend', path='open.replicated')
+    device = torch.device('cpu' if backend == 'gloo' else 'cuda')
+    native = group._get_backend(device)
+    if dist.is_gloo_available():
+        # DETAIL wraps the backend on Torch 2.10; only the underlying real
+        # backend exposes its configured options. Do not guess a timeout.
+        from torch.distributed.distributed_c10d import _ProcessGroupWrapper
+        while isinstance(native, _ProcessGroupWrapper):
+            native = native.wrapped_pg
+    seconds = native.options._timeout.total_seconds()
+    require(0 < seconds < float('inf'), 'invalid metadata-group timeout', path='open.replicated')
+    return seconds
+
+
 def checked(fn: Callable, label: str):
     """Make preflight/validation failures visible to every rank before collectives."""
     value = None
