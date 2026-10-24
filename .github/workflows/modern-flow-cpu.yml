@@ -21,9 +21,21 @@ on:
 permissions:
   contents: read
 jobs:
-  native-image-replicated-lifecycle:
+  native-replicated-lifecycle:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: image
+            proof: test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli
+            first: flux2-klein-base
+            second: qwen-image
+          - kind: video
+            proof: test_actual_native_video_gloo2_independent_oracle_and_fresh_cli
+            first: wan22
+            second: hunyuan_video
     env:
       PYTHONPATH: 'src:.:tests'
       DMD_MODERN_FLOW_CPU: '1'
@@ -51,15 +63,15 @@ jobs:
           python -m pip install -e '.[test,modern-flow]'
       - name: Actual native Gloo2 gradient oracle and new-process lifecycle
         run: |
-          python -m pytest -q tests/test_training_flow_image_replicated.py --junitxml=native-image-replicated.xml
-          python scripts/check_cpu_receipt.py native-image-replicated.xml \
-            --require 'test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli[flux2-klein-base]' \
-            --require 'test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli[qwen-image]'
+          python -m pytest -q tests/test_training_flow_${{ matrix.kind }}_replicated.py tests/test_training_checkpoint_storage_visibility.py --junitxml=native-${{ matrix.kind }}-replicated.xml
+          python scripts/check_cpu_receipt.py native-${{ matrix.kind }}-replicated.xml \
+            --require '${{ matrix.proof }}[${{ matrix.first }}]' \
+            --require '${{ matrix.proof }}[${{ matrix.second }}]'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: native-image-replicated-cpu
-          path: native-image-replicated.xml
+          name: native-${{ matrix.kind }}-replicated-cpu
+          path: native-${{ matrix.kind }}-replicated.xml
           if-no-files-found: error
   native-media-lifecycle:
     runs-on: ubuntu-22.04

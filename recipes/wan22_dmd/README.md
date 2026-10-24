@@ -15,8 +15,10 @@ THWC uint8 video decoded by the actual residual VAE. Tests create random tiny
 native weights under **SYNTHETIC_TEST_ONLY**, not pretrained or quality evidence.
 The example learning rates/rank are fixture settings, not quality recommendations.
 
-Full pretrained memory capacity/training/quality, AMP and distributed execution
-are **NOT_RUN**. CUDA auto/saved-plan execution, other manual policies and resident trial cloning,
+Full pretrained memory capacity/training/quality and AMP are **NOT_RUN**.
+Explicit local-B1 replication has the separate bounded contract below; it is
+not blanket distributed/backend or full-model acceptance. CUDA auto/saved-plan
+execution, other manual policies and resident trial cloning,
 expert/high-low/A14B, Wan2.1, I2V, image/causal/cache fields,
 other codecs and incompatible algorithms explicitly reject. No automatic download,
 weight conversion to another family, implicit image condition or fallback trainer.
@@ -141,6 +143,49 @@ state; and new-process restart plus export-only new-prompt RGB video generation.
 CPU inference relocation matches an independent CPU current-Student reference.
 The same explicit deterministic test policy applies to oracle and CLI processes;
 it does not change production defaults or establish pretrained quality/capacity.
+
+## Explicit replicated local-B1 contract
+
+The existing Program may own independent B1 records on explicitly launched
+CPU/Gloo or CUDA/NCCL ranks with `data.sharding="rank_strided"` and a matching
+`trainer.distributed.backend`. CUDA ownership must match each actual torchrun
+`LOCAL_RANK`; this recipe does not launch or acquire devices. Native BCFHW stays
+`B=1` on each rank. No concatenated-batch approximation or `forward` wrapper is
+used for the native private denoising/rollout methods.
+
+Use `{"mode":"reference"}` or exactly this existing immutable-sharing policy:
+
+```json
+{"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
+```
+
+The common reducer averages equal-rank B1 gradients **before** clipping and
+one Adam commit. Each rank has distinct sample IDs and a rank-independent noise
+namespace; ordinary single-process RNG semantics remain unchanged. Complete
+same-topology checkpoints require every rank shard, while portable inference
+returns to an explicit single-device owner. Sharing still materializes all roles
+first and never aliases Student/Fake trainables. DDP private-method wrappers,
+FSDP/AMP, auto/plan trials, changed order/reduction/local policy and wrong process,
+backend, native family/source/codec/cache/shape ownership fail closed.
+
+The reusable acceptance harness executes three complete cycles against an
+independent sequential-native B1 gradient mean, requires a later nonzero Student
+gradient, compares reference/manual states and outer RNG, and exercises fresh
+CLI partial/resume/uninterrupted runs, every rank shard, missing-shard refusal,
+and new-prompt current-Student native VAE decoding to **five RGB frames**:
+
+```sh
+DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
+# Only with two explicitly owned GPUs and the pinned modern-flow environment:
+DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/gpu/test_training_flow_video_replica_gpu.py
+```
+
+`create_cpu_fixture.py --samples 6` supplies distinct records without changing
+its default three-cycle, three-record fixture. The harness also accepts external
+torchrun via `tests/native_flow_replicated.py`; multi-node allocation remains
+operator-owned. This defines a reproducible **SYNTHETIC_TEST_ONLY** acceptance
+route, not a receipt claiming GPU/multi-node success, pretrained capacity,
+convergence, quality, speedup, or mature-framework completion.
 
 ## Third-party notice
 

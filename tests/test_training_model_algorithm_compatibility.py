@@ -67,10 +67,10 @@ for name in ('flux2-klein-base','qwen-image','wan22-ti2v5b-t2v','hunyuan15-t2v')
         value=deepcopy(base)
         if kind=='distributed':value['trainer']['distributed']={'backend':'gloo'}
         else:value['model']['parameters'][kind]=True
-        if kind=='distributed' and name in ('flux2-klein-base','qwen-image'):
-            # Only these two image owners now admit explicit reference Gloo
-            # replication. Metadata discovery remains lazy; wrapper/trial
-            # policies and the video owners' distribution remain refused.
+        if kind=='distributed':
+            # All four native flow owners admit explicit reference Gloo
+            # replication. Discovery stays lazy; wrapper/trial policies and
+            # causal/cache features remain refused.
             TrainingConfig.from_dict(value,source='train.json')
             value['execution']['mode']='auto'
             try:TrainingConfig.from_dict(value,source='train.json')
@@ -79,7 +79,7 @@ for name in ('flux2-klein-base','qwen-image','wan22-ti2v5b-t2v','hunyuan15-t2v')
             continue
         try:TrainingConfig.from_dict(value,source='train.json')
         except ValueError as exc:assert 'incompatible' in str(exc),str(exc)
-        else:raise AssertionError('unsupported native image capability accepted')
+        else:raise AssertionError('unsupported native flow capability accepted')
     base['model']={'factory':'external_uninstalled_package.adapter:build','parameters':{'causal':True}}
     base['algorithm']={'name':'dmd2'}
     TrainingConfig.from_dict(base,source='train.json')

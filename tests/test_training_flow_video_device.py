@@ -167,11 +167,12 @@ def test_unsupported_runtime_rejected_before_native_import_or_assets(family, mod
     for key, value in (('WORLD_SIZE', '2'), ('LOCAL_WORLD_SIZE', '2'), ('RANK', '1'), ('LOCAL_RANK', '1')):
         with monkeypatch.context() as patch:
             patch.setenv(key, value)
-            with pytest.raises(ValueError, match='one actual process/rank'):
+            with pytest.raises(ValueError, match='one actual process/rank|initialized torchrun'):
                 build(parameters)
     with monkeypatch.context() as patch:
         patch.setattr(torch.distributed, 'is_initialized', lambda: True)
-        with pytest.raises(ValueError, match='distributed'):
+        patch.setattr(torch.distributed, 'get_world_size', lambda: 1)
+        with pytest.raises(ValueError, match='distributed|initialized torchrun'):
             build(parameters)
     with torch.autocast('cpu', dtype=torch.bfloat16):
         with pytest.raises(ValueError, match='FP32'):

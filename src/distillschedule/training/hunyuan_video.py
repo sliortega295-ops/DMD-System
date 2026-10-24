@@ -1,6 +1,7 @@
 """Pinned HunyuanVideo1.5 T2V through the existing common flow-DMD owner.
 
-CPU1/CUDA1 FP32 reference, B1, four Euler steps, G1/F5 and unmerged same-family LoRA only.
+FP32 local B1, single-device or explicit post-backward replicas; four Euler steps,
+G1/F5 and unmerged same-family LoRA only.
 Native Qwen text/crop108 + ByT5 glyphs, temporal4 VAE and native Transformer.
 No pretrained/random fallback, I2V, meanflow or distilled-model admission.
 Tencent model-asset terms are separate from the Apache-licensed implementation.
@@ -21,7 +22,7 @@ from .flow_image import require
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
-from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
+from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 
 FAMILY = 'hunyuan15-t2v'
@@ -243,7 +244,7 @@ class Role(safe.QualifiedNativeFlowTrials, nn.Module):
         return sample
 
     def denoise(self, sample, sigma, feeds, *, conditional):
-        safe.cpu1()
+        admit_fp32({'device': str(self.device)}, require=require, allow_replicated=True)
         self.validate_feeds(feeds)
         self.apply_conditioning(sample,feeds)
         value = sample['video']
@@ -285,9 +286,12 @@ def _budget(layouts, limits, *, portable=False):
         require(0 < count <= limits[name], ('portable ' if portable else '')+'native model exceeds explicit CPU parameter budget: '+name)
 
 
-def load_media_bundle(assets):
+def load_media_bundle(assets, *, device=None):
     from transformers import Qwen2TokenizerFast, ByT5Tokenizer
-    safe.cpu1()
+    if device is None:
+        safe.cpu1()
+    else:
+        admit_fp32({'device': str(device)}, require=require, allow_replicated=True)
     runtime = runtime_identity()
     path = Path(assets).expanduser().resolve(strict=True)
     manifest = safe.json_object(path)
@@ -335,18 +339,23 @@ def load_media_bundle(assets):
 
 def _components(state, descriptor, *, training):
     from distillschedule.data.hunyuan_video_inputs import encode_export_input
+    from .distributed import rank_world
     safe.qualify_trial_roles(state, descriptor['evidence_kind'])
     immutable = ['teacher','media'] if training else ['media']
     if training:
         for role in ('student','fake'):
             immutable += [role+'.'+name+'.base' for name,module in state[role].named_modules() if isinstance(module,TrainableLowRankLinear)]
+    # Single-process and portable-inference identities remain unchanged.
+    replica_caps = ('dmd_flow_private_replicated_b1_v1',) if training and rank_world()[1] > 1 else ()
     metadata = dict(schema_version='distillschedule.native_hunyuan15_t2v.v1',family=FAMILY,
         source=dict(model_id=MODEL_ID,revision=REVISION,license=LICENSE),**deepcopy(descriptor),
-        precision='FP32_NATIVE_SINGLE_DEVICE_B1',prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
+        **(dict(precision='FP32_NATIVE_RANK_LOCAL_REPLICATED', replication='EXPLICIT_EQUAL_RANK_LOCAL_B1_POST_BACKWARD_MEAN')
+           if replica_caps else dict(precision='FP32_NATIVE_SINGLE_DEVICE_B1')),
+        prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
         algorithm='COMMON_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA',
         gpu_execution='NOT_RUN',pretrained_quality='NOT_RUN',quality_validation='NOT_RUN')
     return ModelComponents(state=state,immutable_modules=tuple(immutable),metadata=metadata,prediction=PredictionSpec('flow'),
-        capabilities=('video','flow','lora','dmd_flow_v1'),generate=generate,decode=state['media'].decode,
+        capabilities=('video','flow','lora','dmd_flow_v1',*replica_caps),generate=generate,decode=state['media'].decode,
         encode_input=None if training else encode_export_input,
         inference_projection=project_current_generator if training else None,admit_training=admit_training if training else None).validate()
 
@@ -356,12 +365,12 @@ def build_model(parameters):
     allowed = {'assets','device','seed','trainable','student_lr','fake_lr','scheduler_gamma','ema_decay','generation_sigmas'}
     require(isinstance(parameters,dict) and set(parameters) <= allowed and allowed-{'device','seed'} <= parameters.keys(),
             'complete explicit HunyuanVideo1.5 parameters required; variant/backend/precision overrides refused')
-    device = admit_fp32(parameters, require=require)
+    device = admit_fp32(parameters, require=require, allow_replicated=True)
     require(type(parameters.get('seed',0)) is int, 'integer construction seed required')
     require(isinstance(parameters['trainable'],dict) and parameters['trainable'].get('mode') == 'lora', 'initial native Hunyuan recipe is unmerged LoRA only')
     schedule = sigmas(parameters['generation_sigmas'])
     require(len(schedule) == 5, 'initial native Hunyuan recipe requires four Euler steps')
-    media,manifest,roots,runtime,binding,media_config,empty,_ = load_media_bundle(parameters['assets'])
+    media,manifest,roots,runtime,binding,media_config,empty,_ = load_media_bundle(parameters['assets'],device=device)
     with construction_rng(device, parameters.get('seed',0)), torch.device('cpu'):
         # Preserve exact CPU-prepared null contexts; CUDA encoder arithmetic
         # is not a replacement for the source-bound empty-prompt features.
@@ -393,11 +402,19 @@ def build_model(parameters):
 
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
-    device = admit_fp32({'device':request.trainer.get('device','cpu')}, require=require)
-    require('distributed' not in request.trainer
-            and all(state[name].device == device for name in ('student','fake','teacher','media')),
-            'matching single-device FP32 ownership required; distributed execution NOT_RUN')
-    require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), safe.CUDA_TRIAL_LIMIT)
+    from .distributed import rank_world
+    device = admit_fp32({'device':request.trainer.get('device','cpu')}, require=require, allow_replicated=True)
+    require(all(state[name].device == device for name in ('student','fake','teacher','media')),
+            'matching rank-local FP32 device ownership required')
+    if rank_world()[1] > 1:
+        require(request.trainer.get('distributed',{}).get('backend') == torch.distributed.get_backend()
+                and request.data.get('sharding') == 'rank_strided',
+                'explicit distributed backend and rank_strided data required')
+        require(execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+                'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
+    else:
+        require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')
+        require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), safe.CUDA_TRIAL_LIMIT)
     require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
             and request.execution.get('adapter','program') == 'program', 'use existing common flow DMD Program, not official Self-Forcing/DMD2')
     metadata = prepared_manifest.get('metadata',{})

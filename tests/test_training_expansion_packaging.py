@@ -109,6 +109,27 @@ def test_w2_safe_stream_is_mandatory_in_original_tf4_lane_not_modern():
     assert 'test_training_helios_optimized_stream.py' not in modern
 
 
+def test_native_replica_ci_requires_both_image_and_video_proofs_without_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/modern-flow-cpu.yml').read_text())
+    job = workflow['jobs']['native-replicated-lifecycle']
+    matrix = job['strategy']['matrix']['include']
+    assert job['strategy']['fail-fast'] is False
+    assert matrix == [
+        dict(kind='image', proof='test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli',
+             first='flux2-klein-base', second='qwen-image'),
+        dict(kind='video', proof='test_actual_native_video_gloo2_independent_oracle_and_fresh_cli',
+             first='wan22', second='hunyuan_video')]
+    assert job['env']['DMD_NATIVE_FLOW_REPLICATED'] == job['env']['DMD_MODERN_FLOW_CPU'] == '1'
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    assert 'tests/test_training_flow_${{ matrix.kind }}_replicated.py' in commands
+    assert 'tests/test_training_checkpoint_storage_visibility.py' in commands
+    for name in ('first', 'second'):
+        assert "--require '${{ matrix.proof }}[${{ matrix." + name + " }}]'" in commands
+    assert '-k ' not in commands and '--deselect' not in commands
+
+
 def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework_wheel, tmp_path):
     expected = {str(path.relative_to(ROOT)): path for path in (ROOT/'recipes').rglob('*')
                 if path.is_file() and path.suffix in ('.py', '.json', '.md', '.yaml', '.yml')}

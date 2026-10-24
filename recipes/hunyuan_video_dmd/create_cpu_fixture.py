@@ -8,7 +8,10 @@ import json
 from pathlib import Path
 
 
-def build_fixture(root, *, cycles=3):
+def build_fixture(root, *, cycles=3, samples=None):
+    samples = cycles if samples is None else samples
+    if type(cycles) is not int or cycles < 1 or type(samples) is not int or samples < 1:
+        raise ValueError('positive explicit synthetic cycle/sample counts required')
     import numpy as np
     from PIL import Image
     import torch
@@ -72,7 +75,7 @@ def build_fixture(root, *, cycles=3):
         Image.fromarray(pixels).save(root/'frames'/f'{i:04d}.png')
     raw = dict(schema_version=SCHEMA,family=api.FAMILY,assets='assets.json',mode='raw',records=[
         dict(id=f'native-video-{i}',prompt=('a bird','a sign says "hello"','a blue boat on a lake')[i%3],
-            video=dict(path='frames',sha256=source_identity(root/'frames',frames=True)['sha256'])) for i in range(cycles)])
+            video=dict(path='frames',sha256=source_identity(root/'frames',frames=True)['sha256'])) for i in range(samples)])
     (root/'raw.json').write_text(json.dumps(raw,indent=2)+'\n')
     prepared = prepare_inputs(root/'raw.json',root/'prepared')
     parameters = dict(assets=str(root/'assets.json'),trainable=dict(mode='lora',rank=2,alpha=2.,targets=['proj_out']),
@@ -90,5 +93,6 @@ def build_fixture(root, *, cycles=3):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument('output'); parser.add_argument('--cycles',type=int,default=3)
+    parser.add_argument('--samples',type=int)
     args = parser.parse_args()
-    print(json.dumps({k:str(v) for k,v in build_fixture(args.output,cycles=args.cycles).items()},indent=2))
+    print(json.dumps({k:str(v) for k,v in build_fixture(args.output,cycles=args.cycles,samples=args.samples).items()},indent=2))

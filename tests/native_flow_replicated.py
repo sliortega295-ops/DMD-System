@@ -1,4 +1,4 @@
-"""SYNTHETIC_TEST_ONLY native FLUX/Qwen replicated acceptance harness.
+"""SYNTHETIC_TEST_ONLY native image/video replicated acceptance harness.
 
 External launch (same entry works for Gloo2, CUDA2 or a parent-owned NCCL16):
   torchrun ... tests/native_flow_replicated.py oracle --config REQUEST --output ROOT
@@ -48,7 +48,26 @@ def _frozen(state):
 def _assert_native(components):
     from distillschedule.training.flow_image import ImageRole
     assert components.metadata['evidence_kind'] == 'SYNTHETIC_TEST_ONLY'
-    assert all(isinstance(components.state[role], ImageRole) for role in ('student', 'fake', 'teacher'))
+    family = components.metadata['family']
+    if family in ('wan22-ti2v5b-t2v', 'hunyuan15-t2v'):
+        import importlib
+        from transformers import T5TokenizerFast, Qwen2TokenizerFast, ByT5Tokenizer
+        module = 'wan22' if family == 'wan22-ti2v5b-t2v' else 'hunyuan_video'
+        api = importlib.import_module('distillschedule.training.' + module)
+        classes = api.classes()
+        assert all(type(components.state[role]) is api.Role
+                   and type(components.state[role].native) is classes[0] for role in ('student', 'fake', 'teacher'))
+        media = components.state['media']
+        assert type(media) is api.Media and type(media.vae) is classes[1] and type(media.text_encoder) is classes[2]
+        if module == 'wan22':
+            assert type(media.tokenizer) is T5TokenizerFast
+            assert media.vae.config.is_residual and media.vae.config.patch_size == 2
+        else:
+            assert type(media.text_encoder_2) is classes[3]
+            assert type(media.tokenizer) is Qwen2TokenizerFast and type(media.tokenizer_2) is ByT5Tokenizer
+            assert media.vae.config.temporal_compression_ratio == 4
+    else:
+        assert all(isinstance(components.state[role], ImageRole) for role in ('student', 'fake', 'teacher'))
     assert components.state['student'].native.__class__.__module__.startswith('diffusers.')
 
 
@@ -229,7 +248,9 @@ def fresh_cli(config, output, ranks, *args, expected_error=None):
 
 def verify_restart(root, mode, world):
     """Read every rank shard; never infer success from rank zero alone."""
+    from distillschedule.data import PreparedDataset
     folder = Path(root)/mode
+    data = PreparedDataset(load_training_config(folder/'request.json').data['prepared'])
     for rank in range(world):
         paths = [folder/name/'checkpoints/cycle-000003'/f'rank-{rank:05d}.pt' for name in ('resumed','whole')]
         a, b = (torch.load(path, weights_only=True, map_location='cpu') for path in paths)
@@ -239,7 +260,7 @@ def verify_restart(root, mode, world):
         assert a['state']['student_scheduler']['value']['last_epoch'] == 3
         assert a['state']['fake_scheduler']['value']['last_epoch'] == 15
         rows = [json.loads(line) for line in (folder/'resumed'/f'ranks/rank-{rank:05d}/metrics.jsonl').read_text().splitlines()]
-        assert [row['sample_id'] for row in rows] == [f'native-{cycle * world + rank}' for cycle in (1,2)]
+        assert [row['sample_id'] for row in rows] == [data.sample_id(cycle * world + rank) for cycle in (1,2)]
         for row in rows:
             effects = row['execution']['effects']
             assert effects['lifecycle_installations'] == 1 and effects['replica_state_consensus']
@@ -269,10 +290,11 @@ def portable_output(config_path, root, mode):
     _, exported = read_export(folder/'export')
     assert set(exported['model']['modules']) == {'student','media'}
     assert 'assets' not in exported['model']['parameters']
+    family = exported['model']['metadata']['family']
+    output_kind, shape, decoded_shape, prompt = _portable_case(family)
     from distillschedule.data.export_inputs import SCHEMA
     source = dict(schema_version=SCHEMA, weights=str(folder/'export'), mode='prompts',
-                  records=[dict(id='new-replica-prompt', prompt='a blue boat on a lake',
-                                                     latent_shape=[1,4,4,4])])
+                  records=[dict(id='new-replica-prompt', prompt=prompt, latent_shape=shape)])
     _write(folder/'new-prompt.json', source)
     _single_cli(folder, 'prepare-new-prompt', 'data','prepare',folder/'new-prompt.json','--output',folder/'new-prepared',
         '--preparer','distillschedule.data.export_inputs:prepare_inputs')
@@ -285,9 +307,16 @@ def portable_output(config_path, root, mode):
     inference['model'] = {key: inference['model'][key] for key in ('factory','parameters')}
     _write(folder/'inference.json', inference)
     result = _single_cli(folder, 'generate-new-prompt', 'generate',folder/'inference.json','--weights',folder/'export',
-        '--prepared',prepared,'--output',folder/'generated','--output-kind','image')
+        '--prepared',prepared,'--output',folder/'generated','--output-kind',output_kind)
     artifact = torch.load(result['artifact'], weights_only=True, map_location='cpu')
-    assert artifact['decoded']['image'].shape == (8,8,3) and Path(result['image']['path']).is_file()
+    assert artifact['decoded'][output_kind].shape == decoded_shape
+    if output_kind == 'image':
+        assert Path(result['image']['path']).is_file()
+    else:
+        from distillschedule.data.decoding import _video
+        frames = artifact['decoded']['video']
+        assert frames.dtype == torch.uint8 and len(list(Path(result['video']['frames']).glob('*.png'))) == frames.shape[0]
+        assert torch.equal(_video(Path(result['video']['frames'])), frames), 'published RGB frames differ from native decode'
     # The selected export must carry CURRENT Student, not Teacher/base/EMA.
     from distillschedule.training.plugins import load_callable
     from distillschedule.training.inference import restore_modules
@@ -299,9 +328,19 @@ def portable_output(config_path, root, mode):
     from distillschedule.data import PreparedDataset
     from distillschedule.training.session import _generate_values
     request = load_training_config(folder/'inference.json')
-    expected = _generate_values(request, components, PreparedDataset(prepared).sample(0), {}, output_kind='image')
+    expected = _generate_values(request, components, PreparedDataset(prepared).sample(0), {}, output_kind=output_kind)
     assert equal(expected, artifact), 'fresh output must be exact current Student and owned codecs'
     return result
+
+
+def _portable_case(family):
+    """Explicit tiny-fixture geometries, not production family dispatch."""
+    if family == 'wan22-ti2v5b-t2v':
+        return 'video', [1,4,2,2,2], (5,32,32,3), 'a little dog rests by a river'
+    if family == 'hunyuan15-t2v':
+        return 'video', [1,4,2,4,4], (5,16,16,3), 'a sign says "新的文字" beside a river'
+    assert family in ('flux2-klein-base', 'qwen-image')
+    return 'image', [1,4,4,4], (8,8,3), 'a blue boat on a lake'
 
 
 def request(config_path, output, device, mode='reference'):
