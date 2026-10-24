@@ -100,7 +100,7 @@ class WanBundleLifecycle:
                         'stream static parameter/buffer storage changed', path='wan.bundle.stream')
 
     def begin(self, *, task, trace, document, index):
-        from distillschedule.runtime.fsdp2_p0 import expected_trace_rollout_call_inventory
+        from distillschedule.strategies.wan_trace import expected_rank_rollout_inventory
         from distillschedule.strategies.wan_planning import source_fingerprint
         require(self.active is None and source_fingerprint() == self.source_fingerprint
                 and fingerprint(dict(source=self.source_fingerprint, bundle=self.bundle.source_identity())) == self.source,
@@ -113,8 +113,8 @@ class WanBundleLifecycle:
         self.bundle.validate_versions(before)
         require(before['critic'] == task.first_step and trace.bundle_hash == document['cohorts'][index]['trace_hash'],
                 'stream clock/trace does not match next input cohort', path='wan.bundle.stream')
-        inventories = [expected_trace_rollout_call_inventory(trace.rank_control_validation,
-            operation=f'step/{step}/critic/rollout', expected_rank_count=16) for step in task.source_steps]
+        inventories = [expected_rank_rollout_inventory(trace,
+            operation=f'step/{step}/critic/rollout', rank=self.session.rank) for step in task.source_steps]
         g, c = self.rollout.receipt, self.critic.receipt
         self.active = dict(cohort_index=index, stream_sha256=document['stream_sha256'], trace_hash=trace.bundle_hash,
             before=before, source_steps=list(task.source_steps), inventories=inventories,

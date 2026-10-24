@@ -55,8 +55,9 @@ def validate_build(strategy, build, *, executed=False, cycles=0):
             'actual_compute_observed':executed, 'candidate_bundle_effects': bundle_effects}
 
 
-def validate_cycle(task, trace, result):
-    from distillschedule.runtime.fsdp2_p0 import expected_trace_rollout_call_inventory,validate_exact_rollout_call_inventory
+def validate_cycle(task, trace, result, *, rank=None):
+    from distillschedule.runtime.fsdp2_p0 import validate_exact_rollout_call_inventory
+    from .wan_trace import expected_rank_rollout_inventory
     g = result['generator'];rollouts = result['rollouts'];critics = result['critic']
     require(len(rollouts)==len(critics)==task.fake_updates
             and all(int(r.get('batch_size',1))==1 for r in rollouts),
@@ -68,8 +69,7 @@ def validate_cycle(task, trace, result):
     normalized=[]
     for key,row in zip(keys,[g['rollout'],*rollouts],strict=True):
         actual=validate_exact_rollout_call_inventory(row,label=key)
-        expected=expected_trace_rollout_call_inventory(trace.rank_control_validation,
-                                                        operation=key,expected_rank_count=16)
+        expected=expected_rank_rollout_inventory(trace, operation=key, rank=rank)
         require(actual==expected,'executed sampler differs from current trace',path='wan.census')
         normalized.append(actual)
     return {'status':'PASS_TRACE_DERIVED_CALL_CENSUS','operations':keys,'inventories':normalized,

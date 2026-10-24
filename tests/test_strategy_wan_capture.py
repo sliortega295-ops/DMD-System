@@ -30,11 +30,11 @@ def native():
     return native_primitives()
 
 
-def make_sources(tmp_path, task):
+def make_sources(tmp_path, task, *, zero=False):
     paths = []
     for rank in range(16):
         path = tmp_path / f'feature-{rank}.pt'
-        torch.save({'vae_latent': torch.ones((50, *task.latent_shape[1:]))*(rank+1)/32,
+        torch.save({'vae_latent': torch.ones((50, *task.latent_shape[1:]))*(0 if zero else (rank+1)/32),
                     'prompt_embed': torch.ones(2, 4096), 'attention_mask': torch.tensor([1, 0])}, path)
         paths.append(str(path))
     return WanInputSources(tuple(paths), seed=17)
@@ -49,18 +49,22 @@ def config_file(tmp_path):
     return path
 
 
-@pytest.mark.parametrize('updates,width,frames,horizons', [(1,64,5,(1,2,3)),(2,128,9,(2,2,2))])
-def test_native_capture_new_cohort_replays_original_schedule(tmp_path, native, updates, width, frames, horizons):
+@pytest.mark.parametrize('updates,width,frames,horizons,native_history', [
+    (1,64,5,(1,2,3),False),(2,128,9,(2,2,2),False),(1,64,5,(2,2,2),True)])
+def test_native_capture_new_cohort_replays_original_schedule(tmp_path, native, updates, width, frames, horizons, native_history):
     from distillschedule.strategies.wan_capture import capture
-    from distillschedule.strategies.wan_trace import load_original_trace
+    from distillschedule.strategies.wan_trace import load_original_trace, expected_rank_rollout_inventory, validate_loaded_history
     task = OriginalWanTask(video_height=64, video_width=width, video_frames=frames,
                            fake_updates=updates, first_step=2*updates, stage2_inference_steps=horizons)
-    source = make_sources(tmp_path, task)
+    if native_history:
+        task = replace(task, stage_schedule_policy='source_native_amplified_v1')
+    source = make_sources(tmp_path, task, zero=native_history)
     report = capture(task, source, config_file(tmp_path), tmp_path/'capture')
     trace = load_original_trace(task, report['trace_bundle'], expected_hash=report['expected_trace_hash'])
     assert trace.logical_steps == task.source_steps
-    assert report['rank_validation']['cross_rank_call_count_parity']
+    assert report['rank_validation']['cross_rank_call_count_parity'] is not native_history
     loaded = trace._load(0)
+    validate_loaded_history(task, loaded)
     assert loaded.tensor('sample/0/primary/target').shape == task.latent_shape[1:]
     prefixes = [f'step/{task.first_step}/generator', f'step/{task.first_step}/critic']
     for prefix in prefixes:
@@ -86,6 +90,12 @@ def test_native_capture_new_cohort_replays_original_schedule(tmp_path, native, u
         expected = [(stage['latent_shape'], [t]) for stage in loaded.operation(prefix+'/rollout')['control']['pyramid_stage_call_sequence']
                     for t in stage['timestep']]
         assert calls == expected
+        census = expected_rank_rollout_inventory(trace, operation=prefix+'/rollout', rank=0)
+        assert census['call_count'] == len(calls) and census['dummy_call_count'] == 0
+        if native_history:
+            control = loaded.operation(prefix+'/rollout')['control']
+            assert control['all_history_zero'] and all(s['denoising_step_budget'] == 4
+                for s in control['pyramid_stage_call_sequence'])
     assert report['gpu_execution'] == 'NOT_RUN' and not report['claimable_speedup']
     with pytest.raises(FileExistsError):
         capture(task, source, config_file(tmp_path), tmp_path/'capture')

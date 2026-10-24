@@ -14,6 +14,7 @@ from distillschedule.workloads.best_known.registry import fingerprint
 
 SCHEMA = "distillschedule.original_wan_task.v1"
 TRACE_KEY = "distillschedule_original_wan_task"
+NATIVE_HISTORY_POLICY = "source_native_amplified_v1"
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,7 @@ class OriginalWanTask:
                     f"{name} must be a positive integer", path=path)
         require(self.world_size == 16 and self.physical_batch == 1,
                 "existing native engine supports world16/B1 only", path=path)
-        require(self.stage_schedule_policy in ("source_normal_only", "benchmark_v4_strict_global"),
+        require(self.stage_schedule_policy in ("source_normal_only", "benchmark_v4_strict_global", NATIVE_HISTORY_POLICY),
                 "unsupported stage schedule policy", path=path)
         require(self.video_height % 64 == self.video_width % 64 == 0
                 and (self.video_frames - 1) % 4 == 0,

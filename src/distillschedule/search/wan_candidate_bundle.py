@@ -94,9 +94,11 @@ class WanCandidateBundle:
 
     def validate_task(self, task):
         if self.enabled:
-            from distillschedule.strategies.wan_task import OriginalWanTask
+            from distillschedule.strategies.wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
             if self.continuous:
-                require(isinstance(task, OriginalWanTask) and replace(task, first_step=10) == OriginalWanTask(),
+                require(isinstance(task, OriginalWanTask)
+                        and task.stage_schedule_policy in ('source_normal_only', NATIVE_HISTORY_POLICY)
+                        and replace(task, first_step=10, stage_schedule_policy='source_normal_only') == OriginalWanTask(),
                         'stream bundle requires original geometry/precision/G1C5EMA protocol')
                 return
             require(isinstance(task, OriginalWanTask) and task == OriginalWanTask(),

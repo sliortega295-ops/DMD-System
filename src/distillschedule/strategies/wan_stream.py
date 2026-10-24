@@ -13,7 +13,7 @@ from pathlib import Path
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, write_new_json
 from .wan_inputs import WanInputSources
-from .wan_task import OriginalWanTask
+from .wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
 
 SCHEMA = 'distillschedule.original_wan_cohort_stream.v1'
 
@@ -154,7 +154,7 @@ def order_for_cohort(selected_order, task):
 
 def bind_cohort(session, base_task, document, index, selected_order):
     """Called only between completed cycles; never constructs or resets engines."""
-    from .wan_trace import load_original_trace
+    from .wan_trace import load_original_trace, validate_loaded_history
     require(not session.finite, 'unconsumed backward/finite state at cohort switch', path='wan.stream')
     previous = getattr(session, '_stream_binding', None)
     require((previous is None and index == 0 and session.task == base_task) or
@@ -164,6 +164,8 @@ def bind_cohort(session, base_task, document, index, selected_order):
     entry = document['cohorts'][index]; current = task_at(base_task, index)
     require(entry['task'] == current.to_dict(), 'stream task changed', path='wan.stream')
     trace = load_original_trace(current, entry['trace_bundle'], expected_hash=entry['trace_hash'])
+    if current.stage_schedule_policy == NATIVE_HISTORY_POLICY:
+        validate_loaded_history(current, trace._load(session.rank))
     session.strategy.validate_for(current)
     lifecycle = getattr(session, 'bundle_lifecycle', None)
     if lifecycle is not None:

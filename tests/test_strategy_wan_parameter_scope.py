@@ -50,3 +50,42 @@ def test_native_schedule_replay_budget_matches_all_zero_history(native):
     assert zero['all_history_zero'] is True
     assert zero['stage_schedule_policy'] == 'benchmark_v4_strict_global'
     assert 'local_exception_seed' not in zero
+
+
+def test_native_amplified_scope_preserves_rank_local_rng_and_doubled_budget(native):
+    import torch
+    from distillschedule.strategies.wan_capture import input_stream, stage_control
+    task = OriginalWanTask(stage_schedule_policy='source_native_amplified_v1')
+    initial = torch.get_rng_state().clone()
+    rows = [stage_control(native, task, 42, 0, 10, 'critic', rank=r,
+                          all_history_zero=True) for r in range(16)]
+    assert torch.equal(initial, torch.get_rng_state())
+    assert len({tuple(r['initial_synchronized_pyramid_stage_exit']) for r in rows}) == 1
+    assert len({tuple(s['denoising_exit'] for s in r['pyramid_stage_call_sequence']) for r in rows}) > 1
+    for rank, control in enumerate(rows):
+        with input_stream(42, 0, rank, 10, 'critic', 'rank-local-amplified-exits'):
+            expected = [native.post.generate_and_sync_flag(
+                SimpleNamespace(device='cpu', is_main_process=rank == 0),
+                2*h, last_step_only=False, is_sync=False) for h in task.stage2_inference_steps]
+        assert [s['denoising_exit'] for s in control['pyramid_stage_call_sequence']] == expected
+        assert [s['denoising_step_budget'] for s in control['pyramid_stage_call_sequence']] == [4]*3
+        assert control['rank'] == rank and control['call_count'] == sum(x+1 for x in expected)
+    normal = stage_control(native, task, 42, 0, 10, 'critic', rank=9, all_history_zero=False)
+    assert [s['denoising_exit'] for s in normal['pyramid_stage_call_sequence']] == normal['initial_synchronized_pyramid_stage_exit']
+    assert [s['denoising_step_budget'] for s in normal['pyramid_stage_call_sequence']] == [2]*3
+    with pytest.raises(ValueError, match='rank'):
+        stage_control(native, task, 42, 0, 10, 'critic', all_history_zero=True)
+
+
+def test_native_amplified_scope_is_explicit_resident_only():
+    from distillschedule.strategies.wan_strategy import WanStrategy
+    from distillschedule.search.wan_candidate_bundle import STREAM_INCUMBENT, INCUMBENT
+    task = OriginalWanTask(stage_schedule_policy='source_native_amplified_v1')
+    assert OriginalWanTask.from_dict(task.to_dict()) == task
+    assert task.digest != OriginalWanTask().digest
+    WanStrategy('resident', 2048, True, 5, STREAM_INCUMBENT).validate_for(task)
+    WanStrategy('resident', 512, False).validate_for(task)
+    with pytest.raises(ValueError, match='Resident'):
+        WanStrategy('fsdp', 512, False).validate_for(task)
+    with pytest.raises(ValueError, match='exact original'):
+        INCUMBENT.validate_task(task)

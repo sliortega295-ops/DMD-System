@@ -6,7 +6,7 @@ import os
 from typing import Mapping
 from distillschedule.core.contracts import require
 from distillschedule.search.wan_implementation import WanImplementation, PRECISION
-from .wan_task import OriginalWanTask
+from .wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
 from distillschedule.search.wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT
 from distillschedule.workloads.best_known.registry import fingerprint
 
@@ -126,6 +126,9 @@ class WanStrategy:
         self.candidate_bundle.validate_task(task)
         require(isinstance(task,OriginalWanTask) and self.rollout_window <= task.fake_updates,
                 'window exceeds actual update count', path='wan.strategy')
+        require(task.stage_schedule_policy != NATIVE_HISTORY_POLICY or self.placement == 'resident',
+                'rank-local amplified calls require Resident forward without parameter collectives; '
+                'FSDP alignment is not implemented', path='wan.strategy')
 
     def environment(self):
         return {**self.backend.environment(),
@@ -146,7 +149,7 @@ class WanStrategy:
 def implementations(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False,
                     critic_retention_available: bool = False):
     require(type(triton_available) is bool,'explicit capability required',path='wan.strategy')
-    result=[WanStrategy('fsdp',512,False)]
+    result=[] if task.stage_schedule_policy == NATIVE_HISTORY_POLICY else [WanStrategy('fsdp',512,False)]
     for chunk in (512,1024,2048):
         for fused in ((False,True) if triton_available else (False,)):
             result.append(WanStrategy('resident',chunk,fused))

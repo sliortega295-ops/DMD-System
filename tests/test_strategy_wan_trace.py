@@ -57,3 +57,74 @@ def test_bad_controls_rejected(mutation):
     if mutation=='missing_task':m['contract'].pop(TRACE_KEY)
     if mutation=='horizon':op['pyramid_stage_call_sequence'][0]['call_count']=3
     with pytest.raises(ValueError):validate_rank_controls(task,rows)
+
+
+def native_controls(task):
+    rows = controls(task)
+    for rank, trace in rows.items():
+        for op in trace.manifest['operations']:
+            if not op['key'].endswith('/rollout'):
+                continue
+            c = op['control']
+            zero = rank % 2 == 0
+            c.update(stage_schedule_policy=task.stage_schedule_policy, rank=rank,
+                     stage_schedule_scope='native_rank0_initial_with_rank_local_amplified', all_history_zero=zero)
+            for stage, s in enumerate(c['pyramid_stage_call_sequence']):
+                calls = (rank+stage) % 4+1 if zero else 1
+                s.update(denoising_step_budget=4 if zero else 2, call_count=calls,
+                         denoising_exit=calls-1, timestep=[1000-i for i in range(calls)])
+            c['call_count'] = sum(s['call_count'] for s in c['pyramid_stage_call_sequence'])
+    return rows
+
+
+def test_native_history_rank_census_not_padding_or_cross_rank_equality():
+    from distillschedule.strategies.wan_trace import expected_rank_rollout_inventory
+    task = OriginalWanTask(stage_schedule_policy='source_native_amplified_v1')
+    rows = native_controls(task)
+    checked = validate_rank_controls(task, rows)
+    assert checked['status'] == 'PASS' and not checked['cross_rank_call_count_parity']
+    assert checked['local_exception_entry_count'] == 8*6
+    trace = NS(rank_control_validation=checked)
+    key = 'step/10/generator/rollout'
+    for rank in range(16):
+        census = expected_rank_rollout_inventory(trace, operation=key, rank=rank)
+        c = rows[rank].operation(key)['control']
+        assert census['call_count'] == census['logical_call_count'] == c['call_count']
+        assert census['dummy_call_count'] == 0
+        assert list(census['stage_call_count'].values()) == [s['call_count'] for s in c['pyramid_stage_call_sequence']]
+    with pytest.raises(ValueError, match='executing rank'):
+        expected_rank_rollout_inventory(trace, operation=key)
+
+
+@pytest.mark.parametrize('mutation', ['missing_rank', 'rank_identity', 'scope', 'initial', 'budget',
+    'normal_exit', 'exit_count', 'timestep_count', 'timestep_nan', 'total', 'order', 'predicate'])
+def test_native_history_invalid_controls_fail_closed(mutation):
+    task = OriginalWanTask(stage_schedule_policy='source_native_amplified_v1')
+    rows = native_controls(task)
+    c = rows[1].operation('step/10/generator/rollout')['control']
+    if mutation == 'missing_rank': rows.pop(15)
+    if mutation == 'rank_identity': c['rank'] = 0
+    if mutation == 'scope': c['stage_schedule_scope'] = 'global_rank0_broadcast_equivalent'
+    if mutation == 'initial': c['initial_synchronized_pyramid_stage_exit'] = [1,0,0]
+    if mutation == 'budget': c['pyramid_stage_call_sequence'][0]['denoising_step_budget'] = 4
+    if mutation == 'normal_exit':
+        c['pyramid_stage_call_sequence'][0].update(denoising_exit=1,call_count=2,timestep=[1000,900]); c['call_count']=4
+    if mutation == 'exit_count': c['pyramid_stage_call_sequence'][0]['denoising_exit'] = 1
+    if mutation == 'timestep_count': c['pyramid_stage_call_sequence'][0]['timestep'] = []
+    if mutation == 'timestep_nan': c['pyramid_stage_call_sequence'][0]['timestep'] = [float('nan')]
+    if mutation == 'total': c['call_count'] = 4
+    if mutation == 'order': c['pyramid_stage_call_sequence'].reverse()
+    if mutation == 'predicate': c['all_history_zero'] = 0
+    with pytest.raises(ValueError): validate_rank_controls(task,rows)
+
+
+def test_native_history_payload_predicate_is_verified():
+    import torch
+    from distillschedule.strategies.wan_trace import validate_loaded_history
+    task = OriginalWanTask(stage_schedule_policy='source_native_amplified_v1')
+    value = torch.zeros(1)
+    loaded = NS(tensor=lambda key:value,operation=lambda key:dict(control=dict(all_history_zero=True)))
+    validate_loaded_history(task,loaded)
+    value.fill_(1)
+    with pytest.raises(ValueError,match='payload'):
+        validate_loaded_history(task,loaded)

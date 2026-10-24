@@ -61,6 +61,36 @@ trainable/Adam/EMA evidence. Comparisons reject different stream identities.
 CPU tests execute real Adam/autograd on explicitly small scalar helper fixtures
 through the original dispatcher and show parity across legal window orders.
 They are NOT original-Wan model quality, CUDA/FSDP correctness, full GPU capacity
-or throughput evidence. The full 16-GPU path still needs validation. This does
-not support mid-run geometry changes, automatic checkpoint recovery, GAN, the
-upstream rank-local amplified-history branch, or other model protocols.
+or throughput evidence. The full 16-GPU stream/restart path requires its own
+execution receipt. This does not support mid-run geometry changes, automatic
+checkpoint recovery, GAN, or other model protocols.
+
+## Native zero-history branch (explicit Resident scope)
+
+Set `stage_schedule_policy: source_native_amplified_v1` in a **new task** when
+preparing fresh cohorts that can contain zero history. The existing default
+`source_normal_only` and immutable benchmark traces are unchanged. Neither
+history dropout nor seeds are altered to avoid this branch.
+
+The new policy preserves the original three synchronized initial exit draws.
+For a rank whose three history sums are all zero, the original scheduler uses
+twice the stage horizon and replaces the initial exits with rank-local native
+draws. Other ranks retain their initial exits. Capture records both decisions,
+the actual rank, doubled budgets, and actual call counts; the worker checks the
+predicate against the payload and validates each rank's own executed census.
+There are no padded or discarded model calls. Capture uses reproducible isolated
+CPU input streams, **not** the RNG continuation of an earlier upstream run.
+
+This scope requires Resident forward execution without parameter collectives.
+FSDP is explicitly rejected: native rank-local exit counts can differ and its
+forward all-gathers do not yet have a collective-alignment implementation.
+The stream-capable `wan_ar.incumbent21a_stream.v2` preset accepts this policy at
+its original geometry. Graph limits, parameter/input version checks, optimizer,
+EMA and capacity admission are not relaxed. Fixed-trace v1 is not relabeled.
+
+Use the public `distillctl train` entry with `data.input_kind` set to
+`original_wan_cohort_stream.v1`, `data.prepared` pointing to `stream.json`, and
+an explicit checkpoint interval. Only complete-cycle, same-source, same-stream,
+same-topology checkpoints can resume; transient graphs are rebuilt. CPU capture
+and replay tests establish branch/census behavior, not model quality or GPU
+restart equivalence.

@@ -18,7 +18,7 @@ import time
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, repository_root
-from .wan_task import OriginalWanTask
+from .wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
 from .wan_strategy import WanStrategy, strategy_environment
 from .wan_bridge import load_original_backend, OriginalWanSession
 from .wan_calibration import OriginalWanCalibrator, trace_work
@@ -110,7 +110,7 @@ def load_assets(task, spec, *, rank):
     """Validate source assets before constructing the large model."""
     from distillschedule.runtime.wan13b_upper_bound import Wan13BBootstrap
     from runtime.gst_pool_contract import NegativePromptAsset
-    from .wan_trace import load_original_trace
+    from .wan_trace import load_original_trace, validate_loaded_history
     bootstrap = Wan13BBootstrap.load(spec.bootstrap, expected_hash=spec.expected_bootstrap_hash,
                                     expected_lora_rank=task.lora_rank, verify_payloads=True)
     require(Path(bootstrap.manifest['model_root']).resolve() == Path(spec.model_root).resolve(),
@@ -122,6 +122,8 @@ def load_assets(task, spec, *, rank):
     model_files = [model_dir / 'config.json', *weights, *sorted(model_dir.glob('*.index.json'))]
     model_identity = {p.name: file_sha256(p) for p in model_files}
     trace = load_original_trace(task, spec.trace_bundle, expected_hash=spec.expected_trace_hash)
+    if task.stage_schedule_policy == NATIVE_HISTORY_POLICY:
+        validate_loaded_history(task, trace._load(rank))
     negative = NegativePromptAsset.load(spec.negative_prompt)
     identity = {'model_files': model_identity, 'bootstrap_hash': bootstrap.manifest_hash,
                 'trace_bundle_hash': trace.bundle_hash, 'trace_binding_hash': trace.binding_hash,
@@ -478,7 +480,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             result = execute_cycles(session, cycles=cycles, mode='run' if mode == 'manual' else mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
                 before_cycle=before_cycle, progress=progress,
-                validate_result=lambda raw: validate_cycle(session.task, session.trace, raw),
+                validate_result=lambda raw: validate_cycle(session.task, session.trace, raw, rank=rank),
                 start_cycle=start_cycle, after_cycle=after_cycle)
             receipt.update(result)
             # Host metadata after both native timers, before CPU state export.
