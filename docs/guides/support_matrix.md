@@ -187,8 +187,12 @@ replication**, reference or exact manual immutable sharing. The
 contains actual native Gloo2 and A100 NCCL2 evidence: an independent three-cycle
 gradient-mean oracle, full-rank fresh-process recovery, current-Student export
 and new-prompt PNG output. This is not FSDP/DDP-forward wrapping, AMP, CUDA
-planning or pretrained-capacity/quality evidence. World16 remains a separate
-pending acceptance. The additional-model rows above describe single-device
+planning or pretrained-capacity/quality evidence. A
+[separate world16 follow-up](../../artifacts/framework/20261025/native_flow_image_world16_acceptance.json)
+now verifies both image families on two A100 nodes: 16/16 independent-B1 oracle
+ranks, all-rank full-state new-process restart, and exact reference/manual state
+across three cycles. New-prompt decoded output is checked CPU-side from the
+current Student export. The additional-model rows above describe single-device
 evidence; this paragraph is the explicitly qualified replication exception for
 the two image families, not the other model families.
 

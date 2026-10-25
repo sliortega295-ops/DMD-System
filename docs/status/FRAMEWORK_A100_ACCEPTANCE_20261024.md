@@ -384,8 +384,34 @@ patch `4f90b9af2a4a6dd7c273a69c7ec02c60f23225d39590ce0fe1e07320038cb076`.
   confirmed no compute processes and no new cgroup OOM events. Peak sampled
   driver allocation was 1236 MiB on each active GPU, not pretrained capacity.
 
-An actual two-node/world16 continuation is a separate pending acceptance, not
-implied by NCCL2. Replication does not shard model memory; all roles still
+The original receipt did not establish world16; its separate follow-up is
+recorded below. Replication does not shard model memory; all roles still
 materialize before immutable sharing. AMP, CUDA trial planning, pretrained
 capacity/quality and performance remain NOT_RUN. This is a bounded U2/U3
 delivery, not completion of the mature-framework plan.
+
+### Two-node world16 follow-up — 2026-10-25 UTC
+
+[Separate portable receipt](../../artifacts/framework/20261025/native_flow_image_world16_acceptance.json),
+run `r12-native-flow-world16-r4`, source manifest
+`3b678d32d318019cffcc48a3f84ced26e68934489fc35a4e1c4c0736a9fb190f`.
+
+- Both actual tiny image families completed the native oracle on **16/16 ranks**,
+  with three continuous cycles, independent B1 samples/RNG, mean gradients before
+  clipping/Adam, and nonzero later Student gradients. Reference and manual
+  immutable-sharing state match exactly on every rank.
+- Both policies also completed public CLI partial training, fresh-process
+  continuation, and uninterrupted control. All 16 checkpoint shards match in
+  model/optimizer state, RNG, sample cursor and versions. Each uninterrupted run
+  consumes 48 distinct records and performs G3/F15 per process.
+- Current-Student exports decode a new prompt into an image through the native
+  components. This final portable-output check runs on **CPU**, not CUDA.
+- Both node owners completed cleanup; no remaining owned compute process or new
+  cgroup OOM/OOM-kill was observed. The earlier shared-filesystem visibility and
+  manifest-durability failures remain archived. The repair bounds metadata waits
+  within the control-group deadline and flushes/fsyncs metadata before rename;
+  it does not retry mismatching hashes or change training mathematics.
+
+This is **SYNTHETIC_TEST_ONLY** actual-class FP32 replica lifecycle acceptance.
+It is not pretrained capacity, convergence, image quality, AMP, FSDP, CUDA
+planning, or a speedup claim. Those gates and the overall framework remain open.
