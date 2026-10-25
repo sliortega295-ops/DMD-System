@@ -67,6 +67,11 @@ class ExecutionBackend:
         from .torch_backend import Session
         return Session(self.workload,implementation,copy_state=copy_state,persistent=persistent)
 
+    def resident_trial(self, budget):
+        """Explicit private CPU trial opt-in; public clone policy is unchanged."""
+        from .resident_trial import ResidentTrial
+        return ResidentTrial(self, budget)
+
     def graph(self, implementation):
         if not self.distributed: return self.workload.program.compile()
         from .replica_contract import execution_graph

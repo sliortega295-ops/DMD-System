@@ -102,6 +102,45 @@ class DMD2Owner:
         require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
                 and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
 
+    def _resident_trial_adapter(self):
+        """Explicit zero-copy CPU trial inventory, separate from checkpoint load."""
+        from distillschedule.open_workload.resident_trial import (
+            ResidentOwner, native_state_view, adam_growth, physical_attributes)
+        plain = self._plain_tensors()
+        modules = tuple(self.model.modules())
+        return ResidentOwner(self.model, self.optimizers,
+            dict(native_state_view(self.model, self.optimizers), plain=plain,
+                native_step=self.native_step, generator_updates=self.generator_updates,
+                guidance_updates=self.guidance_updates, rng=self._rng,
+                schedulers={name: scheduler.state_dict() for name, scheduler in self.schedulers.items()}),
+            aliases=dict(args=id(self.args), source=id(self.source),
+                scheduler=id(self.model.noise_scheduler), guidance_scheduler=id(self.model.guidance_model.scheduler),
+                schedulers={name: (id(value), id(value.optimizer)) for name, value in self.schedulers.items()},
+                plain={name: (id(t), t.untyped_storage().data_ptr()) for name, t in plain.items()}),
+            identity=dict(identity=self.identity, settings=vars(self.args), source=self.source.identity),
+            growth_bytes=adam_growth(self.optimizers), output_bytes=0,
+            max_new_tensor_bytes=max(p.numel() * p.element_size() for p in self.model.parameters()),
+            physical=physical_attributes(modules, (
+                'gradient_checkpointing', '_gradient_checkpointing_func', 'enable_gradient_checkpointing')))
+
+    def _resident_trial_cleanup(self):
+        for parameter in self.model.parameters():
+            parameter.grad = None
+
+    def _resident_trial_restore(self, state, retained):
+        from distillschedule.open_workload.resident_trial import restore_native_state
+        restore_native_state(self.model, self.optimizers, state)
+        self.native_step = state['native_step']
+        self.generator_updates, self.guidance_updates = state['generator_updates'], state['guidance_updates']
+        self._rng = state['rng']
+        for name, scheduler in self.schedulers.items():
+            # Native schedulers hold scalar metadata, not another optimizer.
+            scheduler.load_state_dict(state['schedulers'][name])
+
+    def _resident_trial_validate(self):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
+        self._validate_live()
+
     @contextmanager
     def random_scope(self):
         """Restore the native stream inside (not from) Program's random scope."""
@@ -364,6 +403,7 @@ class DMD2Owner:
                              images=name == 'real' or (name == 'denoising' and not self.args.backward_simulation))
 
     def run(self, feeds, *, cycle):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
         require(type(cycle) is int and cycle == self.cycle, 'native macrocycle reordered')
         self.validate_feeds(feeds)
@@ -442,6 +482,7 @@ class DMD2Owner:
         return result
 
     def state_dict(self):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
         return dict(schema_version=SCHEMA, identity=deepcopy(self.identity), native_step=self.native_step,
             generator_updates=self.generator_updates, guidance_updates=self.guidance_updates,

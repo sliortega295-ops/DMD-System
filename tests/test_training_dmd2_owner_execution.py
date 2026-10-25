@@ -233,3 +233,65 @@ def test_native_measured_auto_and_saved_plan_bind_same_real_option(native_assets
           manual='PASS', auto='PASS', saved_plan='PASS', stale_provider='REJECTED_BEFORE_EXECUTION',
           baseline_tracked_bytes=baseline_bytes, optimized_tracked_bytes=optimized_bytes,
           capacity_limit=limit, measurements='CPU_TRACKED_STORAGE_DIAGNOSTIC_ONLY', gpu='NOT_RUN'), sort_keys=True))
+
+
+def resident_budget():
+    from distillschedule.open_workload.resident_trial import TrialBudget
+    return TrialBudget(host_limit_bytes=2**31, snapshot_limit_bytes=2**29,
+        result_limit_bytes=2**29, scratch_bytes=2**29, reserve_bytes=2**26)
+
+
+@pytest.mark.parametrize('warmed', [False, True])
+def test_resident_native_partial_commit_rolls_back_without_checkpoint_load(native_assets, monkeypatch, warmed):
+    """Actual native math; a partial G commit is not a checkpoint boundary."""
+    from distillschedule.open_workload.execution import ExecutionBackend
+    _, components, feeds = model_and_feeds(native_assets)
+    owner = components.state['native_cycle']
+    if warmed:
+        owner.run(feeds, cycle=0)
+    cycle = owner.cycle
+    workload = build_dmd2(components, feeds, {}, cycle, 17)
+    before = signature(owner); plain = signature(owner._plain_tensors()); flags = physical(owner)
+    outer = signature(rng_state(device='cpu'))
+    objects = [id(owner.model), *map(id, owner.model.parameters()), *map(id, owner.optimizers.values())]
+    moments = [t.data_ptr() for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    def forbidden(*args, **kwargs):
+        raise AssertionError('resident rollback must not deepcopy/load another model or optimizer')
+    monkeypatch.setattr(type(owner), '__deepcopy__', forbidden)
+    monkeypatch.setattr(owner, 'load_state_dict', forbidden)
+    for optimizer in owner.optimizers.values(): monkeypatch.setattr(optimizer, 'load_state_dict', forbidden)
+    with pytest.raises(RuntimeError, match='partial native generator commit'):
+        with ExecutionBackend(workload).resident_trial(resident_budget()) as trial:
+            trial.reference()
+            def fail(event, value):
+                if event == 'generator_committed':
+                    raise RuntimeError('partial native generator commit')
+            owner.observer = fail
+            trial.candidate(option())
+    owner.observer = None
+    assert signature(owner) == before and signature(owner._plain_tensors()) == plain and physical(owner) == flags
+    assert signature(rng_state(device='cpu')) == outer
+    assert objects == [id(owner.model), *map(id, owner.model.parameters()), *map(id, owner.optimizers.values())]
+    assert moments == [t.data_ptr() for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    # Reference/selected really execute the existing Session on this same owner.
+    with ExecutionBackend(workload).resident_trial(resident_budget()) as trial:
+        trial.reference()
+        session, outputs, gate, native = trial.candidate(option(), persistent=True)
+        assert gate['status'] == 'PASS' and native[0]['active'] and session.state['native_cycle'] is owner
+        trial.accept()
+    assert owner.cycle == cycle + 1 and trial.receipt['adopted']
+    if not warmed:
+        session.bind_cycle(next_cycle(workload, session, cycle + 1)); session.run()
+        assert owner.cycle == cycle + 2
+
+
+@pytest.mark.parametrize('marker', ['', None, False, True])
+def test_review_r2_dmd2_poison_guard_precedes_native_access(marker, monkeypatch):
+    """Guard-only CPU proof, not native math qualification or a model fixture."""
+    from distillschedule.training.dmd2_owner import DMD2Owner
+    owner = DMD2Owner.__new__(DMD2Owner)
+    owner._resident_trial_poisoned = marker
+    def forbidden(): raise AssertionError('poisoned owner reached native validation')
+    monkeypatch.setattr(owner, '_validate_live', forbidden)
+    for action in (lambda: owner.run({}, cycle=0), owner.state_dict, owner._resident_trial_validate):
+        with pytest.raises(ValueError, match='poisoned'): action()

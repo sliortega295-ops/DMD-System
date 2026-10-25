@@ -313,3 +313,61 @@ def test_measured_calibration_auto_saved_plan_and_drift(checkpoint_assets, tmp_p
     print('SELF_FORCING_CHECKPOINT_PLANNING ' + json.dumps(dict(candidates=2,
         selected=selected, auto_selected=policies[2].bound['implementation'], saved_plan='PASS',
         state_rng_data_unchanged=True, stale_provider='REJECTED', measurements='CPU_DIAGNOSTIC_ONLY', gpu='NOT_RUN')))
+
+
+@pytest.mark.parametrize('warmed', [False, True])
+def test_resident_native_partial_cycle_restores_adam_ema_cache_rng(checkpoint_assets, monkeypatch, warmed):
+    """Actual native G1/C5 plus lazy native EMA; no substitute training math."""
+    from distillschedule.open_workload.execution import ExecutionBackend
+    from test_training_dmd2_owner_execution import resident_budget
+    _, components, data = model_and_data(checkpoint_assets)
+    owner = components.state['native_cycle']
+    if warmed:
+        owner.run(data.cycle_sample(0), cycle=0)
+    cycle = owner.cycle; feeds = data.cycle_sample(cycle)
+    workload = build_self_forcing(components, feeds, {}, cycle, 17)
+    before = signature(owner); flags = physical(owner); outer = signature(rng_state(device='cpu'))
+    ema = owner.generator_ema
+    objects = [id(owner.model), *map(id, owner.model.parameters()), *map(id, owner.optimizers.values())]
+    moments = [t.data_ptr() for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    def forbidden(*args, **kwargs):
+        raise AssertionError('resident rollback must not deepcopy/load another model or optimizer')
+    monkeypatch.setattr(type(owner), '__deepcopy__', forbidden)
+    monkeypatch.setattr(owner, 'load_state_dict', forbidden)
+    for optimizer in owner.optimizers.values(): monkeypatch.setattr(optimizer, 'load_state_dict', forbidden)
+    with pytest.raises(KeyboardInterrupt, match='partial native critic cycle'):
+        with ExecutionBackend(workload).resident_trial(resident_budget()) as trial:
+            trial.reference()
+            def fail(event, value):
+                if event == 'iteration_complete' and owner.native_step == cycle * owner.ratio + 2:
+                    assert owner.model.inference_pipeline is not None
+                    raise KeyboardInterrupt('partial native critic cycle')
+            owner.observer = fail
+            trial.candidate(option())
+    owner.observer = None
+    assert signature(owner) == before and physical(owner) == flags and signature(rng_state(device='cpu')) == outer
+    assert owner.generator_ema is ema and owner.model.inference_pipeline is None
+    assert objects == [id(owner.model), *map(id, owner.model.parameters()), *map(id, owner.optimizers.values())]
+    assert moments == [t.data_ptr() for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    with ExecutionBackend(workload).resident_trial(resident_budget()) as trial:
+        trial.reference()
+        session, outputs, gate, native = trial.candidate(option(), persistent=True)
+        assert gate['status'] == 'PASS' and native[0]['active'] and session.state['native_cycle'] is owner
+        trial.accept()
+    assert owner.cycle == cycle + 1 and trial.receipt['adopted']
+    if not warmed:
+        session.bind_cycle(build_self_forcing(components, data.cycle_sample(cycle + 1), {}, cycle + 1, 17))
+        session.run()
+        assert owner.cycle == cycle + 2
+
+
+@pytest.mark.parametrize('marker', ['', None, False, True])
+def test_review_r2_self_forcing_poison_guard_precedes_native_access(marker, monkeypatch):
+    """Guard-only CPU proof, not native math qualification or a model fixture."""
+    from distillschedule.training.self_forcing_owner import SelfForcingOwner
+    owner = SelfForcingOwner.__new__(SelfForcingOwner)
+    owner._resident_trial_poisoned = marker
+    def forbidden(): raise AssertionError('poisoned owner reached native validation')
+    monkeypatch.setattr(owner, '_validate_live', forbidden)
+    for action in (lambda: owner.run({}, cycle=0), owner.state_dict, owner._resident_trial_validate):
+        with pytest.raises(ValueError, match='poisoned'): action()

@@ -151,6 +151,56 @@ class SelfForcingOwner:
         require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
                 and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
 
+    def _resident_trial_adapter(self):
+        """Full host/frozen/plain state; never execute rollout for discovery."""
+        from distillschedule.open_workload.resident_trial import (
+            ResidentOwner, native_state_view, adam_growth, physical_attributes)
+        plain = plain_tensors(self.model)
+        cache_bytes = self.args.batch_size * self.negative_embedding.numel() * self.negative_embedding.element_size()
+        ema_bytes = sum(p.numel() * p.element_size() for p in self.model.generator.parameters())
+        return ResidentOwner(self.model, self.optimizers,
+            dict(native_state_view(self.model, self.optimizers), plain=plain,
+                negative_embedding=self.negative_embedding, negative_prompt=self.config.negative_prompt,
+                unconditional_dict=self.unconditional_dict, rng=self._rng,
+                native_step=self.native_step, generator_updates=self.generator_updates,
+                critic_updates=self.critic_updates, optimizer_activity=self.optimizer_activity,
+                ema=None if self.generator_ema is None else self.generator_ema.shadow,
+                ema_initialized_step=self.ema_initialized_step, ema_updates=self.ema_updates),
+            aliases=dict(args=id(self.args), config=id(self.config), source=id(self.source),
+                scheduler=id(self.model.scheduler), generator_scheduler=id(self.model.generator.scheduler),
+                negative=id(self.negative_embedding), negative_prompt=id(self.config.negative_prompt),
+                plain={name: (id(t), t.untyped_storage().data_ptr()) for name, t in plain.items()}),
+            identity=dict(identity=self.identity, settings=vars(self.args), source=self.source.identity),
+            growth_bytes=adam_growth(self.optimizers) + cache_bytes + ema_bytes, output_bytes=0,
+            max_new_tensor_bytes=max(cache_bytes, *(p.numel() * p.element_size() for p in self.model.parameters())),
+            physical=physical_attributes(self.model.modules(), ('gradient_checkpointing',)),
+            retained={'ema': self.generator_ema})
+
+    def _resident_trial_cleanup(self):
+        # An interrupted native forward can retain the complete rollout graph.
+        self.model.inference_pipeline = None
+        self._active_fake_checkpoint = None
+        for parameter in self.model.parameters():
+            parameter.grad = None
+
+    def _resident_trial_restore(self, state, retained):
+        from distillschedule.open_workload.resident_trial import restore_native_state
+        restore_native_state(self.model, self.optimizers, state)
+        self.native_step = state['native_step']
+        self.generator_updates, self.critic_updates = state['generator_updates'], state['critic_updates']
+        self.optimizer_activity = state['optimizer_activity']
+        self.unconditional_dict, self._rng = state['unconditional_dict'], state['rng']
+        if state['ema'] is None:
+            self.generator_ema = None
+        else:
+            self.generator_ema = retained['ema']
+            self.generator_ema.shadow = state['ema']
+        self.ema_initialized_step, self.ema_updates = state['ema_initialized_step'], state['ema_updates']
+
+    def _resident_trial_validate(self):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
+        self._validate_live()
+
     def execution_options(self):
         """Pure source-bound tiny CPU capability; G policy is immutable math.
 
@@ -413,6 +463,7 @@ class SelfForcingOwner:
             self.critic_updates += 1
 
     def run(self, feeds, *, cycle):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
         require(type(cycle) is int and cycle == self.cycle, 'native macrocycle reordered')
         require(self.native_step + self.ratio <= self.args.train_iters, 'native iteration budget exhausted')
@@ -461,6 +512,7 @@ class SelfForcingOwner:
         return {'kv': pipeline.kv_cache1, 'crossattn': pipeline.crossattn_cache}
 
     def state_dict(self):
+        require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
         return dict(schema_version=SCHEMA, identity=deepcopy(self.identity), native_step=self.native_step,
             generator_updates=self.generator_updates, critic_updates=self.critic_updates,
