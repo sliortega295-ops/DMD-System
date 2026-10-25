@@ -2,10 +2,11 @@
 
 This is not checkpoint loading or a generic state_dict fallback. An explicit
 source-bound adapter describes a complete boundary and restores its native
-metadata after the common in-place tensor/Adam rollback. CPU FP32 only for now:
-CUDA requires a separately verified construction/training-peak envelope. The
-budgets cover managed state, snapshots, results and scratch, not process RSS or
-native training activations. Existing clone-based public policy is unchanged.
+metadata after the common in-place tensor/Adam rollback. CUDA is a private,
+single-device FP32 opt-in with explicit host/device allowances; it does not
+admit model construction or public CUDA planning. CPU snapshots and streamed
+comparison never create a second CUDA owner. Budgets are managed envelopes,
+not total-process RSS or a promise that an allocator/OOM is recoverable.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import inspect
 import os
 from pathlib import Path
 import traceback
+from threading import Lock
 from collections.abc import Mapping
 
 import torch
@@ -23,9 +25,12 @@ from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint, file_sha256
 
 SCHEMA = 'distillschedule.resident_trial.cpu.v1'
+CUDA_SCHEMA = 'distillschedule.resident_trial.cuda.v1'
 _METHODS = ('_resident_trial_adapter', '_resident_trial_restore',
             '_resident_trial_cleanup', '_resident_trial_validate')
 _RNG_ALLOWANCE = 65536
+_CUDA_TRIALS = {}
+_CUDA_TRIAL_LOCK = Lock()
 
 
 def _require(condition, message):
@@ -46,6 +51,25 @@ class TrialBudget:
 
 
 @dataclass(frozen=True)
+class CudaTrialBudget(TrialBudget):
+    """Caller-declared allowances, not an empirical training-capacity claim.
+
+    Device limits include the allocator's existing residency, not just this
+    owner's tensors. All growth/gradient/activation/workspace/restore allowances
+    are additive; reserve is unavailable for normal execution. Host growth
+    includes host Adam steps and native EMA, separately from serialized results.
+    """
+    device_limit_bytes: int
+    host_growth_bytes: int
+    device_state_growth_bytes: int
+    device_gradient_bytes: int
+    device_activation_bytes: int
+    device_workspace_bytes: int
+    device_restore_bytes: int
+    device_reserve_bytes: int
+
+
+@dataclass(frozen=True)
 class ResidentOwner:
     """Zero-copy inventory. Growth counts serialized copies, not unique storage."""
     model: torch.nn.Module
@@ -59,6 +83,10 @@ class ResidentOwner:
     physical: tuple = ()
     retained: dict = field(default_factory=dict)
     schema_version: str = SCHEMA
+    cuda_capable: bool = False
+    host_growth_bytes: int = 0
+    device_growth_bytes: int = 0
+    gradient_bytes: int = 0
 
 
 class RollbackError(RuntimeError):
@@ -105,6 +133,27 @@ def adam_growth(optimizers):
                for group in optimizer.param_groups for p in group['params'])
 
 
+def cuda_growth(optimizers, *, host_bytes=0, device_bytes=0):
+    """Full lazy Adam/gradient allowance; warmed slots are not subtracted."""
+    parameters = [p for opt in optimizers.values() for group in opt.param_groups for p in group['params']]
+    size = sum(p.numel() * p.element_size() for p in parameters)
+    return dict(cuda_capable=True, host_growth_bytes=host_bytes + 4 * len(parameters),
+                device_growth_bytes=device_bytes + 2 * size, gradient_bytes=size)
+
+
+def cuda_trial_active(owner):
+    """Only this capacity-admitted transaction may expose private CUDA options.
+
+    The marker alone is not a capability. Admission sets the flag after all
+    capacity/layout checks, before source validation and snapshot allocation;
+    failures close it without ever making a runnable trial available.
+    """
+    trial = getattr(owner, '_resident_trial_active', None)
+    return (type(trial) is ResidentTrial and type(trial.budget) is CudaTrialBudget
+            and trial._capacity_admitted and not trial.receipt['closed']
+            and trial.owner is owner and not hasattr(owner, '_resident_trial_poisoned'))
+
+
 def physical_attributes(modules, names):
     """Retain scoped flags/callbacks by reference, never serialize Python code."""
     return tuple((module, name, name in vars(module), vars(module).get(name))
@@ -114,8 +163,10 @@ def physical_attributes(modules, names):
 def _map(value, tensor, *, wire=False):
     if isinstance(value, torch.Tensor):
         _require(type(value) in (torch.Tensor, torch.nn.Parameter)
-                 and value.device.type == 'cpu' and value.layout == torch.strided
-                 and value.is_contiguous(), 'plain contiguous CPU tensors required; no CUDA/DTensor/sparse state')
+                 and value.device.type in ('cpu', 'cuda') and value.layout == torch.strided
+                 and value.is_contiguous() and not value.is_conj() and not value.is_neg(),
+                 'plain contiguous CPU/owned-CUDA tensors required; no DTensor/sparse/view-bit state')
+        _require(not value.is_inference(), 'inference storage cannot be restored in place')
         return tensor(value)
     if isinstance(value, Mapping):
         _require(all(type(key) in (str, int) for key in value), 'only string/integer state keys supported')
@@ -127,13 +178,25 @@ def _map(value, tensor, *, wire=False):
     return value
 
 
-def _sizes(value):
+def _storage_key(tensor):
+    storage = tensor.untyped_storage()
+    return str(tensor.device), storage.data_ptr(), storage.nbytes()
+
+
+def _memory_inventory(value):
     leaves = []
     _map(value, lambda t: leaves.append(t))
     sizes = [t.numel() * t.element_size() for t in leaves]
-    unique = {(t.untyped_storage().data_ptr(), t.untyped_storage().nbytes()):
-              t.untyped_storage().nbytes() for t in leaves}
-    return sum(sizes), max(sizes, default=0), sum(unique.values())
+    unique = {_storage_key(t): t.untyped_storage().nbytes() for t in leaves}
+    return dict(serialized_bytes=sum(sizes), largest_tensor_bytes=max(sizes, default=0),
+        host_storage_bytes=sum(size for (device, *_), size in unique.items() if device == 'cpu'),
+        device_storage_bytes=sum(size for (device, *_), size in unique.items() if device != 'cpu'))
+
+
+def _sizes(value):
+    row = _memory_inventory(value)
+    return (row['serialized_bytes'], row['largest_tensor_bytes'],
+            row['host_storage_bytes'] + row['device_storage_bytes'])
 
 
 def _copy(value, limit):
@@ -155,12 +218,18 @@ def _restore_tensors(original, saved):
         for a, b in zip(original, saved): _restore_tensors(a, b)
 
 
-def _digest(value):
-    """Hash dense CPU views without .tobytes() or another model-sized buffer."""
+def _digest(value, *, scratch_bytes=65536):
+    """Stream CUDA chunks to CPU; CPU leaves use zero-copy byte views."""
     def tensor(t):
-        raw = t.detach().reshape(-1).view(torch.uint8).numpy()
+        raw = t.detach().reshape(-1).view(torch.uint8)
+        digest = hashlib.sha256()
+        for start in range(0, raw.numel(), scratch_bytes):
+            chunk = raw[start:start + scratch_bytes].cpu()
+            digest.update(memoryview(chunk.numpy()))
+            del chunk
         return {'shape': list(t.shape), 'dtype': str(t.dtype),
-                'sha256': hashlib.sha256(memoryview(raw)).hexdigest()}
+                'sha256': digest.hexdigest()}
+    _require(type(scratch_bytes) is int and scratch_bytes > 0, 'positive hashing scratch required')
     return fingerprint(_map(value, tensor))
 
 
@@ -177,11 +246,12 @@ def streaming_compare(expected, actual, *, scratch_bytes, rtol=1e-5, atol=1e-7):
         if isinstance(x, torch.Tensor) and isinstance(y, torch.Tensor):
             mismatch = x.shape != y.shape or x.dtype != y.dtype
             if not mismatch:
-                # allclose/isclose intermediates fit a conservative 8x allowance.
-                count = scratch_bytes // max(8 * x.element_size(), 1)
+                # Two host transfer chunks plus allclose/isclose intermediates.
+                factor = 8 if x.device.type == y.device.type == 'cpu' else 10
+                count = scratch_bytes // max(factor * x.element_size(), 1)
                 _require(count > 0, 'comparison scratch cannot hold one element')
                 a, b = x.detach().reshape(-1), y.detach().reshape(-1)
-                mismatch = any(not torch.allclose(a[i:i+count], b[i:i+count], rtol=rtol, atol=atol)
+                mismatch = any(not torch.allclose(a[i:i+count].cpu(), b[i:i+count].cpu(), rtol=rtol, atol=atol)
                                for i in range(0, a.numel(), count))
             if mismatch: errors.append(path)
         elif isinstance(x, dict) and isinstance(y, dict):
@@ -218,9 +288,19 @@ def _host_available():
     return available
 
 
+def _cuda_memory(device):
+    """Fresh owned-device observation; never query or initialize other devices."""
+    torch.cuda.synchronize(device)
+    free, total = torch.cuda.mem_get_info(device)
+    return dict(free_bytes=free, total_bytes=total,
+        allocated_bytes=torch.cuda.memory_allocated(device), reserved_bytes=torch.cuda.memory_reserved(device),
+        peak_allocated_bytes=torch.cuda.max_memory_allocated(device),
+        peak_reserved_bytes=torch.cuda.max_memory_reserved(device))
+
+
 def _ownership(adapter):
     def tensor(t):
-        return (id(t), t.untyped_storage().data_ptr(), tuple(t.shape), tuple(t.stride()), str(t.dtype))
+        return (id(t), _storage_key(t), tuple(t.shape), tuple(t.stride()), str(t.dtype))
     return dict(model=id(adapter.model),
         modules={name: id(module) for name, module in adapter.model.named_modules(remove_duplicate=False)},
         hooks={name: (tuple(module._forward_pre_hooks.items()), tuple(module._forward_hooks.items()))
@@ -236,6 +316,9 @@ class ResidentTrial:
     def __init__(self, backend, budget):
         self.backend, self.workload, self.budget = backend, backend.workload, budget
         self._entered = self._ready = self._adopt = self._dirty = False
+        self._capacity_admitted = False
+        self._cuda_claimed = False
+        self._device = None
         self._session = self._outputs = self._expected = None
         self._backup = self._original = self._outer = self._recovery_error = None
         self.receipt = dict(schema_version=SCHEMA, closed=False, adopted=False,
@@ -261,7 +344,8 @@ class ResidentTrial:
                  and all(type(opt) is torch.optim.AdamW for opt in adapter.optimizers.values()),
                  'resident rollback supports explicit dense AdamW owners only')
         _require(all(type(n) is int and n >= 0 for n in
-                     (adapter.growth_bytes, adapter.output_bytes, adapter.max_new_tensor_bytes)),
+                     (adapter.growth_bytes, adapter.output_bytes, adapter.max_new_tensor_bytes,
+                      adapter.host_growth_bytes, adapter.device_growth_bytes, adapter.gradient_bytes)),
                  'invalid owner growth/result bounds')
         return adapter
 
@@ -276,13 +360,17 @@ class ResidentTrial:
 
     def _admit_snapshot(self):
         from distillschedule.training.checkpoint import rng_state
-        _require(type(self.budget) is TrialBudget, 'explicit typed resident trial budget required')
+        _require(type(self.budget) in (TrialBudget, CudaTrialBudget), 'explicit typed resident trial budget required')
         self.budget.validate()
         _require(not self.backend.distributed and not torch.distributed.is_initialized(),
                  'distributed resident trials are not qualified')
-        _require(self.workload.device.type == 'cpu',
-                 'CUDA resident trial construction/training-peak envelope is not qualified')
-        _require(not torch.is_autocast_enabled('cpu'), 'AMP resident trials are not qualified')
+        self._device = self.workload.device
+        cuda = type(self.budget) is CudaTrialBudget
+        _require(self._device.type == ('cuda' if cuda else 'cpu'),
+                 'CUDA budget requires one CUDA resident owner; CUDA requires an explicit CudaTrialBudget')
+        _require(not torch.is_autocast_enabled('cpu') and not torch.is_autocast_enabled('cuda'),
+                 'AMP resident trials are not qualified')
+        _require(not torch.is_inference_mode_enabled(), 'inference mode cannot create writable rollback snapshots')
         _require(type(self.workload.state) is dict and len(self.workload.state) == 1
                  and type(self.workload.feeds) is dict and not self.workload.immutable_modules,
                  'exactly one resident owner and explicit feed mapping required; no external sharing')
@@ -292,6 +380,7 @@ class ResidentTrial:
                  'owner already has an active resident transaction')
         self._source = self._provider()
         adapter = self._adapter()
+        _require(not cuda or adapter.cuda_capable is True, 'owner has no explicit CUDA resident capability')
         self._identity = fingerprint(adapter.identity)
         self._structure = _ownership(adapter)
         self._physical = adapter.physical
@@ -303,15 +392,35 @@ class ResidentTrial:
         _require(all(p.dtype == torch.float32 for p in adapter.model.parameters())
                  and all(not t.is_floating_point() or t.dtype == torch.float32
                          for t in adapter.model.buffers()), 'resident modules must remain FP32')
+        _require(all(t.device == self._device for t in (*adapter.model.parameters(), *adapter.model.buffers())),
+                 'resident modules must remain on the single owned device')
+        _require(all(p.grad is None for p in adapter.model.parameters()), 'resident boundary requires cleared gradients')
+        if cuda:
+            for optimizer in adapter.optimizers.values():
+                _require(all(not group.get(name, False) for group in optimizer.param_groups
+                             for name in ('capturable', 'differentiable', 'fused', 'amsgrad')),
+                         'CUDA resident trials require native noncapturable unfused AdamW')
+                for parameter, slots in optimizer.state.items():
+                    _require(set(slots) == {'step', 'exp_avg', 'exp_avg_sq'}
+                             and type(slots['step']) is torch.Tensor and slots['step'].device.type == 'cpu'
+                             and slots['step'].dtype == torch.float32 and slots['step'].ndim == 0
+                             and all(type(slots[name]) is torch.Tensor and slots[name].device == self._device
+                                     and slots[name].dtype == parameter.dtype and slots[name].shape == parameter.shape
+                                     for name in ('exp_avg', 'exp_avg_sq')),
+                             'CUDA resident AdamW slot layout is not qualified')
         feed_tensors = []
         _map(self.workload.feeds, lambda t: feed_tensors.append(t))
-        _require(all(not t.requires_grad and t.grad_fn is None
+        _require(all(t.device == self._device and not t.requires_grad and t.grad_fn is None
                      and (not t.is_floating_point() or t.dtype == torch.float32) for t in feed_tensors),
                  'resident feeds must be detached FP32/integer inputs')
         # Retain zero-copy destinations independently of dictionaries the native
         # call may replace. Aliased serialized leaves are deliberately counted.
         original = _map(dict(owner=adapter.state, feeds=self.workload.feeds), lambda t: t)
-        snapshot_bytes, largest, existing = _sizes(original)
+        _map(original, lambda t: _require(t.device.type == 'cpu' or (cuda and t.device == self._device),
+                                         'state contains an unowned device'))
+        inventory = _memory_inventory(original)
+        snapshot_bytes = inventory['serialized_bytes']
+        largest = inventory['largest_tensor_bytes']
         owner_bytes = _sizes(adapter.state)[0]
         snapshot_bound = snapshot_bytes + _RNG_ALLOWANCE
         result_bound = owner_bytes + adapter.growth_bytes + adapter.output_bytes
@@ -319,21 +428,27 @@ class ResidentTrial:
         _require(snapshot_bound <= self.budget.snapshot_limit_bytes, 'initial snapshot exceeds snapshot budget')
         _require(result_bound <= self.budget.result_limit_bytes, 'forecast reference result exceeds result budget')
         _require(scratch_bound <= self.budget.scratch_bytes, 'identity/comparison scratch exceeds scratch budget')
-        managed = existing + adapter.growth_bytes + snapshot_bound + result_bound + self.budget.scratch_bytes
+        host_growth = self.budget.host_growth_bytes if cuda else adapter.growth_bytes
+        managed = inventory['host_storage_bytes'] + host_growth + snapshot_bound + result_bound + self.budget.scratch_bytes
         available = _host_available()
         _require(managed + self.budget.reserve_bytes <= min(self.budget.host_limit_bytes, available),
                  'managed host transaction plus reserve exceeds host/cgroup headroom')
-        self.receipt.update(existing_host_tensor_bytes=existing, growth_bound_bytes=adapter.growth_bytes,
+        self.receipt.update(existing_host_tensor_bytes=inventory['host_storage_bytes'],
+            existing_device_tensor_bytes=inventory['device_storage_bytes'], growth_bound_bytes=adapter.growth_bytes,
             snapshot_bound_bytes=snapshot_bound, result_bound_bytes=result_bound,
             scratch_bytes=self.budget.scratch_bytes, reserve_bytes=self.budget.reserve_bytes,
             managed_host_bound_bytes=managed, available_host_bytes=available, budgets=vars(self.budget),
             provider=self._source)
         self._result_bound = result_bound
+        if cuda:
+            self._claim_cuda()
+            self._admit_cuda(adapter, inventory)
         # Full normal boundary/descriptor validation is only after capacity
         # admission; their largest identity serialization leaf is in scratch.
         self.owner._resident_trial_active = self
+        self._capacity_admitted = True
         self.owner._resident_trial_validate()
-        self._outer = rng_state(device='cpu')
+        self._outer = rng_state(device=self._device)
         _require(_sizes(self._outer)[0] <= _RNG_ALLOWANCE, 'outer RNG exceeds admitted allowance')
         original['outer_rng'] = self._outer
         self._original = original
@@ -342,8 +457,89 @@ class ResidentTrial:
         self._feed_hash = _digest(original['feeds'])
         self.receipt['snapshot_tensor_bytes'] = _sizes(self._backup)[0]
         self._guard()
+        if cuda:
+            self._observe_cuda('snapshot')
         self._ready = True
         return self
+
+    def _claim_cuda(self):
+        # Allocator peak counters are device-global within this process. Two
+        # overlapping transactions must not erase each other's measurements.
+        with _CUDA_TRIAL_LOCK:
+            key = str(self._device)
+            _require(key not in _CUDA_TRIALS, 'CUDA device already has an active resident transaction')
+            _CUDA_TRIALS[key] = self
+            self._cuda_claimed = True
+
+    def _admit_cuda(self, adapter, inventory):
+        budget = self.budget
+        _require(adapter.host_growth_bytes <= budget.host_growth_bytes
+                 and adapter.device_growth_bytes <= budget.device_state_growth_bytes
+                 and adapter.gradient_bytes <= budget.device_gradient_bytes,
+                 'native Adam/EMA/cache/gradient growth exceeds explicit CUDA budgets')
+        row = _cuda_memory(self._device)
+        _require(inventory['device_storage_bytes'] <= row['allocated_bytes'],
+                 'CUDA owner storage is not covered by the observed native allocator')
+        extra = sum((budget.device_state_growth_bytes, budget.device_gradient_bytes,
+                     budget.device_activation_bytes, budget.device_workspace_bytes, budget.device_restore_bytes))
+        self._allocated_bound = row['allocated_bytes'] + extra
+        self._reserved_bound = row['reserved_bytes'] + extra
+        _require(self._reserved_bound + budget.device_reserve_bytes <= budget.device_limit_bytes
+                 and extra + budget.device_reserve_bytes <= row['free_bytes'],
+                 'CUDA transaction plus reserve exceeds fresh device headroom/budget')
+        self.receipt.update(schema_version=CUDA_SCHEMA,
+            scope='PRIVATE CUDA1 FP32; managed host state and declared device allowances; not construction/RSS/pretrained capacity',
+            identity_scratch='8x largest serialized/new leaf covers unchanged native/generic full-leaf CPU hashes; resident hashes/comparison stream',
+            host_growth_bound_bytes=budget.host_growth_bytes, cuda_admission=row,
+            device_additional_bound_bytes=extra, device_allocated_bound_bytes=self._allocated_bound,
+            device_reserved_bound_bytes=self._reserved_bound, device_reserve_bytes=budget.device_reserve_bytes,
+            device_owned_storage_bytes=inventory['device_storage_bytes'], cuda_observations=[],
+            peak_scope='owned-device process allocator; peak counters reset at private trial phase boundaries')
+        self._phase_start = row
+        torch.cuda.reset_peak_memory_stats(self._device)
+
+    def _begin_cuda(self, phase):
+        if type(self.budget) is not CudaTrialBudget: return
+        row = _cuda_memory(self._device)
+        # Rollback is always attempted, even after headroom or allocator errors.
+        if phase != 'rollback':
+            remaining = max(0, self._reserved_bound - row['reserved_bytes'])
+            _require(remaining + self.budget.device_reserve_bytes <= row['free_bytes'],
+                     'CUDA headroom changed before trial update')
+            _require(self.budget.reserve_bytes + self.budget.scratch_bytes + self.budget.host_growth_bytes
+                     + (self._result_bound if self._expected is None else 0) <= _host_available(),
+                     'host/cgroup headroom changed before trial update')
+        self._phase_start = row
+        torch.cuda.reset_peak_memory_stats(self._device)
+
+    def _observe_cuda(self, phase):
+        if type(self.budget) is not CudaTrialBudget: return
+        row = _cuda_memory(self._device)
+        free_consumption = max(0, self.receipt['cuda_admission']['free_bytes'] - row['free_bytes'])
+        self.receipt['cuda_observations'].append(dict(phase=phase, free_consumption_bytes=free_consumption, **row))
+        budget = self.budget
+        if phase == 'rollback':
+            # Exact state restoration is checked before this observation. Cached
+            # blocks or external headroom loss can persist after a refused trial;
+            # retain those observations without misclassifying them as corruption.
+            _require(row['peak_allocated_bytes'] <= self._phase_start['allocated_bytes'] + budget.device_restore_bytes,
+                     'observed CUDA rollback peak exceeded restore allowance')
+        else:
+            _require(row['peak_allocated_bytes'] <= self._allocated_bound
+                     and row['peak_reserved_bytes'] <= self._reserved_bound
+                     and row['peak_reserved_bytes'] + budget.device_reserve_bytes <= budget.device_limit_bytes
+                     and row['free_bytes'] >= budget.device_reserve_bytes
+                     and free_consumption <= self.receipt['device_additional_bound_bytes'],
+                     'observed CUDA allocator peak exceeded declared admission')
+        # Count retained original destinations as well as newly created state.
+        host = _memory_inventory((self._original, self._adapter().state, self.workload.feeds,
+                                  self._backup, self._expected, self._outputs))['host_storage_bytes']
+        self.receipt['observed_managed_host_tensor_bytes'] = max(host,
+            self.receipt.get('observed_managed_host_tensor_bytes', 0))
+        if phase != 'rollback':
+            _require(host + budget.scratch_bytes + budget.reserve_bytes <= budget.host_limit_bytes
+                     and budget.reserve_bytes <= _host_available(),
+                     'observed managed host state/reserve exceeded admission')
 
     def _require_active_snapshot(self):
         _require(self._ready and not self.receipt['closed'] and self._backup is not None
@@ -354,6 +550,12 @@ class ResidentTrial:
     def _close(self):
         # No fallible RNG operation belongs in this unconditional release path.
         self._ready = False
+        self._capacity_admitted = False
+        if self._cuda_claimed:
+            with _CUDA_TRIAL_LOCK:
+                if _CUDA_TRIALS.get(str(self._device)) is self:
+                    del _CUDA_TRIALS[str(self._device)]
+            self._cuda_claimed = False
         self._backup = self._original = self._outer = self._expected = self._session = self._outputs = None
         self._slots = []; self._physical = (); self._retained = {}
         owner = getattr(self, 'owner', None)
@@ -378,12 +580,19 @@ class ResidentTrial:
     def _result(self, outputs):
         return dict(state={self.key: self._adapter().state}, outputs=outputs, grads={})
 
-    def _rollback(self):
+    def _restore_outer_rng(self):
         from distillschedule.training.checkpoint import restore_rng
+        from distillschedule.training.single_device import device_scope
+        # validate_rng checks current device; preserve the caller selection.
+        with device_scope(self._device):
+            restore_rng(self._outer)
+
+    def _rollback(self):
         self._adopt = False
         self._session = self._outputs = None
         try:
             self.owner._resident_trial_cleanup()
+            self._begin_cuda('rollback')
             self._guard()
             _require(_digest(self._backup) == self._backup_hash, 'resident snapshot integrity changed')
             _restore_tensors(self._original, self._backup)
@@ -397,21 +606,29 @@ class ResidentTrial:
             self._guard()
             _require(_digest(self._adapter().state) == _digest(self._backup['owner'])
                      and _digest(self.workload.feeds) == self._feed_hash, 'resident rollback was not exact')
+            self._observe_cuda('rollback')
         except BaseException as state_error:
             # Even an unrestorable model must not leak native/planning RNG when
             # the independent caller stream can still be restored.
             try:
-                restore_rng(self._outer)
+                self._restore_outer_rng()
             except BaseException as rng_error:
                 raise RollbackError(state_error, rng_error) from rng_error
             raise
-        restore_rng(self._outer)
+        self._restore_outer_rng()
         self._dirty = False
 
     def _recover(self, error):
         # Dead native stack frames can otherwise retain graphs after an OOM.
         if error is not None:
             traceback.clear_frames(error.__traceback__)
+            if type(self.budget) is CudaTrialBudget:
+                # Preserve the failed execution peak before rollback resets it.
+                # A poisoned CUDA context can make measurement itself fail.
+                try:
+                    self.receipt['cuda_observations'].append(dict(phase='failed', **_cuda_memory(self._device)))
+                except BaseException as observation_error:
+                    self.receipt['failed_observation_error'] = repr(observation_error)
         try:
             self._rollback()
         except BaseException as rollback:
@@ -426,10 +643,12 @@ class ResidentTrial:
         self._require_active_snapshot()
         _require(self._expected is None and not self.receipt['closed'], 'reference already captured or trial closed')
         try:
+            self._begin_cuda('reference')
             self._dirty = True
             if implementation is None: implementation = self.backend.inventory(1)['candidates'][0]
             session = self.backend.session(implementation, copy_state=False)
             outputs = session.run()
+            self._observe_cuda('reference')
             self.owner._resident_trial_validate(); self._guard()
             _require(_digest(self.workload.feeds) == self._feed_hash, 'reference mutated input feeds')
             result = _map(self._result(outputs), lambda t: t, wire=True)
@@ -448,15 +667,19 @@ class ResidentTrial:
         from .checkpoint_policy import native_effect_evidence
         self._require_active_snapshot()
         _require(self._expected is not None and not self.receipt['closed'], 'capture a reference first')
+        _require(type(self.budget) is not CudaTrialBudget or not measure,
+                 'private CUDA trials measure allocator boundaries; per-call peak resets are not admitted')
         try:
             if self._dirty: self._rollback()
             self._guard()
             _require(_digest(self._backup) == self._backup_hash, 'resident snapshot integrity changed')
             _require(_digest(self._expected) == self._expected_hash, 'reference result integrity changed')
+            self._begin_cuda('candidate')
             self._dirty = True
             self._session = self.backend.session(implementation, copy_state=False, persistent=persistent)
             self._outputs = (execute(self._session) if execute is not None else
                              self._session.run(order, measure=measure))
+            self._observe_cuda('candidate')
             self.owner._resident_trial_validate(); self._guard()
             _require(_digest(self.workload.feeds) == self._feed_hash, 'candidate mutated input feeds')
             result = self._result(self._outputs)
@@ -487,7 +710,6 @@ class ResidentTrial:
         self._adopt = True
 
     def __exit__(self, kind, error, tb):
-        from distillschedule.training.checkpoint import restore_rng
         _require(self._ready or self._recovery_error is not None, 'active admitted snapshot required')
         try:
             if error is not None and error is self._recovery_error:
@@ -507,7 +729,8 @@ class ResidentTrial:
                              'candidate changed after numerical/effect admission')
                     # A failed RNG restore is a failed transaction, not a
                     # successfully adopted owner with unfinished finalization.
-                    restore_rng(self._outer)
+                    self._observe_cuda('adopt')
+                    self._restore_outer_rng()
                 except BaseException as exc:
                     self._recover(exc)
                     raise

@@ -154,7 +154,7 @@ class SelfForcingOwner:
     def _resident_trial_adapter(self):
         """Full host/frozen/plain state; never execute rollout for discovery."""
         from distillschedule.open_workload.resident_trial import (
-            ResidentOwner, native_state_view, adam_growth, physical_attributes)
+            ResidentOwner, native_state_view, adam_growth, physical_attributes, cuda_growth)
         plain = plain_tensors(self.model)
         cache_bytes = self.args.batch_size * self.negative_embedding.numel() * self.negative_embedding.element_size()
         ema_bytes = sum(p.numel() * p.element_size() for p in self.model.generator.parameters())
@@ -174,7 +174,8 @@ class SelfForcingOwner:
             growth_bytes=adam_growth(self.optimizers) + cache_bytes + ema_bytes, output_bytes=0,
             max_new_tensor_bytes=max(cache_bytes, *(p.numel() * p.element_size() for p in self.model.parameters())),
             physical=physical_attributes(self.model.modules(), ('gradient_checkpointing',)),
-            retained={'ema': self.generator_ema})
+            retained={'ema': self.generator_ema},
+            **cuda_growth(self.optimizers, host_bytes=ema_bytes, device_bytes=cache_bytes))
 
     def _resident_trial_cleanup(self):
         # An interrupted native forward can retain the complete rollout graph.
@@ -200,9 +201,12 @@ class SelfForcingOwner:
     def _resident_trial_validate(self):
         require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
+        if self.device.type == 'cuda':
+            require(len(self.execution_options()['options']) > 1,
+                    'private CUDA resident trial requires source-qualified Fake-only checkpoint options')
 
     def execution_options(self):
-        """Pure source-bound tiny CPU capability; G policy is immutable math.
+        """Source-bound tiny capability; CUDA requires active private admission.
 
         The old G-OFF reference is still available but never compared/searched
         against G-ON: the pinned causal branches pass different cache arguments.
@@ -214,6 +218,7 @@ class SelfForcingOwner:
         from .self_forcing import runtime_identity, _native_config
         from distillschedule.open_workload.torch_backend import code_signature
         from distillschedule.workloads.best_known.registry import file_sha256
+        from distillschedule.open_workload.resident_trial import cuda_trial_active
         self._validate_live()
         runtime = runtime_identity()
         required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', einops='0.8.1')
@@ -232,7 +237,8 @@ class SelfForcingOwner:
             same_step_across_blocks=True, last_step_only=False, context_noise=0, fake_guidance_scale=0.,
             real_guidance_scale=3., timestep_shift=5., scheduler_shift=5., ts_schedule=False,
             ts_schedule_max=False, min_score_timestep=0)
-        if self.device.type == 'cuda':
+        private_cuda = self.device.type == 'cuda' and cuda_trial_active(self)
+        if self.device.type == 'cuda' and not private_cuda:
             status = 'UNAVAILABLE_CUDA_TRIAL_SNAPSHOT'
         elif not self.args.gradient_checkpointing:
             status = 'UNAVAILABLE_REFERENCE_POLICY'
@@ -244,7 +250,7 @@ class SelfForcingOwner:
                 or self.identity['assets']['evidence_kind'] != 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED'):
             status = 'UNAVAILABLE_TINY_PROFILE'
         else:
-            status = 'AVAILABLE_TINY_CPU'
+            status = 'AVAILABLE_TINY_PRIVATE_CUDA' if private_cuda else 'AVAILABLE_TINY_CPU'
         baseline = {'fake_gradient_checkpointing': self.args.gradient_checkpointing}
         descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
             options=[baseline], effect=dict(kind='native_checkpoint', enabled_key='fake_gradient_checkpointing',
@@ -253,9 +259,10 @@ class SelfForcingOwner:
                 provider_file_sha256=file_sha256(Path(__file__)), generator_checkpoint=self.args.gradient_checkpointing,
                 capability=dict(status=status, required_runtime=required, required_cpu_threads=1,
                     architecture=architecture, settings=settings, gpu='NOT_RUN', pretrained='NOT_RUN'),
-                scope='TINY_CPU1_FP32_NONCAUSAL_FAKE_ONLY_G_FIXED_SOURCE_IDENTITY',
+                scope=('TINY_PRIVATE_CUDA1_FP32_NONCAUSAL_FAKE_ONLY_G_FIXED_SOURCE_IDENTITY' if private_cuda else
+                       'TINY_CPU1_FP32_NONCAUSAL_FAKE_ONLY_G_FIXED_SOURCE_IDENTITY'),
                 instrumentation='READ_ONLY_BLOCK_PRE_HOOK_NATIVE_CUSTOM_FORWARD_CHECKPOINT_AND_RECOMPUTE_CODE'))
-        if status != 'AVAILABLE_TINY_CPU':
+        if status not in ('AVAILABLE_TINY_CPU', 'AVAILABLE_TINY_PRIVATE_CUDA'):
             return descriptor
         roots = (self.model.generator.model, self.model.real_score.model, self.model.fake_score.model)
         require(tuple(map(type, roots)) == (api.causal.CausalWanModel, api.wan.WanModel, api.wan.WanModel),

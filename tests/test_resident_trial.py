@@ -537,3 +537,233 @@ def test_review_r2_own_failed_recovery_is_not_retried_or_hidden(monkeypatch, cau
     assert workload.state['owner']._resident_trial_poisoned is True
     assert trial.receipt['closed'] and not trial.receipt['adopted']
     assert not hasattr(workload.state['owner'], '_resident_trial_active')
+
+
+def cuda_budget(**changes):
+    from distillschedule.open_workload.resident_trial import CudaTrialBudget
+    return CudaTrialBudget(**dict(dict(vars(budget()), device_limit_bytes=64_000_000,
+        host_growth_bytes=1_000_000, device_state_growth_bytes=1_000_000,
+        device_gradient_bytes=1_000_000, device_activation_bytes=1_000_000,
+        device_workspace_bytes=1_000_000, device_restore_bytes=1_000_000,
+        device_reserve_bytes=1_000_000), **changes))
+
+
+def test_cuda_budget_explicit_positive_allowances_and_cpu_budget_unchanged():
+    from distillschedule.open_workload.resident_trial import CudaTrialBudget
+    assert type(cuda_budget()) is CudaTrialBudget
+    cuda_budget().validate(); budget().validate()
+    for name in vars(cuda_budget()):
+        for invalid in (0, -1, True, 1.0):
+            with pytest.raises(ValueError, match='positive'):
+                cuda_budget(**{name: invalid}).validate()
+
+
+def test_device_aware_inventory_distinguishes_serialized_leaves_and_live_aliases():
+    from distillschedule.open_workload.resident_trial import _memory_inventory, _storage_key
+    value = torch.arange(24, dtype=torch.float32)
+    data = {'full': value, 'alias': value, 'slice': value[4:8]}
+    row = _memory_inventory(data)
+    assert _storage_key(value) == ('cpu', value.untyped_storage().data_ptr(), 96)
+    assert row == dict(serialized_bytes=208, largest_tensor_bytes=96,
+                      host_storage_bytes=96, device_storage_bytes=0)
+
+
+def test_cuda_budget_requires_actual_cuda_owner_before_copy(monkeypatch):
+    from distillschedule.open_workload import resident_trial as module
+    workload = build(); before = signature(workload.state)
+    def forbidden(*args, **kwargs): raise AssertionError('copied before device admission')
+    monkeypatch.setattr(module, '_copy', forbidden)
+    with pytest.raises(ValueError, match='requires one CUDA'):
+        with ExecutionBackend(workload).resident_trial(cuda_budget()): pass
+    assert signature(workload.state) == before
+
+
+@pytest.mark.parametrize('inference_context', [False, True])
+def test_inference_storage_rejected_before_snapshot(monkeypatch, inference_context):
+    from distillschedule.open_workload import resident_trial as module
+    workload = build()
+    if not inference_context:
+        with torch.inference_mode(): workload.feeds['x'] = torch.ones(1, 2)
+    def forbidden(*args, **kwargs): raise AssertionError('copied before writable storage admission')
+    monkeypatch.setattr(module, '_copy', forbidden)
+    scope = torch.inference_mode() if inference_context else __import__('contextlib').nullcontext()
+    with scope, pytest.raises(ValueError, match='inference'):
+        with ExecutionBackend(workload).resident_trial(budget()): pass
+
+
+def test_private_cuda_capability_cannot_be_forged_by_marker():
+    from distillschedule.open_workload.resident_trial import cuda_trial_active
+    from types import SimpleNamespace
+    owner = SimpleNamespace(device=torch.device('cuda:0'))
+    assert not cuda_trial_active(owner)
+    for marker in (True, SimpleNamespace(_ready=True, _capacity_admitted=True, owner=owner), object()):
+        owner._resident_trial_active = marker
+        assert not cuda_trial_active(owner)
+
+
+@pytest.mark.parametrize('fault', ['device_limit', 'free', 'host_growth', 'device_growth', 'gradient'])
+def test_cuda_capacity_arithmetic_cpu_only_rejects_before_peak_reset(monkeypatch, fault):
+    """No CUDA execution evidence: exercise declared-budget arithmetic only."""
+    from distillschedule.open_workload import resident_trial as module
+    workload = build(); trial = ExecutionBackend(workload).resident_trial(cuda_budget())
+    adapter = replace(workload.state['owner']._resident_trial_adapter(), cuda_capable=True,
+                      host_growth_bytes=200, device_growth_bytes=400, gradient_bytes=200)
+    row = dict(free_bytes=32_000_000, total_bytes=64_000_000, allocated_bytes=1_000_000,
+               reserved_bytes=2_000_000, peak_allocated_bytes=1_000_000, peak_reserved_bytes=2_000_000)
+    if fault == 'free': row['free_bytes'] = 1
+    else:
+        field = {'device_limit': 'device_limit_bytes', 'host_growth': 'host_growth_bytes',
+                 'device_growth': 'device_state_growth_bytes', 'gradient': 'device_gradient_bytes'}[fault]
+        trial.budget = cuda_budget(**{field: 1})
+    monkeypatch.setattr(module, '_cuda_memory', lambda device: row)
+    def forbidden(*args): raise AssertionError('reset before capacity admission')
+    monkeypatch.setattr(torch.cuda, 'reset_peak_memory_stats', forbidden)
+    with pytest.raises(ValueError, match='headroom|budgets'):
+        trial._admit_cuda(adapter, dict(device_storage_bytes=1000))
+    assert not trial._capacity_admitted
+
+
+def test_streamed_digest_preserves_cpu_complex_and_integer_bytes_with_tiny_scratch():
+    import hashlib
+    from distillschedule.open_workload.resident_trial import _digest
+    from distillschedule.workloads.best_known.registry import fingerprint
+    for tensor in (torch.arange(50), torch.arange(21).to(torch.complex128) * (1 + 2j)):
+        expected = fingerprint(dict(shape=list(tensor.shape), dtype=str(tensor.dtype),
+            sha256=hashlib.sha256(memoryview(tensor.reshape(-1).view(torch.uint8).numpy())).hexdigest()))
+        assert _digest(tensor, scratch_bytes=7) == expected
+
+
+def test_cuda_peak_counter_exclusivity_cpu_guard_only():
+    """Registry test without CUDA API calls, allocations or execution claims."""
+    first = ExecutionBackend(build()).resident_trial(cuda_budget())
+    second = ExecutionBackend(build()).resident_trial(cuda_budget())
+    first._device = second._device = torch.device('cuda:0')
+    try:
+        first._claim_cuda()
+        with pytest.raises(ValueError, match='already has an active'): second._claim_cuda()
+        second._close()  # A refused transaction must not release another's claim.
+        with pytest.raises(ValueError, match='already has an active'): second._claim_cuda()
+        first._close()
+        second._claim_cuda()
+    finally:
+        first._close(); second._close()
+
+
+def synthetic_cuda_accounting_on_cpu_trial(trial, monkeypatch):
+    """CPU-only recovery integration, NOT CUDA placement or execution proof.
+
+    Start from the real CPU owner's admitted snapshot, then admit the CUDA
+    accounting layer against synthetic observations. No tensor changes device
+    and no CUDA API executes. The real Session, rollback and claim machinery
+    remain in use; only device observations/peak resets and host availability
+    are injected.
+    """
+    from distillschedule.open_workload import resident_trial as module
+    row = dict(free_bytes=32_000_000, total_bytes=64_000_000,
+               allocated_bytes=1_000_000, reserved_bytes=2_000_000,
+               peak_allocated_bytes=1_000_000, peak_reserved_bytes=2_000_000)
+    observed = dict(row=row, host_available=32_000_000, restore_overrun=False, reset_count=0)
+
+    def reset(device):
+        assert device.type == 'cpu', 'synthetic test must not access a CUDA device'
+        observed['reset_count'] += 1
+        row['peak_reserved_bytes'] = row['reserved_bytes']
+        row['peak_allocated_bytes'] = row['allocated_bytes'] + (
+            trial.budget.device_restore_bytes + 1 if observed['restore_overrun'] else 0)
+
+    monkeypatch.setattr(module, '_cuda_memory', lambda device: dict(row))
+    monkeypatch.setattr(module, '_host_available', lambda: observed['host_available'])
+    monkeypatch.setattr(torch.cuda, 'reset_peak_memory_stats', reset)
+    trial.budget = cuda_budget()
+    trial._claim_cuda()
+    trial._admit_cuda(trial._adapter(), module._memory_inventory(trial._original))
+    trial._observe_cuda('snapshot')
+    assert trial._ready and trial._capacity_admitted
+    assert module._CUDA_TRIALS[str(trial._device)] is trial
+    return observed
+
+
+@pytest.mark.parametrize('warmed', [False, True])
+@pytest.mark.parametrize('phase', ['reference', 'candidate'])
+@pytest.mark.parametrize('breach', ['allocated_peak', 'cached_reservation', 'device_headroom',
+                                   'device_free_consumption', 'host_growth', 'host_headroom'])
+def test_fix_r1_cpu_synthetic_cuda_execution_breach_restores_without_poison(monkeypatch, warmed, phase, breach):
+    """Admitted synthetic observations, real CPU state/Adam/feed/RNG rollback."""
+    from distillschedule.open_workload import resident_trial as module
+    workload = build(); owner = workload.state['owner']
+    if warmed: real_reference(workload)
+    before = signature(owner); feeds = signature(workload.feeds); outer = signature(rng_state(device='cpu'))
+    parameters = [(id(p), p.data_ptr()) for p in owner.model.parameters()]
+    slots = [(id(t), t.data_ptr()) for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    with pytest.raises(ValueError, match='observed .*exceeded'):
+        with ExecutionBackend(workload).resident_trial(budget()) as trial:
+            observed = synthetic_cuda_accounting_on_cpu_trial(trial, monkeypatch)
+            if phase == 'candidate': trial.reference()
+
+            def exceed(active, role, x):
+                if role != 'c': return
+                # These state mutations must be undone even when the failure
+                # is the capacity observer, not a native execution exception.
+                x.add_(1); active.model.training = not active.model.training
+                torch.rand(3)
+                row = observed['row']
+                if breach == 'allocated_peak': row['peak_allocated_bytes'] = trial._allocated_bound + 1
+                elif breach == 'cached_reservation':
+                    row['reserved_bytes'] = row['peak_reserved_bytes'] = trial._reserved_bound + 1
+                elif breach == 'device_headroom': row['free_bytes'] = trial.budget.device_reserve_bytes - 1
+                elif breach == 'device_free_consumption':
+                    row['free_bytes'] -= trial.receipt['device_additional_bound_bytes'] + 1
+                elif breach == 'host_growth':
+                    active.cache = {'value': torch.zeros(trial.budget.host_limit_bytes // 4 + 1)}
+                else: observed['host_available'] = trial.budget.reserve_bytes - 1
+
+            owner.fault = exceed
+            if phase == 'reference': trial.reference()
+            else: trial.candidate(option())
+    owner.fault = None
+    assert signature(owner) == before and signature(workload.feeds) == feeds
+    assert signature(rng_state(device='cpu')) == outer
+    assert parameters == [(id(p), p.data_ptr()) for p in owner.model.parameters()]
+    assert slots == [(id(t), t.data_ptr()) for opt in owner.optimizers.values() for row in opt.state.values() for t in row.values()]
+    assert not hasattr(owner, '_resident_trial_poisoned')
+    assert not hasattr(owner, '_resident_trial_active') and not trial._cuda_claimed
+    assert str(trial._device) not in module._CUDA_TRIALS
+    assert trial.receipt['closed'] and not trial.receipt['adopted']
+    rows = trial.receipt['cuda_observations']
+    assert any(row['phase'] == phase for row in rows)
+    assert any(row['phase'] == 'failed' for row in rows)
+    assert rows[-1]['phase'] == 'rollback'
+    if breach == 'cached_reservation':
+        assert rows[-1]['reserved_bytes'] > trial._reserved_bound, 'cached blocks must remain observed, not released/hidden'
+    if breach == 'device_headroom': assert rows[-1]['free_bytes'] < trial.budget.device_reserve_bytes
+    real_reference(workload)  # Exact restoration must leave the owner usable.
+
+
+@pytest.mark.parametrize('warmed', [False, True])
+def test_fix_r1_cpu_synthetic_cuda_incremental_restore_overrun_still_poisons(monkeypatch, warmed):
+    """No GPU execution: only a rollback's additional allocated peak is injected."""
+    from distillschedule.open_workload import resident_trial as module
+    workload = build(); owner = workload.state['owner']
+    if warmed: real_reference(workload)
+    before = module._digest(owner._resident_trial_adapter().state)
+    feeds = signature(workload.feeds); outer = signature(rng_state(device='cpu'))
+    original = OSError('publication failed')
+    with pytest.raises(module.RollbackError) as captured:
+        with ExecutionBackend(workload).resident_trial(budget()) as trial:
+            observed = synthetic_cuda_accounting_on_cpu_trial(trial, monkeypatch)
+            trial.reference(); trial.candidate(option()); trial.accept()
+            # The next peak reset belongs to rollback. This increase remains
+            # below the absolute execution bound but exceeds restore allowance.
+            observed['restore_overrun'] = True
+            raise original
+    assert captured.value.original_error is original
+    assert isinstance(captured.value.rollback_error, ValueError)
+    assert 'rollback peak exceeded restore allowance' in str(captured.value.rollback_error)
+    assert module._digest(owner._resident_trial_adapter().state) == before
+    assert signature(workload.feeds) == feeds and signature(rng_state(device='cpu')) == outer
+    assert owner._resident_trial_poisoned and trial.receipt['closed'] and not trial.receipt['adopted']
+    assert not hasattr(owner, '_resident_trial_active') and str(trial._device) not in module._CUDA_TRIALS
+    rollback = trial.receipt['cuda_observations'][-1]
+    assert rollback['phase'] == 'rollback' and rollback['peak_allocated_bytes'] < trial._allocated_bound
+    with pytest.raises(ValueError, match='poisoned'):
+        with ExecutionBackend(workload).resident_trial(budget()): pass

@@ -295,3 +295,15 @@ def test_review_r2_dmd2_poison_guard_precedes_native_access(marker, monkeypatch)
     monkeypatch.setattr(owner, '_validate_live', forbidden)
     for action in (lambda: owner.run({}, cycle=0), owner.state_dict, owner._resident_trial_validate):
         with pytest.raises(ValueError, match='poisoned'): action()
+
+
+def test_private_cuda_transaction_does_not_relax_public_dmd2_admission():
+    """CPU guard proof only; no CUDA device or native model is constructed."""
+    from distillschedule.training.dmd2_owner import DMD2Owner
+    owner = DMD2Owner.__new__(DMD2Owner); owner.device = torch.device('cuda:0')
+    owner._resident_trial_active = True  # A marker must never bypass public gates.
+    for mode, implementation in (('auto', {}), ('plan', {}), ('manual', option())):
+        with pytest.raises(ValueError, match='CUDA.*trial.*snapshot'):
+            owner.admit_execution(mode, implementation)
+    with pytest.raises(ValueError, match='CUDA.*trial.*snapshot'): deepcopy(owner)
+    owner.admit_execution('reference', {})

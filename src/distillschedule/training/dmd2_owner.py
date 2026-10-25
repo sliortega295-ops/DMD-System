@@ -103,9 +103,9 @@ class DMD2Owner:
                 and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
 
     def _resident_trial_adapter(self):
-        """Explicit zero-copy CPU trial inventory, separate from checkpoint load."""
+        """Explicit zero-copy trial inventory, separate from checkpoint load."""
         from distillschedule.open_workload.resident_trial import (
-            ResidentOwner, native_state_view, adam_growth, physical_attributes)
+            ResidentOwner, native_state_view, adam_growth, physical_attributes, cuda_growth)
         plain = self._plain_tensors()
         modules = tuple(self.model.modules())
         return ResidentOwner(self.model, self.optimizers,
@@ -121,7 +121,8 @@ class DMD2Owner:
             growth_bytes=adam_growth(self.optimizers), output_bytes=0,
             max_new_tensor_bytes=max(p.numel() * p.element_size() for p in self.model.parameters()),
             physical=physical_attributes(modules, (
-                'gradient_checkpointing', '_gradient_checkpointing_func', 'enable_gradient_checkpointing')))
+                'gradient_checkpointing', '_gradient_checkpointing_func', 'enable_gradient_checkpointing')),
+            **cuda_growth(self.optimizers))
 
     def _resident_trial_cleanup(self):
         for parameter in self.model.parameters():
@@ -140,6 +141,9 @@ class DMD2Owner:
     def _resident_trial_validate(self):
         require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
         self._validate_live()
+        if self.device.type == 'cuda':
+            require(len(self.execution_options()['options']) > 1,
+                    'private CUDA resident trial requires source-qualified native checkpoint options')
 
     @contextmanager
     def random_scope(self):
@@ -158,7 +162,7 @@ class DMD2Owner:
             self.observer(event, value)
 
     def execution_options(self):
-        """Pure, source-bound CPU1/FP32 native UNet checkpoint capability.
+        """Pure source-bound FP32 capability; CUDA only inside private admission.
 
         The bound args/metadata stay mathematical identity. Only a complete
         macrocycle's physical flags and supported Diffusers callbacks change.
@@ -170,14 +174,35 @@ class DMD2Owner:
         from .sd import runtime_identity
         from distillschedule.open_workload.torch_backend import code_signature
         from distillschedule.workloads.best_known.registry import file_sha256
+        from distillschedule.open_workload.resident_trial import cuda_trial_active
         self._validate_live()
         runtime = runtime_identity()
         require(runtime == self.identity['runtime'], 'live numerical dependency runtime changed')
         required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
         stack = dict(runtime, torch=str(torch.__version__).split('+')[0])
-        qualified = (self.device.type == 'cpu'
+        private_cuda = self.device.type == 'cuda' and cuda_trial_active(self)
+        # This private CUDA lane qualifies the existing tiny native acceptance
+        # geometry only, not arbitrary/pretrained UNet construction capacity.
+        tiny_cuda = (not private_cuda or (
+            self.args.batch_size == 1 and self.args.resolution == 16 and self.args.latent_resolution == 8
+            and self.ratio == 2 and not self.args.generator_lora and not self.args.cls_on_clean_image
+            and all(tuple(root.config.block_out_channels) == (8, 16)
+                    and root.config.sample_size == 8 and root.config.layers_per_block == 1
+                    and root.config.in_channels == root.config.out_channels == 4
+                    and root.config.cross_attention_dim == (16 if self.args.sdxl else 8)
+                    for root in (self.model.feedforward_model, self.model.guidance_model.fake_unet))))
+        qualified = ((self.device.type == 'cpu' or private_cuda)
+                     and tiny_cuda
                      and all(stack[name] == version for name, version in required.items())
                      and not torch.distributed.is_initialized())
+        if self.device.type == 'cuda' and not private_cuda:
+            status = 'UNAVAILABLE_CUDA_TRIAL_SNAPSHOT'
+        elif not tiny_cuda:
+            status = 'UNAVAILABLE_CUDA_TINY_PROFILE'
+        elif qualified:
+            status = 'AVAILABLE'
+        else:
+            status = 'UNAVAILABLE_RUNTIME'
         baseline = {'gradient_checkpointing': self.args.gradient_checkpointing}
         descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
             options=[baseline], effect=dict(kind='native_checkpoint', enabled_key='gradient_checkpointing',
@@ -186,15 +211,15 @@ class DMD2Owner:
                 provider_file_sha256=file_sha256(Path(__file__)),
                 native_classes={name: code_signature(type(value)) for name, value in (
                     ('model', self.model), ('guidance', self.model.guidance_model))},
-                capability=dict(status=('UNAVAILABLE_CUDA_TRIAL_SNAPSHOT' if self.device.type == 'cuda' else
-                    'AVAILABLE' if qualified else 'UNAVAILABLE_RUNTIME'), required_runtime=required),
-                scope='CPU1_FP32_NATIVE_UNETS_ONLY_NO_TEACHER_CLIP_VAE'))
+                capability=dict(status=status, required_runtime=required),
+                scope=('TINY_PRIVATE_CUDA1_FP32_NATIVE_UNETS_ONLY_NO_TEACHER_CLIP_VAE' if private_cuda else
+                       'CPU1_FP32_NATIVE_UNETS_ONLY_NO_TEACHER_CLIP_VAE')))
         # Optional checkpoint qualification must not narrow the preexisting
         # reference factory's runtime admission. No override is offered here.
         if not qualified:
             return descriptor
-        require(all(t.device.type == 'cpu' and (not t.is_floating_point() or t.dtype == torch.float32)
-                    for t in self.runtime_tensors()), 'native checkpoint requires CPU1/FP32 tensors')
+        require(all(t.device == self.device and (not t.is_floating_point() or t.dtype == torch.float32)
+                    for t in self.runtime_tensors()), 'native checkpoint requires owned-device FP32 tensors')
         roots = (self.model.feedforward_model, self.model.guidance_model.fake_unet)
         for root in roots:
             require(type(root) is UNet2DConditionModel and root._supports_gradient_checkpointing
