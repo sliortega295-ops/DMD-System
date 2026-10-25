@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import sys
 
+from distillschedule._cli_streams import redirect_diagnostics
+
 from .dataset import PreparedDataset, inspect_prepared
 from .preparation import import_preencoded, prepare
 
@@ -52,50 +54,53 @@ def main(argv=None):
                          choices=("NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"))
     args = parser.parse_args(argv)
     try:
-        if args.command == "prepare-helios-stream":
-            from distillschedule.search.helios_request import OriginalHeliosRequest
-            from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
-            values = json.loads(args.sources.read_text())
-            if not isinstance(values, list):
-                raise ValueError("explicit source cohort list required")
-            result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
-                                    args.training_config, args.output)
-        elif args.command == "prepare-helios-gan-reference":
-            from .helios_native_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-wan-reference":
-            from .wan_reference_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-helios-nogan-reference":
-            from .helios_nogan_reference_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-h3-grid":
-            from distillschedule.training.h3_grid_inputs import prepare_inputs
-            result = prepare_inputs(args.native_config, args.output)
-        elif args.command == "prepare-h3-cached-reference":
-            from .h3_cached_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-livewan-inputs":
-            from .livewan_inputs import prepare_inputs
-            result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
-                                    cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
-        elif args.command == "prepare":
-            if args.preparer:
-                from distillschedule.training.plugins import load_callable, resolve_reference
-                reference = resolve_reference(args.preparer, args.manifest.resolve().parent)
-                factory, source = load_callable(reference)
-                manifest = Path(factory(args.manifest, args.output)).resolve()
-                if not manifest.is_relative_to(args.output.resolve()):
-                    raise ValueError('native preparer must return its manifest below the requested output')
-                result = {**inspect_prepared(manifest), 'preparer_source': source}
+        # Preparation/import can load trusted encoders and noisy dependencies.
+        # Restore stdout even on failure, before emitting the JSON receipt.
+        with redirect_diagnostics():
+            if args.command == "prepare-helios-stream":
+                from distillschedule.search.helios_request import OriginalHeliosRequest
+                from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
+                values = json.loads(args.sources.read_text())
+                if not isinstance(values, list):
+                    raise ValueError("explicit source cohort list required")
+                result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
+                                        args.training_config, args.output)
+            elif args.command == "prepare-helios-gan-reference":
+                from .helios_native_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-wan-reference":
+                from .wan_reference_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-helios-nogan-reference":
+                from .helios_nogan_reference_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-h3-grid":
+                from distillschedule.training.h3_grid_inputs import prepare_inputs
+                result = prepare_inputs(args.native_config, args.output)
+            elif args.command == "prepare-h3-cached-reference":
+                from .h3_cached_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-livewan-inputs":
+                from .livewan_inputs import prepare_inputs
+                result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
+                                        cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
+            elif args.command == "prepare":
+                if args.preparer:
+                    from distillschedule.training.plugins import load_callable, resolve_reference
+                    reference = resolve_reference(args.preparer, args.manifest.resolve().parent)
+                    factory, source = load_callable(reference)
+                    manifest = Path(factory(args.manifest, args.output)).resolve()
+                    if not manifest.is_relative_to(args.output.resolve()):
+                        raise ValueError('native preparer must return its manifest below the requested output')
+                    result = {**inspect_prepared(manifest), 'preparer_source': source}
+                else:
+                    result = inspect_prepared(prepare(args.manifest, args.output))
+            elif args.command == "import":
+                result = inspect_prepared(import_preencoded(args.manifest, args.output))
+            elif args.command == "validate":
+                result = PreparedDataset(args.manifest).validate(sources=args.sources)
             else:
-                result = inspect_prepared(prepare(args.manifest, args.output))
-        elif args.command == "import":
-            result = inspect_prepared(import_preencoded(args.manifest, args.output))
-        elif args.command == "validate":
-            result = PreparedDataset(args.manifest).validate(sources=args.sources)
-        else:
-            result = inspect_prepared(args.manifest)
+                result = inspect_prepared(args.manifest)
         print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
         return 0
     except (ValueError, TypeError, KeyError, OSError, RuntimeError, ImportError) as exc:
