@@ -5,6 +5,7 @@ this same-topology atomic writer, with one safe local shard per actual rank.
 """
 from __future__ import annotations
 from copy import deepcopy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,12 +21,13 @@ SCHEMA = "distillschedule.training_checkpoint.v2"
 _STORAGE_VISIBILITY_TIMEOUT = 30.0
 
 
-def _await_shared_paths(paths, label, *, directory=False):
+def _await_shared_paths(paths, label, *, directory=False, metadata=None):
     """Wait only for metadata whose producer already completed collectively.
 
     A process-group barrier is not a shared-filesystem metadata barrier. Never
     create a missing peer directory or accept an incomplete checkpoint here.
-    Hash mismatches and ordinary restart admission are not retried.
+    Only zero-filled publication metadata may wait for publisher-attested
+    content. Other hash mismatches and ordinary restart admission never retry.
     """
     timeout = 0.0
     if distributed.rank_world()[1] > 1:
@@ -36,6 +38,22 @@ def _await_shared_paths(paths, label, *, directory=False):
     deadline = time.monotonic() + timeout
     while True:
         missing = [path for path in paths if not (path.is_dir() if directory else path.is_file())]
+        if metadata is not None:
+            for path in paths:
+                if path in missing or path.name not in metadata:
+                    continue
+                try:
+                    contents = path.read_bytes()
+                except FileNotFoundError:
+                    missing.append(path)
+                    continue
+                expected = metadata[path.name]
+                if (len(contents) == expected["size"]
+                        and hashlib.sha256(contents).hexdigest() == expected["sha256"]):
+                    continue
+                if any(contents):
+                    raise ValueError(f"checkpoint metadata hash changed: {path.name}")
+                missing.append(path)
         if not missing:
             return
         if time.monotonic() >= deadline:
@@ -330,24 +348,29 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                         "topology": allocated, "torch": torch.__version__, "files": files}
             if data_progress is not None:
                 manifest['data_progress'] = data_progress
-            # Closing a buffered file does not make its contents durable on a
-            # remote filesystem. Flush both metadata files before the directory
-            # rename, just as for rank shards; never retry a checksum mismatch.
-            with (staging / "manifest.json").open("x") as handle:
-                handle.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-                handle.flush()
-                os.fsync(handle.fileno())
-            with (staging / "_SUCCESS").open("x") as handle:
-                handle.write(_sha(staging / "manifest.json") + "\n")
-                handle.flush()
-                os.fsync(handle.fileno())
+            manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+            contents = {"manifest.json": manifest_bytes,
+                        "_SUCCESS": (hashlib.sha256(manifest_bytes).hexdigest() + "\n").encode("ascii")}
+            metadata = {name: {"size": len(value), "sha256": hashlib.sha256(value).hexdigest()}
+                        for name, value in contents.items()}
+            # Attest the intended bytes, not a possibly stale filesystem read.
+            # Flush and strictly verify the publisher's copy before rename;
+            # only consumers may wait for zero-filled publication visibility.
+            for name, value in contents.items():
+                with (staging / name).open("xb") as handle:
+                    handle.write(value)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            for name, value in contents.items():
+                if (staging / name).read_bytes() != value:
+                    raise ValueError(f"checkpoint source metadata hash changed: {name}")
             os.rename(staging, path)
-        distributed.primary(publish, "checkpoint publication")
+            return metadata
+        metadata = distributed.primary(publish, "checkpoint publication")
+        metadata = distributed.gather(metadata)[0]
         def visible_publication():
             _await_shared_paths([path / name for name in (*files, "manifest.json", "_SUCCESS")],
-                                "checkpoint publication incomplete on shared storage")
-            if (path / "_SUCCESS").read_text().strip() != _sha(path / "manifest.json"):
-                raise ValueError("checkpoint manifest hash changed")
+                                "checkpoint publication incomplete on shared storage", metadata=metadata)
         distributed.checked(visible_publication, "checkpoint shared publication visibility")
     except BaseException:
         if world == 1:
