@@ -21,13 +21,13 @@ SCHEMA = "distillschedule.training_checkpoint.v2"
 _STORAGE_VISIBILITY_TIMEOUT = 30.0
 
 
-def _await_shared_paths(paths, label, *, directory=False, metadata=None):
-    """Wait only for metadata whose producer already completed collectively.
+def _await_shared_paths(paths, label, *, directory=False, hashes=None):
+    """Wait only for visibility whose producer already completed collectively.
 
     A process-group barrier is not a shared-filesystem metadata barrier. Never
     create a missing peer directory or accept an incomplete checkpoint here.
-    Only zero-filled publication metadata may wait for publisher-attested
-    content. Other hash mismatches and ordinary restart admission never retry.
+    During save publication, content must match the exact writer-attested hash,
+    even when stale/partial reads are nonzero. Ordinary restart never retries.
     """
     timeout = 0.0
     if distributed.rank_world()[1] > 1:
@@ -36,28 +36,32 @@ def _await_shared_paths(paths, label, *, directory=False, metadata=None):
         # Leave most of the actual metadata timeout for I/O and that collective.
         timeout = min(_STORAGE_VISIBILITY_TIMEOUT, metadata_timeout_seconds() / 4)
     deadline = time.monotonic() + timeout
+    pending = list(paths)
     while True:
-        missing = [path for path in paths if not (path.is_dir() if directory else path.is_file())]
-        if metadata is not None:
-            for path in paths:
-                if path in missing or path.name not in metadata:
+        missing = [path for path in pending if not (path.is_dir() if directory else path.is_file())]
+        mismatches = []
+        if hashes is not None:
+            for path in pending:
+                if path in missing or path.name not in hashes:
                     continue
                 try:
-                    contents = path.read_bytes()
+                    # Stream model-sized peer shards; never materialize them.
+                    observed = _sha(path)
                 except FileNotFoundError:
                     missing.append(path)
                     continue
-                expected = metadata[path.name]
-                if (len(contents) == expected["size"]
-                        and hashlib.sha256(contents).hexdigest() == expected["sha256"]):
+                expected = hashes[path.name]
+                if observed == expected:
                     continue
-                if any(contents):
-                    raise ValueError(f"checkpoint metadata hash changed: {path.name}")
+                mismatches.append(f"{path.name}: hash changed (expected {expected}, observed {observed})")
                 missing.append(path)
         if not missing:
             return
         if time.monotonic() >= deadline:
-            raise ValueError(f"{label}: shared storage visibility timed out: {missing}")
+            raise ValueError(f"{label}: shared storage visibility timed out: {missing}; {mismatches}")
+        # Writers have finished and these paths are immutable. Do not rehash
+        # already verified shards while waiting for another peer's visibility.
+        pending = missing
         time.sleep(min(0.1, max(0.0, deadline - time.monotonic())))
 
 
@@ -339,9 +343,13 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         def publish():
             if len(files) != world:
                 raise ValueError("checkpoint shards incomplete on shared storage")
-            _await_shared_paths([staging / name for name in files], "checkpoint shards incomplete on shared storage")
-            if any(_sha(staging / name) != sha for name, sha in files.items()):
-                raise ValueError("checkpoint shards incomplete on shared storage")
+            # A publisher's local source readback is strict; only completed
+            # peer writes may need time to become visible on shared storage.
+            if _sha(staging / filename) != files[filename]:
+                raise ValueError(f"checkpoint source shard hash changed: {filename}")
+            peers = {name: sha for name, sha in files.items() if name != filename}
+            _await_shared_paths([staging / name for name in peers],
+                                "checkpoint shards incomplete on shared storage", hashes=peers)
             manifest = {"schema_version": SCHEMA, "kind": "RESUMABLE_COMPLETE_CYCLE",
                         "identity": identity, "cycle": cycle, "cursor": cursor,
                         "versions": dict(versions), "policy": policy,
@@ -355,7 +363,7 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                         for name, value in contents.items()}
             # Attest the intended bytes, not a possibly stale filesystem read.
             # Flush and strictly verify the publisher's copy before rename;
-            # only consumers may wait for zero-filled publication visibility.
+            # only consumers may wait for exact publication content visibility.
             for name, value in contents.items():
                 with (staging / name).open("xb") as handle:
                     handle.write(value)
@@ -370,7 +378,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         metadata = distributed.gather(metadata)[0]
         def visible_publication():
             _await_shared_paths([path / name for name in (*files, "manifest.json", "_SUCCESS")],
-                                "checkpoint publication incomplete on shared storage", metadata=metadata)
+                                "checkpoint publication incomplete on shared storage",
+                                hashes={name: row["sha256"] for name, row in metadata.items()})
         distributed.checked(visible_publication, "checkpoint shared publication visibility")
     except BaseException:
         if world == 1:

@@ -1,6 +1,7 @@
 """CPU fault-injection around the actual checkpoint producer/consumer.
 
-Delayed metadata visibility is injected, never data or fabricated rank receipts.
+Delayed reads are injected after real writers attest their bytes. No fabricated
+rank receipts or replacement checkpoint is ever accepted.
 """
 from datetime import timedelta
 from contextlib import ExitStack
@@ -9,6 +10,7 @@ import io
 import json
 import os
 from pathlib import Path
+import random
 import time
 from unittest.mock import patch
 
@@ -16,6 +18,8 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+
+from test_training_end_to_end import equal
 
 
 def _worker(rank, rendezvous, root, mode):
@@ -118,16 +122,26 @@ def _content_worker(rank, rendezvous, root, mode, filename):
     original_open = Path.open
     observations = []
     fault_started = None
+    source_shard_reads = 0
+
+    class StreamingRead(io.BytesIO):
+        def read(self, size=-1):
+            assert 0 < size <= 1024 * 1024, 'publication loaded an entire shard in memory'
+            return super().read(size)
 
     def observed_open(path, access='r', *args, **kwargs):
-        nonlocal fault_started
+        nonlocal fault_started, source_shard_reads
         access = kwargs.pop('mode', access)
         source_fault = mode.startswith('source-')
         target = (rank == 0 and path.parent.name.startswith('.checkpoint.tmp-')
-                  if source_fault else rank == 1 and path.parent == output)
+                  if source_fault or mode.startswith('peer-') else rank == 1 and path.parent == output)
         names = ('manifest.json', '_SUCCESS') if mode == 'coherent-wrong' else (filename,)
         if mode == 'normal' or not target or path.name not in names or 'r' not in access:
             return original_open(path, access, *args, **kwargs)
+        if mode == 'source-shard':
+            source_shard_reads += 1
+            if source_shard_reads == 1:  # The writer's actual local attestation.
+                return original_open(path, access, *args, **kwargs)
         with original_open(path, 'rb') as handle:
             contents = handle.read()
         assert len(contents) == path.stat().st_size
@@ -135,15 +149,23 @@ def _content_worker(rank, rendezvous, root, mode, filename):
             assert len(contents) == 65
         if fault_started is None:
             fault_started = time.monotonic()
-        if mode == 'delayed-missing' and len(observations) < 3:
+        if mode in ('delayed-missing', 'peer-delayed-missing') and len(observations) < 3:
             observations.append({'name': path.name, 'missing': True})
             raise FileNotFoundError(path)
-        if mode in ('delayed-zero', 'delayed-missing') and len(observations) >= 3:
+        if 'delayed-' in mode and len(observations) >= 3:
             value = contents
         elif mode in ('delayed-zero', 'persistent-zero', 'source-zero'):
             value = b'\0' * len(contents)
-        elif mode == 'partial-zero':
+        elif mode in ('partial-zero', 'delayed-partial', 'source-shard'):
             value = b'\0' + contents[1:]
+        elif mode == 'delayed-truncated':
+            value = contents[:len(contents)//2]
+        elif mode.startswith('peer-'):
+            # Stale bytes come from this rank's real previous-cycle producer,
+            # not a fake accepted shard or an invented digest.
+            with original_open(Path(root)/'previous'/filename, 'rb') as handle:
+                value = handle.read()
+            assert value != contents
         elif mode == 'coherent-wrong' and path.name == '_SUCCESS':
             with original_open(output/'manifest.json', 'rb') as handle:
                 changed = handle.read().replace(b'"cycle": 1', b'"cycle": 9')
@@ -154,16 +176,36 @@ def _content_worker(rank, rendezvous, root, mode, filename):
             value = contents.replace(b'"cycle": 1', b'"cycle": 9')
             assert value != contents
         observations.append({'name': path.name, 'stat_size': path.stat().st_size,
-                             'returned_bytes': len(value), 'all_zero': not any(value)})
+                             'returned_bytes': len(value), 'all_zero': not any(value),
+                             'expected_sha256': hashlib.sha256(contents).hexdigest(),
+                             'observed_sha256': hashlib.sha256(value).hexdigest()})
+        if filename.endswith('.pt'):
+            return StreamingRead(value)
         return io.BytesIO(value) if 'b' in access else io.StringIO(value.decode())
 
     try:
-        state = {'value': torch.tensor([float(rank)])}
+        torch.manual_seed(23 + rank)
+        random.seed(23 + rank)
+        model = torch.nn.Linear(2, 2)
+        optimizer = torch.optim.AdamW(model.parameters())
+        state = {'model': model, 'optimizer': optimizer, 'value': torch.tensor([float(rank)])}
         error = None
+        with control_plane(metadata):
+            if mode.startswith('peer-'):
+                cp.save_checkpoint(Path(root)/'previous', state, identity={'cpu_test': True},
+                                   cycle=0, cursor=0, versions={'model': 0, 'value': 0})
+        model(torch.ones(1, 2)).sum().backward()
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        versions = {'model': 1, 'value': 1}
+        policy = {'selection': 'cpu-content-readiness'}
+        progress = {'stream': {'cursor': 2}}
+        expected = {'state': cp.pack_state(state), 'rng': cp.rng_state(), 'cycle': 1, 'cursor': 2,
+                    'versions': versions, 'policy': policy, 'data_progress': progress}
         with control_plane(metadata), patch.object(Path, 'open', observed_open):
             try:
                 cp.save_checkpoint(output, state, identity={'cpu_test': True}, cycle=1, cursor=2,
-                                   versions={'value': 1})
+                                   versions=versions, policy=policy, data_progress=progress)
             except ValueError as exc:
                 error = str(exc)
             fault_elapsed = None if fault_started is None else time.monotonic() - fault_started
@@ -174,29 +216,60 @@ def _content_worker(rank, rendezvous, root, mode, filename):
                 'CUDA_initialized': torch.cuda.is_initialized(),
                 'evidence_kind': 'SYNTHETIC_TEST_ONLY_GLOO_CHECKPOINT'}))
             assert errors[0] == errors[1], 'ranks disagreed on publication outcome'
-            if mode in ('normal', 'delayed-zero', 'delayed-missing'):
+            fault_rank = 0 if mode.startswith(('source-', 'peer-')) else 1
+            if mode == 'normal' or rank != fault_rank:
+                assert not observations, 'read fault affected a non-target rank'
+            if mode == 'normal' or 'delayed-' in mode:
                 assert error is None, error
-                if rank == 1 and mode.startswith('delayed-'):
+                if 'delayed-' in mode and rank == fault_rank:
                     assert len(observations) >= 4
-                    assert all(row.get('missing') or row.get('all_zero') for row in observations[:3])
-                    assert not observations[-1]['all_zero']
+                    assert all(row.get('missing') or row['observed_sha256'] != row['expected_sha256']
+                               for row in observations[:3])
+                    assert observations[-1]['observed_sha256'] == observations[-1]['expected_sha256']
                 payload = cp.read_checkpoint(output, identity={'cpu_test': True})
-                assert torch.equal(payload['state']['value']['value'], state['value'])
+                assert equal(payload, expected), 'saved state/Adam/RNG/progress differs from producer'
+                with torch.no_grad():
+                    for parameter in model.parameters():
+                        parameter.add_(1)
+                    state['value'].add_(1)
+                    for slots in optimizer.state.values():
+                        slots['exp_avg'].add_(1)
+                torch.manual_seed(99)
+                random.seed(99)
+                restored = cp.restore_checkpoint(output, state, identity={'cpu_test': True})
+                assert equal(restored, expected)
+                assert equal(cp.pack_state(state), expected['state'])
+                assert equal(cp.rng_state(), expected['rng'])
             else:
-                assert error is not None, 'invalid metadata was accepted'
-                if mode == 'persistent-zero':
+                assert error is not None, 'unattested content was accepted'
+                if not mode.startswith('source-'):
+                    # Active publication can wait for exact attested bytes,
+                    # but permanently wrong content must still fail boundedly.
                     assert 'visibility timed out' in error
-                    if rank == 1:
+                    assert filename in error
+                    if rank == fault_rank:
                         assert .4 <= fault_elapsed < 1.5
                         assert len(observations) >= 2
+                        assert observations[-1]['expected_sha256'] in error
+                        assert observations[-1]['observed_sha256'] in error
                 else:
                     assert 'hash' in error
-                    if observations:
-                        assert len(observations) == 1, 'nonzero corruption was retried'
+                    if rank == fault_rank:
+                        assert len(observations) == 1, 'publisher source corruption was retried'
+                        assert fault_elapsed < .4
                 # Producer rejection must precede rename. A consumer rejection
                 # leaves the committed directory intact as failure evidence.
-                assert output.exists() != mode.startswith('source-')
+                prepublication = mode.startswith(('source-', 'peer-'))
+                assert output.exists() != prepublication
+                if prepublication:
+                    assert list(Path(root).glob('.checkpoint.tmp-*')), 'failed staging evidence was removed'
             assert gather(rank) == [0, 1], 'failure poisoned the short control plane'
+            (Path(root)/f'content-rank{rank}.json').write_text(json.dumps({
+                'rank': rank, 'mode': mode, 'filename': filename, 'errors': errors,
+                'observations': observations, 'fault_elapsed': fault_elapsed,
+                'full_state_and_rng_readback': error is None,
+                'control_plane_usable': True, 'CUDA_initialized': torch.cuda.is_initialized(),
+                'evidence_kind': 'SYNTHETIC_TEST_ONLY_GLOO_CHECKPOINT'}))
         assert not torch.cuda.is_initialized()
     finally:
         dist.destroy_process_group(metadata)
@@ -207,21 +280,30 @@ def _content_worker(rank, rendezvous, root, mode, filename):
     ('normal', '_SUCCESS'),
     ('delayed-zero', '_SUCCESS'), ('delayed-zero', 'manifest.json'),
     ('delayed-missing', '_SUCCESS'), ('delayed-missing', 'manifest.json'),
+    ('delayed-partial', '_SUCCESS'), ('delayed-partial', 'manifest.json'),
+    ('delayed-truncated', '_SUCCESS'), ('delayed-truncated', 'manifest.json'),
+    ('peer-delayed-stale', 'rank-00001.pt'), ('peer-delayed-missing', 'rank-00001.pt'),
+    ('peer-persistent-stale', 'rank-00001.pt'),
     ('persistent-zero', '_SUCCESS'), ('persistent-zero', 'manifest.json'),
     ('wrong-hash', '_SUCCESS'), ('changed-manifest', 'manifest.json'),
     ('partial-zero', '_SUCCESS'), ('coherent-wrong', 'manifest.json'),
     ('source-zero', '_SUCCESS'), ('source-zero', 'manifest.json'),
     ('source-changed', '_SUCCESS'), ('source-changed', 'manifest.json'),
+    ('source-shard', 'rank-00000.pt'),
 ])
 def test_real_gloo_publication_requires_publisher_metadata_content(tmp_path, mode, filename):
     mp.spawn(_content_worker, args=(str(tmp_path/'rdzv'), str(tmp_path), mode, filename),
              nprocs=2, join=True)
 
 
-@pytest.mark.parametrize('mode', ['delayed-zero', 'persistent-zero'])
-def test_content_visibility_uses_short_metadata_timeout_with_detail(tmp_path, mode, monkeypatch):
+@pytest.mark.parametrize('mode,filename', [
+    ('delayed-zero', '_SUCCESS'), ('persistent-zero', '_SUCCESS'),
+    ('delayed-partial', 'manifest.json'), ('coherent-wrong', 'manifest.json'),
+    ('peer-delayed-stale', 'rank-00001.pt'), ('peer-persistent-stale', 'rank-00001.pt'),
+])
+def test_content_visibility_uses_short_metadata_timeout_with_detail(tmp_path, mode, filename, monkeypatch):
     monkeypatch.setenv('TORCH_DISTRIBUTED_DEBUG', 'DETAIL')
-    mp.spawn(_content_worker, args=(str(tmp_path/'rdzv'), str(tmp_path), mode, '_SUCCESS'),
+    mp.spawn(_content_worker, args=(str(tmp_path/'rdzv'), str(tmp_path), mode, filename),
              nprocs=2, join=True)
 
 
@@ -274,16 +356,23 @@ def test_metadata_sync_failure_never_publishes_checkpoint(tmp_path, monkeypatch,
 
 
 @pytest.mark.parametrize('filename', ['manifest.json', '_SUCCESS'])
-def test_single_process_publication_never_retries_zero_content(tmp_path, monkeypatch, filename):
+@pytest.mark.parametrize('fault', ['zero', 'partial', 'truncated'])
+def test_single_process_publication_never_retries_wrong_content(tmp_path, monkeypatch, filename, fault):
     from distillschedule.training import checkpoint as cp
     output = tmp_path/'checkpoint'
-    read_bytes = Path.read_bytes
+    original_open = Path.open
 
-    def zero_publication(path):
-        value = read_bytes(path)
-        return b'\0' * len(value) if path == output/filename else value
+    def wrong_publication(path, access='r', *args, **kwargs):
+        access = kwargs.pop('mode', access)
+        if path != output/filename or 'r' not in access:
+            return original_open(path, access, *args, **kwargs)
+        with original_open(path, 'rb') as handle:
+            contents = handle.read()
+        value = (b'\0' * len(contents) if fault == 'zero' else b'\0' + contents[1:]
+                 if fault == 'partial' else contents[:len(contents)//2])
+        return io.BytesIO(value)
 
-    monkeypatch.setattr(Path, 'read_bytes', zero_publication)
+    monkeypatch.setattr(Path, 'open', wrong_publication)
     monkeypatch.setattr(cp.time, 'sleep', lambda _: pytest.fail('single-process publication retried'))
     with pytest.raises(ValueError, match='visibility timed out'):
         cp.save_checkpoint(output, {'value': torch.tensor([1.0])}, identity={'test': True},
@@ -331,3 +420,9 @@ def test_restart_rejections_never_use_publication_visibility_wait(tmp_path, monk
             cp.read_manifest(output, identity=identity)
     with pytest.raises(ValueError, match=match):
         cp.read_checkpoint(output, identity=identity)
+    state = {'value': torch.tensor([9.0])}
+    before_state, before_rng = cp.pack_state(state), cp.rng_state()
+    with pytest.raises(ValueError, match=match):
+        cp.restore_checkpoint(output, state, identity=identity)
+    assert equal(cp.pack_state(state), before_state)
+    assert equal(cp.rng_state(), before_rng)
