@@ -57,6 +57,7 @@ class DMD2Owner:
         self.device = model.accelerator.device
         self.uncond_embedding = uncond_embedding
         self.identity = deepcopy(identity)
+        self.checkpoint_policy = identity.get('native_checkpoint_policy', 'coupled-v1')
         self.ratio, self.native_step = args.dfake_gen_update_ratio, 0
         self.generator_updates, self.guidance_updates = 0, 0
         self.optimizers = {
@@ -68,14 +69,14 @@ class DMD2Owner:
         self.schedulers = {name: get_scheduler('constant_with_warmup', optimizer=optimizer,
                 num_warmup_steps=args.warmup_step, num_training_steps=args.train_iters)
             for name, optimizer in self.optimizers.items()}
-        names = {id(p): name for name, p in model.named_parameters()}
+        names = {id(p): name for name, p in self._model_named('parameters')}
         self.ownership = {role: [[names[id(p)] for p in group['params']] for group in optimizer.param_groups]
                           for role, optimizer in self.optimizers.items()}
         require(not any(name.startswith(('guidance_model.real_unet.', 'guidance_model.dummy_network.'))
                         for group in self.ownership['guidance'] for name in group),
                 'teacher/dummy entered guidance optimizer')
-        self.initial_masks = {name: p.requires_grad for name, p in model.named_parameters()}
-        self.frozen_hashes = {name: _hash_tensor(parameter) for name, parameter in model.named_parameters()
+        self.initial_masks = {name: p.requires_grad for name, p in self._model_named('parameters')}
+        self.frozen_hashes = {name: _hash_tensor(parameter) for name, parameter in self._model_named('parameters')
                               if not parameter.requires_grad}
         self._settings_hash = fingerprint(vars(args))
         self._preprocessing_hash = fingerprint(self.identity['preprocessing_assets'])
@@ -88,6 +89,34 @@ class DMD2Owner:
     @property
     def cycle(self):
         return self.native_step // self.ratio
+
+    def _model_named(self, kind):
+        roles = getattr(self, '_role_replicas', None)
+        return roles.named(kind) if roles is not None else getattr(self.model, 'named_' + kind)()
+
+    def _model_state_dict(self):
+        roles = getattr(self, '_role_replicas', None)
+        return roles.state_dict() if roles is not None else self.model.state_dict()
+
+    def _load_model_state_dict(self, value):
+        roles = getattr(self, '_role_replicas', None)
+        if roles is not None:
+            roles.load_state_dict(value)
+        else:
+            self.model.load_state_dict(value, strict=True)
+
+    def _validate_process_ownership(self):
+        import torch
+        require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
+
+    def _identity_device(self):
+        return str(self.device)
+
+    def _scheduler_clock(self, step):
+        return step
+
+    def _step_scheduler(self, role):
+        self.schedulers[role].step()
 
     def __deepcopy__(self, memo):
         # The generic paired path clones whole live owners. A real CUDA model
@@ -203,10 +232,15 @@ class DMD2Owner:
             status = 'AVAILABLE'
         else:
             status = 'UNAVAILABLE_RUNTIME'
-        baseline = {'gradient_checkpointing': self.args.gradient_checkpointing}
+        per_component = self.checkpoint_policy == 'component-v1'
+        baseline = (dict(generator_checkpointing=True, fake_checkpointing=True) if per_component else
+                    {'gradient_checkpointing': self.args.gradient_checkpointing})
+        effect = (dict(kind='native_component_checkpoint', enabled_keys=dict(
+                    generator='generator_checkpointing', fake='fake_checkpointing')) if per_component else
+                  dict(kind='native_checkpoint', enabled_key='gradient_checkpointing',
+                       components=['generator', 'fake']))
         descriptor = dict(schema_version='distillschedule.owner_execution.v1', baseline=baseline,
-            options=[baseline], effect=dict(kind='native_checkpoint', enabled_key='gradient_checkpointing',
-                                           components=['generator', 'fake']),
+            options=[baseline], effect=effect,
             identity=dict(source=deepcopy(self.source.identity), runtime=runtime,
                 provider_file_sha256=file_sha256(Path(__file__)),
                 native_classes={name: code_signature(type(value)) for name, value in (
@@ -238,7 +272,8 @@ class DMD2Owner:
         helper_files['torch.checkpoint_wrapper'] = inspect.getsourcefile(torch.utils.checkpoint.checkpoint)
         require(all(path is not None for path in helper_files.values()),
                 'native checkpoint helpers require inspectable source files')
-        descriptor['options'].append({'gradient_checkpointing': not self.args.gradient_checkpointing})
+        descriptor['options'].append(dict(generator_checkpointing=True, fake_checkpointing=False)
+            if per_component else {'gradient_checkpointing': not self.args.gradient_checkpointing})
         descriptor['identity'].update(
             helper_files={name: file_sha256(Path(path)) for name, path in sorted(helper_files.items())},
             checkpoint_api={name: code_signature(getattr(UNet2DConditionModel, name)) for name in (
@@ -257,10 +292,13 @@ class DMD2Owner:
         """
         import torch
         descriptor = self.execution_options()
-        require(len(descriptor['options']) > 1 and type(option) is dict and set(option) == {'gradient_checkpointing'}
-                and type(option['gradient_checkpointing']) is bool and option in descriptor['options'],
+        require(len(descriptor['options']) > 1 and type(option) is dict
+                and option.keys() == descriptor['baseline'].keys()
+                and all(type(value) is bool for value in option.values()) and option in descriptor['options'],
                 'unsupported native execution option')
-        enabled = option['gradient_checkpointing']
+        per_component = self.checkpoint_policy == 'component-v1'
+        enabled = ({name: option[key] for name, key in descriptor['effect']['enabled_keys'].items()}
+                   if per_component else dict.fromkeys(('generator', 'fake'), option['gradient_checkpointing']))
         roots = {'generator': self.model.feedforward_model, 'fake': self.model.guidance_model.fake_unet}
         flags = [(owner, owner.gradient_checkpointing) for owner in (self.model, self.model.guidance_model)]
         attributes = ('gradient_checkpointing', '_gradient_checkpointing_func', 'enable_gradient_checkpointing')
@@ -268,6 +306,7 @@ class DMD2Owner:
                  for root in roots.values() for module in root.modules()]
         effects['components'] = {name: dict(checkpoint_requests=0, recompute_calls=0, disabled_verified=False)
                                  for name in roots}
+        hooks = []
 
         def measured_enable(root, row):
             original = root.enable_gradient_checkpointing
@@ -292,13 +331,30 @@ class DMD2Owner:
             for name, root in roots.items():
                 root.enable_gradient_checkpointing = measured_enable(root, effects['components'][name])
                 root.disable_gradient_checkpointing()
-            self.model.gradient_checkpointing = self.model.guidance_model.gradient_checkpointing = enabled
-            if enabled:
+                if per_component:
+                    row = effects['components'][name]
+                    row.update(forward_calls=0, retained_calls=0)
+                    def observe(module, args, kwargs, row=row, active=enabled[name]):
+                        # Native GAN classifier calls .forward directly and is
+                        # deliberately not this epsilon-forward scope. DMD
+                        # score queries have grad disabled and do not count.
+                        if torch.is_grad_enabled() and not kwargs.get('classify_mode', False):
+                            row['forward_calls'] += 1
+                            if not active:
+                                require(not module.is_gradient_checkpointing,
+                                        'Fake epsilon activation retention was not applied')
+                                row['retained_calls'] += 1
+                    hooks.append(root.register_forward_pre_hook(observe, with_kwargs=True))
+            self.model.gradient_checkpointing = enabled['generator']
+            self.model.guidance_model.gradient_checkpointing = enabled['fake']
+            if enabled['generator']:
                 roots['generator'].enable_gradient_checkpointing()
             # Fake remains disabled until its original compute_loss_fake enables
             # it, and the original disable at the end of that forward remains.
             yield
         finally:
+            for hook in hooks:
+                hook.remove()
             for name, root in roots.items():
                 effects['components'][name]['disabled_verified'] = all(
                     not module.gradient_checkpointing for module in root.modules()
@@ -345,9 +401,9 @@ class DMD2Owner:
         # Initial masks, not current masks: upstream deliberately toggles the
         # entire guidance module to requires_grad=True after the first G turn.
         # Those Teacher tensors remain immutable and outside the optimizer.
-        tensors = dict(self.model.named_parameters())
+        tensors = dict(self._model_named('parameters'))
         result = {name: _tensor_identity(tensors[name]) for name in self.frozen_hashes}
-        for name, value in self.model.named_buffers():
+        for name, value in self._model_named('buffers'):
             if not name.startswith(('feedforward_model.', 'guidance_model.fake_unet.',
                                     'guidance_model.cls_pred_branch.')):
                 result[name] = _tensor_identity(value)
@@ -379,9 +435,9 @@ class DMD2Owner:
     def _validate_live(self):
         import torch
         from distillschedule.data.sd_inputs import preprocessing_assets
-        require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
+        self._validate_process_ownership()
         require(self.device == self.model.accelerator.device == self.model.guidance_model.accelerator.device
-                and self.identity['placement']['device'] == str(self.device)
+                and self.identity['placement']['device'] == self._identity_device()
                 and all(t.device == self.device and (not t.is_floating_point() or t.dtype == torch.float32)
                         for t in self.runtime_tensors()), 'live native device/FP32 placement changed')
         require(not torch.is_autocast_enabled(self.device.type), 'native FP32 owner does not admit AMP')
@@ -396,6 +452,10 @@ class DMD2Owner:
                 and fingerprint(self.identity['settings']) == self._settings_hash
                 and self.model.args is self.args and self.model.guidance_model.args is self.args
                 and self.ratio == self.args.dfake_gen_update_ratio, 'live mathematical settings changed')
+        require(self.checkpoint_policy == self.identity.get('native_checkpoint_policy', 'coupled-v1')
+                and self.checkpoint_policy in ('coupled-v1', 'component-v1')
+                and (self.checkpoint_policy != 'component-v1' or self.args.gradient_checkpointing is True),
+                'live native checkpoint policy changed')
         require(fingerprint(self.identity['preprocessing_assets']) == self._preprocessing_hash
                 and self.identity['preprocessing_assets'] == preprocessing_assets(self.identity['bundle']['files'],
                     variant='sdxl' if self.args.sdxl else 'sd15', images=True),
@@ -407,12 +467,12 @@ class DMD2Owner:
                 'live native conditioning/scheduler constants changed')
         require(self.native_step % self.ratio == 0 and self.generator_updates == self.cycle
                 and self.guidance_updates == self.native_step, 'not a complete native macrocycle')
-        names = {id(p): name for name, p in self.model.named_parameters()}
+        names = {id(p): name for name, p in self._model_named('parameters')}
         require(self.ownership == {role: [[names.get(id(p)) for p in group['params']]
                 for group in optimizer.param_groups] for role, optimizer in self.optimizers.items()},
                 'optimizer parameter/name ownership changed')
         require(all(p.grad is None for p in self.model.parameters()), 'checkpoint requires cleared native gradients')
-        require({name: p.requires_grad for name, p in self.model.named_parameters()} == self._masks(self.native_step),
+        require({name: p.requires_grad for name, p in self._model_named('parameters')} == self._masks(self.native_step),
                 'native teacher/fake/generator masks changed')
 
     def validate_feeds(self, feeds):
@@ -478,7 +538,7 @@ class DMD2Owner:
             self.optimizers['guidance'].zero_grad()
             self._event('generator_committed', model.feedforward_model.state_dict())
         # Both LR schedulers advance every native iteration, even without G.
-        self.schedulers['generator'].step()
+        self._step_scheduler('generator')
         self._event('guidance_input_cache', cached)
         guidance_loss_dict, _ = model(noise, text, uncond, visual=False,
             denoising_dict=denoising_dict, real_train_dict=real_train_dict,
@@ -496,7 +556,7 @@ class DMD2Owner:
         self.guidance_updates += 1
         self.optimizers['guidance'].zero_grad()
         self.optimizers['generator'].zero_grad()
-        self.schedulers['guidance'].step()
+        self._step_scheduler('guidance')
         losses = {name: float(value.detach()) for name, value in
                   {**generator_loss_dict, **guidance_loss_dict}.items()}
         result = {'native_step': self.native_step, 'generator_turn': compute_generator,
@@ -512,8 +572,8 @@ class DMD2Owner:
         return dict(schema_version=SCHEMA, identity=deepcopy(self.identity), native_step=self.native_step,
             generator_updates=self.generator_updates, guidance_updates=self.guidance_updates,
             consumed={name: self.cycle * count for name, count in stream_counts(self.args).items()},
-            model=self.model.state_dict(), training={name: child.training for name, child in self.model.named_modules()},
-            requires_grad={name: p.requires_grad for name, p in self.model.named_parameters()},
+            model=self._model_state_dict(), training={name: child.training for name, child in self._model_named('modules')},
+            requires_grad={name: p.requires_grad for name, p in self._model_named('parameters')},
             optimizer_ownership=deepcopy(self.ownership),
             optimizers={name: value.state_dict() for name, value in self.optimizers.items()},
             schedulers={name: value.state_dict() for name, value in self.schedulers.items()},
@@ -565,15 +625,16 @@ class DMD2Owner:
                         'AdamW moment/native update clock changed')
             _validate_optimizer_layout(optimizer, saved, 'DMD2 ' + role)
             scheduler = value['schedulers'][role]
+            scheduler_step = self._scheduler_clock(step)
             require(scheduler.keys() == current['schedulers'][role].keys()
-                    and type(scheduler['last_epoch']) is int and scheduler['last_epoch'] == step
-                    and type(scheduler['_step_count']) is int and scheduler['_step_count'] == step + 1
+                    and type(scheduler['last_epoch']) is int and scheduler['last_epoch'] == scheduler_step
+                    and type(scheduler['_step_count']) is int and scheduler['_step_count'] == scheduler_step + 1
                     and all(scheduler[key] == current['schedulers'][role][key]
                             for key in scheduler if key not in ('last_epoch', '_step_count', '_last_lr')),
                     'both LR schedulers must track every native iteration')
             warmup = self.args.warmup_step
             base = self.args.generator_lr if role == 'generator' else self.args.guidance_lr
-            lr = base * (min(float(step) / float(max(1, warmup)), 1.) if step < warmup else 1.)
+            lr = base * (min(float(scheduler_step) / float(max(1, warmup)), 1.) if scheduler_step < warmup else 1.)
             require(scheduler['base_lrs'] == [base] and scheduler['_last_lr'] == [lr]
                     and all(group['lr'] == lr for group in saved['param_groups']), 'LR scheduler recurrence changed')
         require(all(bool(torch.isfinite(tensor).all()) for tensor in tree_leaves(value)
@@ -585,10 +646,10 @@ class DMD2Owner:
 
     def load_state_dict(self, value):
         self.validate_state_dict(value)  # Validate everything before mutating live tensors.
-        self.model.load_state_dict(value['model'], strict=True)
-        for name, child in self.model.named_modules():
+        self._load_model_state_dict(value['model'])
+        for name, child in self._model_named('modules'):
             child.training = value['training'][name]
-        for name, parameter in self.model.named_parameters():
+        for name, parameter in self._model_named('parameters'):
             parameter.requires_grad_(value['requires_grad'][name])
             parameter.grad = None
         for name, optimizer in self.optimizers.items():

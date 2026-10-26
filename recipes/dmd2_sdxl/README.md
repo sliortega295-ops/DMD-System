@@ -75,3 +75,10 @@ manual/auto/saved-plan admission and first-postrestart paired reference gate
 apply **on the qualified CPU FP32 stack only**; Teacher, dual CLIP and VAE remain
 outside the option. CUDA optimized trials are rejected until capacity-bounded
 resident snapshot/restore also covers frozen state and CPU staging.
+
+The independent `component-v1` checkpoint profile also applies to actual SDXL:
+Generator retains checkpointing while Fake epsilon activations may be retained,
+with separate per-role effect evidence. See the
+[native owner guide](../../docs/guides/native_owner_backends.md). Role-DDP
+implementation is separate and does not inherit the single-device CUDA or
+component-profile qualification.

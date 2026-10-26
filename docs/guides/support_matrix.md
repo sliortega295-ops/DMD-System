@@ -209,7 +209,16 @@ frozen roles, optimizer, comparison and CPU staging. This does not complete
 distributed/AMP owner support or the plan's full pretrained acceptance gates. Other
 physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
-working on opaque native owners. See [model families](model_families.md),
+working on opaque native owners. The explicit
+[native-owner role backend](native_owner_backends.md) is a separate exception:
+actual DMD2 SD1.5/SDXL CPU2/Gloo has complete canonical per-rank checkpoint and exact
+new-process continuation evidence, without duplicating native gradient
+reduction. It currently supports persistent reference/direct-manual FP32 only,
+not cloned auto/plan trials, GAN, mixed precision or FSDP2. Its new CUDA/NCCL
+source path has not been GPU-qualified. Existing single-device defaults are
+unchanged. The same guide documents independently bound Generator/Fake
+checkpoint effects (`component-v1`) on the qualified CPU1 stack.
+See [model families](model_families.md),
 [capabilities](optimization_capabilities.md) and their dedicated CI lanes.
 
 Official Self-Forcing also has a bounded **exact random tiny CPU profile**:
@@ -222,3 +231,11 @@ are CPU evidence only. The legacy OFF reference is unchanged and offers no
 checkpoint alternative. Other runtimes/profiles retain baseline; CUDA trial
 copying/auto/plan/owner execution remain rejected pending capacity-bounded
 snapshot support. This is not full U6, pretrained, GPU or quality acceptance.
+
+The separate official Self-Forcing `release-after-commit-v1` model profile
+relinquishes consumed rollout KV/cache references after native backward and
+Adam/EMA commit. Default behavior is unchanged. Actual checkpoint-OFF/ON
+three-cycle and fresh-process restart tests cover CPU native loss, gradients,
+optimizer/EMA/RNG/input state. The policy has actual release counters, but its
+byte count is not allocator-free memory and its new public CUDA path is
+unqualified. See [the scoped owner guide](native_owner_backends.md).

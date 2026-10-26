@@ -38,7 +38,14 @@ No new throughput, speedup, convergence or quality result is claimed.
   defaults. This does not qualify pretrained weights, full-GAN training or
   production capacity. See the [GPU acceptance scope](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
   CPU-only Torch still reports these suites NOT_RUN; a skip is never GPU proof.
-  Distributed/AMP and CUDA clone-based auto/plan trials remain refused.
+  The unchanged reference profiles still refuse distributed/AMP execution and
+  CUDA clone-based auto/plan trials. A separate explicit DMD2 FP32 role-DDP
+  profile now has actual SD1.5/SDXL CPU2/Gloo persistent-update and new-process
+  full-state recovery evidence; its CUDA/NCCL path is not yet GPU-qualified.
+  Independently bound Generator/Fake checkpoint policies and official
+  Self-Forcing post-commit consumed-KV release have scoped native CPU evidence.
+  These are opt-ins, not the full separately measured mixed-precision/fused
+  native portfolios. See [native-owner policies](native_owner_backends.md).
 * Modern FLUX.2 klein Base T2I, original Qwen-Image T2I, Wan2.2 TI2V-5B's T2V
   subpath and HunyuanVideo-1.5 T2V use actual tiny upstream native Transformers,
   text/tokenizers and VAEs. CPU1/FP32/B1 unmerged-LoRA G1/F5, raw media, complete

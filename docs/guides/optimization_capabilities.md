@@ -218,3 +218,22 @@ Actual tiny-class Gloo2 and A100 NCCL2 oracle/restart/export evidence is recorde
 separately. World16 is not yet accepted. This is not model sharding or support
 for DDP-forward hooks around private denoise methods. CUDA planning, AMP and
 full pretrained capacity remain unsupported or unqualified as documented.
+
+## Atomic native-owner policies
+
+The official DMD2 [owner profiles](native_owner_backends.md) are explicit
+exceptions to ordinary pure-Call checkpointing and visible-module replicas.
+`component-v1` independently binds Generator/Fake checkpoint flags to actual
+replay/retention counters on CPU1. `ddp-fp32-v1` retains the native internal
+backward/clip/Adam loop under persistent actual role DDP, with same-topology
+per-rank restart. The latter is reference/direct-manual only; no second generic
+reducer, opaque-owner FSDP support or clone-based search is implied. CPU tests
+and separately archived native GPU timings are different evidence scopes.
+
+Official Self-Forcing also exposes the explicit bound model profile
+`native_cache_lifetime: "release-after-commit-v1"`. It releases only consumed
+rollout cache ownership after native backward/clip and Adam/EMA commit; the
+next original rollout rebuilds caches. This is not an automatic search
+dimension or a checkpoint-ON/OFF Generator rewrite. Per-cycle actual release
+counts and deduplicated owner-reference bytes are observable, with CPU native
+state/restart qualification and separate GPU/performance NOT_RUN status.

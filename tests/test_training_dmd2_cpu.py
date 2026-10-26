@@ -59,7 +59,11 @@ def test_actual_original_classes_and_native_input_geometry(fixture_assets):
     assert type(owner.model.vae) is AutoencoderKL
     assert components.prediction.kind == 'epsilon'
     assert not any(name == 'main' or name.startswith('main.') for name in sys.modules)
-    assert 'matplotlib' not in sys.modules and 'scipy' not in sys.modules
+    assert 'matplotlib' not in sys.modules
+    # Diffusers 0.37.1 itself imports scipy.stats from its single-file scheduler
+    # loader. The source-port requirement is to skip upstream utils' unrelated
+    # dependencies, not to forbid legitimate third-party numerical imports.
+    # A fresh-process import-provenance guard tests that boundary below.
     if owner.args.sdxl:
         assert type(owner.model.text_encoder) is api.text.SDXLTextEncoder
         assert owner.model.denoising_step_list.tolist() == [999, 749, 499, 249]
@@ -75,6 +79,31 @@ def test_actual_original_classes_and_native_input_geometry(fixture_assets):
         assert torch.equal(owner.uncond_embedding, owner.model.text_encoder(ids)[0])
     assert all(not any(name.startswith('guidance_model.real_unet.') for name in group)
                for group in owner.ownership['guidance'])
+
+
+def test_original_utility_imports_skip_non_numerical_dependencies(source_root):
+    import subprocess
+    script = r'''import builtins, pathlib, sys, traceback
+import torch
+from distillschedule.training.sd import original
+utility = str(pathlib.Path(sys.argv[1]).resolve() / 'main/utils.py')
+native_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name.split('.')[0] in ('scipy', 'matplotlib'):
+        if any(frame.filename == utility for frame in traceback.extract_stack()):
+            raise AssertionError('unrelated dependency imported by pinned native utils: ' + name)
+    return native_import(name, *args, **kwargs)
+builtins.__import__ = guarded_import
+api = original(sys.argv[1])
+assert api.source.identity['definitions']['main.utils'] == ['get_x0_from_noise', 'NoOpContext', 'DummyNetwork']
+assert all(getattr(api.utils, name).__module__ == api.utils.__name__
+           for name in api.source.identity['definitions']['main.utils'])
+assert not any(name == 'main' or name.startswith('main.') for name in sys.modules)
+assert 'matplotlib' not in sys.modules and not torch.cuda.is_initialized()
+'''
+    result = subprocess.run([sys.executable, '-c', script, str(source_root)],
+                            capture_output=True, text=True, timeout=180)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _native_method(root):

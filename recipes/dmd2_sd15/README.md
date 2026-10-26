@@ -118,8 +118,11 @@ reload use their explicitly selected CPU/CUDA placement. The A100 acceptance
 passed native-oracle and fresh-process continuation checks under an explicit
 deterministic test policy; production defaults were not changed. This is
 **not full pretrained CUDA validation**: production capacity, pretrained
-quality and performance remain NOT_RUN; AMP and distributed/FSDP ownership
-remain rejected. See [acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+quality and performance remain NOT_RUN; AMP and FSDP ownership remain rejected.
+A separate opt-in [FP32 native role DDP reference](../../docs/guides/native_owner_backends.md#persistent-native-dmd2-role-ddp)
+has actual CPU2 training and fresh-process continuation evidence; it does not
+qualify GAN or the measured mixed-precision GPU portfolio. See
+[acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
 including native plain conditioning/scheduler tensors.
@@ -236,3 +239,14 @@ with real updated SD1.5, SDXL and SDXL-LoRA exports and new native owners.
 It imports **weights only**, starts new optimizer/scheduler/native clocks and
 does not resume Fake Score, RNG or data positions. Only a complete framework
 checkpoint supplied to `train --resume` restores the training trajectory.
+
+## Additional explicit owner profiles
+
+The [component checkpoint template](training.component-checkpoint.json) keeps
+Generator checkpointing and retains Fake epsilon activations, with independent
+real execution counters. The [FP32 role-DDP template](training.ddp-fp32.json)
+uses actual persistent native role wrappers and the common per-rank full-state
+checkpoint lifecycle. They are independent opt-ins, not interchangeable flags
+or the full measured GPU optimization portfolio. Read the
+[scope, restart clocks and refusals](../../docs/guides/native_owner_backends.md)
+before selecting either.

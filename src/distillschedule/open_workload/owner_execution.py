@@ -15,6 +15,34 @@ from distillschedule.core.contracts import require
 SCHEMA = 'distillschedule.owner_execution.v1'
 
 
+def _component_keys(effect, option):
+    """Validate effect bindings, retaining the original shared-toggle ABI.
+
+    A per-role policy cannot use one global boolean as proof that both roles
+    executed the chosen strategy. Every physical flag must own exactly one
+    component; effect receipts then qualify each component independently.
+    """
+    if type(effect) is not dict:
+        return None
+    if (set(effect) == {'kind', 'enabled_key', 'components'}
+            and effect['kind'] == 'native_checkpoint'
+            and type(effect['enabled_key']) is str and effect['enabled_key'] in option):
+        names = effect['components']
+        if (type(names) is list and 1 <= len(names) <= 16
+                and all(type(name) is str and name for name in names)
+                and len(set(names)) == len(names)):
+            return dict.fromkeys(names, effect['enabled_key'])
+    if (set(effect) == {'kind', 'enabled_keys'}
+            and effect['kind'] == 'native_component_checkpoint'):
+        keys = effect['enabled_keys']
+        if (type(keys) is dict and 1 <= len(keys) <= 16
+                and all(type(name) is str and name and type(key) is str and key in option
+                        for name, key in keys.items())
+                and len(set(keys.values())) == len(keys) and set(keys.values()) == set(option)):
+            return keys
+    return None
+
+
 def _method_signature(owner, name):
     from .torch_backend import code_signature, signature
     from distillschedule.workloads.best_known.registry import fingerprint
@@ -70,12 +98,7 @@ def inventory(state):
                         and all(type(v) is bool for v in option.values()) for option in options)
                 and baseline in options and len({json.dumps(o, sort_keys=True) for o in options}) == len(options),
                 'owner options must be finite distinct boolean maps including baseline', path='open.owner')
-        require(type(effect) is dict and set(effect) == {'kind', 'enabled_key', 'components'}
-                and effect['kind'] == 'native_checkpoint' and type(effect['enabled_key']) is str
-                and effect['enabled_key'] in baseline
-                and type(effect['components']) is list and 1 <= len(effect['components']) <= 16
-                and all(type(name) is str and name for name in effect['components'])
-                and len(set(effect['components'])) == len(effect['components'])
+        require(_component_keys(effect, baseline) is not None
                 and type(descriptor['identity']) is dict and bool(descriptor['identity']),
                 'owner execution requires source identity and native effect predicates', path='open.owner')
         result[key] = {'descriptor': deepcopy(descriptor),
@@ -123,15 +146,24 @@ def evidence(implementation, rows):
             actual = row.get('owner_execution', {}).get(key, {})
             effect = actual.get('effect', {})
             components = actual.get('components', {})
-            names = effect.get('components', [])
-            enabled = option.get(effect.get('enabled_key'))
-            active = (actual.get('option') == option and effect.get('kind') == 'native_checkpoint'
-                      and type(enabled) is bool and bool(names) and set(components) == set(names))
-            for item in components.values():
+            keys = _component_keys(effect, option)
+            active = (actual.get('option') == option and keys is not None
+                      and type(components) is dict and set(components) == set(keys or {}))
+            for name, enabled_key in (keys or {}).items():
+                item = components.get(name) if type(components) is dict else None
+                if type(item) is not dict:
+                    active = False
+                    continue
+                enabled = option[enabled_key]
                 requests, replay = item.get('checkpoint_requests'), item.get('recompute_calls')
                 counts = type(requests) is int and type(replay) is int and requests >= 0 and replay >= 0
-                active = active and counts and ((requests > 0 and replay > 0) if enabled else
+                active = active and type(enabled) is bool and counts and ((requests > 0 and replay > 0) if enabled else
                     (requests == replay == 0 and item.get('disabled_verified') is True))
+                if effect['kind'] == 'native_component_checkpoint':
+                    forwards, retained = item.get('forward_calls'), item.get('retained_calls')
+                    active = (active and type(forwards) is int and forwards > 0
+                              and type(retained) is int
+                              and retained == (0 if enabled else forwards))
             owners[key] = {'active': bool(active), 'option': deepcopy(option),
                            'components': deepcopy(components)}
         ranks.append(owners)

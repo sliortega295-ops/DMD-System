@@ -1,0 +1,54 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "name": "self-forcing-wan",
+    "parameters": {
+      "source_root": "/REPLACE_WITH/pinned-official-self-forcing-source",
+      "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+      "settings": {
+        "image_or_video_shape": [
+          1,
+          21,
+          16,
+          60,
+          104
+        ]
+      },
+      "native_cache_lifetime": "release-after-commit-v1"
+    }
+  },
+  "algorithm": {
+    "name": "self-forcing"
+  },
+  "data": {
+    "streams": {
+      "generator": {
+        "prepared": "/REPLACE_WITH/generator/manifest.json",
+        "samples_per_cycle": 1,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      },
+      "critic": {
+        "prepared": "/REPLACE_WITH/critic/manifest.json",
+        "samples_per_cycle": 5,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      }
+    }
+  },
+  "execution": {
+    "adapter": "program",
+    "mode": "reference"
+  },
+  "trainer": {
+    "cycles": 3,
+    "seed": 17,
+    "device": "cpu",
+    "checkpoint_every": 1,
+    "output_dir": "/REPLACE_WITH/run"
+  }
+}

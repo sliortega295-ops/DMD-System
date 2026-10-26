@@ -93,6 +93,7 @@ class SelfForcingOwner:
         self.model, self.args, self.source = model, args, source
         self.device, self.dtype = model.device, model.dtype
         self.identity = deepcopy(identity)
+        self._cache_lifetime = identity.get('native_cache_lifetime', 'native-v1')
         validate_row({'prompt_embeds': negative_embedding},
             shape=(1, model.generator.model.text_len, model.generator.model.text_dim), device=self.device)
         self.negative_embedding = negative_embedding.detach().clone()
@@ -364,6 +365,9 @@ class SelfForcingOwner:
     def _validate_live(self):
         import torch
         from .self_forcing import _admit_device, runtime_identity
+        require(self._cache_lifetime == self.identity.get('native_cache_lifetime', 'native-v1')
+                and self._cache_lifetime in ('native-v1', 'release-after-commit-v1'),
+                'native cache lifetime policy changed outside its source-bound profile')
         require(_admit_device({'device': str(self.device)}) == self.model.device
                 and self.identity['placement'] == dict(device=str(self.device), layout='SINGLE_DEVICE_RESIDENT',
                                                        distributed=False, amp=False)
@@ -468,6 +472,26 @@ class SelfForcingOwner:
                 self.ema_updates += 1
         else:
             self.critic_updates += 1
+        if self._cache_lifetime == 'release-after-commit-v1':
+            self._release_consumed_rollout_cache(role)
+
+    def _release_consumed_rollout_cache(self, role):
+        # Only reached after native fwdbwd_one_step (including backward/clip)
+        # and the corresponding Adam/EMA commit have completed. The next
+        # native rollout allocates its own fresh cache; no cache is reused or
+        # released during causal attention, checkpoint replay or backward.
+        from distillschedule.open_workload.torch_backend import storage_bytes
+        pipeline = self.model.inference_pipeline
+        require(pipeline is not None and pipeline.kv_cache1 is not None
+                and pipeline.crossattn_cache is not None, 'missing completed native rollout cache')
+        caches = [pipeline.kv_cache1, pipeline.kv_cache2, pipeline.crossattn_cache]
+        released = storage_bytes(caches)
+        require(released > 0, 'completed native cache has no owned storage')
+        pipeline.kv_cache1 = pipeline.kv_cache2 = pipeline.crossattn_cache = None
+        self._cache_cycle_effects['releases'][role] += 1
+        self._cache_cycle_effects['released_owner_storage_bytes'] += released
+        # This counts references relinquished by the owner, not allocator-free
+        # bytes: an external diagnostic observer can still hold aliases.
 
     def run(self, feeds, *, cycle):
         require(not hasattr(self, '_resident_trial_poisoned'), 'resident trial owner is poisoned')
@@ -475,6 +499,10 @@ class SelfForcingOwner:
         require(type(cycle) is int and cycle == self.cycle, 'native macrocycle reordered')
         require(self.native_step + self.ratio <= self.args.train_iters, 'native iteration budget exhausted')
         self.validate_feeds(feeds)
+        if self._cache_lifetime == 'release-after-commit-v1':
+            self._cache_cycle_effects = dict(policy=self._cache_lifetime, scope='THIS_COMPLETED_CYCLE',
+                releases=dict(generator=0, critic=0), released_owner_storage_bytes=0,
+                byte_scope='DEDUPLICATED_STORAGE_REFERENCES_RELINQUISHED_PER_COMMIT', helper_host_tensor_value_reads=0)
         rows = []
         with self.random_scope():
             for offset in range(self.ratio):
@@ -510,9 +538,14 @@ class SelfForcingOwner:
         for optimizer in self.optimizers.values():
             optimizer.zero_grad(set_to_none=True)
         self._validate_live()
-        return dict(iterations=rows, native_step=self.native_step, generator_updates=self.generator_updates,
+        result = dict(iterations=rows, native_step=self.native_step, generator_updates=self.generator_updates,
             critic_updates=self.critic_updates, ema_updates=self.ema_updates,
             consumed={role: self.cycle * count for role, count in stream_counts(self.args).items()})
+        if self._cache_lifetime == 'release-after-commit-v1':
+            require(self._cache_cycle_effects['releases'] == dict(generator=1, critic=self.ratio),
+                    'native consumed-cache release census changed')
+            result['cache_lifetime_effects'] = deepcopy(self._cache_cycle_effects)
+        return result
 
     def _cache_snapshot(self):
         pipeline = self.model.inference_pipeline

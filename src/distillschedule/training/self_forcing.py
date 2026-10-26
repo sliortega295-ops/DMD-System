@@ -86,9 +86,13 @@ def _admit_device(parameters):
 
 
 def _arguments(parameters):
-    require(isinstance(parameters, dict) and set(parameters) <= {'source_root', 'assets', 'settings', 'seed', 'device'}
+    require(isinstance(parameters, dict) and set(parameters) <= {
+                'source_root', 'assets', 'settings', 'seed', 'device', 'native_cache_lifetime'}
             and isinstance(parameters.get('source_root'), str) and isinstance(parameters.get('assets'), str),
             'source_root and explicit local assets manifest required')
+    require(type(parameters.get('native_cache_lifetime', 'native-v1')) is str
+            and parameters.get('native_cache_lifetime', 'native-v1') in ('native-v1', 'release-after-commit-v1'),
+            'unsupported native cache lifetime policy')
     _admit_device(parameters)
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid construction seed')
@@ -393,6 +397,8 @@ def _build_placed(parameters, args, device):
             generator_policy='SOURCE_ALGORITHM_IDENTITY_NOT_A_PHYSICAL_OPTION',
             generator_on_off_equivalence='NOT_EQUIVALENT_CACHE_AND_GRADIENT_PATH',
             enable_compatibility='INSTANCE_LOCAL_ORIGINAL_LEGACY_SETTER_CONSTRUCTION_ONLY')
+    if parameters.get('native_cache_lifetime', 'native-v1') != 'native-v1':
+        metadata['native_cache_lifetime'] = parameters['native_cache_lifetime']
     owner = SelfForcingOwner(model, args, api.source, negative, identity=metadata)
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata, prediction=PredictionSpec('flow'),
         capabilities=('video', 'causal', 'kv_cache', 'flow', 'official-self-forcing'), generate=generate,
@@ -442,8 +448,14 @@ def build_self_forcing(components, feeds, parameters, cycle, seed):
 
 
 def collect_metrics(outputs):
-    return {f'native_{index}/{name}': value for index, row in
+    result = {f'native_{index}/{name}': value for index, row in
             enumerate(outputs['self_forcing.native_cycle']['iterations']) for name, value in row['losses'].items()}
+    effects = outputs['self_forcing.native_cycle'].get('cache_lifetime_effects')
+    if effects is not None:
+        result.update({f'cache_lifetime/releases_{role}': float(count)
+                       for role, count in effects['releases'].items()})
+        result['cache_lifetime/released_owner_storage_bytes'] = float(effects['released_owner_storage_bytes'])
+    return result
 
 
 def _inference_parameters(owner):

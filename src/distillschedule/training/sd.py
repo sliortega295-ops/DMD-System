@@ -79,7 +79,8 @@ class _LocalAccelerator:
 
     @staticmethod
     def unwrap_model(model):
-        return model
+        from .native_roles import unwrap_role
+        return unwrap_role(model)
 
 
 def _execution_device(value):
@@ -101,12 +102,26 @@ def _place_native_tensors(model, device):
 def _arguments(parameters, *, sdxl):
     import torch
     require(isinstance(parameters, dict) and set(parameters) <= {
-        'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device'},
+        'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device',
+        'native_checkpoint_policy', 'native_role_backend'},
         'unknown model parameters')
+    role_backend = parameters.get('native_role_backend', 'single-device-v1')
+    require(type(role_backend) is str and role_backend in ('single-device-v1', 'ddp-fp32-v1'),
+            'unsupported native role backend')
+    checkpoint_policy = parameters.get('native_checkpoint_policy', 'coupled-v1')
+    require(type(checkpoint_policy) is str and checkpoint_policy in ('coupled-v1', 'component-v1'),
+            'unsupported native checkpoint policy')
     require(isinstance(parameters.get('source_root'), str)
             and isinstance(parameters.get('model_id'), str), 'source_root and local model_id required')
-    _execution_device(parameters.get('device', 'cpu'))
-    require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
+    if role_backend == 'ddp-fp32-v1':
+        require(torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1,
+                'native role backend requires an initialized multi-rank group')
+        from .single_device import admit_fp32
+        admit_fp32(parameters, require=require, allow_replicated=True)
+        require(checkpoint_policy == 'coupled-v1', 'native role backend does not admit singleton owner overrides')
+    else:
+        _execution_device(parameters.get('device', 'cpu'))
+        require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid model RNG seed')
     defaults = dict(initialie_generator=True, use_fp16=False, gradient_checkpointing=False,
@@ -124,6 +139,10 @@ def _arguments(parameters, *, sdxl):
     settings = parameters.get('settings', {})
     require(isinstance(settings, dict) and set(settings) <= set(defaults), 'unknown DMD2 settings')
     defaults.update(settings)
+    require(role_backend != 'ddp-fp32-v1' or defaults['cls_on_clean_image'] is False,
+            'native FP32 role DDP GAN ownership is not yet qualified')
+    require(checkpoint_policy != 'component-v1' or defaults['gradient_checkpointing'] is True,
+            'component checkpoint policy requires the original checkpoint-enabled reference')
     require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is False
             and defaults['tiny_vae'] is False and defaults['initialie_generator'] is True
             and defaults['revision'] is None, 'unsupported model initialization/precision override')
@@ -169,9 +188,13 @@ def _arguments(parameters, *, sdxl):
 
 
 def _build(parameters, *, sdxl):
+    import torch
     args = _arguments(parameters, sdxl=sdxl)
     device = _execution_device(parameters.get('device', 'cpu'))
-    with _construction_rng(device, parameters.get('seed', 0)):
+    seed = parameters.get('seed', 0)
+    if parameters.get('native_role_backend') == 'ddp-fp32-v1':
+        seed += torch.distributed.get_rank()  # original native Trainer set_seed(seed + process_index)
+    with _construction_rng(device, seed):
         return _build_placed(parameters, args, device, sdxl=sdxl)
 
 
@@ -219,7 +242,21 @@ def _build_placed(parameters, args, device, *, sdxl):
         cpu_execution='CPU_IMPLEMENTATION_TESTED_ON_RANDOM_TINY_ASSETS_ONLY', gpu_execution='NOT_RUN',
         placement_limit='SINGLE_DEVICE_FP32_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA',
         cuda_trial_snapshot='UNAVAILABLE_AUTO_PLAN_AND_OWNER_EXECUTION_REJECTED_BEFORE_TRIAL')
-    owner = DMD2Owner(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
+    if parameters.get('native_checkpoint_policy', 'coupled-v1') == 'component-v1':
+        metadata['native_checkpoint_policy'] = 'component-v1'
+    owner_type = DMD2Owner
+    if parameters.get('native_role_backend') == 'ddp-fp32-v1':
+        from .dmd2_collective import DMD2CollectiveOwner
+        owner_type = DMD2CollectiveOwner
+        metadata.update(precision='FP32_NATIVE_COLLECTIVE',
+            placement=dict(device=device.type, layout='NATIVE_ROLE_DDP', distributed=True, amp=False),
+            native_collective=dict(backend='ddp-fp32-v1', world_size=torch.distributed.get_world_size(),
+                seed=parameters.get('seed', 0), native_rng='SEED_PLUS_RANK', scheduler='NATIVE_ITERATION_TIMES_WORLD',
+                initial_sync='NATIVE_DDP_RANK0_ROLE_WEIGHTS_AND_BUFFERS',
+                broadcast_buffers=True, find_unused_parameters=False, gradient_as_bucket_view=True, bucket_cap_mb=128),
+            placement_limit='EXPLICIT_SAME_TOPOLOGY_FP32_ROLE_REPLICAS_NO_GAN_NO_LOCAL_OVERRIDES',
+            cuda_trial_snapshot='UNAVAILABLE_NATIVE_COLLECTIVE_CLONE_OR_CALIBRATION')
+    owner = owner_type(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),
         generate=generate, decode=_decoder(model.vae), inference_projection=project_current_generator,
@@ -249,9 +286,15 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
             and set(prepared_manifest['streams']) == set(counts), 'prepared preprocessing streams binding required')
     for manifest in prepared_manifest['streams'].values():
         validate_prepared_binding(manifest, owner.identity['preprocessing_assets'])
-    require('distributed' not in request.trainer
-            and _execution_device(request.trainer.get('device', 'cpu')) == owner.device,
-            'single-device trainer/model placement must match; distributed ownership is not admitted')
+    require(_execution_device(request.trainer.get('device', 'cpu')) == owner.device,
+            'trainer/model placement must match')
+    if 'native_collective' in owner.identity:
+        require('distributed' in request.trainer and request.data.get('sharding') == 'rank_strided'
+                and not set(request.execution) & {'order', 'plan'},
+                'native role replicas require explicit distributed trainer, rank-strided inputs and original order')
+    else:
+        require('distributed' not in request.trainer,
+                'single-device trainer/model placement must match; distributed ownership is not admitted')
     owner.admit_execution(request.execution.get('mode', 'reference'), request.execution.get('implementation', {}))
     require(request.trainer['cycles'] * owner.ratio <= owner.args.train_iters, 'native train_iters budget exceeded')
 
@@ -348,7 +391,8 @@ def project_current_generator(components, effective_training_parameters):
     owner = components.state['native_cycle']
     owner._validate_live()
     parameters = _inference_parameters(owner)
-    state = dict(generator=owner.model.feedforward_model, text_encoder=owner.model.text_encoder, vae=owner.model.vae)
+    state = dict(generator=owner.model.accelerator.unwrap_model(owner.model.feedforward_model),
+                 text_encoder=owner.model.text_encoder, vae=owner.model.vae)
     return InferenceProjection(_inference_components(state, parameters),
         'distillschedule.training.sd:build_inference_model', parameters).validate()
 

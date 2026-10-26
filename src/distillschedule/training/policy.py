@@ -44,10 +44,13 @@ def cycle_structure(workload):
                for key, model in workload.state.items() if isinstance(model, torch.nn.Module)}
     from distillschedule.open_workload.owner_execution import inventory
     owners = inventory(workload.state)
+    from distillschedule.open_workload.collective_owner import present, admit
+    collective = admit(workload) if present(workload) else None
     return digest({"program": program, "modules": modules, "feeds": shapes(dict(workload.feeds)),
                    "bindings": {key: code_signature(fn) for key, fn in workload.bindings.items()},
                    "immutable_modules": workload.immutable_modules,
                    **({"owner_execution": owners} if owners else {}),
+                   **({"native_collective_owner": collective} if collective else {}),
                    "replica_semantics": (workload.replica_semantics.to_dict()
                                          if workload.replica_semantics is not None else None)})
 

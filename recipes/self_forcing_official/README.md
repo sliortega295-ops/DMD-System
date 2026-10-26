@@ -201,6 +201,17 @@ auto/plan/owner-execution trial guards remain unchanged.
 
 ## Unified runnable entry
 
+For the independent consumed-cache lifetime policy, copy
+[`training.consumed-kv.json`](training.consumed-kv.json) and fill the same local
+assets/input paths as `training.json`. Its only model change is
+`native_cache_lifetime: "release-after-commit-v1"`; the reference default remains
+unchanged. It drops rollout-cache references after each completed native
+backward/clip and Adam/EMA commit, never during attention or checkpoint replay.
+Real release counters appear in cycle metrics. Bytes count relinquished owner
+references, not measured freed HBM. CPU native three-cycle and new-process
+restore checks pass; this public policy's CUDA/performance acceptance is not
+established. See [policy details](../../docs/guides/native_owner_backends.md#official-self-forcing-release-consumed-rollout-kv).
+
 Use the separate `.[train,self-forcing-official]` environment (add `test` only
 for development). The public training entry is the same as every other model:
 

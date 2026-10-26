@@ -1,0 +1,38 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "name": "sd15",
+    "parameters": {
+      "source_root": "/ABSOLUTE/LOCAL/EXTERNAL_DMD2_SOURCE",
+      "model_id": "/ABSOLUTE/LOCAL/SD15_BUNDLE",
+      "native_role_backend": "ddp-fp32-v1",
+      "settings": {
+        "dfake_gen_update_ratio": 10,
+        "generator_lr": 0.000001,
+        "guidance_lr": 0.000001,
+        "resolution": 512,
+        "latent_resolution": 64,
+        "conditioning_timestep": 999,
+        "warmup_step": 500,
+        "train_iters": 1000000
+      }
+    }
+  },
+  "algorithm": {"name": "dmd2"},
+  "data": {
+    "sharding": "rank_strided",
+    "streams": {
+      "generator": {"prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json", "samples_per_cycle": 1, "sampling": {"kind": "epochs", "shuffle": true}},
+      "guidance": {"prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json", "samples_per_cycle": 9, "sampling": {"kind": "epochs", "shuffle": true}}
+    }
+  },
+  "execution": {"adapter": "program", "mode": "reference"},
+  "trainer": {
+    "cycles": 2,
+    "seed": 17,
+    "device": "cpu",
+    "distributed": {"backend": "gloo", "timeout_seconds": 180},
+    "output_dir": "/ABSOLUTE/PROJECT/DMD2_SD15_DDP_RUN",
+    "checkpoint_every": 1
+  }
+}
