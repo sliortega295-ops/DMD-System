@@ -49,6 +49,21 @@ def test_official_profiles_keep_workload_specific_launch_policies():
     assert resolve('self-forcing-wan-fsdp2-r6-v1')['environment'] == {'NCCL_CROSS_NIC': '1'}
 
 
+def test_dmd2_primary_reference_is_fsdp2_and_ddp_is_auxiliary():
+    from distillschedule.training.official_profiles import resolve
+    origin = resolve('dmd2-sd15-resident-tree-v1')['origin']
+    assert origin['historical_reference'] == {
+        'kind': 'frozen_fsdp2',
+        'run_id': 'official_dmd2_fsdp2_reference_r2',
+        'native_cycle2_seconds': 7.5136760687455535,
+    }
+    assert origin['auxiliary_references'] == [{
+        'kind': 'fixed_historical_ddp',
+        'native_cycle2_seconds': 6.113556639291346,
+    }]
+    assert origin['native_cycle2_seconds'] == 3.4750529816374183
+
+
 def test_unknown_or_other_workload_profile_is_rejected():
     from distillschedule.training.official_profiles import resolve
     with pytest.raises(ValueError, match='unknown'):

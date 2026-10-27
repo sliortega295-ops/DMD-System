@@ -10,8 +10,9 @@ The user-facing entry points and performance are documented in
 | DMD2 SD1.5 GAN | `dmd2-sd15-resident-tree-v1` | `official_dmd2_min16_tree_r10` | `8d8fa55633d47cfb81bbc7a892e7248f9518763f` |
 | Official Self-Forcing | `self-forcing-wan-fsdp2-r6-v1` | `official_sf_teacher_pair_r6` | `33593df3e81fa3ec10239271dd2c100facac6de1` |
 
-DMD2: FSDP2 baseline `official_dmd2_fsdp2_reference_r2`, 7.5136760687455535s;
-fixed DDP baseline 6.113556639291346s; selected 3.4750529816374183s.
+DMD2: primary FSDP2 baseline `official_dmd2_fsdp2_reference_r2`,
+7.5136760687455535s; selected 3.4750529816374183s (2.162×).
+The fixed DDP reference, 6.113556639291346s, is an auxiliary comparison only.
 Self-Forcing: FSDP2 baseline `official_sf_fsdp2_final_source_reference_r2`,
 50.739418774843216s; selected 30.959485488943756s.
 

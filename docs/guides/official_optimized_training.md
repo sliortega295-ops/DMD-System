@@ -11,10 +11,14 @@ framework lifecycle.
 cycles after one initialization; the table reports cycle 2 without a profiler.
 A DMD2 cycle contains G1/C10, and a Self-Forcing cycle contains G1/C5.
 
-| Workflow | FSDP2 baseline (s) | Resident DDP baseline (s) | Optimized (s) | vs. FSDP2 | vs. DDP |
-|---|---:|---:|---:|---:|---:|
-| Official DMD2, SD1.5 GAN, 512 × 512 | 7.514 | 6.114 | 3.475 | 2.162× | 1.759× |
-| Official Self-Forcing, Wan, 368 × 640, 81 frames | 50.739 | — | 30.959 | 1.639× | — |
+FSDP2 is the primary baseline for both workflows.
+
+| Workflow | FSDP2 baseline (s) | Optimized (s) | Speedup |
+|---|---:|---:|---:|
+| Official DMD2, SD1.5 GAN, 512 × 512 | 7.514 | 3.475 | 2.162× |
+| Official Self-Forcing, Wan, 368 × 640, 81 frames | 50.739 | 30.959 | 1.639× |
+
+DMD2 also has an auxiliary Resident/DDP comparison: 6.114 → 3.475 s (1.759×).
 
 These are the latest optimization-run results. The implementation mapping and
 framework-integration checks are recorded in the [validation appendix](../status/official_optimized_framework.md).

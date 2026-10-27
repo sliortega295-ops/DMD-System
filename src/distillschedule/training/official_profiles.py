@@ -62,9 +62,14 @@ _PROFILES = {
             "numerical_status": "REVIEW",
             "native_cycle2_seconds": 3.4750529816374183,
             "historical_reference": {
+                "kind": "frozen_fsdp2",
+                "run_id": "official_dmd2_fsdp2_reference_r2",
+                "native_cycle2_seconds": 7.5136760687455535,
+            },
+            "auxiliary_references": [{
                 "kind": "fixed_historical_ddp",
                 "native_cycle2_seconds": 6.113556639291346,
-            },
+            }],
             "input_scope": "FULL_SIZE_SYNTHETIC_INITIALIZATION_AND_INPUTS; NOT_GENERATION_QUALITY",
         },
     },
