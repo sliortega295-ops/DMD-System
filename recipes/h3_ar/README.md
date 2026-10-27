@@ -54,3 +54,10 @@ recovery through the public Program lifecycle. It uses the maintained licensed
 cached-only source, not the incomplete full-SFT archive, and does not alter the
 native two-update ZeRO-3/selected-plan contract. No VAE/decoder, pretrained,
 GPU, quality or performance claim follows from that local tiny-model proof.
+# Native finite continuation (opt-in)
+
+[`NATIVE_CONTINUATION.md`](NATIVE_CONTINUATION.md) documents the separate
+`h3_ar.zero3_ap_stream.v1` preset and `training.native-stream.json`: fresh
+rank-qualified AV records, up to 100 complete cycles, and actual native ZeRO3
+checkpoint/restart. Source/CPU protocol evidence is not world16 GPU
+qualification; the historical two-cycle recipes below are unchanged.

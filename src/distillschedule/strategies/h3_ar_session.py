@@ -64,8 +64,17 @@ def install_native_attention_cache(implementation, assets, native, module, adapt
 
 
 class H3ARSession:
-    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator):
+    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator,
+                 input_provider=None, seed=42):
         self.task, self.assets, self.implementation = task, assets, implementation
+        if input_provider is not None:
+            from distillschedule.training.h3_ar_inputs import H3ARInputStream
+            require(isinstance(input_provider, H3ARInputStream) and seed == input_provider.seed,
+                    'explicit finite W6 input owner/seed required', path='h3_ar.session')
+        else:
+            require(type(seed) is int and seed == 42, 'legacy native seed is immutable', path='h3_ar.session')
+        self.input_provider = input_provider
+        self.segment_origin, self.local_completed, self.pool_ready = 0, 0, False
         self.rank, self.torch, self.device = rank, torch, torch.device('cuda', local_rank)
         self.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
         self.census, self.updates, self.adam = Counter(), Counter(), Counter()
@@ -76,7 +85,8 @@ class H3ARSession:
         self.config = self.native.DMD2Config(**native_config())
         # The ORIGINAL deterministic parser runs before the large construction:
         # reject wrong history/geometry/masks without loading a 50-block model.
-        positive, negative, self.input_identity, input_validation = prepare_rank_input(
+        prepare_input = prepare_rank_input if input_provider is None else input_provider.prepare_rank_input
+        positive, negative, self.input_identity, input_validation = prepare_input(
             task, assets.cache_manifest, self.native, rank, torch, teacher_cfg_scale=self.config.teacher_cfg_scale)
         shapes = input_validation['input_shapes']
         self.mechanism = assets.helper('native_mechanisms_r3').NativeMechanisms(lora_inplace=implementation.optimized)
@@ -94,7 +104,7 @@ class H3ARSession:
             for name, key in (('native_rms_fusion_r3', 'rms'), ('native_cutlass_lora_r1', 'cutlass')):
                 ref = assets.libraries[key]
                 assets.helper(name).load_verified(str(checked(ref)), ref['sha256'])
-        training.seed_all(42)
+        training.seed_all(seed)
         ds_config = configure_native_execution(implementation, zero.configure(accelerator, self.config))
         self.dit, architecture, checkpoint = training.load_teacher(Path(assets.checkpoint_root), self.device, ds_config=ds_config)
         require(len(self.dit.blocks) == 50, 'real native H3 50-block model required', path='h3_ar.session')
@@ -162,9 +172,39 @@ class H3ARSession:
         self.build.update(input_shapes=shapes, input_validation=input_validation, architecture=architecture, checkpoint=checkpoint,
                           native_implementation_installed=True)
         self.build['deepspeed_config'] = deepspeed_config_receipt(ds_config)
-        training.seed_all(42 + rank)
+        training.seed_all(seed + rank)
         self.static_bytes = torch.cuda.memory_allocated(self.device)
         self.previous_leaf, self.previous_lifetime = Counter(), Counter()
+        self.observer_baseline = self._observer_snapshot()
+
+    def _observer_snapshot(self):
+        if self.leaf is None:
+            return {}
+        return dict(swiglu=self.swiglu['counters'].copy(), cutlass=self.cutlass['counters'].copy(),
+                    cutlass_operator=self.cutlass['operator_counters'].copy(), rms=self.rms['counters'].copy())
+
+    def rebase_segment(self, cycle):
+        """Only read-only epoch/observer origins change; never native clocks."""
+        require(self.input_provider is not None and self.local_completed == 0
+                and self.versions() == dict(student=cycle, fake=cycle, ema=0)
+                and self.engine.global_steps == 2*cycle,
+                'segment rebase requires restored complete native clocks', path='h3_ar.session')
+        self.segment_origin = cycle
+        if self.view is not None:
+            require(self.pool.selected is None and self.view.origin == 0,
+                    'restore must rebuild an empty cold native attention pool', path='h3_ar.session')
+            self.view.origin = cycle
+        self.ledger = VersionLedger(self.versions())
+        self.observer_baseline = self._observer_snapshot()
+
+    def drain_for_checkpoint(self):
+        require(self.input_provider is not None and self.local_completed > 0,
+                'only completed stream updates can drain', path='h3_ar.session')
+        if self.pool is not None and not self.pool_ready:
+            # Original helper proves every consumer/event is complete, advances
+            # only its read-only origin, and drops metadata, not pinned storage.
+            self.epoch.begin_next_cycle(self.pool, self.view)
+            self.pool_ready = True
 
     def versions(self):
         return dict(student=self.trainer.generator_step, fake=self.trainer.critic_step, ema=0)
@@ -172,7 +212,20 @@ class H3ARSession:
     def prepare(self, cycle, order=('native_update',)):
         require(self.versions() == dict(student=cycle-1, fake=cycle-1, ema=0),
                 'actual native versions diverged before dispatch', path='h3_ar.session')
-        if cycle == 2 and self.pool is not None:
+        if self.input_provider is not None:
+            require(cycle == self.input_provider.completed+1 and cycle <= self.input_provider.cycles,
+                    'fresh input cursor differs from native cycle', path='h3_ar.session')
+            if self.local_completed and self.pool is not None and not self.pool_ready:
+                self.epoch.begin_next_cycle(self.pool, self.view)
+            self.pool_ready = False
+            if self.input_identity.get('cycle') != cycle:
+                positive, negative, self.input_identity, witness = self.input_provider.prepare_rank_input(
+                    self.task, self.assets.cache_manifest, self.native, self.rank, self.torch,
+                    teacher_cfg_scale=self.config.teacher_cfg_scale)
+                self.positive, self.negative = move(positive, self.device, self.torch), move(negative, self.device, self.torch)
+                self.real = (self.positive.pop('input_latents'), self.positive.pop('audio_input_latents'))
+                self.build.update(input_validation=witness, input_shapes=witness['input_shapes'])
+        elif cycle == 2 and self.pool is not None:
             self.epoch.begin_next_cycle(self.pool, self.view)
         self.before = (self.census.copy(), self.updates.copy(), self.adam.copy())
         self.metrics = None
@@ -186,8 +239,9 @@ class H3ARSession:
                     'native version commit mismatch', path='h3_ar.session')
             return self.metrics
 
-        return StaticRoleRunner('native_runtime', {'call': update}, versions=self.ledger).prepare(
-            native_graph(self.task, cycle=cycle), order=tuple(order))
+        graph = (native_graph(self.task, cycle=cycle) if self.input_provider is None
+                 else self.input_provider.graph(self.task, cycle))
+        return StaticRoleRunner('native_runtime', {'call': update}, versions=self.ledger).prepare(graph, order=tuple(order))
 
     def finish(self, cycle):
         census, updates, adam = (dict(a-b) for a, b in zip((self.census, self.updates, self.adam), self.before))
@@ -197,6 +251,12 @@ class H3ARSession:
                 and self.metrics['generator_step'] == self.metrics['critic_step'] == cycle,
                 'native GAN/engine/update contract changed', path='h3_ar.session')
         cache = self.epoch.finish_cycle(self.pool, self.view) if self.pool is not None else None
+        elapsed = self.local_completed+1 if self.input_provider is not None else cycle
+        if cache is not None and self.input_provider is not None:
+            historical = {key: cache[key] for key in ('cold_cache_staging_inside_timer', 'same_process_pinned_pool_reuse')}
+            cache.update(source_helper_epoch_metadata=historical, segment_origin=self.segment_origin,
+                process_local_cycle=elapsed, cold_cache_staging_inside_timer=elapsed == 1,
+                same_process_pinned_pool_reuse=elapsed > 1)
         leaf = None
         backend_effects = dict(implementation=self.implementation.to_dict(), actual_compute_observed=True)
         if self.leaf is not None:
@@ -207,18 +267,23 @@ class H3ARSession:
             leaf = self.leaf_api.finalize_lifetime(self.dit, view)
             self.previous_leaf = self.leaf['counters'].copy()
             self.previous_lifetime = self.leaf['replay_lifetime_counters'].copy()
-            require(self.swiglu['counters']['physical_swiglu_forward'] == 724*cycle
-                    and self.swiglu['counters']['physical_swiglu_backward'] == 104*cycle,
+            baseline = self.observer_baseline if self.input_provider is not None else {}
+            delta = lambda family, key: (getattr(self, family)['counters'][key]
+                - baseline.get(family, {}).get(key, 0))
+            require(delta('swiglu', 'physical_swiglu_forward') == 724*elapsed
+                    and delta('swiglu', 'physical_swiglu_backward') == 104*elapsed,
                     'native SwiGLU runtime census differs', path='h3_ar.session')
-            require(self.cutlass['counters']['physical_B_module_forward'] == 2600*cycle
-                    and self.cutlass['counters']['fused_custom_backward'] == 400*cycle
-                    and self.cutlass['operator_counters']['physical_CUDA_B_GEMM_round_then_add'] == 2600*cycle,
+            require(delta('cutlass', 'physical_B_module_forward') == 2600*elapsed
+                    and delta('cutlass', 'fused_custom_backward') == 400*elapsed
+                    and self.cutlass['operator_counters']['physical_CUDA_B_GEMM_round_then_add']
+                        - baseline.get('cutlass_operator', {}).get('physical_CUDA_B_GEMM_round_then_add', 0) == 2600*elapsed,
                     'native cutlass LoRA runtime/fallback differs', path='h3_ar.session')
-            rc = self.rms['counters']; blocks = 50*cycle
+            rc = self.rms['counters']; blocks = 50*elapsed
             expected = dict(physical_norm_module_forward=56*blocks, logical_mod_calls=28*blocks,
                 logical_rope_calls=28*blocks, fused_mod_forward=28*blocks, fused_rope_forward=28*blocks,
                 fused_mod_backward=4*blocks, fused_rope_backward=4*blocks)
-            require(all(rc.get(k) == v for k, v in expected.items()) and rc.get('TINY_EXPLICIT_NATIVE_FALLBACK', 0) == 0,
+            require(all(rc.get(k, 0)-baseline.get('rms', {}).get(k, 0) == v for k, v in expected.items())
+                    and rc.get('TINY_EXPLICIT_NATIVE_FALLBACK', 0) == 0,
                     'native RMS runtime/fallback differs', path='h3_ar.session')
             pointwise = self.pointwise['counters']
             families = {n: sum(v for k, v in pointwise.items() if k.startswith(n))
@@ -231,6 +296,10 @@ class H3ARSession:
                 cutlass=dict(self.cutlass['counters']), unit_prefetch=self.prefetch_api.receipt(self.prefetch))
         require(self.replay_compatibility['counters']['detached_frozen_recompute_tensors'] > 0,
                 'native checkpoint zero-copy replay compatibility not observed', path='h3_ar.session')
+        if self.input_provider is not None:
+            self.input_provider.commit(cycle)
+            self.local_completed += 1
+            backend_effects.update(segment_origin=self.segment_origin, process_local_completed=self.local_completed)
         return dict(census=census, updates=updates, adam_updates=adam, final_versions=self.versions(),
                     metrics=dict(self.metrics), selected_cache=cache, leaf_runtime=leaf,
                     backend_effects=backend_effects)

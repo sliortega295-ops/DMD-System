@@ -44,6 +44,12 @@ def main(argv=None):
     cached = sub.add_parser("prepare-h3-cached-reference", help="prepare original W6 cached AV CPU reference; no decoding/download")
     cached.add_argument("--sources", type=Path, required=True)
     cached.add_argument("--output", type=Path, required=True)
+    h3_stream = sub.add_parser("prepare-h3-ar-stream", help="admit fresh original W6 previous/current AV records on CPU")
+    h3_stream.add_argument("--sources", type=Path, required=True)
+    h3_stream.add_argument("--assets", type=Path, required=True)
+    h3_stream.add_argument("--cycles", type=int, required=True)
+    h3_stream.add_argument("--seed", type=int, required=True)
+    h3_stream.add_argument("--output", type=Path, required=True)
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
@@ -92,6 +98,9 @@ def main(argv=None):
             elif args.command == "prepare-h3-cached-reference":
                 from .h3_cached_inputs import prepare_inputs
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-h3-ar-stream":
+                from .h3_ar_stream import prepare_inputs
+                result = prepare_inputs(args.sources, args.output, assets_path=args.assets, cycles=args.cycles, seed=args.seed)
             elif args.command in ("prepare-livewan-inputs", "prepare-livewan-c51-inputs"):
                 from .livewan_inputs import prepare_inputs, prepare_c51_inputs
                 prepare_inputs = prepare_c51_inputs if args.command == "prepare-livewan-c51-inputs" else prepare_inputs

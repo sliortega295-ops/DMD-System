@@ -28,6 +28,7 @@ def _await_shared_paths(paths, label, *, directory=False, hashes=None):
     create a missing peer directory or accept an incomplete checkpoint here.
     During save publication, content must match the exact writer-attested hash,
     even when stale/partial reads are nonzero. Ordinary restart never retries.
+    Hashes accept exact Path keys, or legacy basenames for flat inventories.
     """
     timeout = 0.0
     if distributed.rank_world()[1] > 1:
@@ -42,7 +43,8 @@ def _await_shared_paths(paths, label, *, directory=False, hashes=None):
         mismatches = []
         if hashes is not None:
             for path in pending:
-                if path in missing or path.name not in hashes:
+                key = path if path in hashes else path.name
+                if path in missing or key not in hashes:
                     continue
                 try:
                     # Stream model-sized peer shards; never materialize them.
@@ -50,7 +52,7 @@ def _await_shared_paths(paths, label, *, directory=False, hashes=None):
                 except FileNotFoundError:
                     missing.append(path)
                     continue
-                expected = hashes[path.name]
+                expected = hashes[key]
                 if observed == expected:
                     continue
                 mismatches.append(f"{path.name}: hash changed (expected {expected}, observed {observed})")
@@ -290,8 +292,32 @@ def restore_rng(value):
         np.random.set_state((name, np.asarray(values, dtype=np.uint32), position, gauss, cached))
 
 
+def _native_inventory(path, value, *, hashes=False):
+    """Validate a native engine's opaque files inside the common publication.
+
+    State/optimizer formats remain owned by that engine, not by this publisher.
+    No optional native files can weaken the regular all-rank shard contract.
+    """
+    if (not isinstance(value, dict) or set(value) != {"schema_version", "owner", "files"}
+            or value["schema_version"] != "distillschedule.native_checkpoint_sidecars.v1"
+            or not isinstance(value["owner"], dict) or not isinstance(value["files"], dict) or not value["files"]):
+        raise ValueError("invalid native checkpoint sidecar inventory")
+    root = Path(path).resolve()
+    expected = value["files"]
+    for name, sha in expected.items():
+        candidate = root/name
+        if (not isinstance(name, str) or not name.startswith("native/") or ".." in Path(name).parts
+                or not candidate.resolve().is_relative_to(root/"native") or candidate.is_symlink()
+                or not isinstance(sha, str) or len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha)
+                or not candidate.is_file() or hashes and _sha(candidate) != sha):
+            raise ValueError("native checkpoint shard missing, unsafe or hash changed: " + str(name))
+    observed = {str(p.relative_to(root)) for p in (root/"native").rglob("*") if p.is_file()}
+    if observed != set(expected):
+        raise ValueError("native checkpoint shard inventory changed")
+
+
 def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None,
-                    pre_publication_guard=None):
+                    pre_publication_guard=None, native_checkpoint=None):
     import torch
     if type(cycle) is not int or cycle < 0 or type(cursor) is not int or cursor < 0:
         raise ValueError("checkpoint must describe a complete cycle and data cursor")
@@ -308,6 +334,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             progress_hook = getattr(value, "validate_checkpoint_progress", None)
             if callable(progress_hook):
                 progress_hook(value.state_dict(), {"cycle":cycle, "cursor":cursor, "versions":dict(versions)})
+        if native_checkpoint is not None:
+            native_checkpoint.validate_checkpoint_boundary()
     distributed.checked(boundary, "checkpoint boundary")
     rank, world = distributed.rank_world()
     allocated = distributed.topology()
@@ -341,6 +369,30 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             return {filename: _sha(staging / filename)}
         shard = distributed.checked(write_shard, "checkpoint shard writing")
         files = {key: value for row in distributed.gather(shard) for key, value in row.items()}
+        native = None
+        if native_checkpoint is not None:
+            # The actual engine performs its own collective native save. It
+            # returns only hashes/metadata, never a parallel optimizer format.
+            local = native_checkpoint.save(staging/"native")
+            native_rows = distributed.gather(local)
+            def native_admission():
+                owners = [row["owner"] for row in native_rows]
+                if any(owner != owners[0] for owner in owners):
+                    raise ValueError("native rank checkpoint owners disagree")
+                inventory = {}
+                for row in native_rows:
+                    for name, sha in row["files"].items():
+                        if name in inventory and inventory[name] != sha:
+                            raise ValueError("native rank checkpoint hashes disagree")
+                        inventory[name] = sha
+                value = dict(schema_version="distillschedule.native_checkpoint_sidecars.v1",
+                             owner=owners[0], files=inventory)
+                _await_shared_paths([staging/name for name in inventory], "native checkpoint shared shard visibility",
+                                    hashes={staging/name: sha for name, sha in inventory.items()})
+                _native_inventory(staging, value, hashes=True)
+                native_checkpoint.validate_inventory(staging/"native", owners[0])
+                return value
+            native = distributed.checked(native_admission, "native checkpoint inventory admission")
         if pre_publication_guard is not None:
             # Every rank still owns its full CPU snapshot here. Exchange any
             # staging-capacity failure before publishing metadata or _SUCCESS.
@@ -361,6 +413,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
                         "topology": allocated, "torch": torch.__version__, "files": files}
             if data_progress is not None:
                 manifest['data_progress'] = data_progress
+            if native is not None:
+                manifest['native_checkpoint'] = native
             manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
             contents = {"manifest.json": manifest_bytes,
                         "_SUCCESS": (hashlib.sha256(manifest_bytes).hexdigest() + "\n").encode("ascii")}
@@ -382,7 +436,8 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         metadata = distributed.primary(publish, "checkpoint publication")
         metadata = distributed.gather(metadata)[0]
         def visible_publication():
-            _await_shared_paths([path / name for name in (*files, "manifest.json", "_SUCCESS")],
+            names = (*files, *(native["files"] if native is not None else ()), "manifest.json", "_SUCCESS")
+            _await_shared_paths([path / name for name in names],
                                 "checkpoint publication incomplete on shared storage",
                                 hashes={name: row["sha256"] for name, row in metadata.items()})
         distributed.checked(visible_publication, "checkpoint shared publication visibility")
@@ -419,6 +474,8 @@ def read_manifest(path, *, identity):
     expected = {"state.pt"} if world == 1 else {f"rank-{r:05d}.pt" for r in range(world)}
     if set(manifest.get("files", {})) != expected or any(not (path / name).is_file() for name in expected):
         raise ValueError("checkpoint shard missing or hash changed")
+    if "native_checkpoint" in manifest:
+        _native_inventory(path, manifest["native_checkpoint"])
     return manifest
 
 
@@ -428,6 +485,8 @@ def read_checkpoint(path, *, identity):
     manifest = read_manifest(path, identity=identity)
     if any(_sha(path / name) != sha for name, sha in manifest["files"].items()):
         raise ValueError("checkpoint shard missing or hash changed")
+    if "native_checkpoint" in manifest:
+        _native_inventory(path, manifest["native_checkpoint"], hashes=True)
     rank, world = distributed.rank_world()
     payload = torch.load(path / ("state.pt" if world == 1 else f"rank-{rank:05d}.pt"),
                          map_location="cpu", weights_only=True)
@@ -438,9 +497,21 @@ def read_checkpoint(path, *, identity):
     return payload
 
 
-def restore_checkpoint(path, state, *, identity):
+def restore_checkpoint(path, state, *, identity, native_checkpoint=None):
     payload = distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission")
     distributed.checked(lambda: validate_rng(payload["rng"]), "checkpoint RNG admission")
+    manifest = distributed.checked(lambda: read_manifest(path, identity=identity), "checkpoint owner metadata admission")
+    native = manifest.get("native_checkpoint")
+    if (native is None) != (native_checkpoint is None):
+        raise ValueError("checkpoint native owner must be explicitly matched")
+    if native is not None:
+        # Stage *all* regular state and native layout before the first live
+        # model/optimizer mutation. The engine must itself be newly built.
+        progress = {key: payload[key] for key in ("cycle", "cursor", "versions")}
+        distributed.checked(lambda: _stage_state(payload["state"], state, progress=progress), "checkpoint state pre-native admission")
+        distributed.checked(lambda: native_checkpoint.validate_restore(Path(path)/"native", native["owner"]),
+                            "native checkpoint pristine owner/layout admission")
+        native_checkpoint.load(Path(path)/"native", native["owner"])
     unpack_state(payload["state"], state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
     restore_rng(payload["rng"])
     return payload

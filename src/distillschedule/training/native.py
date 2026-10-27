@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, H3_AR_STREAM
 
 
 _FAMILIES = {
@@ -165,6 +165,16 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; CUDA_NATIVE_TRAINING_NOT_RUN"),
             resume=dict(supported=True, scope="versioned incomplete-target complete-cycle reference boundary; exact source/assets/input/horizon/precision/optimizer/topology",
                         verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; NOT_C51_PIPELINE_RESTART"))
+    if _h3_ar_stream(config, workload):
+        result.update(native_api="distillschedule.training.h3_ar_training:run_training",
+                      launch="enter on each already-launched world16 torchrun rank; no node/GPU reservation")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["reference", "manual"],
+            cycles=dict(min=2, max=100, fresh_inputs="original_h3_ar_fresh_stream.v1", immutable_horizon=True),
+            checkpoint=dict(supported=True, scope="both native LoRAs/inactive head/native ZeRO3 FP32 master Adam/clocks/rank RNG/cursor",
+                            verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="complete drained native cycle; same source/assets/input/horizon/layout/world16/capacity",
+                        verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"))
     return result
 
 
@@ -175,6 +185,11 @@ def _wan_incumbent_stream(config, workload):
 
 def _livewan_c51_stream(config, workload):
     return workload == "W4" and config.execution.get("preset") == LIVEWAN_C51_STREAM
+
+
+def _h3_ar_stream(config, workload):
+    return workload == "W6" and (config.data.get("input_kind") == "original_h3_ar_fresh_stream.v1"
+                                or config.execution.get("preset") == H3_AR_STREAM)
 
 
 def _helios_stream(config, workload):
@@ -248,7 +263,7 @@ def _options(config, workload):
         _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
                  "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
         _require(_helios_safe_stream(config, workload) or _helios_gan_stream(config, workload) or _wan_incumbent_stream(config, workload)
-                 or _livewan_c51_stream(config, workload)
+                 or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
                  or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
                  and not config.trainer.get("resume_from"),
                  "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
@@ -266,10 +281,30 @@ def _options(config, workload):
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
     _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload)
-             or _livewan_c51_stream(config, workload) or "seed" not in config.trainer,
+             or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
-    _require(_livewan_c51_stream(config, workload) or "stop_after_cycle" not in config.trainer,
-             "trainer.stop_after_cycle is supported only by the explicit C51 stream")
+    _require(_livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "stop_after_cycle" not in config.trainer,
+             "trainer.stop_after_cycle requires an explicit C51 or W6 fresh stream")
+    if _h3_ar_stream(config, workload):
+        mode = config.execution.get("mode")
+        _require(set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
+                 and config.data["input_kind"] == "original_h3_ar_fresh_stream.v1"
+                 and bool(config.execution.get("capacity_policy"))
+                 and type(config.trainer["cycles"]) is int and 2 <= config.trainer["cycles"] <= 100
+                 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
+                 "fresh W6 requires explicit finite 2..100 cycles, seed, checkpoint cadence, inputs and capacity policy")
+        _require(not any(k in config.execution for k in ("plan", "transport"))
+                 and (mode == "manual" and config.execution.get("preset") == H3_AR_STREAM
+                      and "implementation" not in config.execution
+                      or mode == "reference" and config.execution.get("implementation") == "zero3-native"
+                      and "preset" not in config.execution),
+                 "fresh W6 requires its versioned full preset or explicit native reference; no historical script/plan/fallback")
+        stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
+        _require(type(stop) is int and 1 <= stop <= config.trainer["cycles"]
+                 and (stop == config.trainer["cycles"] or config.trainer["checkpoint_every"] > 0
+                      and stop % config.trainer["checkpoint_every"] == 0),
+                 "fresh W6 stop must be a complete checkpoint boundary inside its immutable horizon")
+        return mode
     if _helios_gan_stream(config, workload):
         _require(config.execution.get("mode") == "manual" and "capacity_policy" not in config.execution
                  and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
@@ -594,6 +629,9 @@ def _admit(config):
     elif _livewan_reference(config, workload):
         from .livewan_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
+    elif _h3_ar_stream(config, workload):
+        from .h3_ar_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
     elif workload == "W6":
         admitted = _h3_ar(config, mode, task_value, assets_value, paths)
     else:
@@ -643,6 +681,9 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _h3_ar_stream(config, _workload(config)) and not dry_run:
+        from .h3_ar_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
     if _livewan_c51_stream(config, _workload(config)) and not dry_run:
         from .livewan_c51_training import run_training
         return run_training(config, admit=lambda: _admit(config))
