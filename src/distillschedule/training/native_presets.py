@@ -13,6 +13,7 @@ SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
 HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
+LIVEWAN_C51_STREAM = "self_forcing.c51_stream.v1"
 _PRESETS = {
     "W1": dict(id="wan_ar.incumbent21a.v1", numerical_status="REVIEW",
         source_origin="21a0993db64137489e120dd6614c48a1bf1a6002",
@@ -66,8 +67,19 @@ def describe_preset(workload: str, preset_id: str) -> dict:
     stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
     wan_stream = workload == "W1" and preset_id == WAN_INCUMBENT_STREAM
     gan_stream = workload == "W3" and preset_id == HELIOS_GAN_STREAM
-    if value is None or value["id"] != preset_id and not (stream or wan_stream or gan_stream):
+    c51_stream = workload == "W4" and preset_id == LIVEWAN_C51_STREAM
+    if value is None or value["id"] != preset_id and not (stream or wan_stream or gan_stream or c51_stream):
         raise ValueError(f"native training: unknown or mismatched preset {preset_id!r} for {workload}")
+    if c51_stream:
+        return dict(schema_version=SCHEMA, workload=workload, **dict(deepcopy(value), id=LIVEWAN_C51_STREAM,
+            runtime="distillschedule.training.livewan_c51_training:run_training",
+            implementation_paths=[*value["implementation_paths"], "training/livewan_c51_training.py",
+                                  "training/livewan_c51_state.py", "training/livewan_c51_assets.py"]),
+            opt_in="explicit finite fresh full-C51 native manual stream; not stable/recommended",
+            source_archived=True, continuous_training=True, cycles=dict(min=2, max=100, finite_prepared_stream=True),
+            runtime_binding="ORIGINAL_C51_SHARED_WORKER_SETUP_AND_DUAL_POOL_NATIVE_MATH",
+            lifecycle_verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN",
+            gpu_execution="NOT_RUN", source_binding="current sources/assets/inputs/policy/exact 8G+8Score topology; old templates unchanged")
     if gan_stream:
         value = dict(deepcopy(value), id=HELIOS_GAN_STREAM,
             runtime="distillschedule.training.helios_gan_training:run_training",

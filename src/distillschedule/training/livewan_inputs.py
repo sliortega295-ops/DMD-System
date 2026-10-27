@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from distillschedule.data.livewan_inputs import (
-    KIND, SCHEMA, _inventory, _original_dataset, _prompts, _sample, _source_identity, require,
+    KIND, SCHEMA, C51_KIND, C51_SCHEMA, _inventory, _original_dataset, _prompts, _sample, _source_identity, require,
 )
 from distillschedule.runtime.livewan_crossscale_worker import OperationTraceRow
 from distillschedule.search.livewan_request import LiveWanRequest
@@ -34,10 +34,11 @@ class NativeTeacherInputs:
         manifest_sha = file_sha256(self.path)
         value = _object(self.path)
         unsigned = {k: v for k, v in value.items() if k != "input_sha256"}
-        require(value.get("schema_version") == SCHEMA and value.get("input_sha256") == fingerprint(unsigned),
+        require(value.get("schema_version") in (SCHEMA, C51_SCHEMA) and value.get("input_sha256") == fingerprint(unsigned),
                 "manifest identity/hash changed or unsupported input schema")
         expected = _inventory(value["data_root"], value["prompts"]["path"], source_root=value["source"]["root"],
-                              cycles=value["cycles"], seed=value["seed"], evidence_kind=value["evidence_kind"])
+                              cycles=value["cycles"], seed=value["seed"], evidence_kind=value["evidence_kind"],
+                              input_kind=C51_KIND if value["schema_version"] == C51_SCHEMA else KIND)
         require(value == expected, "source/prompt/record/operation identity changed from prepared manifest")
         require(file_sha256(self.path) == manifest_sha, "manifest hash changed during native admission")
         self._document, self._manifest_sha256 = value, manifest_sha

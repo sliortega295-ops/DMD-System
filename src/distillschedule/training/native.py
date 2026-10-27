@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM
 
 
 _FAMILIES = {
@@ -139,6 +139,16 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
             resume=dict(supported=True, scope="versioned complete-cycle checkpoint; exact same source/input/config/horizon/topology",
                         verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"))
+    if _livewan_c51_stream(config, workload):
+        result.update(native_api="distillschedule.training.livewan_c51_training:run_training",
+                      launch="enter on every existing two-node world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["manual"],
+            cycles=dict(min=2, max=100, fresh_inputs="original_livewan_c51_teacher_stream.v1"),
+            checkpoint=dict(supported=True, scope="drained complete native dual-wave 8G+8Score G1/C5/EMA0; actual named role Adam and rank RNG",
+                            verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="exact source/assets/input/policy/topology; frozen Teacher and transient caches reconstructed",
+                        verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"))
     if _livewan_reference(config, workload):
         result.update(native_api="distillschedule.training.livewan_training:run_reference",
                       algorithm="original_self_forcing_reference.v1",
@@ -161,6 +171,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
 def _wan_incumbent_stream(config, workload):
     from .native_presets import WAN_INCUMBENT_STREAM
     return workload == 'W1' and config.execution.get('preset') == WAN_INCUMBENT_STREAM
+
+
+def _livewan_c51_stream(config, workload):
+    return workload == "W4" and config.execution.get("preset") == LIVEWAN_C51_STREAM
 
 
 def _helios_stream(config, workload):
@@ -223,7 +237,7 @@ def _options(config, workload):
         ("execution", {"adapter", "mode", "task", "assets", "plan", "implementation", "preset",
                        "capacity_policy", "transport", "expected_head"}),
         ("data", {"prepared", "input_kind", "replay_fixed_trace"}),
-        ("trainer", {"cycles", "output_dir", "checkpoint_every", "resume_from", "seed", "generate", "export"}),
+        ("trainer", {"cycles", "output_dir", "checkpoint_every", "resume_from", "seed", "generate", "export", "stop_after_cycle"}),
     ):
         _require(not set(getattr(config, section)) - allowed,
                  f"unsupported {section} fields: {sorted(set(getattr(config, section)) - allowed)}; "
@@ -234,6 +248,7 @@ def _options(config, workload):
         _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
                  "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
         _require(_helios_safe_stream(config, workload) or _helios_gan_stream(config, workload) or _wan_incumbent_stream(config, workload)
+                 or _livewan_c51_stream(config, workload)
                  or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
                  and not config.trainer.get("resume_from"),
                  "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
@@ -250,8 +265,11 @@ def _options(config, workload):
              "algorithm.name does not match the original workload")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
-    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload) or "seed" not in config.trainer,
+    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload)
+             or _livewan_c51_stream(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    _require(_livewan_c51_stream(config, workload) or "stop_after_cycle" not in config.trainer,
+             "trainer.stop_after_cycle is supported only by the explicit C51 stream")
     if _helios_gan_stream(config, workload):
         _require(config.execution.get("mode") == "manual" and "capacity_policy" not in config.execution
                  and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
@@ -261,6 +279,21 @@ def _options(config, workload):
         return "manual"
     _require(config.data.get("input_kind") != "original_helios_gan_cohort_stream.v1",
              "W3 fresh GAN stream requires its explicit full bundle stream preset")
+    if _livewan_c51_stream(config, workload):
+        _require(config.data.get("input_kind") == "original_livewan_c51_teacher_stream.v1"
+                 and set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
+                 and bool(config.execution.get("capacity_policy"))
+                 and type(config.trainer["cycles"]) is int and 2 <= config.trainer["cycles"] <= 100
+                 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
+                 "C51 stream requires explicit finite 2..100 fresh cycles, seed, checkpoint cadence and capacity policy")
+        stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
+        _require(type(stop) is int and 1 <= stop <= config.trainer["cycles"]
+                 and (stop == config.trainer["cycles"] or config.trainer["checkpoint_every"] > 0
+                      and stop % config.trainer["checkpoint_every"] == 0),
+                 "C51 stop must be an explicit complete-cycle checkpoint boundary inside the fixed input horizon")
+        return "manual"
+    _require(config.data.get("input_kind") != "original_livewan_c51_teacher_stream.v1",
+             "fresh C51 inputs require their explicit full-bundle stream preset; no reference fallback")
     if _livewan_reference(config, workload):
         _require(config.execution.get("mode") == "reference"
                  and not any(k in config.execution for k in ("plan", "implementation", "transport")),
@@ -530,7 +563,8 @@ def _admit(config):
     mode = _options(config, workload)
     source = _source(config)
     paths = {key: _path(config, "execution", key, required=(key in ("task", "assets")
-               or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload))))
+               or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload)
+                                                                                or _livewan_c51_stream(config, workload))))
              for key in ("task", "assets", "plan", "capacity_policy", "transport")}
     if workload == "W1" and mode != "plan" and "preset" not in config.execution:
         paths["implementation"] = _path(config, "execution", "implementation")
@@ -544,6 +578,9 @@ def _admit(config):
     assets_value = _object(paths["assets"], "execution.assets")
     if workload == "W1":
         admitted = _wan(config, mode, task_value, assets_value, paths)
+    elif _livewan_c51_stream(config, workload):
+        from .livewan_c51_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
     elif _helios_gan_stream(config, workload):
         from .helios_gan_training import admit_training
         admitted = admit_training(config, task_value, assets_value, paths)
@@ -606,6 +643,9 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _livewan_c51_stream(config, _workload(config)) and not dry_run:
+        from .livewan_c51_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
     if _livewan_reference(config, _workload(config)) and not dry_run:
         from .livewan_training import run_reference
         return run_reference(config, admit=lambda: _admit(config))

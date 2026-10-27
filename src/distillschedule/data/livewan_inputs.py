@@ -24,6 +24,8 @@ from distillschedule.workloads.livewan_crossscale import LIVEWAN_COMMIT
 
 KIND = "original_livewan_teacher_cohorts.v1"
 SCHEMA = "distillschedule." + KIND
+C51_KIND = "original_livewan_c51_teacher_stream.v1"
+C51_SCHEMA = "distillschedule." + C51_KIND
 STREAMS = ("rollout", "generator_dmd_t", "generator_dmd_noise",
            "generator_grad_blocks", "critic_t", "critic_noise")
 SOURCE_FILES = ("wanstreamer/data.py", "scripts/gen_teacher.py", "scripts/encode_prompts.py", "LICENSE")
@@ -147,8 +149,11 @@ def _rows(records, cycles, seed):
     return rows
 
 
-def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_kind):
-    require(type(cycles) is int and 1 <= cycles <= 64, "finite complete cohort count must be 1..64")
+def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_kind, input_kind=KIND):
+    require(input_kind in (KIND, C51_KIND), "unsupported native input contract")
+    maximum = 100 if input_kind == C51_KIND else 64
+    require(type(cycles) is int and 1 <= cycles <= maximum,
+            f"finite complete cohort count must be 1..{maximum}")
     require(type(seed) is int and 0 <= seed < 2**63, "explicit 63-bit operation seed required")
     require(evidence_kind in {"NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"},
             "explicit native archive or CPU fixture evidence kind required")
@@ -180,13 +185,15 @@ def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_k
             "duplicate/copied/replayed teacher record payloads are not fresh inputs")
     require(file_sha256(prompts_path) == prompt_sha and _source_identity(source_root) == source,
             "original source or prompt hash changed during admission")
-    value = {"schema_version": SCHEMA, "status": "ADMITTED_FINITE_NATIVE_INPUTS", "source": source,
+    value = {"schema_version": "distillschedule." + input_kind, "status": "ADMITTED_FINITE_NATIVE_INPUTS", "source": source,
              "data_root": str(root), "prompts": {"path": str(prompts_path), "sha256": prompt_sha},
              "cycles": cycles, "seed": seed, "evidence_kind": evidence_kind, "contract": deepcopy(CONTRACT),
              "records": records, "rows": _rows(records, cycles, seed),
              "claim_boundary": {"training_lifecycle": "NOT_IMPLEMENTED", "gpu_execution": "NOT_RUN",
                                 "rng": "independent_operation_streams_NOT_upstream_sequential_RNG_continuation",
                                 "quality": "supplied teacher-format archives; generation/quality not attested"}}
+    if input_kind == C51_KIND:
+        value["claim_boundary"]["training_lifecycle"] = "EXPLICIT_C51_STREAM_SOURCE_CPU_ONLY_NATIVE_GPU_NOT_RUN"
     return {**value, "input_sha256": fingerprint(value)}
 
 
@@ -218,7 +225,7 @@ def _publish_manifest(path, value):
 
 
 def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed,
-                   evidence_kind="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY"):
+                   evidence_kind="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", input_kind=KIND):
     """Admit supplied original archives; publish only a complete immutable file.
 
     Preparation imports the actual dataset only after every restricted archive
@@ -226,7 +233,7 @@ def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed
     not the public C51 training command (whose lifecycle still rejects this).
     """
     value = _inventory(data_root, prompts_path, source_root=source_root, cycles=cycles, seed=seed,
-                       evidence_kind=evidence_kind)
+                       evidence_kind=evidence_kind, input_kind=input_kind)
     _, dataset = _original_dataset(value["source"], value["data_root"], value["prompts"]["path"])
     require([str(Path(p).resolve()) for p in dataset.files] == [r["path"] for r in value["records"]],
             "actual original dataset record inventory changed")
@@ -234,3 +241,11 @@ def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed
     return value
 
 
+def prepare_c51_inputs(*args, **kwargs):
+    """Explicit finite C51 stream, up to 100 fresh complete native cohorts.
+
+    All existing archive/source/geometry/content gates remain mandatory. This
+    version extends the horizon, not Teacher quality or sequential-upstream RNG
+    claims. Legacy preparation remains capped at 64 and byte-identical.
+    """
+    return prepare_inputs(*args, **kwargs, input_kind=C51_KIND)

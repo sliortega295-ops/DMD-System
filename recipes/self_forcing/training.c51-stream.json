@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"workload": "W4"},
+  "algorithm": {"name": "original_self_forcing_c51"},
+  "data": {
+    "input_kind": "original_livewan_c51_teacher_stream.v1",
+    "prepared": "REPLACE_WITH_PREPARED_C51_INPUTS.json"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "preset": "self_forcing.c51_stream.v1",
+    "task": "task.json",
+    "assets": "REPLACE_WITH_EXPLICIT_C51_ASSETS.json",
+    "capacity_policy": "REPLACE_WITH_EXPLICIT_C51_CAPACITY_POLICY.json"
+  },
+  "trainer": {
+    "cycles": 100,
+    "seed": 31415,
+    "checkpoint_every": 50,
+    "stop_after_cycle": 50,
+    "output_dir": "REPLACE_WITH_NEW_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

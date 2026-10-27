@@ -290,7 +290,8 @@ def restore_rng(value):
         np.random.set_state((name, np.asarray(values, dtype=np.uint32), position, gauss, cached))
 
 
-def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None):
+def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None,
+                    pre_publication_guard=None):
     import torch
     if type(cycle) is not int or cycle < 0 or type(cursor) is not int or cursor < 0:
         raise ValueError("checkpoint must describe a complete cycle and data cursor")
@@ -340,6 +341,10 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             return {filename: _sha(staging / filename)}
         shard = distributed.checked(write_shard, "checkpoint shard writing")
         files = {key: value for row in distributed.gather(shard) for key, value in row.items()}
+        if pre_publication_guard is not None:
+            # Every rank still owns its full CPU snapshot here. Exchange any
+            # staging-capacity failure before publishing metadata or _SUCCESS.
+            distributed.checked(pre_publication_guard, "checkpoint pre-publication guard")
         def publish():
             if len(files) != world:
                 raise ValueError("checkpoint shards incomplete on shared storage")

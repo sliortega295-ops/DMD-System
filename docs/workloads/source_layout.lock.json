@@ -475,5 +475,31 @@
       "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
       "change": "opt_in_original_W5_complete_cycle_data_cursor_and_canonical_state_hooks_legacy_observer_unchanged; canonical_math_and_original_benchmark_path_unchanged"
     }
-  }
+  },
+  "integration_overlays": [
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "08f44a79194d046c5f30b0e88be2dd046602ac8034e3fe4a850e25ba00c3f294",
+      "integrated_sha256": "ab55dc07e95ed53f6cd800d023bbef514889d05c5d1666da3ec59408be09a0e5",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R31 explicit full C51 finite fresh continuation: shared setup/native math, bounded staging, dual-pool checkpoint lifecycle; source_commit is the exact integration base; original source/import receipts and math helpers preserved; CPU protocol only, native GPU NOT_RUN"
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "integrated_sha256": "1f24a82c66cac25604bbb706473fdf1baeda7223bec6eaf1a6a53076d75d0c2b",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R30 reviewed native GAN fresh-stream lifecycle bridge in commit90cb5d3; exact committed file, no new training-code change in R31 integration."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
+      "previous_sha256": "0f86e95ca945e2b120259ee36c811ce20fcd4e847ee66913faf68de8e0055ed5",
+      "integrated_sha256": "62b75513dbb4d5f30a5629fa12f9a1ddb11499bd9d32d4ef86343fd182db27bf",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R30 reviewed native GAN fresh-stream lifecycle bridge in commit90cb5d3; exact committed file, no new training-code change in R31 integration."
+    }
+  ]
 }

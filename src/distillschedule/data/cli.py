@@ -56,6 +56,8 @@ def main(argv=None):
     livewan.add_argument("--output", type=Path, required=True)
     livewan.add_argument("--evidence-kind", default="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY",
                          choices=("NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"))
+    sub.add_parser("prepare-livewan-c51-inputs", parents=[livewan], add_help=False,
+                   help="explicit C51 finite fresh teacher stream (up to 100 cycles); no downloads")
     args = parser.parse_args(argv)
     try:
         # Preparation/import can load trusted encoders and noisy dependencies.
@@ -90,8 +92,9 @@ def main(argv=None):
             elif args.command == "prepare-h3-cached-reference":
                 from .h3_cached_inputs import prepare_inputs
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))
-            elif args.command == "prepare-livewan-inputs":
-                from .livewan_inputs import prepare_inputs
+            elif args.command in ("prepare-livewan-inputs", "prepare-livewan-c51-inputs"):
+                from .livewan_inputs import prepare_inputs, prepare_c51_inputs
+                prepare_inputs = prepare_c51_inputs if args.command == "prepare-livewan-c51-inputs" else prepare_inputs
                 result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
                                         cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
             elif args.command == "prepare":
