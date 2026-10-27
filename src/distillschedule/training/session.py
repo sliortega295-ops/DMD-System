@@ -519,23 +519,24 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     feeds, sample_id = dataset.sample(sample_index), dataset.sample_id(sample_index)
     _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config, source=model["source"])
-    if digest(dict(components.metadata)) != digest(model["metadata"]):
-        raise ValueError("export model metadata changed")
-    restore_modules(components, root, manifest)
-    values = cpu_tree(_generate_values(config, components, feeds, parameters,
-                                      video_required=output_kind == "video", latents_required=output_kind == "latents",
-                                      output_kind=None if output_kind == 'latents' else output_kind))
-    _, current = read_export(root)
-    if digest(current) != digest(manifest):
-        raise ValueError("export manifest changed during generation")
-    output = Path(output).expanduser().resolve()
-    output.mkdir(parents=True, exist_ok=False)
-    result = write_generation(output, values, metadata={
-        "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
-        "sample_id": sample_id, "input_identity": dataset.identity,
-        "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
-        "loaded_factory": model_source,
-        "export_manifest_sha256": file_sha256(root / "export.json"),
-        "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
-    (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
-    return result
+    with components.managed():
+        if digest(dict(components.metadata)) != digest(model["metadata"]):
+            raise ValueError("export model metadata changed")
+        restore_modules(components, root, manifest)
+        values = cpu_tree(_generate_values(config, components, feeds, parameters,
+                                          video_required=output_kind == "video", latents_required=output_kind == "latents",
+                                          output_kind=None if output_kind == 'latents' else output_kind))
+        _, current = read_export(root)
+        if digest(current) != digest(manifest):
+            raise ValueError("export manifest changed during generation")
+        output = Path(output).expanduser().resolve()
+        output.mkdir(parents=True, exist_ok=False)
+        result = write_generation(output, values, metadata={
+            "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
+            "sample_id": sample_id, "input_identity": dataset.identity,
+            "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
+            "loaded_factory": model_source,
+            "export_manifest_sha256": file_sha256(root / "export.json"),
+            "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
+        (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
+        return result
