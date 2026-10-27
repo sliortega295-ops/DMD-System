@@ -397,7 +397,7 @@ def _run_gan_generator_update(
             cfg,
             entry.operation_trace,
             source,
-            1000,
+            int(entry.logical_step),
             negative,
             device,
         ),
@@ -425,7 +425,7 @@ def _run_gan_generator_update(
     if collect_diagnostics and before == after:
         raise AssertionError("GAN FSDP2 Generator trainables did not update")
     return {
-        "logical_step": 1000,
+        "logical_step": int(entry.logical_step),
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
         "local_trainable_before": before,

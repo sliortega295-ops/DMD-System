@@ -1156,6 +1156,11 @@ def main() -> int:
     from distillschedule.search.helios_implementation import current_implementation
     from distillschedule.search.helios_gan_bundle import HeliosGANBundle
     planner_impl = current_implementation()
+    from distillschedule.training.helios_lifecycle import current_training
+    training_binding = current_training()
+    if training_binding is not None and training_binding.get("gan_stream") is True:
+        from distillschedule.training.helios_gan_training import implementation as gan_stream_implementation
+        planner_impl = gan_stream_implementation()
     args._planner_gan_manual_bundle = (
         planner_impl is not None and type(planner_impl.candidate_bundle) is HeliosGANBundle)
     from distillschedule.runtime.fsdp2_p0 import validate_nogan_b_gemm_request
@@ -1557,7 +1562,8 @@ def main() -> int:
                 p0=sys.modules[__name__], args=args, policy=policy, result=result,
                 output=output, rank=rank, device=device, logical=logical,
                 generator_engine=generator_engine, critic_engine=critic_engine,
-                ema=ema, diagnostics=diagnostics, negative=negative,
+                ema=ema, diagnostics=diagnostics, negative=negative, cfg=cfg,
+                generator_free_memory=generator_free_memory,
             )
             base._atomic_json(output, result)
             dist.barrier()

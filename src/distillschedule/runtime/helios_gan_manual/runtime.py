@@ -113,7 +113,16 @@ def _forbid_merges(stack, state, engines):
 @contextmanager
 def manual_runtime_scope(p0):
     from distillschedule.search.helios_implementation import current_implementation
-    impl = current_implementation()
+    from distillschedule.training.helios_lifecycle import current_training
+    binding = current_training()
+    stream = binding is not None and binding.get('gan_stream') is True
+    if stream:
+        from distillschedule.training.helios_gan_training import implementation, validate_environment
+        validate_environment()
+        impl = implementation()
+        require(binding.get('implementation') == impl, 'GAN stream typed implementation changed')
+    else:
+        impl = current_implementation()
     if impl is None or type(impl.candidate_bundle) is not HeliosGANBundle:
         yield
         return
@@ -143,7 +152,8 @@ def manual_runtime_scope(p0):
             and transformer.attn_varlen_func is dispatch.attn_varlen_func,
             'manual GAN exact external dispatcher/alias differs')
     reference = p0._attention_backend_receipt('local-fa2')
-    public, schema, identity = backend_library.load_actual(torch)
+    public, schema, identity = (backend_library.load_explicit(torch,binding['assets']['assets']['fa3_kernel']['path'])
+                               if stream else backend_library.load_actual(torch))
     state = dict(installed=True, effective_attention_backend='pinned-sm80-fa3',
                  actual_FA3_identity=identity, public_backend_call_count=0,
                  unsupported_request_count=0, merge_count=0, merged_layer_count=0,
@@ -216,7 +226,42 @@ def manual_runtime_scope(p0):
                 state['restored'] = True
                 return result
             return call
-        replace(stack,native,'run_two_cycles',run)
+        if stream:
+            from distillschedule.training import helios_gan_training as training
+            from .stream import NativeDownStreamSAC
+            def continuous(original):
+                @functools.wraps(original)
+                def call(**kwargs):
+                    require(state.get('runner_calls',0) == 0, 'manual GAN stream executor invoked more than once')
+                    state['runner_calls'] = 1
+                    generator,critic,ema = (kwargs[k] for k in ('generator_engine','critic_engine','ema'))
+                    _audit_unmerged(state,(generator,critic),'AFTER_SETUP_BEFORE_STREAM')
+                    _forbid_merges(stack,state,(generator,critic))
+                    core = NativeDownStreamSAC(torch=torch,rank=rank)
+                    state['down40'] = core.state
+                    kwargs['result']['build']['gan_manual_runtime'] = state
+                    core.bind(stack,p0=p0,native=native,fsdp=fsdp,checkpoint=checkpoint,
+                              generator=generator,critic=critic,ema=ema)
+                    binding['gan_core'] = core
+                    try:
+                        result = original(**kwargs)
+                        core.finish()
+                        _audit_unmerged(state,(generator,critic),'AFTER_COMPLETE_STREAM')
+                    except BaseException:
+                        core.abort()
+                        raise
+                    finally:
+                        binding.pop('gan_core',None)
+                        # Drop/restore policy hooks even when the first new
+                        # cohort or checkpoint fails. Never retain SAC caches.
+                        stack.close()
+                        core.restored()
+                    state['restored'] = True
+                    return result
+                return call
+            replace(stack,training,'run_native_cycles',continuous)
+        else:
+            replace(stack,native,'run_two_cycles',run)
         try:
             yield state
         except BaseException:

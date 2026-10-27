@@ -1,0 +1,51 @@
+{
+  "schema_version": "distillschedule.helios_gan_stream_assets.v1",
+  "assets": {
+    "generator_model": {
+      "path": "REPLACE_WITH_ABSOLUTE_GENERATOR_MODEL_DIRECTORY",
+      "identity_file": "transformer_ode/config.json",
+      "sha256": "REPLACE_WITH_GENERATOR_MODEL_IDENTITY_FILE_SHA256"
+    },
+    "score_model": {
+      "path": "REPLACE_WITH_ABSOLUTE_SCORE_MODEL_DIRECTORY",
+      "identity_file": "transformer/config.json",
+      "sha256": "REPLACE_WITH_SCORE_MODEL_IDENTITY_FILE_SHA256"
+    },
+    "generator_precast": {
+      "path": "REPLACE_WITH_ABSOLUTE_GENERATOR_PRECAST_DIRECTORY",
+      "identity_file": "distillschedule_precast_manifest.json",
+      "sha256": "REPLACE_WITH_GENERATOR_PRECAST_IDENTITY_FILE_SHA256"
+    },
+    "score_precast": {
+      "path": "REPLACE_WITH_ABSOLUTE_SCORE_PRECAST_DIRECTORY",
+      "identity_file": "distillschedule_precast_manifest.json",
+      "sha256": "REPLACE_WITH_SCORE_PRECAST_IDENTITY_FILE_SHA256"
+    },
+    "logical_checkpoint": {
+      "path": "REPLACE_WITH_ABSOLUTE_LOGICAL_CHECKPOINT_DIRECTORY",
+      "identity_file": "manifest.json",
+      "sha256": "REPLACE_WITH_LOGICAL_CHECKPOINT_IDENTITY_FILE_SHA256",
+      "ema_manifest": {
+        "identity_file": "ema/sparse_ema_manifest.json",
+        "sha256": "REPLACE_WITH_EMA800_MANIFEST_SHA256"
+      }
+    },
+    "negative_prompt": {
+      "path": "REPLACE_WITH_ABSOLUTE_NEGATIVE_PROMPT_DIRECTORY",
+      "identity_file": "manifest.json",
+      "sha256": "REPLACE_WITH_NEGATIVE_PROMPT_IDENTITY_FILE_SHA256"
+    },
+    "gan_config": {
+      "path": "REPLACE_WITH_ABSOLUTE_NATIVE_GAN_CONFIG.yaml",
+      "sha256": "REPLACE_WITH_CONFIG_SHA256"
+    },
+    "fa3_kernel": {
+      "path": "REPLACE_WITH_ABSOLUTE_EXISTING_PINNED_TORCH210_FA3_DIRECTORY",
+      "files_sha256": {
+        "flash_attn_interface.py": "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4",
+        "_ops.py": "7f392b365cc945a3b3a420e24802ef776a79316c068e6e99e4da682e8927a1f6",
+        "_flash_attn3_cuda_373a45c.abi3.so": "8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56"
+      }
+    }
+  }
+}

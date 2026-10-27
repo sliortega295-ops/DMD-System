@@ -112,6 +112,9 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
     binding = current_training()
     if binding is None:
         return
+    if binding.get("gan_stream") is True:
+        from .helios_gan_training import admit_original_rank as admit_gan
+        return admit_gan(torch=torch, dist=dist, rank=rank, args=args, policy=policy, seed_runtime=seed_runtime)
     require(dist.get_world_size() == 16,
             "reference original world16 helpers required", path="helios.training")
     if binding.get("metadata_group") is None:
@@ -353,10 +356,16 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
 
 
 def run_training_cycles(*, p0, args, policy, result, output, rank, device, logical,
-                        generator_engine, critic_engine, ema, diagnostics, negative):
+                        generator_engine, critic_engine, ema, diagnostics, negative, cfg=None,
+                        generator_free_memory=None):
     binding = current_training()
     require(binding is not None and binding.get("metadata_group") is not None,
             "original training preflight missing", path="helios.training")
+    if binding.get("gan_stream") is True:
+        from .helios_gan_training import run_native_cycles
+        return run_native_cycles(p0=p0, args=args, policy=policy, result=result, output=output, rank=rank,
+            device=device, logical=logical, generator_engine=generator_engine, critic_engine=critic_engine,
+            ema=ema, diagnostics=diagnostics, negative=negative, cfg=cfg, generator_free_memory=generator_free_memory)
     require(all(int(logical.component(key)["optimizer_step"]) == expected_versions(0)[key]
                 for key in ("generator", "critic")), "logical original bootstrap changed", path="helios.training")
     if binding.get("implementation") is not None:

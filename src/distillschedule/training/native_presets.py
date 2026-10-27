@@ -11,6 +11,7 @@ from copy import deepcopy
 
 SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
+HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 _PRESETS = {
     "W1": dict(id="wan_ar.incumbent21a.v1", numerical_status="REVIEW",
@@ -64,8 +65,22 @@ def describe_preset(workload: str, preset_id: str) -> dict:
     value = _PRESETS.get(workload)
     stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
     wan_stream = workload == "W1" and preset_id == WAN_INCUMBENT_STREAM
-    if value is None or value["id"] != preset_id and not (stream or wan_stream):
+    gan_stream = workload == "W3" and preset_id == HELIOS_GAN_STREAM
+    if value is None or value["id"] != preset_id and not (stream or wan_stream or gan_stream):
         raise ValueError(f"native training: unknown or mismatched preset {preset_id!r} for {workload}")
+    if gan_stream:
+        value = dict(deepcopy(value), id=HELIOS_GAN_STREAM,
+            runtime="distillschedule.training.helios_gan_training:run_training",
+            implementation_paths=[*value["implementation_paths"], "training/helios_gan_training.py",
+                                  "training/helios_gan_inputs.py", "runtime/helios_gan_manual/stream.py"])
+        return dict(schema_version=SCHEMA, workload=workload, **value,
+            opt_in="execution.mode=manual; explicit fresh finite native GAN stream; not stable/recommended",
+            source_archived=True, runtime_binding="SAME_NATIVE_FULL_FA3_DOWN40_NOMERGE_BUNDLE_FRESH_COHORTS",
+            continuous_training=True, cycles=dict(min=2, finite_prepared_stream=True, scheduler="original_constant_no_finite_horizon"),
+            lifecycle_verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN",
+            gpu_execution="NOT_RUN", mechanism_execution="NOT_RUN; actual FA3/down40/head/cache counters required",
+            source_binding="current source/assets/stream/world16; frozen two-cycle identity unchanged",
+            reference_alternative="separate explicit CPU/reference recipe is not this native full bundle")
     if wan_stream:
         value = dict(deepcopy(value), id=WAN_INCUMBENT_STREAM,
             implementation_paths=[*value['implementation_paths'], 'runtime/wan_bundle_lifecycle.py'])

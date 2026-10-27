@@ -19,6 +19,12 @@ def sha(path):
 
 def verify_files(root=FA3_ROOT):
  require(pathlib.Path(root)==FA3_ROOT,'PINNED_EXISTING_FA3_PATH')
+ return verify_explicit_files(root)
+
+def verify_explicit_files(root):
+ """Versioned stream only: same exact bytes, explicit already-local package."""
+ root=pathlib.Path(root)
+ require(root.is_absolute() and root.is_dir(),'EXPLICIT_LOCAL_PINNED_FA3_DIRECTORY')
  for name,pin in FA3_PINS.items():require(sha(pathlib.Path(root)/name)==pin,'PINNED_EXISTING_FA3_FILE:'+name)
  return dict(FA3_source_root=str(root),FA3_files_sha256=dict(FA3_PINS))
 
@@ -84,11 +90,18 @@ def load_actual(torch):
  No hub download, guessed namespace, fake dispatcher, unwrapped kernel or
  CUDA/math change. This module returns the original public autograd callable.
  """
- pins=verify_files()
+ return _load_verified(torch,FA3_ROOT,verify_files())
+
+def load_explicit(torch,root):
+ """Same original callable/ABI/map attestation, no personal-path requirement."""
+ root=pathlib.Path(root).resolve()
+ return _load_verified(torch,root,verify_explicit_files(root))
+
+def _load_verified(torch,root,pins):
  from kernels.utils import get_local_kernel
- module=get_local_kernel(FA3_ROOT,'flash_attn3');public=module.flash_attn_func
+ module=get_local_kernel(root,'flash_attn3');public=module.flash_attn_func
  interface=sys.modules.get(public.__module__);require(interface is not None,'ACTUAL_PUBLIC_INTERFACE_MODULE')
- source=FA3_ROOT/'flash_attn_interface.py'
+ source=root/'flash_attn_interface.py'
  require(pathlib.Path(interface.__file__).samefile(source)and interface.__dict__.get('flash_attn_func')is public,'ACTUAL_PUBLIC_FA3_MODULE_FUNCTION_IDENTITY')
  attest_function(public,source,'flash_attn_func')
  cls=interface.__dict__.get('FlashAttnFunc');require(cls is not None,'ORIGINAL_FA3_AUTOGRAD_CLASS')
@@ -100,9 +113,9 @@ def load_actual(torch):
  from torch._library.custom_ops import CustomOpDef
  schema=backend.validate_actual_registered_FA3(rawfw,rawbw,CustomOpDef)
  opmod=inspect.getmodule(interface.add_op_namespace_prefix)
- require(opmod is not None and pathlib.Path(opmod.__file__).samefile(FA3_ROOT/'_ops.py'),'ACTUAL_PINNED_FA3_OPS_NAMESPACE_SOURCE')
+ require(opmod is not None and pathlib.Path(opmod.__file__).samefile(root/'_ops.py'),'ACTUAL_PINNED_FA3_OPS_NAMESPACE_SOURCE')
  require(sha(opmod.__file__)==FA3_PINS['_ops.py'],'ACTUAL_OPS_SOURCE_SHA')
- basename='_flash_attn3_cuda_373a45c.abi3.so';resolved=(FA3_ROOT/basename).resolve();stat=resolved.stat()
+ basename='_flash_attn3_cuda_373a45c.abi3.so';resolved=(root/basename).resolve();stat=resolved.stat()
  require(sha(resolved)==FA3_PINS[basename],'ACTUAL_RESOLVED_FA3_LIBRARY_BYTES')
  compiled=sorted({str(pathlib.Path(m.__file__).resolve())for name,m in list(sys.modules.items())if'_flash_attn3_cuda_373a45c'in name and hasattr(m,'__file__')})
  require(compiled==[str(resolved)],'EXACT_ACTUAL_LOADED_FA3_EXTENSION')

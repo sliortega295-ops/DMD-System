@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM
 
 
 _FAMILIES = {
@@ -114,6 +114,20 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             result["capabilities"]["resume"]["scope"] = "complete native cohort; same source/assets/stream/node-HSDP/SafeBundle"
             result["capabilities"]["bootstrap"]["asset_contract"] = "distillschedule.helios_reference_assets.v1; explicit local assets only"
             result["capabilities"]["physical_policy"] = "node-HSDP/C512/p0/window5/full SafeBundle/stride0; local pinned FA2 required"
+    if _helios_gan_stream(config, workload):
+        result.update(native_api="distillschedule.training.helios_gan_training:run_training",
+                      launch="enter on each existing world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["manual"],
+            cycles=dict(min=2, fresh_inputs="original_helios_gan_cohort_stream.v1", finite_prepared_stream=True,
+                        scheduler="original native constant; no invented finite horizon"),
+            bootstrap=dict(physical_versions=dict(generator=2, critic=10, ema=800),
+                curriculum_versions=dict(generator=200, critic=1000, ema=800),
+                classification="systems_only_NOT_official_checkpoint1000", cold_start_supported=False),
+            checkpoint=dict(supported=True, scope="actual G/C plus five GAN heads, Adam/scheduler/EMA, rank RNG and stream cursor",
+                            verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="drained complete G1/C5/EMA1 boundary; same source/assets/stream/world16/full bundle",
+                        verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"))
     if _h3_grid_training(config, workload):
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
@@ -155,6 +169,10 @@ def _helios_stream(config, workload):
 
 def _helios_safe_stream(config, workload):
     return workload == "W2" and config.execution.get("preset") == HELIOS_SAFE_STREAM
+
+
+def _helios_gan_stream(config, workload):
+    return workload == "W3" and config.execution.get("preset") == HELIOS_GAN_STREAM
 
 
 def _h3_grid_training(config, workload):
@@ -215,7 +233,7 @@ def _options(config, workload):
         _require(config.execution.get("mode") == "manual", "execution.preset requires explicit manual mode")
         _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
                  "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
-        _require(_helios_safe_stream(config, workload) or _wan_incumbent_stream(config, workload)
+        _require(_helios_safe_stream(config, workload) or _helios_gan_stream(config, workload) or _wan_incumbent_stream(config, workload)
                  or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
                  and not config.trainer.get("resume_from"),
                  "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
@@ -234,6 +252,15 @@ def _options(config, workload):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
     _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    if _helios_gan_stream(config, workload):
+        _require(config.execution.get("mode") == "manual" and "capacity_policy" not in config.execution
+                 and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
+                 and config.data["input_kind"] == "original_helios_gan_cohort_stream.v1"
+                 and config.trainer["cycles"] >= 2,
+                 "W3 full bundle stream requires explicit fresh native GAN cohorts; no replay/plan/policy fallback")
+        return "manual"
+    _require(config.data.get("input_kind") != "original_helios_gan_cohort_stream.v1",
+             "W3 fresh GAN stream requires its explicit full bundle stream preset")
     if _livewan_reference(config, workload):
         _require(config.execution.get("mode") == "reference"
                  and not any(k in config.execution for k in ("plan", "implementation", "transport")),
@@ -517,6 +544,9 @@ def _admit(config):
     assets_value = _object(paths["assets"], "execution.assets")
     if workload == "W1":
         admitted = _wan(config, mode, task_value, assets_value, paths)
+    elif _helios_gan_stream(config, workload):
+        from .helios_gan_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
     elif _helios_stream(config, workload):
         from .helios_worker import admit_reference, admit_safe_stream
         admit = admit_safe_stream if _helios_safe_stream(config, workload) else admit_reference
@@ -579,6 +609,9 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
     if _livewan_reference(config, _workload(config)) and not dry_run:
         from .livewan_training import run_reference
         return run_reference(config, admit=lambda: _admit(config))
+    if _helios_gan_stream(config, _workload(config)) and not dry_run:
+        from .helios_gan_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
     if _helios_stream(config, _workload(config)) and not dry_run:
         # All rank-local source/asset/stream metadata belongs under the fresh
         # training wrapper's owned Gloo plane, before entering original P0.
