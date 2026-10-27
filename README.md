@@ -96,6 +96,8 @@ Hub downloads. Original DMD2 and LTX sources remain external under their own
 licenses; they are not relicensed as Apache-2.0.
 
 Official Self-Forcing is **not** the existing W4 LiveWan cross-scale workflow.
+
+**Optimized official workflows:** [DMD2 SD1.5 and official Self-Forcing](docs/guides/official_optimized_training.md) provide source-bound Resident/DDP and FSDP2 configurations through the same `distillctl train` entry. The guide includes baseline/optimized performance, mechanisms, distributed launch and resume. The six native recipes below remain unchanged.
 The generic flow-DMD recipe is **not** a replacement for either official loss.
 
 ## Six preserved native workloads

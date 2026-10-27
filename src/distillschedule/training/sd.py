@@ -103,8 +103,13 @@ def _arguments(parameters, *, sdxl):
     import torch
     require(isinstance(parameters, dict) and set(parameters) <= {
         'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device',
-        'native_checkpoint_policy', 'native_role_backend'},
+        'native_checkpoint_policy', 'native_role_backend', 'optimization_profile'},
         'unknown model parameters')
+    optimized = 'optimization_profile' in parameters
+    if optimized:
+        from .official_optimizations.dmd2 import admit
+        require(not sdxl, 'optimized profile is SD1.5 only')
+        admit(parameters)
     role_backend = parameters.get('native_role_backend', 'single-device-v1')
     require(type(role_backend) is str and role_backend in ('single-device-v1', 'ddp-fp32-v1'),
             'unsupported native role backend')
@@ -113,7 +118,11 @@ def _arguments(parameters, *, sdxl):
             'unsupported native checkpoint policy')
     require(isinstance(parameters.get('source_root'), str)
             and isinstance(parameters.get('model_id'), str), 'source_root and local model_id required')
-    if role_backend == 'ddp-fp32-v1':
+    if optimized:
+        require(role_backend == 'single-device-v1' and 'native_role_backend' not in parameters
+                and checkpoint_policy == 'coupled-v1',
+                'optimized profile owns its role backend; no conflicting backend/checkpoint overrides')
+    elif role_backend == 'ddp-fp32-v1':
         require(torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1,
                 'native role backend requires an initialized multi-rank group')
         from .single_device import admit_fp32
@@ -143,7 +152,7 @@ def _arguments(parameters, *, sdxl):
             'native FP32 role DDP GAN ownership is not yet qualified')
     require(checkpoint_policy != 'component-v1' or defaults['gradient_checkpointing'] is True,
             'component checkpoint policy requires the original checkpoint-enabled reference')
-    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is False
+    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is optimized
             and defaults['tiny_vae'] is False and defaults['initialie_generator'] is True
             and defaults['revision'] is None, 'unsupported model initialization/precision override')
     for key in ('backward_simulation', 'cls_on_clean_image', 'denoising', 'gradient_checkpointing',
@@ -183,6 +192,9 @@ def _arguments(parameters, *, sdxl):
         require(bool(parameters.get('generator_checkpoint')), 'SDXL 1-step requires an explicit actual generator checkpoint')
     require(defaults['num_denoising_step'] in (1, 2, 4, 5, 10, 20, 25, 50),
             'denoising steps must exactly divide the original 1000-step schedule')
+    if optimized:
+        from .official_optimizations.dmd2 import validate_settings
+        validate_settings(SimpleNamespace(**defaults))
     defaults['model_id'] = str(Path(parameters['model_id']).expanduser().resolve(strict=True))
     return SimpleNamespace(**defaults)
 
@@ -192,7 +204,7 @@ def _build(parameters, *, sdxl):
     args = _arguments(parameters, sdxl=sdxl)
     device = _execution_device(parameters.get('device', 'cpu'))
     seed = parameters.get('seed', 0)
-    if parameters.get('native_role_backend') == 'ddp-fp32-v1':
+    if parameters.get('native_role_backend') == 'ddp-fp32-v1' or 'optimization_profile' in parameters:
         seed += torch.distributed.get_rank()  # original native Trainer set_seed(seed + process_index)
     with _construction_rng(device, seed):
         return _build_placed(parameters, args, device, sdxl=sdxl)
@@ -245,7 +257,7 @@ def _build_placed(parameters, args, device, *, sdxl):
     if parameters.get('native_checkpoint_policy', 'coupled-v1') == 'component-v1':
         metadata['native_checkpoint_policy'] = 'component-v1'
     owner_type = DMD2Owner
-    if parameters.get('native_role_backend') == 'ddp-fp32-v1':
+    if parameters.get('native_role_backend') == 'ddp-fp32-v1' or 'optimization_profile' in parameters:
         from .dmd2_collective import DMD2CollectiveOwner
         owner_type = DMD2CollectiveOwner
         metadata.update(precision='FP32_NATIVE_COLLECTIVE',
@@ -256,6 +268,14 @@ def _build_placed(parameters, args, device, *, sdxl):
                 broadcast_buffers=True, find_unused_parameters=False, gradient_as_bucket_view=True, bucket_cap_mb=128),
             placement_limit='EXPLICIT_SAME_TOPOLOGY_FP32_ROLE_REPLICAS_NO_GAN_NO_LOCAL_OVERRIDES',
             cuda_trial_snapshot='UNAVAILABLE_NATIVE_COLLECTIVE_CLONE_OR_CALIBRATION')
+    if 'optimization_profile' in parameters:
+        from .official_optimizations.dmd2 import DMD2OptimizedOwner, PROFILE
+        from .official_profiles import resolve, verify_sources
+        owner_type = DMD2OptimizedOwner
+        metadata.update(optimization_profile=resolve(PROFILE), optimization_sources=verify_sources(PROFILE),
+            precision='NATIVE_MIXED_EXCEPTIONS_FP32_MASTER',
+            placement_limit='SOURCE_BOUND_A100_WORLD16_NATIVE_MIXED_ROLE_REPLICAS_NO_OWNER_OVERRIDES')
+        metadata['native_collective']['backend'] = 'ddp-native-mixed-v1'
     owner = owner_type(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),
@@ -326,7 +346,8 @@ def generate(state, feeds, parameters):
 def _decoder(vae):
     def decode(generated, parameters):
         import torch
-        image = vae.decode(generated['latents'] / vae.config.scaling_factor).sample.float()
+        latent = generated['latents'].to(dtype=next(vae.parameters()).dtype)
+        image = vae.decode(latent / vae.config.scaling_factor).sample.float()
         require(image.ndim == 4 and image.shape[0] == 1 and image.shape[1] == 3,
                 'public image output requires one native BCHW RGB sample')
         return {'image': ((image[0].clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).permute(1, 2, 0).contiguous()}
@@ -361,18 +382,31 @@ def _inference_parameters(owner):
             architecture[key]['_name_or_path'] = ''
     lora = {name: _plain(config.to_dict()) for name, config in
             getattr(model.feedforward_model, 'peft_config', {}).items()}
-    return dict(source_root=str(owner.source.root), upstream=deepcopy(owner.source.identity),
+    result = dict(source_root=str(owner.source.root), upstream=deepcopy(owner.source.identity),
         variant='sdxl' if args.sdxl else 'sd15', architecture=architecture, lora=lora, runtime=runtime_identity(),
         preprocessing_assets=deepcopy(owner.identity['preprocessing_assets']),
         geometry=dict(resolution=args.resolution, latent_resolution=args.latent_resolution, latent_channel=4),
         steps=args.num_denoising_step if args.sdxl else 1,
         conditioning_timestep=args.conditioning_timestep, seed=0)
+    if owner.identity.get('optimization_profile') is not None:
+        result['precision'] = dict(generator='float32', text_encoder='float32', vae='float16')
+    return result
+
+
+def _inference_precision(parameters):
+    precision = parameters.get('precision', dict(generator='float32', text_encoder='float32', vae='float32'))
+    require(precision in (dict(generator='float32', text_encoder='float32', vae='float32'),
+                          dict(generator='float32', text_encoder='float32', vae='float16')),
+            'unsupported inference precision policy')
+    return precision
 
 
 def _inference_components(state, parameters):
     metadata = dict(schema_version='distillschedule.official_sd_inference.v2',
         parameters=deepcopy({key: value for key, value in parameters.items() if key != 'device'}),
-        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN', precision='FP32_SINGLE_DEVICE',
+        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN',
+        precision=('FP32_SINGLE_DEVICE' if _inference_precision(parameters)['vae'] == 'float32'
+                   else 'FP32_GENERATOR_CLIP_FP16_VAE'),
         dependencies='EXTERNAL_PINNED_SOURCE_ONLY_NO_BASE_MODEL_WEIGHTS')
 
     def generate_current(state, feeds, generation_parameters):
@@ -405,7 +439,7 @@ def build_inference_model(parameters):
     from peft import LoraConfig
     from distillschedule.data.sd_inputs import validate_preprocessing_assets
     require(set(parameters) <= {'source_root', 'upstream', 'variant', 'architecture', 'lora', 'runtime',
-            'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device'}
+            'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device', 'precision'}
             and parameters['variant'] in ('sd15', 'sdxl'),
             'invalid inference-only construction parameters')
     device = _execution_device(parameters.get('device', 'cpu'))
@@ -434,8 +468,9 @@ def build_inference_model(parameters):
     else:
         text = CLIPTextModel(clip_config('clip_one'))
     text.requires_grad_(False); vae.requires_grad_(False)
-    for module in (generator, text, vae):
-        module.to(device=device, dtype=torch.float32)
+    precision = _inference_precision(parameters)
+    for name, module in (('generator', generator), ('text_encoder', text), ('vae', vae)):
+        module.to(device=device, dtype=getattr(torch, precision[name]))
     return _inference_components(dict(generator=generator, text_encoder=text, vae=vae), parameters)
 
 
@@ -446,10 +481,11 @@ def _generate_inference(state, feeds, parameters, settings):
     row = _generation_row(feeds); sdxl = settings['variant'] == 'sdxl'
     generator, text = state['generator'], state['text_encoder']
     device = next(generator.parameters()).device
-    require(not torch.is_autocast_enabled(device.type), 'FP32 inference does not admit AMP')
-    require(all(t.device == device and (not t.is_floating_point() or t.dtype == torch.float32)
-                for module in state.values() for t in (*module.parameters(), *module.buffers())),
-            'inference module device/FP32 placement changed')
+    require(not torch.is_autocast_enabled(device.type), 'inference does not admit outer AMP')
+    precision = _inference_precision(settings)
+    require(all(t.device == device and (not t.is_floating_point() or t.dtype == getattr(torch, precision[name]))
+                for name, module in state.items() for t in (*module.parameters(), *module.buffers())),
+            'inference module device/precision placement changed')
     validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'], device=device)
     steps = parameters.get('steps', settings['steps'])
     require(type(steps) is int and steps > 0 and 1000 % steps == 0 and (sdxl or steps == 1),

@@ -7,6 +7,7 @@ A model factory accepts a parameter mapping and returns ModelComponents.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +32,17 @@ class ModelComponents:
     # -> {features: tensor tree, metadata: cohort-wide JSON, sources: identities}.
     # The model owns record/geometry/codec validation; no asset reload is implied.
     encode_input: Callable | None = None
+    # Dispose ephemeral providers/hooks after a whole training invocation,
+    # never between cycles or while a checkpoint is being serialized.
+    close: Callable | None = None
+
+    @contextmanager
+    def managed(self):
+        try:
+            yield self
+        finally:
+            if self.close is not None:
+                self.close()
 
     def validate(self):
         from .prediction import PredictionSpec
@@ -61,7 +73,7 @@ class ModelComponents:
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
         for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training", "collect_metrics",
-                     "inference_projection", "encode_input"):
+                     "inference_projection", "encode_input", "close"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")

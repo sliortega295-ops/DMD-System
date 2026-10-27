@@ -9,10 +9,11 @@ def native_cycle(ctx):
 
 
 def build_dmd2(components, feeds, parameters, cycle, seed):
+    from .official_optimizations.dmd2 import DMD2OptimizedOwner
     from distillschedule.open_workload.torch_backend import Workload
     from distillschedule.workloads.program import Program, Call
     require(not parameters and set(components.state) == {'native_cycle'}
-            and type(components.state['native_cycle']) in (DMD2Owner, DMD2CollectiveOwner),
+            and type(components.state['native_cycle']) in (DMD2Owner, DMD2CollectiveOwner, DMD2OptimizedOwner),
             'actual SDUniModel DMD2 owner without algorithm overrides required')
     owner = components.state['native_cycle']
     owner._validate_live()
@@ -26,6 +27,7 @@ def build_dmd2(components, feeds, parameters, cycle, seed):
     return Workload(program=Program((call,), initial_versions={'native_cycle': cycle},
         feeds=tuple(sorted(feeds)), outputs=(call.id,)), bindings={'official_dmd2_cycle': native_cycle},
         state=components.state, feeds=feeds, seed=seed,
-        identity_extra={'scope': ('OFFICIAL_DMD2_NATIVE_FP32_COLLECTIVE'
+        identity_extra={'scope': ('OFFICIAL_DMD2_NATIVE_MIXED_OPTIMIZED' if 'optimization_profile' in owner.identity
+                                 else 'OFFICIAL_DMD2_NATIVE_FP32_COLLECTIVE'
                                  if 'native_collective' in owner.identity else 'OFFICIAL_DMD2_NATIVE_FP32_SINGLE_DEVICE'), 'ratio': owner.ratio,
                         'upstream': owner.source.identity})

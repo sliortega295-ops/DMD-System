@@ -108,11 +108,17 @@ def admit(workload):
     spec = _json(spec, 'spec')
     _require(type(spec) is dict and set(spec) == {
         'schema_version', 'backend', 'world_size', 'device_type', 'shared_identity'}
-        and spec['schema_version'] == SCHEMA and spec['backend'] == 'ddp'
+        and (spec['schema_version'], spec['backend']) in (
+            (SCHEMA, 'ddp'), ('distillschedule.native_sharded_owner.v1', 'fsdp2'))
         and type(spec['world_size']) is int and spec['world_size'] == dist.get_world_size()
         and spec['device_type'] == device.type
         and type(spec['shared_identity']) is dict and bool(spec['shared_identity']),
         'invalid native collective schema, world, device or shared source/layout identity')
+    if spec['backend'] == 'fsdp2':
+        from distillschedule.training.self_forcing_fsdp import SelfForcingFSDP2Owner
+        _require(type(owner) is SelfForcingFSDP2Owner and device.type == 'cuda'
+                 and dist.get_world_size() == 16,
+                 'native FSDP2 protocol requires its exact versioned CUDA world16 owner')
     return dict(owner_key=key, spec=spec, **source)
 
 
@@ -173,12 +179,14 @@ def inventory(workload, *, limit=16):
     checked(lambda: _require(type(limit) is int and limit > 0,
                              'positive native owner inventory limit required'),
             'native owner inventory limit')
-    contract(workload)
+    binding = contract(workload)
+    backend = binding['spec']['backend']
     return dict(candidates=[dict(backend=BACKEND, local=_json(_LOCAL, 'local implementation'))],
                 total_candidates=1, exhaustive=True, capabilities=['native_owner_collectives'],
-                layout='native_owner_ddp', cross_call_overlap=False,
+                layout='native_owner_' + backend, cross_call_overlap=False,
                 unsupported=['clone-based calibration', 'paired trials', 'owner_execution overrides',
-                             'generic local transforms', 'native mixed FSDP2'])
+                             'generic local transforms',
+                             *(['native mixed FSDP2'] if backend == 'ddp' else ['other native sharded owners'])])
 
 
 def _structure(workload):

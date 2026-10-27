@@ -60,11 +60,12 @@ class DMD2Owner:
         self.checkpoint_policy = identity.get('native_checkpoint_policy', 'coupled-v1')
         self.ratio, self.native_step = args.dfake_gen_update_ratio, 0
         self.generator_updates, self.guidance_updates = 0, 0
+        optimizer_options = self._optimizer_options()
         self.optimizers = {
             'generator': torch.optim.AdamW([p for p in model.feedforward_model.parameters() if p.requires_grad],
-                lr=args.generator_lr, betas=(0.9, 0.999), weight_decay=0.01),
+                lr=args.generator_lr, betas=(0.9, 0.999), weight_decay=0.01, **optimizer_options),
             'guidance': torch.optim.AdamW([p for p in model.guidance_model.parameters() if p.requires_grad],
-                lr=args.guidance_lr, betas=(0.9, 0.999), weight_decay=0.01),
+                lr=args.guidance_lr, betas=(0.9, 0.999), weight_decay=0.01, **optimizer_options),
         }
         self.schedulers = {name: get_scheduler('constant_with_warmup', optimizer=optimizer,
                 num_warmup_steps=args.warmup_step, num_training_steps=args.train_iters)
@@ -85,6 +86,9 @@ class DMD2Owner:
         self._rng = _clone(rng_state(device=self.device))
         self.observer = None  # Optional diagnostics; never serialized or used for math.
         self._validate_live()
+
+    def _optimizer_options(self):
+        return {}
 
     @property
     def cycle(self):
@@ -432,21 +436,25 @@ class DMD2Owner:
         return {name: (True if native_step > 0 and name.startswith('guidance_model.') else value)
                 for name, value in self.initial_masks.items()}
 
-    def _validate_live(self):
+    def _validate_precision(self):
         import torch
-        from distillschedule.data.sd_inputs import preprocessing_assets
-        self._validate_process_ownership()
-        require(self.device == self.model.accelerator.device == self.model.guidance_model.accelerator.device
-                and self.identity['placement']['device'] == self._identity_device()
-                and all(t.device == self.device and (not t.is_floating_point() or t.dtype == torch.float32)
+        require(all(t.device == self.device and (not t.is_floating_point() or t.dtype == torch.float32)
                         for t in self.runtime_tensors()), 'live native device/FP32 placement changed')
         require(not torch.is_autocast_enabled(self.device.type), 'native FP32 owner does not admit AMP')
-        require(not self.args.sdxl or self.model.text_encoder.accelerator.device == self.device,
-                'live SDXL CLIP device placement changed')
         require(all(state.get('step') is None or (state['step'].device.type == 'cpu'
                     and state['step'].dtype == torch.float32)
                     for optimizer in self.optimizers.values() for state in optimizer.state.values()),
                 'AdamW noncapturable step metadata must remain FP32 on CPU')
+
+    def _validate_live(self):
+        from distillschedule.data.sd_inputs import preprocessing_assets
+        self._validate_process_ownership()
+        require(self.device == self.model.accelerator.device == self.model.guidance_model.accelerator.device
+                and self.identity['placement']['device'] == self._identity_device(),
+                'live native device placement changed')
+        self._validate_precision()
+        require(not self.args.sdxl or self.model.text_encoder.accelerator.device == self.device,
+                'live SDXL CLIP device placement changed')
         self.source.validate()
         require(fingerprint(vars(self.args)) == self._settings_hash
                 and fingerprint(self.identity['settings']) == self._settings_hash

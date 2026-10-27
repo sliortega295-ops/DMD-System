@@ -239,3 +239,7 @@ three-cycle and fresh-process restart tests cover CPU native loss, gradients,
 optimizer/EMA/RNG/input state. The policy has actual release counters, but its
 byte count is not allocator-free memory and its new public CUDA path is
 unqualified. See [the scoped owner guide](native_owner_backends.md).
+
+## Integrated official optimization profiles
+
+Official SD1.5 DMD2 now has a source-bound Resident/DDP mixed-precision owner; official Self-Forcing has a versioned FSDP2/BF16 owner and the complete R6 bundle. Both connect directly to the common Program and cycle/checkpoint lifecycle. Their configurations, mechanisms and measured performance are in the [optimized training guide](official_optimized_training.md); integration validation levels are recorded in its appendix. Existing FP32 rows above describe the reference paths.

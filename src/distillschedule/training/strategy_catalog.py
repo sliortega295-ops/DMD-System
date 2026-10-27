@@ -46,6 +46,18 @@ _STRATEGIES = {
 }
 
 _CAPABILITIES = {
+    'official-dmd2-resident': _cap('state_lifecycle_and_execution',
+        'distillschedule.training.official_optimizations.dmd2:DMD2OptimizedOwner',
+        'Explicit SD1.5 official DMD2 GAN profile; native world16 B1/global16, G1/C10/EMA0; owner must admit mixed precision, DDP, source and assets',
+        ['Source-locked Fake epsilon activation retention', 'Packed real/fake classifier trunk with separate native B1 heads',
+         'Critic-update cast scope; fused AdamW and native ready-bucket DDP; explicit Tree/min16 environment'],
+        'HISTORICAL_NATIVE_GPU_REVIEW; RELOCATED_HELPER_SOURCE_LOCK; PUBLIC_INTEGRATION_GPU_NOT_RUN; NOT_A_SPEED_GUARANTEE'),
+    'official-self-forcing-fsdp2': _cap('state_lifecycle_and_execution',
+        'distillschedule.training.self_forcing_fsdp:SelfForcingFSDP2Owner',
+        'Official Self-Forcing Wan only, not LiveWan; explicit world16 FSDP2/BF16-master-FP32, 368x640/81 output frames, B1/global16 G1/C5/EMA0; source/version/layout admission required',
+        ['Source-locked phase-weight and text-KV retention', 'Critic checkpoint attention/FFN/projection reuse and rollout context hoist',
+         'Host KV indices, norm/pointwise/RoPE specializations and paired Teacher CFG block execution'],
+        'HISTORICAL_NATIVE_GPU_REVIEW; RELOCATED_HELPER_SOURCE_LOCK; PUBLIC_INTEGRATION_GPU_NOT_RUN; NOT_A_SPEED_GUARANTEE'),
     'native-consumed-kv-release': _cap('state_lifecycle',
         'distillschedule.training.self_forcing_owner:SelfForcingOwner._release_consumed_rollout_cache',
         'Explicit official Self-Forcing release-after-commit-v1 model profile; completed native backward/clip and Adam/EMA commit',

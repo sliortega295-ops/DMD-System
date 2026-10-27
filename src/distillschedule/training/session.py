@@ -11,6 +11,7 @@ import os
 import random
 import time
 from dataclasses import replace
+from contextlib import ExitStack
 from pathlib import Path
 
 from distillschedule.workloads.best_known.registry import file_sha256
@@ -114,19 +115,25 @@ def construct(config, *, include_validation=False):
     dataset = training_data(config, world_size=distributed.rank_world()[1])
     _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config)
-    algorithm, algorithm_source = load_callable(config.algorithm["factory"])
-    if components.admit_training is not None:
-        components.admit_training(state=components.state, request=config,
-                                  prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
-    validation = Validation.prepare(config, components)
-    identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
-                "algorithm": algorithm_source, "framework": _source(),
-                "model_metadata": dict(components.metadata)}
-    if validation is not None:
-        identity["validation"] = validation.identity
-    if config.execution.get("mode") == "plan":
-        identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
-    result = (components, dataset, algorithm, identity)
+    try:
+        algorithm, algorithm_source = load_callable(config.algorithm["factory"])
+        if components.admit_training is not None:
+            components.admit_training(state=components.state, request=config,
+                                      prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
+        validation = Validation.prepare(config, components)
+        identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
+                    "algorithm": algorithm_source, "framework": _source(),
+                    "model_metadata": dict(components.metadata)}
+        if validation is not None:
+            identity["validation"] = validation.identity
+        if config.execution.get("mode") == "plan":
+            identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
+        result = (components, dataset, algorithm, identity)
+    except BaseException:
+        # Successful construction transfers lifetime to the public invocation.
+        if components.close is not None:
+            components.close()
+        raise
     return (*result, validation) if include_validation else result
 
 
@@ -203,6 +210,11 @@ def _train(config: TrainingConfig):
     distributed.admit_run_controls(config)
     components, dataset, algorithm, identity, validation = distributed.checked(
         lambda: construct(config, include_validation=True), "training construction")
+    with components.managed():
+        return _train_owned(config, components, dataset, algorithm, identity, validation)
+
+
+def _train_owned(config, components, dataset, algorithm, identity, validation):
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
@@ -316,6 +328,14 @@ def _train(config: TrainingConfig):
 
 def _load_for_output(config, checkpoint):
     components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "output construction")
+    try:
+        return _restore_for_output(config, checkpoint, components, dataset, algorithm, identity)
+    except BaseException:
+        with components.managed():
+            raise
+
+
+def _restore_for_output(config, checkpoint, components, dataset, algorithm, identity):
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on checkpoint output configuration, source or dataset")
     rank, world = distributed.rank_world()
@@ -386,7 +406,7 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
 
 
 def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, prepared=None, stream=None):
-    with distributed.context(config):
+    with distributed.context(config), ExitStack() as lifetime:
         from .inference import write_generation
         root = Path(output).expanduser().resolve()
         def admit_request():
@@ -397,6 +417,7 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, pre
         if any(row != request for row in distributed.gather(request)):
             raise ValueError("ranks disagree on shared evaluation request")
         components, dataset, payload, identity, _session = _load_for_output(config, checkpoint)
+        lifetime.enter_context(components.managed())
         rank, world = distributed.rank_world()
         def admit():
             from .data_streams import InputStreams
@@ -449,9 +470,10 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, pre
 
 
 def export(config, checkpoint, output):
-    with distributed.context(config):
+    with distributed.context(config), ExitStack() as lifetime:
         from .inference import publish_export
         components, _, payload, identity, _session = _load_for_output(config, checkpoint)
+        lifetime.enter_context(components.managed())
         parameters = {key: value for key, value in _model_parameters(config).items() if key != "device"}
         factory, source = config.model["factory"], identity["model"]
         if components.inference_projection is not None:
@@ -462,6 +484,8 @@ def export(config, checkpoint, output):
                 return value.validate()
             projection = distributed.checked(project, "inference projection admission")
             _, source = distributed.checked(lambda: load_callable(projection.factory), "inference factory source admission")
+            if projection.components is not components:
+                lifetime.enter_context(projection.components.managed())
             components, factory = projection.components, projection.factory
             parameters = _generation_parameters(projection.parameters)
             parameters.setdefault("seed", config.trainer.get("seed", 0))

@@ -1,0 +1,263 @@
+{
+  "schema_version": "distillschedule.official_optimization_sources.v1",
+  "files": [
+    {
+      "profile": "dmd2-sd15-resident-tree-v1",
+      "origin": "r4_researchboost_transfer/scripts/dmd2_classifier_pack.py",
+      "origin_file_sha256": "25c00951477002be3a946c667bda9d72372270620efa02c0368c635698a62b9c",
+      "target": "official_optimizations/_native/dmd2_classifier_pack.py",
+      "integrated_sha256": "4607293eb0f25544ea08fd6b8bbf55cf21b81a2f50f58187df2e884187b8e623",
+      "definitions": {
+        "require": "e6198ff43bf4c17638e6f0d1437c09c33b33d5abe5ca77dcb638373106081b46",
+        "PackedClassifier": "fae832cc9d778eb0b88226e6575fcd3c516fd725085566fb3ec4207a3f526275"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "dmd2-sd15-resident-tree-v1",
+      "origin": "r4_researchboost_transfer/scripts/dmd2_update_cast_scope.py",
+      "origin_file_sha256": "32d868da0100121c28da8ac7552a3a499946b3fe36c5489e34e693b343929d9b",
+      "target": "official_optimizations/_native/dmd2_update_cast_scope.py",
+      "integrated_sha256": "0989cddc5d69a8c1142fe3da5d4c3f320b07ceebc616cd70416ee1ea15dd6bb3",
+      "definitions": {
+        "require": "6a299ffe9f40984cef70191ee942311c3cc1158b24f932c607e54d3e76dc2199",
+        "UpdateCastScope": "d338dffb6d2ae9a68f31f8c3b0606572b910f0a7489f676192fb59edaec2a5fd"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "dmd2-sd15-resident-tree-v1",
+      "origin": "r2_fsdp2_baselines/scripts/dmd2_activation_retention.py",
+      "origin_file_sha256": "a536674dcfdc42398081d79271619f5946c1c30aba930cc11de33c4c0e7c234b",
+      "target": "official_optimizations/_native/dmd2_activation_retention.py",
+      "integrated_sha256": "6a4d8a37ea1c7fd83b775eda103ffb1accc53028bcbd679f04b5f82308d95b55",
+      "definitions": {
+        "ActivationRetention": "7a4555636f79f69181e3d6317048f43c6a00262c2b8a3fef90348c99a0f77ce4"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_host_kv_indices.py",
+      "origin_file_sha256": "4102fc12739e2949bb0a8bc2f31371220c4f8d70df45e2ad748fe8512f569fab",
+      "target": "official_optimizations/_native/sf_host_kv_indices.py",
+      "integrated_sha256": "5fe5cdffe438f94c8ca2fee555f038993c0f2a964044ee68a5b1fb3af322a7de",
+      "definitions": {
+        "require": "45408795229b8edcfb9348c3f5e143f614810f6b816c7e6bd9c26ef8b2484dea",
+        "build_host_initializer": "5a8cedae1236ae34462fce43769a8f2d3f25e927553817b07665a111515258c2",
+        "HostKVIndices": "8f7c66200954fc8b0d5b8e1ef1c0f4847e80e722d0a14ff7555b311ce0f3abff"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_dense_attention.py",
+      "origin_file_sha256": "57caf540d6899eb4870365b624ad69a9bb31e8b250b84ac5aa750e5102b7e885",
+      "target": "official_optimizations/_native/sf_dense_attention.py",
+      "integrated_sha256": "bd3d13ed10e6f58b91495ce9a47991f9be936fb089e7790ad437a0abe5e45749",
+      "definitions": {
+        "require": "45408795229b8edcfb9348c3f5e143f614810f6b816c7e6bd9c26ef8b2484dea",
+        "make_dispatch": "8517a07459e703abfb231e3ea7a921160ca7f4bd581143751583045e10140923",
+        "DenseFA2": "362950c40793d253807be8cf74a61078ff5df60febcd42fe239760658572d9b8"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_phase_retention.py",
+      "origin_file_sha256": "b67d92bc4f25226b95ed26ad453824182bb38fd21e5f24d56075a0ec57e6ee19",
+      "target": "official_optimizations/_native/sf_phase_retention.py",
+      "integrated_sha256": "ed937eb232be2f2a113b9fb3d06c2b34ce8046053605fe272a564551d23ef0ff",
+      "definitions": {
+        "require": "2a5f703203e183b4438e2aa897cdd5d22e3a85f2349d77c507bb9bac36c7e67f",
+        "PhaseRetention": "916c16cc64a2b8ca3aaf9379d24d332ca783262bbd136642f28719e176827552"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_nograd_rms.py",
+      "origin_file_sha256": "88f11df64dc3156b0241a6fe09f60554a8f8577184cbad3fcfaa187f410fbd3a",
+      "target": "official_optimizations/_native/sf_nograd_rms.py",
+      "integrated_sha256": "e87d9a3b2721c400560374194c18af85918a73806c1c9aab5d6d41a34a017c03",
+      "definitions": {
+        "require": "45408795229b8edcfb9348c3f5e143f614810f6b816c7e6bd9c26ef8b2484dea",
+        "build": "016b61c57ccc6aa894c70b91490d36086c1d57ee4073c014902758a20c1d41dd",
+        "NoGradRMS": "62008d74a114dadf47f6e0b0cbefcccb7a6f7ce0a87d05fe80842dc83e2fe208"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_nograd_modulation.py",
+      "origin_file_sha256": "6408194510c64eb1a7156b04ceb454238ddb66d268c102f47a4ad39fe861faef",
+      "target": "official_optimizations/_native/sf_nograd_modulation.py",
+      "integrated_sha256": "798de78984236c27384112c35a98a36f8a7d5457e65266e8a9718fa5e4f1a283",
+      "definitions": {
+        "require": "8f72e16d8dd13e4935246fd5192f95d998b2ff85116779c7635b2c725804f32f",
+        "build": "e3220caab032fdd3afea56bd120eddecc2ad611203f2bd4c3089ab6a3d22f431",
+        "rewrite": "8169c3940a387f39f9350dbe72651cae774624c7eb5a7891c9f2bef4f208d0a9",
+        "NoGradModulation": "456d74e8d0e2d58c6b93c9bfa991b4c0546aa3f55e05754f4ea5fd4cf13483e6"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_native_ln_pointwise.py",
+      "origin_file_sha256": "35b35112230cff56188f6a39259a5fc94318c734793088944ab2932d9e96d6ee",
+      "target": "official_optimizations/_native/sf_native_ln_pointwise.py",
+      "integrated_sha256": "a88674684d2263f56e2e873379072cec0e89fbbf1ed0de5444697d9c3a5af3dc",
+      "definitions": {
+        "compose": "47de27de33c86096b4fe1e311ca32a930e23decce65e6169aefdc0feabe96d72",
+        "build": "50738c0d75f6a3f310c1670e0695ee489062af62212df79607e66b605cb61e71"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_grad_rope.py",
+      "origin_file_sha256": "9ebc9cb43c4b6b833158e02c6736282206412ed57e4fd2cb8281c8cb597589a2",
+      "target": "official_optimizations/_native/sf_grad_rope.py",
+      "integrated_sha256": "b7477193c66da3f41b8103d455057a333f1964cd910712d70446fa02c6196196",
+      "definitions": {
+        "require": "ca82c4f53c808434554bc77b83b6fba9b432bfa3006527ea744f1569e6688eb0",
+        "build": "3b37f712147d323c740eeb69ecd2b3c0c897bfcf83765b57d930a5242ad8efe9",
+        "AllModeRoPE": "d3497a9ceaada65c62b7c434daa2b0b125610b52612db35b36f7c831461515ef"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_rollout_context.py",
+      "origin_file_sha256": "34b360007b2923565f9391c6fcc117ab6a213ddf41f4659342322d40aa505680",
+      "target": "official_optimizations/_native/sf_rollout_context.py",
+      "integrated_sha256": "d59237b3a1cefe1a63f8eb200d61675fc27a6a5d3aac87b68a32b103a3701f5d",
+      "definitions": {
+        "require": "b4a043c28a2dcb04485f1b0e1ea143b37827c56947e80631f2160cc59710abcf",
+        "RolloutContext": "0180e28cb22508bd69608ed32d85211e111967ee2855eb4756eef305a1aa078b"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_early_critic_kv.py",
+      "origin_file_sha256": "b3f99fdd079bce093d7ef7b649354d7fb09ca23dd98caccd73423420c8d297d3",
+      "target": "official_optimizations/_native/sf_early_critic_kv.py",
+      "integrated_sha256": "7a257c5a9e5a22c7eca3663dce963bb26dc2befed9d1c91953fb1e1299a40d45",
+      "definitions": {
+        "require": "5b353c057d71806638200ed68e65016b8366a0039cad21f83f0b114a8f2b61df",
+        "EarlyCriticKV": "7d566a5a09a7eb82db187514edd7401c09985bb2afd1118b9dcb0e90df344f76"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r3_target2x/scripts/sf_grad_rms.py",
+      "origin_file_sha256": "dc70e2ff6b1f79e41426c6d3969bc64affcc2af6bf9773799ead0d3dff662328",
+      "target": "official_optimizations/_native/sf_grad_rms.py",
+      "integrated_sha256": "5386c576d1d32ba22cbe3ced5e8568c80274480d5ad52f3bebdddc0c54c098d1",
+      "definitions": {
+        "require": "272fcb00b52db2f6eb16e973da0d4e48fd4819b7381672f44fc75f12485337b6",
+        "cpu_ops": "cb4c0b177848e2b584cb60b614560907857b91933caabff9fd944093a6c44a4c",
+        "cuda_ops": "13c979308a758447af2c5b0e53dfe6f06bada115737990f5a781daefb6a2d204",
+        "GradRMS": "5861ce77ccf5bdf24ad14ddd3f0a2a19c5e9f933a311abd67661a2eeeb487523"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r4_researchboost_transfer/scripts/sf_grad_pointwise.py",
+      "origin_file_sha256": "8c3389c533b50120bff6aa5b468b4b9d565aeffd7f9be0457eabc6101681a562",
+      "target": "official_optimizations/_native/sf_grad_pointwise.py",
+      "integrated_sha256": "819f0390189b6856d12c58f934f660b7ed47e0437b2172c0d9e4c39885ee545f",
+      "definitions": {
+        "require": "4ab0de3acfe51c08ac8688a3de8d4470183f9fb1cd5e46f585712c990ea7e96e",
+        "geometry": "90b9eabf306cd8b54d6d8e429efbf146eacc27a6f3eb2689786d2c74aa7df07a",
+        "cpu_ops": "580e8e643c15f0b346f7ff2abb2eb8cb15eb4297d57cbdaacbe776f362661be3",
+        "cuda_ops": "aff6d18ebd31d328dfecd3aecce01d3ca0907b40287b2f90cb61a264404b15bf",
+        "GradPointwise": "23a1b67bebcf941e5403c68769d630ef99dcd385b0810781c60f46cc0092c031"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r4_researchboost_transfer/scripts/sf_fake_projection_replay.py",
+      "origin_file_sha256": "b7df3dd1c7c236d69d4f8173379855d306a22a6ba6600b211a39827a7ab18d3c",
+      "target": "official_optimizations/_native/sf_fake_projection_replay.py",
+      "integrated_sha256": "4ad3c93fcd49c226a98e6a56f7ef64b19e8b3205216b8d389351b2ab3b23d561",
+      "definitions": {
+        "require": "c667a66244a000322101e0728bf1811410832821be27545db20c41dcc576dcd0",
+        "CriticAttentionReplay": "ab1d57473906de350a4f11d9b0a8b8eba2fc1b68a9c4ec81c76c5ba85318f3e8"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r6_target2x_continuation/scripts/sf_teacher_block_pair.py",
+      "origin_file_sha256": "a82fa2e4dd50877c5b50999e64933ced97d071243c52150949cf4aea1ec588ff",
+      "target": "official_optimizations/_native/sf_teacher_block_pair.py",
+      "integrated_sha256": "1bd5aa397c040d8591a0650abd0469b613fcec6975e96c0e7655da3c764da20c",
+      "definitions": {
+        "require": "984a716228b5748e4aa1a2ae4289caa79fa54e105cb022db978776ab0980f41b",
+        "coroutine": "610c4861c6cb800ce8358674fec46d133e352957f783522710bcd8b490cd30dc",
+        "TeacherBlockPair": "49958f64a775ff21a762e9c9fc52b9b9681f1382a8d373367025393b6ac732fc"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r1/scripts/sf_checkpoint_abi.py",
+      "origin_file_sha256": "55a3dfddd61aefa82b72e659823bae71b2dc2e13a59ed7ccb68c131f3bf99244",
+      "target": "official_optimizations/_native/sf_checkpoint_abi.py",
+      "integrated_sha256": "61cc40ebc6440ad0af342f425db9eed9457622acfa4545761801abad038ebc67",
+      "definitions": {
+        "native_checkpoint_toggles": "f8114fb2402de9c811b3703f4f19a4cf3c6d3a9db2b490180d0a28937f1b5f08"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r1/scripts/sf_fsdp2_mutable_cache_abi.py",
+      "origin_file_sha256": "92b9e9b121ff4ba9845e80741cdd860e50d4165a24988ede7cd42cf6daf4d944",
+      "target": "official_optimizations/_native/sf_fsdp2_mutable_cache_abi.py",
+      "integrated_sha256": "5311d744248853b3513282e86e75769efd94277b27af6cd45046befa30989b65",
+      "definitions": {
+        "MutableKVState": "3ce1a9d977c01444538121723659f3c6a92182774ceebe9a0d2ea2cd48ccdb9c",
+        "wrap_native_cache": "4b2dd00f0bcf43db7ad19d5a91bffa8757c499e0ba8f46896eba013d9c7ae6c1",
+        "install_native_mutable_cache_abi": "60b9892edc0ee4675b8ea58527bb8626c0bd2b7b2ad82c2e41c124c025b893e3"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r2_fsdp2_baselines/scripts/sf_fsdp2_layout_backend.py",
+      "origin_file_sha256": "3588c923afc2051c62d3c348befe5eebc7e2e8169ce2f86e0005ac67c8456b0d",
+      "target": "official_optimizations/_native/sf_fsdp2_layout_backend.py",
+      "integrated_sha256": "881fa92d65cad481878948808d3ff5a7be354283efa03f08d005cc3b202c062f",
+      "definitions": {
+        "require": "e735c28d552207dcb4496601a9a356a67c9550ae253f55d90d547a590009c188",
+        "role_blocks": "0792f4bff9e6a3fa669c41de4166a46db590d03aa834b6495c4f0521074a36cc",
+        "clip_grad_norm": "34cdeb805a1cd340093d657949a132943a108472892a2097719c9bea296c0060",
+        "shard_module": "96b93a1241a30e6451d341169e16b18d1fe2338f202d90a20b240e6e896744ee",
+        "full_cpu_parameters": "d8ca690a9984faacbf3da787fc8a17bc5518f4fe32d36fadf35fbad8f8ce6391",
+        "EMAFSDP2": "60570dc32d4c9cf95af14e42ea0b5e179f88670f586e7c9225d22c40f4ad29cd",
+        "native_fsdp2_bindings": "8f0a08997972d54cbb0d0073921fd33e882c55ad1f8e11e3e4c2a9d0244e4f52"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    },
+    {
+      "profile": "self-forcing-wan-fsdp2-r6-v1",
+      "origin": "r1/scripts/sf_preencoded_lifecycle.py",
+      "origin_file_sha256": "c3d919454b4e270844df8d4530a807496649b4949739a9f33e5aab63799c0901",
+      "target": "official_optimizations/_native/sf_preencoded_lifecycle.py",
+      "integrated_sha256": "67839a0848591d900717d6af07cc27824d69f39c8a276e7b3164c8a9467e96d2",
+      "definitions": {
+        "local_tensor": "f1c0e38e811db080bcfb4d98b6b860cf3efee8edef167e1b24193d8800f7dcdd",
+        "storage_info": "54d88c9609210f67847a002f09037cc9ef8c10fd1d331bc3f9b79da3edef29c5",
+        "tensors": "b6d038288c5f4fa7a9185de3949d35a8427a17e417238d3931081e441fea933a",
+        "DeadKVController": "0ff4fd9ef995d0991519ee7402041d43251bec3bed12b0b6977a0150f892ca9c"
+      },
+      "relocation": "PACKAGE_RELATIVE_IMPORTS_ONLY; benchmark wrappers/collectors excluded"
+    }
+  ]
+}

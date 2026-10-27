@@ -249,3 +249,7 @@ the native full-step causal inference + actual VAE. This is a model-only
 projection; old training assets, optimizer or prepared training prompts are
 not required. The [common guide](../../docs/guides/training.md#generate-and-export)
 explains checkpoint versus inference identity.
+
+## Optimized distributed configuration
+
+Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.

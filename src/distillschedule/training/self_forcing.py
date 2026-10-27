@@ -1,9 +1,9 @@
 """Actual official Self-Forcing Wan, explicitly local assets and common Program.
 
 Importing this factory is lightweight: models/Torch are loaded only on explicit
-construction. One explicit CPU/CUDA device, FP32 MATH attention and cached
-21-frame T2V is the source scope; actual CUDA/pretrained acceptance is NOT_RUN.
-FSDP, AMP, I2V and >21-frame decode/reencode training are NOT admitted.
+construction. The reference path uses FP32 MATH attention on one CPU/CUDA device.
+Explicit native FSDP2 profiles add world16 BF16 execution and phase/cache
+optimizations without replacing the upstream algorithm or common lifecycle.
 """
 from __future__ import annotations
 
@@ -75,6 +75,10 @@ def _execution_device(value):
 def _admit_device(parameters):
     import os
     import torch
+    from .self_forcing_fsdp import requested
+    if requested(parameters):
+        from .self_forcing_fsdp import admit
+        return admit(parameters)
     device = _execution_device(parameters.get('device', 'cpu'))
     require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(all(int(os.environ.get(key, default)) == int(default) for key, default in
@@ -87,13 +91,18 @@ def _admit_device(parameters):
 
 def _arguments(parameters):
     require(isinstance(parameters, dict) and set(parameters) <= {
-                'source_root', 'assets', 'settings', 'seed', 'device', 'native_cache_lifetime'}
+                'source_root', 'assets', 'settings', 'seed', 'device', 'native_cache_lifetime',
+                'optimization_profile', 'native_role_backend'}
             and isinstance(parameters.get('source_root'), str) and isinstance(parameters.get('assets'), str),
             'source_root and explicit local assets manifest required')
     require(type(parameters.get('native_cache_lifetime', 'native-v1')) is str
             and parameters.get('native_cache_lifetime', 'native-v1') in ('native-v1', 'release-after-commit-v1'),
             'unsupported native cache lifetime policy')
     _admit_device(parameters)
+    require('native_role_backend' not in parameters
+            or parameters['native_role_backend'] == 'fsdp2-native-bf16-v1', 'unsupported native role backend')
+    from .self_forcing_fsdp import requested
+    sharded = requested(parameters)
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid construction seed')
     settings = dict(mixed_precision=False, denoising_loss_type='flow', num_train_timestep=1000,
@@ -123,7 +132,7 @@ def _arguments(parameters):
                 'independent_first_frame', 'i2v', 'backward_simulation', 'gradient_checkpointing',
                 'ts_schedule', 'ts_schedule_max'):
         require(type(settings[key]) is bool, 'boolean setting required: ' + key)
-    require(settings['mixed_precision'] is False and settings['denoising_loss_type'] == 'flow'
+    require(settings['mixed_precision'] is sharded and settings['denoising_loss_type'] == 'flow'
             and settings['num_train_timestep'] == 1000 and settings['num_training_frames'] == 21
             and settings['independent_first_frame'] is False and settings['i2v'] is False
             and settings['backward_simulation'] is True,
@@ -150,6 +159,9 @@ def _arguments(parameters):
     for key in ('weight_decay', 'real_guidance_scale', 'fake_guidance_scale'):
         require(type(settings[key]) in (int, float) and 0 <= settings[key] < float('inf'), 'invalid ' + key)
     require(isinstance(settings['negative_prompt'], str), 'negative prompt metadata must be text')
+    if sharded:
+        from .self_forcing_fsdp import validate_settings
+        validate_settings(SimpleNamespace(**settings))
     return SimpleNamespace(**settings)
 
 
@@ -237,7 +249,7 @@ def _vae_wrapper(api, config):
     return wrapper, config
 
 
-def preencoded_conditioner(device='cpu'):
+def preencoded_conditioner(device='cpu', *, dtype=None):
     import torch
     device = torch.device(device)
     class NativeEmbeddingBoundary(torch.nn.Module):
@@ -247,7 +259,8 @@ def preencoded_conditioner(device='cpu'):
                             and tensor.dtype == torch.float32 and tensor.device == device
                             for tensor in text_prompts),
                     'this explicit preencoded boundary accepts native LC embeddings, not prompt strings')
-            return {'prompt_embeds': torch.stack(text_prompts)}
+            result = torch.stack(text_prompts)
+            return {'prompt_embeds': result if dtype is None else result.to(dtype=dtype)}
     return NativeEmbeddingBoundary().eval()
 
 
@@ -277,7 +290,12 @@ accepts the inference-only G/VAE namespace, never inventing missing roles.
 def build_model(parameters):
     args = _arguments(parameters)
     device = _admit_device(parameters)
-    with _construction_rng(device, parameters.get('seed', 0)):
+    from .self_forcing_fsdp import requested
+    seed = parameters.get('seed', 0)
+    if requested(parameters):
+        import torch.distributed as dist
+        seed += dist.get_rank()
+    with _construction_rng(device, seed):
         return _build_placed(parameters, args, device)
 
 
@@ -317,6 +335,8 @@ def _build_placed(parameters, args, device):
     import torch
     from .self_forcing_owner import SelfForcingOwner
     api = original(parameters['source_root'])
+    from .self_forcing_fsdp import requested
+    sharded = requested(parameters)
     manifest = Path(parameters['assets']).expanduser().resolve(strict=True)
     root = manifest.parent
     bundle = _json(manifest)
@@ -357,11 +377,14 @@ def _build_placed(parameters, args, device):
     from distillschedule.data.self_forcing_inputs import validate_row
     validate_row({'prompt_embeds': negative}, shape=(1, generator.text_len, generator.text_dim))
     assets['negative_prompt_embeds'] = {'path': str(negative_path), 'sha256': _sha(negative_path)}
+    if sharded:
+        from .self_forcing_fsdp import place_roles
+        place_roles(children, api)
 
     def initialize_models(model, native_args, device):
         for name, module in children.items():
             setattr(model, name, module)
-        model.text_encoder = preencoded_conditioner(device)
+        model.text_encoder = preencoded_conditioner(device, dtype=torch.bfloat16 if sharded else None)
         model.scheduler = model.generator.get_scheduler()
         model.scheduler.timesteps = model.scheduler.timesteps.to(device)
 
@@ -399,17 +422,35 @@ def _build_placed(parameters, args, device):
             enable_compatibility='INSTANCE_LOCAL_ORIGINAL_LEGACY_SETTER_CONSTRUCTION_ONLY')
     if parameters.get('native_cache_lifetime', 'native-v1') != 'native-v1':
         metadata['native_cache_lifetime'] = parameters['native_cache_lifetime']
-    owner = SelfForcingOwner(model, args, api.source, negative, identity=metadata)
+    owner_type = SelfForcingOwner
+    if sharded:
+        from .self_forcing_fsdp import SelfForcingFSDP2Owner, PROFILE
+        from .official_profiles import resolve, verify_sources
+        owner_type = SelfForcingFSDP2Owner
+        metadata.update(precision='NATIVE_FSDP2_BF16_COMPUTE_FP32_MASTER_REDUCE',
+            precision_policy='BF16_COMPUTE_FP32_PARAMETERS_REDUCE_NATIVE_FP64_COMPLEX128',
+            placement=dict(device='cuda', layout='NATIVE_FSDP2_FULL16', distributed=True, amp=False),
+            native_collective=dict(backend='fsdp2-native-bf16-v1', world_size=16, seed='SEED_PLUS_RANK',
+                                   checkpoint='SAME_TOPOLOGY_LOCAL_SHARDS'),
+            optimization_sources=verify_sources(PROFILE),
+            placement_limit='EXPLICIT_A100_WORLD16_FULL16; NO_AUTO_OR_OPAQUE_OWNER_OVERRIDES',
+            conditioning_compute='BF16_CAST_OF_EXPLICIT_FP32_PREENCODED_PROMPT; NO_ONLINE_T5')
+        if 'optimization_profile' in parameters:
+            metadata['optimization_profile'] = resolve(PROFILE)
+    owner = owner_type(model, args, api.source, negative, identity=metadata)
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata, prediction=PredictionSpec('flow'),
         capabilities=('video', 'causal', 'kv_cache', 'flow', 'official-self-forcing'), generate=generate,
         decode=_decode, inference_projection=project_current_generator, admit_training=admit_training,
-        collect_metrics=collect_metrics).validate()
+        collect_metrics=collect_metrics, close=owner.close if sharded else None).validate()
 
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
     from .self_forcing_owner import stream_counts
     owner = state['native_cycle']
-    require(_admit_device(request.trainer) == owner.device, 'trainer/model device placement must match')
+    require(_execution_device(request.trainer.get('device', 'cpu')) == owner.device,
+            'trainer/model device placement must match')
+    if 'native_collective' not in owner.identity:
+        _admit_device(request.trainer)
     owner.admit_execution(request.execution.get('mode', 'reference'), request.execution.get('implementation', {}))
     require(request.execution.get('adapter', 'program') == 'program'
             and request.algorithm['factory'] == 'distillschedule.training.self_forcing:build_self_forcing'
@@ -418,8 +459,12 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
     streams = request.data.get('streams', {})
     require(set(streams) == set(counts) and all(streams[name].get('samples_per_cycle', 1) == count
                 for name, count in counts.items()), 'six independent native prompt draws per G1/C5 cycle required')
-    require('distributed' not in request.trainer and request.trainer['cycles'] * owner.ratio <= owner.args.train_iters,
-            'unsupported distributed policy or native iteration budget')
+    if 'native_collective' in owner.identity:
+        require('distributed' in request.trainer and request.data.get('sharding') == 'rank_strided',
+                'native FSDP2 requires explicit distributed trainer and rank-strided input streams')
+    else:
+        require('distributed' not in request.trainer, 'unsupported distributed policy')
+    require(request.trainer['cycles'] * owner.ratio <= owner.args.train_iters, 'native iteration budget')
     manifests = prepared_manifest.get('streams', {})
     require(set(manifests) == set(counts), 'physical native input stream manifests required')
     ids = [{record['id'] for record in manifests[role]['records']} for role in ('generator', 'critic')]
@@ -434,8 +479,10 @@ def build_self_forcing(components, feeds, parameters, cycle, seed):
     from distillschedule.open_workload.torch_backend import Workload
     from distillschedule.workloads.program import Program, Call
     from .self_forcing_owner import SelfForcingOwner
+    from .self_forcing_fsdp import SelfForcingFSDP2Owner
     require(not parameters and set(components.state) == {'native_cycle'}
-            and type(components.state['native_cycle']) is SelfForcingOwner, 'actual native Self-Forcing owner required')
+            and type(components.state['native_cycle']) in (SelfForcingOwner, SelfForcingFSDP2Owner),
+            'actual native Self-Forcing owner required')
     owner = components.state['native_cycle']; owner._validate_live(); owner.validate_feeds(feeds)
     require(type(cycle) is int and cycle >= 0, 'invalid Program cycle')
     call = Call(id='self_forcing.native_cycle', binding='official_self_forcing_cycle', inputs=tuple(sorted(feeds)),
@@ -443,7 +490,8 @@ def build_self_forcing(components, feeds, parameters, cycle, seed):
         attributes={'cycle': cycle})
     return Workload(program=Program((call,), initial_versions={'native_cycle': cycle}, feeds=tuple(sorted(feeds)),
         outputs=(call.id,)), bindings={'official_self_forcing_cycle': _native_cycle}, state=components.state,
-        feeds=feeds, seed=seed, identity_extra=dict(scope='OFFICIAL_SELF_FORCING_NATIVE_FP32_SINGLE_DEVICE',
+        feeds=feeds, seed=seed, identity_extra=dict(scope=('OFFICIAL_SELF_FORCING_NATIVE_FSDP2'
+            if 'native_collective' in owner.identity else 'OFFICIAL_SELF_FORCING_NATIVE_FP32_SINGLE_DEVICE'),
             placement=deepcopy(owner.identity['placement']), upstream=owner.source.identity, ratio=owner.ratio))
 
 
@@ -516,11 +564,25 @@ def build_inference_model(parameters):
 
 def generate(state, feeds, parameters):
     owner = state['native_cycle']; owner._validate_live()
-    return _generate(dict(generator=owner.model.generator, vae=owner.model.vae), feeds, parameters,
-                     _inference_parameters(owner))
+    from .self_forcing_fsdp import SelfForcingFSDP2Owner
+    sharded = isinstance(owner, SelfForcingFSDP2Owner)
+    with owner.inference_scope() if sharded else nullcontext():
+        return _generate(dict(generator=owner.model.generator, vae=owner.model.vae), feeds, parameters,
+                         _inference_parameters(owner), sharded_owner=owner if sharded else None)
 
 
-def _generate(state, feeds, parameters, settings):
+class _InferenceVAEDecodeBoundary:
+    """Cast only codec inputs; the sampler and original VAE keep ownership."""
+
+    def __init__(self, vae):
+        self.vae = vae
+
+    def decode_to_pixel(self, latent, use_cache=False):
+        dtype = next(self.vae.model.parameters()).dtype
+        return self.vae.decode_to_pixel(latent.to(dtype=dtype), use_cache=use_cache)
+
+
+def _generate(state, feeds, parameters, settings, *, sharded_owner=None):
     import torch
     import sys
     from contextlib import redirect_stdout
@@ -530,19 +592,29 @@ def _generate(state, feeds, parameters, settings):
     row = feeds['generator'][0] if 'generator' in feeds else feeds
     generator = state['generator']
     device = next(generator.parameters()).device
-    _admit_device({'device': str(device)})
-    require(all(t.device == device and (not t.is_floating_point() or t.dtype == torch.float32)
-                for module in state.values() for t in (*module.parameters(), *module.buffers())),
-            'inference module device/FP32 placement changed')
+    if sharded_owner is None:
+        _admit_device({'device': str(device)})
+        require(all(t.device == device and (not t.is_floating_point() or t.dtype == torch.float32)
+                    for module in state.values() for t in (*module.parameters(), *module.buffers())),
+                'inference module device/FP32 placement changed')
+        dtype = torch.float32
+    else:
+        from .self_forcing_fsdp import SelfForcingFSDP2Owner
+        require(isinstance(sharded_owner, SelfForcingFSDP2Owner)
+                and generator is sharded_owner.model.generator and state['vae'] is sharded_owner.model.vae,
+                'native sharded generation must use the restored owner roles')
+        sharded_owner._validate_live()
+        dtype = sharded_owner.dtype
     validate_row(row, shape=(settings['shape'][0], generator.model.text_len, generator.model.text_dim), device=device)
     api = original(settings['source_root'])
     generator.eval(); state['vae'].eval()
     args = SimpleNamespace(**settings['settings'])
     # Native diagnostics go to stderr so distillctl's JSON stdout stays valid.
     with _device_scope(device), torch.no_grad(), redirect_stdout(sys.stderr):
-        noise = torch.randn(settings['shape'], dtype=torch.float32, device=device)
+        noise = torch.randn(settings['shape'], dtype=dtype, device=device)
         pipeline = api.InferencePipeline(args, device, generator=generator,
-            text_encoder=preencoded_conditioner(device), vae=state['vae'])
+            text_encoder=preencoded_conditioner(device, dtype=dtype),
+            vae=_InferenceVAEDecodeBoundary(state['vae']))
         pipeline.denoising_step_list = pipeline.denoising_step_list.to(device)
         pipeline.configure_geometry(shape=settings['shape'])
         video, latents = pipeline.inference(noise=noise, text_prompts=list(row['prompt_embeds'].unbind(0)),

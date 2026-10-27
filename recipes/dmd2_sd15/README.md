@@ -250,3 +250,7 @@ checkpoint lifecycle. They are independent opt-ins, not interchangeable flags
 or the full measured GPU optimization portfolio. Read the
 [scope, restart clocks and refusals](../../docs/guides/native_owner_backends.md)
 before selecting either.
+
+## Optimized distributed configuration
+
+Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.

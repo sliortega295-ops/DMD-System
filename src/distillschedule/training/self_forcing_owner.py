@@ -70,6 +70,11 @@ def stream_counts(args):
 
 def _hash(value):
     import torch
+    from torch.distributed.tensor import DTensor
+    # Each real rank checkpoints/validates its own immutable shard. The common
+    # checkpoint publishes only after all ranks have validated their shards.
+    if isinstance(value, DTensor):
+        value = value.to_local()
     return hashlib.sha256(value.detach().contiguous().reshape(-1).view(torch.uint8).cpu().numpy()).hexdigest()
 
 
@@ -362,17 +367,29 @@ class SelfForcingOwner:
         # Native EMA_FSDP intentionally owns CPU FP32 shadows. They, RNG and
         # Adam's noncapturable scalar step are host state, not compute residency.
 
-    def _validate_live(self):
+    def _validate_placement(self):
         import torch
-        from .self_forcing import _admit_device, runtime_identity
-        require(self._cache_lifetime == self.identity.get('native_cache_lifetime', 'native-v1')
-                and self._cache_lifetime in ('native-v1', 'release-after-commit-v1'),
-                'native cache lifetime policy changed outside its source-bound profile')
+        from .self_forcing import _admit_device
         require(_admit_device({'device': str(self.device)}) == self.model.device
                 and self.identity['placement'] == dict(device=str(self.device), layout='SINGLE_DEVICE_RESIDENT',
                                                        distributed=False, amp=False)
                 and self.model.args is self.args and self.dtype == self.model.dtype == torch.float32,
                 'live native model/device/FP32 placement changed')
+        require(all(type(t) in (torch.Tensor, torch.nn.Parameter) and t.device == self.device
+                    and t.layout == torch.strided for t in self.runtime_tensors()),
+                'plain dense single-device placement required; no distributed, offload or AMP layout')
+        require(all(not t.is_floating_point() or t.dtype == torch.float32
+                    for t in (*self.model.parameters(), *self.model.buffers()))
+                and self.negative_embedding.dtype == torch.float32,
+                'native module/condition FP32 dtype changed')
+
+    def _validate_live(self):
+        import torch
+        from .self_forcing import runtime_identity
+        require(self._cache_lifetime == self.identity.get('native_cache_lifetime', 'native-v1')
+                and self._cache_lifetime in ('native-v1', 'release-after-commit-v1'),
+                'native cache lifetime policy changed outside its source-bound profile')
+        self._validate_placement()
         require(self.identity['runtime'] == runtime_identity(), 'live numerical runtime/precision policy changed')
         self.source.validate()
         require(type(self.native_step) is int and self.native_step % self.ratio == 0
@@ -390,13 +407,6 @@ class SelfForcingOwner:
         require(all(p.grad is None for p in self.model.parameters()), 'checkpoint requires cleared gradients')
         require(self.masks == {name: p.requires_grad for name, p in self.model.named_parameters()},
                 'native role parameter masks changed')
-        require(all(type(t) in (torch.Tensor, torch.nn.Parameter) and t.device == self.device
-                    and t.layout == torch.strided for t in self.runtime_tensors()),
-                'plain dense single-device placement required; no distributed, offload or AMP layout')
-        require(all(not t.is_floating_point() or t.dtype == torch.float32
-                    for t in (*self.model.parameters(), *self.model.buffers()))
-                and self.negative_embedding.dtype == torch.float32,
-                'native module/condition FP32 dtype changed')
         native_plain = plain_tensors(self.model)
         require(self.plain_specs == {name: (tensor.shape, tensor.dtype) for name, tensor in native_plain.items()},
                 'native non-buffer shape/dtype changed')
@@ -438,6 +448,12 @@ class SelfForcingOwner:
         require(type(negative) is torch.Tensor and negative.device == self.device and negative.dtype == torch.float32
                 and torch.equal(negative, self.negative_embedding[0]), 'native negative conditioning boundary changed')
         if self.unconditional_dict is not None:
+            self._validate_unconditional()
+
+    def _validate_unconditional(self):
+        import torch
+        from distillschedule.data.self_forcing_inputs import validate_row
+        if self.unconditional_dict is not None:
             validate_row(self.unconditional_dict, shape=(self.args.batch_size,
                 self.model.generator.model.text_len, self.model.generator.model.text_dim), device=self.device)
             require(torch.equal(self.unconditional_dict['prompt_embeds'],
@@ -455,9 +471,15 @@ class SelfForcingOwner:
                 validate_row(row, shape=(self.args.batch_size, self.model.generator.model.text_len,
                                          self.model.generator.model.text_dim), device=self.device)
 
-    def _forward_backward(self, row, generator):
+    def fwdbwd_one_step(self, batch, train_generator):
         native = original(self.source.root).trainer.Trainer.fwdbwd_one_step
-        return native(self, {'prompts': list(row['prompt_embeds'].unbind(0))}, generator)
+        return native(self, batch, train_generator)
+
+    def _forward_backward(self, row, generator):
+        return self.fwdbwd_one_step({'prompts': list(row['prompt_embeds'].unbind(0))}, generator)
+
+    def _before_pipeline_discard(self, cycle):
+        pass
 
     def _commit(self, role):
         optimizer = self.optimizers[role]
@@ -534,6 +556,7 @@ class SelfForcingOwner:
                 self._event('iteration_complete', row)
         # Cache allocation is recreated by every native training rollout. No
         # ephemeral cache or outstanding autograd graph crosses Program calls.
+        self._before_pipeline_discard(cycle)
         self.model.inference_pipeline = None
         for optimizer in self.optimizers.values():
             optimizer.zero_grad(set_to_none=True)
@@ -576,10 +599,7 @@ class SelfForcingOwner:
         # A checkpoint may stage compute tensors on CPU, but never contain a
         # meta/sparse/distributed or unrelated-device tensor that fails midway
         # through a load. Validate the entire source tree before any mutation.
-        require(all(type(t) is torch.Tensor and t.layout == torch.strided and not t.requires_grad
-                    and (t.device.type == 'cpu' or t.device == self.device)
-                    for t in tree_leaves(value) if isinstance(t, torch.Tensor)),
-                'checkpoint requires dense CPU or owned-device staging tensors')
+        self._validate_checkpoint_tensors(value)
         step = value['native_step']
         require(type(step) is int and 0 <= step <= self.args.train_iters and step % self.ratio == 0,
                 'checkpoint is not a complete native macrocycle')
@@ -601,7 +621,7 @@ class SelfForcingOwner:
         _validate_layout(self.negative_embedding, value['negative_embedding'], 'negative conditioning')
         negative_cpu = self.negative_embedding.detach().cpu()
         require(torch.equal(negative_cpu, value['negative_embedding'].cpu()), 'negative conditioning changed')
-        expected_condition = {'prompt_embeds': negative_cpu.repeat(self.args.batch_size, 1, 1)} if step else None
+        expected_condition = self._checkpoint_unconditional(negative_cpu) if step else None
         _validate_layout(expected_condition, value['unconditional_dict'], 'native unconditional cache')
         require(expected_condition is None or torch.equal(expected_condition['prompt_embeds'],
                                                         value['unconditional_dict']['prompt_embeds'].cpu()),
@@ -654,6 +674,17 @@ class SelfForcingOwner:
                 validate_rng(value['rng'])
         except (KeyError, TypeError, RuntimeError) as exc:
             raise ValueError('official Self-Forcing: invalid native RNG state') from exc
+
+    def _checkpoint_unconditional(self, negative_cpu):
+        return {'prompt_embeds': negative_cpu.repeat(self.args.batch_size, 1, 1)}
+
+    def _validate_checkpoint_tensors(self, value):
+        import torch
+        from torch.utils._pytree import tree_leaves
+        require(all(type(t) is torch.Tensor and t.layout == torch.strided and not t.requires_grad
+                    and (t.device.type == 'cpu' or t.device == self.device)
+                    for t in tree_leaves(value) if isinstance(t, torch.Tensor)),
+                'checkpoint requires dense CPU or owned-device staging tensors')
 
     def load_state_dict(self, value):
         self.validate_state_dict(value)
