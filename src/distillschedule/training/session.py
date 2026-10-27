@@ -95,7 +95,15 @@ def _construct_model(config, *, source=None):
     components = factory(parameters)
     if not isinstance(components, ModelComponents):
         raise ValueError("model factory must return ModelComponents")
-    components.validate()
+    try:
+        components.validate()
+    except BaseException:
+        # A returned provider is already ours, even if its contract is invalid.
+        # Do not let an invalid close field mask its original validation error.
+        if callable(components.close):
+            with components.managed():
+                raise
+        raise
     return components, model_source
 
 
@@ -203,13 +211,32 @@ def train(config: TrainingConfig):
         return _train(config)
 
 
+def _checked_construct(config, label, *, include_validation=False):
+    local = None
+
+    def acquire():
+        nonlocal local
+        local = construct(config, include_validation=include_validation)
+        return local
+
+    try:
+        return distributed.checked(acquire, label)
+    except BaseException:
+        # A peer can reject construction after our local provider was returned,
+        # but before the invocation can transfer it to its managed scope.
+        if local is not None:
+            with local[0].managed():
+                raise
+        raise
+
+
 def _train(config: TrainingConfig):
     # Reject unsupported collective validation before constructing any model,
     # installing a wrapper, updating state or creating output.
     distributed.checked(lambda: admit_scope(config), "validation scope admission")
     distributed.admit_run_controls(config)
-    components, dataset, algorithm, identity, validation = distributed.checked(
-        lambda: construct(config, include_validation=True), "training construction")
+    components, dataset, algorithm, identity, validation = _checked_construct(
+        config, "training construction", include_validation=True)
     with components.managed():
         return _train_owned(config, components, dataset, algorithm, identity, validation)
 
@@ -327,7 +354,7 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
 
 
 def _load_for_output(config, checkpoint):
-    components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "output construction")
+    components, dataset, algorithm, identity = _checked_construct(config, "output construction")
     try:
         return _restore_for_output(config, checkpoint, components, dataset, algorithm, identity)
     except BaseException:
