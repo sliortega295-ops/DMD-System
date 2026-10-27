@@ -13,11 +13,24 @@ An execution policy chooses only admitted physical changes. The command remains
 | SDXL / official DMD2 | Actual dual CLIP, added conditions, backward simulation; four-step or explicitly initialized single-step | Both tokenizers; native VAE; no fabricated pooled or unconditional context | `train,dmd2` |
 | Official Self-Forcing Wan | Actual causal random-exit block rollout, KV state, DMD loss, native G/C and EMA clocks | Native T5 prompt encoding or pinned embeddings; native full-step causal inference and VAE video | `train,self-forcing-official` |
 | LTX-2.5 / generic No-GAN DMD | Actual AV LTX Transformer; explicit rectified-flow surrogate and Fake regression policy | Actual Gemma4/connectors, native video/audio VAEs, vocoder; AV or explicit latents | isolated `train,ltx25`, Python >=3.11 |
-| FLUX.2 klein Base 4B / explicit flow DMD | Actual Flux2 Transformer, no guidance embeddings, normalized sigma; not official DMD2 | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`, CPU1 FP32 only |
-| Original Qwen-Image T2I / explicit flow DMD | Actual QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Actual Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`, CPU1 FP32 only |
-| Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Actual native Wan Transformer, expanded normalized timestep, CFG=1; not experts/I2V or official Self-Forcing | Actual UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`, CPU1 FP32/B1 only |
-| HunyuanVideo-1.5 T2V / explicit flow DMD | Actual Hunyuan15 native Transformer/dual text/temporal4 VAE; not I2V/meanflow/distilled | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`, CPU1 FP32/B1 only |
+| FLUX.2 klein Base 4B / explicit flow DMD | Actual Flux2 Transformer, no guidance embeddings, normalized sigma; not official DMD2 | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`; CPU/CUDA FP32, local B1 |
+| Original Qwen-Image T2I / explicit flow DMD | Actual QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Actual Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`; CPU/CUDA FP32, local B1 |
+| Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Actual native Wan Transformer, expanded normalized timestep, CFG=1; not experts/I2V or official Self-Forcing | Actual UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
+| HunyuanVideo-1.5 T2V / explicit flow DMD | Actual Hunyuan15 native Transformer/dual text/temporal4 VAE; not I2V/meanflow/distilled | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
 | Existing W1–W6 | Their distinct original contracts, not aliases of the above algorithms | See each recipe and six-workload support matrix | Existing separate qualified lanes |
+
+Choose the model and algorithm together, then an execution policy:
+
+- The five common-flow families (LTX LoRA and the four image/video families
+  above) expose single-device FP32 reference and exact direct manual immutable
+  sharing. FLUX/Qwen additionally have qualified equal-B1 post-backward replicas
+  on Gloo/NCCL; the video replica source routes have separate evidence limits.
+- SD1.5 offers a [native FSDP2 reference](dmd2_fsdp2_reference.md), distinct from
+  the optimized Resident/DDP profile. Official Self-Forcing offers native FSDP2
+  reference and optimized profiles. Use the [official recipe chooser](official_optimized_training.md#choose-a-configuration).
+- Automatic/saved-plan trials have their own admission, not implied by a CUDA
+  reference or manual policy. See [execution choices](training.md#explicit-or-automatic-strategy)
+  and the [source/CPU/GPU/quality matrix](support_matrix.md#additional-model-and-workflow-integrations).
 
 Official Self-Forcing is **not W4 LiveWan**. W4 retains the cross-scale
 14B Teacher / 1.3B Student implementation and its own sampling/update contract.
@@ -81,13 +94,15 @@ files and a native-rate WAV, not a promise of muxed pretrained-quality movies.
 
 ## Evidence boundary
 
-The new providers are qualified with **actual upstream model classes at small
-random CPU configurations**, real gradients, native-source oracle comparisons
-where supplied, fresh-process continuation and export/generation after hiding
-training artifacts. This is not pretrained quality, long-term convergence or
-new CUDA/distributed/capacity/performance validation. Unsupported combinations
-are rejected rather than presented as validated support. Existing native
-A100/H100 recipes and historical results retain their own identity and limits.
+Evidence uses **actual upstream model classes at small random configurations**,
+real gradients, native-source oracles where supplied, fresh-process continuation
+and current-model export/generation. Existing receipts include CPU and scoped
+single-device CUDA FP32 paths, single-CUDA flow immutable sharing and FLUX/Qwen
+replicas through world16. Native official FSDP2/optimized public paths have
+separate source/CPU integration status and pending distributed GPU gates.
+The [support matrix](support_matrix.md) gives the exact receipt for each path
+and the remaining pretrained/capacity/quality gates. Existing native A100/H100
+recipes and historical results retain their own identity and limits.
 
 ## Separate installation lanes
 
@@ -140,7 +155,8 @@ requires actual native image/video, raw container decode, measured three-family
 plans, export-only inputs and installed-wheel lifecycle proofs without skips.
 Its TF5 lane does not run the original W2 SafeBundle/Helios TF4 fixtures.
 Optional actual-CUDA files under `tests/gpu` are outside the mandatory official
-CPU globs and have their own honest **NOT_RUN** receipt, not a CPU gate waiver.
+CPU globs. Their separate PASS/NOT_RUN receipts are linked in the matrix;
+passing a CPU lane does not execute or waive those GPU gates.
 The older generic `.34` helper job uses a tested explicit file selector before
 starting pytest to exclude W4's three `.35.2` public full-class files; their
 dedicated job actually runs them instead. Shell-expanded files are not
@@ -154,12 +170,14 @@ resolve/download dependencies or modify the invoking environment.
 
 ## Initial native image-family slice
 
-FLUX.2 klein Base and original Qwen-Image are explicitly **source/actual tiny
-CPU references**, not completed pretrained/GPU/quality integrations. Their
-static compatibility metadata rejects known official DMD2/Self-Forcing,
-CUDA/distributed and unsupported causal/cache model options before model
-imports/weight loading, including matching explicit registered factory calls.
-Arbitrary existing plugins without a declaration remain extensible.
+FLUX.2 klein Base and original Qwen-Image execute CPU or single-CUDA FP32
+reference/manual training and explicit post-backward replicas through the
+shared lifecycle. CUDA and replicated requests admit only the declared
+reference/exact-manual policies. Static compatibility metadata rejects official
+DMD2/Self-Forcing, CUDA auto/plan, replicated DDP-overlap/FSDP/HSDP and
+unsupported causal/cache requests before model imports/weight loading, including
+matching explicit registered factory calls. Arbitrary existing plugins without
+a declaration remain extensible.
 
 The first admitted recipes are same-family **unmerged LoRA**, G1/F5 and four
 explicit Euler steps through existing `training.dmd`, with teacher/fake CFG=1.
@@ -169,14 +187,17 @@ complete shards/configs, actual text/VAE/tokenizer assets and hash-bound data
 are required, with no random production fallback. Explicit BF16/F32 storage to
 FP32 conversion is distinct from unqualified BF16 compute. Three different
 prompt lengths, exact new-process state and actual native decoded output are
-CPU-tested with `SYNTHETIC_TEST_ONLY` weights; full pretrained V3–V5 remain
-**NOT_RUN**. See the [shared image recipe](../../recipes/flow_image/README.md).
+tested with `SYNTHETIC_TEST_ONLY` weights on the qualified CPU/CUDA paths;
+full pretrained V3–V5 remain **NOT_RUN**. See the
+[shared image recipe](../../recipes/flow_image/README.md).
 
 ## Initial HunyuanVideo-1.5 T2V slice
 
 `hunyuan15-t2v` reuses the same common flow-DMD/lifecycle and actual immutable
 sharing, not another trainer or a model-name searcher. The bounded reference is
-CPU1 FP32/B1, same-family unmerged LoRA, four Euler steps and G1/F5/CFG1.
+single-device CPU/CUDA FP32/B1, same-family unmerged LoRA, four Euler steps
+and G1/F5/CFG1. Its explicit local-B1 replica source route is documented
+separately in the recipe.
 It executes actual native Hunyuan15 Transformer, Qwen2.5 **text-only** model
 with native template/crop108/hidden-3, native T5/slow ByT5 glyph extraction
 (including the valid no-glyph zero/allfalse sentinel), and temporal4 Hunyuan VAE.
@@ -187,13 +208,13 @@ before concrete training or portable reconstruction.
 
 Fresh-process exact complete-state recovery, real shared/unshared updates and
 current-Student + both native text/tokenizer/VAE portable decoded new-input
-video are tested using actual tiny **SYNTHETIC_TEST_ONLY** classes. This is not
-pretrained, GPU, production geometry/capacity, long-run or quality evidence.
+video are tested using actual tiny **SYNTHETIC_TEST_ONLY** classes. Separate
+single-CUDA reference/manual receipts and remaining production gates are in
+the support matrix.
 The model assets use **Tencent Hunyuan terms, not Apache-2.0**; dependency
 implementation licenses are separate. See the
 [bounded recipe and source/license pin](../../recipes/hunyuan_video_dmd/README.md).
 The separate common [export-only public preparer](export_inputs.md) can now
 encode native new prompts/raw media from this export after original assets and
 all training checkpoints are deleted. The existing Hunyuan asset-based preparer
-still explicitly requires its local assets. All full pretrained/GPU/capacity/
-quality gates remain **NOT_RUN**.
+still explicitly requires its local assets.

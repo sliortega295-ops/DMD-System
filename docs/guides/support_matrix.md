@@ -130,28 +130,33 @@ running a smaller workload, another backend or a hidden default winner.
 
 ## Additional model and workflow integrations
 
-These extend registration, not the immutable W1–W6 identities. All use the
-same `distillctl`, Program, checkpoint and export interfaces.
+These native model/workflow adapters use the same `distillctl`, Program,
+checkpoint and export interfaces without changing the immutable W1–W6
+identities. Choose the [family recipe](model_families.md#choose-a-compatible-integration)
+and its [admitted execution policy](training.md#explicit-or-automatic-strategy).
+The rows retain actual CPU evidence; named CUDA receipts below qualify only
+their exact source snapshots, models, precision and topology. Source-exposed
+paths and pending pretrained/quality gates are recorded separately.
 
 **Actual GPU update (2026-10-24 UTC):** official DMD2 SD1.5/SDXL and official
 Self-Forcing additionally passed all seven random-tiny CUDA FP32 reference
 tests on A100/Torch 2.10. This includes original-trainer oracle comparison,
 new-process recovery and current-G generation/export under an explicit
 deterministic test policy. These are single-device real-model-class tests,
-not full pretrained training, AMP or distributed ownership; those remain
-unverified. The table's CPU evidence stays separate. See
+not full pretrained training or qualification of the separate native
+distributed owners described below. The table's CPU evidence stays separate. See
 [exact scope and failures](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
 
 | Integration | Actual CPU reference | Data/output and continuation | Not established |
 | --- | --- | --- | --- |
-| SD1.5 official DMD2 | Original SDUniModel/SDGuidance, native G1/C10 clock; actual UNet/CLIP/VAE | Prompt-only + independent guidance/real/denoising streams as selected; actual raw VAE intake; exact complete-state new-process recovery; new-prompt current-G image output | Full production GAN training, pretrained CUDA capacity/quality, AMP/distributed |
-| SDXL official DMD2 | Original dual CLIP/added conditions, four-step and explicitly initialized single-step399; real unmerged LoRA | Independent native stream counts; actual VAE/CLIP, safe full-state resume and current-G images | Pretrained CUDA capacity/quality, AMP/distributed |
-| Official Self-Forcing | Actual CausalWan/Wan/DMD classes, native 21-latent-frame block3 random-exit/KV/EMA rules | Actual native T5 preparation or exact embeddings; independent G/C streams; exact continuation; current-G full-step native inference/VAE | >21-latent-frame decode/reencode training, I2V, uncached flex, AMP/FSDP, pretrained CUDA capacity/quality |
+| SD1.5 official DMD2 | Original SDUniModel/SDGuidance, native G1/C10 clock; actual UNet/CLIP/VAE | Prompt-only + independent guidance/real/denoising streams as selected; actual raw VAE intake; exact complete-state new-process recovery; new-prompt current-G image output. Separate native FSDP2 reference/Resident-DDP source paths below | Public native distributed GPU training/restart/output qualification, pretrained CUDA capacity/quality, full production GAN acceptance |
+| SDXL official DMD2 | Original dual CLIP/added conditions, four-step and explicitly initialized single-step399; real unmerged LoRA | Independent native stream counts; actual VAE/CLIP, safe full-state resume and current-G images; separate CPU/Gloo native role-DDP continuation | Pretrained CUDA capacity/quality, CUDA native role-DDP qualification, AMP/FSDP2; SD1.5 optimized profile does not apply |
+| Official Self-Forcing | Actual CausalWan/Wan/DMD classes, native 21-latent-frame block3 random-exit/KV/EMA rules | Actual native T5 preparation or exact embeddings; independent G/C streams; exact continuation; current-G full-step native inference/VAE. Separate native FSDP2 reference/optimized source paths below | >21-latent-frame decode/reencode training, I2V, uncached flex, public native FSDP2 GPU training/restart/output qualification, pretrained CUDA capacity/quality |
 | LTX-2.5 | Actual bounded native AV Transformer, Gemma4/connectors and native AV codecs; generic explicit G1/F5 flow DMD, full or separate LoRA | Actual raw media/prompts/exact native features; original-format tiny safetensors import; clock-aware exact recovery; current-G new-input AV decode; common measured auto/saved-plan CPU fixture with real immutable sharing. Actual A100 single-device FP32 reference: native oracle and full/LoRA fresh-process recovery/export, 4/4 PASS | Full monolithic 22B pipeline, native architectures outside the documented bounds, distributed ownership, CUDA trial planning, pretrained capacity/quality/performance |
-| FLUX.2 klein Base 4B T2I | Actual Flux2/Qwen3/Flux2 VAE tiny classes; same-family unmerged LoRA; common flow-DMD G1/F5 and exact immutable sharing | Native raw RGB/prompts/hash-bound features, actual empty text, four-step generation, exact fresh-process restart and portable current-Student native PNG; actual A100 FP32 reference native-oracle/update/restart/export, 2/2 PASS | CUDA planning; full pretrained CPU/GPU execution, other FLUX variants, full-parameter, CFG>1, edit/causal, AMP/distributed, long-run/quality/performance |
-| Original Qwen-Image T2I | Actual QwenImage/Qwen2.5-VL/Qwen VAE tiny classes; native template/crop34/masks; common flow-DMD and exact immutable sharing | Fixed native masked right padding without silent truncation, raw/preencoded/prompts, exact restart and current-Student decoded new-prompt PNG; actual A100 FP32 reference complex-RoPE ownership/native-oracle/restart/export, 2/2 PASS | CUDA planning; full pretrained CPU/GPU execution, edit/new generations, full-parameter, native norm-rescaled CFG>1, causal/extra time/3D RoPE, AMP/distributed, quality/performance |
-| Wan2.2 TI2V-5B T2V subpath | Actual tiny Wan Transformer/UMT5/T5 tokenizer/residual patch2 VAE; common G1/F5 unmerged LoRA and immutable sharing | Actual raw RGB video/frames, native geometry/prompt/features, exact fresh-process recovery and current-Student portable RGB5; common measured auto/saved-plan CPU fixture; actual A100 single-device FP32 reference native oracle/restart/export, 3/3 PASS | CUDA planning; full pretrained CPU/GPU/capacity, I2V, dual A14B noise experts, CFG>1, AMP/distributed, production geometry, long-run/quality/performance |
-| HunyuanVideo-1.5 T2V | Actual tiny Hunyuan15/Qwen2.5 text-only + T5/slow ByT5/temporal4 VAE; native crop108/1000 + quoted-glyph256 or native no-glyph sentinel; common G1/F5 unmerged LoRA and real immutable sharing | Raw RGB videos/frames, prompt geometry, bound safe features; native forward/gradient/Euler/codec parity; exact fresh-process recovery and portable current-Student decoded novel-input RGB5 after removing training assets; common measured auto/saved-plan CPU fixture; actual A100 single-device FP32 reference native oracle/restart/export, 3/3 PASS | Tencent model license is not Apache; CUDA planning; full pretrained CPU/GPU/capacity, I2V/meanflow/distilled/causal, CFG>1, AMP/distributed, production geometry, long-run/quality/performance |
+| FLUX.2 klein Base 4B T2I | Actual Flux2/Qwen3/Flux2 VAE tiny classes; same-family unmerged LoRA; common flow-DMD G1/F5 and exact immutable sharing | Native raw RGB/prompts/hash-bound features, actual empty text, four-step generation, exact fresh-process restart and portable current-Student native PNG; actual A100 FP32 reference native-oracle/update/restart/export, 2/2 PASS; separate reference/manual Gloo2/NCCL2/world16 replica receipts below | CUDA/distributed planning; full pretrained CPU/GPU execution, other FLUX variants, full-parameter, CFG>1, edit/causal, AMP/FSDP/HSDP/DDP-overlap, long-run/quality/performance |
+| Original Qwen-Image T2I | Actual QwenImage/Qwen2.5-VL/Qwen VAE tiny classes; native template/crop34/masks; common flow-DMD and exact immutable sharing | Fixed native masked right padding without silent truncation, raw/preencoded/prompts, exact restart and current-Student decoded new-prompt PNG; actual A100 FP32 reference complex-RoPE ownership/native-oracle/restart/export, 2/2 PASS; separate reference/manual Gloo2/NCCL2/world16 replica receipts below | CUDA/distributed planning; full pretrained CPU/GPU execution, edit/new generations, full-parameter, native norm-rescaled CFG>1, causal/extra time/3D RoPE, AMP/FSDP/HSDP/DDP-overlap, quality/performance |
+| Wan2.2 TI2V-5B T2V subpath | Actual tiny Wan Transformer/UMT5/T5 tokenizer/residual patch2 VAE; common G1/F5 unmerged LoRA and immutable sharing | Actual raw RGB video/frames, native geometry/prompt/features, exact fresh-process recovery and current-Student portable RGB5; common measured auto/saved-plan CPU fixture; actual A100 single-device FP32 reference native oracle/restart/export, 3/3 PASS | CUDA/distributed planning; video replica GPU qualification; full pretrained CPU/GPU/capacity, I2V, dual A14B noise experts, CFG>1, AMP/FSDP/HSDP/DDP-overlap, production geometry, long-run/quality/performance |
+| HunyuanVideo-1.5 T2V | Actual tiny Hunyuan15/Qwen2.5 text-only + T5/slow ByT5/temporal4 VAE; native crop108/1000 + quoted-glyph256 or native no-glyph sentinel; common G1/F5 unmerged LoRA and real immutable sharing | Raw RGB videos/frames, prompt geometry, bound safe features; native forward/gradient/Euler/codec parity; exact fresh-process recovery and portable current-Student decoded novel-input RGB5 after removing training assets; common measured auto/saved-plan CPU fixture; actual A100 single-device FP32 reference native oracle/restart/export, 3/3 PASS | Tencent model license is not Apache; CUDA/distributed planning; video replica GPU qualification; full pretrained CPU/GPU/capacity, I2V/meanflow/distilled/causal, CFG>1, AMP/FSDP/HSDP/DDP-overlap, production geometry, long-run/quality/performance |
 
 The common [export-only input preparer](export_inputs.md) now supplies native
 prompt/raw-media preparation for the four admitted modern-flow image/video
@@ -196,6 +201,20 @@ current Student export. The additional-model rows above describe single-device
 evidence; this paragraph is the explicitly qualified replication exception for
 the two image families, not the other model families.
 
+Wan2.2 and HunyuanVideo also expose explicit local-B1 post-backward replica
+admission in source and their [Wan2.2](../../recipes/wan22_dmd/README.md#explicit-replicated-local-b1-contract)
+and [HunyuanVideo](../../recipes/hunyuan_video_dmd/README.md#explicit-replicated-local-b1-contract)
+recipes. These are separate source/test routes, not video GPU replica
+acceptance from the FLUX/Qwen receipts. LTX does not expose distributed ownership.
+
+**Planning is a separate lane:** measured `auto`/saved `plan` acceptance for
+common-flow families uses CPU1 FP32 `SYNTHETIC_TEST_ONLY` fixtures. Unqualified
+pretrained whole-role copies reject before cloning; CUDA and distributed trials
+remain refused. Direct reference/manual execution does not enter that copy
+boundary. A selected-plan tensor budget does not cover construction, trial
+copies or host RSS; all roles materialize before immutable sharing. See
+[flow execution and capacity](training.md#modern-native-flow-qualification-and-capacity).
+
 For DMD2, an actual scoped UNet checkpoint capability has real effects and
 same-source reference/manual/auto/saved-plan + resumed-cycle parity on the
 qualified CPU FP32 stack. A resident single-device CUDA FP32 reference source
@@ -205,16 +224,16 @@ actual random-tiny reference CUDA lifecycle; **pretrained capacity, quality and
 performance remain NOT_RUN**. Optional CUDA tests skip honestly on CPU-only
 Torch. CUDA auto/plan/owner-selected trials and
 whole-owner copying fail closed until budgeted resident snapshot/restore covers
-frozen roles, optimizer, comparison and CPU staging. This does not complete
-distributed/AMP owner support or the plan's full pretrained acceptance gates. Other
+frozen roles, optimizer, comparison and CPU staging. These singleton tests do
+not qualify the separate native distributed owners or full pretrained gates. Other
 physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
 working on opaque native owners. The explicit
 [native-owner role backend](native_owner_backends.md) is a separate exception:
 actual DMD2 SD1.5/SDXL CPU2/Gloo has complete canonical per-rank checkpoint and exact
 new-process continuation evidence, without duplicating native gradient
-reduction. It currently supports persistent reference/direct-manual FP32 only,
-not cloned auto/plan trials, GAN, mixed precision or FSDP2. Its new CUDA/NCCL
+reduction. This `ddp-fp32-v1` backend supports persistent reference/direct-manual
+FP32 only, not cloned auto/plan trials, GAN, mixed precision or FSDP2. Its CUDA/NCCL
 source path has not been GPU-qualified. Existing single-device defaults are
 unchanged. The same guide documents independently bound Generator/Fake
 checkpoint effects (`component-v1`) on the qualified CPU1 stack.
@@ -228,9 +247,10 @@ The causal Generator setting remains immutable algorithm identity; its ON/OFF
 paths are not equivalent. Real checkpoint/recompute and direct-execution counts,
 three-cycle independent native Trainer parity and fresh-process manual restart
 are CPU evidence only. The legacy OFF reference is unchanged and offers no
-checkpoint alternative. Other runtimes/profiles retain baseline; CUDA trial
-copying/auto/plan/owner execution remain rejected pending capacity-bounded
-snapshot support. This is not full U6, pretrained, GPU or quality acceptance.
+checkpoint alternative. This singleton checkpoint-policy portfolio remains
+CPU-only; CUDA trial copying/auto/plan remain rejected pending capacity-bounded
+snapshot support. The explicit native FSDP2 paths below are separate, not
+qualification of that trial portfolio.
 
 The separate official Self-Forcing `release-after-commit-v1` model profile
 relinquishes consumed rollout KV/cache references after native backward and
@@ -242,4 +262,32 @@ unqualified. See [the scoped owner guide](native_owner_backends.md).
 
 ## Integrated official optimization profiles
 
-Official SD1.5 DMD2 now has a source-bound Resident/DDP mixed-precision owner; official Self-Forcing has a versioned FSDP2/BF16 owner and the complete R6 bundle. Both connect directly to the common Program and cycle/checkpoint lifecycle. Their configurations, mechanisms and measured performance are in the [optimized training guide](official_optimized_training.md); integration validation levels are recorded in its appendix. Existing FP32 rows above describe the reference paths.
+These source-integrated owners use the common Program, persistent native
+cycle and complete-cycle/same-topology checkpoint lifecycle, without a
+historical run directory or calibration plan:
+
+- **SD1.5 official DMD2 reference:** `recipes/dmd2_sd15/training.fsdp2.json`
+  selects `fsdp2-native-sd15-v1`, actual native block/root FSDP2 across
+  A100/world16, G1/C10/EMA0 and the native mixed-precision exceptions with FP32
+  masters/Adam. It does not enable the Resident/DDP bundle. The
+  [reference guide](dmd2_fsdp2_reference.md) records source-lock/ABI and real
+  CPU FSDP2 shard/Adam checks; public world16 training/restart/decoded-output
+  GPU qualification remains pending. SDXL FSDP2 is not admitted.
+- **SD1.5 optimized:** `recipes/dmd2_sd15/training.optimized.json` selects the
+  source-bound Resident/DDP mixed-precision profile, with its actual fused
+  Adam, activation retention, classifier packing and cast scopes.
+- **Official Self-Forcing:** `training.fsdp2-reference.json` and
+  `training.optimized.json` under `recipes/self_forcing_official/` select native
+  FSDP2 reference and complete R6 optimization respectively, with BF16 compute,
+  FP32 masters/reduction, A100/world16, G1/C5/EMA0 and explicit launch policy.
+  They preserve causal rollout/KV/native update ownership and are not W4 LiveWan.
+
+The [official chooser and launch/resume guide](official_optimized_training.md)
+links each configuration and its historical measurements. Its
+[validation appendix](../status/official_optimized_framework.md) separates
+source/helper/CPU integration from historical native GPU outcomes, which retain
+their **REVIEW** numerical status. The new public distributed optimized
+training/restart/export paths still require GPU qualification; they do not
+inherit the seven tiny single-device CUDA tests. Clone-based automatic planning
+is not enabled for these distributed owners. Existing single-device FP32
+defaults and the W1–W6 contracts remain unchanged.

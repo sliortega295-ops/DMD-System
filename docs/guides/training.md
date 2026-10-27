@@ -8,6 +8,9 @@ reports installed versions without importing Torch or constructing a model.
 The [tiny media tutorial](../../examples/framework/README.md) gives executable
 offline commands with actual files and real autograd. It is a randomly
 initialized fixture, not a pretrained model or a quality experiment.
+For a native model, choose its [family and recipe](model_families.md#choose-a-compatible-integration),
+then the execution path below. The same save/resume/export/generate commands
+apply; the [support matrix](support_matrix.md) records each path's evidence.
 
 ## The five configuration sections
 
@@ -110,21 +113,53 @@ sampling policy and seed that select its first record), use
 `{"mode":"plan","plan":"path/to/selected-plan.json"}`. Changed model,
 input, source or calibration hashes reject through the original planner.
 
+### Choose an official native execution path
+
+The native owners preserve the original algorithm inside the common Program
+and cycle lifecycle. Select a recipe explicitly; direct training needs no
+calibration run or historical saved plan.
+
+| Workflow | Reference choices | Direct optimized choice |
+| --- | --- | --- |
+| SD1.5 official DMD2 | [Single-device FP32](../../recipes/dmd2_sd15/README.md); [native FSDP2](dmd2_fsdp2_reference.md) via `training.fsdp2.json`; separate FP32 native role-DDP recipe | `recipes/dmd2_sd15/training.optimized.json`: native mixed-precision Resident/DDP bundle |
+| Official Self-Forcing | [Single-device FP32](../../recipes/self_forcing_official/README.md); native FSDP2 via `training.fsdp2-reference.json` | `recipes/self_forcing_official/training.optimized.json`: native FSDP2 with the complete versioned optimization profile |
+
+The FSDP2 and optimized recipes bind their declared A100/world16, precision,
+source, input and launch contracts. Follow the [official launch/resume guide](official_optimized_training.md)
+for these native owners, not the generic visible-module backend options below.
+SDXL retains its own FP32 single-device/native role-DDP scope; it does not
+inherit SD1.5 FSDP2 or the SD1.5 optimization profile. Public distributed GPU
+qualification and historical native measurements are listed separately in the
+[support matrix](support_matrix.md#integrated-official-optimization-profiles).
+
 ### Modern native flow qualification and capacity
 
 FLUX.2-klein-base, Qwen-Image, Wan2.2 TI2V-5B T2V and HunyuanVideo1.5 T2V
 retain their native model/text/VAE classes and source-bound local assets.
-Their current admitted execution is CPU1 FP32; GPU, distributed, full-pretrained
-training and quality qualification are **NOT_RUN**. The actual automatic and
-saved-plan acceptance uses explicitly `SYNTHETIC_TEST_ONLY` tiny native
-FLUX/Qwen/Wan fixtures, real gradients, G1/F5 Adam/scheduler/EMA updates,
-fresh text records, and complete-cycle restart in new processes. It is not an
-alternate model-name planner or an official DMD2/Self-Forcing recipe.
+Together with LTX LoRA, they use the existing common flow-DMD runtime:
+
+- **One CPU or CUDA device, FP32:** persistent `reference`, or exact direct
+  `manual` [immutable sharing](optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+  with `share_immutable:true` and no checkpoint bindings. This does not clone a
+  CUDA owner or change the loss/update schedule.
+- **Explicit replicas:** FLUX/Qwen use [equal-B1 post-backward reduction](../../recipes/flow_image/README.md#explicit-replicated-training-not-model-sharding),
+  reference or exact manual sharing, on CPU/Gloo or CUDA/NCCL. Each rank owns
+  complete models; this is not model sharding or DDP-forward wrapping. The
+  video adapters' separate source routes and qualification limits are in the matrix.
+- **Measured `auto` / saved `plan`:** CPU1 FP32 synthetic-fixture trials only,
+  not CUDA planning or distributed trials. These use real gradients,
+  G1/F5 Adam/scheduler/EMA, fresh text records and new-process restart through
+  the same planner and lifecycle.
+
+The [support matrix](support_matrix.md#additional-model-and-workflow-integrations)
+links actual tiny CUDA reference/manual and image-replica receipts separately
+from pending full-pretrained, capacity and quality gates. These flow recipes
+are not official DMD2 or Self-Forcing reproductions.
 
 The family Role clone boundary explicitly refuses
 `LOCAL_PRETRAINED_UNVERIFIED` (or missing/unqualified) provenance before copying
 the native role graph. This covers both public auto/saved-plan training and
-direct common-ABI calibration/paired execution. CPU1 reference and manual
+direct common-ABI calibration/paired execution. CPU/single-CUDA reference and manual
 persistent non-clone execution remain available with the declared local asset
 and parameter-budget checks. `SYNTHETIC_TEST_ONLY` is a trusted caller label,
 **not** a verified payload-size/origin check or a memory-safety guarantee. Do not
@@ -231,6 +266,9 @@ where the current backend/mesh permits them. A manual option uses the existing
 size. Models, optimizers, DDP wrappers, FSDP layout and hooks are installed once,
 not rebuilt at every cycle. Resume installs the **saved layout** before loading
 its local shards, then continues the saved policy without re-calibration.
+These are generic Program capabilities, not every model's backend menu. The
+modern-flow restrictions above and official native-owner recipes still apply;
+for example, FLUX/Qwen replication does not admit auto/FSDP/HSDP candidates.
 
 The group is owned by the caller when already initialized. Otherwise an
 explicit `trainer.distributed` request initializes only the resources supplied

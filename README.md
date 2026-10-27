@@ -86,18 +86,25 @@ and [the end-to-end tutorial](examples/framework/README.md).
 | SDXL | Official DMD2 four-step and explicitly initialized single-step; dual CLIP/added conditions | [Recipe](recipes/dmd2_sdxl/README.md) |
 | Official Self-Forcing Wan | Native causal chunk rollout, random gradient exit, KV cache, DMD loss and EMA/update clocks | [Recipe](recipes/self_forcing_official/README.md) |
 | LTX-2.5 | Actual LTX AV model/codecs/Gemma with reusable No-GAN flow DMD; full parameters or unmerged LoRA | [Recipe; start with LoRA](recipes/ltx25/README.md) |
+| FLUX.2 klein Base 4B T2I | Native Flux2/Qwen3/VAE; explicit flow DMD with unmerged LoRA | [Recipe](recipes/flux_dmd/README.md) |
+| Original Qwen-Image T2I | Native QwenImage/Qwen2.5-VL/VAE and masked text conditions; explicit flow DMD | [Recipe](recipes/qwen_image_dmd/README.md) |
+| Wan2.2 TI2V-5B T2V subpath | Native Wan/UMT5/VAE; explicit flow DMD, not A14B experts or I2V | [Recipe](recipes/wan22_dmd/README.md) |
+| HunyuanVideo-1.5 T2V | Native Hunyuan15, dual text and temporal VAE; explicit flow DMD | [Recipe](recipes/hunyuan_video_dmd/README.md) |
 
-The new integrations execute actual upstream model classes at bounded small
-CPU configurations, with real backward, source-oracle checks where provided,
-fresh-process recovery and current-model export/generation. Their explicit
-CPU scopes **do not qualify pretrained quality, full-size GPU/distributed
-execution or performance**. There are no bundled model weights or automatic
-Hub downloads. Original DMD2 and LTX sources remain external under their own
-licenses; they are not relicensed as Apache-2.0.
+Start with a family recipe and choose its admitted execution policy; data
+preparation, `train`, `train --resume`, `export` and `generate` use the same
+lifecycle. Actual tiny upstream classes have CPU and scoped FP32 CUDA
+update/restart/output evidence. The common-flow LoRA recipes also expose
+direct single-CUDA immutable sharing; FLUX/Qwen have separately qualified
+post-backward replicas. [Model families](docs/guides/model_families.md) explains
+the choices; the [support matrix](docs/guides/support_matrix.md#additional-model-and-workflow-integrations)
+separates source support, qualified tiny tests and pending pretrained/quality
+gates. There are no bundled weights or automatic Hub downloads. Original DMD2
+and LTX sources remain external under their own licenses, not Apache-2.0.
 
 Official Self-Forcing is **not** the existing W4 LiveWan cross-scale workflow.
 
-**Optimized official workflows:** [DMD2 SD1.5 and official Self-Forcing](docs/guides/official_optimized_training.md) provide source-bound Resident/DDP and FSDP2 configurations through the same `distillctl train` entry. The guide includes baseline/optimized performance, mechanisms, distributed launch and resume. The six native recipes below remain unchanged.
+**Official distributed workflows:** SD1.5 has a [native FSDP2 reference](docs/guides/dmd2_fsdp2_reference.md), distinct from its optimized Resident/DDP combination. Official Self-Forcing has native FSDP2 reference and optimized configurations. [Choose and launch these source-bound recipes](docs/guides/official_optimized_training.md) through `distillctl train`, without a historical plan. Their public distributed GPU qualification is separate from the guide's historical measurements. The six native recipes below remain unchanged.
 The generic flow-DMD recipe is **not** a replacement for either official loss.
 
 ## Six preserved native workloads
