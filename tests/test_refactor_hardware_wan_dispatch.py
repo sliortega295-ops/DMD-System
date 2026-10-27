@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import select
 import shlex
 import subprocess
 import sys
@@ -223,22 +224,54 @@ def test_exited_parent_does_not_leave_a_live_owned_child(tmp_path, exit_code):
                 dispatch.os.kill(child, 9)
 
 
-def test_timeout_cleans_owned_session_without_signalling_another_session(tmp_path):
+def _fixture_child_ready(read_fd, session, *, timeout_seconds):
+    readable, _, _ = select.select([read_fd], [], [], timeout_seconds)
+    assert readable, "CPU cleanup fixture did not report child readiness before startup deadline"
+    fields = dispatch.os.read(read_fd, 128).split()
+    assert len(fields) == 2, "CPU cleanup fixture did not report a child PID and birth"
+    child, birth = map(int, fields)
+    assert dispatch._proc_identity(child) == (birth, session, session)
+    assert dispatch._proc_is_live(child)
+    return child, birth
+
+
+@pytest.mark.parametrize("startup_delay", [0, 0.4], ids=["nominal", "delayed-startup"])
+def test_timeout_cleans_owned_session_without_signalling_another_session(tmp_path, monkeypatch, startup_delay):
     log = tmp_path / "cpu-timeout-fixture.log"
     foreign = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True)
     foreign_identity = dispatch._proc_identity(foreign.pid)
-    program = ("import subprocess,sys,time; from pathlib import Path; "
+    read_fd, write_fd = dispatch.os.pipe()
+    ready_children = []
+    real_wait = subprocess.Popen.wait
+
+    def wait_after_child_ready(proc, timeout=None):
+        if timeout == 0.2:
+            # Startup is separately bounded; the real 200 ms execution wait and
+            # _run_owned's original finally/cleanup/reap path remain unchanged.
+            ready_children.append(_fixture_child_ready(read_fd, proc.pid, timeout_seconds=10))
+        return real_wait(proc, timeout=timeout)
+
+    # Deliberately exceed the execution deadline before the child is spawned.
+    delay = f"time.sleep({startup_delay}); " if startup_delay else ""
+    program = ("import os,subprocess,sys,time; from pathlib import Path; " + delay +
         "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); "
         "birth=Path('/proc/'+str(p.pid)+'/stat').read_text().rsplit(')',1)[1].split()[19]; "
-        "print(p.pid,birth,flush=True); time.sleep(30)")
+        "print(p.pid,birth,flush=True); "
+        f"os.write({write_fd}, f'{{p.pid}} {{birth}}\\n'.encode()); time.sleep(30)")
     try:
-        with pytest.raises(subprocess.TimeoutExpired):
-            dispatch._run_owned([sys.executable, "-c", program], env=dict(dispatch.os.environ),
-                cwd=tmp_path, log_path=log, timeout_seconds=0.2)
-        child, _ = map(int, log.read_text().split())
+        with monkeypatch.context() as patch:
+            patch.setattr(subprocess.Popen, "wait", wait_after_child_ready)
+            with pytest.raises(subprocess.TimeoutExpired) as error:
+                dispatch._run_owned([sys.executable, "-c", program], env=dict(dispatch.os.environ),
+                    cwd=tmp_path, log_path=log, timeout_seconds=0.2, pass_fds=(write_fd,))
+        assert error.value.timeout == 0.2
+        child, birth = map(int, log.read_text().split())
+        assert ready_children == [(child, birth)]
         assert not dispatch._proc_is_live(child)
         assert foreign.poll() is None and dispatch._proc_identity(foreign.pid) == foreign_identity
     finally:
+        dispatch.os.close(read_fd)
+        dispatch.os.close(write_fd)
         if dispatch._proc_identity(foreign.pid) == foreign_identity:
             foreign.terminate()
         foreign.wait(timeout=5)
@@ -247,6 +280,38 @@ def test_timeout_cleans_owned_session_without_signalling_another_session(tmp_pat
             identity = dispatch._proc_identity(child)
             if identity and identity[0] == birth and dispatch._proc_is_live(child):
                 dispatch.os.kill(child, 9)
+
+
+def test_fixture_readiness_deadline_still_cleans_owned_session(tmp_path, monkeypatch):
+    read_fd, write_fd = dispatch.os.pipe()
+    owned = []
+    real_wait = subprocess.Popen.wait
+
+    def wait_without_readiness(proc, timeout=None):
+        if timeout == 0.2:
+            identity = dispatch._proc_identity(proc.pid)
+            assert identity is not None and identity[1:] == (proc.pid, proc.pid)
+            owned.append((proc.pid, identity))
+            _fixture_child_ready(read_fd, proc.pid, timeout_seconds=0.05)
+        return real_wait(proc, timeout=timeout)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(subprocess.Popen, "wait", wait_without_readiness)
+            with pytest.raises(AssertionError, match="child readiness before startup deadline"):
+                dispatch._run_owned([sys.executable, "-c", "import time; time.sleep(30)"],
+                    env=dict(dispatch.os.environ), cwd=tmp_path, log_path=tmp_path / "cpu-not-ready.log",
+                    timeout_seconds=0.2, pass_fds=(write_fd,))
+        assert len(owned) == 1
+        pid, identity = owned[0]
+        assert not dispatch._proc_is_live(pid)
+        assert dispatch._owned_groups(pid, identity[0]) == {}
+    finally:
+        dispatch.os.close(read_fd)
+        dispatch.os.close(write_fd)
+        for pid, identity in owned:
+            if dispatch._proc_identity(pid) == identity and dispatch._proc_is_live(pid):
+                dispatch.os.kill(pid, 9)
 
 
 def _planning_fixture(value, seconds):
