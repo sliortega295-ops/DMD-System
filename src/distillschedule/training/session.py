@@ -508,11 +508,14 @@ def export(config, checkpoint, output):
                 value = components.inference_projection(components, dict(parameters))
                 if not isinstance(value, InferenceProjection):
                     raise ValueError("inference_projection must return InferenceProjection")
+                # A returned provider is ours before local or peer admission.
+                # Invalid close fields must retain their validation error.
+                if (isinstance(value.components, ModelComponents) and value.components is not components
+                        and (value.components.close is None or callable(value.components.close))):
+                    lifetime.enter_context(value.components.managed())
                 return value.validate()
             projection = distributed.checked(project, "inference projection admission")
             _, source = distributed.checked(lambda: load_callable(projection.factory), "inference factory source admission")
-            if projection.components is not components:
-                lifetime.enter_context(projection.components.managed())
             components, factory = projection.components, projection.factory
             parameters = _generation_parameters(projection.parameters)
             parameters.setdefault("seed", config.trainer.get("seed", 0))
