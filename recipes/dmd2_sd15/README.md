@@ -254,3 +254,12 @@ before selecting either.
 ## Optimized distributed configuration
 
 Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.
+
+### FSDP2 reference
+
+`training.fsdp2.json` uses the original SD1.5 GAN workload with world16 FSDP2
+role ownership, native mixed-precision exceptions and the common checkpoint
+lifecycle. It does not enable the Resident optimization bundle. See
+[the FSDP2 guide](../../docs/guides/dmd2_fsdp2_reference.md) for launch, same-topology
+resume and collective export. The source integration is opt-in; public GPU
+lifecycle qualification is tracked separately from the historical measurement.

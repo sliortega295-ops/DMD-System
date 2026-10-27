@@ -103,6 +103,7 @@ where = ["src", "."]
 include = ["distillschedule*", "runtime*"]
 
 [tool.setuptools.package-data]
+"distillschedule.training" = ["dmd2_fsdp_source.json"]
 "distillschedule.training.official_optimizations" = ["source_lock.json"]
 "distillschedule.workloads" = ["catalog.json"]
 "distillschedule.reference.diffsynth_h3_cached" = ["source_manifest.json"]

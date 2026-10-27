@@ -42,11 +42,19 @@ def _clone(value):
 
 def _hash_tensor(value):
     import torch
+    from torch.distributed.tensor import DTensor
+    if isinstance(value, DTensor):
+        # Validate the immutable shard owned by this rank, never all-gather
+        # frozen Teacher weights just to hash a local checkpoint boundary.
+        value = value.to_local()
     return hashlib.sha256(value.detach().contiguous().cpu().reshape(-1).view(torch.uint8).numpy()).hexdigest()
 
 
 def _tensor_identity(value):
-    return dict(shape=list(value.shape), dtype=str(value.dtype), sha256=_hash_tensor(value))
+    from torch.distributed.tensor import DTensor
+    from .tensor_state import layout
+    return dict(shape=list(value.shape), dtype=str(value.dtype), sha256=_hash_tensor(value),
+                **({'local_layout': layout(value)} if isinstance(value, DTensor) else {}))
 
 
 class DMD2Owner:
@@ -121,6 +129,10 @@ class DMD2Owner:
 
     def _step_scheduler(self, role):
         self.schedulers[role].step()
+
+    def _clip_grad_norm(self, parameters):
+        import torch
+        return torch.nn.utils.clip_grad_norm_(parameters, self.args.max_grad_norm)
 
     def __deepcopy__(self, memo):
         # The generic paired path clones whole live owners. A real CUDA model
@@ -538,8 +550,7 @@ class DMD2Owner:
                 generator_loss += generator_loss_dict['gen_cls_loss'] * args.gen_cls_loss_weight
             generator_loss.backward()
             self._event('generator_gradients', {name: p.grad for name, p in model.feedforward_model.named_parameters()})
-            norms['generator_grad_norm'] = float(torch.nn.utils.clip_grad_norm_(
-                model.feedforward_model.parameters(), args.max_grad_norm))
+            norms['generator_grad_norm'] = float(self._clip_grad_norm(model.feedforward_model.parameters()))
             self.optimizers['generator'].step()
             self.generator_updates += 1
             self.optimizers['generator'].zero_grad()
@@ -558,8 +569,7 @@ class DMD2Owner:
             guidance_loss += guidance_loss_dict['guidance_cls_loss'] * args.guidance_cls_loss_weight
         guidance_loss.backward()
         self._event('guidance_gradients', {name: p.grad for name, p in model.guidance_model.named_parameters()})
-        norms['guidance_grad_norm'] = float(torch.nn.utils.clip_grad_norm_(
-            model.guidance_model.parameters(), args.max_grad_norm))
+        norms['guidance_grad_norm'] = float(self._clip_grad_norm(model.guidance_model.parameters()))
         self.optimizers['guidance'].step()
         self.guidance_updates += 1
         self.optimizers['guidance'].zero_grad()
@@ -589,7 +599,6 @@ class DMD2Owner:
 
     def validate_state_dict(self, value):
         import torch
-        from torch.utils._pytree import tree_leaves
         current = self.state_dict()
         require(isinstance(value, dict) and value.keys() == current.keys()
                 and value['schema_version'] == SCHEMA and value['identity'] == self.identity,
@@ -645,12 +654,17 @@ class DMD2Owner:
             lr = base * (min(float(scheduler_step) / float(max(1, warmup)), 1.) if scheduler_step < warmup else 1.)
             require(scheduler['base_lrs'] == [base] and scheduler['_last_lr'] == [lr]
                     and all(group['lr'] == lr for group in saved['param_groups']), 'LR scheduler recurrence changed')
-        require(all(bool(torch.isfinite(tensor).all()) for tensor in tree_leaves(value)
-                    if isinstance(tensor, torch.Tensor) and tensor.is_floating_point()),
-                'nonfinite checkpoint tensor')
+        self._validate_checkpoint_tensors(value)
         require(('cuda' in value['rng']) == (self.device.type == 'cuda'), 'checkpoint native RNG device changed')
         with _device_scope(self.device):
             validate_rng(value['rng'])
+
+    def _validate_checkpoint_tensors(self, value):
+        import torch
+        from torch.utils._pytree import tree_leaves
+        require(all(bool(torch.isfinite(tensor).all()) for tensor in tree_leaves(value)
+                    if isinstance(tensor, torch.Tensor) and tensor.is_floating_point()),
+                'nonfinite checkpoint tensor')
 
     def load_state_dict(self, value):
         self.validate_state_dict(value)  # Validate everything before mutating live tensors.

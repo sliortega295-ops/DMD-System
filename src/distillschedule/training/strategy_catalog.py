@@ -46,6 +46,13 @@ _STRATEGIES = {
 }
 
 _CAPABILITIES = {
+    'official-dmd2-fsdp2-reference': _cap('layout_scheduling',
+        'distillschedule.training.dmd2_fsdp:DMD2FSDP2Owner',
+        'Explicit SD1.5 official DMD2 GAN reference; CUDA world16 A100/Torch2.10, B1/global16 G1/C10/EMA0; native precision and rank-strided inputs',
+        ['Actual block/root FSDP2 after all-rank admission; empty Adam remapped before its first update',
+         'Native classifier module hooks; global gradient norm; same-topology local-shard checkpoints',
+         'No Resident/DDP optimization bundle, fused Adam or clone-based trials'],
+        'MEASURED_BASELINE_SOURCE_ABI; CPU_GLOO_REAL_FSDP_NATIVE_STATE; PUBLIC_WORLD16_GPU_QUALIFICATION_PENDING'),
     'official-dmd2-resident': _cap('state_lifecycle_and_execution',
         'distillschedule.training.official_optimizations.dmd2:DMD2OptimizedOwner',
         'Explicit SD1.5 official DMD2 GAN profile; native world16 B1/global16, G1/C10/EMA0; owner must admit mixed precision, DDP, source and assets',

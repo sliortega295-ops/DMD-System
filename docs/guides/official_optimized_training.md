@@ -27,7 +27,7 @@ framework-integration checks are recorded in the [validation appendix](../status
 
 | Workflow | Reference | Optimized |
 |---|---|---|
-| SD1.5 DMD2 | `recipes/dmd2_sd15/training.gan.json`; FP32 DDP: `training.ddp-fp32.json` | `recipes/dmd2_sd15/training.optimized.json` |
+| SD1.5 DMD2 | FSDP2: `recipes/dmd2_sd15/training.fsdp2.json`; single-device FP32: `training.gan.json`; FP32 DDP: `training.ddp-fp32.json` | `recipes/dmd2_sd15/training.optimized.json` |
 | Official Self-Forcing | `recipes/self_forcing_official/training.json`; native FSDP2: `training.fsdp2-reference.json` | `recipes/self_forcing_official/training.optimized.json` |
 
 Fill in explicit local source, model/asset, prepared-data and output paths.
@@ -46,6 +46,11 @@ conditions and do not load T5. The existing recipe guides describe local asset
 and input manifests:
 [DMD2](../../recipes/dmd2_sd15/README.md),
 [Self-Forcing](../../recipes/self_forcing_official/README.md).
+
+The [DMD2 FSDP2 reference guide](dmd2_fsdp2_reference.md) covers its native
+precision policy, sharded checkpoints and distributed export. This reference
+uses the same native algorithm and workload as the optimized SD1.5 recipe;
+the existing single-device and FP32 DDP recipes remain separate choices.
 
 Check and inspect a request before model construction:
 

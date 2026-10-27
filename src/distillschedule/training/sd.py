@@ -101,17 +101,22 @@ def _place_native_tensors(model, device):
 
 def _arguments(parameters, *, sdxl):
     import torch
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
     require(isinstance(parameters, dict) and set(parameters) <= {
         'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device',
         'native_checkpoint_policy', 'native_role_backend', 'optimization_profile'},
         'unknown model parameters')
     optimized = 'optimization_profile' in parameters
+    fsdp = parameters.get('native_role_backend') == FSDP2_BACKEND
+    if fsdp:
+        from .dmd2_fsdp import admit
+        admit(parameters, sdxl=sdxl)
     if optimized:
         from .official_optimizations.dmd2 import admit
         require(not sdxl, 'optimized profile is SD1.5 only')
         admit(parameters)
     role_backend = parameters.get('native_role_backend', 'single-device-v1')
-    require(type(role_backend) is str and role_backend in ('single-device-v1', 'ddp-fp32-v1'),
+    require(type(role_backend) is str and role_backend in ('single-device-v1', 'ddp-fp32-v1', FSDP2_BACKEND),
             'unsupported native role backend')
     checkpoint_policy = parameters.get('native_checkpoint_policy', 'coupled-v1')
     require(type(checkpoint_policy) is str and checkpoint_policy in ('coupled-v1', 'component-v1'),
@@ -128,7 +133,7 @@ def _arguments(parameters, *, sdxl):
         from .single_device import admit_fp32
         admit_fp32(parameters, require=require, allow_replicated=True)
         require(checkpoint_policy == 'coupled-v1', 'native role backend does not admit singleton owner overrides')
-    else:
+    elif not fsdp:
         _execution_device(parameters.get('device', 'cpu'))
         require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
@@ -152,7 +157,7 @@ def _arguments(parameters, *, sdxl):
             'native FP32 role DDP GAN ownership is not yet qualified')
     require(checkpoint_policy != 'component-v1' or defaults['gradient_checkpointing'] is True,
             'component checkpoint policy requires the original checkpoint-enabled reference')
-    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is optimized
+    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is (optimized or fsdp)
             and defaults['tiny_vae'] is False and defaults['initialie_generator'] is True
             and defaults['revision'] is None, 'unsupported model initialization/precision override')
     for key in ('backward_simulation', 'cls_on_clean_image', 'denoising', 'gradient_checkpointing',
@@ -195,16 +200,20 @@ def _arguments(parameters, *, sdxl):
     if optimized:
         from .official_optimizations.dmd2 import validate_settings
         validate_settings(SimpleNamespace(**defaults))
+    if fsdp:
+        from .dmd2_fsdp import validate_settings
+        validate_settings(SimpleNamespace(**defaults))
     defaults['model_id'] = str(Path(parameters['model_id']).expanduser().resolve(strict=True))
     return SimpleNamespace(**defaults)
 
 
 def _build(parameters, *, sdxl):
     import torch
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
     args = _arguments(parameters, sdxl=sdxl)
     device = _execution_device(parameters.get('device', 'cpu'))
     seed = parameters.get('seed', 0)
-    if parameters.get('native_role_backend') == 'ddp-fp32-v1' or 'optimization_profile' in parameters:
+    if parameters.get('native_role_backend') in ('ddp-fp32-v1', FSDP2_BACKEND) or 'optimization_profile' in parameters:
         seed += torch.distributed.get_rank()  # original native Trainer set_seed(seed + process_index)
     with _construction_rng(device, seed):
         return _build_placed(parameters, args, device, sdxl=sdxl)
@@ -276,11 +285,29 @@ def _build_placed(parameters, args, device, *, sdxl):
             precision='NATIVE_MIXED_EXCEPTIONS_FP32_MASTER',
             placement_limit='SOURCE_BOUND_A100_WORLD16_NATIVE_MIXED_ROLE_REPLICAS_NO_OWNER_OVERRIDES')
         metadata['native_collective']['backend'] = 'ddp-native-mixed-v1'
-    owner = owner_type(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
+    if parameters.get('native_role_backend') == FSDP2_BACKEND:
+        from .dmd2_fsdp import DMD2FSDP2Owner, source_identity
+        owner_type = DMD2FSDP2Owner
+        metadata.update(precision='NATIVE_MIXED_EXCEPTIONS_FP32_MASTER_REDUCE',
+            placement=dict(device=device.type, layout='NATIVE_FSDP2_FULL16', distributed=True, amp=False),
+            native_collective=dict(backend=FSDP2_BACKEND, world_size=torch.distributed.get_world_size(),
+                seed=parameters.get('seed', 0), native_rng='SEED_PLUS_RANK', scheduler='NATIVE_ITERATION_TIMES_WORLD',
+                initial_sync='NATIVE_DDP_RANK0_ROLE_WEIGHTS_AND_BUFFERS', reshard_after_forward=True,
+                cpu_offload=False), fsdp_source=source_identity(),
+            placement_limit='SOURCE_BOUND_A100_WORLD16_NATIVE_FSDP2_NO_OWNER_OVERRIDES',
+            cuda_trial_snapshot='UNAVAILABLE_NATIVE_FSDP2_CLONE_OR_CALIBRATION')
+    try:
+        owner = owner_type(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
+    except BaseException:
+        scope = getattr(model, '_dmd2_classifier_call_scope', None)
+        if scope is not None:
+            scope.close()
+        raise
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),
         generate=generate, decode=_decoder(model.vae), inference_projection=project_current_generator,
-        admit_training=admit_training, collect_metrics=collect_metrics).validate()
+        admit_training=admit_training, collect_metrics=collect_metrics, close=getattr(owner, 'close', None)).validate()
 
 
 def build_sd15(parameters):
@@ -368,6 +395,7 @@ def _plain(value):
 
 
 def _inference_parameters(owner):
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
     model, args = owner.model, owner.args
     text = model.text_encoder
     architecture = dict(unet=_plain(dict(model.feedforward_model.config)), vae=_plain(dict(model.vae.config)),
@@ -388,7 +416,8 @@ def _inference_parameters(owner):
         geometry=dict(resolution=args.resolution, latent_resolution=args.latent_resolution, latent_channel=4),
         steps=args.num_denoising_step if args.sdxl else 1,
         conditioning_timestep=args.conditioning_timestep, seed=0)
-    if owner.identity.get('optimization_profile') is not None:
+    if (owner.identity.get('optimization_profile') is not None
+            or owner.identity.get('native_collective', {}).get('backend') == FSDP2_BACKEND):
         result['precision'] = dict(generator='float32', text_encoder='float32', vae='float16')
     return result
 

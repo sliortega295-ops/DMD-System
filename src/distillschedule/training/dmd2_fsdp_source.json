@@ -1,0 +1,15 @@
+{
+  "schema_version": "distillschedule.dmd2_fsdp_reference_source.v1",
+  "origin": "official_workload_speedup_20261025/r2_fsdp2_baselines/scripts/dmd2_fsdp2_backend_v2.py",
+  "origin_file_sha256": "d6f18fd90bc7d20cd1f723751976d2e73a922fdb8de83fe7a4cdb905e9debd1d",
+  "target": "official_optimizations/_native/dmd2_fsdp2_backend.py",
+  "integrated_sha256": "1d2e2dbb3bf6ccbecda013d14310fb073119237da07f4b6459aca3015dbc22f4",
+  "definitions": {
+    "require": "6dede176307c5f42929493b8cb6404f8a161ef4b0a471e5ff9251647d210f6b5",
+    "shard_tree": "e0fa743d1bcacd84a4bc021d4513587391fe5e3d4fc37f55d8043b3d517fedcd",
+    "bind_classifier_call": "10d70bc2929b75a2cc5280c92b94b436fdddaadf5f5cb54c009a58182581e71a"
+  },
+  "benchmark_loop_imported": false,
+  "historical_run": "official_dmd2_fsdp2_reference_r2",
+  "integration_gpu_validation": "NOT_RUN"
+}

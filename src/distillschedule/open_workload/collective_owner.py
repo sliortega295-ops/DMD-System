@@ -116,7 +116,8 @@ def admit(workload):
         'invalid native collective schema, world, device or shared source/layout identity')
     if spec['backend'] == 'fsdp2':
         from distillschedule.training.self_forcing_fsdp import SelfForcingFSDP2Owner
-        _require(type(owner) is SelfForcingFSDP2Owner and device.type == 'cuda'
+        from distillschedule.training.dmd2_fsdp import DMD2FSDP2Owner
+        _require(type(owner) in (SelfForcingFSDP2Owner, DMD2FSDP2Owner) and device.type == 'cuda'
                  and dist.get_world_size() == 16,
                  'native FSDP2 protocol requires its exact versioned CUDA world16 owner')
     return dict(owner_key=key, spec=spec, **source)

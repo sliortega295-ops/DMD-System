@@ -77,6 +77,12 @@ jobs:
                 --require test_explicit_cpu_rng_capture_and_seed_do_not_inspect_cuda \
                 --require test_real_native_guidance_bundle_rebuilds_after_commits_and_drains \
                 --require test_mixed_vae_inference_projection_round_trip \
+                --require test_real_cpu_fsdp_local_shards_and_adam_checkpoint \
+                --require test_actual_native_sd15_local_shard_continuation \
+                --require test_actual_native_classifier_uses_hooks_with_identical_loss_gradient_rng \
+                --require test_actual_fsdp_factory_admits_before_sharding_and_cleans_failures \
+                --require 'test_actual_factory_managed_scope_closes_real_native_hooks[False]' \
+                --require 'test_actual_factory_managed_scope_closes_real_native_hooks[True]' \
                 --require 'test_actual_owner_host_checkpoint_restores_moments_and_parameter_ownership[sd15]' \
                 --require 'test_actual_owner_host_checkpoint_restores_moments_and_parameter_ownership[sdxl]' \
                 --require 'test_direct_source_native_iterations_match_owner_losses_gradients_cache_and_clocks[sd15]' \
