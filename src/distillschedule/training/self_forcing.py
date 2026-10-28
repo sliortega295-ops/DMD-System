@@ -559,8 +559,13 @@ def build_self_forcing(components, feeds, parameters, cycle, seed):
 
 
 def collect_metrics(outputs):
-    result = {f'native_{index}/{name}': value for index, row in
-            enumerate(outputs['self_forcing.native_cycle']['iterations']) for name, value in row['losses'].items()}
+    rows = outputs['self_forcing.native_cycle']['iterations']
+    result = {f'native_{index}/{name}': value for index, row in enumerate(rows)
+              for name, value in row['losses'].items()}
+    for index, row in enumerate(rows):
+        for name in ('generator_grad_norm', 'critic_grad_norm'):
+            if name in row:
+                result[f'native_{index}/{name}'] = row[name]
     effects = outputs['self_forcing.native_cycle'].get('cache_lifetime_effects')
     if effects is not None:
         result.update({f'cache_lifetime/releases_{role}': float(count)

@@ -434,8 +434,13 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
 
 def collect_metrics(outputs):
     rows = outputs['dmd2.native_cycle']['iterations']
-    return {f'native_{index}/{name}': value for index, row in enumerate(rows)
-            for name, value in row['losses'].items()}
+    result = {f'native_{index}/{name}': value for index, row in enumerate(rows)
+              for name, value in row['losses'].items()}
+    for index, row in enumerate(rows):
+        for name in ('generator_grad_norm', 'guidance_grad_norm'):
+            if name in row:
+                result[f'native_{index}/{name}'] = row[name]
+    return result
 
 
 def _generation_row(feeds):
