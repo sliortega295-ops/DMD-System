@@ -145,6 +145,8 @@ def _checkpoint_policy(identity):
 
 
 def validate_progress(header, binding):
+    from distillschedule.data.helios_epoch_inputs import validate_cursor
+    validate_cursor(header, binding["stream"])
     cycle = header["cycle"]
     count = len(binding["stream"]["cohorts"])
     within_stream = type(cycle) is int and (cycle <= count if binding.get("native_output") is not None else cycle < count)
@@ -341,6 +343,8 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
         initial_versions=expected_versions(start), initial_curriculum_versions=logical_versions(start), latest_checkpoint=resume,
         numerical_status="REVIEW", native_GPU_continuation="NOT_RUN", capacity_validation="NOT_RUN",
         formal_timing_eligible=False, claimable_speedup=False, generation="UNSUPPORTED", export="UNSUPPORTED")
+    from distillschedule.data.helios_epoch_inputs import receipt as input_receipt
+    result.update(input_receipt(stream, cycle=start))
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
     for index in range(start, end):
         entry, task = stream["cohorts"][index], inputs.GANCohortTask(index)
@@ -377,6 +381,7 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
                 "peak_live_rollouts":observer.peak_live, "retained_rollouts":len(observer.live), "status":"PASS"})
             result.update(status="PARTIAL_ORIGINAL_HELIOS_GAN_TRAINING", completed_cycles=index + 1,
                           next_cohort=index + 1, final_versions=versions)
+            result.update(input_receipt(stream, cycle=index + 1))
             saved = None
             if cadence and ((index + 1) % cadence == 0 or index + 1 == len(stream["cohorts"])):
                 path = Path(binding["config"].trainer["output_dir"]) / "checkpoints" / f"cycle-{index+1:06d}"
@@ -422,6 +427,8 @@ def run_training(config, *, admit, native_output=None):
             "source_head":source["identity"]["head"], "source_fingerprint":admitted["stream"]["identity"]["source_fingerprint"],
             "stream_sha256":admitted["stream"]["stream_sha256"], "assets":admitted["assets"]["assets"],
             "execution_policy":admitted["selected"], "bootstrap_logical_hash":admitted["bootstrap"]["logical_manifest_hash"]}
+        from distillschedule.data.helios_epoch_inputs import identity_binding
+        identity.update(identity_binding(admitted["stream"]))
         binding = {"config":config, "stream":admitted["stream"], "assets":admitted["assets"], "identity":identity,
                    "gan_stream":True, "portable_reference":True, "implementation":admitted["implementation"], **ownership}
         if native_output is not None:

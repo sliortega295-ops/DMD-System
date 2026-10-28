@@ -237,6 +237,8 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
         "reference_policy": admitted["selected"],
         "bootstrap_logical_hash": admitted["bootstrap"]["logical_manifest_hash"] if portable else bootstrap["DISTILLSCHEDULE_LOGICAL_STEP10_HASH"],
         "bootstrap_trace_hash": stream["cohorts"][0]["trace_hash"] if portable else bootstrap["DISTILLSCHEDULE_TRACE_BUNDLE_HASH"]}
+    from distillschedule.data.helios_epoch_inputs import identity_binding
+    identity.update(identity_binding(stream))
     if optimized:
         identity["schema_version"] = "distillschedule.helios_safe_stream_identity.v1"
         identity["execution_policy"] = identity.pop("reference_policy")

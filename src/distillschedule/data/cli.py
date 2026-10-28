@@ -32,6 +32,10 @@ def main(argv=None):
     gan.add_argument("--sources", type=Path, required=True)
     gan.add_argument("--training-config", type=Path, required=True)
     gan.add_argument("--output", type=Path, required=True)
+    from .helios_epoch_inputs import EPOCH_POLICY as HELIOS_EPOCH_POLICY
+    for command in (helios, gan):
+        command.add_argument("--input-policy", choices=(HELIOS_EPOCH_POLICY,),
+                             help="opt in to a finite native feature pool; default v1 forbids reuse")
     reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
     reference.add_argument("--sources", type=Path, required=True)
     reference.add_argument("--output", type=Path, required=True)
@@ -76,16 +80,18 @@ def main(argv=None):
                 from distillschedule.search.helios_request import OriginalHeliosRequest
                 from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
                 values = json.loads(args.sources.read_text())
-                if not isinstance(values, list):
+                if args.input_policy is None and not isinstance(values, list):
                     raise ValueError("explicit source cohort list required")
-                result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
-                                        args.training_config, args.output)
+                sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
+                result = prepare_stream(OriginalHeliosRequest(), sources, args.training_config, args.output,
+                                        input_policy=args.input_policy)
             elif args.command == "prepare-helios-gan-stream":
                 from distillschedule.training.helios_gan_inputs import HeliosCohortSources, prepare_stream
                 values = json.loads(args.sources.read_text())
-                if not isinstance(values, list):
+                if args.input_policy is None and not isinstance(values, list):
                     raise ValueError("explicit source cohort list required")
-                result = prepare_stream([HeliosCohortSources.from_dict(s) for s in values], args.training_config, args.output)
+                sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
+                result = prepare_stream(sources, args.training_config, args.output, input_policy=args.input_policy)
             elif args.command == "prepare-helios-gan-reference":
                 from .helios_native_inputs import prepare_inputs
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))

@@ -53,6 +53,9 @@ final clocks are G102/C510/EMA900 and curriculum clocks G300/C1500/EMA900.
    globally distinct; changing a seed or copying bytes is not fresh input.
    For the agreed one-seed acceptance, use the same seed in all 100 cohorts;
    cohort/rank/step/phase retain their own deterministic native streams.
+   Alternatively, use the explicit [finite feature-pool epoch policy](../../docs/guides/helios_feature_epochs.md)
+   to reuse at least 80 source records across cycles without copying features
+   or replaying captured noise. The list format above remains the default.
 
 Generate a complete, public configuration without copying the template or its
 personal-path text. This small helper removes **only** those five unused system

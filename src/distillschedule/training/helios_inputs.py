@@ -195,19 +195,30 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
         "dtype": "bfloat16", "dfake_gen_update_ratio": 5})
 
 
-def prepare_stream(request, sources, training_config, output):
+def prepare_stream(request, sources, training_config, output, *, input_policy=None):
     """Immutable explicit finite stream. Failed/incomplete output is preserved."""
     from runtime.operation_trace import write_operation_trace_bundle_manifest
     from distillschedule.strategies.wan_capture import read_training_config
-    require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= MAX_COHORTS
-            and all(type(s) is HeliosCohortSources for s in sources), f"2..{MAX_COHORTS} typed cohorts required", path="helios.inputs")
-    tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
-    _require_fresh_cohorts(sources)
-    config = read_training_config(training_config)
-    inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
-    _require_fresh_cohorts(sources, inventories)
+    from distillschedule.data.helios_epoch_inputs import build_cohorts, cohort_identity
+    if input_policy is None:
+        require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= MAX_COHORTS
+                and all(type(s) is HeliosCohortSources for s in sources), f"2..{MAX_COHORTS} typed cohorts required", path="helios.inputs")
+        tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
+        _require_fresh_cohorts(sources)
+        config = read_training_config(training_config)
+        inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
+        _require_fresh_cohorts(sources, inventories)
+        epoch_policy = None
+    else:
+        # The task validator still owns the exact native W2 request.
+        HeliosCohortTask(0, request)
+        sources, inventories, epoch_policy = build_cohorts(sources, task_type=HeliosCohortTask, input_policy=input_policy)
+        tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
+        config = read_training_config(training_config)
     identity = {"request": request.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
                 "training_config_sha256": file_sha256(Path(training_config)), "source_fingerprint": source_fingerprint()}
+    if epoch_policy is not None:
+        identity["input_policy"] = epoch_policy
     root = Path(output).resolve(); root.mkdir(parents=True, exist_ok=False)
     write_new_json(root / "inputs.json", identity)
     entries = []
@@ -216,11 +227,12 @@ def prepare_stream(request, sources, training_config, output):
         ranks = []
         for rank in range(16):
             trace = capture_rank(task, source, inventory, config, rank=rank, output=directory/f"rank_{rank:02d}",
-                provenance={k: identity[k] for k in ("training_config_sha256", "source_fingerprint")})
+                provenance={**{k: identity[k] for k in ("training_config_sha256", "source_fingerprint")},
+                            **cohort_identity(identity, task.index)})
             ranks.append({"rank": rank, "path": f"rank_{rank:02d}", "trace_hash": trace.trace_hash})
         bundle = write_operation_trace_bundle_manifest(directory, ranks)
         entries.append({"index": task.index, "task": task.to_dict(), "trace_bundle": str(directory),
-                        "trace_hash": bundle["bundle_hash"]})
+                        "trace_hash": bundle["bundle_hash"], **cohort_identity(identity, task.index)})
     require(file_sha256(Path(training_config)) == identity["training_config_sha256"]
             and source_fingerprint() == identity["source_fingerprint"]
             and all(file_sha256(Path(row["path"])) == row["sha256"] for rows in inventories for row in rows),
@@ -243,12 +255,19 @@ def load_stream(path, *, cycles, verify_rank=None):
     require(type(cycles) is int and 2 <= cycles <= MAX_COHORTS
             and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
             and identity["source_fingerprint"] == source_fingerprint(), "stream cycles/source changed", path="helios.inputs")
-    _require_fresh_cohorts(sources, identity["inventory"])
+    from distillschedule.data.helios_epoch_inputs import validate_identity, cohort_identity
+    if "input_policy" in identity:
+        validate_identity(identity, task_type=HeliosCohortTask)
+    else:
+        _require_fresh_cohorts(sources, identity["inventory"])
     for index, entry in enumerate(doc["cohorts"]):
         task = HeliosCohortTask(index, request)
         require(entry["index"] == index and entry["task"] == task.to_dict()
                 and Path(entry["trace_bundle"]).resolve() == path.parent / f"cohort-{index:04d}",
                 "cohort order/path/task changed", path="helios.inputs")
+        expected_policy = cohort_identity(identity, index)
+        require({k: entry[k] for k in ("input_policy",) if k in entry} == expected_policy,
+                "cohort policy/draw identity changed", path="helios.inputs")
         trace = load_cohort(task, entry["trace_bundle"], expected_hash=entry["trace_hash"])
         rows = identity["inventory"][index]
         require(len(rows) == 80 and [(r["step"], r["rank"]) for r in rows] ==
@@ -258,7 +277,7 @@ def load_stream(path, *, cycles, verify_rank=None):
             require(source == {"source_fingerprint": identity["source_fingerprint"],
                 "training_config_sha256": identity["training_config_sha256"], "rank": rank,
                 "samples": [r for r in rows if r["rank"] == rank], "seed": sources[index].seed, "cohort": index,
-                "rng_scope": "new_native_CPU_streams_not_prior_training_rng_continuation"},
+                "rng_scope": "new_native_CPU_streams_not_prior_training_rng_continuation", **expected_policy},
                 "rank sample/RNG provenance differs", path="helios.inputs")
         require([r["path"] for r in rows] == [name for row in sources[index].to_dict()["samples"] for name in row],
                 "sample inventory differs from explicit sources", path="helios.inputs")

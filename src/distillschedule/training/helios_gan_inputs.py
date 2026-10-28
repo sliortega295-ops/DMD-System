@@ -184,18 +184,27 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
         "dtype": "bfloat16", "dfake_gen_update_ratio": 5})
 
 
-def prepare_stream(sources, training_config, output):
+def prepare_stream(sources, training_config, output, *, input_policy=None):
     from runtime.operation_trace import write_operation_trace_bundle_manifest
-    require(isinstance(sources, (list, tuple)) and len(sources) >= 2
-            and all(type(s) is HeliosCohortSources for s in sources), "at least two explicit native GAN cohorts required",
-            path="helios.gan.inputs")
-    config = read_config(training_config)
-    tasks = [GANCohortTask(i) for i in range(len(sources))]
-    _require_fresh_cohorts(sources)
-    inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
-    _require_fresh_cohorts(sources, inventories)
+    from distillschedule.data.helios_epoch_inputs import build_cohorts, cohort_identity
+    if input_policy is None:
+        require(isinstance(sources, (list, tuple)) and len(sources) >= 2
+                and all(type(s) is HeliosCohortSources for s in sources), "at least two explicit native GAN cohorts required",
+                path="helios.gan.inputs")
+        config = read_config(training_config)
+        tasks = [GANCohortTask(i) for i in range(len(sources))]
+        _require_fresh_cohorts(sources)
+        inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
+        _require_fresh_cohorts(sources, inventories)
+        epoch_policy = None
+    else:
+        sources, inventories, epoch_policy = build_cohorts(sources, task_type=GANCohortTask, input_policy=input_policy)
+        tasks = [GANCohortTask(i) for i in range(len(sources))]
+        config = read_config(training_config)
     identity = {"request": REQUEST.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
                 "training_config_sha256": file_sha256(Path(training_config)), "source_fingerprint": source_fingerprint()}
+    if epoch_policy is not None:
+        identity["input_policy"] = epoch_policy
     root = Path(output).resolve(); root.mkdir(parents=True, exist_ok=False)
     write_new_json(root / "inputs.json", identity)
     entries = []
@@ -204,11 +213,13 @@ def prepare_stream(sources, training_config, output):
         ranks = []
         for rank in range(16):
             trace = capture_rank(task, source, inventory, config, rank=rank, output=directory / f"rank_{rank:02d}",
-                provenance={k: identity[k] for k in ("source_fingerprint", "training_config_sha256")})
+                provenance={**{k: identity[k] for k in ("source_fingerprint", "training_config_sha256")},
+                            **cohort_identity(identity, task.index)})
             ranks.append({"rank": rank, "path": f"rank_{rank:02d}", "trace_hash": trace.trace_hash})
             del trace
         bundle = write_operation_trace_bundle_manifest(directory, ranks)
-        entries.append({"index": task.index, "task": task.to_dict(), "trace_bundle": str(directory), "trace_hash": bundle["bundle_hash"]})
+        entries.append({"index": task.index, "task": task.to_dict(), "trace_bundle": str(directory), "trace_hash": bundle["bundle_hash"],
+                        **cohort_identity(identity, task.index)})
     require(identity["source_fingerprint"] == source_fingerprint()
             and identity["training_config_sha256"] == file_sha256(Path(training_config))
             and all(file_sha256(Path(row["path"])) == row["sha256"] for rows in inventories for row in rows),
@@ -344,12 +355,19 @@ def load_stream(path, *, cycles, verify_rank=None):
     require(type(cycles) is int and cycles >= 2 and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
             and identity["request"] == REQUEST.to_dict() and identity["source_fingerprint"] == source_fingerprint(),
             "GAN stream cycles/source/request changed", path="helios.gan.inputs")
-    _require_fresh_cohorts(sources, identity["inventory"])
+    from distillschedule.data.helios_epoch_inputs import validate_identity, cohort_identity
+    if "input_policy" in identity:
+        validate_identity(identity, task_type=GANCohortTask)
+    else:
+        _require_fresh_cohorts(sources, identity["inventory"])
     for index, entry in enumerate(doc["cohorts"]):
         task = GANCohortTask(index)
         require(entry["index"] == index and entry["task"] == task.to_dict()
                 and Path(entry["trace_bundle"]).resolve() == path.parent / f"cohort-{index:04d}",
                 "GAN cohort order/path/task changed", path="helios.gan.inputs")
+        expected_policy = cohort_identity(identity, index)
+        require({k: entry[k] for k in ("input_policy",) if k in entry} == expected_policy,
+                "cohort policy/draw identity changed", path="helios.inputs")
         trace = load_cohort(task, entry["trace_bundle"], expected_hash=entry["trace_hash"])
         rows = identity["inventory"][index]
         require(len(rows) == 80 and [(r["step"], r["rank"]) for r in rows] ==
@@ -360,7 +378,7 @@ def load_stream(path, *, cycles, verify_rank=None):
             require(control.manifest["source"] == {"source_fingerprint": identity["source_fingerprint"],
                 "training_config_sha256": identity["training_config_sha256"], "rank": rank,
                 "samples": [r for r in rows if r["rank"] == rank], "seed": sources[index].seed, "cohort": index,
-                "rng_scope": "new_native_CPU_streams_not_prior_training_rng_continuation"},
+                "rng_scope": "new_native_CPU_streams_not_prior_training_rng_continuation", **expected_policy},
                 "GAN source/RNG provenance differs", path="helios.gan.inputs")
         if verify_rank is not None:
             validate_rank_payload(trace, verify_rank, sources[index])

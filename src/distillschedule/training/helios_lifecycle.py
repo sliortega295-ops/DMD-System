@@ -257,6 +257,8 @@ def seed_original_runtime(*, torch, rank):
 
 
 def validate_progress(header, binding):
+    from distillschedule.data.helios_epoch_inputs import validate_cursor
+    validate_cursor(header, binding["stream"])
     count = len(binding["stream"]["cohorts"])
     cycle = header["cycle"]
     within_stream = type(cycle) is int and (cycle <= count if binding.get("native_output") is not None else cycle < count)
@@ -347,6 +349,8 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         initializations=1, same_process=True, initial_versions=expected_versions(start),
         numerical_status="NOT_RUN", formal_timing_eligible=False, claimable_speedup=False,
         generation="UNSUPPORTED", export="UNSUPPORTED")
+    from distillschedule.data.helios_epoch_inputs import receipt as input_receipt
+    result.update(input_receipt(stream, cycle=start))
     if optimized:
         result.update(schema_version="distillschedule.original_helios_safe_stream.v1", mode="manual",
             candidate_id=implementation.id, preset=safe.PRESET_ID,
@@ -397,6 +401,7 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         result["cycles"].append(row)
         result.update(status="PARTIAL_ORIGINAL_HELIOS_TRAINING", final_versions=versions,
                       completed_cycles=index + 1, next_cohort=index + 1)
+        result.update(input_receipt(stream, cycle=index + 1))
         saved = None
         if cadence and ((index + 1) % cadence == 0 or index + 1 == len(stream["cohorts"])):
             path = Path(binding["config"].trainer["output_dir"]) / "checkpoints" / f"cycle-{index+1:06d}"
