@@ -61,6 +61,14 @@ conversion, not a change to runtime precision. Allow memory for the concrete
 model, the current shard and conversion temporaries; parameter-count admission
 alone is not a total host-memory or multi-role capacity estimate.
 
+Original LTX safetensors use the upstream loader and model builder with one
+load-scoped weight registry. Validation and construction share one payload;
+exact comparisons cast one tensor at a time, and the registry is cleared before
+training owns independent tensor storage. This avoids loading the checkpoint
+twice or keeping another full FP32 validation copy. It does not shard the
+original single-file checkpoint: its payload, the constructed model and the
+largest conversion/copy temporary must still fit in host memory.
+
 See the runnable source-specific guides:
 
 - [SD1.5 DMD2](../../recipes/dmd2_sd15/README.md)

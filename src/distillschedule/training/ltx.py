@@ -109,6 +109,15 @@ def _original_architecture(metadata):
     return architecture
 
 
+def _matches_original_weight(handle, raw_name, operations, live):
+    """Keep independent checkpoint views and validation casts tensor-local."""
+    name = operations.apply_to_key(raw_name)
+    if name is None:
+        return True
+    return all(torch.equal(live[key], value.float()) for key, value in
+               operations.apply_to_key_value(name, handle.get_tensor(raw_name)))
+
+
 def load_original_transformer(source, checkpoint, expected_sha256, *, max_parameters, dtype_policy):
     """Strict ORIGINAL LTX safetensors import via all four actual native owners.
 
@@ -157,9 +166,12 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
     require(json.loads(raw_metadata['config'], object_pairs_hook=unique) == metadata['config'],
             'original metadata parser/config identity disagreement')
     require(selected and len(selected) == len(set(selected)), 'original checkpoint has no model weights or colliding selected keys')
+    # This registry belongs to one load, never another role or training cycle.
+    # The native builder can reuse the payload already admitted below.
+    registry = registry_api.ModelRegistry(cache_models=False, cache_weights=True)
     builder = builder_api.SingleGPUModelBuilder(model_class_configurator=configurator.LTXModelConfigurator,
         model_path=str(path), model_sd_ops=operations, model_loader=loader, loras=(),
-        registry=registry_api.ModelRegistry(cache_models=False, cache_weights=False))
+        registry=registry)
     # The native internal meta shell is only a sizing/layout witness; it is
     # NEVER returned as a constructed model or accepted as usable weights.
     shell = builder.meta_model(metadata, ())
@@ -177,21 +189,32 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
                 header = handle.get_slice(raw_name)
                 require(tuple(header.get_shape()) == tuple(expected_layout[name].shape)
                         and header.get_dtype() in permitted_header, 'original selected weight header shape/dtype mismatch: ' + name)
-    state = loader.load(str(path), sd_ops=operations, device=torch.device('cpu')).sd
+    payload = loader.load(str(path), sd_ops=operations, device=torch.device('cpu'))
+    state = payload.sd
     require(state and set(state) == set(shell.state_dict()) and len(selected) == len(state),
             'original checkpoint selected keys are incomplete or unexpected')
     allowed = (torch.float32,) if dtype_policy == 'strict_fp32' else (torch.float32, torch.float16, torch.bfloat16)
     require(all(type(t) is torch.Tensor and not t.is_meta and t.numel() > 0 and t.dtype in allowed
                 and t.layout == torch.strided and bool(torch.isfinite(t).all()) for t in state.values()),
             'original native weights must be finite nonempty non-meta tensors with explicit permitted precision')
-    expected = {name: tensor.float() for name, tensor in state.items()}
-    _validate_layout(shell.state_dict(), expected, 'original LTX checkpoint')
-    native = builder.build(device=torch.device('cpu'), dtype=torch.float32 if dtype_policy != 'strict_fp32' else None)
-    live = native.state_dict()
-    require(all(not t.is_meta and t.numel() > 0 and bool(torch.isfinite(t).all()) for t in
-                (*native.parameters(), *native.buffers())), 'original native builder returned a meta/uninitialized/nonfinite shell')
-    _validate_layout(shell.state_dict(), live, 'original native built model')
-    require(all(torch.equal(live[name], expected[name]) for name in expected), 'original builder did not load every exact selected weight')
+    for name, tensor in state.items():
+        _validate_layout(expected_layout[name], tensor.to(device='meta', dtype=torch.float32), 'original LTX checkpoint.' + name)
+    registry.add([str(path)], operations, payload)
+    try:
+        native = builder.build(device=torch.device('cpu'), dtype=torch.float32 if dtype_policy != 'strict_fp32' else None)
+        live = native.state_dict()
+        require(all(not t.is_meta and t.numel() > 0 and bool(torch.isfinite(t).all()) for t in
+                    (*native.parameters(), *native.buffers())), 'original native builder returned a meta/uninitialized/nonfinite shell')
+        _validate_layout(expected_layout, live, 'original native built model')
+        # An independent file view also detects a builder that mutates its
+        # cached input. Compare one cast at a time, not another full FP32 model.
+        with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
+            require(all(_matches_original_weight(handle, name, operations, live) for name in raw_keys),
+                    'original builder did not load every exact selected weight')
+    finally:
+        registry.clear()
+    # Do not retain checkpoint/cast storage while replacing each tensor below.
+    del state, payload, live, tensor
     # The native builder assigns safetensors-backed views. Their file offsets
     # need not have Torch allocator alignment, and CPU GEMV can then use a
     # different reduction path from the reconstructed current-G model. Own the
@@ -210,7 +233,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
     source.validate()
     receipt = dict(format='ORIGINAL_LTX_2_5_SAFETENSORS', checkpoint_sha256=expected_sha256,
         metadata_sha256=fingerprint(metadata), model_version=metadata['model_version'],
-        parameter_count=count, strict_selected_key_count=len(state), unrelated_key_count=len(raw_keys) - len(selected),
+        parameter_count=count, strict_selected_key_count=len(selected), unrelated_key_count=len(raw_keys) - len(selected),
         dtype_policy=dtype_policy, cpu_max_parameters=max_parameters, loras=[],
         storage_ownership='INDEPENDENT_TORCH_STORAGE_PRESERVE_PARAMETER_OBJECTS',
         loader=type(loader).__module__ + '.' + type(loader).__name__,
