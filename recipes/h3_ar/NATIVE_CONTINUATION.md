@@ -67,3 +67,14 @@ authorized resource allocation.
 Only complete-cycle, same-topology restart is supported. There is no mid-cycle,
 elastic or failed-update replay. The frozen 33B backbone is reconstructed from
 assets, not duplicated in checkpoints. Never restore untrusted native pickles.
+
+## Current Student output
+
+Use the same training identity with an explicit output policy to export a
+complete intermediate or terminal checkpoint. The native owner restores all
+state but executes zero additional cycles. See the
+[native export and independent inference guide](../../docs/guides/h3_ar_native_inference.md)
+and `export.native.template.json`. Independent generation accepts new original
+AV conditions; [decode](../../docs/guides/h3_audio_video_decode.md) uses the actual
+video/audio codecs as a separate step. Native GPU output qualification and
+pretrained quality remain separate from source/CPU acceptance.

@@ -1,0 +1,74 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W6"
+  },
+  "data": {
+    "input_kind": "original_h3_ar_fresh_stream.v1",
+    "prepared": "REPLACE_WITH_PREPARED_FINITE_STREAM.json"
+  },
+  "algorithm": {
+    "name": "original_diffsynth_h3_ar"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "preset": "h3_ar.zero3_ap_stream.v1",
+    "task": "../../configs/distillschedule/original_h3_ar/w6_reference.json",
+    "assets": "REPLACE_WITH_EXPLICIT_NATIVE_ASSETS.json",
+    "capacity_policy": "REPLACE_WITH_EXPLICIT_NATIVE_CAPACITY.json"
+  },
+  "trainer": {
+    "cycles": 100,
+    "seed": 42,
+    "checkpoint_every": 50,
+    "output_dir": "REPLACE_WITH_NEW_OUTPUT_OWNER_DIRECTORY",
+    "export": {
+      "schema_version": "distillschedule.h3_ar_native_output_request.v1",
+      "seed": 123,
+      "geometry": {
+        "video_shape": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ],
+        "audio_shape": [
+          2,
+          32,
+          93
+        ],
+        "prompt_shape": [
+          232,
+          5120
+        ],
+        "reference_video_shape": [
+          1,
+          24,
+          17,
+          48,
+          84
+        ],
+        "reference_audio_shape": [
+          2,
+          32,
+          93
+        ]
+      },
+      "consolidation_budget": {
+        "max_parameters": 40000000000,
+        "max_consolidated_bytes": 274877906944,
+        "host_reserve_bytes": 34359738368,
+        "device_reserve_bytes": 2147483648
+      },
+      "inference_budget": {
+        "max_parameters": 40000000000,
+        "max_loaded_bytes": 549755813888,
+        "max_input_elements": 64000000,
+        "max_attention_elements": 100000000000,
+        "host_reserve_bytes": 34359738368
+      }
+    }
+  }
+}

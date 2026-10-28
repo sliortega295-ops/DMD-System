@@ -1,7 +1,7 @@
 # Independent H3 Student inference
 
 The native-layout consumer preserves the original base tensors and **unmerged
-FP32 Student LoRA**. It supports the full original 50-block H3 architecture;
+Student LoRA in its actual forward storage dtype**. It supports the full original 50-block H3 architecture;
 small original-class configurations are explicitly labeled fixtures. It never
 loads a Fake Score adapter, discriminator, optimizer or old training cache.
 
@@ -11,7 +11,9 @@ Use an existing compatible Torch 2.10 CPU environment with the
 `h3-cached-reference` dependencies and one compute thread. This is an explicit
 CPU dense-attention output path, not an automatic fallback from distributed
 CUDA training. BF16/FP32 tensor storage is preserved per key; computation uses
-CPU BF16 autocast with the original eight-step continuous schedule. There is
+CPU BF16 autocast with the original eight-step continuous schedule. The native
+BF16 engine's LoRA tensors remain BF16; an FP32 stored adapter remains FP32.
+FP32 optimizer masters are not substituted for current forward weights. There is
 no merged LoRA, weight quantization or alternate sampler.
 
 The model and DMD2 numerical source are the existing pinned original closure:
@@ -48,12 +50,42 @@ metadata and `_SUCCESS`. Decode media separately using
 [`distillctl decode`](h3_audio_video_decode.md) and actual original codec
 weights. Do not reshape latents into pixels or trim the audio/video streams.
 
-## Current integration boundary
+## Export a native W6 checkpoint
 
-`h3_ar_portable` supplies the real independent model/rollout consumer and the
-common artifact carrier. `h3_ar_inference` supplies the backend-native
-current-Student consolidation primitive. Connecting the native W6 checkpoint
-restoration to the public `export` command is a separate integration; this
-guide does not claim that producer is already exposed. Source/CPU coverage is
-distinct from full native CUDA, pretrained generation quality and W5 Grid1000
-compatibility.
+Start from your original fresh-stream training configuration and add the
+explicit `trainer.export` section in
+[`export.native.template.json`](../../recipes/h3_ar/export.native.template.json).
+Keep its original horizon, seed, checkpoint cadence, assets, execution strategy,
+capacity policy and source identity. Both the reference and full optimized
+native owners use the same output-only restoration path.
+
+On each already-launched world16 rank, with the same admitted native runtime:
+
+```sh
+distillctl export native-export.json --checkpoint /project/checkpoints/cycle-000100 \
+  --output /project/current-student
+```
+
+This restores the complete native checkpoint, including original FP32 master
+Adam and rank RNG, before selecting the current Student. It performs **zero
+training updates**. A terminal checkpoint is allowed only for export; ordinary
+training resume still requires a nonterminal boundary. Construction reads the
+actual saved rank input without advancing its cursor or asking for cycle 101.
+
+The existing ZeRO-3 owner gathers one layer at a time. Only the primary retains
+the full frozen base and Student weights on CPU. Neither Fake Score nor the
+discriminator enters the inference artifact, and LoRA is not merged. The
+original checkpoint config, complete tensor layout and storage dtypes must
+match. Output budgets cannot reduce the native host or device reserve.
+
+The command publishes `current-student/` and `current-student.inference.json`.
+Use the latter with the independent `generate` command above. Its geometry and
+seed are explicit inference settings, not changes to the training stream.
+Full-size CPU dense attention needs substantial host memory; export and
+inference each check their own declared budget. Export is not a replacement for
+a resumable training checkpoint.
+
+Source/CPU tests cover the restore-to-export control chain and actual original
+model consumer. Native world16 CUDA export and pretrained output quality still
+require their corresponding hardware acceptance. W5 Grid1000 remains a
+different model/workload binding.

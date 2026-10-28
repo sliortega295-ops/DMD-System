@@ -20,6 +20,7 @@ FACTORY = 'distillschedule.training.h3_ar_portable:build_inference_model'
 FIXTURE = 'RANDOM_ORIGINAL_H3_NATIVE_LAYOUT_FIXTURE_NOT_TRAINED'
 NATIVE = 'LOCAL_ORIGINAL_H3_CURRENT_STUDENT_UNVERIFIED_QUALITY'
 PRECISION = 'EXACT_BF16_OR_FP32_BASE_FP32_UNMERGED_LORA_CPU_BF16_AUTOCAST'
+NATIVE_BF16_PRECISION = 'EXACT_NATIVE_BF16_STUDENT_STORAGE_UNMERGED_LORA_CPU_BF16_AUTOCAST'
 LORA = dict(lora_rank=64,lora_alpha=64,lora_targets='attn.qkv_proj,attn.out_proj,mlp.fc1,mlp.fc2')
 SCHEDULE = dict(num_inference_steps=8,video_shift=2.22,audio_shift=2.22)
 _Carrier = None
@@ -46,7 +47,11 @@ def original_config():
 
 
 def parameters(*, architecture,geometry,weight_layout,seed,evidence_kind,budget):
-    return json.loads(json.dumps(dict(schema_version=SCHEMA,precision=PRECISION,source=source_identity(),
+    # DeepSpeed's original BF16 engine casts the forward LoRA parameters too;
+    # FP32 Adam masters are not the tensors used by the current forward.
+    precision = (NATIVE_BF16_PRECISION if any('.adapters.student.' in name and spec.get('dtype')=='torch.bfloat16'
+                 for name,spec in weight_layout.items()) else PRECISION)
+    return json.loads(json.dumps(dict(schema_version=SCHEMA,precision=precision,source=source_identity(),
         runtime=runtime_identity(),architecture=architecture,geometry=geometry,weight_layout=weight_layout,
         seed=seed,evidence_kind=evidence_kind,budget=budget,lora=LORA,schedule=SCHEDULE),allow_nan=False))
 
@@ -58,7 +63,7 @@ def _request(value):
     p=json.loads(json.dumps({k:v for k,v in value.items() if k!='device'},allow_nan=False))
     require(set(p)=={'schema_version','precision','source','runtime','architecture','geometry','weight_layout',
         'seed','evidence_kind','budget','lora','schedule'} and p['schema_version']==SCHEMA
-        and p['precision']==PRECISION and p['source']==source_identity() and p['runtime']==runtime_identity()
+        and p['precision'] in (PRECISION,NATIVE_BF16_PRECISION) and p['source']==source_identity() and p['runtime']==runtime_identity()
         and str(torch.__version__).split('+')[0]=='2.10.0','exact source/runtime/schema/precision required')
     require(p['evidence_kind'] in (FIXTURE,NATIVE) and type(p['seed']) is int and 0<=p['seed']<2**63
         and p['lora']==LORA and p['schedule']==SCHEDULE
@@ -75,8 +80,11 @@ def _request(value):
             and isinstance(v,dict) and set(v)=={'shape','dtype'} and isinstance(v['shape'],list)
             and all(type(n) is int and n>0 for n in v['shape'])
             and v['dtype'] in ('torch.float32','torch.bfloat16')
-            and ('.adapters.student.' not in k or v['dtype']=='torch.float32')
-            for k,v in p['weight_layout'].items()),'exact original base/FP32 Student-only storage layout required')
+            for k,v in p['weight_layout'].items()),'exact original base/current Student-only storage layout required')
+    bf16_student = any('.adapters.student.' in name and spec['dtype']=='torch.bfloat16'
+                       for name,spec in p['weight_layout'].items())
+    require((p['precision']==NATIVE_BF16_PRECISION)==bf16_student,
+            'precision declaration must match exact native Student storage; no upcast or master substitution')
     return p
 
 
@@ -152,7 +160,7 @@ def _meta(p,model_class,adapter_class):
 def _metadata(p):
     from .h3_cached_inference import _latent_schema
     return dict(schema_version=SCHEMA,scope='CURRENT_NATIVE_LAYOUT_STUDENT_CPU_REFERENCE_LATENT_OUTPUT',
-        precision=PRECISION,parameters=deepcopy(p),selection='FROZEN_BASE_CURRENT_UNMERGED_STUDENT_NOT_EMA',
+        precision=p['precision'],parameters=deepcopy(p),selection='FROZEN_BASE_CURRENT_UNMERGED_STUDENT_NOT_EMA',
         evidence_kind=p['evidence_kind'],latent_schema=_latent_schema(p['geometry']),
         media_decoder='EXPLICIT_SEPARATE_DISTILLCTL_DECODE',training_resume='NOT_SUPPORTED_INFERENCE_ONLY',
         quality_validation='NOT_RUN')

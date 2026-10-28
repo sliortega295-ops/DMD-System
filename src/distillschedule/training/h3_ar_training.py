@@ -91,9 +91,11 @@ def checkpoint_policy(identity):
         scheduler="NONE_original_fixed_AlternatingAdamW_learning_rates", transient="RECONSTRUCT_COLD")
 
 
-def validate_restart(header, identity):
+def validate_restart(header, identity, *, output_only=False):
     cycle = header.get("cycle")
-    require(type(cycle) is int and 0 < cycle < identity["horizon"] and header.get("cursor") == cycle
+    require(type(output_only) is bool, "W6 output-only control must be explicit bool", path="h3_ar.training")
+    require(type(cycle) is int and 0 < cycle <= identity["horizon"]
+            and (output_only or cycle < identity["horizon"]) and header.get("cursor") == cycle
             and header.get("versions") == dict(student=cycle, fake=cycle, ema=0)
             and all(type(v) is int for v in header["versions"].values())
             and header.get("policy") == checkpoint_policy(identity) and "native_checkpoint" in header,
@@ -111,7 +113,7 @@ def validate_joint(rows, *, cycle, inputs):
                 "W6 rank fresh source/cursor/native clock mismatch", path="h3_ar.training")
 
 
-def execute_segment(session, *, stop, output, identity, capacity_check, clock=time.perf_counter_ns):
+def execute_segment(session, *, stop, output, identity, capacity_check, clock=time.perf_counter_ns, native_output=None):
     """Dispatch unchanged native updates; only process-local elapsed work is timed."""
     from .checkpoint import save_checkpoint
     torch = session.torch
@@ -122,6 +124,12 @@ def execute_segment(session, *, stop, output, identity, capacity_check, clock=ti
     if getattr(session, "resume_from", None):
         from .checkpoint import restore_checkpoint
         restore_checkpoint(session.resume_from, state, identity=identity, native_checkpoint=native)
+    if native_output is not None:
+        require(bool(getattr(session,"resume_from",None)), "W6 output requires actual complete restoration", path="h3_ar.training")
+        distributed.checked(native.validate_checkpoint_boundary,"W6 restored output-only native boundary")
+        distributed.checked(capacity_check,"W6 restored output-only capacity")
+        native_output.publish(session,native,identity=identity,capacity_check=capacity_check)
+        return []
     records = []
     require(cursor.completed < stop <= cursor.cycles, "W6 stop must be after the restored boundary", path="h3_ar.training")
     for cycle in range(cursor.completed+1, stop+1):
@@ -159,7 +167,7 @@ def execute_segment(session, *, stop, output, identity, capacity_check, clock=ti
     return records
 
 
-def run_training(config, *, admit):
+def run_training(config, *, admit, native_output=None):
     """Enter on existing torchrun ranks; no launcher, GPU reservation or download."""
     from .native import _options
     from distillschedule.strategies import h3_ar_worker as worker
@@ -198,6 +206,11 @@ def run_training(config, *, admit):
         runtime["deepspeed_engine"] = distributed.checked(engine_source, "W6 native engine checkpoint API source admission")
         identity = training_identity(source["identity"]["head"], admitted, config, runtime=runtime)
         require(all(row == identity for row in distributed.gather(identity)), "W6 rank source/input/runtime identities differ", path="h3_ar.training")
+        output_only = native_output is not None
+        require(all(row==output_only for row in distributed.gather(output_only)), "W6 ranks disagree on output-only mode", path="h3_ar.training")
+        if output_only:
+            require(bool(config.trainer.get("resume_from")), "W6 output requires a complete native checkpoint", path="h3_ar.training")
+            native_output.admit(policy)
         stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
         require(all(row == stop for row in distributed.gather(stop)), "W6 rank stop boundaries differ", path="h3_ar.training")
         from .livewan_training import _reserve_output
@@ -221,10 +234,16 @@ def run_training(config, *, admit):
         if config.trainer.get("resume_from"):
             from .checkpoint import read_checkpoint, read_manifest
             header = distributed.checked(lambda: read_manifest(config.trainer["resume_from"], identity=identity), "W6 all-rank restart metadata")
-            distributed.checked(lambda: validate_restart(header, identity), "W6 fixed-horizon restart boundary")
+            distributed.checked(lambda: validate_restart(header, identity,output_only=output_only), "W6 fixed-horizon restart boundary")
             distributed.checked(lambda: read_checkpoint(config.trainer["resume_from"], identity=identity), "W6 every native/common shard hash before model allocation")
         completed = header["cycle"] if header else 0
-        cursor = H3ARInputStream(config.data["prepared"], rank=rank, cycles=config.trainer["cycles"], seed=config.trainer["seed"], completed=completed)
+        if output_only:
+            from .h3_ar_export import OutputInputStream
+            cursor_type = OutputInputStream
+        else:
+            cursor_type = H3ARInputStream
+        cursor = distributed.checked(lambda:cursor_type(config.data["prepared"], rank=rank,
+            cycles=config.trainer["cycles"], seed=config.trainer["seed"], completed=completed),"W6 native input cursor construction")
         try:
             native_source = distributed.checked(lambda: assets.source_module("h3_dmd2"), "W6 admitted original deterministic parser import")
             distributed.checked(lambda: cursor.stage_initial(H3ARTask.from_dict(admitted["task"]), assets.cache_manifest,
@@ -241,19 +260,25 @@ def run_training(config, *, admit):
                 seed=config.trainer["seed"]), "W6 original persistent native session construction")
             session.resume_from = config.trainer.get("resume_from")
             distributed.checked(capacity, "W6 constructed native model capacity")
-            records = execute_segment(session, stop=stop, output=output, identity=identity, capacity_check=capacity)
-            assets.audit_imports()
-            require(source_files() == identity["source_files"] and _source_layout() == identity["source_layout_sha256"]
+            records = execute_segment(session, stop=stop, output=output, identity=identity, capacity_check=capacity,native_output=native_output)
+            def final_audit():
+                assets.audit_imports()
+                require(source_files() == identity["source_files"] and _source_layout() == identity["source_layout_sha256"]
                     and worker.runtime_identity(torch) == {k: v for k, v in runtime.items() if k != "deepspeed_engine"}
                     and engine_source() == runtime["deepspeed_engine"], "W6 source/runtime changed during native segment", path="h3_ar.training")
+            distributed.checked(final_audit,"W6 final source/runtime audit")
             distributed.checked(capacity, "W6 final actual native resource gate")
-            write_new_json(output/"continuation"/f"rank-{rank:05d}.json", dict(schema_version=SCHEMA,
-                status="COMPLETED" if stop == cursor.cycles else "PARTIAL", identity=identity,
+            distributed.checked(lambda:write_new_json(output/"continuation"/f"rank-{rank:05d}.json", dict(schema_version=SCHEMA,
+                status="EXPORTED" if output_only else "COMPLETED" if stop == cursor.cycles else "PARTIAL", identity=identity,
                 completed_cycle=cursor.completed, segment_origin=session.segment_origin, segment_cycles=len(records),
                 native_global_steps=session.engine.global_steps, versions=session.versions(), build=session.build,
-                native_GPU_continuation="EXECUTED_NOT_NUMERICALLY_QUALIFIED", decoded_AV="NOT_IMPLEMENTED", claimable_speedup=False))
+                native_GPU_continuation="OUTPUT_ONLY_NO_UPDATES" if output_only else "EXECUTED_NOT_NUMERICALLY_QUALIFIED",
+                decoded_AV="SEPARATE_DISTILLCTL_DECODE" if output_only else "NOT_IMPLEMENTED", claimable_speedup=False,
+                **(dict(inference_export=native_output.result) if output_only else {}))),"W6 final rank receipt")
             return 0
         except BaseException as exc:
+            if output_only:
+                native_output.invalidate()
             write_new_json(output/"continuation"/f"rank-{rank:05d}.failed.json", dict(schema_version=SCHEMA, status="FAIL",
                 identity=identity, error=type(exc).__name__+": "+str(exc), last_locally_completed_cycle=cursor.completed,
                 native_GPU_continuation="UNQUALIFIED_PARTIAL_FAILURE", claimable_speedup=False))
