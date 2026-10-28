@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/distillschedule/**'
       - 'tests/test_training_*.py'
+      - 'tests/test_open_workload_*.py'
       - 'tests/test_framework_official_install.py'
       - 'tests/test_framework_flow_methods_ci.py'
       - 'tests/flow_replica_oracle.py'
@@ -270,6 +271,28 @@ jobs:
         with:
           name: ltx-flow-methods-cpu
           path: ltx-flow-methods-cpu.xml
+          if-no-files-found: error
+      - name: Actual LTX CPU FSDP flow ownership
+        if: ${{ matrix.family == 'ltx25' }}
+        env:
+          DMD_MODERN_FLOW_CPU: '1'
+        run: |
+          python -m pytest -q \
+            'tests/test_open_workload_parameter_shadows.py::test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_reshard]' \
+            'tests/test_open_workload_parameter_shadows.py::test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_keep_forward]' \
+            'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_reshard]' \
+            'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_keep_forward]' \
+            --junitxml=ltx-flow-sharding-cpu.xml
+          python scripts/check_cpu_receipt.py ltx-flow-sharding-cpu.xml \
+            --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_reshard]' \
+            --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_keep_forward]' \
+            --require 'test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_reshard]' \
+            --require 'test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_keep_forward]'
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && matrix.family == 'ltx25' }}
+        with:
+          name: ltx-flow-sharding-cpu
+          path: ltx-flow-sharding-cpu.xml
           if-no-files-found: error
       - name: Separate optional actual-CUDA receipt, never part of mandatory CPU proof
         run: |

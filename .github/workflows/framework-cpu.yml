@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/distillschedule/**'
       - 'tests/test_training_*.py'
+      - 'tests/test_open_workload_*.py'
       - 'tests/test_data_*.py'
       - 'examples/framework/**'
       - 'recipes/**'

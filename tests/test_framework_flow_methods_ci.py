@@ -1,4 +1,4 @@
-"""Provider-separated flow CI selection and synthetic no-skip receipt guards.
+"""Provider-separated native CI selection and synthetic no-skip receipt guards.
 
 Collection and fabricated XML exercise CI wiring only, not native model math.
 """
@@ -35,12 +35,12 @@ def _proofs(family):
     ]
 
 
-def _lane(family):
-    filename, job_name, step_name, receipt = LANES[family]
+def _lane(family, lanes=LANES):
+    filename, job_name, step_name, receipt = lanes[family]
     workflow = yaml.load((ROOT / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)
     job = workflow['jobs'][job_name]
     step = next((item for item in job['steps'] if item.get('name') == step_name), None)
-    assert step is not None, f'{family} actual-native flow-method CI step is missing'
+    assert step is not None, f'{family} actual-native CI step is missing: {step_name}'
     return workflow, job, step, receipt
 
 
@@ -94,17 +94,9 @@ def test_flow_methods_ci_runs_only_its_exact_provider_and_requires_all_eight_pro
 def test_flow_methods_ci_exact_node_ids_are_actually_collected(family):
     _, _, step, _ = _lane(family)
     proof_command, _ = _commands(step)
-    # No fixture runs: this stays valid in the common CPU lane without either
-    # native optional stack or source. The hosted provider steps do run fixtures.
-    arguments = [arg for arg in proof_command[1:] if not arg.startswith('--junitxml=')]
-    environment = dict(os.environ, CUDA_VISIBLE_DEVICES='', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
-                       PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTHONDONTWRITEBYTECODE='1',
-                       PYTHONPATH=os.pathsep.join(str(ROOT / part) for part in ('src', '.', 'tests')))
-    result = subprocess.run([sys.executable, *arguments, '--collect-only', '-p', 'no:cacheprovider'],
-                            cwd=ROOT, env=environment, capture_output=True, text=True, timeout=60)
-    assert result.returncode == 0, result.stdout + result.stderr
-    collected = [line for line in result.stdout.splitlines() if line.startswith(TARGET + '::')]
-    assert sorted(collected) == sorted(f'{TARGET}::{name}' for name in _proofs(family))
+    # Collection checks the real node IDs without running optional model fixtures.
+    assert sorted(_collect_command(proof_command)) == sorted(
+        f'{TARGET}::{name}' for name in _proofs(family))
 
 
 @pytest.mark.parametrize('family', LANES)
@@ -113,15 +105,59 @@ def test_flow_methods_ci_exact_node_ids_are_actually_collected(family):
 def test_flow_methods_ci_actual_receipt_gate_rejects_false_green(tmp_path, family, mutation):
     """SYNTHETIC_TEST_ONLY: invoke the configured gate, not model qualification."""
     _, _, step, receipt = _lane(family)
+    other = next(name for name in LANES if name != family)
+    _assert_receipt_gate(tmp_path, step, receipt, _proofs(family), mutation, _proofs(other))
+
+
+def test_common_cpu_collector_runs_the_flow_methods_ci_regressions():
+    api = runpy.run_path(str(ROOT / 'scripts/run_framework_cpu_tests.py'))
+    assert 'tests/test_framework_flow_methods_ci.py' in api['test_files'](ROOT)
+
+
+SHARDING_LANES = {
+    'flux2-klein-base': ('modern-flow-cpu.yml', 'native-media-lifecycle',
+                         'Actual FLUX CPU FSDP flow ownership', 'flux-flow-sharding-cpu.xml'),
+    'ltx25': ('official-models-cpu.yml', 'actual-model-classes',
+              'Actual LTX CPU FSDP flow ownership', 'ltx-flow-sharding-cpu.xml'),
+}
+H3_FILES = ['tests/test_training_h3_grid.py', 'tests/test_training_h3_grid_distributed.py',
+            'tests/test_training_h3_grid_stop.py', 'tests/test_training_native_state.py']
+H3_PROOFS = [
+    'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation',
+    'test_actual_gloo_rank_failure_and_complete_original_state[exact_resume]',
+    'test_full_lazy_cpu_admission_with_real_pinned_sources_and_identity_only_assets[None]',
+    'test_public_horizon50_stop25_keeps_original_identity',
+    'test_real_loop_seam_stops_only_after_durable_publication_and_defaults_unchanged[1-1-1-saved0]',
+    'test_real_loop_seam_stops_only_after_durable_publication_and_defaults_unchanged[None-0-3-saved3]',
+    'test_real_gloo_loop_stop_waits_for_all_rank_checkpoint_publication[False]',
+    'test_real_gloo_loop_stop_waits_for_all_rank_checkpoint_publication[True]',
+]
+
+
+def _sharding_proofs(family):
+    return [
+        (file, f'{name}[{family}-{mode}]')
+        for file, name in (
+            ('tests/test_open_workload_parameter_shadows.py',
+             'test_native_full_shadow_oracle_and_fresh_process_checkpoint'),
+            ('tests/test_open_workload_frozen_roots.py',
+             'test_private_native_flow_frozen_teacher_G1_F5'),
+        )
+        for mode in ('fsdp2_reshard', 'fsdp2_keep_forward')
+    ]
+
+
+def _assert_receipt_gate(tmp_path, step, receipt, names, mutation, other_names=()):
+    """SYNTHETIC_TEST_ONLY: producer names test the real configured XML consumer."""
     _, gate_command = _commands(step)
     root = ET.Element('testsuite')
-    for name in _proofs(family):
+    for name in names:
         ET.SubElement(root, 'testcase', name=name)
     if mutation == 'missing-case':
         root.remove(root[-1])
     elif mutation == 'other-provider':
-        other = next(name for name in LANES if name != family)
-        for case, name in zip(root, _proofs(other)):
+        assert len(other_names) == len(names)
+        for case, name in zip(root, other_names):
             case.set('name', name)
     elif mutation in ('skipped', 'failure', 'error'):
         ET.SubElement(root[-1], mutation)
@@ -135,6 +171,115 @@ def test_flow_methods_ci_actual_receipt_gate_rejects_false_green(tmp_path, famil
     assert (result.returncode == 0) is (mutation is None), result.stdout + result.stderr
 
 
-def test_common_cpu_collector_runs_the_flow_methods_ci_regressions():
+def _collect_command(proof_command):
+    arguments = [arg for arg in proof_command[1:] if not arg.startswith('--junitxml=')]
+    environment = dict(os.environ, CUDA_VISIBLE_DEVICES='', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
+                       PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTHONDONTWRITEBYTECODE='1',
+                       PYTHONPATH=os.pathsep.join(str(ROOT / part) for part in ('src', '.', 'tests')))
+    result = subprocess.run([sys.executable, *arguments, '--collect-only', '-p', 'no:cacheprovider'],
+                            cwd=ROOT, env=environment, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return [line for line in result.stdout.splitlines() if line.startswith('tests/') and '::' in line]
+
+
+@pytest.mark.parametrize('family', SHARDING_LANES)
+def test_flow_sharding_ci_keeps_exact_provider_dependencies_and_requires_four_native_proofs(family):
+    workflow, job, step, receipt = _lane(family, SHARDING_LANES)
+    _, old_job, old_step, _ = _lane(family)
+    assert job == old_job  # Reuse the original provider lane and its pinned stack.
+    environment = {**job['env'], **step.get('env', {})}
+    assert environment['DMD_MODERN_FLOW_CPU'] == '1' and environment['CUDA_VISIBLE_DEVICES'] == ''
+    assert environment['HF_HUB_OFFLINE'] == environment['TRANSFORMERS_OFFLINE'] == '1'
+    assert step.get('if') == old_step.get('if')
+    assert 'continue-on-error' not in step and 'continue-on-error' not in job
+    assert 'if' not in job and workflow['permissions'] == {'contents': 'read'}
+    assert not {'DMD_FLOW_METHOD_IMAGE_CONFIG', 'DMD_FLOW_METHOD_LTX_CONFIG'} & environment.keys()
+    proofs = _sharding_proofs(family)
+    proof_command, gate_command = _commands(step)
+    assert proof_command == ['python', '-m', 'pytest', '-q',
+        *[f'{file}::{name}' for file, name in proofs], f'--junitxml={receipt}']
+    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', receipt,
+        *[word for _, name in proofs for word in ('--require', name)]]
+    paths = workflow['on']['pull_request']['paths']
+    assert 'tests/test_open_workload_*.py' in paths
+    assert all(any(Path(file).match(pattern) for pattern in paths) for file, _ in proofs)
+    upload = next(item for item in job['steps'] if item.get('uses') == 'actions/upload-artifact@v4'
+                  and receipt in item['with']['path'].splitlines())
+    assert 'always()' in upload['if'] and upload['with']['if-no-files-found'] == 'error'
+    if family == 'ltx25':
+        assert step['if'] == "${{ matrix.family == 'ltx25' }}"
+        assert upload['if'] == "${{ always() && matrix.family == 'ltx25' }}"
+    else:
+        assert 'if' not in step and 'LTX_SOURCE_ROOT' not in environment
+
+
+@pytest.mark.parametrize('family', SHARDING_LANES)
+def test_flow_sharding_ci_exact_native_node_ids_are_actually_collected(family):
+    _, _, step, _ = _lane(family, SHARDING_LANES)
+    command, _ = _commands(step)
+    assert sorted(_collect_command(command)) == sorted(
+        f'{file}::{name}' for file, name in _sharding_proofs(family))
+
+
+@pytest.mark.parametrize('family', SHARDING_LANES)
+@pytest.mark.parametrize('mutation', [None, 'missing-case', 'other-provider', 'skipped',
+                                     'failure', 'error', 'empty', 'missing-file'])
+def test_flow_sharding_ci_actual_receipt_gate_rejects_false_green(tmp_path, family, mutation):
+    _, _, step, receipt = _lane(family, SHARDING_LANES)
+    other = next(name for name in SHARDING_LANES if name != family)
+    _assert_receipt_gate(tmp_path, step, receipt, [name for _, name in _sharding_proofs(family)],
+                         mutation, [name for _, name in _sharding_proofs(other)])
+
+
+def _h3_stop_lane():
+    workflow = yaml.load((ROOT / '.github/workflows/h3-grid-native-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    job = workflow['jobs']['original-source-state']
+    proof_step = next(step for step in job['steps'] if step.get('name') ==
+        'Actual original loop, data cursor, atomic state and rejection tests')
+    gate_step = next(step for step in job['steps'] if step.get('name') ==
+        'Do not silently skip the original-source qualification')
+    assert 'if' not in job and 'continue-on-error' not in job
+    for step in (proof_step, gate_step):
+        assert 'if' not in step and 'continue-on-error' not in step
+    return workflow, job, {'run': proof_step['run'] + '\n' + gate_step['run']}
+
+
+def test_h3_ci_requires_durable_stop_and_current_original_restart_without_skips():
+    workflow, job, step = _h3_stop_lane()
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    assert job['env']['DMD_H3_TEST_UPSTREAM'] == '${{ github.workspace }}/third_party/lightx2v'
+    assert workflow['permissions'] == {'contents': 'read'}
+    paths = workflow['on']['pull_request']['paths']
+    assert 'tests/test_framework_flow_methods_ci.py' in paths and 'scripts/check_cpu_receipt.py' in paths
+    assert all(any(Path(file).match(pattern) for pattern in paths) for file in H3_FILES)
+    proof_command, gate_command = _commands(step)
+    assert proof_command == ['python', '-m', 'pytest', '-q', *H3_FILES, '--junitxml=h3-grid-cpu.xml']
+    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', 'h3-grid-cpu.xml',
+        *[word for name in H3_PROOFS for word in ('--require', name)]]
+    upload = next(item for item in job['steps'] if item.get('uses') == 'actions/upload-artifact@v4')
+    assert upload['if'] == 'always()' and upload['with']['path'] == 'h3-grid-cpu.xml'
+    assert upload['with']['if-no-files-found'] == 'error'
+
+
+def test_h3_ci_required_stop_and_restart_names_are_actually_collected():
+    _, _, step = _h3_stop_lane()
+    command, _ = _commands(step)
+    names = {node.split('::', 1)[1] for node in _collect_command(command)}
+    assert set(H3_PROOFS) <= names
+
+
+@pytest.mark.parametrize('mutation', [None, 'missing-case', 'skipped', 'failure', 'error', 'empty', 'missing-file'])
+def test_h3_ci_actual_stop_receipt_gate_rejects_false_green(tmp_path, mutation):
+    _, _, step = _h3_stop_lane()
+    _assert_receipt_gate(tmp_path, step, 'h3-grid-cpu.xml', H3_PROOFS, mutation)
+
+
+def test_common_cpu_collector_and_triggers_include_sharding_and_ci_regressions():
     api = runpy.run_path(str(ROOT / 'scripts/run_framework_cpu_tests.py'))
-    assert 'tests/test_framework_flow_methods_ci.py' in api['test_files'](ROOT)
+    files = api['test_files'](ROOT)
+    assert 'tests/test_framework_flow_methods_ci.py' in files
+    assert {file for family in SHARDING_LANES for file, _ in _sharding_proofs(family)} <= set(files)
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    paths = workflow['on']['pull_request']['paths']
+    assert 'tests/test_open_workload_*.py' in paths
