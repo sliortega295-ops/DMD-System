@@ -23,6 +23,7 @@ from .wan_strategy import WanStrategy, strategy_environment
 from .wan_bridge import load_original_backend, OriginalWanSession
 from .wan_calibration import OriginalWanCalibrator, trace_work
 from .wan_planning import source_fingerprint, validate_plan
+from .wan_stream import MAX_COHORTS
 
 
 @dataclass(frozen=True)
@@ -143,7 +144,8 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
                    operation_order=None, progress=None, validate_result=None, before_cycle=None, clock=time.perf_counter_ns,
                    start_cycle=0, after_cycle=None):
     """Shared tested orchestration; original handlers perform all model math."""
-    require(type(cycles) is int and 2 <= cycles <= 64, 'bounded two-or-more cycle run required', path='wan.worker')
+    limit = MAX_COHORTS if before_cycle is not None and mode == 'run' else 64
+    require(type(cycles) is int and 2 <= cycles <= limit, 'bounded two-or-more cycle run required', path='wan.worker')
     require(mode in {'calibrate', 'run'} and (mode == 'calibrate') == (observer is not None),
             'calibration observer/mode mismatch', path='wan.worker')
     require(type(start_cycle) is int and 0 <= start_cycle < cycles
@@ -262,6 +264,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
     require(mode in {'calibrate', 'run', 'manual', 'train'}, 'invalid worker mode', path='wan.worker')
+    require(type(cycles) is int and 2 <= cycles <= (MAX_COHORTS if stream_path is not None else 64),
+            'only fresh streams support 2..100 cycles; fixed-trace diagnostics remain bounded to 64', path='wan.worker')
     rank, local_rank = topology(os.environ)
     document = None
     if mode == 'calibrate':

@@ -39,7 +39,7 @@ pretrained-model or numerical correctness certificate.
 Use [`sources.reference.template.json`](sources.reference.template.json) as an
 inventory template. Each cohort has an explicit seed and five lists of sixteen
 **distinct actual pre-encoded feature files** (one per source step/rank). There
-are 80 source files per cohort. Supply at least 2 and at most 64 cohorts; never
+are 80 source files per cohort. Supply at least 2 and at most 100 cohorts; never
 repeat a feature set or substitute an old captured trace. Each file contains
 native `vae_latent`, `prompt_embed` and `attention_mask` data. Use your original
 feature encoder/data preparation; this command does not turn raw video into

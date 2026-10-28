@@ -15,6 +15,8 @@ from typing import Any
 
 from .config import TrainingConfig
 from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, H3_AR_STREAM
+from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
+from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
 
 _FAMILIES = {
@@ -58,7 +60,7 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                 if worker else "existing two-node dispatcher; explicit native asset/transport owners"),
         capabilities=dict(
             modes=["reference", "manual", "plan"] if worker else ["manual", "plan"],
-            cycles=(dict(min=2, max=64, fresh_inputs="original_wan_cohort_stream.v1",
+            cycles=(dict(min=2, max=WAN_MAX_COHORTS, fresh_inputs="original_wan_cohort_stream.v1",
                          reference_manual_fixed_trace=2, incumbent_bundle=2)
                     if workload == "W1" else dict(exact=2, arbitrary_training=False)),
             checkpoint=dict(supported=workload == "W1", scope=(
@@ -88,7 +90,7 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result["capabilities"]["manual_requires_preset"] = True
     if _wan_incumbent_stream(config, workload):
         result['capabilities'].update(
-            cycles=dict(min=2, max=64, fresh_inputs='original_wan_cohort_stream.v1',
+            cycles=dict(min=2, max=WAN_MAX_COHORTS, fresh_inputs='original_wan_cohort_stream.v1',
                         arbitrary_training=False, later_novel_graph_signatures='REJECTED'),
             checkpoint=dict(supported=True, scope='complete/drained native cohort; named Adam, scheduler, EMA, rank RNG',
                             verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'),
@@ -102,7 +104,7 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             bootstrap=dict(global_step=10, versions=dict(generator=2, critic=10, ema=10),
                 cold_start_supported=False,
                 asset_contract="distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"),
-            cycles=dict(min=2, max=64, fresh_inputs="original_helios_cohort_stream.v1",
+            cycles=dict(min=2, max=HELIOS_MAX_COHORTS, fresh_inputs="original_helios_cohort_stream.v1",
                         scope="five actual step-qualified per-rank source features per cohort"),
             checkpoint=dict(supported=True, scope="original G/C trainables, Adam, scheduler, EMA, clocks and per-rank RNG",
                             verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
@@ -270,8 +272,8 @@ def _options(config, workload):
         if _wan_incumbent_stream(config, workload):
             _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
                      and config.data.get('prepared') and not config.data.get('replay_fixed_trace')
-                     and 2 <= config.trainer['cycles'] <= 64,
-                     'W1 stream preset requires 2..64 explicit fresh cohorts')
+                     and 2 <= config.trainer['cycles'] <= WAN_MAX_COHORTS,
+                     f'W1 stream preset requires 2..{WAN_MAX_COHORTS} explicit fresh cohorts')
         elif workload == "W1":
             _require(set(config.data) == {"replay_fixed_trace"} and config.data["replay_fixed_trace"] is True,
                      "W1 literal graph preset requires explicit fixed-trace replay, not a fresh input stream")
@@ -353,8 +355,8 @@ def _options(config, workload):
     if _helios_stream(config, workload):
         if _helios_safe_stream(config, workload):
             _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
-                     and 2 <= config.trainer["cycles"] <= 64,
-                     "W2 safe stream requires 2..64 explicit fresh cohorts; replay is not substituted")
+                     and 2 <= config.trainer["cycles"] <= HELIOS_MAX_COHORTS,
+                     f"W2 safe stream requires 2..{HELIOS_MAX_COHORTS} explicit fresh cohorts; replay is not substituted")
             _require("capacity_policy" not in config.execution, "W2 safe stream does not accept an unbound capacity policy")
             return "manual"
         _require(config.execution.get("mode", "reference") == "reference"
@@ -362,7 +364,7 @@ def _options(config, workload):
                  "W2 fresh stream currently supports explicit reference only; manual/selected plans are not ignored")
         _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared")),
                  "W2 fresh stream requires explicit prepared data; fixed replay is not substituted")
-        _require(2 <= config.trainer["cycles"] <= 64, "W2 fresh stream cycles must be 2..64")
+        _require(2 <= config.trainer["cycles"] <= HELIOS_MAX_COHORTS, f"W2 fresh stream cycles must be 2..{HELIOS_MAX_COHORTS}")
         return "reference"
     _require(not _helios_safe_stream(config, workload), "W2 safe stream preset requires its explicit fresh input stream")
     _require(not (config.trainer.get("checkpoint_every", 0) or config.trainer.get("resume_from"))
@@ -370,8 +372,11 @@ def _options(config, workload):
                 and bool(config.data.get("prepared")),
              "native checkpoint_every must be 0; final evidence is not a restart checkpoint")
     cycles = config.trainer["cycles"]
-    _require((workload == "W1" and 2 <= cycles <= 64) or (workload != "W1" and cycles == 2),
-             f"{workload} cycles must be {'2..64' if workload == 'W1' else 'exactly 2'}; requested count is never ignored")
+    fresh_wan = (workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
+                 and bool(config.data.get("prepared")))
+    limit = WAN_MAX_COHORTS if fresh_wan else 64
+    _require((workload == "W1" and 2 <= cycles <= limit) or (workload != "W1" and cycles == 2),
+             f"{workload} cycles must be {f'2..{limit}' if workload == 'W1' else 'exactly 2'}; requested count is never ignored")
     mode = config.execution.get("mode", "reference")
     _require(mode in (("reference", "manual", "plan") if workload in ("W1", "W6") else
                      ("manual", "plan") if "preset" in config.execution else ("plan",)),

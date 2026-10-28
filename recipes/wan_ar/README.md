@@ -50,7 +50,7 @@ reference/fresh-input and saved-plan paths. CPU admission does not certify
 GPU execution, numerical parity, quality or speedup.
 
 An additional explicit [incumbent finite-stream v2](INCUMBENT_STREAM.md) uses
-the full original Graph/cast/epilogue/norm bundle over 2..64 fresh cohorts and
+the full original Graph/cast/epilogue/norm bundle over 2..100 fresh cohorts and
 complete native restart checkpoints. It remains source/CPU-qualified research
 only, with first-process-cycle capture and later-novel-signature rejection.
 The v1 preset above and its defaults are unchanged.

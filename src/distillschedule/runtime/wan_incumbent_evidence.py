@@ -2,6 +2,7 @@
 from __future__ import annotations
 from distillschedule.core.contracts import require
 from distillschedule.search.wan_candidate_bundle import CAPABILITIES
+from distillschedule.strategies.wan_stream import MAX_COHORTS
 
 
 def validate_bundle_build(bundle, build, *, executed=False, cycles=0):
@@ -11,7 +12,7 @@ def validate_bundle_build(bundle, build, *, executed=False, cycles=0):
             require(all(not metadata.get(name, {}).get('enabled', False) for name in CAPABILITIES),
                     'unrequested incumbent capability executed', path='wan.bundle.actual')
         return {'candidate_bundle': bundle.to_dict(), 'actual_compute_observed': executed}
-    require(type(cycles) is int and (not executed or (1 <= cycles <= 64 if bundle.continuous else cycles == 2)),
+    require(type(cycles) is int and (not executed or (1 <= cycles <= MAX_COHORTS if bundle.continuous else cycles == 2)),
             'incumbent census supports exactly two original fixed-trace cycles', path='wan.bundle.actual')
     for role, metadata in roles.items():
         require(metadata.get('candidate_bundle') == bundle.to_dict()

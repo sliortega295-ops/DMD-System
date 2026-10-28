@@ -25,7 +25,7 @@ def test_absolute_steps_drive_ema_cadence_not_repeated_first_cycle():
 
 def test_no_cohort_rng_repetition_or_single_fixed_trace():
     source = WanInputSources(tuple(f'{i}.pt' for i in range(16)))
-    with pytest.raises(ValueError, match='two to 64'):
+    with pytest.raises(ValueError, match='two to 100'):
         WanCohortSources((source,))
     with pytest.raises(ValueError, match='distinct logical RNG'):
         WanCohortSources((source, source))

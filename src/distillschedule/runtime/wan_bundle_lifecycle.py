@@ -1,7 +1,7 @@
 """Explicit finite-stream lifecycle over the ORIGINAL Wan incumbent controllers.
 
 No model/loss/update implementation lives here. v1 literal captures/census are
-unchanged. v2 is research-only: at most 64 fresh cohorts, fixed original model
+unchanged. v2 is research-only: at most 100 fresh cohorts, fixed original model
 geometry, 12 rollout and 3 Critic signatures, captured in the first process
 cycle only. Restoring native state starts with new empty controllers.
 """
@@ -12,6 +12,7 @@ import random
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
+from distillschedule.strategies.wan_stream import MAX_COHORTS
 
 SCHEMA = 'distillschedule.wan_incumbent_stream_lifecycle.v2'
 
@@ -164,7 +165,7 @@ def validate_stream_receipts(build, *, cycles):
     rows = receipt.get('cycles', [])
     require(receipt.get('schema_version') == SCHEMA and receipt.get('active') is False
             and receipt == build['critic']['metadata'].get('bundle_lifecycle')
-            and type(cycles) is int and 1 <= cycles <= 64 and len(rows) == cycles,
+            and type(cycles) is int and 1 <= cycles <= MAX_COHORTS and len(rows) == cycles,
             'missing/incomplete stream lifecycle census', path='wan.bundle.stream')
     entries, critic_versions = [], []
     for i, row in enumerate(rows):

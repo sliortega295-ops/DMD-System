@@ -59,7 +59,7 @@ def test_original_helios_training_task_never_relabels_canonical_request():
     assert request.source_steps == (10, 11, 12, 13, 14)
     assert HeliosCohortTask(2).source_steps == (20, 21, 22, 23, 24)
     assert request.source_steps == (10, 11, 12, 13, 14)
-    for value in (-1, True, 64):
+    for value in (-1, True, 100):
         with pytest.raises(ValueError):
             HeliosCohortTask(value)
     with pytest.raises(ValueError, match="reference"):

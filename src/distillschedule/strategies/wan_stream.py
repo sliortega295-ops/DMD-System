@@ -16,10 +16,12 @@ from .wan_inputs import WanInputSources
 from .wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
 
 SCHEMA = 'distillschedule.original_wan_cohort_stream.v1'
+# Bounded training extension; public manual/calibration stays at two cycles.
+MAX_COHORTS = 100
 
 
 def task_at(task, index):
-    require(type(index) is int and index >= 0, 'invalid cohort index', path='wan.stream')
+    require(type(index) is int and 0 <= index < MAX_COHORTS, 'invalid cohort index', path='wan.stream')
     return replace(task, first_step=task.first_step + index * task.fake_updates)
 
 
@@ -28,8 +30,8 @@ class WanCohortSources:
     cohorts: tuple[WanInputSources, ...]
 
     def __post_init__(self):
-        require(2 <= len(self.cohorts) <= 64 and all(isinstance(s, WanInputSources) for s in self.cohorts),
-                'two to 64 explicit cohort source contracts required', path='wan.stream')
+        require(2 <= len(self.cohorts) <= MAX_COHORTS and all(isinstance(s, WanInputSources) for s in self.cohorts),
+                f'two to {MAX_COHORTS} explicit cohort source contracts required', path='wan.stream')
         require(len({(s.seed, s.cohort) for s in self.cohorts}) == len(self.cohorts),
                 'cohorts must have distinct logical RNG identities; no fixed-trace repetition', path='wan.stream')
 

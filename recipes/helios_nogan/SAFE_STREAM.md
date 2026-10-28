@@ -5,7 +5,7 @@ native** finite stream owner. It is not the CPU reference, not a widened old
 two-cycle plan, and not a stable/recommended training recipe. Read the
 [versioned contract](../../docs/contracts/helios_nogan_safe_stream_v1.md).
 
-Prepare 2..64 fresh original No-GAN33/222/B1 cohorts using the unchanged
+Prepare 2..100 fresh original No-GAN33/222/B1 cohorts using the unchanged
 [reference input preparation](REFERENCE_TRAINING.md) workflow. Supply your own
 explicit local model/precast/Step10 G2-C10-EMA10/negative asset manifest using
 [`assets.reference.template.json`](assets.reference.template.json). Cold start,

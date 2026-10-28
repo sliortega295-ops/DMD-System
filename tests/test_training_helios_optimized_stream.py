@@ -37,7 +37,7 @@ def test_new_opt_in_is_not_the_frozen_two_cycle_or_reference_policy(tmp_path):
     result = describe_native(conf)
     assert result["native_api"].endswith("helios_worker:run_safe_stream")
     assert result["capabilities"]["modes"] == ["manual"]
-    assert result["capabilities"]["cycles"]["max"] == 64
+    assert result["capabilities"]["cycles"]["max"] == 100
     assert result["capabilities"]["resume"]["supported"] is True
     assert result["preset"]["numerical_status"] == "REVIEW"
     assert result["gpu_execution"] == "NOT_RUN"
@@ -88,7 +88,7 @@ def test_source_bound_flags_do_not_load_historical_model_or_trace_environment(mo
 
 
 @pytest.mark.parametrize("change", ["old_preset", "wrong_mode", "plan", "implementation", "transport",
-                                   "missing_stream", "replay", "cycles1", "cycles65"])
+                                   "missing_stream", "replay", "cycles1", "cycles101"])
 def test_safe_stream_never_widens_other_policies_or_ignores_controls(tmp_path, change):
     from distillschedule.training.native import _options
     raw = optimized_config(tmp_path).to_dict()
@@ -103,7 +103,7 @@ def test_safe_stream_never_widens_other_policies_or_ignores_controls(tmp_path, c
     elif change == "replay":
         raw["data"]["replay_fixed_trace"] = True
     else:
-        raw["trainer"]["cycles"] = 1 if change == "cycles1" else 65
+        raw["trainer"]["cycles"] = 1 if change == "cycles1" else 101
     with pytest.raises(ValueError):
         _options(TrainingConfig.from_dict(raw, source=tmp_path / "training.json"), "W2")
 

@@ -18,6 +18,7 @@ from distillschedule.workloads.best_known.registry import file_sha256, fingerpri
 KIND = "original_helios_cohort_stream.v1"
 SCHEMA = "distillschedule." + KIND
 TRACE_KEY = "distillschedule_helios_training_cohort"
+MAX_COHORTS = 100
 
 
 @dataclass(frozen=True)
@@ -26,8 +27,8 @@ class HeliosCohortTask:
     request: OriginalHeliosRequest = OriginalHeliosRequest()
 
     def __post_init__(self):
-        require(type(self.index) is int and 0 <= self.index < 64,
-                "cohort index must be in [0,63]", path="helios.inputs")
+        require(type(self.index) is int and 0 <= self.index < MAX_COHORTS,
+                f"cohort index must be in [0,{MAX_COHORTS-1}]", path="helios.inputs")
         require(self.request == OriginalHeliosRequest(),
                 "fresh reference currently requires original No-GAN33/222/world16/B1", path="helios.inputs")
 
@@ -198,8 +199,8 @@ def prepare_stream(request, sources, training_config, output):
     """Immutable explicit finite stream. Failed/incomplete output is preserved."""
     from runtime.operation_trace import write_operation_trace_bundle_manifest
     from distillschedule.strategies.wan_capture import read_training_config
-    require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= 64
-            and all(type(s) is HeliosCohortSources for s in sources), "2..64 typed cohorts required", path="helios.inputs")
+    require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= MAX_COHORTS
+            and all(type(s) is HeliosCohortSources for s in sources), f"2..{MAX_COHORTS} typed cohorts required", path="helios.inputs")
     tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
     _require_fresh_cohorts(sources)
     config = read_training_config(training_config)
@@ -239,7 +240,7 @@ def load_stream(path, *, cycles, verify_rank=None):
             and sha == fingerprint(unsigned), "stream identity changed/incomplete", path="helios.inputs")
     identity = doc["identity"]; request = OriginalHeliosRequest.from_dict(identity["request"])
     sources = [HeliosCohortSources.from_dict(s) for s in identity["sources"]]
-    require(type(cycles) is int and 2 <= cycles <= 64
+    require(type(cycles) is int and 2 <= cycles <= MAX_COHORTS
             and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
             and identity["source_fingerprint"] == source_fingerprint(), "stream cycles/source changed", path="helios.inputs")
     _require_fresh_cohorts(sources, identity["inventory"])

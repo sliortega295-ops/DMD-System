@@ -11,7 +11,7 @@ plan and is not added to the default planner inventory.
 
 ## Admission and supported boundary
 
-- Explicit finite `original_wan_cohort_stream.v1`, **2..64 distinct cohorts**.
+- Explicit finite `original_wan_cohort_stream.v1`, **2..100 distinct cohorts**.
   Requested cycles must equal its length. Use the existing `prepare-stream`
   workflow and its real per-rank input/trace validation; do not repeat a fixed
   trace or hand-edit source hashes. The assets' initial trace must be cohort 0.

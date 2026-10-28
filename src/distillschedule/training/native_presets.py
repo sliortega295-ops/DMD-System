@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
+from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
+
 
 SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
@@ -112,7 +115,7 @@ def describe_preset(workload: str, preset_id: str) -> dict:
         return dict(schema_version=SCHEMA, workload=workload, **value,
             opt_in='execution.mode=manual; explicit fresh finite stream; not stable/recommended',
             source_archived=True, runtime_binding='ORIGINAL_NATIVE_FRESH_STREAM_FULL_INCUMBENT_BUNDLE',
-            continuous_training=True, cycles=dict(min=2, max=64, finite_prepared_stream=True),
+            continuous_training=True, cycles=dict(min=2, max=WAN_MAX_COHORTS, finite_prepared_stream=True),
             lifecycle_verification='SOURCE_AND_CPU_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN',
             gpu_execution='NOT_RUN', mechanism_execution='NOT_RUN; requires actual graph/cast/norm/epilogue counters',
             source_binding='current source/assets/stream/topology; historical two-cycle contract unchanged',
@@ -124,7 +127,7 @@ def describe_preset(workload: str, preset_id: str) -> dict:
         return dict(schema_version=SCHEMA, workload=workload, **value,
             opt_in="execution.mode=manual; explicit fresh stream; not stable/recommended",
             source_archived=True, runtime_binding="ORIGINAL_NATIVE_FRESH_STREAM_SAFE_BUNDLE",
-            continuous_training=True, cycles=dict(min=2, max=64, finite_prepared_stream=True),
+            continuous_training=True, cycles=dict(min=2, max=HELIOS_MAX_COHORTS, finite_prepared_stream=True),
             lifecycle_verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN",
             gpu_execution="NOT_RUN", mechanism_execution="NOT_RUN; requires actual native per-cycle counters",
             source_binding="current source/assets/stream/topology; frozen two-cycle plans unchanged",

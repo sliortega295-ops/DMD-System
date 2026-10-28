@@ -46,7 +46,7 @@ def test_new_preset_is_research_only_and_retains_all_incumbent_mechanisms():
     old = describe_preset('W1', 'wan_ar.incumbent21a.v1')
     new = describe_preset('W1', 'wan_ar.incumbent21a_stream.v2')
     assert new['mechanisms'] == old['mechanisms']
-    assert new['continuous_training'] and new['cycles']['max'] == 64
+    assert new['continuous_training'] and new['cycles']['max'] == 100
     assert new['gpu_execution'] == 'NOT_RUN' and new['numerical_status'] == 'REVIEW'
     assert old['continuous_training'] is False and old['cycles'] == 2
     assert preset_implementation('W1', new['id']).candidate_bundle == stream_bundle()
