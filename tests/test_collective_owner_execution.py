@@ -654,3 +654,93 @@ def routing_rejection_worker(rank, filename):
 
 def test_native_routing_preserves_protocol_source_purity_and_lifecycle_guards(tmp_path):
     mp.spawn(routing_rejection_worker, args=(str(tmp_path / 'rdzv'),), nprocs=2, join=True)
+
+
+_ACTIVE_POLICY_FIELDS = None
+
+
+class PolicyFieldMutationOwner(CollectiveOwner):
+    """Adversarial callback: external Program fields are not owner/RNG state."""
+    def collective_execution_spec(self):
+        value = super().collective_execution_spec()
+        if _ACTIVE_POLICY_FIELDS is not None:
+            _ACTIVE_POLICY_FIELDS['contract_marker'] = True
+        return value
+
+
+def policy_contract_fields_worker(rank, filename, output):
+    global _ACTIVE_POLICY_FIELDS
+    initialize(rank, filename, timeout=12)
+    try:
+        from distillschedule.training.policy import CyclePolicy, cycle_structure
+        owner = PolicyFieldMutationOwner(rank)
+        policy = CyclePolicy(dict(mode='manual', implementation=option()))
+        current = workload(rank, owner=owner)
+        current.program.parameters['contract_marker'] = False
+        _ACTIVE_POLICY_FIELDS = current.program.parameters
+        policy.run(current, output)
+        _ACTIVE_POLICY_FIELDS = None
+        row = dict(bound_structure=policy.bound['structure'], live_structure=cycle_structure(current),
+                   live_marker=current.program.parameters['contract_marker'], first_steps=owner.steps)
+        following = workload(rank, owner=owner, cycle=1)
+        following.program.parameters['contract_marker'] = True
+        try:
+            policy.run(following, output)
+        except Exception as exc:
+            row['continuation_error'] = f'{type(exc).__name__}: {exc}'
+        else:
+            row['continuation_error'] = None
+        row.update(final_steps=owner.steps, preparations=owner.preparations,
+                   cuda_initialized=torch.cuda.is_initialized())
+        assert_group_usable(rank)
+        Path(output, f'rank-{rank}.json').write_text(json.dumps(row))
+    finally:
+        _ACTIVE_POLICY_FIELDS = None
+        dist.destroy_process_group()
+
+
+def test_policy_structure_observes_constructor_contract_field_callbacks(tmp_path):
+    mp.spawn(policy_contract_fields_worker, args=(str(tmp_path / 'rdzv'), str(tmp_path)),
+             nprocs=2, join=True)
+    rows = [json.loads((tmp_path / f'rank-{rank}.json').read_text()) for rank in range(2)]
+    assert all(row['bound_structure'] == row['live_structure'] for row in rows), rows
+    assert all(row['live_marker'] and row['first_steps'] == 1 for row in rows), rows
+    assert all(row['continuation_error'] is None and row['final_steps'] == 2 for row in rows), rows
+    assert all(row['preparations'] == 1 and not row['cuda_initialized'] for row in rows), rows
+
+
+def numeric_key_forward(ctx):
+    return ctx.state['model'](ctx.inputs['x'])
+
+
+def test_policy_structure_preserves_integer_key_hash_and_saved_policy_resume(tmp_path):
+    from distillschedule.open_workload.planning import source_identity
+    from distillschedule.open_workload.torch_backend import code_signature
+    from distillschedule.training.config import digest
+    from distillschedule.training.policy import CyclePolicy, cycle_structure
+    w = Workload(Program((Call('predict', 'predict', ('x',), ('model',)),),
+                         {'model': 0}, ('x',), ('predict',),
+                         parameters={'schedule': {2: .1, 10: .2}}),
+                 {'predict': numeric_key_forward}, {'model': torch.nn.Linear(3, 2)},
+                 {'x': torch.ones(1, 3)}).validate()
+    # Original cycle_policy.v1 ABI: fingerprint native key types directly.
+    # A JSON roundtrip BEFORE fingerprint sorts converted string keys instead
+    # of the accepted integer keys and cannot resume the saved policy below.
+    expected = digest(dict(program=w.program.to_dict(), modules={'model': dict(
+        **{'class': code_signature(torch.nn.Linear)}, parameters={name: dict(
+            shape=list(p.shape), dtype=str(p.dtype), device=p.device.type, requires_grad=p.requires_grad)
+            for name, p in w.state['model'].named_parameters(remove_duplicate=False)})},
+        feeds={'x': dict(shape=[1, 3], dtype='torch.float32', device='cpu')},
+        bindings={'predict': code_signature(numeric_key_forward)}, immutable_modules=(), replica_semantics=None))
+    policy = CyclePolicy(dict(mode='reference'))
+    policy.restore(dict(schema_version='distillschedule.cycle_policy.v1', mode='reference',
+        source=source_identity(), structure=expected, implementation=option()['local'],
+        order=['predict', '__open_finish__'],
+        initial_reference_gate={'status': 'NOT_RUN', 'reason': 'explicit user strategy'}))
+    (tmp_path / 'legacy-structure.json').write_text(json.dumps(dict(
+        saved_structure=expected, current_structure=cycle_structure(w))))
+    prepared = policy.prepare_resume(w)
+    assert cycle_structure(w) == expected
+    assert prepared.state['model'] is w.state['model'] and not prepared._ran
+    assert all(type(key) is int for key in w.program.parameters['schedule'])
+    assert not torch.cuda.is_initialized()
