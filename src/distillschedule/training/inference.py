@@ -100,15 +100,47 @@ def module_layout(state):
     return result
 
 
-def publish_export(components, output, *, model, identity, cycle):
-    """All ranks materialize full tensors; only primary writes shared files."""
+def _primary_cpu_tree(value, *, retain):
+    """Gather each tensor on its owners, retaining CPU copies only on primary.
+
+    A CPU staging failure must be exchanged before peers enter the next tensor
+    collective. This still materializes one full tensor on every owning rank;
+    it is not a rank-zero-only all-gather or an export capacity admission.
+    """
+    import torch
+    if isinstance(value, torch.Tensor):
+        from distillschedule.open_workload.torch_backend import full_tensor
+        def materialize():
+            dense = full_tensor(value)
+            return cpu_tree(dense) if retain else None
+        return distributed.checked(materialize, "inference primary-weight materialization")
+    if isinstance(value, dict):
+        result = {key: _primary_cpu_tree(item, retain=retain) for key, item in sorted(value.items())}
+    elif isinstance(value, tuple):
+        result = tuple(_primary_cpu_tree(item, retain=retain) for item in value)
+    elif isinstance(value, list):
+        result = [_primary_cpu_tree(item, retain=retain) for item in value]
+    else:
+        _tree_layout(value)  # Retain the existing safe extra-state contract.
+        result = value
+    return result if retain else None
+
+
+def publish_export(components, output, *, model, identity, cycle, primary_only=False):
+    """Publish the shared format, with optional primary-only CPU staging.
+
+    The default preserves the legacy all-owner CPU state copies. Either path
+    runs full_tensor on every owning rank; only primary publishes shared files.
+    """
     import torch
     rank, world = distributed.rank_world()
     output = Path(output).expanduser().resolve()
     _require(all(row == str(output) for row in distributed.gather(str(output))),
              "ranks disagree on shared inference output path")
     def admit():
+        _require(type(primary_only) is bool, "primary_only must be bool")
         if components.export is not None:
+            _require(not primary_only, "primary-only staging requires the named-module exporter")
             _require(world == 1, "custom distributed export callbacks are not supported")
             _require(components.load_export is not None, "custom export requires an explicit load_export callback")
         else:
@@ -118,8 +150,11 @@ def publish_export(components, output, *, model, identity, cycle):
         return value
     model = distributed.checked(admit, "inference export admission")
     _require(all(row == model for row in distributed.gather(model)), "ranks disagree on exported model layout")
+    _require(all(row == primary_only for row in distributed.gather(primary_only)),
+             "ranks disagree on inference weight staging policy")
     # cpu_tree calls full_tensor on DTensors, which MUST run on all owners.
-    weights = (distributed.checked(lambda: {name: cpu_tree(dict(sorted(module.state_dict().items())))
+    collect = (lambda value: _primary_cpu_tree(value, retain=rank == 0)) if primary_only else cpu_tree
+    weights = (distributed.checked(lambda: {name: collect(dict(sorted(module.state_dict().items())))
                for name, module in modules(components.state).items()}, "inference full-weight gathering")
                if components.export is None else None)
     token = distributed.gather(uuid.uuid4().hex if rank == 0 else None)[0]
