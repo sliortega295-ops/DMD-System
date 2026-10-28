@@ -62,10 +62,42 @@ four-step schedule are bound into the exported configuration; `generate`
 does not accept unbound overrides. Training RNG is neither restored nor used.
 Missing or mis-shaped conditions and previous-chunk fields are rejected.
 
-Generation returns **packed** `video_tokens` and `audio_tokens`, each with an
-explicit `BLD` latent schema. These are not RGB/video/audio media, nor W6's
-`BCTHW`/`SCT` VAE interface. The converted-token-to-codec ABI remains a separate
-item; there is no guessed reshape, frame count, decoder, or normalization.
+`--output-kind latents` returns **packed** `video_tokens` and `audio_tokens`,
+each with an explicit `BLD` schema. To generate media, provide an explicit
+original H3 codec manifest through `--parameters`:
+
+```json
+{
+  "decoder_manifest": {
+    "path": "/PROJECT/h3-codec.json",
+    "bytes": 12345,
+    "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+  }
+}
+```
+
+```sh
+distillctl generate /PROJECT/current-grid-student.inference.json \
+  --weights /PROJECT/current-grid-student \
+  --prepared /PROJECT/new-text/manifest.json \
+  --parameters /PROJECT/media-parameters.json \
+  --output-kind audio_video --output /PROJECT/generated-av
+```
+
+The [original codec manifest](h3_audio_video_decode.md) binds both safe weight
+inventories, source terms, CPU FP32 execution and capacity. It must match the
+original Grid geometry: video `[1,24,T,H/16,W/16]`, stereo audio `[2,32,A]`,
+FPS24, 32kHz, `T=(frames-5)/17*5+2` for `17*n+5` frames and
+`A=round(frames/24*40)`. The native decoder's temporal planner performs the
+final frame check. No cropping, interpolation or duration resampling is added.
+
+The bridge executes the original pinned `unpatchify_video` and `unpack_audio`
+definitions: spatial 1×2×2 video patches and **stereo channel-major** audio
+rows. Packing conversion changes no values or normalization; the original VAE
+applies its mean/std exactly once. W6's eight-step sampler is never used.
+`decoder_manifest` changes decoding only, not rollout or Student parameters.
+The bridge is also a factory for `distillctl decode` on supplied safe packed
+token inputs (`manifest`, `grid_source` and `geometry` factory parameters).
 
 ## Verification and remaining binding
 
@@ -76,6 +108,10 @@ four-step packed output matches the original projection path exactly on this
 CPU fixture. A separate process executes the public generation command on a
 new condition without importing either training owner or W6's sampler.
 These random weights establish implementation behavior, not pretrained quality.
+The optional media path additionally checks original packing round trips on
+non-square data and runs the public command in a new process through the actual
+ViT3D and full BigVGAN decoder. Native GPU and pretrained quality are separate
+acceptance stages.
 
 ## Export an original-reference native checkpoint
 

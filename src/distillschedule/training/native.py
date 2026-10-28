@@ -151,7 +151,7 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result["source"]["selected_plan_is_authoritative"] = False
         result['capabilities']['export'] = dict(supported=True,
             scope='complete original-reference checkpoint restore; current unmerged Grid Student and four frozen rollout entries',
-            standalone_generation='original four-step CPU packed AV; codec ABI separate',
+            standalone_generation='original four-step CPU packed AV; optional original codec exact patch/stereo ABI',
             verification='SOURCE_AND_CPU_ONLY; native GPU output pending')
         result["capabilities"].update(modes=["reference"],
             cycles=dict(min=2, max=64, fresh_inputs="original_h3_grid_latent_dataset.v1",

@@ -63,9 +63,10 @@ def runtime_identity():
 
 
 def source_identity():
-    from . import upstream
+    from . import upstream,h3_grid_codec
     return dict(model_sha256=MODEL_SHA, files=SOURCE_FILES,
                 consumer_sha256=file_sha256(Path(__file__)),
+                codec_bridge_sha256=file_sha256(Path(h3_grid_codec.__file__)),
                 importer_sha256=file_sha256(Path(upstream.__file__)))
 
 
@@ -329,7 +330,7 @@ def _metadata(p):
         semantics='approximate_grid1000', selection='CURRENT_UNMERGED_STUDENT_NOT_EMA',
         rollout='ORIGINAL_LIGHTX2V_FOUR_STEP_DATA_WARD_VELOCITY',
         adaLN='EXACT_FOUR_FROZEN_ROLLOUT_ENTRIES_NOT_RECONSTRUCTED_PROJECTIONS',
-        media='PACKED_TOKENS_NOT_NATIVE_W6_VAE_LAYOUT; EXPLICIT_CODEC_ABI_NOT_YET_BOUND',
+        media='PACKED_TOKENS; OPTIONAL_ORIGINAL_CODEC_EXACT_PATCH_AND_STEREO_ABI',
         evidence_kind=p['evidence_kind'], quality_validation='NOT_RUN', training_resume='INFERENCE_ONLY')
 
 
@@ -355,8 +356,14 @@ def build_inference_model(value):
         # The snapshot explicitly includes the otherwise-nonpersistent RoPE
         # buffer. Strict restore, not a guessed reconstruction, initializes it.
         carrier.register_load_state_dict_post_hook(_loaded)
-        return ModelComponents(state={'student': carrier, 'inference': p}, metadata=_metadata(p),
-                               generate=generate, admit_training=refuse_training).validate()
+        state={'student':carrier,'inference':p}
+        def decode_output(generated,options):
+            require(isinstance(options,dict) and set(options)=={'decoder_manifest'},
+                    'explicit original decoder_manifest required; use --output-kind latents otherwise')
+            from .h3_grid_codec import decode_generated
+            return decode_generated(generated,manifest=options['decoder_manifest'],source=p['source'],geometry=p['geometry'])
+        return ModelComponents(state=state,metadata=_metadata(p),generate=generate,
+                               decode=decode_output,admit_training=refuse_training).validate()
     finally:
         restore_rng(before)
 
@@ -388,13 +395,16 @@ def generate(state, feeds, options):
     import torch
     from .checkpoint import rng_state, restore_rng
     p, carrier = state['inference'], state['student']
-    require(not options and carrier.restored and carrier.selected is None,
+    require(isinstance(options,dict) and set(options)<={'decoder_manifest'} and carrier.restored and carrier.selected is None,
             'strictly restored Student and original schedule; no overrides')
     require(p['runtime'] == runtime_identity() and p['implementation'] == source_identity()
         and not carrier.training and all(not t.requires_grad and t.device.type == 'cpu' for t in carrier.parameters()),
         'inference owner/source/runtime changed')
     api = source_api(p['source'])
     shape, inputs = geometry(api, p['geometry'], text_dim=p['architecture']['text_dim'])
+    if 'decoder_manifest' in options:
+        from .h3_grid_codec import admit_binding
+        admit_binding(options['decoder_manifest'],source=p['source'],geometry=p['geometry'])
     require(isinstance(feeds, dict) and set(feeds) == set(inputs), 'new cached text-only condition required')
     for name, tensor in feeds.items():
         dtype = torch.int64 if name == 'text_token_tags' else torch.bfloat16

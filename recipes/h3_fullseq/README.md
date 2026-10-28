@@ -59,6 +59,7 @@ describes the actual frozen-base/current-LoRA/four-table representation and
 original four-step sampler. New-source CPU tests include strict common export
 and public new-process generation of packed AV tokens. Native checkpoint
 export now has an original-reference output-only owner bridge and an explicit
-[`trainer.export` template](export.native.template.json). The media-codec ABI
-remains separate; W6 output code is not substituted and the optimized backward
-hold is unchanged.
+[`trainer.export` template](export.native.template.json). An optional original
+codec manifest now binds exact video-patch/stereo packing, normalization and
+frame planning to the same public generation command. W6's sampler is not
+substituted, and the optimized backward hold is unchanged.
