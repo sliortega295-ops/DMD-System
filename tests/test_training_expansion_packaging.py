@@ -80,6 +80,10 @@ def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path()
                   'tests/test_training_flow_images_cpu.py', 'tests/test_training_wan22_cpu.py',
                   'tests/test_training_hunyuan_video_cpu.py', 'tests/test_training_modern_flow_planning_cpu.py',
                   'tests/test_training_native_text_assets_cpu.py',
+                  'tests/test_training_flow_streaming_load.py',
+                  "--require 'test_native_loading_releases_each_shard_before_reading_the_next[float32]'",
+                  "--require 'test_native_loading_releases_each_shard_before_reading_the_next[bfloat16]'",
+                  '--require test_streaming_native_constructor_keeps_success_rng_and_rejects_nonfinite_without_consuming_rng',
                   'tests/test_data_export_inputs_native_cpu.py', 'scripts/check_cpu_receipt.py modern-flow-cpu.xml',
                   'test_actual_lossless_video_file_and_raw_rgba_refusal',
                   'test_public_auto_saved_plan_and_new_process_resume[wan22-ti2v-5b]',
@@ -134,6 +138,7 @@ def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework
     expected = {str(path.relative_to(ROOT)): path for path in (ROOT/'recipes').rglob('*')
                 if path.is_file() and path.suffix in ('.py', '.json', '.md', '.yaml', '.yml')}
     assert {'recipes/wan_ar/training.incumbent-stream.json', 'recipes/wan_ar/INCUMBENT_STREAM.md'} <= expected.keys()
+    assert 'recipes/h3_fullseq/training.original-reference.json' in expected
     with zipfile.ZipFile(framework_wheel) as wheel:
         prefix = next(name.split('.data/', 1)[0] + '.data/data/share/distillschedule/'
                       for name in wheel.namelist() if '.data/data/share/distillschedule/recipes/' in name)

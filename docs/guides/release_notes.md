@@ -31,8 +31,16 @@ No new throughput, speedup, convergence or quality result is claimed.
   Wan2.1 VAE and emit independent new-prompt decoded video configs. Tests use
   actual tiny original G/sampler/VAE in a fresh process without old training or
   codec directories. They preserve live training state and do not merge LoRA.
-  W5/W6 native AV export/codec integration remains pending; located original
-  codec source alone is not a completed output path.
+  W4's [full C51 output](livewan_native_output.md) restores both pools and
+  exports the current full Student for independent original-streamer video.
+  W5's [original Grid output](h3_grid_inference.md) includes the four frozen
+  rollout-table entries and original packed AV sampler. W6's
+  [native AR output](h3_ar_native_inference.md) preserves original mixed
+  tensor storage and the eight-step previous/current AV sampler. Original
+  codecs supply video/audio decoding; [raw H3 AV preparation](h3_audio_video_encode.md)
+  connects actual previous/current frame directories and stereo WAV to the
+  existing cached-input trainer. These output/encoding chains have target CPU
+  and fresh-process proofs; their pretrained native GPU acceptance is separate.
 * Official DMD2 SD1.5/SDXL and official Self-Forcing retain actual pinned native
   owners and algorithms, now with explicit single-device CPU/CUDA FP32 source
   placement and safe host-state restore/export ownership. CPU original-model
@@ -57,12 +65,15 @@ No new throughput, speedup, convergence or quality result is claimed.
   fresh-process recovery, current-Student export and native RGB decode are
   **SYNTHETIC_TEST_ONLY**. Common export-only preparation encodes truly new
   prompts/raw media after all training assets and checkpoints are deleted.
-* Three admitted modern families additionally execute real measured common
+* All four modern-flow families additionally execute real measured common
   auto/saved-plan lifecycles. Clone trials qualify only tiny synthetic CPU1/FP32
   state; `LOCAL_PRETRAINED_UNVERIFIED` refuses before cloning. The tracked
   selected-storage limit is **not** host RSS or paired-trial capacity admission.
-* LTX retains its separate narrow AV/source/CPU recipe and native codecs, not a
-  full monolithic 22B, arbitrary architecture or GPU backend qualification.
+* LTX retains its bounded AV recipe, native codecs and common flow-DMD lifecycle.
+  Its actual tiny-model A100 single-device FP32 reference has 4/4 native-oracle,
+  full/LoRA update, fresh-process recovery and output checks. Full monolithic
+  22B capacity, distributed ownership and pretrained quality remain outside
+  that acceptance.
 
 The [support matrix](support_matrix.md) distinguishes each current executable
 path from its measured GPU evidence. Reuse completed receipts; do not rerun
@@ -101,6 +112,16 @@ reject. Qwen optional native defaults and Hunyuan primary model `pad_token_id`
 remain distinct from the required valid native tokenizer padding contract.
 Every role/text/VAE has explicit parameter-budget admission before concrete
 construction; an asset label is not pretrained authenticity or memory proof.
+The modern native loader now copies and releases one safetensors shard at a
+time after complete header admission. It preserves real tied parameters and
+constructor-owned buffers without retaining all previous shard payloads.
+Single-file weights still require their full payload plus model and conversion
+space; this is not total host-memory admission.
+
+The dedicated H3 codec CI lane requires real original encoder/decoder,
+packing, raw-input and installed-package proofs without private model assets.
+The modern-flow lane now also requires both FP32/BF16 shard-release proofs
+and exact constructor RNG behavior; missing or skipped required proofs fail.
 
 Framework Apache-2.0 does not replace external terms: official DMD2 source is
 CC-BY-NC-SA-4.0, LTX source uses LTX-2.x Community terms, Hunyuan model assets

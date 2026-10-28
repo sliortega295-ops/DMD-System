@@ -104,7 +104,7 @@ jobs:
           command -v ffprobe
       - name: Actual upstream models, raw media, all-state restart and measured plans
         run: |
-          python -m pytest -q tests/test_training_flow_image_device.py tests/test_training_flow_video_device.py tests/test_training_flow_images_cpu.py tests/test_training_wan22_cpu.py tests/test_training_hunyuan_video_cpu.py tests/test_training_modern_flow_planning_cpu.py tests/test_training_native_text_assets_cpu.py tests/test_data_export_inputs_native_cpu.py tests/test_framework_install_environment.py tests/test_training_expansion_packaging.py --junitxml=modern-flow-cpu.xml
+          python -m pytest -q tests/test_training_flow_image_device.py tests/test_training_flow_video_device.py tests/test_training_flow_images_cpu.py tests/test_training_wan22_cpu.py tests/test_training_hunyuan_video_cpu.py tests/test_training_modern_flow_planning_cpu.py tests/test_training_native_text_assets_cpu.py tests/test_training_flow_streaming_load.py tests/test_data_export_inputs_native_cpu.py tests/test_framework_install_environment.py tests/test_training_expansion_packaging.py --junitxml=modern-flow-cpu.xml
           python scripts/check_cpu_receipt.py modern-flow-cpu.xml \
             --require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners \
             --require test_ema_restoration_validates_every_tensor_before_mutation \
@@ -123,6 +123,9 @@ jobs:
             --require 'test_public_auto_saved_plan_and_new_process_resume[hunyuan-video-1.5]' \
             --require 'test_legacy_native_effective_config_forward_gradient_raw_restore_and_safe_reload[flux]' \
             --require 'test_alias_shard_index_remains_exact_and_header_failures_precede_payload[wrong-shard]' \
+            --require 'test_native_loading_releases_each_shard_before_reading_the_next[float32]' \
+            --require 'test_native_loading_releases_each_shard_before_reading_the_next[bfloat16]' \
+            --require test_streaming_native_constructor_keeps_success_rng_and_rejects_nonfinite_without_consuming_rng \
             --require test_installed_modern_wheel_actual_image_video_restart_and_export_only_inputs
       - name: Installed wheel user path, no checkout imports or model downloads
         run: python scripts/check_framework_install.py --modern-flow --work-dir "${{ runner.temp }}/installed-modern" --output installed-modern.json

@@ -15,6 +15,7 @@ STREAMS = [
     ("W2", "helios_nogan/training.safe-stream.json", "SAFE_STREAM.md", 100),
     ("W3", "helios_gan/training.stream.json", "NATIVE_STREAM.md", None),
     ("W4", "self_forcing/training.c51-stream.json", "C51_CONTINUATION.md", 100),
+    ("W5", "h3_fullseq/training.original-reference.json", "h3-grid-original-training.md", 64),
     ("W6", "h3_ar/training.native-stream.json", "NATIVE_CONTINUATION.md", 100),
 ]
 
@@ -37,7 +38,20 @@ def test_native_output_docs_link_real_current_generator_media_paths():
     matrix = (ROOT / "docs/guides/support_matrix.md").read_text()
     for family in ("wan_ar", "helios_nogan", "helios_gan"):
         assert "../../recipes/" + family + "/NATIVE_OUTPUT.md" in matrix
-    assert "W5/W6 native AV export/codec integration remains pending" in matrix
+    native = (ROOT / "docs/guides/native_workloads.md").read_text()
+    notes = (ROOT / "docs/guides/release_notes.md").read_text()
+    for guide in ("livewan_native_output.md", "h3_grid_inference.md",
+                  "h3_ar_native_inference.md", "h3_audio_video_encode.md"):
+        assert guide in matrix and guide in native and guide in notes, guide
+    for workload, recipe, _, _ in STREAMS:
+        report = describe_native(load_training_config(ROOT / "recipes" / recipe))
+        assert report["capabilities"]["export"]["supported"] is True, workload
+    for text in (matrix, native, notes):
+        assert "W5/W6 native AV export/codec integration remains pending" not in text
+        assert "W5/W6 native audio-video output remains implementation work" not in text
+    grid = (ROOT / "recipes/h3-grid-original-training.md").read_text()
+    assert "Generation/export are unsupported" not in grid
+    assert "h3_grid_inference.md" in grid
     assert "C51's physical drain/save/resume seam remains unsupported" not in (ROOT / "docs/guides/native_workloads.md").read_text()
     assert "W3/W4/W6 full optimized native long\n  lifecycles are **not complete**" not in (ROOT / "docs/guides/release_notes.md").read_text()
 

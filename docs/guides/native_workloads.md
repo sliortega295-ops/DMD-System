@@ -73,6 +73,7 @@ modified. Direct training does not need a saved plan.
 | W2 | [SafeBundle stream](../../recipes/helios_nogan/training.safe-stream.json); `helios_worker` | 2..100 fresh cohorts | Original native state and warm clocks; [SAFE_STREAM.md](../../recipes/helios_nogan/SAFE_STREAM.md) |
 | W3 | [full GAN stream](../../recipes/helios_gan/training.stream.json); `helios_gan_training` | finite prepared stream, including 100 cycles | Full G/C/GAN-head Adam and EMA; [NATIVE_STREAM.md](../../recipes/helios_gan/NATIVE_STREAM.md) |
 | W4 | [full C51 stream](../../recipes/self_forcing/training.c51-stream.json); `livewan_c51_training` | 2..100 fresh cohorts | Two-pool drain, role state and wave cursors; [C51_CONTINUATION.md](../../recipes/self_forcing/C51_CONTINUATION.md) |
+| W5 | [original Grid reference](../../recipes/h3_fullseq/training.original-reference.json); `h3_grid_training` | 2..64 finite cached-condition cycles | Both LoRAs, original Adam/schedulers, sampler and RNG; [h3-grid-original-training.md](../../recipes/h3-grid-original-training.md) |
 | W6 | [native AR stream](../../recipes/h3_ar/training.native-stream.json); `h3_ar_training` | 2..100 fresh cycles | Original ZeRO-3 model/master Adam and native clocks; [NATIVE_CONTINUATION.md](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
 
 W2 also supports its direct-reference fresh stream. W5's original reference
@@ -86,10 +87,19 @@ GAN restore owner and ABI, with N70 OFF. See [W1 output](../../recipes/wan_ar/NA
 [W2 output](../../recipes/helios_nogan/NATIVE_OUTPUT.md) and
 [W3 output](../../recipes/helios_gan/NATIVE_OUTPUT.md). The emitted independent
 Program config generates new-prompt video without old training payloads.
-W5/W6 native audio-video output remains implementation work.
+W4's [full C51 output](livewan_native_output.md) restores both role pools but
+exports only the current Generator and uses its original four-step streamer.
+W5's [Grid Student output](h3_grid_inference.md) retains the four required
+frozen AdaLN table entries and original converted-model sampler. W6's
+[AR Student output](h3_ar_native_inference.md) retains its eight-step
+previous/current audio-video schedule. Each path connects to its original
+codecs; inference exports remain distinct from resumable checkpoints.
+For new H3 AR inputs, use [raw previous/current AV preparation](h3_audio_video_encode.md)
+with supplied original text features. W5 continues to use its separate
+text-condition inventory, not the W6 input format.
 
 Existing W1 world16 continuation evidence is retained. The new W3/C51/W6
-native continuity and W1/W2/W3 decoded-output additions have source/CPU proof;
+native continuity and the six current-Student output paths have source/CPU proof;
 pretrained native GPU and 100-cycle stability acceptance remain separate.
 For that final acceptance, use one seed, 100 complete DMD cycles, and one
 midpoint complete-cycle checkpoint resumed in a new process. A native iteration
@@ -119,7 +129,7 @@ without a historical trace or node manifest; W4 has a
 [fresh reference recipe](../../recipes/self_forcing/REFERENCE_TRAINING.md) with
 independently inventoried genuine initial weights; W5 has an [original-config reference
 lifecycle](../../recipes/h3-grid-original-training.md). None inherits a
-measured winner. Both require their own qualified original assets and data,
+measured winner. Each requires its own qualified original assets and data,
 and execute inside an operator-owned world16 allocation, not a shell launcher.
 
 W2-W5 additionally accept explicit manual presets through the
@@ -331,7 +341,9 @@ Only zero-gradient complete cycles publish a manifest after **every rank's
 shard** has been written and hashed. State I/O is separately recorded outside
 the original compute timer. A failed write is not a valid checkpoint.
 CPU tests exercise original dispatch/cursor logic and actual engine/Adam
-restart on scalar fixtures; real pretrained Wan/CUDA restart remains NOT_RUN.
+restart. W1's existing world16 two-cohort continuation and fresh-process
+restore are documented in the [acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md);
+real-data 100-cycle acceptance remains a separate step.
 
 W2/W4's direct references and W5's original-config reference also expose atomic
 complete-cycle restart over actual original owners. Their guides specify
@@ -344,9 +356,9 @@ not world16 GPU evidence.
 
 Selected benchmark bindings retain their two-cycle/no-restart scope. The
 explicit fresh-stream owners above expose complete restart through the same
-front door, with algorithm-specific physical owners. W1/W2/W3 additionally
-publish portable current-Student video artifacts through `distillctl export`.
-Native W4 media export and W5/W6 decoded AV remain pending.
+front door, with algorithm-specific physical owners. All six expose their
+current-Student output paths above through `distillctl export`; W5 uses only
+its original reference owner, not the numerically held optimized candidate.
 
 Historical final state/fingerprint JSON is still evidence, not a resumable
 checkpoint. Use the new owner's complete manifest, every required shard and
