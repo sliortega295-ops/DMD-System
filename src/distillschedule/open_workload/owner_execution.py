@@ -110,6 +110,14 @@ def inventory(state):
     return result
 
 
+def workload_inventory(workload):
+    """Local capabilities have no execution consumer on the explicit native ABI."""
+    from .collective_owner import declaration
+    if declaration(workload) is not None:
+        return {}
+    return inventory(workload.state)
+
+
 def alternatives(providers):
     keys = sorted(providers)
     choices = [[None, *(option for option in providers[key]['descriptor']['options']

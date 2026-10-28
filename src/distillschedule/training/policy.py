@@ -43,8 +43,8 @@ def cycle_structure(workload):
                      "parameters": {name: {**shapes(p), "requires_grad": p.requires_grad}
                                     for name, p in unwrap_module(model).named_parameters(remove_duplicate=False)}}
                for key, model in workload.state.items() if isinstance(model, torch.nn.Module)}
-    from distillschedule.open_workload.owner_execution import inventory
-    owners = inventory(workload.state)
+    from distillschedule.open_workload.owner_execution import workload_inventory
+    owners = workload_inventory(workload)
     from distillschedule.open_workload.collective_owner import present, admit
     collective = admit(workload) if present(workload) else None
     return digest({"program": program, "modules": modules, "feeds": shapes(dict(workload.feeds)),

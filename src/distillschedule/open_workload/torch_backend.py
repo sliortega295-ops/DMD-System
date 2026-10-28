@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager, nullcontext
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import hashlib
 import inspect
 import itertools
@@ -166,8 +166,8 @@ class Workload:
             from .replica_contract import ReplicaSemantics
             require(isinstance(self.replica_semantics, ReplicaSemantics), 'typed replica semantics required', path='open.workload')
             self.replica_semantics.validate(self)
-        from .owner_execution import inventory
-        inventory(self.state)
+        from .owner_execution import workload_inventory
+        workload_inventory(self)
         return self
 
     @property
@@ -178,8 +178,8 @@ class Workload:
     def identity(self):
         self.validate()
         classes={type(m) for obj in self.state.values() if isinstance(obj,nn.Module) for m in obj.modules()}
-        from .owner_execution import inventory
-        owners = inventory(self.state)
+        from .owner_execution import workload_inventory
+        owners = workload_inventory(self)
         return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state)),
                 'feeds':fingerprint(signature(self.feeds)), 'seed':self.seed,
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
@@ -222,6 +222,9 @@ def sharing_inventory(workload, *, include_existing=False):
 
 def candidates(workload, *, limit=16):
     """Global capabilities: match facts, never branch on workload/model names."""
+    from .collective_owner import declaration
+    require(declaration(workload) is None, 'native owner requires its native execution backend',
+            path='open.capabilities')
     workload.validate()
     require(type(limit) is int and limit>=1,'candidate budget required',path='open.capabilities')
     groups=sorted({c.binding for c in workload.program.calls if c.replay_safe})
@@ -294,9 +297,12 @@ class Context:
 class Session:
     def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False):
         workload.validate()
+        from .collective_owner import validate_session
+        validate_session(self, workload, implementation, lifecycle,
+                         copy_state=copy_state, persistent=persistent)
         from .checkpoint_policy import POLICIES, operations
-        from .owner_execution import admit, inventory
-        self.owner_inventory = inventory(workload.state)
+        from .owner_execution import admit, workload_inventory
+        self.owner_inventory = workload_inventory(workload)
         self.owner_options = admit(implementation, self.owner_inventory)
         policy=implementation.get('checkpoint_policy','recompute')
         require(set(implementation) - {'owner_execution'} in ({'share_immutable','checkpoint_bindings','backend'},
@@ -349,12 +355,15 @@ class Session:
         """
         require(self.persistent, 'trial sessions are one-shot', path='open.runtime')
         workload.validate()
-        from .owner_execution import inventory
-        require(inventory(workload.state) == self.owner_inventory,
+        from .owner_execution import workload_inventory
+        require(workload_inventory(workload) == self.owner_inventory,
                 'owner execution descriptor or source changed', path='open.runtime')
         require(set(workload.state) == set(self.state) and all(
             workload.state[key] is self.state[key] for key in self.state),
             'cycle must retain the owned state objects', path='open.runtime')
+        from .collective_owner import validate_session
+        validate_session(self, workload, self.implementation, self.lifecycle,
+                         copy_state=False, persistent=self.persistent)
         if self._ran:
             require(workload.program.initial_versions == self.receipt['dispatcher']['final_versions'],
                     'cycle must continue the last committed versions', path='open.runtime')
@@ -370,6 +379,12 @@ class Session:
         if self.device.type=='cuda': torch.cuda.synchronize(self.device)
 
     def run(self, order=None, *, measure=False):
+        from .collective_owner import validate_session
+        validate_session(self, self.workload, self.implementation, self.lifecycle,
+                         copy_state=False, persistent=self.persistent)
+        # Generic trials may dispatch a clone, not the original logical owner.
+        validate_session(self, replace(self.workload, state=self.state), self.implementation,
+                         self.lifecycle, copy_state=False, persistent=self.persistent)
         require(not self._ran,'sessions are one-shot; clone original initial state for each trial',path='open.runtime')
         self._ran=True
         resident = None

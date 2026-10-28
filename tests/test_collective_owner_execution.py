@@ -13,7 +13,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from distillschedule.open_workload.execution import ExecutionBackend
-from distillschedule.open_workload.torch_backend import Workload, unwrap_module
+from distillschedule.open_workload.torch_backend import Session, Workload, unwrap_module
 from distillschedule.workloads.program import Call, Program
 
 
@@ -500,3 +500,157 @@ def evolving_mask_worker(rank, filename):
 
 def test_native_preflight_allows_evolving_native_masks(tmp_path):
     mp.spawn(evolving_mask_worker, args=(str(tmp_path / 'rdzv'),), nprocs=2, join=True)
+
+
+class UnusedDescriptorOwner(CollectiveOwner):
+    """Native execution must never inspect or enter the unrelated local ABI."""
+    def __init__(self, rank, fault):
+        super().__init__(rank)
+        self.local_fault = fault
+        self.local_descriptors = self.local_scopes = 0
+
+    def execution_options(self):
+        self.local_descriptors += 1
+        if self.local_fault == 'mutate':
+            self.steps += 1
+            torch.rand(1)
+        raise AssertionError('unused local descriptor invoked: ' + self.local_fault)
+
+    def execution_scope(self, option, effects):
+        self.local_scopes += 1
+        raise AssertionError('unused local execution scope invoked')
+
+
+def descriptor_routing_worker(rank, filename, fault):
+    initialize(rank, filename)
+    try:
+        from distillschedule.training.policy import CyclePolicy
+        owner = UnusedDescriptorOwner(rank, fault)
+        policy = CyclePolicy(dict(mode='manual', implementation=option()))
+        oracle = CollectiveOwner(0)
+        for cycle in range(2):
+            w = workload(rank, owner=owner, cycle=cycle)
+            w.validate()  # Public builder validation precedes policy execution.
+            session, outputs = policy.run(w, Path(filename).parent)
+            oracle.run(torch.cat([workload(r, cycle=cycle).feeds['x'] for r in range(2)]))
+            for parameter, expected in zip(owner.model.parameters(), oracle.model.parameters()):
+                torch.testing.assert_close(parameter, expected, rtol=2e-5, atol=2e-7)
+            assert owner.local_descriptors == owner.local_scopes == 0
+            assert owner.steps == cycle + 1 and owner.preparations == 1
+            assert session.state['owner'] is owner
+            assert session.owner_inventory == session.owner_options == {}
+            assert session.receipt['dispatcher']['final_versions'] == {'owner': cycle + 1}
+            assert all(bool(torch.isfinite(value).all()) for value in outputs.values())
+        assert not torch.cuda.is_initialized()
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('fault', ['throw', 'mutate'])
+def test_native_route_never_invokes_unused_local_descriptors(tmp_path, fault):
+    mp.spawn(descriptor_routing_worker, args=(str(tmp_path / 'rdzv'), fault), nprocs=2, join=True)
+
+
+def test_plain_session_cannot_bypass_native_lifecycle():
+    w = workload(0); owner = w.state['owner']
+    with pytest.raises(ValueError, match='native.*lifecycle'):
+        Session(w, option()['local'], copy_state=False, persistent=True)
+    assert_no_update(owner, preparations=0)
+
+
+class ImpureSpecOwner(CollectiveOwner):
+    def collective_execution_spec(self):
+        value = super().collective_execution_spec()
+        if self.fault == 'data':
+            parameter = next(self.model.parameters())
+            version = parameter._version
+            parameter.data.add_(1)
+            assert parameter._version == version
+        if self.fault == 'python_rng':
+            import random
+            random.random()
+        return value
+
+
+class DifferentSourceOwner(CollectiveOwner):
+    """Identical math/spec, deliberately distinct provider source."""
+    pass
+
+
+class NotNativeLifecycle:
+    def prepare(self, session):
+        raise AssertionError('unqualified lifecycle must not be installed')
+
+
+def routing_rejection_worker(rank, filename):
+    initialize(rank, filename, timeout=8)
+    try:
+        import random
+        from types import MethodType
+        from distillschedule.open_workload.collective_owner import NativeOwnerLifecycle, _NativeOwnerSession
+        from distillschedule.open_workload.torch_backend import candidates
+        for fault in ('partial', 'runtime_partial', 'wrong_method', 'instance_method',
+                      'instance_runtime', 'rank_partial', 'rank_source', 'data', 'python_rng'):
+            owner = (DifferentSourceOwner(rank) if fault == 'rank_source' and rank
+                     else ImpureSpecOwner(rank) if fault in ('data', 'python_rng')
+                     else CollectiveOwner(rank))
+            w = workload(rank, owner=owner)
+            if fault == 'partial' or (fault == 'rank_partial' and rank):
+                owner.prepare_collective_execution = None
+            elif fault == 'runtime_partial': owner.runtime_tensors = None
+            elif fault == 'wrong_method': owner.collective_execution_spec = owner.prepare_collective_execution
+            elif fault == 'instance_method':
+                owner.collective_execution_spec = MethodType(CollectiveOwner.collective_execution_spec, owner)
+            elif fault == 'instance_runtime':
+                owner.runtime_tensors = MethodType(CollectiveOwner.runtime_tensors, owner)
+            elif fault in ('data', 'python_rng'): owner.fault = fault
+            py, rng = random.getstate(), torch.random.get_rng_state()
+            with pytest.raises(ValueError, match='native|bound|pure|source|spec'):
+                ExecutionBackend(w)
+            assert random.getstate() == py and torch.equal(rng, torch.random.get_rng_state())
+            assert_no_update(owner, preparations=0)
+            assert_group_usable(rank)
+        owner = CollectiveOwner(rank); w = workload(rank, owner=owner)
+        backend = ExecutionBackend(w)
+        for lifecycle in (None, NotNativeLifecycle()):
+            with pytest.raises(ValueError, match='native.*lifecycle'):
+                Session(w, option()['local'], lifecycle=lifecycle, copy_state=False, persistent=True)
+        # Even a real lifecycle cannot be used by the plain generic Session.
+        native = NativeOwnerLifecycle(w, option(), backend.native_binding)
+        with pytest.raises(ValueError, match='native.*lifecycle'):
+            Session(w, option()['local'], lifecycle=native, copy_state=False, persistent=True)
+        with pytest.raises(ValueError, match='native.*backend'):
+            candidates(w)
+        assert_no_update(owner, preparations=0)
+        session = backend.session(option(), copy_state=False, persistent=True)
+        original = session.lifecycle
+        session.lifecycle = NotNativeLifecycle() if rank else None
+        with pytest.raises(ValueError, match='native.*lifecycle'):
+            session.run()
+        assert_no_update(owner, preparations=1)
+        with pytest.raises(ValueError, match='native.*lifecycle'):
+            Session.run(session)
+        assert not session._ran
+        assert_no_update(owner, preparations=1)
+        session.lifecycle = original
+        session.run()
+        assert owner.steps == 1 and owner.preparations == 1
+        assert type(session) is _NativeOwnerSession
+        assert_group_usable(rank)
+        # A class-method change on only one rank must reject C2 before update.
+        changed = CollectiveOwner.collective_execution_spec
+        if rank:
+            CollectiveOwner.collective_execution_spec = changed_collective_spec
+        try:
+            with pytest.raises(ValueError, match='source|spec|differ'):
+                ExecutionBackend(workload(rank, owner=owner, cycle=1))
+            assert owner.steps == 1
+            assert_group_usable(rank)
+        finally:
+            CollectiveOwner.collective_execution_spec = changed
+    finally:
+        dist.destroy_process_group()
+
+
+def test_native_routing_preserves_protocol_source_purity_and_lifecycle_guards(tmp_path):
+    mp.spawn(routing_rejection_worker, args=(str(tmp_path / 'rdzv'),), nprocs=2, join=True)

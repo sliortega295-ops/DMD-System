@@ -66,10 +66,15 @@ def _boundary(owner):
              'native owner requires an explicit live zero-gradient boundary')
 
 
-def admit(workload):
-    """Rank-local, collective-free preflight. Caller exchanges ALL failures."""
-    _require(dist.is_initialized() and dist.get_world_size() > 1,
-             'native collectives require an explicitly initialized multi-rank group')
+def declaration(workload):
+    """Qualify the native structural protocol without invoking either descriptor.
+
+    Presence alone is not admission: partial or mixed declarations fail closed.
+    Workload validation uses this same predicate, so native admission must not
+    recursively enter itself through the local capability inventory.
+    """
+    if not present(workload):
+        return None
     _require(workload.replica_semantics is None,
              'native owner collectives cannot be combined with ReplicaSemantics')
     _require(len(workload.state) == 1 and not workload.immutable_modules,
@@ -79,12 +84,23 @@ def admit(workload):
              'explicit stateful native owner required')
     for name in (*_METHODS, 'runtime_tensors'):
         method = getattr(owner, name, None)
-        _require(inspect.ismethod(method) and method.__func__ is getattr(type(owner), name, None),
+        _require(name not in getattr(owner, '__dict__', {}) and inspect.ismethod(method)
+                 and method.__func__ is getattr(type(owner), name, None),
                  'native collective methods must be bound inspectable class methods')
     _require(all(call.grad == 'external_grad' and not call.replay_safe and not call.backward_of
                  and call.reads == (key,) and call.writes == (key,)
                  for call in workload.program.calls),
              'native calls must be non-replayable external_grad macrocalls exclusively reading/writing their owner')
+    return key, owner
+
+
+def admit(workload):
+    """Rank-local, collective-free preflight. Caller exchanges ALL failures."""
+    _require(dist.is_initialized() and dist.get_world_size() > 1,
+             'native collectives require an explicitly initialized multi-rank group')
+    declared = declaration(workload)
+    _require(declared is not None, 'explicit native collective owner required')
+    key, owner = declared
     workload.validate()
     backend, device = str(dist.get_backend()), workload.device
     _require((device.type == 'cpu' and backend == 'gloo') or
@@ -278,6 +294,8 @@ class NativeOwnerLifecycle:
 class _NativeOwnerSession(Session):
     def run(self, order=None, *, measure=False):
         def preflight():
+            validate_session(self, self.workload, self.implementation, self.lifecycle,
+                             copy_state=False, persistent=self.persistent)
             _require(not self._ran, 'sessions are one-shot; bind the next native cycle before reuse')
             normalized = tuple(order or (*[call.id for call in self.workload.program.calls], '__open_finish__'))
             # Reuse the dispatcher's complete validation, not a second set of
@@ -289,6 +307,23 @@ class _NativeOwnerSession(Session):
         normalized = checked(preflight, 'native dispatch order')
         # The existing Session alone owns dispatch and lifecycle collectives.
         return super().run(normalized, measure=measure)
+
+
+def validate_session(session, workload, local, lifecycle, *, copy_state, persistent):
+    """Only the qualified native lifecycle may consume a native declaration."""
+    declared = declaration(workload)
+    if declared is None:
+        _require(type(session) is not _NativeOwnerSession,
+                 'native session requires its retained native owner lifecycle')
+        return
+    key, owner = declared
+    _require(type(session) is _NativeOwnerSession and type(lifecycle) is NativeOwnerLifecycle
+             and lifecycle.key == key and lifecycle.owner is owner
+             and lifecycle.workload.state.get(key) is owner,
+             'native owner requires its qualified native session lifecycle')
+    implementation(lifecycle.option)
+    _require(local == lifecycle.option['local'] and copy_state is False and persistent is True,
+             'native lifecycle requires its exact local implementation and persistent owned state')
 
 
 def make_session(workload, option, *, copy_state=True, persistent=False, binding=None):
