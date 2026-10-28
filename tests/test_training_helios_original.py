@@ -218,7 +218,7 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
     bounded, _, _ = search_fixture(source_dir, "W2")
     raw = bounded.to_dict(); raw["execution"].pop("plan"); raw["execution"]["mode"] = "reference"
     raw["data"] = {"input_kind": "original_helios_cohort_stream.v1", "prepared": str(root / "prepared/stream.json")}
-    raw["trainer"].update(cycles=3, checkpoint_every=1, output_dir=str(tmp_path / "training-output"))
+    raw["trainer"].update(cycles=3, checkpoint_every=1, stop_after_cycle=1, output_dir=str(tmp_path / "training-output"))
     conf = TrainingConfig.from_dict(raw, source=bounded.source)
     metadata_load = worker.load_stream
     if deferred_gate == "payload":
@@ -253,6 +253,7 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
         assert args.selective_flash_checkpoint_stride == 0 and args.attention_backend == "sdpa"
         assert all(getattr(args, name.replace("-", "_")) is False for name in worker._OFF)
         assert binding["identity"]["source_head"] == observed_source["identity"]["head"]
+        assert binding["config"].trainer["stop_after_cycle"] == 1
         assert len(binding["stream"]["cohorts"]) == 3
         assert "verified_immutable_assets" not in binding["identity"]
         assert "checkpoint_policy" not in binding
@@ -262,7 +263,9 @@ def test_public_config_source_admission_to_original_entrypoint(fresh_stream, tmp
     # This source-to-entrypoint test does not execute the original worker or
     # resource launcher. Real two-rank public/P0 admission is covered separately.
     monkeypatch.setattr(worker, "reference_process_group", lambda: nullcontext({}))
-    assert native.run_native(conf) == 23
+    from distillschedule.cli import main
+    conf.source.write_text(json.dumps(conf.to_dict()))
+    assert main(["train",str(conf.source)]) == 23
     assert len(seen) == 1 and current_training() is None
     assert torch.cuda.is_initialized() is False
 
@@ -355,11 +358,13 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
         "assets":portable_asset_document(frozen_assets, original_logical),
         "verified_immutable_assets":immutable_assets(portable_asset_document(frozen_assets, original_logical)),
         "bootstrap_logical_hash": json.loads((original_logical / "manifest.json").read_text())["manifest_hash"]}
-    def run(engines, destination, *, every=0, resume=None, progress=None):
+    def run(engines, destination, *, every=0, resume=None, progress=None, stop=None):
         conf = config(destination)
         raw = conf.to_dict(); raw["trainer"].update(output_dir=str(destination), checkpoint_every=every)
         if resume:
             raw["trainer"]["resume_from"] = str(resume)
+        if stop is not None:
+            raw["trainer"]["stop_after_cycle"] = stop
         conf = type(conf).from_dict(raw, source=conf.source)
         return execute_cycles(p0=p0, args=args, policy=StaticFSDP2P0Policy(rollout_batch_size=1,
             pack_real_score_pair=False), generator=engines[0], critic=engines[1], ema=engines[2],
@@ -379,17 +384,37 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
     assert not torch.equal(before, control[0].module.weight.to_local())
     assert [r["source_steps"] for r in result["cycles"]] == [list(range(s,s+5)) for s in (10,15,20)]
 
-    class StopAfterCheckpoint(RuntimeError):
-        pass
-    def stop(result):
-        assert result["completed_cycles"] == 1 and result["latest_checkpoint"]
-        raise StopAfterCheckpoint()
     torch.manual_seed(73); random.seed(73)
     interrupted = build()
-    with pytest.raises(StopAfterCheckpoint):
-        run(interrupted, tmp_path / "first", every=1, progress=stop)
+    stopped = run(interrupted, tmp_path / "first", every=1, stop=1)
+    assert stopped["status"] == "STOPPED_ORIGINAL_HELIOS_AT_CHECKPOINT"
+    assert stopped["training_segment"] == dict(horizon_cycles=3,start_cycle=0,
+        requested_stop_cycle=1,completed_cycle=1,executed_cycles=1,complete_horizon=False)
+    assert [row["source_steps"] for row in stopped["cycles"]] == [list(range(10,15))]
     checkpoint = tmp_path / "first/checkpoints/cycle-000001"
     assert (checkpoint / "_SUCCESS").is_file()
+    assert sorted(p.name for p in checkpoint.parent.iterdir()) == ["cycle-000001"]
+    from test_training_helios_stream import fresh_process_segment
+    child=fresh_process_segment(tmp_path,conf=config(tmp_path),
+        binding={"stream":stream,"identity":identity,"checkpoint_policy":{"cpu_original_proof":True}},
+        args=args,policy=StaticFSDP2P0Policy(rollout_batch_size=1,pack_real_score_pair=False),
+        logical=original_logical,frozen=frozen_assets,checkpoint=checkpoint,optimized=False)
+    assert equal(expected_state,child["state"])
+    assert expected_rng.keys() == child["rng"].keys()
+    assert {key: equal(value, child["rng"][key]) for key, value in expected_rng.items()} == dict.fromkeys(expected_rng, True)
+    assert child["calls"] == [list(range(15,20)),list(range(20,25))]
+    assert child["receipt"]["training_segment"] == dict(horizon_cycles=3,start_cycle=1,
+        requested_stop_cycle=3,completed_cycle=3,executed_cycles=2,complete_horizon=True)
+    for actual, uninterrupted in zip(child["receipt"]["cycles"],result["cycles"][1:],strict=True):
+        for key in ("source_steps","trace_hash","selected_order","actions","final_versions"):
+            assert actual[key] == uninterrupted[key], key
+    for stale in (1,):
+        untouched=build(); before_state=pack_state(engine_state({"generator":untouched[0],"critic":untouched[1]},ema=untouched[2]))
+        before_rng=rng_state()
+        with pytest.raises(ValueError,match="stop_after_cycle.*resume"):
+            run(untouched,tmp_path/"stale",every=1,resume=checkpoint,stop=stale)
+        assert equal(before_state,pack_state(engine_state({"generator":untouched[0],"critic":untouched[1]},ema=untouched[2])))
+        assert equal(before_rng,rng_state())
     torch.randn(37); random.random()
     restored = build(); parameter_ids = [id(engine.module.weight) for engine in restored[:2]]
     from distillschedule.training import checkpoint as checkpoint_io

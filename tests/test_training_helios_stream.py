@@ -144,3 +144,156 @@ def test_new_restart_identity_checks_actual_precast_shards_not_just_sizes(tmp_pa
     assert shard.stat().st_size == len(original)
     with pytest.raises(RuntimeError, match="shard hash mismatch"):
         worker.immutable_assets(assets)
+
+
+def _segment_config(tmp_path, variant, *, stop=50, every=50, cycles=100):
+    raw = config(tmp_path, cycles=cycles).to_dict()
+    if variant == "safe":
+        raw["execution"].update(mode="manual", preset="helios_nogan.safe_stream_ed8.v1")
+    elif variant == "gan":
+        raw["model"]["workload"] = "W3"
+        raw["algorithm"]["name"] = "original_helios_gan"
+        raw["data"]["input_kind"] = "original_helios_gan_cohort_stream.v1"
+        raw["execution"].update(mode="manual", preset="helios_gan.fa3_down40_nomerge_stream.v1")
+    raw["trainer"].update(checkpoint_every=every, stop_after_cycle=stop)
+    return TrainingConfig.from_dict(raw, source=tmp_path / "training.json")
+
+
+@pytest.mark.parametrize("variant", ["reference", "safe", "gan"])
+def test_stop_keeps_full_horizon_and_exposes_checkpoint_only_capability(tmp_path, variant):
+    from distillschedule.training import native
+    conf = _segment_config(tmp_path, variant)
+    assert native._options(conf, conf.model["workload"]) == ("reference" if variant == "reference" else "manual")
+    assert conf.trainer["cycles"] == 100 and conf.trainer["stop_after_cycle"] == 50
+    assert native.describe_native(conf)["capabilities"]["stop"]["checkpoint_required"] is True
+
+
+@pytest.mark.parametrize("variant", ["reference", "safe", "gan"])
+@pytest.mark.parametrize("stop,every", [(0,50),(101,50),(True,50),(50.0,50),(50,0),(49,50),(100,0),(None,50)])
+def test_invalid_stop_fails_before_worker_or_model(tmp_path, monkeypatch, variant, stop, every):
+    from distillschedule.training import native
+    conf = _segment_config(tmp_path, variant, stop=stop, every=every)
+    monkeypatch.setattr(native, "_source", lambda _: pytest.fail("invalid stop reached source/model admission"))
+    with pytest.raises(ValueError, match="stop_after_cycle.*checkpoint boundary"):
+        native.run_native(conf, dry_run=True)
+
+
+@pytest.mark.parametrize("variant", ["reference", "safe", "gan"])
+def test_stop_does_not_widen_fixed_trace_contracts(tmp_path, variant):
+    from distillschedule.training import native
+    raw = _segment_config(tmp_path, variant, stop=1, every=1, cycles=2).to_dict()
+    raw["data"] = {}
+    if variant != "reference":
+        raw["execution"]["preset"] = ("helios_nogan.safe_ed8.v1" if variant == "safe"
+            else "helios_gan.fa3_down40_nomerge.v1")
+    with pytest.raises(ValueError):
+        native._options(TrainingConfig.from_dict(raw, source=tmp_path / "training.json"), raw["model"]["workload"])
+
+
+def _resume_cpu_segment_child(spec_path, output):
+    """Fresh interpreter reuses real original scalar owner and native state codec.
+
+    CPU/Gloo plus synthetic memory/kernel counters only, never native GPU proof.
+    """
+    from types import SimpleNamespace
+    import torch
+    from distillschedule.training import helios_lifecycle as lifecycle, helios_safe_stream as safe
+    from distillschedule.training.checkpoint import pack_state, rng_state
+    from distillschedule.training.native_state import engine_state
+    from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
+    from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy
+    from distillschedule.runtime import helios_planner_cycle as cycle
+    from test_training_helios_original import original_cpu_engines
+    from test_refactor_helios_safe_incumbent import installed_build, increment_build
+    spec = json.loads(Path(spec_path).read_text())
+    output = Path(output); output.mkdir()
+    patch = pytest.MonkeyPatch()
+    owners = original_cpu_engines.__wrapped__(output, patch, Path(spec["logical"]), spec["frozen"])
+    try:
+        p0, build = next(owners)
+        engines = build()
+        config = TrainingConfig.from_dict(spec["config"], source=spec["config_source"])
+        binding = dict(spec["binding"], config=config)
+        optimized = spec["optimized"]
+        if optimized:
+            binding["implementation"] = safe.implementation()
+        build_record = installed_build() if optimized else {}
+        calls = []
+        prepare = cycle._prepare_cycle
+        def observed_prepare(**kwargs):
+            calls.append(list(kwargs["steps"]))
+            prepared, graph, order = prepare(**kwargs)
+            if optimized:
+                original_run = prepared.run
+                def run():
+                    value = original_run()
+                    increment_build(build_record)  # SYNTHETIC, not FA2/Triton execution.
+                    return value
+                prepared.run = run
+            return prepared, graph, order
+        patch.setattr(cycle, "_prepare_cycle", observed_prepare)
+        result = lifecycle.execute_cycles(p0=p0, args=SimpleNamespace(**spec["args"]),
+            policy=StaticFSDP2P0Policy(**spec["policy"]), generator=engines[0],critic=engines[1],ema=engines[2],
+            diagnostics=StaticProfileDiagnostics(enabled=False,rank=0),
+            negative=torch.zeros(1,2,4096,dtype=torch.bfloat16),rank=0,device=torch.device("cpu"),
+            binding=binding,result={"build":build_record})
+        torch.save(dict(state=pack_state(engine_state({"generator":engines[0],"critic":engines[1]},ema=engines[2])),
+                        rng=rng_state(),calls=calls,receipt=result),output/"child.pt")
+        assert not torch.cuda.is_initialized()
+    finally:
+        owners.close(); patch.undo()
+
+
+def fresh_process_segment(tmp_path, *, conf, binding, args, policy, logical, frozen, checkpoint, optimized):
+    """Test-only JSON packet: no opaque owner state is sent to the child."""
+    from dataclasses import asdict
+    import subprocess
+    import sys
+    import torch
+    from test_training_helios_gan_stream import _cpu_lifecycle_child_env
+    raw = conf.to_dict()
+    raw["trainer"].pop("stop_after_cycle", None)
+    raw["trainer"].update(resume_from=str(checkpoint), output_dir=str(tmp_path/"child-run"),checkpoint_every=0)
+    fields = ("stream", "identity", "checkpoint_policy", "effective_configuration")
+    spec = dict(config=raw,config_source=str(conf.source), binding={k:binding[k] for k in fields if k in binding},
+                args=vars(args),policy=asdict(policy),logical=str(logical),frozen=frozen,optimized=optimized)
+    path=tmp_path/"child-spec.json"; path.write_text(json.dumps(spec,default=str))
+    code="from test_training_helios_stream import _resume_cpu_segment_child; import sys; _resume_cpu_segment_child(*sys.argv[1:])"
+    child=subprocess.run([sys.executable,"-c",code,str(path),str(tmp_path/"child-run")],
+        env=_cpu_lifecycle_child_env(),capture_output=True,text=True,timeout=120)
+    assert child.returncode == 0, child.stdout+child.stderr
+    return torch.load(tmp_path/"child-run/child.pt",weights_only=False)
+
+
+def _stop_gloo_worker(rank, rendezvous, output, case):
+    """Real two-rank controls; physical world16 and model are deliberately absent."""
+    from datetime import timedelta
+    from types import SimpleNamespace
+    import torch
+    import torch.distributed as dist
+    from distillschedule.training.helios_lifecycle import admit_stop_control
+    torch.set_num_threads(1)
+    dist.init_process_group("gloo",init_method="file://"+rendezvous,rank=rank,world_size=2,
+                            timeout=timedelta(seconds=45))
+    try:
+        trainer=dict(cycles=100,checkpoint_every=50,stop_after_cycle=50)
+        if rank == 1:
+            if case == "different": trainer["stop_after_cycle"]=100
+            else: trainer["checkpoint_every"]=0
+        with pytest.raises(ValueError,match="stop_after_cycle") as caught:
+            admit_stop_control(SimpleNamespace(trainer=trainer))
+        errors=[None,None]; dist.all_gather_object(errors,str(caught.value))
+        assert errors[0] == errors[1]
+        assert ("ranks disagree" if case == "different" else "checkpoint boundary") in errors[0]
+        # No model boundary was entered; the healthy rank also exits the gate.
+        assert not torch.cuda.is_initialized()
+        (Path(output)/f"rank-{rank}.json").write_text(json.dumps(dict(scope="CPU_GLOO_CONTROLS_ONLY",error=errors[0])))
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize("case", ["different","invalid_cadence"])
+def test_stop_collective_rejects_rank_divergence_before_owner(tmp_path,case):
+    import torch.multiprocessing as mp
+    mp.spawn(_stop_gloo_worker,args=(str(tmp_path/"rendezvous"),str(tmp_path),case),nprocs=2,join=True)
+    assert all((tmp_path/f"rank-{rank}.json").is_file() for rank in range(2))

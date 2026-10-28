@@ -41,6 +41,30 @@ def expected_versions(completed):
     return {"generator": 2 + completed, "critic": 10 + 5 * completed, "ema": 10 + 5 * completed}
 
 
+def stop_cycle(config, *, start=0):
+    """Execution control only: never shorten the identity-bound prepared stream."""
+    trainer = config.trainer
+    horizon = trainer["cycles"]
+    stop = trainer.get("stop_after_cycle", horizon)
+    if "stop_after_cycle" in trainer:
+        every = trainer.get("checkpoint_every", 0)
+        require(type(stop) is int and 1 <= stop <= horizon and type(every) is int and every > 0
+                and (stop == horizon or stop % every == 0),
+                "trainer.stop_after_cycle must be a complete checkpoint boundary within the unchanged horizon",
+                path="helios.training")
+    require(start < stop, "stop_after_cycle must be after the completed resume boundary", path="helios.training")
+    return stop
+
+
+def admit_stop_control(config):
+    """Every rank must choose the same last collective before constructing owners."""
+    stop = distributed.checked(lambda: stop_cycle(config), "Helios stop checkpoint boundary admission")
+    controls = {"stop_after_cycle": stop}
+    require(all(row == controls for row in distributed.gather(controls)),
+            "ranks disagree on Helios stop_after_cycle", path="helios.training")
+    return stop
+
+
 def _plane(binding):
     if binding.get("metadata_group") is None:
         return nullcontext()
@@ -205,6 +229,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
         if startup is not None:
             binding["startup"] = startup
         distributed.admit_run_controls(binding["config"])
+        admit_stop_control(binding["config"])
         peers = distributed.gather({"identity": binding["identity"], "policy": binding["checkpoint_policy"]})
         require(all(item == peers[0] for item in peers), "rank source/stream/reference differs", path="helios.training")
         resume = binding["config"].trainer.get("resume_from")
@@ -213,6 +238,8 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             header = distributed.checked(lambda: read_manifest(resume, identity=binding["identity"]),
                                          "Helios restart metadata")
             validate_progress(header, binding)
+            if binding.get("native_output") is None:
+                stop_cycle(binding["config"], start=header["cycle"])
     if seed_runtime:
         seed_original_runtime(torch=torch, rank=rank)
 
@@ -279,10 +306,19 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
     start = 0
     resume = binding["config"].trainer.get("resume_from")
     with _plane(binding):
+        end = admit_stop_control(binding["config"])
         if resume:
             header = distributed.checked(lambda: read_manifest(resume, identity=binding["identity"]),
                                          "Helios restart metadata")
             validate_progress(header, binding)
+            if binding.get("native_output") is None:
+                stop_cycle(binding["config"], start=header["cycle"])
+                # Native update helpers lazily import Diffusers/HTTPX/Rich;
+                # Rich may draw Python RNG while initializing its style IDs.
+                # Complete that import before restoring the training RNG, not
+                # inside the first resumed rollout. No model or update runs.
+                import importlib
+                importlib.import_module("helios.utils.utils_helios_post")
             restored = restore_checkpoint(resume, state, identity=binding["identity"])
             start = restored["cycle"]
             require(_versions(generator, critic, ema) == restored["versions"],
@@ -318,7 +354,7 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             numerical_status="REVIEW", gpu_kernel_numerical_parity="NOT_RUN",
             capacity_validation="NOT_RUN; source bridge does not establish native setup/checkpoint/restore reserve")
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
-    for index in range(start, len(stream["cohorts"])):
+    for index in range(start, end):
         task = HeliosCohortTask(index)
         entry = stream["cohorts"][index]
         with _plane(binding):
@@ -361,18 +397,29 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         result["cycles"].append(row)
         result.update(status="PARTIAL_ORIGINAL_HELIOS_TRAINING", final_versions=versions,
                       completed_cycles=index + 1, next_cohort=index + 1)
+        saved = None
         if cadence and ((index + 1) % cadence == 0 or index + 1 == len(stream["cohorts"])):
             path = Path(binding["config"].trainer["output_dir"]) / "checkpoints" / f"cycle-{index+1:06d}"
             with _plane(binding):
                 saved = save_checkpoint(path, state, identity=binding["identity"], cycle=index + 1, cursor=index + 1,
                                         versions=versions, policy=binding["checkpoint_policy"])
             result["latest_checkpoint"] = str(saved)
+        if "stop_after_cycle" in binding["config"].trainer and index + 1 == end:
+            # save_checkpoint returns only after all ranks see the durable
+            # manifest, success marker and required shards. Never stop on an
+            # earlier checkpoint, or a failed/unpublished save.
+            require(saved is not None, "stop_after_cycle requires a published complete checkpoint boundary",
+                    path="helios.training")
         if progress is not None:
             with _plane(binding):
                 distributed.checked(lambda: progress(result), "Helios rank progress receipt")
         del observer, prepared, trace
-    result.update(status="COMPLETED_ORIGINAL_HELIOS_TRAINING", semantics_status="PASS",
-                  final_versions=_versions(generator, critic, ema), completed_cycles=len(stream["cohorts"]))
+    result.update(status=("STOPPED_ORIGINAL_HELIOS_AT_CHECKPOINT" if end < len(stream["cohorts"])
+                          else "COMPLETED_ORIGINAL_HELIOS_TRAINING"), semantics_status="PASS",
+                  final_versions=_versions(generator, critic, ema), completed_cycles=end,
+                  training_segment=dict(horizon_cycles=len(stream["cohorts"]), start_cycle=start,
+                      requested_stop_cycle=end, completed_cycle=end, executed_cycles=end-start,
+                      complete_horizon=end == len(stream["cohorts"])))
     return result
 
 

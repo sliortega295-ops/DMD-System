@@ -34,12 +34,14 @@ def test_gan_terminal_export_preserves_physical_and_logical_clocks():
 def test_public_gan_export_uses_its_original_full_gan_owner(tmp_path, monkeypatch):
     from distillschedule.training import native, helios_gan_training as gan
     raw = config(tmp_path).to_dict()
+    raw['trainer']['stop_after_cycle'] = 50
     raw['trainer']['export'] = {'schema_version': 'distillschedule.helios_gan_native_output_request.v1'}
     conf = TrainingConfig.from_dict(raw, source=tmp_path / 'training.json')
     checkpoint, output = tmp_path / 'checkpoint', tmp_path / 'portable'
     seen = []
     def admit(clean):
         assert clean.model == conf.model and clean.execution == conf.execution and clean.data == conf.data
+        assert 'stop_after_cycle' not in clean.trainer
         assert 'export' not in clean.trainer and clean.trainer['checkpoint_every'] == 0
         assert clean.trainer['resume_from'] == str(checkpoint)
         seen.append('source-admit')

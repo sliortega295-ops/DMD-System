@@ -26,12 +26,14 @@ def test_public_export_enters_original_worker_with_complete_request(tmp_path, mo
     from distillschedule.training import native, helios_worker
     from distillschedule.training.config import TrainingConfig
     raw = config(tmp_path, cycles=100).to_dict()
+    raw['trainer']['stop_after_cycle'] = 50
     raw['trainer']['export'] = {'schema_version': 'distillschedule.helios_native_output_request.v1'}
     raw['trainer']['resume_from'] = str(tmp_path / 'stale-checkpoint')
     conf = TrainingConfig.from_dict(raw, source=tmp_path / 'training.json')
     checkpoint, output = tmp_path / 'actual-checkpoint', tmp_path / 'portable'
     seen = []
     def admit(clean):
+        assert 'stop_after_cycle' not in clean.trainer
         assert 'export' not in clean.trainer and clean.trainer['checkpoint_every'] == 0
         assert clean.trainer['resume_from'] == str(checkpoint)
         assert clean.trainer['cycles'] == 100 and clean.execution == conf.execution

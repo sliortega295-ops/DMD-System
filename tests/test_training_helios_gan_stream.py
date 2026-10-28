@@ -33,12 +33,14 @@ def test_public_stream_admits_100_complete_cycles_not_legacy_two_cycle(tmp_path)
            "data": {"input_kind": "original_helios_gan_cohort_stream.v1", "prepared": "stream.json"},
            "execution": {"adapter": "native", "mode": "manual", "task": "task.json",
                          "assets": "assets.json", "preset": "helios_gan.fa3_down40_nomerge_stream.v1"},
-           "trainer": {"cycles": 100, "checkpoint_every": 50, "output_dir": "run"}}
+           "trainer": {"cycles": 100, "checkpoint_every": 50, "stop_after_cycle": 50, "output_dir": "run"}}
     config = TrainingConfig.from_dict(raw, source=tmp_path / "training.json")
     assert _options(config, "W3") == "manual"
     report = describe_native(config)
     assert report["native_api"].endswith("helios_gan_training:run_training")
     assert report["capabilities"]["resume"]["supported"] is True
+    assert report["capabilities"]["stop"]["checkpoint_required"] is True
+    assert config.trainer["cycles"] == 100 and config.trainer["stop_after_cycle"] == 50
     assert report["capabilities"]["export"]["supported"] is True
     assert "CURRENT" in report["capabilities"]["export"]["scope"]
     assert report["gpu_execution"] == "NOT_RUN"
@@ -342,7 +344,7 @@ def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_p
         "data":{"input_kind":inputs.KIND,"prepared":str(stream_root/"stream.json")},
         "execution":{"adapter":"native","mode":"manual","preset":training.PRESET_ID,
             "task":str(task_path),"assets":str(assets_path)},
-        "trainer":{"cycles":3,"checkpoint_every":1,"output_dir":str(tmp_path/"run")}}
+        "trainer":{"cycles":3,"checkpoint_every":1,"stop_after_cycle":1,"output_dir":str(tmp_path/"run")}}
     config = TrainingConfig.from_dict(raw, source=tmp_path / "training.json")
     from distillschedule.search.helios_implementation import HeliosImplementation
     monkeypatch.setattr(HeliosImplementation, "environment", lambda *a,**k: pytest.fail("inherited historical plan/assets"))
@@ -360,6 +362,30 @@ def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_p
     assert args[args.index("--gan-config")+1] == assets["assets"]["gan_config"]["path"]
     assert "--generator-nograd-persistent-unshard" in args and "--generator-nograd-static-context-cache" not in args
     assert "/share/" not in " ".join(args)
+
+
+    # Real CLI -> native dispatcher -> GAN worker scope, stopping at an
+    # explicit synthetic model boundary (not a CUDA/FA3 admission claim).
+    from contextlib import nullcontext
+    from distillschedule.cli import main
+    from distillschedule.training import helios_worker as worker, helios_lifecycle as lifecycle
+    source = native._source(config); source["identity"]["dirty"] = False
+    monkeypatch.setattr(native,"_source",lambda _:deepcopy(source))
+    monkeypatch.setattr(training.distributed,"world16_reference_process_group",lambda label:nullcontext({}))
+    monkeypatch.setenv("RANK","0")
+    seen=[]
+    def boundary():
+        binding=lifecycle.current_training()
+        assert binding["gan_stream"] is True and binding["implementation"] == training.implementation()
+        assert binding["config"].trainer["stop_after_cycle"] == 1
+        assert len(binding["stream"]["cohorts"]) == 3 and binding["stream"]["stream_sha256"] == doc["stream_sha256"]
+        assert lifecycle.admit_stop_control(binding["config"]) == 1
+        seen.append("SYNTHETIC_TEST_ONLY_MODEL_BOUNDARY")
+        return 23
+    monkeypatch.setattr(worker,"_backend",lambda:SimpleNamespace(main=boundary))
+    config.source.write_text(json.dumps(config.to_dict()))
+    assert main(["train",str(config.source)]) == 23
+    assert seen == ["SYNTHETIC_TEST_ONLY_MODEL_BOUNDARY"] and lifecycle.current_training() is None
 
 
 def _set_effect_counters(build, values):
@@ -434,7 +460,8 @@ def _cpu_lifecycle_run(root, output, *, resume=None, stop=None):
         ema.decay=.99; ema.min_decay=0.; ema.update_after_step=750; ema.optimization_step=800; ema.cur_decay_value=None
         stream=json.loads((root/"stream.json").read_text())
         binding={"config":SimpleNamespace(trainer={"output_dir":str(output),"cycles":len(stream["cohorts"]),"checkpoint_every":1,
-            **({"resume_from":str(resume)} if resume else {})}), "stream":stream,
+            **({"resume_from":str(resume)} if resume else {}),
+            **({"stop_after_cycle":stop} if stop is not None else {})}), "stream":stream,
             "identity":{"scope":"CPU_REAL_LIFECYCLE_SYNTHETIC_P0_NOT_GAN_OR_GPU_PROOF","stream":stream["stream_sha256"]}}
         binding["checkpoint_policy"]=training._checkpoint_policy(binding["identity"])
         core=NativeDownStreamSAC(torch=torch,rank=0); core.generator,core.critic,core.ema=generator,critic,ema
@@ -508,18 +535,13 @@ def _cpu_lifecycle_run(root, output, *, resume=None, stop=None):
             return {"logical_step":step,"source_rank":0}
         p0=SimpleNamespace(torch=torch,base=SimpleNamespace(_run_gan_generator_update=gupdate),
                            _precompute_critic_rollouts=rollout,_run_gan_critic_precomputed=cupdate)
-        def progress(value):
-            if stop and value["completed_cycles"] == stop: raise InterruptedError("TEST_COMPLETE_CYCLE_STOP")
-        try:
-            result=training.execute_cycles(p0=p0,args=SimpleNamespace(timing_mode=True,profile_mode=False,profile_diagnostics=False,ema_device="cpu"),
-                policy=SimpleNamespace(elide_critic_scalar_logs=True,elide_official_generator_free_memory=True),
-                result={"build":fixture},rank=0,device="cpu",generator=generator,critic=critic,ema=ema,diagnostics=SimpleNamespace(add_bytes=lambda *a,**kw:None),
-                negative=None,cfg=object(),generator_free_memory={},binding=binding,progress=progress)
-            assert result["native_GPU_continuation"] == "NOT_RUN"
-        except InterruptedError:
-            assert stop is not None
+        result=training.execute_cycles(p0=p0,args=SimpleNamespace(timing_mode=True,profile_mode=False,profile_diagnostics=False,ema_device="cpu"),
+            policy=SimpleNamespace(elide_critic_scalar_logs=True,elide_official_generator_free_memory=True),
+            result={"build":fixture},rank=0,device="cpu",generator=generator,critic=critic,ema=ema,diagnostics=SimpleNamespace(add_bytes=lambda *a,**kw:None),
+            negative=None,cfg=object(),generator_free_memory={},binding=binding)
+        assert result["native_GPU_continuation"] == "NOT_RUN"
         snapshot={"state":pack_state(engine_state({"generator":generator,"critic":critic},ema=ema)),
-                  "rng":rng_state(),"samples":samples}
+                  "rng":rng_state(),"samples":samples,"receipt":result}
         torch.save(snapshot,output/"final.pt")
         return snapshot
     finally:
@@ -564,7 +586,12 @@ def test_new_cycle_runner_real_program_state_checkpoint_and_fresh_process_resume
     from test_training_end_to_end import equal
     root=tmp_path/"inputs"; root.mkdir(); metadata_stream(root,cycles=4)
     full=_cpu_lifecycle_run(root,tmp_path/"full")
-    _cpu_lifecycle_run(root,tmp_path/"first",stop=2)
+    stopped=_cpu_lifecycle_run(root,tmp_path/"first",stop=2)
+    assert stopped["receipt"]["status"] == "STOPPED_ORIGINAL_HELIOS_GAN_AT_CHECKPOINT"
+    assert stopped["receipt"]["training_segment"] == dict(horizon_cycles=4,start_cycle=0,
+        requested_stop_cycle=2,completed_cycle=2,executed_cycles=2,complete_horizon=False)
+    assert stopped["samples"] == full["samples"][:10]
+    assert sorted(p.name for p in (tmp_path/"first/checkpoints").iterdir()) == ["cycle-000001","cycle-000002"]
     checkpoint=tmp_path/"first/checkpoints/cycle-000002"
     assert (checkpoint/"_SUCCESS").is_file()
     code="from test_training_helios_gan_stream import _cpu_lifecycle_run; import sys; _cpu_lifecycle_run(*sys.argv[1:3],resume=sys.argv[3])"
@@ -574,7 +601,15 @@ def test_new_cycle_runner_real_program_state_checkpoint_and_fresh_process_resume
     resumed=torch.load(tmp_path/"resumed/final.pt",weights_only=False)
     assert equal(full["state"],resumed["state"])
     assert equal(full["rng"],resumed["rng"])
-    assert resumed["samples"] == full["samples"][10:]
+    assert stopped["samples"] + resumed["samples"] == full["samples"]
+    assert resumed["receipt"]["training_segment"] == dict(horizon_cycles=4,start_cycle=2,
+        requested_stop_cycle=4,completed_cycle=4,executed_cycles=2,complete_horizon=True)
+    for actual, uninterrupted in zip(resumed["receipt"]["cycles"], full["receipt"]["cycles"][2:], strict=True):
+        for key in ("source_steps", "trace_hash", "actions", "selected_order", "final_versions", "curriculum_versions"):
+            assert actual[key] == uninterrupted[key], key
+    for stale in (1,2):
+        with pytest.raises(ValueError, match="stop_after_cycle.*resume"):
+            _cpu_lifecycle_run(root,tmp_path/f"stale-{stale}",resume=checkpoint,stop=stale)
     # A missing local shard must be rejected before another live update.
     shards=list(checkpoint.glob("*.pt")); assert shards
     shards[0].unlink()
@@ -1141,3 +1176,21 @@ def test_stream_executed_effects_rejects_stale_and_mismatched_counters(mutation,
         delta[key] += 1
     _set_effect_counters(build, delta)
     with pytest.raises(ValueError, match=message): training.executed_effects(build, before)
+
+
+def test_stop_save_failure_cannot_claim_durable_stop(tmp_path,monkeypatch):
+    from distillschedule.training import checkpoint as checkpoint_io
+    root=tmp_path/"inputs"; root.mkdir(); metadata_stream(root,cycles=3)
+    original_save=checkpoint_io.save_checkpoint
+    calls=[]
+    def fail_second(*args,**kwargs):
+        calls.append(kwargs["cycle"])
+        if kwargs["cycle"] == 2:
+            raise OSError("SYNTHETIC_CHECKPOINT_WRITE_FAILURE")
+        return original_save(*args,**kwargs)
+    monkeypatch.setattr(checkpoint_io,"save_checkpoint",fail_second)
+    with pytest.raises(OSError,match="SYNTHETIC_CHECKPOINT_WRITE_FAILURE"):
+        _cpu_lifecycle_run(root,tmp_path/"interrupted",stop=2)
+    assert calls == [1,2]
+    assert not (tmp_path/"interrupted/final.pt").exists()
+    assert sorted(p.name for p in (tmp_path/"interrupted/checkpoints").iterdir()) == ["cycle-000001"]

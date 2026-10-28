@@ -154,7 +154,7 @@ def validate_progress(header, binding):
 
 
 def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
-    from .helios_lifecycle import current_training, _plane, seed_original_runtime
+    from .helios_lifecycle import current_training, _plane, seed_original_runtime, admit_stop_control, stop_cycle
     binding = current_training()
     require(binding is not None and binding.get("gan_stream") is True and dist.get_world_size() == 16
             and binding.get("metadata_group") is not None, "owned original GAN world16/Gloo scope required", path="helios.gan.training")
@@ -192,12 +192,15 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
         binding.update(stream=stream, identity=identity, startup=startup,
                        checkpoint_policy=_checkpoint_policy(identity))
         distributed.admit_run_controls(binding["config"])
+        admit_stop_control(binding["config"])
         require(all(item == identity for item in distributed.gather(identity)), "GAN rank source/stream differs", path="helios.gan.training")
         if binding["config"].trainer.get("resume_from"):
             from .checkpoint import read_manifest
             header = distributed.checked(lambda: read_manifest(binding["config"].trainer["resume_from"], identity=identity),
                                          "Helios GAN restart metadata")
             validate_progress(header, binding)
+            if binding.get("native_output") is None:
+                stop_cycle(binding["config"], start=header["cycle"])
     if seed_runtime:
         seed_original_runtime(torch=torch, rank=rank)
 
@@ -308,7 +311,7 @@ def run_native_cycles(*, p0, args, policy, result, output, rank, device, logical
 def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic, ema,
                    diagnostics, negative, cfg, generator_free_memory, binding, progress=None):
     from distillschedule.runtime.helios_planner_cycle import _Observer, _prepare_cycle, _versions
-    from .helios_lifecycle import _plane
+    from .helios_lifecycle import _plane, admit_stop_control, stop_cycle
     from .native_state import engine_state
     from .checkpoint import read_manifest, restore_checkpoint, save_checkpoint
     require(_versions(generator, critic, ema) == expected_versions(0), "native GAN bootstrap clocks changed", path="helios.gan.training")
@@ -317,9 +320,12 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
     resume = binding["config"].trainer.get("resume_from")
     start = 0
     with _plane(binding):
+        end = admit_stop_control(binding["config"])
         if resume:
             header = distributed.checked(lambda: read_manifest(resume, identity=binding["identity"]), "Helios GAN restart metadata")
             validate_progress(header, binding)
+            if binding.get("native_output") is None:
+                stop_cycle(binding["config"], start=header["cycle"])
             restored = restore_checkpoint(resume, state, identity=binding["identity"])
             start = restored["cycle"]
             require(_versions(generator, critic, ema) == expected_versions(start), "restored GAN clocks differ", path="helios.gan.training")
@@ -336,7 +342,7 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
         numerical_status="REVIEW", native_GPU_continuation="NOT_RUN", capacity_validation="NOT_RUN",
         formal_timing_eligible=False, claimable_speedup=False, generation="UNSUPPORTED", export="UNSUPPORTED")
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
-    for index in range(start, len(stream["cohorts"])):
+    for index in range(start, end):
         entry, task = stream["cohorts"][index], inputs.GANCohortTask(index)
         trace = observer = prepared = None
         try:
@@ -371,12 +377,16 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
                 "peak_live_rollouts":observer.peak_live, "retained_rollouts":len(observer.live), "status":"PASS"})
             result.update(status="PARTIAL_ORIGINAL_HELIOS_GAN_TRAINING", completed_cycles=index + 1,
                           next_cohort=index + 1, final_versions=versions)
+            saved = None
             if cadence and ((index + 1) % cadence == 0 or index + 1 == len(stream["cohorts"])):
                 path = Path(binding["config"].trainer["output_dir"]) / "checkpoints" / f"cycle-{index+1:06d}"
                 with _plane(binding):
                     saved = save_checkpoint(path, state, identity=binding["identity"], cycle=index + 1, cursor=index + 1,
                                             versions=versions, policy=binding["checkpoint_policy"])
                 result["latest_checkpoint"] = str(saved)
+            if "stop_after_cycle" in binding["config"].trainer and index + 1 == end:
+                require(saved is not None, "stop_after_cycle requires a published complete checkpoint boundary",
+                        path="helios.gan.training")
             if progress:
                 with _plane(binding):
                     distributed.checked(lambda: progress(result), "Helios GAN rank progress")
@@ -388,8 +398,12 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
                 trace.close()
             del trace, observer, prepared
     core.finish()
-    result.update(status="COMPLETED_ORIGINAL_HELIOS_GAN_TRAINING", semantics_status="PASS",
-                  completed_cycles=len(stream["cohorts"]), final_versions=_versions(generator, critic, ema))
+    result.update(status=("STOPPED_ORIGINAL_HELIOS_GAN_AT_CHECKPOINT" if end < len(stream["cohorts"])
+                          else "COMPLETED_ORIGINAL_HELIOS_GAN_TRAINING"), semantics_status="PASS",
+                  completed_cycles=end, final_versions=_versions(generator, critic, ema),
+                  training_segment=dict(horizon_cycles=len(stream["cohorts"]), start_cycle=start,
+                      requested_stop_cycle=end, completed_cycle=end, executed_cycles=end-start,
+                      complete_horizon=end == len(stream["cohorts"])))
     return result
 
 

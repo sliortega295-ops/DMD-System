@@ -105,8 +105,37 @@ Resume requires identical source, stream, immutable asset pins/verified bytes,
 topology and reference policy. It restores trainables, actual Adam/schedulers,
 EMA, clocks and per-rank runtime RNG. Wrong G/C/EMA boundaries and foreign
 identities reject before owned state is changed. This finite Step10 bootstrap
-route does not implement changing the data/horizon on resume, generation,
-export, arbitrary Step0 training, or selected-plan execution.
+route does not implement changing the data/horizon on resume, arbitrary Step0
+training, or selected-plan execution. Public export restores the explicit
+checkpoint without training updates; generation uses the exported Student.
+
+## Stop at a durable checkpoint without changing the stream
+
+For a prepared 100-cycle stream, keep `trainer.cycles: 100` and set
+`trainer.checkpoint_every: 50` plus `trainer.stop_after_cycle: 50`. The first
+process executes only cycles 1–50 and returns after the complete all-rank
+checkpoint is durable. It does not execute cycles 51–100 and replay them later.
+The boundary remains G1/C5/EMA5 for both explicit reference and SafeBundle.
+
+Start a new process with the same source/assets/full prepared stream and a new
+output directory. Set `trainer.resume_from` to `checkpoints/cycle-000050`, then
+**remove `trainer.stop_after_cycle`** (or set it to a later checkpoint boundary,
+such as 100). Never change `cycles` to 50 or shorten/reprepare the stream. An
+explicit stop at or before the restored cycle is rejected before model build.
+
+The stop must be an integer inside the unchanged horizon with a positive
+checkpoint cadence. An intermediate stop must be divisible by that cadence;
+the final horizon is always a valid save boundary. Rank-disagreeing stop
+controls, missing/corrupt shards and incomplete checkpoint publications fail
+closed. Without the stop field, the existing full-horizon behavior is unchanged.
+Public export discards this training-only stop control and restores the explicit
+export checkpoint without running training updates.
+
+A graceful early stop has a distinct `STOPPED_*_AT_CHECKPOINT` status, not the
+complete-run status. `training_segment` records the full horizon, start,
+requested stop, completed cycle and actual executed count. Neither an early
+segment nor a resumed segment is formal performance or 100-cycle GPU evidence;
+native GPU reliability/quality acceptance remains **NOT_RUN**.
 
 ## Evidence boundary
 

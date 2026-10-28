@@ -149,6 +149,11 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"),
             resume=dict(supported=True, scope="drained complete G1/C5/EMA1 boundary; same source/assets/stream/world16/full bundle",
                         verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"))
+    if helios_stream or _helios_gan_stream(config, workload):
+        result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
+            checkpoint_required=True, immutable_horizon=True,
+            scope="complete all-rank checkpoint boundary; resume the unchanged full stream in a fresh output directory",
+            verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
     if _h3_grid_training(config, workload):
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
@@ -317,9 +322,13 @@ def _options(config, workload):
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
     fresh_wan = (workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
                  and bool(config.data.get('prepared')) and not config.data.get('replay_fixed_trace'))
-    _require(fresh_wan or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
+    fresh_helios = _helios_stream(config, workload) or _helios_gan_stream(config, workload)
+    _require(fresh_wan or fresh_helios or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
              or "stop_after_cycle" not in config.trainer,
-             "trainer.stop_after_cycle requires an explicit W1, C51 or W6 fresh stream")
+             "trainer.stop_after_cycle requires an explicit W1, W2, W3, C51 or W6 fresh stream")
+    if fresh_helios:
+        from .helios_lifecycle import stop_cycle
+        stop_cycle(config)
     if fresh_wan and 'stop_after_cycle' in config.trainer:
         stop, every = config.trainer['stop_after_cycle'], config.trainer.get('checkpoint_every', 0)
         _require(type(stop) is int and 1 <= stop <= config.trainer['cycles'] and every > 0
@@ -732,6 +741,12 @@ def export_native(config: TrainingConfig, checkpoint, output):
     no output knob is silently ignored by a training invocation.
     """
     workload = _workload(config)
+    if workload in {"W2", "W3"} and "stop_after_cycle" in config.trainer:
+        # The explicit checkpoint, not a previous training segment's stop,
+        # owns output-only restoration. Preserve the caller's training config.
+        raw = config.to_dict()
+        raw["trainer"].pop("stop_after_cycle")
+        config = TrainingConfig.from_dict(raw, source=config.source)
     if workload == 'W4':
         from .livewan_native_export import export_native as export_c51
         return export_c51(config, checkpoint, output)

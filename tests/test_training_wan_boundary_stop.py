@@ -203,7 +203,7 @@ def test_export_discards_stop_control_without_changing_horizon(cpu_worker, monke
     assert not h.parts and not h.begins
 
 
-def test_stop_is_not_opened_for_other_native_workloads_or_literal_wan(tmp_path):
+def test_stop_does_not_widen_frozen_two_cycle_wan_or_helios(tmp_path):
     for workload in ('W1', 'W2'):
         raw = configuration(tmp_path, workload, optimized=True).to_dict()
         raw['trainer'].update(cycles=2, checkpoint_every=1, stop_after_cycle=1)
@@ -211,6 +211,11 @@ def test_stop_is_not_opened_for_other_native_workloads_or_literal_wan(tmp_path):
             raw['execution']['preset'] = 'wan_ar.incumbent21a.v1'
             raw['trainer']['checkpoint_every'] = 0
             raw['data'] = {'replay_fixed_trace': True}
+        else:
+            # W2 fresh streams now support stop; its historical benchmark does not.
+            raw['execution']['preset'] = 'helios_nogan.safe_ed8.v1'
+            raw['trainer']['checkpoint_every'] = 0
+            raw['data'] = {}
         with pytest.raises(ValueError, match='stop_after_cycle requires an explicit'):
             native._options(TrainingConfig.from_dict(raw, source=tmp_path / 'training.json'), workload)
 

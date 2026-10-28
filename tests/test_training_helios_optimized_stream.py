@@ -138,6 +138,7 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
     task_path.write_text(json.dumps(stream["identity"]["request"]))
     assets_path.write_text(json.dumps(assets))
     raw = optimized_config(tmp_path).to_dict()
+    raw["trainer"].update(stop_after_cycle=2,checkpoint_every=2)
     raw["data"]["prepared"] = str(root / "prepared/stream.json")
     raw["execution"].update(task=str(task_path), assets=str(assets_path))
     conf = TrainingConfig.from_dict(raw, source=tmp_path / "training.json")
@@ -178,6 +179,7 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
         binding = lifecycle.current_training()
         fields = StaticFSDP2P0Policy.__dataclass_fields__
         policy = StaticFSDP2P0Policy(**{key:getattr(args, key) for key in fields})
+        assert binding["config"].trainer.get("stop_after_cycle", 2) == 2
         assert args.mesh_policy == "node-hsdp" and args.attention_backend == "local-fa2"
         assert binding["implementation"] == safe.implementation()
         assert binding["identity"]["execution_policy"] == safe.descriptor()
@@ -197,7 +199,9 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
         return 23
 
     monkeypatch.setattr(worker, "_backend", lambda: SimpleNamespace(main=entrypoint))
-    assert native.run_native(conf) == 23
+    from distillschedule.cli import main
+    conf.source.write_text(json.dumps(conf.to_dict()))
+    assert main(["train",str(conf.source)]) == 23
     admitted, args, policy = captured[0]
     assert lifecycle.current_training() is None
     # Generic checkpoint topology uses the actual group, never this facade.
@@ -219,10 +223,13 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
         return prepared, graph, order
 
     monkeypatch.setattr(original_cycle, "_prepare_cycle", prepare)
-    def run(engines, output, *, every=0, resume=None, progress=None, effective=True):
+    def run(engines, output, *, every=0, resume=None, progress=None, effective=True, stop=None):
         value = conf.to_dict(); value["trainer"].update(output_dir=str(output), checkpoint_every=every)
         if resume:
             value["trainer"]["resume_from"] = str(resume)
+        value["trainer"].pop("stop_after_cycle", None)
+        if stop is not None:
+            value["trainer"]["stop_after_cycle"] = stop
         selected = TrainingConfig.from_dict(value, source=conf.source)
         binding = dict(admitted, config=selected)
         if not effective:
@@ -249,17 +256,31 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
                and all(item["released_after_action"] is not None for item in row["rollout_lifetimes"])
                for row in result["cycles"])
     expected_state, expected_rng = state(control), checkpoint_io.rng_state()
-    class StopAfterTwo(RuntimeError): pass
-    def stop(value):
-        if value["completed_cycles"] < 2:
-            return
-        assert value["completed_cycles"] == 2 and value["next_cohort"] == 2
-        raise StopAfterTwo()
     seed(); interrupted = build(); calls.clear()
-    with pytest.raises(StopAfterTwo):
-        run(interrupted, tmp_path / "first", every=2, progress=stop)
+    stopped = run(interrupted, tmp_path / "first", every=2, stop=2)
+    assert stopped["status"] == "STOPPED_ORIGINAL_HELIOS_AT_CHECKPOINT"
+    assert stopped["training_segment"] == dict(horizon_cycles=4,start_cycle=0,
+        requested_stop_cycle=2,completed_cycle=2,executed_cycles=2,complete_horizon=False)
     saved = tmp_path / "first/checkpoints/cycle-000002"
     assert (saved / "_SUCCESS").is_file()
+    assert sorted(p.name for p in saved.parent.iterdir()) == ["cycle-000002"]
+    from test_training_helios_stream import fresh_process_segment
+    child=fresh_process_segment(tmp_path,conf=conf,binding=admitted,args=args,policy=policy,
+        logical=original_logical,frozen=frozen_assets,checkpoint=saved,optimized=True)
+    assert equal(expected_state,child["state"])
+    assert expected_rng.keys() == child["rng"].keys()
+    assert {key: equal(value, child["rng"][key]) for key, value in expected_rng.items()} == dict.fromkeys(expected_rng, True)
+    assert child["calls"] == [list(range(20,25)),list(range(25,30))]
+    assert child["receipt"]["training_segment"] == dict(horizon_cycles=4,start_cycle=2,
+        requested_stop_cycle=4,completed_cycle=4,executed_cycles=2,complete_horizon=True)
+    for actual, uninterrupted in zip(child["receipt"]["cycles"],result["cycles"][2:],strict=True):
+        for key in ("source_steps","trace_hash","selected_order","actions","final_versions"):
+            assert actual[key] == uninterrupted[key], key
+    for stale in (1,2):
+        untouched=build(); before_state,before_rng=state(untouched),checkpoint_io.rng_state()
+        with pytest.raises(ValueError,match="stop_after_cycle.*resume"):
+            run(untouched,tmp_path/f"stale-{stale}",every=1,resume=saved,stop=stale)
+        assert equal(before_state,state(untouched)) and equal(before_rng,checkpoint_io.rng_state())
     assert calls == [tuple(range(s,s+5)) for s in (10,15)]
     torch.rand(37); random.random(); np.random.random()
     restored = build(); parameter_ids = [id(e.module.weight) for e in restored[:2]]
@@ -304,7 +325,8 @@ def test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two(
     metadata_saved = checkpoint_io.save_checkpoint(tmp_path / "SYNTHETIC-layout-metadata", {},
         identity=native_identity, cycle=2, cursor=2, versions=lifecycle.expected_versions(2),
         policy=lifecycle._checkpoint_policy(native_identity, optimized=True))
-    resumed_raw = conf.to_dict(); resumed_raw["trainer"].update(
+    resumed_raw = conf.to_dict(); resumed_raw["trainer"].pop("stop_after_cycle")
+    resumed_raw["trainer"].update(
         resume_from=str(metadata_saved), output_dir=str(tmp_path / "metadata-resume"))
     resumed_conf = TrainingConfig.from_dict(resumed_raw, source=conf.source)
     monkeypatch.setenv("WORLD_SIZE", "16")
