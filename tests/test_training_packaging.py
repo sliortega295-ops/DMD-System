@@ -24,8 +24,18 @@ LICENSE_SHA256 = {
     "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md": "ebdee8bac7e36ed9b18d5d323c12c7b98bad5ab5de3dede4b2679cba688cf4c1",
     "licenses/livewan-wan21-reference/Wan2.1-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631",
+    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724",
 }
+
+
+def test_livewan_wan21_source_license_copies_match_manifest():
+    package = ROOT / "src/distillschedule/reference/livewan_wan21"
+    manifest = json.loads((package / "source_manifest.json").read_text())
+    for row in manifest["licenses"]:
+        maintained = (package / row["path"]).read_bytes()
+        published = (ROOT / "licenses/livewan-wan21-reference" / Path(row["path"]).name).read_bytes()
+        assert hashlib.sha256(maintained).hexdigest() == row["sha256"]
+        assert published == maintained, row["path"]
 
 
 @pytest.fixture(scope="module")
