@@ -4638,6 +4638,13 @@ def run_worker(
         generator_gate = install_g_gate(torch, bundle.student,
             output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native")
 
+    if continuation is not None and continuation.native_output is not None:
+        # Restore BOTH physical roles before any streamer/KV allocation,
+        # text-context projection, transport, shadow submission or training row.
+        versions = bootstrap.versions
+        continuation.bind(torch=torch, rank=rank, bundle=bundle, versions=versions,
+                          pairs=_pipeline_8x8_slot_pairs(plan))
+        return {"inference_export": continuation.export_current(bundle=bundle, rank=rank)}
     loader = continuation.loader if continuation is not None else InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
     if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:

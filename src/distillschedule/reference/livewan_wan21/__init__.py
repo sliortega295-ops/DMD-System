@@ -25,7 +25,7 @@ from types import ModuleType, SimpleNamespace
 
 _ROOT = Path(__file__).resolve().parent
 _NAMESPACE = __name__
-_MANIFEST_SHA256 = "8803891e7c20a6cc40ce4d17a650877fceefb722be8063bde56427ee418869cf"
+_MANIFEST_SHA256 = "cf20078964c34e2e9dc939e3c33d711593e3ac4749f812f67a8fb119d11ea8ca"
 _LOCK = RLock()
 _importing = False
 _loaded_modules = None

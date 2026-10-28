@@ -4,6 +4,11 @@
 
 Current C51 opt-in must be explicit. The five-profile compatibility registry still locks C34; do not silently dispatch C34 for this recipe.
 
+For continuous full-C51 training use [C51_CONTINUATION.md](C51_CONTINUATION.md).
+For current-Student checkpoint export and new-input generation with the actual
+LiveWan streamer and Wan VAE, use the [native output guide](../../docs/guides/livewan_native_output.md).
+The separate CPU Program recipe is not substituted for either native owner.
+
 ## Inspect the actual adapter (no GPU execution)
 
 Run from the repository root:

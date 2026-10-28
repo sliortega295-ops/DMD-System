@@ -524,6 +524,14 @@
       "integrated_sha256": "fd154506fbc2d52ea8085e0f7ae97fd48bb90847c44b97e94af68c4487042af1",
       "source_commit": "2a7708f5064fbb6df91810145d90fd3f3b3e33b4",
       "change": "R45 opt-in restored original-reference Grid output-only seam; normal update-loop AST and source import receipts unchanged. source_commit is exact integration base; native GPU qualification remains pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "ab55dc07e95ed53f6cd800d023bbef514889d05c5d1666da3ec59408be09a0e5",
+      "integrated_sha256": "f8027442c43cb631287464a9e279ce1858e06f3cc8a94d0474b63e88bb5338fd",
+      "source_commit": "422e5582be57c5b060738aea8be01004c8468f83",
+      "change": "R46 opt-in complete C51 checkpoint current-Student output before streamer/context/transport construction; default update loops unchanged. Exact integration base; native CUDA qualification pending."
     }
   ]
 }

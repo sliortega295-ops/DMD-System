@@ -126,11 +126,13 @@ def _primary_cpu_tree(value, *, retain):
     return result if retain else None
 
 
-def publish_export(components, output, *, model, identity, cycle, primary_only=False):
+def publish_export(components, output, *, model, identity, cycle, primary_only=False, primary_replica=False):
     """Publish the shared format, with optional primary-only CPU staging.
 
-    The default preserves the legacy all-owner CPU state copies. Either path
-    runs full_tensor on every owning rank; only primary publishes shared files.
+    The default preserves the legacy all-owner CPU state copies. ``primary_only``
+    gathers on every sharded owner. The separate ``primary_replica`` path is for
+    a COMPLETE unsharded primary-owned role: other ranks supply no components,
+    exchange metadata/errors only, and never allocate that role's weights.
     """
     import torch
     rank, world = distributed.rank_world()
@@ -139,6 +141,23 @@ def publish_export(components, output, *, model, identity, cycle, primary_only=F
              "ranks disagree on shared inference output path")
     def admit():
         _require(type(primary_only) is bool, "primary_only must be bool")
+        _require(type(primary_replica) is bool and not (primary_only and primary_replica),
+                 "exclusive boolean export staging policies required")
+        if primary_replica:
+            if rank != 0:
+                _require(components is None, "nonprimary role must not supply primary-replica weights")
+                return None
+            from torch.distributed.fsdp import FSDPModule
+            from torch.distributed.tensor import DTensor
+            _require(components is not None and components.export is None,
+                     "primary replica requires actual named modules, not a custom exporter")
+            owned = modules(components.state)
+            _require(bool(owned) and all(not isinstance(m, FSDPModule) for module in owned.values()
+                     for m in module.modules()), "primary replica cannot publish a sharded/FSDP owner")
+            from torch.utils._pytree import tree_leaves
+            _require(all(not isinstance(t, DTensor) and t.device.type != 'meta'
+                         for module in owned.values() for t in tree_leaves(module.state_dict())
+                         if isinstance(t, torch.Tensor)), "primary replica requires complete concrete non-DTensor weights")
         if components.export is not None:
             _require(not primary_only, "primary-only staging requires the named-module exporter")
             _require(world == 1, "custom distributed export callbacks are not supported")
@@ -148,15 +167,24 @@ def publish_export(components, output, *, model, identity, cycle, primary_only=F
         value = {**model, "modules": module_layout(components.state)}
         digest(value)
         return value
+    _require(all(row == (model, primary_only, primary_replica) for row in
+                 distributed.gather((model, primary_only, primary_replica))),
+             "ranks disagree on inference model or weight staging policy")
     model = distributed.checked(admit, "inference export admission")
+    if primary_replica:
+        model = distributed.gather(model)[0]
     _require(all(row == model for row in distributed.gather(model)), "ranks disagree on exported model layout")
     _require(all(row == primary_only for row in distributed.gather(primary_only)),
              "ranks disagree on inference weight staging policy")
     # cpu_tree calls full_tensor on DTensors, which MUST run on all owners.
     collect = (lambda value: _primary_cpu_tree(value, retain=rank == 0)) if primary_only else cpu_tree
-    weights = (distributed.checked(lambda: {name: collect(dict(sorted(module.state_dict().items())))
-               for name, module in modules(components.state).items()}, "inference full-weight gathering")
-               if components.export is None else None)
+    if primary_replica:
+        weights = distributed.primary(lambda: {name: cpu_tree(dict(sorted(module.state_dict().items())))
+            for name, module in modules(components.state).items()}, "inference complete primary-replica staging")
+    else:
+        weights = (distributed.checked(lambda: {name: collect(dict(sorted(module.state_dict().items())))
+                   for name, module in modules(components.state).items()}, "inference full-weight gathering")
+                   if components.export is None else None)
     token = distributed.gather(uuid.uuid4().hex if rank == 0 else None)[0]
     staging = output.with_name("." + output.name + ".tmp-" + token)
     def create():

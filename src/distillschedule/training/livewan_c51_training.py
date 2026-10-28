@@ -101,12 +101,14 @@ def checkpoint_policy(identity):
                 scheduler="NONE_original_fixed_AdamW_learning_rates", frozen="Teacher/base reconstructed from explicit asset inventory")
 
 
-def validate_progress(header, *, identity):
+def validate_progress(header, *, identity, output_only=False):
     cycle = header.get("cycle")
-    require(type(cycle) is int and 0 < cycle < identity["horizon"] and header.get("cursor") == 5*cycle
+    require(type(output_only) is bool, "explicit boolean output-only control required")
+    require(type(cycle) is int and 0 < cycle and (cycle <= identity["horizon"] if output_only else cycle < identity["horizon"])
+            and header.get("cursor") == 5*cycle
             and header.get("versions") == dict(generator=cycle, critic=5*cycle, ema=0)
             and all(type(v) is int for v in header["versions"].values())
-            and header.get("policy") == checkpoint_policy(identity), "C51 restart must be an exact complete nonterminal joint cycle")
+            and header.get("policy") == checkpoint_policy(identity), "C51 restart/output must be an exact complete joint cycle; training requires nonterminal")
 
 
 def validate_joint(rows, *, cycle, pairs):
@@ -142,13 +144,16 @@ def make_plan(assets, output, *, identity=None, stop=None):
 
 class Continuation:
     """Private typed opt-in seam consumed by the existing worker setup/loop."""
-    def __init__(self, *, config, admitted, identity, output, bootstrap, loader, header, capacity_check):
+    def __init__(self, *, config, admitted, identity, output, bootstrap, loader, header, capacity_check, native_output=None):
         self.config, self.admitted, self.identity, self.output = config, admitted, identity, Path(output)
         self.bootstrap, self.loader, self.header, self.capacity_check = bootstrap, loader, header, capacity_check
         self.inputs = loader.inputs
         self.start_cycle = header["cycle"] if header else 0
-        self.end_cycle = config.trainer.get("stop_after_cycle", self.inputs.cycles)
-        require(self.start_cycle < self.end_cycle <= self.inputs.cycles, "C51 restart/stop has no unfinished complete cycles")
+        self.native_output = native_output
+        self.end_cycle = self.start_cycle if native_output is not None else config.trainer.get("stop_after_cycle", self.inputs.cycles)
+        require((header is not None and 0 < self.start_cycle == self.end_cycle <= self.inputs.cycles)
+                if native_output is not None else self.start_cycle < self.end_cycle <= self.inputs.cycles,
+                "C51 restart/stop has no unfinished complete cycles or output has no complete checkpoint")
         self.cycles_executed = self.end_cycle-self.start_cycle
         self.state, self.progress, self.metrics = None, None, []
         self.pairs = None
@@ -176,11 +181,15 @@ class Continuation:
             "C51 actual resident named role state")
         if self.header:
             restored = restore_checkpoint(self.config.trainer["resume_from"], self.state, identity=self.identity)
-            validate_progress(restored, identity=self.identity)
+            validate_progress(restored, identity=self.identity, output_only=self.native_output is not None)
         self.progress.restore_cycle = None
         distributed.checked(lambda: require(versions == physical_versions(rank, self.start_cycle),
             "C51 restored actual role clock differs"), "C51 restored role clock")
         return self.loader
+
+    def export_current(self, *, bundle, rank):
+        require(self.native_output is not None and self.cycles_executed == 0, "explicit output-only C51 owner required")
+        return self.native_output.publish(self, bundle, rank=rank)
 
     def validate_constructed(self):
         self.bootstrap.unchanged()
@@ -290,7 +299,7 @@ class Continuation:
             streamer.ctx_lens = None
 
 
-def run_training(config, *, admit):
+def run_training(config, *, admit, native_output=None):
     """Enter on every already-launched rank; reserve nothing and install nothing."""
     import torch
     from .checkpoint import read_manifest, read_checkpoint
@@ -306,6 +315,9 @@ def run_training(config, *, admit):
         require(all(row == identity for row in distributed.gather(identity)), "C51 rank source/input/policy identities differ")
         stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
         require(all(row == stop for row in distributed.gather(stop)), "C51 rank stop controls differ")
+        if native_output is not None:
+            require(config.trainer.get("resume_from"), "C51 output requires complete native checkpoint restoration")
+            native_output.admit(admitted, identity)
         output = Path(paths["output"])
         _reserve_output(output)
         rank = distributed.rank_world()[0]
@@ -321,7 +333,7 @@ def run_training(config, *, admit):
         header = None
         if config.trainer.get("resume_from"):
             header = distributed.checked(lambda: read_manifest(config.trainer["resume_from"], identity=identity), "C51 all-rank restart metadata")
-            validate_progress(header, identity=identity)
+            validate_progress(header, identity=identity, output_only=native_output is not None)
             distributed.checked(lambda: read_checkpoint(config.trainer["resume_from"], identity=identity), "C51 all shards/hashes before model mutation")
         loader = distributed.checked(lambda: worker.InputLoader(torch=torch, input_kind=C51_KIND,
             prepared=config.data["prepared"]), "C51 actual original InputLoader source/record admission")
@@ -330,7 +342,7 @@ def run_training(config, *, admit):
             and loader.inputs._document["seed"] == config.trainer["seed"],
             "C51 actual InputLoader identity/horizon/seed differs"), "C51 actual InputLoader immutable identity")
         continuation = Continuation(config=config, admitted=admitted, identity=identity, output=output, bootstrap=bootstrap,
-                                    loader=loader, header=header, capacity_check=check_capacity)
+                                    loader=loader, header=header, capacity_check=check_capacity, native_output=native_output)
         continuation.configure_sources()
         layouts = distributed.checked(lambda: _admit_model_layout(bootstrap, worker), "C51 original complete parameter layout before model allocation")
         continuation.runtime, continuation.native_layouts, continuation.device_binding = runtime, layouts, binding
@@ -353,5 +365,9 @@ def run_training(config, *, admit):
                 last_locally_completed_cycle=getattr(continuation.loader, "cycle", 0),
                 native_cuda_numerical_qualification="NOT_RUN", claimable_speedup=False))
             raise
+        if native_output is not None:
+            require(receipt.get("inference_export") == native_output.result and native_output.result is not None,
+                    "C51 output-only native worker did not publish its restored Student")
+            return 0
         require(receipt["continuation"]["completed_cycles"] == stop, "C51 requested finite segment not exhausted")
         return 0

@@ -24,10 +24,10 @@
       "allowed_transformations": [
         "new maintained source, not upstream numerical body"
       ],
-      "bytes": 5038,
+      "bytes": 6252,
       "kind": "maintained_cpu_import_backend_bridge",
       "path": "wan/modules/attention.py",
-      "sha256": "4e2b7a2bcfe6ff48978a4be2aeee69c4346fe713d8fbe92459704a5609ab88bb"
+      "sha256": "8d54c8bb0884edf623576d1800bb47ea117db3cdbdd2a2c0bda286aa8a62581b"
     },
     {
       "allowed_transformations": [],
@@ -657,9 +657,9 @@
       "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
     },
     {
-      "bytes": 2710,
+      "bytes": 3170,
       "path": "licenses/ORIGIN_AND_CHANGES.md",
-      "sha256": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631"
+      "sha256": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724"
     },
     {
       "bytes": 11357,
@@ -676,6 +676,25 @@
       "repository": "https://github.com/Wan-Video/Wan2.1.git",
       "revision": "9737cba9c1c3c4d04b33fcad41c111989865d315"
     }
+  },
+  "portable_inference_capacity": {
+    "changed_maintained_files": [
+      {
+        "new_sha256": "8d54c8bb0884edf623576d1800bb47ea117db3cdbdd2a2c0bda286aa8a62581b",
+        "path": "wan/modules/attention.py",
+        "previous_sha256": "4e2b7a2bcfe6ff48978a4be2aeee69c4346fe713d8fbe92459704a5609ab88bb"
+      },
+      {
+        "new_sha256": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724",
+        "path": "licenses/ORIGIN_AND_CHANGES.md",
+        "previous_sha256": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631"
+      }
+    ],
+    "default_reference_limits_unchanged": true,
+    "original_numerical_sources_unchanged": true,
+    "previous_manifest_sha256": "8803891e7c20a6cc40ce4d17a650877fceefb722be8063bde56427ee418869cf",
+    "schema_version": "distillschedule.livewan_cpu_inference_capacity.v1",
+    "scope": "EXPLICIT_BOUNDED_CONTEXT_LOCAL_NO_GRAD_CPU_MATH_OUTPUT_ONLY"
   },
   "precision": "float32",
   "schema_version": "distillschedule.livewan_wan21_reference.v1",

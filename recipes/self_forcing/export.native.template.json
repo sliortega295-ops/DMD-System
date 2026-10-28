@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.livewan_native_output_request.v1",
+  "seed": 822,
+  "geometry": {"resolution": [368, 640], "frames": 81, "fps": 16},
+  "budget": {
+    "max_parameters": 2000000000,
+    "max_loaded_bytes": 137438953472,
+    "max_primary_export_bytes": 34359738368,
+    "max_attention_elements": 10000000000,
+    "max_input_elements": 64000000,
+    "host_reserve_bytes": 8589934592
+  },
+  "codec": {
+    "config": {"path": "/PROJECT/wan21-vae/config.json", "bytes": 1, "sha256": "REPLACE_WITH_ACTUAL_SHA256"},
+    "weights": [{"path": "/PROJECT/wan21-vae/codec.safetensors", "bytes": 1, "sha256": "REPLACE_WITH_ACTUAL_SHA256"}],
+    "provenance": {
+      "status": "USER_SUPPLIED_NOT_QUALITY_VERIFIED",
+      "origin": "REPLACE_WITH_LOCAL_WEIGHT_SOURCE",
+      "license": "REPLACE_WITH_WEIGHT_LICENSE"
+    }
+  }
+}

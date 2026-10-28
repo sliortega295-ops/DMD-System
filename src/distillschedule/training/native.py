@@ -164,6 +164,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result.update(native_api="distillschedule.training.livewan_c51_training:run_training",
                       launch="enter on every existing two-node world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
+        result['capabilities']['export'] = dict(supported=True,
+            scope='complete native C51 restore; actual current full Student on primary Generator rank; no Score weight copy',
+            standalone_generation='original four-step LiveWan streamer CPU FP32; embedded original Wan VAE',
+            verification='SOURCE_AND_CPU_ONLY; native CUDA/world16 output pending')
         result["capabilities"].update(modes=["manual"],
             cycles=dict(min=2, max=100, fresh_inputs="original_livewan_c51_teacher_stream.v1"),
             checkpoint=dict(supported=True, scope="drained complete native dual-wave 8G+8Score G1/C5/EMA0; actual named role Adam and rank RNG",
@@ -714,6 +718,9 @@ def export_native(config: TrainingConfig, checkpoint, output):
     no output knob is silently ignored by a training invocation.
     """
     workload = _workload(config)
+    if workload == 'W4':
+        from .livewan_native_export import export_native as export_c51
+        return export_c51(config, checkpoint, output)
     if workload == 'W5':
         from .h3_grid_export import export_native as export_grid
         return export_grid(config, checkpoint, output)
