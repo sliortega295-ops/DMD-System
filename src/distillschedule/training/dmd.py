@@ -13,12 +13,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import math
+from pathlib import Path
 
 import torch
 from torch.optim.lr_scheduler import ExponentialLR
 
 from distillschedule.open_workload.dmd import DMDHook, DMDHooks, build_dmd_workload, dmd_inputs
 from distillschedule.training.prediction import PredictionSpec
+from distillschedule.workloads.best_known.registry import file_sha256
 from distillschedule.workloads.program import Call
 
 
@@ -279,16 +281,31 @@ def _expand(sigma, tensor):
     return sigma.reshape(sigma.shape[0], *([1] * (tensor.ndim - 1)))
 
 
-def _student(ctx):
-    values = dmd_inputs(ctx)
+def _check_student_clocks(ctx):
     counters = ctx.state['dmd_counters']
     require(int(counters[0]) == ctx.attributes['cycle'], 'complete-cycle clock differs from requested cycle')
     if ctx.attributes['phase'] == 'student':
         counters.validate_cycle(ctx.attributes['cycle'])
         for role in ('student', 'fake'):
             ctx.state[role + '_scheduler'].validate_cycle(ctx.attributes['cycle'])
-    p = ctx.attributes['flow_policy']
-    return _payload(ctx.state['student'].rollout(values['feeds'], p['rollout_sigmas'], p['gradient_policy']))
+
+
+def _prepare_flow_forward(ctx):
+    """Prepare references and lifecycle checks, never model math or RNG draws."""
+    values = dmd_inputs(ctx)
+    if ctx.attributes['flow_role'] == 'student':
+        _check_student_clocks(ctx)
+    return values
+
+
+def _student_prediction(model, values, policy):
+    return _payload(model.rollout(values['feeds'], policy['rollout_sigmas'], policy['gradient_policy']))
+
+
+def _student(ctx):
+    values = dmd_inputs(ctx)
+    _check_student_clocks(ctx)
+    return _student_prediction(ctx.state['student'], values, ctx.attributes['flow_policy'])
 
 
 def _noise(ctx):
@@ -305,11 +322,11 @@ def _noise(ctx):
             'target': {k: epsilon[k] - x for k, x in generated.items()}}
 
 
-def _teacher(ctx):
-    values = dmd_inputs(ctx); noise = values['noise']; model = ctx.state['teacher']
+def _teacher_prediction(model, values, policy):
+    noise = values['noise']
     conditional = _payload(model.denoise(noise['sample'], noise['sigma'], values['feeds'], conditional=True),
                            like=noise['sample'])
-    scale = ctx.attributes['flow_policy']['teacher_cfg']
+    scale = policy['teacher_cfg']
     if scale == 1:
         velocity = conditional
     else:
@@ -319,13 +336,37 @@ def _teacher(ctx):
     return {k: x - _expand(noise['sigma'], x) * velocity[k] for k, x in noise['sample'].items()}
 
 
-def _fake(ctx):
-    values = dmd_inputs(ctx); noise = values['noise']
-    velocity = _payload(ctx.state['fake'].denoise(noise['sample'], noise['sigma'], values['feeds'], conditional=True),
+def _fake_prediction(model, values, phase):
+    noise = values['noise']
+    velocity = _payload(model.denoise(noise['sample'], noise['sigma'], values['feeds'], conditional=True),
                         like=noise['sample'])
-    if ctx.attributes['phase'] == 'student':
+    if phase == 'student':
         return {k: x - _expand(noise['sigma'], x) * velocity[k] for k, x in noise['sample'].items()}
     return velocity
+
+
+def _teacher(ctx):
+    return _teacher_prediction(ctx.state['teacher'], dmd_inputs(ctx), ctx.attributes['flow_policy'])
+
+
+def _fake(ctx):
+    return _fake_prediction(ctx.state['fake'], dmd_inputs(ctx), ctx.attributes['phase'])
+
+
+class FlowDMDMethods:
+    """Explicit model-owned flow entry; not permission for a new backend.
+
+    Only this outer method is a forward-method seam. Native rollout/denoise
+    stay nested and retain their existing RNG, gradients, CFG and x0 math.
+    No state mapping, optimizer or second model is retained on the role.
+    """
+    def dmd_forward(self, payload, *, flow_role, phase, cycle, fake_index, flow_policy):
+        if flow_role == 'student':
+            return _student_prediction(self, payload, flow_policy)
+        if flow_role == 'teacher':
+            return _teacher_prediction(self, payload, flow_policy)
+        require(flow_role == 'fake', 'unknown model-owned flow role')
+        return _fake_prediction(self, payload, phase)
 
 
 def _student_loss(ctx):
@@ -407,10 +448,30 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
         identity_extra={'algorithm': 'explicit_nogan_rectified_flow_dmd.v1', 'policy': p})
     calls = tuple(replace(call, attributes={**call.attributes, 'cycle': cycle, 'flow_policy': p})
                   for call in workload.program.calls)
+    roles = {'student_forward': 'student', 'teacher_forward': 'teacher', 'fake_forward': 'fake'}
+    if all(isinstance(state[role], FlowDMDMethods) for role in roles.values()):
+        from distillschedule.open_workload.replica_contract import module_method_binding
+        lowered = []
+        for call in calls:
+            if call.binding in roles:
+                role = roles[call.binding]
+                prepared = Call(call.id + '.prepare', 'prepare_flow_forward', call.inputs,
+                    tuple(name for name in call.reads if name != role), after=call.after,
+                    attributes={**call.attributes, 'flow_role': role})
+                lowered.append(prepared)
+                # Preserve ALL old reads, including clocks, for backward/replay
+                # provenance. The original ID still owns every random draw.
+                call = replace(call, inputs=(prepared.id,), attributes={key: prepared.attributes[key]
+                    for key in ('flow_role', 'phase', 'cycle', 'fake_index', 'flow_policy')})
+            lowered.append(call)
+        calls = tuple(lowered)
+        workload.bindings = {**workload.bindings, 'prepare_flow_forward': _prepare_flow_forward,
+            **{binding: module_method_binding(role, 'dmd_forward') for binding, role in roles.items()}}
     commit = Call('dmd.commit_cycle', 'commit_cycle', (), ('dmd_counters',), ('dmd_counters',),
         after=tuple(call.id for call in calls), attributes={'cycle': cycle, 'fake_updates': p['fake_updates']})
     workload.program = replace(workload.program, calls=(*calls, commit),
-        parameters={**workload.program.parameters, 'algorithm': 'explicit_nogan_rectified_flow_dmd.v1', 'policy': p})
+        parameters={**workload.program.parameters, 'algorithm': 'explicit_nogan_rectified_flow_dmd.v1',
+                    'algorithm_source_sha256': file_sha256(Path(__file__)), 'policy': p})
     workload.bindings = {**workload.bindings, 'commit_cycle': _commit}
     if replicated:
         from distillschedule.open_workload.replica_contract import ReplicaSemantics

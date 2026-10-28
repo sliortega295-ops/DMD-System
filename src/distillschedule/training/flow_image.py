@@ -17,6 +17,7 @@ from torch import nn
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 from .adapters import InferenceProjection, ModelComponents
+from .dmd import FlowDMDMethods
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
@@ -325,7 +326,7 @@ def qualify_trial_roles(state, evidence_kind):
             state[name]._trial_evidence_kind = evidence_kind
 
 
-class ImageRole(QualifiedNativeFlowTrials, nn.Module):
+class ImageRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
     def __init__(self, native, *, api, config, media_config, binding, empty, trainable, schedule):
         super().__init__()
         self.native = native

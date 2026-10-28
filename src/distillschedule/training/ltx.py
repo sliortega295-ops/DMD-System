@@ -17,6 +17,7 @@ import torch
 from torch import nn
 
 from .adapters import InferenceProjection, ModelComponents
+from .dmd import FlowDMDMethods
 from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
 from .prediction import PredictionSpec
@@ -243,7 +244,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
     return native, architecture, receipt
 
 
-class LTXRole(QualifiedNativeFlowTrials, nn.Module):
+class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
     """Model-owned native ABI, conditioning and differentiable Euler rollout."""
     def __init__(self, native, source, *, architecture, media_architecture, binding, empty_context,
                  generation_sigmas, trainable):
