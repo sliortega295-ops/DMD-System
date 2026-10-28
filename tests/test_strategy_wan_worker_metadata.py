@@ -94,14 +94,14 @@ def test_completed_build_census_keeps_fresh_and_resumed_counts_separate():
     assert len(branches) == 1
     code = compile(ast.fix_missing_locations(ast.Module(body=branches, type_ignores=[])),
                    '<actual-native-build-census>', 'exec')
-    for resumed, expected in ((0, 4), (1, 3), (3, 1)):
+    for resumed, end_cycle, expected in ((0, 4, 4), (1, 4, 3), (3, 4, 1), (0, 2, 2), (1, 2, 1)):
         calls = []
         strategy, build = object(), object()
         def validate(selected, observed, **kwargs):
             calls.append((selected, observed, kwargs))
             return {'status': 'CPU_TEST_ONLY'}
         receipt = {}
-        exec(code, {'start_cycle': resumed, 'cycles': 4, 'strategy': strategy,
+        exec(code, {'start_cycle': resumed, 'cycles': 4, 'end_cycle': end_cycle, 'strategy': strategy,
                     'session': NS(build=build), 'receipt': receipt, 'validate_build': validate})
         assert calls == [(strategy, build, {'executed': True, 'cycles': expected})]
         assert receipt['backend_effects'] == {'status': 'CPU_TEST_ONLY'}

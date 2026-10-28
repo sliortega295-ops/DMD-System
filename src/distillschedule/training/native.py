@@ -97,6 +97,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             resume=dict(supported=True, scope='same source/assets/stream/topology; recapture transient graphs',
                         verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'))
     if workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1':
+        result['capabilities']['stop'] = dict(supported=True, control='trainer.stop_after_cycle',
+            checkpoint_required=True, immutable_horizon=True,
+            scope='complete all-rank checkpoint boundary; resume the same full stream in a fresh output directory',
+            verification='CPU_SOURCE_AND_LIFECYCLE_ONLY')
         result['capabilities']['export'] = dict(supported=True,
             api='distillctl export <native-training-with-output-policy> --checkpoint <complete-native-checkpoint> --output <portable>',
             scope='same-topology native CURRENT full unmerged G + pinned Wan2.1 VAE; terminal checkpoints allowed; explicit capacity/codec policy',
@@ -311,8 +315,16 @@ def _options(config, workload):
     _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload)
              or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
-    _require(_livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "stop_after_cycle" not in config.trainer,
-             "trainer.stop_after_cycle requires an explicit C51 or W6 fresh stream")
+    fresh_wan = (workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
+                 and bool(config.data.get('prepared')) and not config.data.get('replay_fixed_trace'))
+    _require(fresh_wan or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
+             or "stop_after_cycle" not in config.trainer,
+             "trainer.stop_after_cycle requires an explicit W1, C51 or W6 fresh stream")
+    if fresh_wan and 'stop_after_cycle' in config.trainer:
+        stop, every = config.trainer['stop_after_cycle'], config.trainer.get('checkpoint_every', 0)
+        _require(type(stop) is int and 1 <= stop <= config.trainer['cycles'] and every > 0
+                 and (stop == config.trainer['cycles'] or stop % every == 0),
+                 'W1 trainer.stop_after_cycle must be a complete checkpoint boundary within the unchanged horizon')
     if _h3_ar_stream(config, workload):
         mode = config.execution.get("mode")
         _require(set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
@@ -519,6 +531,8 @@ def _wan(config, mode, task_value, assets_value, paths):
     args += ["--stream", str(prepared)] if prepared else ["--cycles", str(config.trainer["cycles"])]
     if config.trainer.get("checkpoint_every", 0):
         args += ["--checkpoint-every", str(config.trainer["checkpoint_every"])]
+    if 'stop_after_cycle' in config.trainer:
+        args += ['--stop-after-cycle', str(config.trainer['stop_after_cycle'])]
     if config.trainer.get("resume_from"):
         resume = _path(config, "trainer", "resume_from")
         _require((resume / "manifest.json").is_file() and (resume / "_SUCCESS").is_file(),
@@ -742,6 +756,7 @@ def export_native(config: TrainingConfig, checkpoint, output):
     # Checkpoint CLI argument owns restoration; do not re-open an unrelated
     # historical trainer.resume_from or write into the old training run.
     raw['trainer'].pop('resume_from', None)
+    raw['trainer'].pop('stop_after_cycle', None)
     raw['trainer']['checkpoint_every'] = 0
     destination = Path(output).expanduser().resolve()
     raw['trainer']['output_dir'] = str(destination.with_name(destination.name+'.native-owner'))
@@ -803,7 +818,9 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
                 output=paths["output"], mode="train" if 'stream' in admitted else "manual",
                 strategy=WanStrategy.from_dict(admitted["selected"]), cycles=config.trainer["cycles"],
                 **(dict(stream_path=admitted['stream'], checkpoint_every=config.trainer.get('checkpoint_every', 0),
-                        resume_from=_path(config, 'trainer', 'resume_from', required=False)) if 'stream' in admitted else {}))
+                        resume_from=_path(config, 'trainer', 'resume_from', required=False),
+                        **(dict(stop_after_cycle=config.trainer['stop_after_cycle'])
+                           if 'stop_after_cycle' in config.trainer else {})) if 'stream' in admitted else {}))
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
     if workload == "W6":

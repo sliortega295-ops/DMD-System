@@ -135,20 +135,14 @@ def test_codec_and_output_refusals_are_before_publication(tmp_path,fault,match):
 
 def export_scalar_worker(h, name, checkpoint, callback):
     from distillschedule.strategies import wan_worker
-    assets = wan_worker.OriginalWanAssets('SYNTHETIC_TEST_ONLY','unused','c'*64,'unused',
-                                        h.f.stream['cohorts'][0]['trace_hash'],'unused')
     h.transport.output = h.root/name
-    return wan_worker.run_worker(h.f.task,assets,output=h.transport.output,mode='export',strategy=h.f.strategy,
+    return wan_worker.run_worker(h.f.task,h.assets,output=h.transport.output,mode='export',strategy=h.f.strategy,
         cycles=3,stream_path=h.root/'stream/stream.json',resume_from=checkpoint,native_output=callback)
 
 
 @pytest.fixture
 def output_cpu_worker(cpu_worker):
-    # The existing synthetic transport predates the shared-storage timeout ABI.
-    # Give its fake Gloo group the explicitly declared timeout, not a real PG.
-    from datetime import timedelta
-    from types import SimpleNamespace as NS
-    cpu_worker.transport.group = NS(_get_backend=lambda device:NS(options=NS(_timeout=timedelta(seconds=60))))
+    # Reuse the same synthetic assets and declared metadata-timeout ABI.
     return cpu_worker
 
 

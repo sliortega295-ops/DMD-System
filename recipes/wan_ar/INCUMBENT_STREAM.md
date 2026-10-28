@@ -73,6 +73,24 @@ nonzero gradients, gradient communication, active graph/cast scope or retained
 helper inputs prevent publication. Static Graph buffers are transient bounded
 process caches, not checkpoint state.
 
+For an intentional mid-horizon stop, set `trainer.stop_after_cycle` to a
+checkpoint boundary while leaving `trainer.cycles` and the **entire prepared
+stream unchanged**. For example, a 100-cohort request may use `cycles: 100`,
+`checkpoint_every: 50`, and `stop_after_cycle: 50`. The existing `train-stream`
+CLI exposes the same control as `--stop-after-cycle 50`. Explicit stops require
+checkpointing to be enabled; the boundary must be on its cadence, or be the
+final horizon (which is always checkpointed). No signal handler, extra update,
+new runner, or shortened scheduler/input horizon is involved.
+
+Only after the existing publisher validates all required rank shards and
+publishes the complete manifest/`_SUCCESS` does the worker finish the segment.
+An early-stop receipt has status `STOPPED_ORIGINAL_WAN_AT_CHECKPOINT`, an
+explicit `training_segment` (full horizon, start, requested stop, completed and
+executed cycle counts), and `training_restart.latest_checkpoint`. It is **not**
+a completed 100-cycle run or performance result; the existing matched-run
+comparator rejects it. Calls without a stop retain their previous completion
+status. This control is fresh-stream-only; v1 fixed-trace behavior is unchanged.
+
 To restart, keep source, task, complete stream, assets and topology identical,
 and use a fresh output directory. Pass `--resume` with a completed
 `checkpoints/cycle-NNNNNN` directory and `--output` with the fresh destination
@@ -87,6 +105,15 @@ configuration and use `distillctl train` with that file. The last checkpoint at
 the end of the entire finite stream cannot be used to invent additional
 cohorts. Native checkpoint `_SUCCESS`, all-rank shard integrity and policy
 validation apply.
+
+When resuming an intentionally stopped request, remove `stop_after_cycle` to
+finish the original horizon, or advance it to a later checkpoint boundary.
+Reusing a stop at or before the restored cycle is rejected before model
+construction; neither completed inputs nor updates are repeated. Keep
+`cycles: 100` for both halves of the example—do not replace it with 50 or
+truncate/relabel the stream. A final resumed receipt describes only the cycles
+executed in that process, even though it has reached the full horizon; it is
+not interchangeable with an uninterrupted run in the existing comparator.
 
 ## Evidence status
 

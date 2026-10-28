@@ -57,6 +57,10 @@ def _write_stream(f, root):
     """Synthetic captured assets, read by the real load_stream validator."""
     from distillschedule.strategies.wan_inputs import WanInputSources
     from distillschedule.strategies.wan_stream import SCHEMA, WanCohortSources
+    if (root / 'stream.json').exists():
+        # A fresh interpreter reopens the exact same immutable fixture stream.
+        f.stream = json.loads((root / 'stream.json').read_text())
+        return root / 'stream.json'
     root.mkdir()
     sources = WanCohortSources(tuple(WanInputSources(
         tuple(str(root / f'rank-{rank}.pt') for rank in range(16)), cohort=index)
@@ -93,7 +97,7 @@ class _CpuWorld16Transport:
     """
     def __init__(self):
         self.initialized = False
-        self.group = object()
+        self.group = NS()
         self.events = []
         self.output = None
 
@@ -104,6 +108,8 @@ class _CpuWorld16Transport:
 
     def new_group(self, *, backend, **kwargs):
         assert backend == 'gloo' and self.initialized
+        # Match the existing metadata-timeout reader's real transport seam.
+        self.group._get_backend = lambda device: NS(options=NS(_timeout=kwargs['timeout']))
         self.events.append('new_gloo')
         return self.group
 
@@ -181,8 +187,16 @@ def cpu_worker(native_cpu_bundle, monkeypatch, tmp_path):
     identity = dict(ASSETS, bootstrap_hash=bootstrap.manifest_hash,
         trace_bundle_hash=f.stream['cohorts'][0]['trace_hash'], trace_binding_hash='b'*64,
         model_files={'config.json': 'e'*64})
-    assets = wan_worker.OriginalWanAssets('SYNTHETIC_TEST_ONLY', 'unused', bootstrap.manifest_hash,
-        'unused', identity['trace_bundle_hash'], 'unused')
+    asset_dirs = [tmp_path / name for name in ('model', 'bootstrap', 'trace', 'negative')]
+    for directory in asset_dirs:
+        directory.mkdir(exist_ok=True)
+    manifest['model_root'] = str(asset_dirs[0])
+    assets = wan_worker.OriginalWanAssets(str(asset_dirs[0]), str(asset_dirs[1]), bootstrap.manifest_hash,
+        str(asset_dirs[2]), identity['trace_bundle_hash'], str(asset_dirs[3]))
+    # Physical bootstrap IO is synthetic in both the public lowerer and worker.
+    # Source identity, stream checks, protocol lowering and execution stay real.
+    from distillschedule.runtime.wan13b_upper_bound import Wan13BBootstrap
+    monkeypatch.setattr(Wan13BBootstrap, 'load', lambda *args, **kwargs: bootstrap)
 
     def load_assets(task, spec, *, rank):
         from distillschedule.strategies.wan_trace import load_original_trace
@@ -246,18 +260,37 @@ def cpu_worker(native_cpu_bundle, monkeypatch, tmp_path):
     monkeypatch.setattr(WanBundleLifecycle, 'begin', observe_begin)
     monkeypatch.setattr(WanBundleLifecycle, 'validate_checkpoint_boundary', observe_boundary)
 
-    def run(name, *, every=1, resume=None):
+    def configuration(name, *, every=1, resume=None, stop=None):
+        from distillschedule.training.config import TrainingConfig
+        (tmp_path / 'task.json').write_text(json.dumps(f.task.to_dict()))
+        (tmp_path / 'assets.json').write_text(json.dumps(assets.__dict__))
+        return TrainingConfig.from_dict(dict(schema_version='distillschedule.training.v1',
+            model=dict(workload='W1'), algorithm={},
+            data=dict(input_kind='original_wan_cohort_stream.v1', prepared=str(stream)),
+            execution=dict(adapter='native', mode='manual', preset='wan_ar.incumbent21a_stream.v2',
+                           task=str(tmp_path / 'task.json'), assets=str(tmp_path / 'assets.json')),
+            trainer=dict(cycles=3, output_dir=str(tmp_path / name), checkpoint_every=every,
+                         **(dict(resume_from=str(resume)) if resume else {}),
+                         **(dict(stop_after_cycle=stop) if stop is not None else {}))),
+            source=tmp_path / 'training.json')
+
+    def run(name, *, every=1, resume=None, stop=None, public=False):
         transport.output = tmp_path / name
         event_start = len(transport.events)
         try:
+            if public:
+                from distillschedule.training.native import run_native
+                return run_native(configuration(name, every=every, resume=resume, stop=stop))
             return wan_worker.run_worker(f.task, assets, output=transport.output, mode='train',
-                strategy=f.strategy, cycles=3, stream_path=stream, checkpoint_every=every, resume_from=resume)
+                strategy=f.strategy, cycles=3, stream_path=stream, checkpoint_every=every, resume_from=resume,
+                **(dict(stop_after_cycle=stop) if stop is not None else {}))
         finally:
             assert not transport.initialized
-            assert transport.events[event_start:][-2:] == ['destroy_gloo', 'destroy_nccl']
+            if len(transport.events) > event_start:
+                assert transport.events[event_start:][-2:] == ['destroy_gloo', 'destroy_nccl']
 
     return NS(run=run, f=f, parts=parts, begins=begins, boundaries=boundaries,
-              transport=transport, fault=fault, root=tmp_path)
+              transport=transport, fault=fault, root=tmp_path, configuration=configuration, assets=assets)
 
 
 @pytest.mark.parametrize('checkpoint_cycle', [1, 2], ids=['two_remaining', 'one_remaining'])
