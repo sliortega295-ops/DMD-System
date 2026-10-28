@@ -106,3 +106,11 @@ Source and Torch2.10 CPU acceptance uses actual original encoders, PNG/WAV input
 the original parser and a real small H3 gradient/Adam update. This adds no new
 pretrained quality, native CUDA-capacity or performance result. W5's existing
 backward numerical hold is unchanged; W5 Grid and W6 AR remain different flows.
+
+## Continuous integration
+
+The `original-codec-contracts` CPU job checks public schemas, safe headers,
+storage conversion, import-only discovery and refusal behavior on Python3.10/3.12.
+It uses the existing no-skip receipt gate and needs no private source or weights.
+Actual original VAE execution and raw-media-to-update qualification have separate
+operator-asset CPU evidence; that job does not claim to run those private assets.
