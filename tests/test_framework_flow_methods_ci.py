@@ -335,3 +335,66 @@ def test_native_shard_loader_ci_real_receipt_gate_refuses_false_green(tmp_path, 
     _, _, step, receipt = _lane('frozen-native-shards', NATIVE_LOADER_LANE)
     _assert_receipt_gate(tmp_path, step, receipt, NATIVE_LOADER_PROOFS, mutation,
                          ['unqualified-' + name for name in NATIVE_LOADER_PROOFS])
+
+
+NATIVE_CONSTRUCTION_HANDOFF_LANE = {
+    'flux2': ('modern-flow-cpu.yml', 'native-media-lifecycle',
+        'Actual FLUX2 construction-provider lifecycle and fresh-process restore',
+        'flux2-construction-handoff-cpu.xml'),
+}
+NATIVE_CONSTRUCTION_HANDOFF_FILE = 'tests/test_training_sharded_construction.py'
+NATIVE_CONSTRUCTION_HANDOFF_PROOFS = [
+    'test_caller_pre_sharded_actual_native_root_still_rejected[flux2]',
+    'test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]',
+    'test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]',
+    'test_actual_flux2_public_factory_train_and_new_process_resume',
+    'test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]',
+    'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]',
+    'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]',
+    'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]',
+]
+
+
+def test_native_construction_handoff_ci_reuses_modern_lane_and_requires_actual_flux2_proofs():
+    workflow, job, step, receipt = _lane('flux2', NATIVE_CONSTRUCTION_HANDOFF_LANE)
+    _, original_job, _, _ = _lane('flux2-klein-base')
+    assert job == original_job
+    environment = {**job['env'], **step.get('env', {})}
+    assert environment['DMD_MODERN_FLOW_CPU'] == '1' and environment['CUDA_VISIBLE_DEVICES'] == ''
+    assert environment['HF_HUB_OFFLINE'] == environment['TRANSFORMERS_OFFLINE'] == '1'
+    assert not {'DMD_FLOW_METHOD_IMAGE_CONFIG', 'DMD_FLOW_METHOD_LTX_CONFIG', 'LTX_SOURCE_ROOT'} & environment.keys()
+    assert 'if' not in step and 'if' not in job
+    assert 'continue-on-error' not in step and 'continue-on-error' not in job
+    assert workflow['permissions'] == {'contents': 'read'}
+    commands = '\n'.join(item.get('run', '') for item in job['steps'])
+    assert 'torch==2.10.0' in commands and 'https://download.pytorch.org/whl/cpu' in commands
+    assert '.[test,modern-flow]' in commands and 'ltx25' not in commands
+    proof_command, gate_command = _commands(step)
+    assert proof_command == ['python', '-m', 'pytest', '-q',
+        *[f'{NATIVE_CONSTRUCTION_HANDOFF_FILE}::{name}' for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS],
+        f'--junitxml={receipt}']
+    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', receipt,
+        *[word for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS for word in ('--require', name)]]
+    paths = workflow['on']['pull_request']['paths']
+    assert 'src/distillschedule/**' in paths and 'scripts/check_cpu_receipt.py' in paths
+    assert all(any(Path(name).match(pattern) for pattern in paths) for name in
+               (NATIVE_CONSTRUCTION_HANDOFF_FILE, 'tests/test_framework_flow_methods_ci.py'))
+    upload = next(item for item in job['steps'] if item.get('uses') == 'actions/upload-artifact@v4'
+                  and receipt in item['with']['path'].splitlines())
+    assert upload['if'] == 'always()' and upload['with']['if-no-files-found'] == 'error'
+
+
+def test_native_construction_handoff_ci_exact_nodes_are_actually_collected():
+    _, _, step, _ = _lane('flux2', NATIVE_CONSTRUCTION_HANDOFF_LANE)
+    proof_command, _ = _commands(step)
+    assert sorted(_collect_command(proof_command)) == sorted(
+        f'{NATIVE_CONSTRUCTION_HANDOFF_FILE}::{name}' for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS)
+
+
+@pytest.mark.parametrize('mutation', [None, 'missing-case', 'other-provider', 'skipped',
+                                     'failure', 'error', 'empty', 'missing-file'])
+def test_native_construction_handoff_ci_real_receipt_gate_refuses_false_green(tmp_path, mutation):
+    """SYNTHETIC_TEST_ONLY metadata; not a new native model qualification."""
+    _, _, step, receipt = _lane('flux2', NATIVE_CONSTRUCTION_HANDOFF_LANE)
+    _assert_receipt_gate(tmp_path, step, receipt, NATIVE_CONSTRUCTION_HANDOFF_PROOFS, mutation,
+                         [name.replace('flux2', 'flux1') for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS])

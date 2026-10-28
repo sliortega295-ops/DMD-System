@@ -175,6 +175,27 @@ jobs:
           python scripts/check_cpu_receipt.py native-shard-loading-cpu.xml \
             --require 'test_actual_native_frozen_shard_loader_cpu2[flux2-float32]' \
             --require test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2
+      - name: Actual FLUX2 construction-provider lifecycle and fresh-process restore
+        run: |
+          python -m pytest -q \
+            'tests/test_training_sharded_construction.py::test_caller_pre_sharded_actual_native_root_still_rejected[flux2]' \
+            'tests/test_training_sharded_construction.py::test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]' \
+            'tests/test_training_sharded_construction.py::test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]' \
+            'tests/test_training_sharded_construction.py::test_actual_flux2_public_factory_train_and_new_process_resume' \
+            'tests/test_training_sharded_construction.py::test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]' \
+            'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
+            'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
+            'tests/test_training_sharded_construction.py::test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]' \
+            --junitxml=flux2-construction-handoff-cpu.xml
+          python scripts/check_cpu_receipt.py flux2-construction-handoff-cpu.xml \
+            --require 'test_caller_pre_sharded_actual_native_root_still_rejected[flux2]' \
+            --require 'test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]' \
+            --require 'test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]' \
+            --require test_actual_flux2_public_factory_train_and_new_process_resume \
+            --require 'test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]' \
+            --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
+            --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
+            --require 'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]'
       - name: Installed wheel user path, no checkout imports or model downloads
         run: python scripts/check_framework_install.py --modern-flow --work-dir "${{ runner.temp }}/installed-modern" --output installed-modern.json
       - name: Separate optional native-image and native-video CUDA lifecycle receipt
@@ -190,6 +211,7 @@ jobs:
             flux-flow-methods-cpu.xml
             flux-flow-sharding-cpu.xml
             native-shard-loading-cpu.xml
+            flux2-construction-handoff-cpu.xml
             optional-modern-cuda.xml
             installed-modern.json
           if-no-files-found: error
