@@ -7,27 +7,32 @@ No new throughput, speedup, convergence or quality result is claimed.
 ## Reachable capabilities and evidence tiers
 
 * All six original direct manual research presets retain their exact two-cycle
-  contracts and source/numerical statuses. W3 merged-LoRA/N70 stays OFF; W5's
+  contracts and source/numerical statuses. W3 merged-LoRA/N70 stays OFF; W5 Grid1000's
   optimized numerical **FAIL** remains unresolved, never a stable default.
   W1's unchanged fixed-trace preset now has actual public-entry world16
   functional evidence: 16 ranks, two cycles, version/census/runtime-effect
   checks complete. Its synthetic feature trace does not establish quality or
   fresh-data continuation, and no new speedup or numerical-parity claim is made.
-* W1's separate `wan_ar.incumbent21a_stream.v2` retains the complete coupled
-  incumbent bundle on the original fresh-cohort session and checkpoint owner.
-  Actual-dispatch CPU scalar state/restart tests use fake CUDA capture drivers;
-  world16, Graph/Triton, HBM and pretrained numerical validation are NOT_RUN.
-  Only bounded 2..64-cohort streams with first-process-cycle capture coverage
-  are admitted; later novel signatures fail explicitly. See the
-  [stream recipe](../../recipes/wan_ar/INCUMBENT_STREAM.md) for exact limits.
-  A real target-environment CPU capture now confirms that the native all-zero
-  history amplified branch blocks an otherwise valid stream; it was not
-  bypassed. This is an implementation gap, not merely a missing GPU test.
-* W2's separate `helios_nogan.safe_stream_ed8.v1` binds the actual SafeBundle
-  and original fresh-cohort lifecycle (2..64); original-helper CPU and Gloo
-  recovery/failure tests are not FA2/Triton/node-HSDP CUDA validation. Its original
-  preset and reference are unchanged. W3/W4/W6 full optimized native long
-  lifecycles are **not complete**; their separate references are not substitutes.
+* W1's `wan_ar.incumbent21a_stream.v2` uses the complete original Graph/cast/
+  fusion owner with 2..100 distinct fresh cohorts and complete-cycle
+  checkpoint/restart. First-process-cycle capture coverage remains explicit;
+  later novel signatures fail. Existing world16 two-cohort continuation and
+  new-process restoration are retained, including its source-native amplified
+  zero-history policy; that earlier integration gap is resolved for Resident
+  streams, not silently admitted by other backends.
+* W2's `helios_nogan.safe_stream_ed8.v1` binds the original node-HSDP SafeBundle
+  and 2..100 fresh cohorts. W3's full GAN stream now preserves native
+  G1/C5/EMA1, all GAN heads/Adam state, physical/curriculum clocks and N70 OFF.
+  W4's full C51 stream includes actual two-wave drain and two-pool checkpoint
+  lifecycle. W6's native AR stream saves/restores the actual ZeRO-3 engine and
+  both LoRAs at complete G1/F1/EMA0 boundaries. These new continuity paths have
+  source/CPU protocol proof; their native GPU/100-cycle acceptance is pending.
+* W1/W2/W3 now export their actual restored current unmerged G with a real
+  Wan2.1 VAE and emit independent new-prompt decoded video configs. Tests use
+  actual tiny original G/sampler/VAE in a fresh process without old training or
+  codec directories. They preserve live training state and do not merge LoRA.
+  W5/W6 native AV export/codec integration remains pending; located original
+  codec source alone is not a completed output path.
 * Official DMD2 SD1.5/SDXL and official Self-Forcing retain actual pinned native
   owners and algorithms, now with explicit single-device CPU/CUDA FP32 source
   placement and safe host-state restore/export ownership. CPU original-model
@@ -59,9 +64,12 @@ No new throughput, speedup, convergence or quality result is claimed.
 * LTX retains its separate narrow AV/source/CPU recipe and native codecs, not a
   full monolithic 22B, arbitrary architecture or GPU backend qualification.
 
-All full pretrained CPU/GPU execution, real-GPU capacity and numerical gates,
-production geometry, sustained lifecycle, convergence and quality validation
-remain **NOT_RUN** unless a specific independent receipt says otherwise.
+The [support matrix](support_matrix.md) distinguishes each current executable
+path from its measured GPU evidence. Reuse completed receipts; do not rerun
+old model/lifecycle suites just to move documentation to a newer commit.
+Missing long acceptance uses one seed and 100 complete cycles with one
+midpoint save/new-process continuation. Pretrained quality, native CUDA
+capacity and hosted CI are not inferred from source or tiny CPU tests.
 
 ## Packaging, migration and refusal behavior
 

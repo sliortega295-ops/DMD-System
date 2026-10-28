@@ -48,24 +48,52 @@ passed. A source/layout change requires new source-bound admission and costs.
 
 | Recipe | Original algorithm | Real API | Admitted cycle count |
 | --- | --- | --- | --- |
-| [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..64 fresh cohorts with a compatible saved policy or explicit manual/reference strategy; literal incumbent bundle remains fixed-trace/two-cycle |
-| [W2 optimized](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Preset/plan: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Preset/plan: 2. Direct reference: 2..64 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
+| [W1](../../recipes/wan_ar/training.json) | Wan hierarchical AR, No-GAN, default G1/C5/EMA5 | `strategies.wan_cli.main` -> `wan_worker.run_worker` | 2..100 fresh cohorts with a compatible saved policy or explicit manual/reference strategy; literal incumbent bundle remains fixed-trace/two-cycle |
+| [W2 optimized](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Preset/plan: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Preset/plan: 2. Direct reference: 2..100 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
 | [W3](../../recipes/helios_gan/training.json) | Helios14B DMD + GAN-G/GAN-D, G1/C5/EMA1 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
 | [W4 optimized](../../recipes/self_forcing/training.json) / [original reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) | Self-Forcing, continuous sigma, G1/C5/EMA0 | Preset/plan: `search.execution.run_plan`; reference: original baseline ModelBundle and update helper | Preset/plan: 2. Original reference: 2..64 finite teacher cohorts, explicit genuine zero-step assets |
 | [W5 optimized](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-grid-original-training.md) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | Preset/plan: `search.execution.run_plan`; original reference: `grid_entrypoint` and original Grid trainer | Preset/plan: 2. Original reference: 2..64 finite cached-condition cycles |
 | [W6](../../recipes/h3_ar/training.json) | Original DiffSynth previous+current AV, continuous sigma, 8-step, G1/F1, LoRA64, ZeRO-3 | `strategies.h3_ar_cli.main` -> `h3_ar_worker.run_worker` | Exactly 2 native updates |
 
-These are integrations of original native owners, **not** six arbitrary
-long-training engines. Fresh-stream support is explicit for W1/W2/W4/W5;
-W3/W6 and W4's selected C51 path retain bounded native APIs. A request for 100 cycles on a two-update
-runtime is rejected, never silently executed as two. Unsupported shapes or protocol
-fields reject through the original typed task/request validators. W5 is not a
-continuous-sigma variant, and W6 is never dispatched through W5 Grid1000.
+The table above names the original benchmark configs, not the separately
+versioned continuous-training configs below. Raising `cycles` on a two-update
+benchmark is rejected rather than silently truncated. Shapes, objective,
+precision and update counts stay owned by each original task. W5 remains
+Grid1000, not continuous sigma, and W6 never dispatches through W5.
 
-W4 additionally exposes a [finite original TeacherLatents data consumer](livewan_inputs.md)
-with independent record/prompt identities and a complete-cycle data cursor.
-It is admitted only by the explicit original reference lifecycle, not by a
-selected C51 plan. C51's physical drain/save/resume seam remains unsupported.
+## Continuous native training
+
+Use these explicit recipes for persistent training and complete-cycle restart.
+They reuse the original native owners; the frozen benchmark configs are not
+modified. Direct training does not need a saved plan.
+
+| Workload | Executable recipe and owner | Admitted cycles | Checkpoint / recipe guide |
+| --- | --- | --- | --- |
+| W1 | [incumbent stream](../../recipes/wan_ar/training.incumbent-stream.json); `wan_worker` → persistent `wan_session` | 2..100 fresh cohorts | Named G/C Adam, scheduler, EMA and RNG; [INCUMBENT_STREAM.md](../../recipes/wan_ar/INCUMBENT_STREAM.md) |
+| W2 | [SafeBundle stream](../../recipes/helios_nogan/training.safe-stream.json); `helios_worker` | 2..100 fresh cohorts | Original native state and warm clocks; [SAFE_STREAM.md](../../recipes/helios_nogan/SAFE_STREAM.md) |
+| W3 | [full GAN stream](../../recipes/helios_gan/training.stream.json); `helios_gan_training` | finite prepared stream, including 100 cycles | Full G/C/GAN-head Adam and EMA; [NATIVE_STREAM.md](../../recipes/helios_gan/NATIVE_STREAM.md) |
+| W4 | [full C51 stream](../../recipes/self_forcing/training.c51-stream.json); `livewan_c51_training` | 2..100 fresh cohorts | Two-pool drain, role state and wave cursors; [C51_CONTINUATION.md](../../recipes/self_forcing/C51_CONTINUATION.md) |
+| W6 | [native AR stream](../../recipes/h3_ar/training.native-stream.json); `h3_ar_training` | 2..100 fresh cycles | Original ZeRO-3 model/master Adam and native clocks; [NATIVE_CONTINUATION.md](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
+
+W2 also supports its direct-reference fresh stream. W5's original reference
+continues to admit 2..64 finite Grid1000 G1/F5 cycles; its optimized numerical
+backward issue remains open. The W4 reference input owner is still separately
+available; it is not the full C51 schema or a substitute for dual-pool recovery.
+
+For W1/W2, native current-G video export uses the complete native checkpoint and
+explicit Wan2.1 VAE policy. W3 has the same output consumer but retains its own
+GAN restore owner and ABI, with N70 OFF. See [W1 output](../../recipes/wan_ar/NATIVE_OUTPUT.md),
+[W2 output](../../recipes/helios_nogan/NATIVE_OUTPUT.md) and
+[W3 output](../../recipes/helios_gan/NATIVE_OUTPUT.md). The emitted independent
+Program config generates new-prompt video without old training payloads.
+W5/W6 native audio-video output remains implementation work.
+
+Existing W1 world16 continuation evidence is retained. The new W3/C51/W6
+native continuity and W1/W2/W3 decoded-output additions have source/CPU proof;
+pretrained native GPU and 100-cycle stability acceptance remain separate.
+For that final acceptance, use one seed, 100 complete DMD cycles, and one
+midpoint complete-cycle checkpoint resumed in a new process. A native iteration
+or an individual Critic update must not be relabelled as a complete DMD cycle.
 
 ## Explicit presets, reference or saved plans; no hidden winner
 
@@ -125,14 +153,14 @@ instead; neither path silently selects the other.
 | `execution.task` | Original Wan/H3-AR task JSON (W1/W6), `OriginalHeliosRequest` (W2/W3), `LiveWanRequest` (W4), or `H3Request` (W5) |
 | `execution.assets` | Exact native asset JSON; selected W2-W5 must be byte-equivalent as JSON to the saved plan's `asset_config`. W2/W5 direct references use their separately documented asset schemas, not that dispatcher manifest |
 | `execution.plan` | Selected source-bound native plan for plan mode; omitted for explicit reference/manual mode |
-| `execution.preset` | Explicit versioned native preset in manual mode; no saved plan or implementation override; exact two-cycle research scope |
+| `execution.preset` | Explicit versioned manual preset, no saved plan or implementation override; frozen benchmark is two-cycle, fresh-stream presets use the explicit limits above |
 | `execution.implementation` | Explicit Wan strategy JSON path or W6 `zero3-native` / `zero3-ap` enum; reference/manual only |
 | `execution.capacity_policy` | W6's existing common host/GPU capacity-policy JSON (equal to saved plan in plan mode); W4 direct reference requires its explicit versioned common capacity policy |
 | `execution.transport` | Optional existing SHA-bound reviewed R9 deployment for its supported W5 subspace; never a generic shell-command transport |
 | `execution.expected_head` | Optional exact source HEAD assertion; saved-plan source checks are always mandatory |
 | `trainer.output_dir` | Explicit project output directory; existing native ownership/non-overwrite rules remain active |
 | `trainer.cycles` | Actual supported native count, checked against selected contract; not a timing normalization |
-| `trainer.checkpoint_every` | W1/W2/W4/W5 explicit fresh-input lifecycles: supported at complete cycles; all selected benchmark bindings still require `0` |
+| `trainer.checkpoint_every` | Explicit fresh-input lifecycles support complete-cycle saves, including full GAN/C51/native AR; frozen benchmark bindings require `0` |
 
 For W2-W5 direct presets, supply a qualified native dispatcher asset manifest
 matching the exact preset's required assets. No historic plan is needed. For
@@ -314,19 +342,22 @@ real original helpers, persistent CPU optimizer owners and real Gloo control
 collectives; topology/CUDA/model-construction fixtures are explicitly synthetic,
 not world16 GPU evidence.
 
-W3/W6 and selected benchmark bindings do not yet expose complete restart
-through this front door. Native generation, decoding and portable inference
-export also remain unavailable here. Unsupported requests fail instead of
-silently being ignored.
-W1's existing final writer saves trainable/Adam/EMA **evidence** automatically
-outside native timers (`wan_worker.save_final_state`); it is not a complete RNG/
-distributed restart checkpoint. W2-W6 sampled state/fingerprint JSON is not a
-checkpoint. The Program adapter supplies the extensible durable lifecycle;
-native support must be added per original algorithm before claiming it.
+Selected benchmark bindings retain their two-cycle/no-restart scope. The
+explicit fresh-stream owners above expose complete restart through the same
+front door, with algorithm-specific physical owners. W1/W2/W3 additionally
+publish portable current-Student video artifacts through `distillctl export`.
+Native W4 media export and W5/W6 decoded AV remain pending.
+
+Historical final state/fingerprint JSON is still evidence, not a resumable
+checkpoint. Use the new owner's complete manifest, every required shard and
+`_SUCCESS`; do not substitute `wan_worker.save_final_state` or sampled state
+JSON for that complete-cycle publication.
 
 Historical W3 finalization failure/REVIEW, W4 REVIEW and W5 sampled-backward
 FAIL boundaries remain unchanged. Existing correctness receipt bindings and
 native gates are not waived by this front door. Read the
 [six-workload correction](../status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md).
-CPU binding tests and dry-runs create **no new large-model GPU validation,
-quality result or speedup claim**. Cluster validation remains **NOT_RUN**.
+CPU binding tests and dry-runs create no new large-model quality or speedup
+result. Reuse the named existing W1 and historical native GPU receipts; the
+newly connected GAN/C51/AR continuation and decoded-output paths still need
+their own native GPU acceptance.
