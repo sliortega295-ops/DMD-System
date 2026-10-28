@@ -480,13 +480,17 @@ def read_manifest(path, *, identity):
 
 
 def read_checkpoint(path, *, identity):
-    import torch
     path = Path(path).resolve()
     manifest = read_manifest(path, identity=identity)
     if any(_sha(path / name) != sha for name, sha in manifest["files"].items()):
         raise ValueError("checkpoint shard missing or hash changed")
     if "native_checkpoint" in manifest:
         _native_inventory(path, manifest["native_checkpoint"], hashes=True)
+    return _load_checkpoint_payload(path, manifest)
+
+
+def _load_checkpoint_payload(path, manifest):
+    import torch
     rank, world = distributed.rank_world()
     payload = torch.load(path / ("state.pt" if world == 1 else f"rank-{rank:05d}.pt"),
                          map_location="cpu", weights_only=True)
@@ -497,8 +501,39 @@ def read_checkpoint(path, *, identity):
     return payload
 
 
+def _read_collective_checkpoint(path, *, identity):
+    """Verify the common inventory once across ranks before any local load.
+
+    Common shard ownership is explicit in the existing same-topology format.
+    Native sidecars retain their complete opaque-inventory checks on each rank.
+    """
+    def metadata():
+        root = Path(path).resolve()
+        return root, read_manifest(root, identity=identity)
+    path, manifest = distributed.checked(metadata, "checkpoint files admission")
+    if any(row != manifest for row in distributed.gather(manifest)):
+        raise ValueError("ranks disagree on checkpoint manifest")
+    rank, world = distributed.rank_world()
+    filename = f"rank-{rank:05d}.pt"
+
+    def verify():
+        observed = _sha(path / filename)
+        if observed != manifest["files"][filename]:
+            raise ValueError("checkpoint shard missing or hash changed")
+        if "native_checkpoint" in manifest:
+            _native_inventory(path, manifest["native_checkpoint"], hashes=True)
+        return {"rank": rank, "filename": filename, "sha256": observed}
+    proof = distributed.checked(verify, "checkpoint files admission")
+    expected = [{"rank": peer, "filename": f"rank-{peer:05d}.pt",
+                 "sha256": manifest["files"][f"rank-{peer:05d}.pt"]} for peer in range(world)]
+    if distributed.gather(proof) != expected:
+        raise ValueError("checkpoint shard verification coverage changed")
+    return distributed.checked(lambda: _load_checkpoint_payload(path, manifest), "checkpoint files admission")
+
+
 def restore_checkpoint(path, state, *, identity, native_checkpoint=None):
-    payload = distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission")
+    payload = (_read_collective_checkpoint(path, identity=identity) if distributed.rank_world()[1] > 1 else
+               distributed.checked(lambda: read_checkpoint(path, identity=identity), "checkpoint files admission"))
     distributed.checked(lambda: validate_rng(payload["rng"]), "checkpoint RNG admission")
     manifest = distributed.checked(lambda: read_manifest(path, identity=identity), "checkpoint owner metadata admission")
     native = manifest.get("native_checkpoint")
