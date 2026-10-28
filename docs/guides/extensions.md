@@ -193,6 +193,43 @@ fresh-process local-shard checkpoint restore; CUDA/HSDP qualification is
 separate. This backend prerequisite does not admit the existing flow-model
 factories, LTX-22B, full-size construction, or a new precision/algorithm policy.
 
+### Explicit parameter-shadow layout ownership
+
+An EMA or other full named-parameter shadow must opt in **before** its state is
+shared with a workload or session. Keep the algorithm's existing values and
+math; declare only which registered root owns their layout:
+
+```python
+from dataclasses import replace
+from distillschedule.training.tensor_state import ParameterShadows
+
+state["ema"] = ParameterShadows("student", existing_ema)
+semantics = replace(semantics, parameter_shadows={"ema": "student"})
+```
+
+The map must contain every named parameter, including frozen parameters, with
+matching shape, dtype, device and stride; values must be finite, detached and
+storage-disjoint from parameters, optimizer slots, feeds and other shadows.
+Plain dictionaries are not implicitly converted. Native whole-root FSDP
+installation redistributes the declared map **in place** to each parameter's
+mesh/placements, preserving the map shared by the component, workload and
+persistent session. Undeclared maps do not acquire a layout by name. Partial
+subroot migration and parameter aliases are rejected. No decay, update clock,
+clipping, optimizer, scheduler or frozen-parameter coverage is changed.
+Native cycle admission also retains the installed map and every owner Parameter
+identity in both session and workload views, including frozen parameters and
+mixed layouts. Same-layout object replacements reject before execution; copied
+trials and in-place checkpoint copies remain supported.
+
+The existing checkpoint publisher and local-shard codec store the explicit
+`distillschedule.parameter_shadows.v1` owner envelope. Same-topology restore
+validates owner, state kind, full keys, shape/dtype, placement and finite local
+shards before any rank mutates live state. Default dense EMA/ResidentEMA
+classes and serialization remain unchanged; an empty declaration is omitted
+from replica identities. This is a bounded backend prerequisite, **not** public
+flow/LTX FSDP admission: frozen Teacher placement, full-size construction and
+CUDA/HSDP validation remain separate.
+
 ## Minimal extension acceptance
 
 Entrypoint files, installed framework code, and the actually resolved shipped

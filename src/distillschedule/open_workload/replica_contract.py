@@ -45,6 +45,9 @@ class ReplicaSemantics:
     forward_interface: str = 'module_forward'
     random_streams: str = 'shared_logical_call'
     forward_methods: Mapping[str, str] = field(default_factory=dict)
+    # Complete named-parameter tensor maps whose layout follows a model root.
+    # This declares ownership only, never EMA math, decay, or update frequency.
+    parameter_shadows: Mapping[str, str] = field(default_factory=dict)
 
     def validate(self, workload):
         import torch
@@ -114,6 +117,8 @@ class ReplicaSemantics:
         require(not any(isinstance(m, torch.nn.modules.batchnorm._BatchNorm) and m.training
                         for k in trainable for m in workload.state[k].modules()),
                 'training BatchNorm is not an equal-global-batch reference', path='open.replica')
+        from distillschedule.training.tensor_state import validate_parameter_shadows
+        validate_parameter_shadows(workload.state, self.parameter_shadows, trainable, feeds=workload.feeds)
         return self
 
     def to_dict(self):
@@ -121,7 +126,8 @@ class ReplicaSemantics:
                 'local_batch_size': self.local_batch_size, 'objective': self.objective,
                 **({'forward_interface': self.forward_interface} if self.forward_interface != 'module_forward' else {}),
                 **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {}),
-                **({'forward_methods': dict(self.forward_methods)} if self.forward_methods else {})}
+                **({'forward_methods': dict(self.forward_methods)} if self.forward_methods else {}),
+                **({'parameter_shadows': dict(self.parameter_shadows)} if self.parameter_shadows else {})}
 
 
 def ddp_completion_edges(program, semantics, context_modules=None):
