@@ -140,11 +140,29 @@ def _parameter_alias_groups(model, layout):
     return groups + [{key} for key in layout.keys() - covered]
 
 
-def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config_transform=None):
-    import safetensors
-    from safetensors.torch import load_file
-    require(dtype_policy in ('strict_fp32', 'bf16_or_fp32_to_fp32'), 'unknown storage dtype policy')
+def _native_weight_header(header, expected, dtype_policy, key):
     permitted_float = ('F32',) if dtype_policy == 'strict_fp32' else ('F32', 'BF16')
+    allowed_dtype = permitted_float if expected.dtype == torch.float32 else {
+        torch.int64: ('I64',), torch.bool: ('BOOL',)}.get(expected.dtype, ())
+    require(tuple(header.get_shape()) == tuple(expected.shape) and header.get_dtype() in allowed_dtype,
+            'native safetensor shape/dtype mismatch; FP32-only qualification: ' + key)
+
+
+def _native_weight_value(tensor, shape, dtype, dtype_policy, key):
+    if tensor.is_floating_point():
+        require(tensor.dtype in ((torch.float32,) if dtype_policy == 'strict_fp32' else (torch.float32, torch.bfloat16))
+                and bool(torch.isfinite(tensor).all()), 'nonfinite or incorrectly typed native weight: ' + key)
+        # Exact storage conversion only; never a runtime/GPU precision claim.
+        tensor = tensor.float()
+    require(tensor.dtype == dtype and tuple(tensor.shape) == tuple(shape),
+            'native weight shape/dtype differs from FP32 compute layout: ' + key)
+    return tensor
+
+
+def _admit_native_weights(cls, root, max_parameters, *, dtype_policy, config_transform):
+    """One config/key/header/index/alias admission for both physical copy paths."""
+    import safetensors
+    require(dtype_policy in ('strict_fp32', 'bf16_or_fp32_to_fp32'), 'unknown storage dtype policy')
     config = json_object(root / 'config.json')
     # Trusted family-owned normalization of audited historical serialization
     # fields only. Preserve/return raw config bytes and their asset identity;
@@ -189,16 +207,18 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
                 require(key in layout and key not in headers and (weight_map is None or weight_map.get(raw_key) == path.name),
                         'unexpected/duplicate/wrong-shard native safe weight: ' + key)
                 header = handle.get_slice(raw_key)
-                expected_dtype = layout[key].dtype
-                allowed_dtype = permitted_float if expected_dtype == torch.float32 else {
-                    torch.int64: ('I64',), torch.bool: ('BOOL',)}.get(expected_dtype, ())
-                require(tuple(header.get_shape()) == tuple(layout[key].shape)
-                        and header.get_dtype() in allowed_dtype,
-                        'native safetensor shape/dtype mismatch; FP32-only qualification: ' + key)
+                _native_weight_header(header, layout[key], dtype_policy, key)
                 # Admit every shard before constructing a concrete model.
                 headers[key] = path
     require(complete(set(headers)) and (weight_map is None or set(headers) == {rename(k) for k in weight_map}),
             'incomplete native weights; random fallback forbidden')
+    return model, config, effective_config, layout, alias_groups, rename, weights, headers
+
+
+def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config_transform=None):
+    from safetensors.torch import load_file
+    model, config, effective_config, layout, alias_groups, rename, weights, headers = _admit_native_weights(
+        cls, root, max_parameters, dtype_policy=dtype_policy, config_transform=config_transform)
 
     def copy_shard(path):
         # This scope owns all tensor payload references: after return, the next
@@ -207,14 +227,7 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
         require(set(payload) == {key for key, shard in headers.items() if shard == path},
                 'native safe weight keys changed after header admission')
         for key, tensor in payload.items():
-            if tensor.is_floating_point():
-                require(tensor.dtype in ((torch.float32,) if dtype_policy == 'strict_fp32' else (torch.float32, torch.bfloat16))
-                        and bool(torch.isfinite(tensor).all()), 'nonfinite or incorrectly typed native weight: ' + key)
-                # BF16 -> FP32 is exact, explicitly source/manifest-bound storage
-                # conversion only. It is NOT BF16 runtime/GPU qualification.
-                payload[key] = tensor.float()
-            require(payload[key].dtype == layout[key].dtype and payload[key].shape == layout[key].shape,
-                    'native weight shape/dtype differs from FP32 compute layout: ' + key)
+            payload[key] = _native_weight_value(tensor, layout[key].shape, layout[key].dtype, dtype_policy, key)
         for group in alias_groups:
             supplied = sorted(group & payload.keys())
             if not supplied:
@@ -252,6 +265,221 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
         raise
     model.eval()
     return model, config
+
+
+def _native_shard_constants(model):
+    """Preserve only concrete native constants; meta caches need a family adapter.
+
+    to_empty destroys even nonpersistent buffers. Plain tensor attributes are
+    not visited by it at all. Neither kind may silently become empty/meta state.
+    Class/MRO tensor state is not instance-owned and is rejected even on CPU.
+    Inspect raw dictionaries only: never evaluate a property or descriptor.
+    """
+    from torch.utils._pytree import tree_leaves
+
+    def class_tensor(value, seen):
+        bases = type.__getattribute__(type(value), '__mro__')
+        if any(base is torch.Tensor for base in bases):
+            return True
+        container = next((base for base in (dict, list, tuple, set, frozenset)
+                          if any(base is parent for parent in bases)), None)
+        if container is None or id(value) in seen:
+            return False
+        seen.add(id(value))
+        # Built-in accessors bypass container-subclass overrides and do not
+        # inspect arbitrary objects, properties, descriptors or pytree hooks.
+        entries = (item for pair in dict.items(value) for item in pair) if container is dict \
+            else container.__iter__(value)
+        return any(class_tensor(item, seen) for item in entries)
+
+    constants = []
+    for module_name, child in model.named_modules():
+        for owner in type.__getattribute__(type(child), '__mro__'):
+            for name, value in type.__getattribute__(owner, '__dict__').items():
+                require(not class_tensor(value, set()),
+                        'class-owned native tensor needs a family materializer: ' + module_name + '.' + name)
+        values = [(name, value, True) for name, value in child._buffers.items() if value is not None]
+        for name, value in vars(child).items():
+            if name in ('_parameters', '_buffers', '_modules'):
+                continue
+            if isinstance(value, torch.Tensor):
+                values.append((name, value, False))
+            elif isinstance(value, (dict, list, tuple)):
+                require(not any(isinstance(item, torch.Tensor) for item in tree_leaves(value)),
+                        'native tensor container needs a constant materializer: ' + module_name + '.' + name)
+        for name, value, buffer in values:
+            require(type(value) is torch.Tensor and value.device.type == 'cpu' and not value.requires_grad
+                    and bool(torch.isfinite(value).all()),
+                    'uninitialized native constant needs a family materializer: ' + module_name + '.' + name)
+            constants.append((child, name, buffer, value.detach().clone()))
+    return constants
+
+
+def _unpublished_native_shard_forward(module, inputs):
+    require(module._native_shard_load_status == 'ready', 'frozen shard construction not published; discard owner')
+
+
+def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
+    """Internal CPU/Gloo construction-owned frozen native FSDP loading seam.
+
+    The only target is constructed here: no caller module, optimizer, EMA,
+    trainable adapter or previously published/forwarded root is accepted. It
+    remains unreachable to the caller until every rank validates every local
+    slice and the original hash-bound file inventory. Failures poison/discard
+    this construction, not an existing training owner. Caller RNG is preserved,
+    NOT made equivalent to a dense constructor's subsequent LoRA RNG stream.
+
+    Supported layout is an ordered full-world 1D CPU mesh with native Shard(0)
+    Parameters. Other meshes, placements, persistent buffers and meta constants
+    fail closed. This does not admit a factory, GPU role or ShardedLifecycle.
+    All participating ranks must call it on the existing live Gloo group.
+    """
+    import hashlib
+    import safetensors
+    import torch.distributed as dist
+    from torch.distributed.device_mesh import DeviceMesh
+    from torch.distributed.fsdp import FSDPModule, fully_shard
+    from torch.distributed.tensor import DTensor, Shard
+    from torch.distributed.tensor._utils import compute_local_shape_and_global_offset
+    from distillschedule.open_workload.replicated import checked, gather
+    from .checkpoint import rng_state, restore_rng
+
+    require(dist.is_initialized() and dist.get_world_size() >= 2 and dist.get_backend() == 'gloo',
+            'frozen native shard construction requires an existing CPU/Gloo world')
+    rng, model = rng_state(device='cpu'), None
+    try:
+        # Bind even the manifest object itself against caller mutation during
+        # reads, with malformed rank-local manifests rejected collectively.
+        spec = checked(lambda: deepcopy(spec), 'native frozen shard manifest binding')
+        def admit():
+            require(isinstance(mesh, DeviceMesh) and mesh.device_type == 'cpu' and mesh.ndim == 1
+                    and mesh.mesh.tolist() == list(range(dist.get_world_size())),
+                    'frozen native shards require an ordered complete 1D CPU mesh')
+            require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
+                    and not torch.is_autocast_enabled('cuda'), 'frozen native shards require FP32 without autocast')
+            root, _ = asset_files(base, spec)
+            return root, _admit_native_weights(cls, root, spec['max_parameters'],
+                dtype_policy=spec.get('dtype_policy', 'strict_fp32'), config_transform=config_transform)
+
+        root, source = checked(admit, 'native frozen shard source admission')
+        model, config, effective_config, layout, alias_groups, rename, weights, headers = source
+        dtype_policy = spec.get('dtype_policy', 'strict_fp32')
+        identity = dict(cls=cls.__module__ + '.' + cls.__qualname__, config=config,
+            effective_config=effective_config, files=spec['files'],
+            budget=spec['max_parameters'], dtype_policy=dtype_policy,
+            layout={key: (list(value.shape), str(value.dtype)) for key, value in layout.items()},
+            aliases=sorted(sorted(group) for group in alias_groups))
+        identities = gather(checked(lambda: fingerprint(identity), 'native frozen shard identity'))
+        require(all(value == identities[0] for value in identities), 'ranks differ in native frozen shard source/layout')
+
+        def construct():
+            parameters = dict(model.named_parameters(remove_duplicate=False))
+            require(parameters.keys() == layout.keys() and all(p.is_meta and p.ndim > 0 for p in parameters.values()),
+                    'frozen shard target requires meta Parameters only; persistent buffers/scalars unsupported')
+            constants = _native_shard_constants(model)
+            model.eval().requires_grad_(False)
+            model._native_shard_load_status = 'constructing'
+            fully_shard(model, mesh=mesh, reshard_after_forward=True)
+            require(isinstance(model, FSDPModule), 'native FSDP root required')
+            # Native FSDP prepends its own hook. Prepend AFTER installation so
+            # a poisoned forward cannot reach even the first tensor collective.
+            model.register_forward_pre_hook(_unpublished_native_shard_forward, prepend=True)
+            model.to_empty(device='cpu')
+            with torch.no_grad():
+                for child, name, buffer, value in constants:
+                    target = child._buffers[name] if buffer else getattr(child, name)
+                    require(target.shape == value.shape and target.dtype == value.dtype and target.device.type == 'cpu',
+                            'native constant materialization changed layout')
+                    target.copy_(value)
+            slots = dict(model.named_parameters(remove_duplicate=False))
+            require(slots.keys() == layout.keys() and
+                    {frozenset(group) for group in _parameter_alias_groups(model, slots)} ==
+                    {frozenset(group) for group in alias_groups}, 'native shard Parameter aliases changed')
+            local, offsets, rows = {}, {}, {}
+            for key, p in slots.items():
+                require(isinstance(p, DTensor) and not p.is_meta and not p.requires_grad and p.grad is None
+                        and p.device_mesh is mesh and len(p.placements) == 1
+                        and type(p.placements[0]) is Shard and p.placements[0].dim == 0
+                        and p.shape == layout[key].shape and p.dtype == layout[key].dtype == torch.float32,
+                        'unsupported actual native shard mesh/placement/global layout: ' + key)
+                shape, offset = compute_local_shape_and_global_offset(p.shape, p.device_mesh, p.placements)
+                value = p.to_local()
+                require(value.device.type == 'cpu' and value.dtype == p.dtype and value.is_contiguous()
+                        and tuple(value.shape) == tuple(shape), 'unsupported actual native local slice: ' + key)
+                local[key], offsets[key] = value, tuple(offset)
+                rows[key] = (tuple(shape), tuple(offset))
+            return constants, slots, local, offsets, rows
+
+        constants, slots, local, offsets, rows = checked(construct, 'native frozen shard target construction')
+        coverage = gather(rows)
+
+        def validate_coverage():
+            for key, expected in layout.items():
+                cursor = 0
+                ranges = sorted((row[key][1][0], row[key][0][0]) for row in coverage)
+                for start, count in ranges:
+                    require(count >= 0 and 0 <= start <= expected.shape[0]
+                            and (count == 0 or start == cursor), 'incomplete/overlapping native shard coverage: ' + key)
+                    if count:
+                        cursor += count
+                require(cursor == expected.shape[0] and all(
+                    tuple(row[key][0][1:]) == tuple(expected.shape[1:]) and not any(row[key][1][1:])
+                    for row in coverage), 'incomplete native global tensor coverage: ' + key)
+            # Only bounded concrete constants are hashed; no target Parameter
+            # is gathered, densified or hashed through a global tensor API.
+            return [hashlib.sha256(value.contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
+                    for _, _, _, value in constants]
+
+        constant_hashes = checked(validate_coverage, 'native frozen shard coverage')
+        hashes = gather(constant_hashes)
+        require(all(value == hashes[0] for value in hashes), 'ranks differ in native frozen constants')
+        binding = {key: (p, local[key].untyped_storage().data_ptr()) for key, p in slots.items()}
+        groups = {key: group for group in alias_groups for key in group}
+
+        def copy_slices():
+            loaded = set()
+            with torch.no_grad():
+                for path in weights:
+                    with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
+                        require({rename(key) for key in handle.keys()} ==
+                                {key for key, shard in headers.items() if shard == path},
+                                'native safe weight keys changed after header admission')
+                        for raw_key in handle.keys():
+                            key = rename(raw_key)
+                            header = handle.get_slice(raw_key)
+                            _native_weight_header(header, layout[key], dtype_policy, key)
+                            slices = tuple(slice(offset, offset + size)
+                                for offset, size in zip(offsets[key], local[key].shape))
+                            value = _native_weight_value(header[slices], local[key].shape, local[key].dtype, dtype_policy, key)
+                            require(not groups[key] & loaded or torch.equal(value, local[key]),
+                                    'contradictory native tied weight aliases')
+                            # All aliases name the exact same actual Parameter.
+                            # No assignment/rebinding, dense payload, or gather.
+                            local[key].copy_(value)
+                            loaded.update(groups[key])
+                            del value
+            require(loaded == layout.keys(), 'incomplete native weights; random fallback forbidden')
+
+        checked(copy_slices, 'native frozen shard local payload')
+
+        def finish():
+            require(asset_files(base, spec)[0] == root, 'native asset root changed during local loading')
+            actual = dict(model.named_parameters(remove_duplicate=False))
+            require(actual.keys() == binding.keys() and all(actual[key] is p
+                    and p.to_local().untyped_storage().data_ptr() == pointer and not p.requires_grad and p.grad is None
+                    for key, (p, pointer) in binding.items()), 'native shard Parameter/storage ownership changed')
+            require(all(torch.equal(child._buffers[name] if buffer else getattr(child, name), value)
+                        for child, name, buffer, value in constants), 'native constants changed during loading')
+
+        checked(finish, 'native frozen shard publication admission')
+        model._native_shard_load_status = 'ready'
+        return model, config
+    except BaseException:
+        if model is not None:
+            model._native_shard_load_status = 'poisoned'
+        raise
+    finally:
+        restore_rng(rng)
 
 
 def tokenizer_state(tokenizer):
