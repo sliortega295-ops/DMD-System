@@ -299,6 +299,69 @@ def build_model(parameters):
         return _build_placed(parameters, args, device)
 
 
+def _admit_resident_construction(*, parameters, request, budget):
+    """Read native configs and mmap/meta weight headers before model allocation."""
+    if budget is None:
+        if str(parameters.get('device', 'cpu')).startswith('cuda'):
+            from .self_forcing_owner import CUDA_TRIAL_LIMIT
+            require(request.execution.get('mode', 'reference') in ('reference', 'manual')
+                    and 'owner_execution' not in request.execution.get('implementation', {}), CUDA_TRIAL_LIMIT)
+        return None
+    import torch
+    from .resident import ResidentAdmission
+    args, device = _arguments(parameters), _admit_device(parameters)
+    require(not set(parameters) & {'native_role_backend', 'optimization_profile'}
+            and 'distributed' not in request.trainer
+            and device == _execution_device(request.trainer.get('device', 'cpu')),
+            'resident construction is single-device, not a collective owner')
+    runtime = runtime_identity()
+    require(all(runtime[key].split('+')[0] == value for key, value in dict(torch='2.10.0',
+        diffusers='0.37.1', transformers='4.51.3', einops='0.8.1').items())
+        and runtime['cpu_policy']['threads'] == 1, 'resident native construction requires qualified dependencies')
+    require(args.gradient_checkpointing and args.image_or_video_shape == [1, 21, 16, 4, 4]
+            and args.dfake_gen_update_ratio == 5 and args.num_frame_per_block == 3
+            and args.denoising_step_list == [1000, 750, 500, 250],
+            'resident planning requires the qualified native Self-Forcing tiny profile and G checkpoint')
+    api = original(parameters['source_root'])
+    manifest = Path(parameters['assets']).expanduser().resolve(strict=True)
+    bundle = _json(manifest)
+    require(bundle.get('schema_version') == ASSET_SCHEMA
+            and bundle.get('evidence_kind') == 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED',
+            'resident planning construction requires explicit tiny native assets')
+    tiny = dict(model_type='t2v', patch_size=[1, 2, 2], text_len=8, in_dim=16, out_dim=16,
+        dim=32, ffn_dim=64, freq_dim=16, text_dim=16, num_heads=2, num_layers=1,
+        qk_norm=True, cross_attn_norm=True)
+    expected = dict(generator=dict(tiny, local_attn_size=-1, sink_size=0), real_score=tiny, fake_score=tiny,
+        vae=dict(dim=4, z_dim=16, dim_mult=[1, 2, 2, 2], num_res_blocks=1, attn_scales=[],
+                 temperal_downsample=[True, True, False], dropout=0.))
+    files = {str(manifest): _sha(manifest)}
+    sizes = []
+    for role, architecture in expected.items():
+        require(bundle.get(role, {}).get('config') == architecture, 'unqualified tiny native ' + role)
+        path = _asset_file(manifest.parent, bundle[role]['weights'])
+        # No checkpoint tensor storage is materialized: only ZIP metadata.
+        metadata = torch.load(path, map_location='meta', weights_only=True, mmap=True)
+        require(isinstance(metadata, dict) and metadata and all(type(tensor) is torch.Tensor
+            and tensor.is_meta and tensor.dtype == torch.float32 for tensor in metadata.values()),
+            'native resident requires dense FP32 role weights')
+        sizes.append(sum(t.numel() * t.element_size() for t in metadata.values()))
+        files[str(path)] = _sha(path)
+    negative = _asset_file(manifest.parent, bundle['negative_prompt_embeds'])
+    meta = torch.load(negative, map_location='meta', weights_only=True, mmap=True)
+    require(type(meta) is torch.Tensor and meta.dtype == torch.float32 and tuple(meta.shape) == (1, 8, 16),
+            'qualified tiny negative text embedding required')
+    files[str(negative)] = _sha(negative)
+    files.update({str(api.source.root / name): sha for name, sha in api.source.files.items()})
+    resident = sum(sizes) + (1 << 20)
+    return ResidentAdmission(budget=budget, device=device, resident_bytes=resident,
+        staging_bytes=2 * resident + max(sizes), files=files,
+        identity=dict(provider='official-self-forcing-tiny-fp32', source=api.source.identity,
+                      assets_sha256=_sha(manifest), runtime=runtime))
+
+
+build_model.admit_construction = _admit_resident_construction
+
+
 @contextmanager
 def _native_checkpoint_enable(api, children):
     """Private constructor-only bridge for the pinned old Diffusers setter ABI.

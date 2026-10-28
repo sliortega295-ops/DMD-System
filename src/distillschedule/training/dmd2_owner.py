@@ -144,8 +144,9 @@ class DMD2Owner:
         return result
 
     def admit_execution(self, mode, implementation):
+        from .resident import active
         require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
-                and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
+                and 'owner_execution' not in implementation) or active(self), CUDA_TRIAL_LIMIT)
 
     def _resident_trial_adapter(self):
         """Explicit zero-copy trial inventory, separate from checkpoint load."""
@@ -220,12 +221,13 @@ class DMD2Owner:
         from distillschedule.open_workload.torch_backend import code_signature
         from distillschedule.workloads.best_known.registry import file_sha256
         from distillschedule.open_workload.resident_trial import cuda_trial_active
+        from .resident import active
         self._validate_live()
         runtime = runtime_identity()
         require(runtime == self.identity['runtime'], 'live numerical dependency runtime changed')
         required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
         stack = dict(runtime, torch=str(torch.__version__).split('+')[0])
-        private_cuda = self.device.type == 'cuda' and cuda_trial_active(self)
+        private_cuda = self.device.type == 'cuda' and (cuda_trial_active(self) or active(self))
         # This private CUDA lane qualifies the existing tiny native acceptance
         # geometry only, not arbitrary/pretrained UNet construction capacity.
         tiny_cuda = (not private_cuda or (

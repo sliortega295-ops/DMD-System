@@ -127,12 +127,14 @@ native plain tensors, moments, negative context and RNG are validated before
 mutation, while ephemeral rollout caches are rebuilt. Only current-G/VAE
 inference exports allow an explicit device relocation.
 
-CUDA admits only the resident `reference` path or supported manual physical
-choices without `owner_execution`. Whole-owner deep-copy, `auto`, saved `plan`
-trials and owner-selected trials are rejected before cloning: a capacity-bounded
-snapshot/restore ABI is not yet available. No silent execution downgrade is
-performed. CUDA source support is not pretrained/capacity/AMP/BF16/native-FA,
-distributed, quality, continuous-training or full-U6 acceptance. Optional actual
+The exact tiny Generator-ON profile also has an opt-in
+[budgeted resident lifecycle](../../docs/guides/resident_owner_training.md):
+manual Fake checkpoint policy, measured `auto`, saved `plan` and same-device
+fresh-process resume use one persistent native owner. Construction and trial
+capacities are explicit. Without that admission, CUDA auto/plan/owner-selected
+trials are rejected before model allocation; whole-owner CUDA copies remain
+forbidden. This portfolio does not qualify pretrained/AMP/BF16/native-FA,
+distributed or generation-quality support. Optional actual
 tiny CUDA regressions are in `tests/gpu/test_training_self_forcing_lifecycle.py`;
 CPU-only Torch reports their deliberate `NOT_RUN` skips.
 

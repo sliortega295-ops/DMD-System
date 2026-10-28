@@ -35,6 +35,8 @@ class ModelComponents:
     # Dispose ephemeral providers/hooks after a whole training invocation,
     # never between cycles or while a checkpoint is being serialized.
     close: Callable | None = None
+    # Actual observations, not checkpoint/source identity (allocator state varies).
+    construction_receipt: Mapping[str, Any] = field(default_factory=dict)
 
     @contextmanager
     def managed(self):

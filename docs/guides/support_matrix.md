@@ -236,9 +236,14 @@ path now includes native tensor/RNG/Adam ownership, host-state restore and
 current-G export/reload placement. The seven-test A100 acceptance above covers
 actual random-tiny reference CUDA lifecycle; **pretrained capacity, quality and
 performance remain NOT_RUN**. Optional CUDA tests skip honestly on CPU-only
-Torch. CUDA auto/plan/owner-selected trials and
-whole-owner copying fail closed until budgeted resident snapshot/restore covers
-frozen roles, optimizer, comparison and CPU staging. These singleton tests do
+Torch. A separate [budgeted resident lifecycle](resident_owner_training.md)
+connects the exact tiny-native portfolio to public direct/auto/saved-plan
+training and resume without whole-owner copies. It requires a qualified
+preconstruction provider and explicit host/device budgets; the original
+no-budget CUDA trial refusal is unchanged. The [public lifecycle A100 acceptance](../status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md)
+covers three-cycle auto execution, direct fresh-process resume and current-G
+decode for SD1.5, SDXL and official Self-Forcing, plus the shared SD1.5 saved-plan
+restart path. These singleton tests do
 not qualify the separate native distributed owners or full pretrained gates. Other
 physical options are available only when their actual runtime predicates and
 measured effects pass. Visible-module Program backends are not advertised as
@@ -259,11 +264,12 @@ explicit native checkpoint-ON reference, with only noncausal Fake checkpoint
 ON/OFF admitted through the same manual/measured-auto/saved-plan owner protocol.
 The causal Generator setting remains immutable algorithm identity; its ON/OFF
 paths are not equivalent. Real checkpoint/recompute and direct-execution counts,
-three-cycle independent native Trainer parity and fresh-process manual restart
-are CPU evidence only. The legacy OFF reference is unchanged and offers no
+three-cycle independent native Trainer parity are covered by CPU evidence.
+The public budgeted portfolio also has the A100 continuation/restart/output
+acceptance linked above. The legacy OFF reference is unchanged and offers no
 checkpoint alternative. This singleton checkpoint-policy portfolio remains
-CPU-only; CUDA trial copying/auto/plan remain rejected pending capacity-bounded
-snapshot support. The explicit native FSDP2 paths below are separate, not
+available through the explicit budgeted resident lifecycle as well; unbudgeted
+CUDA trial copying/auto/plan remain rejected. The explicit native FSDP2 paths below are separate, not
 qualification of that trial portfolio.
 
 The separate official Self-Forcing `release-after-commit-v1` model profile

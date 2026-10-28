@@ -92,18 +92,45 @@ def _construct_model(config, *, source=None):
                               or not _same_factory(model_source["reference"], source["reference"])):
         raise ValueError("export model factory source changed")
     parameters = _model_parameters(config)
-    components = factory(parameters)
-    if not isinstance(components, ModelComponents):
-        raise ValueError("model factory must return ModelComponents")
+    admission = None
+    budget = None
+    hook = getattr(factory, 'admit_construction', None)
+    if 'resident_budget' in config.execution:
+        from .resident import ResidentTrainingBudget
+        budget = ResidentTrainingBudget.parse(config.execution['resident_budget'], device=parameters['device'])
+        if not callable(hook):
+            raise ValueError('model factory has no resident preconstruction provider')
+    if callable(hook):
+        admission = hook(parameters=parameters, request=config, budget=budget)
+    if budget is not None and admission is None:
+        raise ValueError('model factory declined resident preconstruction admission')
+    components = None
     try:
+        components = factory(parameters)
+        if not isinstance(components, ModelComponents):
+            raise ValueError("model factory must return ModelComponents")
         components.validate()
+        if admission is not None:
+            admission.attach(components)
     except BaseException:
         # A returned provider is already ours, even if its contract is invalid.
         # Do not let an invalid close field mask its original validation error.
-        if callable(components.close):
-            with components.managed():
-                raise
+        try:
+            if isinstance(components, ModelComponents) and callable(components.close):
+                components.close()
+        finally:
+            if admission is not None:
+                admission.close()
         raise
+    if admission is not None:
+        original_close = components.close
+        def close():
+            try:
+                if original_close is not None:
+                    original_close()
+            finally:
+                admission.close()
+        components.close = close
     return components, model_source
 
 
@@ -276,6 +303,9 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
     distributed.primary(lambda: root.mkdir(parents=True, exist_ok=False), "training output creation")
     distributed.primary(lambda: _json(root / "resolved-config.json", config.to_dict()), "config publication")
     distributed.primary(lambda: _json(root / "identity.json", identity), "identity publication")
+    if components.construction_receipt:
+        distributed.primary(lambda: _json(root / "construction-admission.json", components.construction_receipt),
+                            "construction admission publication")
     rank_root = root if world == 1 else root / "ranks" / f"rank-{rank:05d}"
     if world > 1:
         distributed.checked(lambda: rank_root.mkdir(parents=True, exist_ok=False), "rank output creation")

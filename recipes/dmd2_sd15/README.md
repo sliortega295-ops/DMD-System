@@ -127,11 +127,14 @@ The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
 including native plain conditioning/scheduler tensors.
 
-CUDA auto, saved-plan and `owner_execution` admission are explicitly rejected,
-as are whole-owner CUDA deep copies. The existing paired trial path cannot yet
-snapshot/restore real resident roles within a capacity budget covering frozen
-Teacher/CLIP/VAE, optimizer, comparison and CPU staging. CPU trial behavior is
-unchanged; no unsupported CUDA request silently falls back to it. Optional
+For source-qualified tiny native profiles, an explicit
+[`execution.resident_budget`](../../docs/guides/resident_owner_training.md)
+connects direct checkpoint policy, measured `auto`, saved-plan execution and
+fresh-process continuation to the common lifecycle. Trials retain the native
+owner and snapshot/restore within declared construction, host and device
+budgets. Without this admission, CUDA auto/plan/`owner_execution` remain
+rejected before model allocation; whole-owner CUDA copies remain forbidden.
+Optional
 `tests/gpu/test_training_dmd2_lifecycle.py` uses the existing random tiny actual
 fixtures for native-source parity, host-checkpoint restore, new-process resume
 and current-G export/reload. It skips on CPU-only Torch and is not pretrained

@@ -154,8 +154,9 @@ class SelfForcingOwner:
         return result
 
     def admit_execution(self, mode, implementation):
+        from .resident import active
         require(self.device.type != 'cuda' or (mode in ('reference', 'manual')
-                and 'owner_execution' not in implementation), CUDA_TRIAL_LIMIT)
+                and 'owner_execution' not in implementation) or active(self), CUDA_TRIAL_LIMIT)
 
     def _resident_trial_adapter(self):
         """Full host/frozen/plain state; never execute rollout for discovery."""
@@ -225,6 +226,7 @@ class SelfForcingOwner:
         from distillschedule.open_workload.torch_backend import code_signature
         from distillschedule.workloads.best_known.registry import file_sha256
         from distillschedule.open_workload.resident_trial import cuda_trial_active
+        from .resident import active
         self._validate_live()
         runtime = runtime_identity()
         required = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', einops='0.8.1')
@@ -243,7 +245,7 @@ class SelfForcingOwner:
             same_step_across_blocks=True, last_step_only=False, context_noise=0, fake_guidance_scale=0.,
             real_guidance_scale=3., timestep_shift=5., scheduler_shift=5., ts_schedule=False,
             ts_schedule_max=False, min_score_timestep=0)
-        private_cuda = self.device.type == 'cuda' and cuda_trial_active(self)
+        private_cuda = self.device.type == 'cuda' and (cuda_trial_active(self) or active(self))
         if self.device.type == 'cuda' and not private_cuda:
             status = 'UNAVAILABLE_CUDA_TRIAL_SNAPSHOT'
         elif not self.args.gradient_checkpointing:

@@ -318,6 +318,92 @@ def build_sdxl(parameters):
     return _build(parameters, sdxl=True)
 
 
+def _admit_resident_construction(*, parameters, request, budget, sdxl):
+    """Metadata-only admission for the independently qualified tiny UNets.
+
+    The full pretrained/FSDP profiles are separate owners. A budget does not
+    enable those profiles or turn their allocation into a qualified trial.
+    """
+    if budget is None:
+        if str(parameters.get('device', 'cpu')).startswith('cuda'):
+            from .dmd2_owner import CUDA_TRIAL_LIMIT
+            require(request.execution.get('mode', 'reference') in ('reference', 'manual')
+                    and 'owner_execution' not in request.execution.get('implementation', {}), CUDA_TRIAL_LIMIT)
+        return None
+    import json
+    import math
+    from safetensors import safe_open
+    from .single_device import admit_fp32
+    from .resident import ResidentAdmission
+    args = _arguments(parameters, sdxl=sdxl)
+    require(not set(parameters) & {'native_role_backend', 'optimization_profile', 'generator_checkpoint'},
+            'resident planning constructor is not a collective/pretrained initialization profile')
+    device = admit_fp32(parameters, require=require)
+    require(device == _execution_device(request.trainer.get('device', 'cpu'))
+            and 'distributed' not in request.trainer, 'resident construction placement mismatch')
+    runtime = runtime_identity()
+    expected = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
+    require(all(runtime[key].split('+')[0] == value for key, value in expected.items()),
+            'resident native construction requires qualified numerical dependencies')
+    require(args.batch_size == 1 and args.resolution == 16 and args.latent_resolution == 8
+            and args.dfake_gen_update_ratio == 2 and not args.generator_lora and not args.cls_on_clean_image,
+            'resident planning requires the qualified tiny native DMD2 geometry')
+    api = original(parameters['source_root'])
+    bundle = local_bundle_identity(args.model_id, sdxl=sdxl)
+    root = Path(args.model_id)
+    def config(folder):
+        path = root / folder / 'config.json'
+        require(path.stat().st_size <= 1 << 20, 'bounded native configuration required')
+        return json.loads(path.read_text())
+    unet, vae = config('unet'), config('vae')
+    require(all(unet.get(key) == value for key, value in dict(sample_size=8, in_channels=4, out_channels=4,
+            layers_per_block=1, block_out_channels=[8, 16], cross_attention_dim=16 if sdxl else 8,
+            attention_head_dim=2, norm_num_groups=4,
+            down_block_types=['DownBlock2D', 'CrossAttnDownBlock2D'],
+            up_block_types=['CrossAttnUpBlock2D', 'UpBlock2D']).items()), 'unqualified tiny UNet configuration')
+    require(all(vae.get(key) == value for key, value in dict(sample_size=16, in_channels=3,
+            out_channels=3, latent_channels=4, block_out_channels=[8, 16], layers_per_block=1,
+            norm_num_groups=4).items()), 'unqualified tiny VAE configuration')
+    text_folders = ['text_encoder', *(['text_encoder_2'] if sdxl else [])]
+    for folder in text_folders:
+        require(all(config(folder).get(key) == value for key, value in dict(hidden_size=8,
+            intermediate_size=16, num_hidden_layers=2, num_attention_heads=2,
+            max_position_embeddings=8, projection_dim=8).items()), 'unqualified tiny text encoder')
+    sizes = {}
+    for folder in ['unet', 'vae', *text_folders]:
+        weights = sorted((root / folder).glob('*.safetensors'))
+        require(len(weights) == 1 and not list((root / folder).glob('*.bin')),
+                'resident tiny construction requires one explicit safetensors file per component')
+        with safe_open(weights[0], framework='pt', device='cpu') as handle:
+            total = 0
+            for key in handle.keys():
+                header = handle.get_slice(key)
+                require(header.get_dtype() == 'F32', 'native resident weights must be FP32')
+                total += math.prod(header.get_shape()) * 4
+            sizes[folder] = total
+    # Native SDUniModel has independent Student, Teacher and Fake UNets. Include
+    # codec/text and plain scheduler/conditioning buffers, without allocating.
+    resident = 3 * sizes['unet'] + sum(value for key, value in sizes.items() if key != 'unet') + (1 << 20)
+    files = {str(root / name): sha for name, sha in bundle['files'].items()}
+    files.update({str(api.source.root / name): sha for name, sha in api.source.files.items()})
+    return ResidentAdmission(budget=budget, device=device, resident_bytes=resident,
+        staging_bytes=2 * resident + max(sizes.values()),
+        identity=dict(provider='official-dmd2-tiny-fp32', variant='sdxl' if sdxl else 'sd15',
+                      source=api.source.identity, assets=bundle, runtime=runtime), files=files)
+
+
+def _admit_sd15_construction(**kwargs):
+    return _admit_resident_construction(**kwargs, sdxl=False)
+
+
+def _admit_sdxl_construction(**kwargs):
+    return _admit_resident_construction(**kwargs, sdxl=True)
+
+
+build_sd15.admit_construction = _admit_sd15_construction
+build_sdxl.admit_construction = _admit_sdxl_construction
+
+
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
     from .dmd2_owner import stream_counts
     from distillschedule.data.sd_inputs import validate_prepared_binding
