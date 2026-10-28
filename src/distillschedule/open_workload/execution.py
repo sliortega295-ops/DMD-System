@@ -111,7 +111,7 @@ class ExecutionBackend:
             from .mixed_layout import graph
             return graph(self.workload,implementation)
         return execution_graph(self.workload.program, self.workload.replica_semantics,
-                               'ddp_overlap' if reduction.startswith(('fsdp2_', 'hsdp2_')) else reduction)
+                               'fsdp_forward' if reduction.startswith(('fsdp2_', 'hsdp2_')) else reduction)
 
     def compare(self,expected,actual,**kwargs):
         from .torch_backend import compare

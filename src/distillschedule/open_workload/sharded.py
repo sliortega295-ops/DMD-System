@@ -10,7 +10,7 @@ from collections import defaultdict
 import torch
 import torch.distributed as dist
 from distillschedule.core.contracts import require
-from .replicated import ReplicaLifecycle, checked, gather, identity, ddp_order_admitted, BACKEND
+from .replicated import ReplicaLifecycle, checked, gather, identity, forward_order_admitted, BACKEND
 from .replica_contract import execution_graph
 from .torch_backend import storage_key, physical_tensor, signature
 from distillschedule.workloads.best_known.registry import fingerprint
@@ -22,12 +22,21 @@ HSDP_MODES = ('hsdp2_reshard', 'hsdp2_keep_forward')
 def rejection(workload, module_keys=None):
     if workload.replica_semantics is None:
         return 'REPLICA_SEMANTICS_REQUIRED'
-    if workload.replica_semantics.forward_interface != 'module_forward':
+    if workload.replica_semantics.forward_interface not in ('module_forward', 'registered_methods'):
         return 'PRIVATE_METHODS_REQUIRE_POST_BACKWARD'
     try:
-        from torch.distributed.fsdp import fully_shard
+        from torch.distributed.fsdp import fully_shard, FSDPModule
         from torch.distributed.tensor import DTensor
     except ImportError: return 'FSDP2_UNAVAILABLE'
+    if workload.replica_semantics.forward_interface == 'registered_methods':
+        try:
+            workload.replica_semantics.validate(workload)
+        except (ValueError, TypeError): return 'INVALID_FORWARD_METHOD_CONTRACT'
+        try:
+            from torch.distributed.fsdp import register_fsdp_forward_method
+        except ImportError: return 'FSDP_FORWARD_METHOD_API_UNAVAILABLE'
+        if any(hasattr(FSDPModule, name) for name in workload.replica_semantics.forward_methods.values()):
+            return 'FORWARD_METHOD_COLLIDES_WITH_FSDP_API'
     version=tuple(int(v) for v in torch.__version__.split('+')[0].split('.')[:2])
     if workload.device.type=='cpu' and version<(2,10):return 'CPU_FSDP2_REQUIRES_TORCH_2_10'
     keys=set(workload.replica_semantics.module_bindings.values()) if module_keys is None else set(module_keys)
@@ -54,7 +63,7 @@ def rejection(workload, module_keys=None):
     return None
 
 
-def shard_roots(session, module_keys, mesh, *, reshard_after_forward):
+def shard_roots(session, module_keys, mesh, *, reshard_after_forward, forward_methods=None):
     """Common native installation; untouched optimizer groups/moments stay intact."""
     from torch.distributed.fsdp import fully_shard
     from torch.distributed.tensor import DTensor, distribute_tensor
@@ -64,6 +73,12 @@ def shard_roots(session, module_keys, mesh, *, reshard_after_forward):
         original = dict(model.named_parameters())
         parameter_bytes += sum(p.numel()*p.element_size() for p in original.values())
         fully_shard(model, mesh=mesh, reshard_after_forward=reshard_after_forward)
+        if forward_methods and key in forward_methods:
+            from torch.distributed.fsdp import register_fsdp_forward_method
+            # Only the declared outer entrypoint is hooked once per root. A
+            # rollout may call denoise internally; registering both would nest
+            # pre/post hooks and reshard the parameters before rollout finishes.
+            register_fsdp_forward_method(model, forward_methods[key])
         for name, parameter in model.named_parameters():
             require(isinstance(parameter, DTensor), 'FSDP did not install distributed parameters', path='open.fsdp')
             replacements[id(original[name])] = parameter
@@ -105,7 +120,7 @@ class ShardedLifecycle(ReplicaLifecycle):
         checked(validate,'FSDP admission'); identity(self.workload)
         self.module_keys=tuple(sorted(set(self.workload.replica_semantics.module_bindings.values())))
         session.graph=checked(lambda:execution_graph(self.workload.program,
-            self.workload.replica_semantics,'ddp_overlap'),'FSDP call boundaries')
+            self.workload.replica_semantics,'fsdp_forward'),'FSDP call boundaries')
         from torch.distributed.device_mesh import init_device_mesh, DeviceMesh
         if hybrid:
             from .topology import discover
@@ -117,9 +132,14 @@ class ShardedLifecycle(ReplicaLifecycle):
         else:
             topology = None
             mesh = init_device_mesh(session.device.type,(self.world,))
+        semantics = self.workload.replica_semantics
+        methods = {semantics.module_bindings[binding]: name for binding, name in semantics.forward_methods.items()}
+        self.forward_interface = semantics.forward_interface
+        self.forward_methods = methods
         self.full_parameter_bytes, sharded_count, migrated = shard_roots(
             session, self.module_keys, mesh,
-            reshard_after_forward=self.option['reduction'].endswith('_reshard'))
+            reshard_after_forward=self.option['reduction'].endswith('_reshard'), forward_methods=methods)
+        if methods: session.effects['fsdp_forward_methods'] = methods
         session.effects.update(distributed=True,world_size=self.world,reduction=self.option['reduction'],
             fsdp_sharded_parameters=sharded_count,optimizer_moments_migrated=migrated,
             parameter_layout='HSDP2_Replicate_Shard0' if hybrid else 'FSDP2_Shard0',
@@ -129,7 +149,15 @@ class ShardedLifecycle(ReplicaLifecycle):
     def before_run(self,session,order):
         orders=gather(tuple(order))
         require(all(x==orders[0] for x in orders),'rank execution orders differ',path='open.fsdp')
-        require(ddp_order_admitted(self.workload,order),'unsupported outstanding FSDP forward',path='open.fsdp')
+        def validate():
+            semantics = self.workload.replica_semantics
+            require(semantics.forward_interface == self.forward_interface and
+                    {semantics.module_bindings[binding]: name for binding, name in semantics.forward_methods.items()}
+                    == self.forward_methods,
+                    'installed FSDP method contract changed between cycles', path='open.fsdp')
+            require(forward_order_admitted(self.workload,order),
+                    'unsupported outstanding FSDP forward',path='open.fsdp')
+        checked(validate, 'FSDP cycle admission')
         dist.barrier()
 
     def after_call(self,session,call):

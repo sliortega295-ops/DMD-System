@@ -121,6 +121,11 @@ def ddp_order_admitted(workload, order, context_modules=None):
     this DDP execution family; do not weaken the mathematical Program contract.
     """
     if workload.replica_semantics.forward_interface != 'module_forward': return False
+    return forward_order_admitted(workload, order, context_modules)
+
+
+def forward_order_admitted(workload, order, context_modules=None):
+    """Shared native forward/backward lifetime check, not DDP interface admission."""
     calls = {c.id:c for c in workload.program.calls}
     ancestors = {}
     for c in workload.program.calls:
@@ -148,10 +153,12 @@ def inventory(workload, *, limit=16, topology=None):
     local = local_candidates(workload, limit=limit)
     original = tuple(c.id for c in workload.program.calls) + ('__open_finish__',)
     modes = [('post_backward', 0)]
-    if ddp_order_admitted(workload, original): modes += [('ddp_overlap', 1), ('ddp_overlap', 128)]
+    ddp_admitted = ddp_order_admitted(workload, original)
+    if ddp_admitted: modes += [('ddp_overlap', 1), ('ddp_overlap', 128)]
     from .sharded import rejection as sharding_rejection, MODES as sharded_modes, HSDP_MODES
     reason = sharding_rejection(workload)
-    admit_sharding = reason is None and len(modes) > 1
+    admit_sharding = reason is None and (ddp_admitted or
+        workload.replica_semantics.forward_interface == 'registered_methods' and forward_order_admitted(workload, original))
     hybrid_modes = HSDP_MODES if topology and topology['hsdp_admitted'] else ()
     from .mixed_layout import domains, enumerate_assignments, assignment_count, option as mixed_option
     domain = domains(workload, topology)
@@ -284,8 +291,12 @@ class ReplicaLifecycle:
 def make_session(workload, implementation, *, copy_state=True, persistent=False):
     checked(lambda: workload.validate(), 'session preflight')
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
+    from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     checked(lambda: require(workload.replica_semantics is not None and
-        (workload.replica_semantics.forward_interface == 'module_forward' or implementation.get('reduction') == 'post_backward'),
+        (workload.replica_semantics.forward_interface == 'module_forward'
+         or implementation.get('reduction') == 'post_backward'
+         or (workload.replica_semantics.forward_interface == 'registered_methods'
+             and implementation.get('reduction') in (*MODES, *HSDP_MODES))),
         'private methods require post_backward reduction, not forward wrappers', path='open.replicated'), 'forward interface')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
@@ -293,7 +304,6 @@ def make_session(workload, implementation, *, copy_state=True, persistent=False)
     if implementation.get('reduction') == MIXED:
         return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation),
                        copy_state=copy_state,persistent=persistent)
-    from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
     return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation),
                    copy_state=copy_state,persistent=persistent)

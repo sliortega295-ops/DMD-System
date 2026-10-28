@@ -52,6 +52,8 @@ def test_private_methods_are_post_backward_only_and_defaults_preserve_identity()
     w = with_replica()
     legacy = w.replica_semantics.to_dict()
     assert set(legacy) == {'module_bindings', 'backward_calls', 'local_batch_size', 'objective'}
+    assert execution_graph(w.program, w.replica_semantics, 'fsdp_forward') == execution_graph(
+        w.program, w.replica_semantics, 'ddp_overlap'), 'legacy FSDP graph identity changed'
     w.replica_semantics = replace(w.replica_semantics, forward_interface='private_methods',
                                  random_streams='rank_independent_v1')
     w.validate()
@@ -74,6 +76,119 @@ def test_private_methods_are_post_backward_only_and_defaults_preserve_identity()
 def test_sharded_capability_without_replica_semantics_fails_closed():
     from distillschedule.open_workload.sharded import rejection
     assert rejection(build(n=2)) == 'REPLICA_SEMANTICS_REQUIRED'
+
+
+def test_declared_module_method_is_fsdp_not_ddp_admission():
+    from distillschedule.open_workload.replica_contract import module_method_binding, execution_graph
+    from distillschedule.open_workload.replicated import inventory, ddp_order_admitted
+    from distillschedule.open_workload.sharded import rejection
+    w = with_replica()
+    # Direct forward is deliberately a method call here, not module.__call__.
+    w.bindings = {**w.bindings, 'forward': module_method_binding('learner', 'forward')}
+    w.replica_semantics = replace(w.replica_semantics, forward_interface='registered_methods',
+                                 forward_methods={'forward': 'forward'})
+    w.validate()
+    assert w.replica_semantics.to_dict()['forward_methods'] == {'forward': 'forward'}
+    assert not ddp_order_admitted(w, tuple(c.id for c in w.program.calls))
+    with pytest.raises(ValueError, match='module.*forward|module.__call__'):
+        execution_graph(w.program, w.replica_semantics, 'ddp_overlap')
+    graph = execution_graph(w.program, w.replica_semantics, 'fsdp_forward')
+    assert graph.metadata['execution_constraint'] == 'fsdp_forward_backward_context_v1'
+    # Capability tests must not label pre-2.10 CPU execution as available.
+    if tuple(int(x) for x in torch.__version__.split('.')[:2]) >= (2, 10):
+        assert rejection(w) is None
+        options = inventory(w, limit=100)
+        assert {v['reduction'] for v in options['candidates']} == {
+            'post_backward', 'fsdp2_reshard', 'fsdp2_keep_forward'}
+        assert 'ddp_async_mean' not in options['capabilities']
+
+
+@pytest.mark.parametrize('kind', ['missing', 'unknown_binding', 'wrong_root', 'wrong_method',
+                                  'opaque', 'private', 'noncallable', 'module_api', 'wrong_owner',
+                                  'duplicate_methods', 'no_opt_in', 'absent_method'])
+def test_registered_method_contract_fails_closed(kind):
+    from types import MethodType
+    from distillschedule.open_workload.replica_contract import module_method_binding
+    w = with_replica()
+    w.bindings = {**w.bindings, 'forward': module_method_binding('learner', 'forward')}
+    w.replica_semantics = replace(w.replica_semantics, forward_interface='registered_methods',
+                                 forward_methods={'forward': 'forward'})
+    if kind == 'missing':
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={})
+    elif kind == 'unknown_binding':
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={'teacher': 'forward'})
+    elif kind == 'wrong_root':
+        w.bindings['forward'] = module_method_binding('guide', 'forward')
+    elif kind == 'wrong_method':
+        w.bindings['forward'] = module_method_binding('learner', 'other')
+    elif kind == 'opaque':
+        w.bindings['forward'] = build().bindings['forward']
+    elif kind == 'private':
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={'forward': '_forward'})
+    elif kind == 'noncallable':
+        w.state['learner'].forward = 1
+    elif kind == 'module_api':
+        w.bindings['forward'] = module_method_binding('learner', 'train')
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={'forward': 'train'})
+    elif kind == 'wrong_owner':
+        w.state['learner'].forward = MethodType(type(w.state['guide']).forward, w.state['guide'])
+    elif kind == 'duplicate_methods':
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={'forward': ['forward', 'forward']})
+    elif kind == 'absent_method':
+        w.bindings['forward'] = module_method_binding('learner', 'missing')
+        w.replica_semantics = replace(w.replica_semantics, forward_methods={'forward': 'missing'})
+    else:
+        w.replica_semantics = replace(w.replica_semantics, forward_interface='private_methods')
+    with pytest.raises(ValueError):
+        w.validate()
+
+
+def test_registered_method_cannot_replace_native_fsdp_api():
+    from types import MethodType
+    from distillschedule.open_workload.replica_contract import module_method_binding
+    from distillschedule.open_workload.sharded import rejection
+    pytest.importorskip('torch.distributed.fsdp')
+    w = with_replica()
+    w.state['learner'].reshard = MethodType(type(w.state['learner']).forward, w.state['learner'])
+    w.bindings['forward'] = module_method_binding('learner', 'reshard')
+    w.replica_semantics = replace(w.replica_semantics, forward_interface='registered_methods',
+                                 forward_methods={'forward':'reshard'})
+    assert rejection(w) == 'FORWARD_METHOD_COLLIDES_WITH_FSDP_API'
+
+
+def test_nested_entries_rejected_but_same_method_bindings_deduplicate():
+    from distillschedule.open_workload.replica_contract import module_method_binding
+    w = with_replica()
+    w.bindings = {**w.bindings, 'forward': module_method_binding('learner', 'forward'),
+                  'second': module_method_binding('learner', 'forward')}
+    w.program = replace(w.program, calls=tuple(
+        replace(c, binding='second') if c.id == 'p1' else c for c in w.program.calls))
+    w.replica_semantics = replace(w.replica_semantics, forward_interface='registered_methods',
+        module_bindings={'forward':'learner', 'second':'learner'},
+        forward_methods={'forward':'forward', 'second':'forward'})
+    w.validate()
+    # Another public entry on the same root could be nested inside the first.
+    w.state['learner'].denoise = w.state['learner'].forward
+    w.bindings['second'] = module_method_binding('learner', 'denoise')
+    w.replica_semantics = replace(w.replica_semantics,
+                                  forward_methods={'forward':'forward', 'second':'denoise'})
+    with pytest.raises(ValueError, match='one outer forward method'):
+        w.validate()
+
+
+def test_method_binding_resolves_live_owner_and_passes_ordered_inputs_and_keywords():
+    from distillschedule.open_workload.replica_contract import module_method_binding
+    from distillschedule.open_workload.torch_backend import Context
+    class Model(torch.nn.Module):
+        def denoise(self, first, second, *, scale):
+            return (first - second) * scale
+    binding = module_method_binding('model', 'denoise')
+    context = Context({'later_name': torch.tensor(4.), 'earlier_name': torch.tensor(1.)},
+                      {'model': Model()}, {'scale': 2.})
+    assert binding(context).item() == 6
+    # No original model is captured; owner replacement is resolved at invocation.
+    context.state['model'] = Model()
+    assert binding(context).item() == 6
 
 
 def test_rank_random_namespace_is_reproducible_and_does_not_advance_outer_rng():

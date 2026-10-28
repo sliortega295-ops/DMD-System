@@ -3,16 +3,35 @@
 A local loss must already represent an equal-size rank-local mean. The system
 averages parameter gradients, not input/latent gradients, before updates.
 `module_bindings` declares model call ownership. Its legacy default requires
-ordinary module-forward interfaces; explicit private methods are safe only
-after backward, never with forward-dependent wrappers. Random streams remain
+ordinary module-forward interfaces; arbitrary private methods are safe only
+after backward. Explicit direct method bindings can instead opt into native
+FSDP method hooks (not DDP's module.__call__). Random streams remain
 shared by logical call unless explicitly rank-namespaced. Neither field selects
 a reducer implementation or bucket size. Arbitrary autograd.grad
 on trainable parameters and unequal-rank batches need different contracts.
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import inspect
 from typing import Mapping
 from distillschedule.core.contracts import require
+
+
+def module_method_binding(module_key, method_name):
+    """Bind one model-owned method through the existing Context callable ABI.
+
+    Program inputs, in their declared order, become positional arguments;
+    attributes become keyword arguments. Resolve from ctx.state on every call,
+    including recomputation, so native FSDP hooks and restored owners are used.
+    This is intentionally not a declaration attached to an arbitrary wrapper.
+    """
+    require(isinstance(module_key, str) and bool(module_key)
+            and isinstance(method_name, str) and method_name.isidentifier()
+            and not method_name.startswith('_'),
+            'explicit root and public method name required', path='open.replica')
+    def invoke(ctx):
+        return getattr(ctx.state[module_key], method_name)(*ctx.inputs.values(), **ctx.attributes)
+    return invoke
 
 
 @dataclass(frozen=True)
@@ -25,11 +44,12 @@ class ReplicaSemantics:
     # module-forward/shared-call contract unless explicitly opted in.
     forward_interface: str = 'module_forward'
     random_streams: str = 'shared_logical_call'
+    forward_methods: Mapping[str, str] = field(default_factory=dict)
 
     def validate(self, workload):
         import torch
         require(self.objective == 'equal_rank_mean', 'unsupported replica objective', path='open.replica')
-        require(self.forward_interface in ('module_forward', 'private_methods'),
+        require(self.forward_interface in ('module_forward', 'private_methods', 'registered_methods'),
                 'unsupported replica forward interface', path='open.replica')
         require(self.random_streams in ('shared_logical_call', 'rank_independent_v1'),
                 'unsupported replica random streams', path='open.replica')
@@ -47,6 +67,29 @@ class ReplicaSemantics:
         require(set(self.module_bindings.values()) == trainable,
                 'all trainable modules need a forward interface', path='open.replica')
         require(set(self.module_bindings) <= set(workload.bindings), 'unknown module binding', path='open.replica')
+        require(isinstance(self.forward_methods, Mapping), 'method bindings must be a mapping', path='open.replica')
+        if self.forward_interface == 'registered_methods':
+            require(set(self.forward_methods) == set(self.module_bindings),
+                    'exact registered forward method bindings required', path='open.replica')
+            per_root = {}
+            for binding, name in self.forward_methods.items():
+                key = self.module_bindings[binding]
+                expected = module_method_binding(key, name)
+                fn = workload.bindings[binding]
+                require(inspect.isfunction(fn) and fn.__code__ is expected.__code__
+                        and inspect.getclosurevars(fn).nonlocals == inspect.getclosurevars(expected).nonlocals,
+                        'forward method binding must invoke its declared root and method', path='open.replica')
+                model = workload.state[key]
+                method = getattr(model, name, None)
+                require(inspect.ismethod(method) and method.__self__ is model
+                        and (name == 'forward' or not hasattr(torch.nn.Module, name))
+                        and method.__func__ is not torch.nn.Module.forward,
+                        'registered forward must be a callable model-owned public method', path='open.replica')
+                require(key not in per_root or per_root[key] == name,
+                        'one outer forward method per root; nested methods must not be registered', path='open.replica')
+                per_root[key] = name
+        else:
+            require(not self.forward_methods, 'method declarations require registered_methods', path='open.replica')
         for c in calls.values():
             if c.binding in self.module_bindings:
                 require(self.module_bindings[c.binding] in c.reads and not c.writes and not c.backward_of,
@@ -77,7 +120,8 @@ class ReplicaSemantics:
         return {'module_bindings': dict(self.module_bindings), 'backward_calls': list(self.backward_calls),
                 'local_batch_size': self.local_batch_size, 'objective': self.objective,
                 **({'forward_interface': self.forward_interface} if self.forward_interface != 'module_forward' else {}),
-                **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {})}
+                **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {}),
+                **({'forward_methods': dict(self.forward_methods)} if self.forward_methods else {})}
 
 
 def ddp_completion_edges(program, semantics, context_modules=None):
@@ -116,9 +160,11 @@ def ddp_completion_edges(program, semantics, context_modules=None):
 def execution_graph(program, semantics, reduction, context_modules=None):
     graph = program.compile()
     if reduction == 'post_backward': return graph
-    require(semantics.forward_interface == 'module_forward',
+    require(reduction in ('ddp_overlap', 'fsdp_forward'), 'unknown reducer', path='open.replica')
+    require(semantics.forward_interface != 'private_methods',
             'private methods require post_backward reduction, not forward wrappers', path='open.replica')
-    require(reduction == 'ddp_overlap', 'unknown reducer', path='open.replica')
+    require(semantics.forward_interface == 'module_forward' or reduction == 'fsdp_forward',
+            'DDP requires module.__call__, not registered forward methods', path='open.replica')
     from distillschedule.core.graph import Dependency, ExecutionGraph
     edges = list(graph.dependencies)
     existing = {(edge.source, edge.target) for edge in edges}
@@ -126,4 +172,6 @@ def execution_graph(program, semantics, reduction, context_modules=None):
         if (source, target) not in existing:
             edges.append(Dependency(source, target, 'reducer_context_completion'))
     return ExecutionGraph(graph.operations, tuple(edges),
-        {**graph.metadata, 'execution_constraint': 'ddp_forward_backward_context_v1'})
+        {**graph.metadata, 'execution_constraint': ('fsdp_forward_backward_context_v1'
+            if reduction == 'fsdp_forward' and semantics.forward_interface == 'registered_methods'
+            else 'ddp_forward_backward_context_v1')})

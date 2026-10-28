@@ -144,6 +144,55 @@ Use the existing [open Program interface](../workloads/open_workload_program.md)
 planning service but admit different physical capabilities. A new local model
 does not automatically gain FSDP2, cross-pool overlap or a CUDA Graph backend.
 
+### Explicit model-owned forward methods
+
+Ordinary `ReplicaSemantics` still means calling `module(...)`. Arbitrary
+`forward_interface="private_methods"` bindings remain post-backward-only;
+they cannot acquire FSDP hooks by adding a method name to metadata.
+
+For a **direct, public model-owned method**, use the existing Context ABI with
+an explicit binding:
+
+```python
+from distillschedule.open_workload.replica_contract import (
+    ReplicaSemantics, module_method_binding,
+)
+
+bindings["predict"] = module_method_binding("student", "rollout")
+semantics = ReplicaSemantics(
+    module_bindings={"predict": "student"},
+    backward_calls=("student_backward",),
+    local_batch_size=2,
+    forward_interface="registered_methods",
+    forward_methods={"predict": "rollout"},
+)
+```
+
+For the corresponding Program `Call`, `inputs` become positional method
+arguments **in the declared input order**, and `attributes` become keyword
+arguments. The binding resolves `ctx.state["student"].rollout` on every
+invocation; it does not capture the original module or replace the algorithm.
+Declare all trainable roots and separate backward/update calls as usual.
+Root/name mismatches, missing or noncallable methods, private names, inherited
+module-management APIs and arbitrary wrapper functions reject.
+
+Only **one outer entry method per root** is admitted. Several bindings may use
+that same method; FSDP registers it once. If `rollout` calls `denoise` internally,
+only `rollout` is registered, so the inner method cannot reshard the root early.
+Do not re-enter the same root through `module(...)` inside that registered
+method. Calls still obey the existing forward/backward completion constraints.
+Persistent cycles retain the installed entry method and optimizer ownership.
+
+The uniform FSDP2/HSDP2 installer uses the official Torch 2.10
+[`register_fsdp_forward_method`](https://docs.pytorch.org/docs/2.10/distributed.fsdp.fully_shard.html#torch.distributed.fsdp.register_fsdp_forward_method)
+after `fully_shard`. This does **not** make the method a DDP `module.__call__`:
+DDP-overlap and per-module mixed layouts remain excluded for this interface.
+Existing post-backward reference execution remains available. CPU2/Gloo tests
+exercise real method forward/backward, Adam migration, persistent updates and
+fresh-process local-shard checkpoint restore; CUDA/HSDP qualification is
+separate. This backend prerequisite does not admit the existing flow-model
+factories, LTX-22B, full-size construction, or a new precision/algorithm policy.
+
 ## Minimal extension acceptance
 
 Entrypoint files, installed framework code, and the actually resolved shipped
