@@ -42,14 +42,8 @@ def _pin(pin):
         and all(c in '0123456789abcdef' for c in pin['sha256']), 'exact local safe weight pin required')
 
 
-def validate_manifest(p):
-    require(isinstance(p, dict) and set(p) == {'schema_version', 'precision', 'storage_dtype', 'evidence_kind',
-        'source', 'video_decoder', 'geometry', 'weights', 'budget'}
-        and p['schema_version'] == SCHEMA and p['precision'] == PRECISION
-        and p['storage_dtype'] in ('float32', 'bfloat16_to_float32') and p['evidence_kind'] in (FIXTURE, LOCAL),
-        'explicit native codec schema/precision/storage/evidence required')
-    fingerprint(p)
-    source = p['source']
+def validate_source(source):
+    """Shared original codec source identity, without importing the models."""
     require(isinstance(source, dict) and set(source) == {'root', 'files', 'provenance'}
         and isinstance(source['root'], str) and Path(source['root']).is_absolute()
         and source['files'] == SOURCE_FILES, 'exact external original source closure required')
@@ -57,6 +51,16 @@ def validate_manifest(p):
     require(isinstance(provenance, dict) and set(provenance) == {'origin', 'license', 'terms_accepted'}
         and all(isinstance(provenance[k], str) and provenance[k].strip() for k in ('origin', 'license'))
         and provenance['terms_accepted'] is True, 'operator must supply and accept external source terms')
+
+
+def validate_manifest(p):
+    require(isinstance(p, dict) and set(p) == {'schema_version', 'precision', 'storage_dtype', 'evidence_kind',
+        'source', 'video_decoder', 'geometry', 'weights', 'budget'}
+        and p['schema_version'] == SCHEMA and p['precision'] == PRECISION
+        and p['storage_dtype'] in ('float32', 'bfloat16_to_float32') and p['evidence_kind'] in (FIXTURE, LOCAL),
+        'explicit native codec schema/precision/storage/evidence required')
+    fingerprint(p)
+    validate_source(p['source'])
     video = p['video_decoder']
     require(isinstance(video, dict) and set(video) == set(VIDEO_NATIVE), 'complete original video decoder architecture required')
     expected = deepcopy(VIDEO_NATIVE)

@@ -61,3 +61,13 @@ GPU, quality or performance claim follows from that local tiny-model proof.
 rank-qualified AV records, up to 100 complete cycles, and actual native ZeRO3
 checkpoint/restart. Source/CPU protocol evidence is not world16 GPU
 qualification; the historical two-cycle recipes below are unchanged.
+
+## Offline raw audio-video preparation
+
+[Raw H3 AV preparation](../../docs/guides/h3_audio_video_encode.md) accepts
+previous/current RGB frame directories, stereo32kHz PCM WAV and original
+preencoded text. The actual original encoder posterior means, normalization
+and native tail padding feed the existing cached-input reference trainer.
+Use `encoder.native.template.json` and `raw.native.template.json`; no model
+or data download occurs. Native world16 streams retain their own rank/shape
+admission, and encoding does not confer backend or quality qualification.

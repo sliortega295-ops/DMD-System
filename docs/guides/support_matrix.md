@@ -58,7 +58,7 @@ use the explicit export command and codec policy. Original GAN heads and
 optimizer state are restored but excluded from portable inference weights.
 W6 now has an output-only native restore/export bridge and an independent
 original-model consumer. Original H3 video/audio codec execution is available
-through the separate `decode` command. **W5 has its own source/CPU original-reference checkpoint export and an explicit original codec ABI**, including patch inversion and stereo ordering. Its four-step sampler is retained; W6 is not used as a replacement.
+through the separate `decode` command. [Original raw H3 AV preparation](h3_audio_video_encode.md) now encodes real previous/current frame directories and stereo WAV with supplied original text features, feeding the existing cached-input CPU reference without a new training loop. **W5 has its own source/CPU original-reference checkpoint export and an explicit original codec ABI**, including patch inversion and stereo ordering. Its four-step sampler is retained; W6 is not used as a replacement.
 The agreed 100-cycle acceptance is one seed with a complete-cycle checkpoint
 and new-process continuation; it is still a later GPU/reliability milestone.
 

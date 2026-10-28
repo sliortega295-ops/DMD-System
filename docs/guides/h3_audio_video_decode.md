@@ -118,3 +118,7 @@ export, ZeRO-3 checkpoint reconstruction, AV encoding or a W5 latent-ABI
 qualification. Those integrations remain separately tracked. Other models may
 supply their own existing `ModelComponents.decode` factory without adding a
 model-name case to the command or the planner.
+
+For the independent input side, see [raw H3 AV encoding](h3_audio_video_encode.md).
+The encoder loads its own parameter subtrees and does not need these decoder
+weights; decoder-only weights cannot serve as an encoder checkpoint.
