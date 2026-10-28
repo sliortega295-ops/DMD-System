@@ -48,6 +48,13 @@ class ReplicaSemantics:
     # Complete named-parameter tensor maps whose layout follows a model root.
     # This declares ownership only, never EMA math, decay, or update frequency.
     parameter_shadows: Mapping[str, str] = field(default_factory=dict)
+    # Separately owned immutable roots may opt into native forward lifetimes.
+    # They never acquire optimizer, gradient-reduction, or shadow ownership.
+    frozen_module_bindings: Mapping[str, str] = field(default_factory=dict)
+
+    @property
+    def forward_module_bindings(self):
+        return {**self.module_bindings, **self.frozen_module_bindings}
 
     def validate(self, workload):
         import torch
@@ -69,14 +76,31 @@ class ReplicaSemantics:
                      and any(p.requires_grad for p in v.parameters())}
         require(set(self.module_bindings.values()) == trainable,
                 'all trainable modules need a forward interface', path='open.replica')
-        require(set(self.module_bindings) <= set(workload.bindings), 'unknown module binding', path='open.replica')
+        require(isinstance(self.frozen_module_bindings, Mapping)
+                and all(isinstance(k, str) and bool(k) and isinstance(v, str) and bool(v)
+                        for k, v in self.frozen_module_bindings.items()),
+                'frozen forward bindings must be a mapping of nonempty strings', path='open.replica')
+        frozen = set(self.frozen_module_bindings.values())
+        require(not (set(self.module_bindings) & set(self.frozen_module_bindings)) and not (trainable & frozen),
+                'trainable and frozen forward ownership must be disjoint', path='open.replica')
+        if frozen:
+            require(self.forward_interface == 'registered_methods',
+                    'frozen forward ownership requires registered_methods', path='open.replica')
+            require(all(key in workload.state and isinstance(workload.state[key], torch.nn.Module)
+                        and list(workload.state[key].parameters())
+                        and all(not p.requires_grad for p in workload.state[key].parameters()) for key in frozen),
+                    'frozen forward roots must be nonempty all-frozen modules', path='open.replica')
+            require(frozen <= set(workload.immutable_modules),
+                    'frozen forward roots require whole-root immutable declarations', path='open.replica')
+        forwards = self.forward_module_bindings
+        require(set(forwards) <= set(workload.bindings), 'unknown module binding', path='open.replica')
         require(isinstance(self.forward_methods, Mapping), 'method bindings must be a mapping', path='open.replica')
         if self.forward_interface == 'registered_methods':
-            require(set(self.forward_methods) == set(self.module_bindings),
+            require(set(self.forward_methods) == set(forwards),
                     'exact registered forward method bindings required', path='open.replica')
             per_root = {}
             for binding, name in self.forward_methods.items():
-                key = self.module_bindings[binding]
+                key = forwards[binding]
                 expected = module_method_binding(key, name)
                 fn = workload.bindings[binding]
                 require(inspect.isfunction(fn) and fn.__code__ is expected.__code__
@@ -94,8 +118,13 @@ class ReplicaSemantics:
         else:
             require(not self.forward_methods, 'method declarations require registered_methods', path='open.replica')
         for c in calls.values():
-            if c.binding in self.module_bindings:
-                require(self.module_bindings[c.binding] in c.reads and not c.writes and not c.backward_of,
+            require(not (set(c.writes) & frozen), 'frozen forward roots cannot be written', path='open.replica')
+            if set(c.reads) & frozen:
+                require(c.binding in self.frozen_module_bindings,
+                        'frozen forward is missing its declared interface', path='open.replica')
+            if c.binding in forwards:
+                require(forwards[c.binding] in c.reads and not c.writes and not c.backward_of
+                        and not ((set(c.reads) & frozen) - {forwards[c.binding]}),
                         'module-forward binding cannot update state', path='open.replica')
             elif c.grad == 'grad' and not c.writes and not c.backward_of:
                 require(not (set(c.reads) & trainable),
@@ -115,7 +144,7 @@ class ReplicaSemantics:
         require(owned and len(set(owned)) == len(owned) and set(owned) == params,
                 'optimizer ownership must exactly cover disjoint trainables', path='open.replica')
         require(not any(isinstance(m, torch.nn.modules.batchnorm._BatchNorm) and m.training
-                        for k in trainable for m in workload.state[k].modules()),
+                        for k in trainable | frozen for m in workload.state[k].modules()),
                 'training BatchNorm is not an equal-global-batch reference', path='open.replica')
         from distillschedule.training.tensor_state import validate_parameter_shadows
         validate_parameter_shadows(workload.state, self.parameter_shadows, trainable, feeds=workload.feeds)
@@ -127,7 +156,8 @@ class ReplicaSemantics:
                 **({'forward_interface': self.forward_interface} if self.forward_interface != 'module_forward' else {}),
                 **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {}),
                 **({'forward_methods': dict(self.forward_methods)} if self.forward_methods else {}),
-                **({'parameter_shadows': dict(self.parameter_shadows)} if self.parameter_shadows else {})}
+                **({'parameter_shadows': dict(self.parameter_shadows)} if self.parameter_shadows else {}),
+                **({'frozen_module_bindings': dict(self.frozen_module_bindings)} if self.frozen_module_bindings else {})}
 
 
 def ddp_completion_edges(program, semantics, context_modules=None):
@@ -144,11 +174,12 @@ def ddp_completion_edges(program, semantics, context_modules=None):
         for parent in parents: ancestry.update(ancestors[parent])
         ancestors[call.id] = ancestry
     active = {}; completed = {}; edges = set()
+    forwards = semantics.forward_module_bindings
     for call in program.calls:
-        module = semantics.module_bindings.get(call.binding)
+        module = forwards.get(call.binding)
         if context_modules is not None and module not in context_modules: module = None
         if module is not None:
-            require(module not in active, 'DDP reference overwrites an outstanding forward', path='open.replica')
+            require(module not in active, 'native reference overwrites an outstanding forward', path='open.replica')
             if module in completed: edges.add((completed[module], call.id))
             if call.grad == 'grad': active[module] = call.id
             else: completed[module] = call.id
@@ -158,8 +189,8 @@ def ddp_completion_edges(program, semantics, context_modules=None):
                     completed[module] = call.id
                     del active[module]
         require(not (set(call.writes) & set(active)),
-                'DDP parameter update precedes backward completion', path='open.replica')
-    require(not active, 'DDP forward has no declared parameter backward', path='open.replica')
+                'native parameter update precedes backward completion', path='open.replica')
+    require(not active, 'native forward has no declared backward completion', path='open.replica')
     return tuple(sorted(edges))
 
 

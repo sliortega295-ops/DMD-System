@@ -230,6 +230,30 @@ from replica identities. This is a bounded backend prerequisite, **not** public
 flow/LTX FSDP admission: frozen Teacher placement, full-size construction and
 CUDA/HSDP validation remain separate.
 
+### Explicit frozen forward-root ownership
+
+Add `frozen_module_bindings={"teacher_forward": "teacher"}` to registered-method
+semantics and include that binding in `forward_methods`. The Teacher must be a
+nonempty all-frozen root declared in `immutable_modules`; its calls use the same
+direct `module_method_binding` as trainable roles. No direct call may write the
+root or bypass its declared entry. The existing trainable binding map and exact
+optimizer ownership stay trainable-only. No Teacher optimizer or EMA is created.
+
+Uniform FSDP2/HSDP2 installation includes this explicit root in forward context
+ordering, parameter bytes and the final reshard boundary. Each gradient-bearing
+entry needs a reachable declared backward completion, even when only the input
+has a gradient. Input VJPs retain their local scaling. A no-grad Teacher call
+stays no-grad; freezing parameters never selects the call's autograd mode.
+Undeclared frozen roots stay resident, including post-backward reference
+execution. DDP and mixed per-root layout admission are unchanged.
+
+The CPU/Gloo2 fixture covers separate frozen roots, input-only VJPs, common
+G1/F5 no-grad Teacher calls and same-topology local-shard checkpoint continuation.
+Full model construction, block-level materialization, bounded integrity/export,
+and native generation through a registered outer entry still require their own
+integration before public flow-model FSDP admission. CUDA and HSDP topology
+validation remain separate from this CPU proof.
+
 ## Minimal extension acceptance
 
 Entrypoint files, installed framework code, and the actually resolved shipped

@@ -133,10 +133,11 @@ def forward_order_admitted(workload, order, context_modules=None):
         ancestors[c.id] = set(parents)
         for p in parents: ancestors[c.id].update(ancestors[p])
     active = {}
+    forwards = workload.replica_semantics.forward_module_bindings
     for key in order:
         if key == '__open_finish__': continue
         c = calls[key]
-        module = workload.replica_semantics.module_bindings.get(c.binding)
+        module = forwards.get(c.binding)
         if context_modules is not None and module not in context_modules: module = None
         if module is not None:
             if module in active: return False

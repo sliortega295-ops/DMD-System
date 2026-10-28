@@ -1,12 +1,13 @@
 """FSDP2 layouts for the same semantic Program, not a model-specific launcher.
 
-Only declared trainable model roots are sharded. Other frozen-only models stay
-resident. Cross-root immutable aliasing is not combined with this capability.
+Declared trainable roots and explicit immutable forward roots are sharded.
+Other frozen-only models stay resident. Cross-root immutable aliasing is not combined with this capability.
 Initial dense optimizer moments are redistributed, never reset. Current CPU
 execution is tested on Torch 2.10; CUDA source paths require separate validation.
 """
 from __future__ import annotations
 from collections import defaultdict
+from dataclasses import replace
 import torch
 import torch.distributed as dist
 from distillschedule.core.contracts import require
@@ -77,7 +78,7 @@ def rejection(workload, module_keys=None):
             return 'FORWARD_METHOD_COLLIDES_WITH_FSDP_API'
     version=tuple(int(v) for v in torch.__version__.split('+')[0].split('.')[:2])
     if workload.device.type=='cpu' and version<(2,10):return 'CPU_FSDP2_REQUIRES_TORCH_2_10'
-    keys=set(workload.replica_semantics.module_bindings.values()) if module_keys is None else set(module_keys)
+    keys=set(workload.replica_semantics.forward_module_bindings.values()) if module_keys is None else set(module_keys)
     for key in keys:
         params=list(workload.state[key].parameters())
         if len({p.dtype for p in params})!=1:return 'MIXED_PARAMETER_DTYPES_REQUIRE_SEPARATE_GROUPING'
@@ -176,7 +177,7 @@ class ShardedLifecycle(ReplicaLifecycle):
                     'unadmitted sharded combination',path='open.fsdp')
             require(rejection(self.workload) is None, str(rejection(self.workload)),path='open.fsdp')
         checked(validate,'FSDP admission'); identity(self.workload)
-        self.module_keys=tuple(sorted(set(self.workload.replica_semantics.module_bindings.values())))
+        self.module_keys=tuple(sorted(set(self.workload.replica_semantics.forward_module_bindings.values())))
         session.graph=checked(lambda:execution_graph(self.workload.program,
             self.workload.replica_semantics,'fsdp_forward'),'FSDP call boundaries')
         from torch.distributed.device_mesh import init_device_mesh, DeviceMesh
@@ -191,9 +192,10 @@ class ShardedLifecycle(ReplicaLifecycle):
             topology = None
             mesh = init_device_mesh(session.device.type,(self.world,))
         semantics = self.workload.replica_semantics
-        methods = {semantics.module_bindings[binding]: name for binding, name in semantics.forward_methods.items()}
+        methods = {semantics.forward_module_bindings[binding]: name for binding, name in semantics.forward_methods.items()}
         self.forward_interface = semantics.forward_interface
         self.forward_methods = methods
+        self.forward_contract = semantics.to_dict()
         self.parameter_shadows = dict(semantics.parameter_shadows)
         self.full_parameter_bytes, sharded_count, migrated = shard_roots(
             session, self.module_keys, mesh,
@@ -207,15 +209,21 @@ class ShardedLifecycle(ReplicaLifecycle):
             parameter_layout='HSDP2_Replicate_Shard0' if hybrid else 'FSDP2_Shard0',
             mesh_shape=list(mesh.shape), allocated_topology=topology, frozen_only_models='resident',
             reshard_after_forward=self.option['reduction'].endswith('_reshard'))
+        if semantics.frozen_module_bindings:
+            frozen_roots = set(semantics.frozen_module_bindings.values())
+            resident = sorted(key for key, value in session.state.items() if isinstance(value, torch.nn.Module)
+                              and not any(p.requires_grad for p in value.parameters()) and key not in frozen_roots)
+            session.effects['frozen_only_models'] = {'sharded': sorted(frozen_roots), 'resident': resident}
 
     def before_run(self,session,order):
         orders=gather(tuple(order))
         require(all(x==orders[0] for x in orders),'rank execution orders differ',path='open.fsdp')
         def validate():
             semantics = self.workload.replica_semantics
+            if semantics.frozen_module_bindings:
+                semantics.validate(replace(self.workload, state=session.state, feeds=session.feeds))
             require(semantics.forward_interface == self.forward_interface and
-                    {semantics.module_bindings[binding]: name for binding, name in semantics.forward_methods.items()}
-                    == self.forward_methods,
+                    semantics.to_dict() == self.forward_contract,
                     'installed FSDP method contract changed between cycles', path='open.fsdp')
             require(semantics.parameter_shadows == self.parameter_shadows,
                     'installed FSDP parameter shadow bindings changed between cycles', path='open.fsdp')
