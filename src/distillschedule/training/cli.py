@@ -101,10 +101,17 @@ def main(argv=None):
         if name == 'evaluate':
             p.add_argument('--prepared', type=Path, help='explicit physical evaluation inputs')
             p.add_argument('--stream', help='physical training input stream (default generator when present)')
+    decoder = sub.add_parser("decode", help="decode prepared latents with an explicit native codec")
+    decoder.add_argument("config", type=Path)
+    decoder.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        config = load_training_config(args.config) if getattr(args, "config", None) else None
-        if args.command in ('models', 'algorithms'):
+        config = (load_training_config(args.config) if getattr(args, "config", None) and args.command != "decode" else None)
+        if args.command == "decode":
+            with redirect_diagnostics():
+                from .decoding import decode_prepared
+                result = decode_prepared(args.config, args.output)
+        elif args.command in ('models', 'algorithms'):
             from .catalog import describe, resolve
             if args.action == 'show':
                 if not args.name:

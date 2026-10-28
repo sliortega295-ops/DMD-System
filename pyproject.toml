@@ -56,6 +56,8 @@ test-helios-model = [
 test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
 # Maintained cached-only source reference, independent of full-SFT/native H3.
 h3-cached-reference = ["torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"]
+# Decode-only external H3 codec source; does not install a training/backend stack.
+h3-av-codec = ["torch==2.10.0", "torchvision==0.25.0", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1", "Pillow>=10"]
 # Full original Wan2.1/LiveWan source, explicit all-FP32 CPU numerical reference.
 # Separate from native-wan and the unrelated Helios-backed Wan provider.
 livewan-wan21-reference = ["torch>=2.10", "diffusers==0.35.2", "einops==0.8.1"]

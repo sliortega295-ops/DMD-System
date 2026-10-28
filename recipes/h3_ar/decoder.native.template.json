@@ -1,0 +1,85 @@
+{
+  "schema_version": "distillschedule.original_h3_av_decoder.v1",
+  "precision": "CPU_FP32_ORIGINAL_H3_DECODE",
+  "storage_dtype": "bfloat16_to_float32",
+  "evidence_kind": "LOCAL_ORIGINAL_H3_CODEC_UNVERIFIED_QUALITY",
+  "source": {
+    "root": "/REPLACE_WITH_EXISTING_ORIGINAL_H3_SOURCE",
+    "files": {
+      "diffsynth/core/attention/attention.py": "1126b2e19184299cbfc611dcf66e46d0fd1a7bfa1d616f2ed38bc60ba19679ae",
+      "diffsynth/models/minimax_h3_video_vae.py": "3dd4da5c90135c904fa5f1d4f70dd43e2571e394ce437bb168a5110f71076bf4",
+      "diffsynth/models/minimax_h3_audio_vae.py": "ce6dc03b73a0596df22a6aa89e6db9183017bd5d0e2e99b547a6bfee53a7ef2c"
+    },
+    "provenance": {
+      "origin": "REPLACE_WITH_ACTUAL_SOURCE_ORIGIN_AND_REVISION",
+      "license": "REPLACE_WITH_APPLICABLE_SOURCE_TERMS",
+      "terms_accepted": false
+    }
+  },
+  "video_decoder": {
+    "patch_size": 16,
+    "patch_size_t": 4,
+    "in_channels": 24,
+    "out_channels": 3,
+    "num_layers": 36,
+    "heads": 32,
+    "dim_head": 64,
+    "norm_affine": true,
+    "qk_norm_type": "rms_norm",
+    "qk_norm_affine": false,
+    "rope_theta": 100.0,
+    "rope_dim_ratio": 0.75,
+    "bias": true,
+    "eps": 1e-05,
+    "num_register_tokens": 4
+  },
+  "geometry": {
+    "video_latent_shape": [
+      1,
+      24,
+      7,
+      48,
+      84
+    ],
+    "audio_latent_shape": [
+      2,
+      32,
+      37
+    ],
+    "video_shape": [
+      22,
+      768,
+      1344,
+      3
+    ],
+    "audio_shape": [
+      29600,
+      2
+    ],
+    "fps": 24,
+    "sample_rate": 32000
+  },
+  "weights": {
+    "video": [
+      {
+        "path": "/REPLACE_WITH_LOCAL_VIDEO_CODEC/weights.safetensors",
+        "bytes": 0,
+        "sha256": "REPLACE_WITH_EXACT_WEIGHT_SHA256"
+      }
+    ],
+    "audio": [
+      {
+        "path": "/REPLACE_WITH_LOCAL_AUDIO_CODEC/weights.safetensors",
+        "bytes": 0,
+        "sha256": "REPLACE_WITH_EXACT_WEIGHT_SHA256"
+      }
+    ]
+  },
+  "budget": {
+    "max_parameters": 3000000000,
+    "max_loaded_bytes": 68719476736,
+    "max_activation_elements": 1000000000,
+    "max_attention_elements": 200000000,
+    "host_reserve_bytes": 2147483648
+  }
+}

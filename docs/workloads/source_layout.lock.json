@@ -500,6 +500,14 @@
       "integrated_sha256": "62b75513dbb4d5f30a5629fa12f9a1ddb11499bd9d32d4ef86343fd182db27bf",
       "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
       "change": "R30 reviewed native GAN fresh-stream lifecycle bridge in commit90cb5d3; exact committed file, no new training-code change in R31 integration."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "bf975df918d5d922b78193b04ae3caccf545084a5b930730846700d002fbdf56",
+      "integrated_sha256": "d9cfe9874becf6e7ed676c0f994b568a08648405b80e23577d09f9b4009b5af9",
+      "source_commit": "c14dbd7a2d0843205d7530a33f237b615b683717",
+      "change": "R40 explicit prepared-latent decode CLI registration; source_commit is the exact integration base, with original import receipt preserved. No native training or historical command math changed."
     }
   ]
 }

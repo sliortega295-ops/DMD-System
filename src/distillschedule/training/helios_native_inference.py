@@ -17,6 +17,7 @@ import torch
 from distillschedule.search.helios_request import OriginalHeliosRequest
 from distillschedule.workloads.best_known.registry import file_sha256, repository_root
 from . import distributed
+from .host_memory import admit_host_memory as _host_admit
 from .adapters import InferenceProjection, ModelComponents
 from . import wan_native_inference as video
 
@@ -37,7 +38,8 @@ def inference_source():
              'src/distillschedule/training/helios_worker.py',
              'src/distillschedule/training/helios_lifecycle.py',
              'src/distillschedule/search/helios_request.py',
-             'src/distillschedule/search/resources.py']
+             'src/distillschedule/search/resources.py',
+             'src/distillschedule/training/host_memory.py']
     return dict(video=video.inference_source(), files={name: file_sha256(root / name) for name in files})
 
 
@@ -50,20 +52,6 @@ def _budget(value):
         and all(type(value[k]) is int and 0 < value[k] <= limit for k, limit in bounds.items()),
         'explicit bounded model, export, transient and host/device reserve budgets required')
 
-
-def _host_admit(needed, reserve):
-    """Reuse actual cgroup hierarchy; this observes headroom, not a reservation."""
-    from distillschedule.search.resources import _capacity_observation
-    _, observation = _capacity_observation()
-    available = os.sysconf('SC_AVPHYS_PAGES') * os.sysconf('SC_PAGE_SIZE')
-    for row in observation['cgroup_limits']:
-        if row['limit_bytes'] is not None:
-            current = int((Path(row['path']) / 'memory.current').read_text())
-            require(0 <= current <= row['limit_bytes'], 'invalid current cgroup memory accounting')
-            available = min(available, row['limit_bytes'] - current)
-    require(needed + reserve <= available, 'host/cgroup headroom cannot hold export/codec plus reserve')
-    return dict(required_bytes=needed, reserve_bytes=reserve, available_bytes=available,
-                scope='FRESH_PHYSICAL_CGROUP_OBSERVATION_NOT_RESERVATION')
 
 
 def _device_admit(device, needed, reserve):
