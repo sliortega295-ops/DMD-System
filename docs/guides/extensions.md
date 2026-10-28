@@ -193,6 +193,22 @@ fresh-process local-shard checkpoint restore; CUDA/HSDP qualification is
 separate. This backend prerequisite does not admit the existing flow-model
 factories, LTX-22B, full-size construction, or a new precision/algorithm policy.
 
+### Generating from an owned flow model
+
+FLUX-family and LTX generation call the current Student's registered
+`dmd_forward` entry, retaining its native Euler rollout, inputs and RNG. On
+success, native FSDP child groups and the root return to shards, including
+keep-forward plans. Other role owners are untouched. This also applies to
+checkpoint evaluation after its saved physical layout has been restored.
+
+Torch 2.10's custom-forward wrapper does not guarantee post-forward cleanup
+when model code raises. A failed generation therefore ends that owner's
+lifetime: cleanup uses public `reshard` where possible, while subsequent
+forward, generation and checkpoint attempts reject until the owner is rebuilt.
+It does not promise all exceptional-path buffers were freed or allow continuing
+that failed owner. Input and schedule rejection before forward leave a healthy
+owner unchanged. Existing distributed/precision admission is unchanged.
+
 ### Explicit parameter-shadow layout ownership
 
 An EMA or other full named-parameter shadow must opt in **before** its state is

@@ -450,11 +450,9 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
 
 
 def generate(state, feeds, parameters):
-    from .dmd import sigmas
-    require(isinstance(parameters, dict) and set(parameters) <= {'rollout_sigmas'}, 'unsupported LTX generation parameter')
+    from .dmd import generation_rollout
     student = state['student']
-    schedule = sigmas(parameters.get('rollout_sigmas', student.generation_sigmas))
-    sample = student.rollout(feeds, schedule, 'all_steps')
+    sample = generation_rollout(student, feeds, parameters)
     patch = student.source.import_module('ltx_core.components.patchifiers')
     types = student.source.import_module('ltx_core.types')
     video = patch.VideoLatentPatchifier(1).unpatchify(sample['video'], types.VideoLatentShape(*feeds['video_shape'].tolist()))

@@ -570,11 +570,8 @@ def admit_training(api, *, state, request, prepared_identity, prepared_manifest)
 
 
 def generate(api, state, feeds, parameters):
-    from .dmd import sigmas
-    require(isinstance(parameters, dict) and set(parameters) <= {'rollout_sigmas'}, 'unsupported native image inference option')
-    role = state['student']; role.validate_feeds(feeds)
-    schedule = sigmas(parameters.get('rollout_sigmas', role.generation_sigmas))
-    tokens = role.rollout(feeds, schedule, 'all_steps')['image']
+    from .dmd import generation_rollout
+    tokens = generation_rollout(state['student'], feeds, parameters)['image']
     latent = api.unpack(tokens, feeds['latent_shape'].tolist())
     return {'image_latents': latent, 'latent_schema': {'image_latents': {
         'layout': 'BCHW', 'shape': list(latent.shape), 'dtype': str(latent.dtype)}}}

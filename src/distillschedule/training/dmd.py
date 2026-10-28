@@ -360,13 +360,69 @@ class FlowDMDMethods:
     stay nested and retain their existing RNG, gradients, CFG and x0 math.
     No state mapping, optimizer or second model is retained on the role.
     """
+    def validate_checkpoint_boundary(self):
+        require(not getattr(self, '_dmd_generation_failed', False),
+                'failed flow generation owner must be reconstructed before reuse or checkpoint')
+
     def dmd_forward(self, payload, *, flow_role, phase, cycle, fake_index, flow_policy):
+        self.validate_checkpoint_boundary()
         if flow_role == 'student':
             return _student_prediction(self, payload, flow_policy)
         if flow_role == 'teacher':
             return _teacher_prediction(self, payload, flow_policy)
         require(flow_role == 'fake', 'unknown model-owned flow role')
         return _fake_prediction(self, payload, phase)
+
+
+def generation_rollout(model, feeds, parameters):
+    """Generate through the current model-owned entry and close native groups.
+
+    The adapter retains its native rollout, schedule and RNG draws. A restored
+    FSDP owner therefore uses the same registered outer method as training,
+    without constructing another model or dispatching an update graph.
+    """
+    from distillschedule.open_workload.sharded import close_sharded_forward
+    def preflight():
+        require(isinstance(model, FlowDMDMethods), 'generation requires a model-owned flow entry')
+        model.validate_checkpoint_boundary()
+        require(isinstance(parameters, dict) and set(parameters) <= {'rollout_sigmas'},
+                'unsupported flow generation option')
+        schedule = sigmas(parameters['rollout_sigmas'] if 'rollout_sigmas' in parameters else model.generation_sigmas)
+        model.validate_feeds(feeds)
+        return schedule
+
+    from torch.distributed.fsdp import FSDPModule
+    sharded = isinstance(model, torch.nn.Module) and any(
+        isinstance(module, FSDPModule) for module in model.modules())
+    if sharded:
+        from .distributed import checked, gather
+        # Every rank must finish local admission before any native all-gather.
+        # Only the execution schedule is common; rank-local samples stay local.
+        schedule = checked(preflight, 'flow generation admission')
+        require(all(row == schedule for row in gather(schedule)),
+                'ranks disagree on flow generation schedule')
+    else:
+        schedule = preflight()
+    try:
+        with torch.no_grad():
+            result = model.dmd_forward({'feeds': feeds}, flow_role='student', phase='generation',
+                cycle=0, fake_index=0,
+                flow_policy={'rollout_sigmas': schedule, 'gradient_policy': 'all_steps'})
+    except BaseException:
+        # Native custom-method hooks lack exception-safe post-forward cleanup.
+        # Keep the original error even when public best-effort cleanup fails.
+        model._dmd_generation_failed = True
+        try:
+            close_sharded_forward(model)
+        except BaseException:
+            pass
+        raise
+    try:
+        close_sharded_forward(model)
+    except BaseException:
+        model._dmd_generation_failed = True
+        raise
+    return result
 
 
 def _student_loss(ctx):

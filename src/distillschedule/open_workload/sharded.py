@@ -172,6 +172,19 @@ def shard_roots(session, module_keys, mesh, *, reshard_after_forward, forward_me
     return parameter_bytes, count, migrated
 
 
+def close_sharded_forward(root):
+    """Release actual native groups inside one owned root, including the root.
+
+    ``reshard`` is not recursive. Reverse module order closes nested children
+    before their parent; unrelated roles and unsharded modules are untouched.
+    This also closes keep-forward inference when no backward will follow.
+    """
+    from torch.distributed.fsdp import FSDPModule
+    for module in reversed(tuple(root.modules())):
+        if isinstance(module, FSDPModule):
+            module.reshard()
+
+
 class ShardedLifecycle(ReplicaLifecycle):
     def prepare(self,session):
         options=gather(self.option)
@@ -264,11 +277,7 @@ class ShardedLifecycle(ReplicaLifecycle):
         # Inference-only final calls may retain full parameters in keep-forward
         # mode. Complete the plan with sharded state before inspecting moments.
         for key in self.module_keys:
-            # Native reshard() is not recursive. Frozen/no-grad children in
-            # keep-forward mode must also return to shards before checkpoint.
-            for path in self.shard_boundaries.get(key, ()):
-                session.state[key].get_submodule(path).reshard()
-            session.state[key].reshard()
+            close_sharded_forward(session.state[key])
         session.synchronize()
         digests=gather(fingerprint(signature(session.state)))
         require(len(set(digests))==1,'FSDP model/optimizer state diverged',path='open.fsdp')
