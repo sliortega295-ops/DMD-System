@@ -5490,6 +5490,7 @@ def run_worker(
                  "C51 full-bundle actual per-rank source/operator/census failed")
     if continuation is not None:
         from distillschedule.runtime.livewan_c51_bundle import continuation_receipt_errors
+        from distillschedule.training.livewan_c51_training import input_marker
         receipt["continuation"] = dict(schema_version=continuation.identity["schema_version"],
             identity=continuation.identity, start_cycle=continuation.start_cycle,
             completed_cycles=continuation.loader.cycle, executed_cycles=continuation.cycles_executed,
@@ -5497,7 +5498,7 @@ def run_worker(
             physical_final_versions=local_final_versions, metrics=continuation.metrics,
             runtime=continuation.runtime, native_parameter_layout_sha256=continuation.native_layouts,
             physical_device_binding=continuation.device_binding,
-            input_sha256=trace.input_sha256, source_reuse_across_cycles=False,
+            input_sha256=trace.input_sha256, **input_marker(trace),
             training_quality="SUPPLIED_TEACHER_ARCHIVES_NOT_ATTESTED", numerical_status="REVIEW",
             status="COMPLETED" if continuation.end_cycle == trace.cycles else "STOPPED_COMPLETE_CHECKPOINT",
             numerical_cross_reference="NOT_RUN", claimable_speedup=False)
@@ -7737,7 +7738,7 @@ def _run_pipeline_8x8_continuous(
         "source_reuse_within_step": batch32,
         "training_quality_claimable": not batch32,
         "critic_step1_single_commit": True,
-        "source_reuse_across_cycles": False if continuation is not None else trace.source_reuse_across_cycles,
+        "source_reuse_across_cycles": trace.source_reuse_across_cycles,
         "events": cycle_events,
         "role_total_wall_seconds": time.perf_counter() - started,
         "execution_status": "PASS",
@@ -7746,10 +7747,11 @@ def _run_pipeline_8x8_continuous(
         evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
         evidence.continuous_pipeline["training_quality_claimable"] = False
     if continuation is not None:
+        from distillschedule.training.livewan_c51_training import input_marker
         evidence.continuous_pipeline.update(name=continuation.identity["schema_version"],
             cycles=continuation.cycles_executed, target_cycles=trace.cycles,
             start_cycle=start_cycle, end_cycle=end_cycle, training_quality_claimable=False,
-            source_reuse_across_cycles=False, formal_timing_eligible=False)
+            **input_marker(trace), formal_timing_eligible=False)
 
 
 def _run_pipeline_phase_expanded_critic16(

@@ -136,3 +136,46 @@ The opt-in CPU tests require `DMD_LIVEWAN_TEST_UPSTREAM` to name the actual
 pinned checkout. They use stride-expanded native-shape fixtures with small
 storage, the original source dataset and real `InputLoader`; they do not
 prove pretrained quality, CUDA/FSDP/transport execution or model restart.
+
+## Explicit finite-pool epochs for the C51 stream
+
+The separately opt-in [finite teacher-pool epoch policy](../contracts/original_livewan_teacher_epochs_v1.md)
+supports ordinary dataset reuse through the **existing**
+`self_forcing.c51_stream.v1` native lifecycle. It does not change the defaults
+described above: without `--input-policy`, C51 v1 still requires exactly
+`80 * cycles` distinct records; the original reference input kind remains
+unchanged. With this policy, at least 80 real distinct teacher records can
+supply 100 finite cycles without inventing 8000 teacher archives.
+
+```bash
+distillctl data prepare-livewan-c51-inputs \
+  --data-root /ABSOLUTE/PATH/teacher --prompts /ABSOLUTE/PATH/prompts.pt \
+  --source-root /ABSOLUTE/PATH/qualified-livewan \
+  --cycles 100 --seed 31415 \
+  --input-policy distillschedule.livewan_teacher_epochs.v1 \
+  --output /ABSOLUTE/PATH/prepared/livewan-epochs.json
+```
+
+The Python equivalent is `prepare_c51_inputs(..., cycles=100, seed=31415,
+input_policy=EPOCH_POLICY)`, importing `EPOCH_POLICY` from
+`distillschedule.data.livewan_inputs`. The manifest keeps the C51 input kind
+and adds a separately versioned `input_policy` with exact order and draw count.
+Keep `data.input_kind="original_livewan_c51_teacher_stream.v1"` and explicitly
+select `execution.preset="self_forcing.c51_stream.v1"` in the existing native
+training config. No recipe, asset/capacity gate or trainer defaults change.
+
+The fixed seeded permutation repeats without dropping records. Stable record
+identity is distinct from logical draw/epoch/cohort identity. Every complete
+cycle still has 80 distinct records; every logical operation has its own
+existing rollout/sigma/noise/gradient/control seeds. Input iteration and
+restoration never consume training RNG. Runtime receipts explicitly disclose
+record reuse rather than labelling reused archives as fresh. Manifest policy,
+horizon, order and seed are checkpoint identity: do not regenerate a different
+stream for resume. C51's existing complete dual-wave cursor, safe drain,
+parameter/optimizer state and cache-version rules remain mandatory.
+
+CPU tests in `tests/test_training_livewan_epoch_inputs.py` use only 80 tiny
+native-format fixture archives and the actual original dataset/loader. They
+include logical horizon100/cursor50 restore and tiny original-LoRA/Adam
+new-process continuation, not real pretrained training or native CUDA quality.
+No new training run or speedup is claimed by this input-policy extension.

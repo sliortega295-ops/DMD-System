@@ -10,7 +10,7 @@ from pathlib import Path
 import random
 import sys
 
-from distillschedule.data.livewan_inputs import C51_KIND, C51_SCHEMA, CONTRACT, _rows
+from distillschedule.data.livewan_inputs import C51_KIND, C51_SCHEMA, CONTRACT, EPOCH_POLICY, _epoch_policy, _rows
 from distillschedule.runtime.livewan_c51_bundle import source_template, validate_plan, receipt_contract
 from distillschedule.search.livewan_request import LiveWanRequest
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
@@ -60,12 +60,29 @@ def input_metadata(path, *, cycles, seed, source):
             and origin.get("files") and all(source["files"].get(k) == sha for k, sha in origin["files"].items()),
             "C51 prepared original source differs")
     records = value.get("records")
-    require(type(records) is list and len(records) == 80*cycles
+    policy = value.get("input_policy")
+    require("input_policy" not in value or type(policy) is dict and policy.get("schema_version") == EPOCH_POLICY,
+            "C51 unsupported epoch input policy")
+    require(type(records) is list and (len(records) >= 80 if policy is not None else len(records) == 80*cycles)
             and all(r["dataset_index"] == i for i, r in enumerate(records))
-            and all(len({r[k] for r in records}) == len(records) for k in ("path", "sha256", "record_id", "latent_sha256"))
-            and value.get("rows") == _rows(records, cycles, seed), "C51 repeated/missing/reordered fresh records or controls")
+            and all(len({r[k] for r in records}) == len(records) for k in ("path", "sha256", "record_id", "latent_sha256")),
+            "C51 repeated/missing/reordered records, epoch draws or controls")
+    expected_rows = _rows(records, cycles, seed, input_policy=policy["schema_version"] if policy else None)
+    require(value.get("rows") == expected_rows if policy is None else
+            fingerprint(policy) == fingerprint(_epoch_policy(records, cycles, seed))
+            and fingerprint(value.get("rows")) == fingerprint(expected_rows),
+            "C51 repeated/missing/reordered records, epoch draws or controls")
     require(file_sha256(path) == before, "C51 prepared manifest changed during metadata admission")
     return value
+
+
+def input_marker(inputs):
+    """Bind declared dataset reuse without weakening frozen v1 no-replay gates."""
+    policy = getattr(inputs, "input_policy", None)
+    marker = dict(source_reuse_across_cycles=getattr(inputs, "source_reuse_across_cycles", False))
+    if policy is not None:
+        marker.update(input_policy=policy["schema_version"], input_policy_sha256=fingerprint(policy))
+    return marker
 
 
 def admit_training(config, task_value, assets_value, paths):
@@ -271,7 +288,7 @@ class Continuation:
         gate = {**mechanism, "output_fingerprints": list(evidence.output_fingerprints),
             "continuation": dict(schema_version=SCHEMA, start_cycle=self.start_cycle, completed_cycles=cycle,
                 requested_stop_cycle=cycle, target_cycles=self.inputs.cycles, input_sha256=self.inputs.input_sha256,
-                executed_cycles=cycle-self.start_cycle, source_reuse_across_cycles=False,
+                executed_cycles=cycle-self.start_cycle, **input_marker(self.inputs),
                 numerical_status="REVIEW", physical_final_versions=dict(versions))}
         distributed.checked(lambda: require(not continuation_receipt_errors(gate, rank=rank, inputs=self.inputs, pairs=self.pairs),
             "C51 installed full-bundle runtime counters/source gate failed before checkpoint"), "C51 full-bundle publication gate")

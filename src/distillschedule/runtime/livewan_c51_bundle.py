@@ -170,14 +170,17 @@ def continuation_receipt_errors(row, *, rank, inputs, pairs):
     bind the observed per-rollout calls to the actual fresh controls, rather
     than requiring one trace's load vector/call census in every cycle.
     """
-    from distillschedule.training.livewan_c51_training import SCHEMA
+    from distillschedule.training.livewan_c51_training import SCHEMA, input_marker
     from distillschedule.training.livewan_c51_state import physical_versions
     marker = row.get("continuation", {})
     start, end = marker.get("start_cycle"), marker.get("completed_cycles")
+    expected_inputs = input_marker(inputs)
     if (type(start) is not int or type(end) is not int or not 0 <= start < end <= inputs.cycles
             or marker.get("requested_stop_cycle") != end or marker.get("target_cycles") != inputs.cycles
             or marker.get("schema_version") != SCHEMA or marker.get("input_sha256") != inputs.input_sha256
-            or marker.get("source_reuse_across_cycles") is not False or marker.get("numerical_status") != "REVIEW"
+            or any(type(marker.get(k)) is not type(v) or marker.get(k) != v for k, v in expected_inputs.items())
+            or any(k in marker and k not in expected_inputs for k in ("input_policy", "input_policy_sha256"))
+            or marker.get("numerical_status") != "REVIEW"
             or marker.get("executed_cycles") != end-start
             or marker.get("physical_final_versions") != physical_versions(rank, end)):
         return ["C51 continuation source/input/physical progress marker differs"]

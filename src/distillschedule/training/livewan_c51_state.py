@@ -36,9 +36,12 @@ class PoolInputs:
         return getattr(self.loader, name)
 
     def descriptor(self, row):
-        return dict(operation_key=row.operation_key, logical_step=row.logical_step, logical_slot=row.logical_slot,
+        value = dict(operation_key=row.operation_key, logical_step=row.logical_step, logical_slot=row.logical_slot,
                     record_id=row.record_id, sample_sha256=row.sample_sha256, prompt_idx=row.prompt_idx,
                     world_frames=row.world_frames, rope_gap=row.rope_gap, seeds=dict(row.seeds))
+        if self.inputs.input_policy is not None:
+            value.update({key: getattr(row, key) for key in ("draw_index", "epoch_index", "epoch_offset", "draw_id", "cohort_id")})
+        return value
 
     def expected(self, cycle):
         require(type(cycle) is int and 0 <= cycle < self.inputs.cycles, "C51 finite lane cycle outside admitted horizon")

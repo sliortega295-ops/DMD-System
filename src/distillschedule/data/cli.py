@@ -62,8 +62,11 @@ def main(argv=None):
     livewan.add_argument("--output", type=Path, required=True)
     livewan.add_argument("--evidence-kind", default="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY",
                          choices=("NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"))
-    sub.add_parser("prepare-livewan-c51-inputs", parents=[livewan], add_help=False,
-                   help="explicit C51 finite fresh teacher stream (up to 100 cycles); no downloads")
+    c51 = sub.add_parser("prepare-livewan-c51-inputs", parents=[livewan], add_help=False,
+                        help="explicit C51 finite teacher stream (up to 100 cycles); no downloads")
+    from .livewan_inputs import EPOCH_POLICY
+    c51.add_argument("--input-policy", choices=(EPOCH_POLICY,),
+                     help="opt in to finite teacher-pool epochs; default v1 forbids record reuse")
     args = parser.parse_args(argv)
     try:
         # Preparation/import can load trusted encoders and noisy dependencies.
@@ -104,8 +107,9 @@ def main(argv=None):
             elif args.command in ("prepare-livewan-inputs", "prepare-livewan-c51-inputs"):
                 from .livewan_inputs import prepare_inputs, prepare_c51_inputs
                 prepare_inputs = prepare_c51_inputs if args.command == "prepare-livewan-c51-inputs" else prepare_inputs
+                policy = {"input_policy": args.input_policy} if args.command == "prepare-livewan-c51-inputs" else {}
                 result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
-                                        cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
+                                        cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind, **policy)
             elif args.command == "prepare":
                 if args.preparer:
                     from distillschedule.training.plugins import load_callable, resolve_reference
