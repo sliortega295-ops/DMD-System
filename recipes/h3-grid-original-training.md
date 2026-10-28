@@ -156,8 +156,25 @@ Set `trainer.resume_from` to a complete checkpoint and keep the **same** origina
 config, target/horizon, cadence, output, inputs, source, dependencies, assets,
 environment and topology. Every shard/progress field is admitted before state
 mutation; incompatible Adam/scheduler/role/clock state is rejected collectively.
-Do not lower the target to manufacture an interruption: checkpoint and stop an
-incomplete run, then continue toward its original fixed target.
+Do not lower the target to manufacture an interruption. To stop durably at
+cycle 25 of a 50-cycle run, keep public `cycles: 50`, native
+`max_train_iters: 50`, and the full 50-cycle input inventory unchanged; set
+public `checkpoint_every: 25` and native `save_every_iters: 25`, then add public
+`stop_after_cycle: 25`. This execution-only control never enters the original
+native config or changes its scheduler horizon. All ranks must agree on the
+stop before construction. The original loop returns only after the complete
+G1/F5/EMA0 checkpoint and per-rank progress receipts are published.
+
+An explicit stop requires positive checkpoint cadence and must be either a
+cadence boundary or the unchanged terminal horizon (which forces its final
+checkpoint even off cadence). Without the optional control, the original
+training length and checkpoint cadence are unchanged. For continuation, remove
+`stop_after_cycle` or move it to a later valid boundary, set `resume_from` to
+the saved directory, and retain the same original config and full horizon.
+A stop at or behind the restored cycle is rejected before model construction.
+`STOPPED_AT_CHECKPOINT` is partial training, not a completed horizon or a
+numerical qualification; the rank receipt records the full horizon and actual
+segment separately. Output-only export discards this training stop control.
 
 Historical `h3-a100-shared-backbone-v1`, cursorless `trainer_state.pt`, partial
 directories, benchmark receipts and completed-target checkpoints are not exact

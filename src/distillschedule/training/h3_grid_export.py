@@ -173,6 +173,7 @@ def export_native(config, checkpoint, output):
     raw=config.to_dict()
     request=raw['trainer'].pop('export',None)
     require(isinstance(request,dict),'explicit W5 trainer.export policy required')
+    raw['trainer'].pop('stop_after_cycle',None)
     raw['trainer']['resume_from']=str(Path(checkpoint).expanduser().resolve())
     training=TrainingConfig.from_dict(raw,source=config.source)
     # Ordinary admission correctly rejects terminal TRAINING restart. Its

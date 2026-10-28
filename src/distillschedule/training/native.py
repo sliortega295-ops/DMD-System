@@ -158,6 +158,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
+            checkpoint_required=True, immutable_horizon=True,
+            scope="complete all-rank original G1/F5/EMA0 checkpoint; unchanged native config/input/scheduler horizon",
+            verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
         result['capabilities']['export'] = dict(supported=True,
             scope='complete original-reference checkpoint restore; current unmerged Grid Student and four frozen rollout entries',
             standalone_generation='original four-step CPU packed AV; optional original codec exact patch/stereo ABI',
@@ -324,8 +328,9 @@ def _options(config, workload):
                  and bool(config.data.get('prepared')) and not config.data.get('replay_fixed_trace'))
     fresh_helios = _helios_stream(config, workload) or _helios_gan_stream(config, workload)
     _require(fresh_wan or fresh_helios or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
+             or _h3_grid_training(config, workload)
              or "stop_after_cycle" not in config.trainer,
-             "trainer.stop_after_cycle requires an explicit W1, W2, W3, C51 or W6 fresh stream")
+             "trainer.stop_after_cycle requires an explicit W1, W2, W3, C51, W5 reference or W6 fresh stream")
     if fresh_helios:
         from .helios_lifecycle import stop_cycle
         stop_cycle(config)
@@ -398,6 +403,8 @@ def _options(config, workload):
         _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer
                  and "checkpoint_every" in config.trainer,
                  "W5 original training requires cycles 2..64 and explicit matching native seed/checkpoint_every")
+        from .h3_grid_training import stop_cycle
+        stop_cycle(config)
         return "reference"
     if _helios_stream(config, workload):
         if _helios_safe_stream(config, workload):

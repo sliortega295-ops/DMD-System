@@ -156,10 +156,11 @@ def test_public_native_grid_export_preserves_identity_and_uses_output_checkpoint
     from distillschedule.training.config import TrainingConfig
     raw=training(tmp_path).to_dict();raw['trainer']['export']={'test_policy':'SYNTHETIC_TEST_ONLY_DISPATCH'}
     raw['trainer']['resume_from']=str(tmp_path/'wrong_old')
+    raw['trainer']['stop_after_cycle']=1
     config=TrainingConfig.from_dict(raw,source=tmp_path/'train.json')
     seen=[]
     def admit(clean):
-        assert 'export' not in clean.trainer and 'resume_from' not in clean.trainer
+        assert not {'export','resume_from','stop_after_cycle'} & set(clean.trainer)
         assert clean.trainer['output_dir']==config.trainer['output_dir'] and clean.trainer['checkpoint_every']==1
         return 'W5',dict(identity=dict(head='SYNTHETIC_TEST_ONLY',dirty=False)),{},dict(
             assets=dict(native_config={'sha256':'SYNTHETIC_TEST_ONLY'},dependency_versions={'torch':'2.10.0'}),
@@ -172,6 +173,7 @@ def test_public_native_grid_export_preserves_identity_and_uses_output_checkpoint
     monkeypatch.setattr(owner,'resume_metadata',metadata)
     def run(conf,*,admit,native_output):
         assert conf.trainer['resume_from']==str((tmp_path/'actual').resolve())
+        assert 'stop_after_cycle' not in conf.trainer
         assert conf.trainer['output_dir']==config.trainer['output_dir']
         assert conf.execution==config.execution and conf.data==config.data
         admit();native_output.result={'scope':'SYNTHETIC_TEST_ONLY_DISPATCH'}
@@ -183,7 +185,7 @@ def test_public_native_grid_export_preserves_identity_and_uses_output_checkpoint
     with pytest.raises(ValueError,match='original fresh'):native.export_native(TrainingConfig.from_dict(bad,source=config.source),tmp_path/'actual',tmp_path/'bad')
 
 
-def test_original_training_update_loop_ast_is_unchanged():
+def test_original_training_update_loop_ast_only_adds_post_checkpoint_stop():
     import ast,subprocess
     from distillschedule.workloads.best_known.registry import repository_root
     path='src/distillschedule/backends/training/minimax_h3/trainer_loop.py'
@@ -191,9 +193,16 @@ def test_original_training_update_loop_ast_is_unchanged():
     old=subprocess.check_output(['git','show','2a7708f5064fbb6df91810145d90fd3f3b3e33b4:'+path],cwd=root,text=True)
     def loop(source):
         train=next(n for n in ast.walk(ast.parse(source)) if isinstance(n,ast.FunctionDef) and n.name=='train')
-        node=next(n for n in train.body if isinstance(n,ast.While))
-        return ast.dump(node,include_attributes=False)
-    assert loop(old)==loop((root/path).read_text())
+        return next(n for n in train.body if isinstance(n,ast.While))
+    original,current=loop(old),loop((root/path).read_text())
+    # Permit only the explicit lifecycle return/break seam, not changed model,
+    # loss, scheduler, input, observer, census, logging or benchmark branches.
+    added=current.body[-1].body
+    expected=ast.parse('if lifecycle.after_cycle(self, current_iter):\n    break').body
+    assert ast.dump(ast.Module(body=added,type_ignores=[]),include_attributes=False)==ast.dump(
+        ast.Module(body=expected,type_ignores=[]),include_attributes=False)
+    current.body[-1].body=[ast.Expr(value=added[0].test)]
+    assert ast.dump(original,include_attributes=False)==ast.dump(current,include_attributes=False)
 
 
 def test_actual_checkpoint_restore_precedes_output_and_performs_zero_updates(tmp_path,original_source,cached_data):

@@ -46,6 +46,31 @@ def training_scope(lifecycle):
         _ACTIVE.reset(token)
 
 
+def stop_cycle(config, *, start=0):
+    """Execution-only boundary; never shorten the original scheduler/input horizon."""
+    trainer = config.trainer
+    horizon = trainer["cycles"]
+    stop = trainer.get("stop_after_cycle", horizon)
+    if "stop_after_cycle" in trainer:
+        every = trainer.get("checkpoint_every", 0)
+        require(type(stop) is int and 1 <= stop <= horizon and type(every) is int and every > 0
+                and (stop == horizon or stop % every == 0),
+                "trainer.stop_after_cycle must be a complete checkpoint boundary within the unchanged horizon")
+    require(start < stop, "stop_after_cycle must be after the completed resume boundary")
+    return stop
+
+
+def admit_stop_control(config):
+    from . import distributed
+    stop = distributed.checked(lambda: stop_cycle(config), "H3 original stop checkpoint boundary admission")
+    # Explicit terminal stops force a durable final save even off cadence;
+    # agreeing only on the effective horizon would miss that collective branch.
+    controls = {"stop_after_cycle": stop, "checkpoint_required": "stop_after_cycle" in config.trainer}
+    require(all(row == controls for row in distributed.gather(controls)),
+            "ranks disagree on H3 original stop_after_cycle")
+    return stop
+
+
 def _source(value, expected, label):
     require(isinstance(value, dict) and set(value) == {"path", "head"} and value["head"] == expected,
             f"explicit pinned {label} source identity required")
@@ -192,8 +217,9 @@ def admit_reference(config, task_value, assets_value, paths):
         from distillschedule.workloads.best_known.registry import git_head, repository_root
         identity = training_identity(git_head(repository_root()), assets_value, inputs, config.trainer["cycles"])
         checkpoint_policy = {"schema_version": POLICY, "identity_sha256": fingerprint(identity)}
-        resume_metadata(config.trainer["resume_from"], identity=identity, policy=checkpoint_policy,
-                        target=config.trainer["cycles"], torch_version=versions["torch"])
+        header = resume_metadata(config.trainer["resume_from"], identity=identity, policy=checkpoint_policy,
+                                 target=config.trainer["cycles"], torch_version=versions["torch"])
+        stop_cycle(config, start=header["cycle"])
     return {"task": request.to_dict(), "plan": None, "assets": assets_value, "native_config": native, "inputs": inputs,
         "selected": {"schema_version": SCHEMA, "mode": "upstream-training/reference", "semantics": "approximate_grid1000",
                      "activation_policy": policy, "updates": {"student": 1, "fake": 5, "ema": 0},
@@ -256,6 +282,7 @@ def collective_admission(config, admit):
                         "H3 original source cleanliness")
     identity = training_identity(source["identity"]["head"], admitted["assets"], admitted["inputs"], config.trainer["cycles"])
     distributed.admit_run_controls(config)
+    admit_stop_control(config)
     require(all(row == identity for row in distributed.gather(identity)), "rank original source/config/input identity differs")
     return result, identity
 
@@ -266,6 +293,9 @@ class GridTrainingLifecycle:
         self.config, self.admitted, self.identity = config, admitted, identity
         self.policy = {"schema_version": POLICY, "identity_sha256": fingerprint(identity)}
         self.completed = 0
+        self.start_cycle = 0
+        self.end_cycle = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
+        self.latest_checkpoint = None
         self.cursor = None
         self.state = None
         self.native_output = native_output
@@ -305,6 +335,8 @@ class GridTrainingLifecycle:
             require(header.get("kind") == "RESUMABLE_COMPLETE_CYCLE", "original restart must be a complete-cycle checkpoint")
             validate_progress(header, identity=self.identity, policy=self.policy, target=self.config.trainer["cycles"],
                               output_only=self.native_output is not None)
+            if self.native_output is None:
+                stop_cycle(self.config, start=header["cycle"])
             require(all(file_sha256(Path(path) / name) == sha for name, sha in header["files"].items()),
                     "restart shard missing or hash changed")
             return header
@@ -323,6 +355,9 @@ class GridTrainingLifecycle:
         distributed.checked(local, "H3 original trainer controls")
         header = self.checkpoint_header()
         self.completed = header["cycle"] if header else 0
+        self.start_cycle = self.completed
+        self.end_cycle = (self.completed if self.native_output is not None else distributed.checked(
+            lambda: stop_cycle(self.config, start=self.completed), "H3 original resumed stop boundary"))
         return self.completed
 
     def after_setup(self, trainer):
@@ -347,26 +382,41 @@ class GridTrainingLifecycle:
     def after_cycle(self, trainer, completed):
         from . import distributed
         from .checkpoint import save_checkpoint
-        require(completed == self.completed + 1, "original loop skipped or repeated a cycle")
+        require(completed == self.completed + 1 and completed <= self.end_cycle,
+                "original loop skipped, repeated or exceeded its complete-cycle stop")
         self.completed = completed
         distributed.checked(lambda: self.state["clocks"].validate_checkpoint_boundary(), "H3 original complete-cycle boundary")
         cadence = self.config.trainer.get("checkpoint_every", 0)
-        if cadence and completed % cadence == 0:
-            save_checkpoint(Path(trainer.output_train_dir) / "checkpoints" / f"cycle-{completed:06d}", self.state,
+        requested_stop = "stop_after_cycle" in self.config.trainer and completed == self.end_cycle
+        saved = None
+        if cadence and (completed % cadence == 0 or requested_stop):
+            saved = save_checkpoint(Path(trainer.output_train_dir) / "checkpoints" / f"cycle-{completed:06d}", self.state,
                 identity=self.identity, cycle=completed, cursor=self.cursor.cursor, versions=versions(completed), policy=self.policy)
+        if requested_stop:
+            distributed.checked(lambda: require(saved is not None,
+                "stop_after_cycle requires a published complete checkpoint boundary"), "H3 original durable stop")
+        if saved is not None:
+            self.latest_checkpoint = str(saved)
         def receipt():
             rank = distributed.rank_world()[0]
             path = Path(trainer.output_train_dir) / "ranks" / f"rank-{rank:05d}.json"
             path.parent.mkdir(parents=True, exist_ok=True)
-            row = {"schema_version": SCHEMA, "status": "COMPLETED" if completed == trainer.max_train_iters else "PARTIAL",
+            status = ("COMPLETED" if completed == trainer.max_train_iters else
+                      "STOPPED_AT_CHECKPOINT" if requested_stop else "PARTIAL")
+            row = {"schema_version": SCHEMA, "status": status,
                    "rank": rank, "completed_cycles": completed, "next_sample_cursor": self.cursor.cursor,
                    "sampler_epoch": self.cursor.epoch, "versions": versions(completed), "identity": self.identity,
+                   "latest_checkpoint": self.latest_checkpoint,
+                   "training_segment": {"horizon_cycles": trainer.max_train_iters, "start_cycle": self.start_cycle,
+                       "requested_stop_cycle": self.end_cycle, "completed_cycle": completed,
+                       "executed_cycles": completed - self.start_cycle, "complete_horizon": completed == trainer.max_train_iters},
                    "numerical_cross_reference": "NOT_RUN", "known_optimized_backward_gate": "FAIL_UNCHANGED",
                    "claimable_speedup": False, "generation": "UNSUPPORTED", "export": "UNSUPPORTED"}
             temporary = path.with_suffix(".tmp")
             temporary.write_text(json.dumps(row, indent=2, sort_keys=True) + "\n")
             os.replace(temporary, path)
         distributed.checked(receipt, "H3 original rank progress receipt")
+        return completed == self.end_cycle
 
 
 def _backend(admitted):

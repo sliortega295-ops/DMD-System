@@ -160,7 +160,8 @@ class H3A100LoopMixin:
                 self._log_cuda_memory(f"iter_{current_iter}")
 
             if lifecycle is not None:
-                lifecycle.after_cycle(self, current_iter)
+                if lifecycle.after_cycle(self, current_iter):
+                    break
             elif self.save_every_iters and current_iter % self.save_every_iters == 0:
                 self.save_checkpoint_a100(current_iter)
 

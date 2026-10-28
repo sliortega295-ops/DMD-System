@@ -532,6 +532,22 @@
       "integrated_sha256": "f8027442c43cb631287464a9e279ce1858e06f3cc8a94d0474b63e88bb5338fd",
       "source_commit": "422e5582be57c5b060738aea8be01004c8468f83",
       "change": "R46 opt-in complete C51 checkpoint current-Student output before streamer/context/transport construction; default update loops unchanged. Exact integration base; native CUDA qualification pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "fd154506fbc2d52ea8085e0f7ae97fd48bb90847c44b97e94af68c4487042af1",
+      "integrated_sha256": "0551a314280cb71a33e1e5a366f058cda598f91b249b7bc2e803e253445bc5ca",
+      "source_commit": "d6d8da9f792e751bc51d26c0dadcb376bb9a7d01",
+      "change": "R71 opt-in original W5 durable complete-cycle stop: only break after lifecycle checkpoint/progress publication. Exact integration base; model/loss/update/scheduler/input/observer AST and original source receipts preserved; CPU control evidence only, native GPU and numerical qualification pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_two_cycle_timing.py",
+      "previous_sha256": "d3dcfdeaa54d1a7cb1b0bf2589f586ef1d6274fc857da3e88cf67d8a506b5f6d",
+      "integrated_sha256": "a85057c901e2c513d63368a621a70b85932c0b2970921ca687d048c2526dbc5e",
+      "source_commit": "087779ad926cea001e191cf0c2bb03445843bb10",
+      "change": "R66 test-only native C2 timing/census and resumed-segment regression repair; record the already committed test source without rewriting its historical import receipt. No training/runtime math change."
     }
   ]
 }
