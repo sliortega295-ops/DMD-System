@@ -77,9 +77,47 @@ CPU fixture. A separate process executes the public generation command on a
 new condition without importing either training owner or W6's sampler.
 These random weights establish implementation behavior, not pretrained quality.
 
-**The public native W5 checkpoint-to-export owner bridge is not yet bound.**
-Until it is, the three pieces above do not upgrade `distillctl export` for a
-native W5 training checkpoint. The existing original-reference checkpoint and
-resume route remains unchanged; the optimized backward numerical hold is
-unchanged. Actual world16 consolidation, pretrained output, codec binding,
-and the later 100-cycle reliability checks are not supplied by CPU tests.
+## Export an original-reference native checkpoint
+
+Copy your original fresh-data W5 reference training configuration, keeping
+its native config file, horizon, seed, source, assets, checkpoint cadence and
+input inventory unchanged. Add the `trainer.export` object from
+[`export.native.template.json`](../../recipes/h3_fullseq/export.native.template.json).
+The independent inference geometry/seed need not consume training data.
+
+On each already-launched world16 rank, in the same admitted environment:
+
+```sh
+distillctl export native-export.json --checkpoint /project/checkpoints/cycle-000064 \
+  --output /project/current-grid-student
+```
+
+The original owner restores **both role weights, Adam/schedulers, clocks,
+sampler position and rank RNG** before output. The output-only cursor validates
+its boundary without creating a loader iterator or reading the next sample.
+A terminal checkpoint is allowed for export only; normal training resume still
+requires a nonterminal boundary. Training performs zero additional calls or
+updates. Only output metadata is redirected to a fresh `.native-owner` folder;
+no identity-bearing native config is rewritten and no old run is overwritten.
+
+Snapshot admission checks exact table entries and current unmerged LoRA.
+All DTensor owners participate in full-tensor materialization; only primary
+retains the complete CPU weights. Explicit host/cgroup and largest-tensor
+GPU reserves are checked before gathering. Unused CUDA allocator blocks may
+be released **in this output-only process, outside training timers** before
+the driver-free check; this does not change a training hot path. Source,
+request, layout or owner-state failures reject publication. A failed companion
+configuration invalidates the new export's completion marker while retaining
+the payload for diagnosis.
+
+The command emits a matching `.inference.json` beside the artifact. Use that
+with new prepared text conditions and `distillctl generate --output-kind latents`.
+Neither Fake Score nor optimizer state is copied into the inference artifact.
+This native bridge supports the **original reference** owner; it does not
+bypass the selected optimized path's existing backward numerical failure.
+
+Target CPU checks include the real original scalar-edge training checkpoint
+restore, zero-update output exit, actual original converted-model publication,
+and real two-rank Gloo DTensor gathering. Only the bounded model admission and
+cluster edges are CPU fixtures; these do not establish world16 FSDP/CUDA,
+pretrained quality, the codec ABI or the later 100-cycle reliability gate.

@@ -214,16 +214,17 @@ def training_identity(head, assets, inputs, target):
             "horizon": target}
 
 
-def validate_progress(header, *, identity, policy, target):
+def validate_progress(header, *, identity, policy, target, output_only=False):
     cycle = header.get("cycle")
-    require(type(cycle) is int and 0 < cycle < target and header.get("cursor") == 6 * cycle
+    require(type(output_only) is bool, "output_only must be explicit bool")
+    require(type(cycle) is int and 0 < cycle <= target and (output_only or cycle < target) and header.get("cursor") == 6 * cycle
             and type(header.get("cursor")) is int and header.get("versions") == versions(cycle)
             and all(type(value) is int for value in header["versions"].values())
             and header.get("policy") == policy and header.get("identity", identity) == identity,
             "restart requires a versioned incomplete-target complete G1/F5/EMA0 boundary and exact next-sample cursor")
 
 
-def resume_metadata(path, *, identity, policy, target, torch_version=None):
+def resume_metadata(path, *, identity, policy, target, torch_version=None, output_only=False):
     """Lazy CPU rejection of legacy/partial/wrong-identity rank16 checkpoints."""
     from .checkpoint import SCHEMA as CHECKPOINT
     path = Path(path).resolve()
@@ -238,7 +239,7 @@ def resume_metadata(path, *, identity, policy, target, torch_version=None):
             and isinstance(header.get("torch"), str) and bool(header["torch"])
             and (torch_version is None or header["torch"] == torch_version),
             "original checkpoint schema/source/config/input/topology identity changed")
-    validate_progress(header, identity=identity, policy=policy, target=target)
+    validate_progress(header, identity=identity, policy=policy, target=target, output_only=output_only)
     names = {f"rank-{rank:05d}.pt" for rank in range(16)}
     require(set(header.get("files", {})) == names and all((path / name).is_file()
             and file_sha256(path / name) == header["files"][name] for name in names),
@@ -261,12 +262,21 @@ def collective_admission(config, admit):
 
 class GridTrainingLifecycle:
     """State/data seam attached to one original trainer; never a second loop."""
-    def __init__(self, config, admitted, identity):
+    def __init__(self, config, admitted, identity, native_output=None):
         self.config, self.admitted, self.identity = config, admitted, identity
         self.policy = {"schema_version": POLICY, "identity_sha256": fingerprint(identity)}
         self.completed = 0
         self.cursor = None
         self.state = None
+        self.native_output = native_output
+
+    def runtime_config(self, loaded):
+        """Only output metadata moves; the admitted identity-bearing file stays."""
+        if self.native_output is None:
+            return loaded
+        value = deepcopy(loaded)
+        value['training']['output_dir'] = str(self.native_output.owner_output)
+        return value
 
     def admit_loaded_config(self, loaded):
         from . import distributed
@@ -293,7 +303,8 @@ class GridTrainingLifecycle:
         def local():
             header = read_manifest(path, identity=self.identity)
             require(header.get("kind") == "RESUMABLE_COMPLETE_CYCLE", "original restart must be a complete-cycle checkpoint")
-            validate_progress(header, identity=self.identity, policy=self.policy, target=self.config.trainer["cycles"])
+            validate_progress(header, identity=self.identity, policy=self.policy, target=self.config.trainer["cycles"],
+                              output_only=self.native_output is not None)
             require(all(file_sha256(Path(path) / name) == sha for name, sha in header["files"].items()),
                     "restart shard missing or hash changed")
             return header
@@ -306,7 +317,8 @@ class GridTrainingLifecycle:
                     "original training cannot use historical auto-resume or the frozen two-cycle observer")
             require(trainer.max_train_iters == self.config.trainer["cycles"]
                     and trainer.save_every_iters == self.config.trainer.get("checkpoint_every", 0)
-                    and trainer.output_train_dir == self.config.trainer["output_dir"],
+                    and trainer.output_train_dir == (str(self.native_output.owner_output) if self.native_output is not None
+                                                     else self.config.trainer["output_dir"]),
                     "effective original target/save/output changed")
         distributed.checked(local, "H3 original trainer controls")
         header = self.checkpoint_header()
@@ -321,10 +333,15 @@ class GridTrainingLifecycle:
         resume = self.config.trainer.get("resume_from")
         if resume:
             restored = restore_checkpoint(resume, self.state, identity=self.identity)
-            validate_progress(restored, identity=self.identity, policy=self.policy, target=trainer.max_train_iters)
+            validate_progress(restored, identity=self.identity, policy=self.policy, target=trainer.max_train_iters,
+                              output_only=self.native_output is not None)
         self.cursor = distributed.checked(lambda: NativeLatentCursor(trainer.dataloader_train,
-            self.admitted["inputs"], cycle=self.completed, resume=bool(resume)), "H3 original native sampler/cursor")
+            self.admitted["inputs"], cycle=self.completed, resume=bool(resume),
+            output_only=self.native_output is not None), "H3 original native sampler/cursor")
         distributed.checked(lambda: self.state["clocks"].validate_checkpoint_boundary(), "H3 original restored boundary")
+        if self.native_output is not None:
+            require(bool(resume), "output requires a complete restored original checkpoint")
+            self.native_output.publish(trainer, self)
         return self.cursor
 
     def after_cycle(self, trainer, completed):
@@ -367,7 +384,7 @@ def _backend(admitted):
     return importlib.import_module("distillschedule.backends.training.minimax_h3.grid_entrypoint")
 
 
-def run_reference(config, *, admit):
+def run_reference(config, *, admit, native_output=None):
     """Own one original torchrun execution, with collective pre-model failures.
 
     NCCL's default group is initialized early solely to allow a separate Gloo
@@ -401,7 +418,9 @@ def run_reference(config, *, admit):
             (_, source, _, admitted), identity = collective_admission(config, admit)
             distributed.checked(lambda: require(environment_snapshot(os.environ) == admitted["assets"]["environment"],
                 "effective reference environment changed; no launch overrides are applied"), "H3 original environment")
-            lifecycle = GridTrainingLifecycle(config, admitted, identity)
+            if native_output is not None:
+                native_output.admit(admitted, identity)
+            lifecycle = GridTrainingLifecycle(config, admitted, identity, native_output=native_output)
             lifecycle.checkpoint_header()  # all ranks/shards before model construction
             backend = distributed.checked(lambda: _backend(admitted), "H3 original import/dependency admission")
             old = sys.argv

@@ -508,6 +508,22 @@
       "integrated_sha256": "d9cfe9874becf6e7ed676c0f994b568a08648405b80e23577d09f9b4009b5af9",
       "source_commit": "c14dbd7a2d0843205d7530a33f237b615b683717",
       "change": "R40 explicit prepared-latent decode CLI registration; source_commit is the exact integration base, with original import receipt preserved. No native training or historical command math changed."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+      "previous_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "integrated_sha256": "f93e2ac41cc9d00d1f1a4bca31f2b6d365d59e1e554db82ac66ee5e728308e04",
+      "source_commit": "2a7708f5064fbb6df91810145d90fd3f3b3e33b4",
+      "change": "R45 opt-in restored original-reference Grid output-only seam; normal update-loop AST and source import receipts unchanged. source_commit is exact integration base; native GPU qualification remains pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "integrated_sha256": "fd154506fbc2d52ea8085e0f7ae97fd48bb90847c44b97e94af68c4487042af1",
+      "source_commit": "2a7708f5064fbb6df91810145d90fd3f3b3e33b4",
+      "change": "R45 opt-in restored original-reference Grid output-only seam; normal update-loop AST and source import receipts unchanged. source_commit is exact integration base; native GPU qualification remains pending."
     }
   ]
 }

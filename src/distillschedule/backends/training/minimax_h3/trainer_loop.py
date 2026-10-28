@@ -58,6 +58,8 @@ class H3A100LoopMixin:
 
         grad_accum_iters = max(1, int(self.gradient_accumulation_iters))
         samples = self._iter_train_samples() if lifecycle is None else lifecycle.after_setup(self)
+        if lifecycle is not None and lifecycle.native_output is not None:
+            return  # Complete native restoration/export; never enter an update.
         logger.info(
             "[h3-a100] train start iter={}/{} world={} grad_accum={} fake_ratio={} reorder={}",
             current_iter,

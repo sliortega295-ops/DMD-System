@@ -50,6 +50,7 @@ def main():
     lifecycle = current_training()
     if lifecycle is not None:
         lifecycle.admit_loaded_config(config)
+        config = lifecycle.runtime_config(config)
     seed = _seed_rank(config)
     setup_logger(config)
     logger.info("[h3-a100][grid1000] seed={} rank={}", seed, get_rank())

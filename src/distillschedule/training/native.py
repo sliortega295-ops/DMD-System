@@ -149,6 +149,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
+        result['capabilities']['export'] = dict(supported=True,
+            scope='complete original-reference checkpoint restore; current unmerged Grid Student and four frozen rollout entries',
+            standalone_generation='original four-step CPU packed AV; codec ABI separate',
+            verification='SOURCE_AND_CPU_ONLY; native GPU output pending')
         result["capabilities"].update(modes=["reference"],
             cycles=dict(min=2, max=64, fresh_inputs="original_h3_grid_latent_dataset.v1",
                         scope="finite original latent_dataset; 96 distinct cached records per complete G1/F5 cycle"),
@@ -710,6 +714,9 @@ def export_native(config: TrainingConfig, checkpoint, output):
     no output knob is silently ignored by a training invocation.
     """
     workload = _workload(config)
+    if workload == 'W5':
+        from .h3_grid_export import export_native as export_grid
+        return export_grid(config, checkpoint, output)
     if workload == 'W6':
         from .h3_ar_export import export_native as export_h3
         return export_h3(config, checkpoint, output)
@@ -719,7 +726,7 @@ def export_native(config: TrainingConfig, checkpoint, output):
     if workload == 'W2':
         from .helios_native_inference import export_native as export_helios
         return export_helios(config, checkpoint, output)
-    _require(workload == 'W1', 'portable native output supports W1/W2/W3 and fresh-stream W6')
+    _require(workload == 'W1', 'portable native output supports W1/W2/W3 and fresh-stream W5/W6')
     _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1',
              'native W1 export requires its complete fresh-stream checkpoint binding')
     raw = config.to_dict()
