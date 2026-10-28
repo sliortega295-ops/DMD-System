@@ -23,7 +23,7 @@ class ResidentTrainingBudget:
 
     @classmethod
     def parse(cls, value, *, device):
-        from distillschedule.open_workload.resident_trial import TrialBudget, CudaTrialBudget
+        from distillschedule.open_workload.resident_budget import TrialBudget, CudaTrialBudget
         from dataclasses import fields
         if (type(value) is not dict or set(value) != {'schema_version', 'construction_limit_bytes',
                 'host_staging_limit_bytes', 'trial'} or value['schema_version'] != SCHEMA):

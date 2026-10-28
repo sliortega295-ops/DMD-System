@@ -55,6 +55,10 @@ For CPU, the `trial` object contains only `host_limit_bytes`,
 `reserve_bytes`. Do not copy CUDA fields into a CPU configuration. Host limits
 cover managed tensors and staging, not the entire Python process RSS.
 
+Configuration inspection and budget validation use only the core package;
+they do not import Torch, construct a model or probe a GPU. The provider's
+optional dependencies are needed when training begins, not to read the request.
+
 The factory checks source, architecture, weight headers, precision, topology
 and construction capacity **before allocating the model**. Training also checks
 fresh host/cgroup and CUDA headroom. A budget does not turn an unsupported
@@ -139,3 +143,8 @@ positions and clocks, and leave the unrelated device's RNG unchanged. See the
 [CPU and A100 acceptance record](../status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md)
 for source and test scope. These checks use small randomly initialized native
 models; they do not measure pretrained quality or performance.
+
+The `official-models-cpu` workflow runs the public resident lifecycle in separate
+DMD2 and Self-Forcing jobs. Their required receipts cover real native updates,
+automatic selection, saved plans, rollback and fresh-process restore; missing
+or skipped required cases fail the job. CUDA qualification remains separate.

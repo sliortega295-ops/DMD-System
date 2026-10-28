@@ -18,6 +18,77 @@ on:
 permissions:
   contents: read
 jobs:
+  public-resident-lifecycle:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - family: dmd2
+            extra: 'train,test,dmd2'
+            selection: 'not self_forcing'
+          - family: official-self-forcing
+            extra: 'train,test,self-forcing-official'
+            selection: 'not sd15 and not sdxl'
+    env:
+      PYTHONPATH: 'src:.:tests'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DMD2_SOURCE_ROOT: '${{ github.workspace }}/.framework-test-deps/dmd2'
+      SELF_FORCING_SOURCE_ROOT: '${{ github.workspace }}/.framework-test-deps/self-forcing'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the pinned provider CPU dependencies
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[${{ matrix.extra }}]'
+      - name: Fetch the locked upstream source only
+        run: |
+          case '${{ matrix.family }}' in
+            dmd2) python recipes/dmd2_sd15/fetch_source.py "$DMD2_SOURCE_ROOT" --with-test-oracle ;;
+            official-self-forcing) python recipes/self_forcing_official/fetch_source.py "$SELF_FORCING_SOURCE_ROOT" ;;
+          esac
+      - name: Public direct, automatic and saved-plan native lifecycle
+        run: |
+          python -m pytest -q tests/test_training_resident_metadata.py tests/test_training_resident_lifecycle.py \
+            -k '${{ matrix.selection }}' --junitxml=resident-public-cpu.xml
+          case '${{ matrix.family }}' in
+            dmd2)
+              python scripts/check_cpu_receipt.py resident-public-cpu.xml \
+                --require 'test_real_native_public_budget_policy_three_inputs[sd15-manual]' \
+                --require 'test_real_native_public_budget_policy_three_inputs[sd15-auto]' \
+                --require 'test_real_native_public_budget_policy_three_inputs[sdxl-manual]' \
+                --require 'test_real_native_public_budget_policy_three_inputs[sdxl-auto]' \
+                --require 'test_native_public_manual_fresh_process_checkpoint_resume[sd15]' \
+                --require 'test_native_public_manual_fresh_process_checkpoint_resume[sdxl]' \
+                --require 'test_native_manual_publication_failure_is_not_a_commit[sd15]' \
+                --require 'test_native_manual_publication_failure_is_not_a_commit[sdxl]' \
+                --require 'test_public_auto_saved_plan_and_resume_never_search_again[sd15]'
+              ;;
+            official-self-forcing)
+              python scripts/check_cpu_receipt.py resident-public-cpu.xml \
+                --require 'test_real_native_public_budget_policy_three_inputs[self_forcing-manual]' \
+                --require 'test_real_native_public_budget_policy_three_inputs[self_forcing-auto]' \
+                --require 'test_native_public_manual_fresh_process_checkpoint_resume[self_forcing]' \
+                --require 'test_native_manual_publication_failure_is_not_a_commit[self_forcing]'
+              ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-resident-cpu-${{ matrix.family }}
+          path: resident-public-cpu.xml
+          if-no-files-found: error
   actual-model-classes:
     runs-on: ubuntu-22.04
     timeout-minutes: 40

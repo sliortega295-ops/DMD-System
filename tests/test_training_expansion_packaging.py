@@ -1,6 +1,8 @@
 """Public optional stacks and mandatory real-upstream CPU qualification lanes."""
 import json
+import os
 from pathlib import Path
+import shlex
 import tarfile
 import subprocess
 import sys
@@ -66,6 +68,59 @@ def test_official_self_forcing_static_config_uses_registered_native_workflow():
     for mode in ('prompts', 'preencoded'):
         value = json.loads((ROOT/f'recipes/self_forcing_official/inputs.{mode}.template.json').read_text())
         assert value['mode'] == mode and value['schema_version'] == 'distillschedule.official_self_forcing_inputs.v1'
+
+
+def test_public_resident_provider_ci_requires_real_lifecycle_not_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())
+    job = workflow['jobs']['public-resident-lifecycle']
+    assert job['strategy']['matrix']['include'] == [
+        dict(family='dmd2', extra='train,test,dmd2', selection='not self_forcing'),
+        dict(family='official-self-forcing', extra='train,test,self-forcing-official',
+             selection='not sd15 and not sdxl')]
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    for value in ('torch==2.10.0', '.[${{ matrix.extra }}]',
+                  'recipes/dmd2_sd15/fetch_source.py',
+                  'recipes/self_forcing_official/fetch_source.py',
+                  'tests/test_training_resident_lifecycle.py',
+                  'tests/test_training_resident_metadata.py',
+                  'scripts/check_cpu_receipt.py resident-public-cpu.xml'):
+        assert value in commands
+    for family in ('sd15', 'sdxl', 'self_forcing'):
+        for mode in ('manual', 'auto'):
+            assert f'test_real_native_public_budget_policy_three_inputs[{family}-{mode}]' in commands
+        for proof in ('test_native_public_manual_fresh_process_checkpoint_resume',
+                      'test_native_manual_publication_failure_is_not_a_commit'):
+            assert f'{proof}[{family}]' in commands
+    assert 'test_public_auto_saved_plan_and_resume_never_search_again' in commands
+    assert '--deselect' not in commands and 'tests/gpu' not in commands
+
+
+def test_public_resident_ci_required_cases_are_actually_collected():
+    import yaml
+    job = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())['jobs']['public-resident-lifecycle']
+    command = next(step['run'] for step in job['steps']
+                   if step.get('name') == 'Public direct, automatic and saved-plan native lifecycle')
+    paths = [str(ROOT/'src'), str(ROOT), str(ROOT/'tests')]
+    if inherited := os.environ.get('PYTHONPATH'):
+        paths.append(inherited)
+    for row in job['strategy']['matrix']['include']:
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES='', PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
+                   PYTHONDONTWRITEBYTECODE='1', PYTHONPATH=os.pathsep.join(paths))
+        result = subprocess.run([sys.executable, '-m', 'pytest', '--collect-only', '-q', '-p', 'no:cacheprovider',
+                                 'tests/test_training_resident_metadata.py', 'tests/test_training_resident_lifecycle.py',
+                                 '-k', row['selection']], cwd=ROOT, env=env, text=True,
+                                capture_output=True, timeout=60)
+        assert result.returncode == 0, result.stdout + result.stderr
+        names = {line.split('::', 1)[1] for line in result.stdout.splitlines() if line.startswith('tests/')}
+        branch = command.split(row['family'] + ')', 1)[1].split(';;', 1)[0]
+        words = shlex.split(branch)
+        required = {words[i + 1] for i, word in enumerate(words) if word == '--require'}
+        assert required and required <= names, required - names
+        wrong = ('self_forcing',) if row['family'] == 'dmd2' else ('[sd15', '[sdxl')
+        assert not any(any(other in name for other in wrong) for name in names)
 
 
 def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path():

@@ -21,8 +21,8 @@ from collections.abc import Mapping
 
 import torch
 
-from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint, file_sha256
+from .resident_budget import TrialBudget, CudaTrialBudget, _require
 
 SCHEMA = 'distillschedule.resident_trial.cpu.v1'
 CUDA_SCHEMA = 'distillschedule.resident_trial.cuda.v1'
@@ -31,42 +31,6 @@ _METHODS = ('_resident_trial_adapter', '_resident_trial_restore',
 _RNG_ALLOWANCE = 65536
 _CUDA_TRIALS = {}
 _CUDA_TRIAL_LOCK = Lock()
-
-
-def _require(condition, message):
-    require(condition, message, path='open.resident_trial')
-
-
-@dataclass(frozen=True)
-class TrialBudget:
-    host_limit_bytes: int
-    snapshot_limit_bytes: int
-    result_limit_bytes: int
-    scratch_bytes: int
-    reserve_bytes: int
-
-    def validate(self):
-        _require(all(type(value) is int and value > 0 for value in vars(self).values()),
-                 'explicit positive host, snapshot, result, scratch and reserve budgets required')
-
-
-@dataclass(frozen=True)
-class CudaTrialBudget(TrialBudget):
-    """Caller-declared allowances, not an empirical training-capacity claim.
-
-    Device limits include the allocator's existing residency, not just this
-    owner's tensors. All growth/gradient/activation/workspace/restore allowances
-    are additive; reserve is unavailable for normal execution. Host growth
-    includes host Adam steps and native EMA, separately from serialized results.
-    """
-    device_limit_bytes: int
-    host_growth_bytes: int
-    device_state_growth_bytes: int
-    device_gradient_bytes: int
-    device_activation_bytes: int
-    device_workspace_bytes: int
-    device_restore_bytes: int
-    device_reserve_bytes: int
 
 
 @dataclass(frozen=True)
