@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import ast
 import inspect
 import hashlib
 import json
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -198,6 +200,50 @@ def _comparison(path: Path, baseline: Path, pipeline: Path) -> None:
     )
 
 
+def _assert_continuous_segment_timing(source: str) -> None:
+    function = ast.parse(source).body[0]
+    bounds = [
+        node for node in function.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id in {"start_cycle", "end_cycle"}
+                for target in node.targets)
+    ]
+    assert len(bounds) == 2
+    loops = [node for node in function.body if isinstance(node, ast.For)
+             and isinstance(node.target, ast.Name) and node.target.id == "cycle"]
+    assert len(loops) == 1
+    loop = loops[0]
+    lookaheads = [
+        node for node in loop.body if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Compare)
+        and ast.dump(node.test.left) == ast.dump(ast.parse("cycle + 1", mode="eval").body)
+    ]
+    assert len(lookaheads) == 1
+    endpoints = [node for node in ast.walk(loop) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name) and node.func.id == "_record_two_cycle_endpoint"]
+    assert len(endpoints) == 1
+    assert endpoints[0].lineno < lookaheads[0].lineno
+    assert not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                   and node.func.attr in {"synchronize", "barrier"} for node in ast.walk(function))
+
+    bound_code = compile(ast.Module(body=bounds, type_ignores=[]), "<native-cycle-bounds>", "exec")
+    range_code = compile(ast.Expression(loop.iter), "<native-cycle-range>", "eval")
+    lookahead_code = compile(ast.Expression(lookaheads[0].test), "<native-lookahead>", "eval")
+    for trace_cycles, continuation, expected in (
+        (2, None, (0, 2)),
+        (5, None, (0, 5)),
+        (5, SimpleNamespace(start_cycle=0, end_cycle=2), (0, 2)),
+        (5, SimpleNamespace(start_cycle=2, end_cycle=5), (2, 5)),
+        (5, SimpleNamespace(start_cycle=1, end_cycle=3), (1, 3)),
+    ):
+        scope = {"trace": SimpleNamespace(cycles=trace_cycles), "continuation": continuation}
+        exec(bound_code, scope)
+        assert (scope["start_cycle"], scope["end_cycle"]) == expected
+        assert list(eval(range_code, scope)) == list(range(*expected))
+        for cycle in range(*expected):
+            assert eval(lookahead_code, {**scope, "cycle": cycle}) == (cycle + 1 < expected[1])
+
+
 def test_two_cycle_contract_is_exact_and_does_not_add_midpoint_sync() -> None:
     baseline = load_plan(
         ROOT
@@ -227,9 +273,21 @@ def test_two_cycle_contract_is_exact_and_does_not_add_midpoint_sync() -> None:
     assert "dist.barrier" not in baseline_source
     assert "cuda.Event(enable_timing=True)" in endpoint_source
     assert "event.record" in endpoint_source
-    endpoint = continuous_source.index("_record_two_cycle_endpoint")
-    lookahead = continuous_source.index("if cycle + 1 < trace.cycles")
-    assert endpoint < lookahead
+    _assert_continuous_segment_timing(continuous_source)
+
+
+@pytest.mark.parametrize("old,new", [
+    ("range(start_cycle, end_cycle)", "range(0, end_cycle)"),
+    ("if cycle + 1 < end_cycle:", "if cycle + 1 < trace.cycles:"),
+    ("if cycle + 1 < end_cycle:", "if cycle + 1 <= end_cycle:"),
+    ("else trace.cycles", "else 1"),
+    ("_record_two_cycle_endpoint(", "torch.cuda.synchronize()\n            _record_two_cycle_endpoint("),
+])
+def test_continuous_segment_timing_rejects_boundary_or_midpoint_drift(old, new) -> None:
+    source = inspect.getsource(_run_pipeline_8x8_continuous)
+    assert old in source
+    with pytest.raises(AssertionError):
+        _assert_continuous_segment_timing(source.replace(old, new))
 
 
 @pytest.mark.parametrize("pipeline_variant", ["c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm"])

@@ -18,6 +18,7 @@ from distillschedule.strategies.wan_task import OriginalWanTask
 from distillschedule.strategies.wan_strategy import WanStrategy, implementations, strategy_environment
 from distillschedule.strategies.wan_calibration import component
 from distillschedule.runtime.wan_incumbent_evidence import validate_bundle_build
+from test_refactor_wan13b_critic_grad_graph import _assert_native_worker_segment_validation
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -247,7 +248,8 @@ def test_native_hooks_not_a_mock_and_no_rejected_mechanism_source():
     for name in ('install_grad_lora_fused_epilogue','install_norm_policy','install_rollout_graph','install_critic_graph'):
         assert name+'(' in hook
     worker=(ROOT/'src/distillschedule/strategies/wan_worker.py').read_text()
-    assert 'OriginalWanSession(' in worker and 'validate_build(strategy, session.build, executed=True, cycles=cycles)' in worker
+    assert 'OriginalWanSession(' in worker
+    _assert_native_worker_segment_validation(worker)
     assert 'validate_model_files' in worker and 'stream_path is None' in worker
     for name in ('wan13b_rollout_shadow.py','wan13b_input_lora_gemm.py'):
         assert not (ROOT/'src/distillschedule/runtime'/name).exists()
