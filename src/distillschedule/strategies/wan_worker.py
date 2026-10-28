@@ -259,11 +259,15 @@ def save_final_state(session, output):
 
 
 def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None,
-               record_memory_highwater=False, checkpoint_every=0, resume_from=None):
+               record_memory_highwater=False, checkpoint_every=0, resume_from=None, native_output=None):
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
-    require(mode in {'calibrate', 'run', 'manual', 'train'}, 'invalid worker mode', path='wan.worker')
+    require(mode in {'calibrate', 'run', 'manual', 'train', 'export'}, 'invalid worker mode', path='wan.worker')
+    require((mode == 'export') == (native_output is not None),
+            'output-only mode requires its explicit native output callback', path='wan.worker')
+    require(mode != 'export' or resume_from is not None and not checkpoint_every and not record_memory_highwater,
+            'output-only mode requires a complete checkpoint and no training/capture/memory work', path='wan.worker')
     require(type(cycles) is int and 2 <= cycles <= (MAX_COHORTS if stream_path is not None else 64),
             'only fresh streams support 2..100 cycles; fixed-trace diagnostics remain bounded to 64', path='wan.worker')
     rank, local_rank = topology(os.environ)
@@ -276,7 +280,12 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 and stream_path is None,
                 'manual reference requires explicit strategy, exactly two fixed-trace cycles and no plan/stream',
                 path='wan.worker')
-    elif mode == 'train':
+    elif mode == 'export' and plan_path is not None:
+        require(strategy is None and stream_path is not None,
+                'planned output requires the same selected plan and stream', path='wan.worker')
+        document = validate_plan(task, plan_path)
+        strategy = WanStrategy.from_dict(document['selected']['strategy'])
+    elif mode in {'train', 'export'}:
         require(plan_path is None and isinstance(strategy, WanStrategy) and stream_path is not None,
                 'explicit native training requires a strategy and fresh input stream', path='wan.worker')
     else:
@@ -288,13 +297,13 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             or strategy.retention_execution == 'planner-retain4.v1',
             'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
             path='wan.worker')
-    require(not strategy.candidate_bundle.continuous or (mode == 'train' and stream_path is not None),
+    require(not strategy.candidate_bundle.continuous or (mode in {'train', 'export'} and stream_path is not None),
             'stream bundle requires explicit fresh native training; no fixed replay/calibration/old plan', path='wan.worker')
     require(not strategy.candidate_bundle.enabled or strategy.candidate_bundle.continuous or (cycles == 2 and stream_path is None),
             'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
     if stream_path is not None:
-        require(mode in {'run', 'train'}, 'cohort training requires a selected or explicit strategy', path='wan.worker')
+        require(mode in {'run', 'train', 'export'}, 'cohort training requires a selected or explicit strategy', path='wan.worker')
         from .wan_stream import load_stream
         stream = load_stream(task, stream_path)
         require(cycles == len(stream['cohorts']), 'training cycles must match the complete fresh input sequence', path='wan.worker')
@@ -396,8 +405,12 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                                                 'native restart header')
                     require(resume_header['policy'] == checkpoint_policy
                             and type(resume_header['cycle']) is int
-                            and 0 < resume_header['cycle'] == resume_header['cursor'] < cycles,
+                            and 0 < resume_header['cycle'] == resume_header['cursor']
+                            and (resume_header['cycle'] <= cycles if mode == 'export' else resume_header['cycle'] < cycles),
                             'native restart policy/progress differs from the supplied stream', path='wan.worker')
+            if native_output is not None:
+                with control_plane(metadata_group):
+                    native_output.admit()
             negative_tensor = negative.embedding.to(device=device, dtype=torch.bfloat16)
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
             session = OriginalWanSession(task=task, strategy=strategy, fair=fair, bootstrap=bootstrap,
@@ -418,7 +431,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     require(session.versions() == restored['versions'],
                             'native restored engine/EMA clocks differ from manifest', path='wan.worker')
                     start_cycle = restored['cycle']
-                    restore_stream_cursor(session, task, stream, completed_cycles=start_cycle)
+                    if native_output is None:
+                        restore_stream_cursor(session, task, stream, completed_cycles=start_cycle)
                     del restored
                 receipt['training_restart'] = {'schema_version': 'distillschedule.wan_native_training_restart.v1',
                     'resume_from': str(Path(resume_from).resolve()) if resume_from else None,
@@ -427,6 +441,18 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     'latest_checkpoint': str(Path(resume_from).resolve()) if resume_from else None}
             receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build, backend_effects=effects)
             _json(path, receipt)
+            if native_output is not None:
+                # A terminal complete checkpoint is valid for export, not for
+                # another training cycle. Never bind/consume the next cohort,
+                # prepare a graph, run loss handlers or advance native clocks.
+                with control_plane(metadata_group):
+                    exported = native_output.publish(session,manifest=resume_header,identity=checkpoint_identity)
+                receipt.update(status='COMPLETED_ORIGINAL_WAN_EXPORT',inference_export=exported,
+                    final_versions=session.versions(),checkpoint_cycle=start_cycle,
+                    generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA',training_cycles_executed=0,
+                    gpu_execution='NATIVE_CUDA_CHECKPOINT_RESTORE_AND_EXPORT_NO_TRAINING',quality_validation='NOT_RUN')
+                _json(path,receipt)
+                return receipt
             if mode == 'calibrate':
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
                     work=trace_work(task, trace), torch=torch, distributed=dist, device=device,

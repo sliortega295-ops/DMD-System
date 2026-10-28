@@ -2,6 +2,11 @@
 
 **Original protocol:** Helios hierarchical AR; No-GAN; G1/C5/EMA5.
 
+For output-only export of a complete **native fresh-stream** checkpoint and
+independent NEW-prompt Wan2.1 VAE decoding, see [Native output](NATIVE_OUTPUT.md).
+This is separate from the existing CPU-reference latent diagnostic; pretrained
+native GPU output remains unqualified until its own target acceptance.
+
 Original Wan adapter with compute-qualified retention. Fresh measured costs are required; r34 hand-written EMA packets are not promoted.
 
 ## Inspect the actual adapter (no GPU execution)

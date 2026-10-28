@@ -147,20 +147,25 @@ def main(argv=None):
             if not args.output:
                 raise ValueError("generation/export requires --output")
             if config.execution.get("adapter", "program") == "native":
-                raise ValueError("use the native recipe's documented checkpoint/generation/export capability")
-            with redirect_diagnostics():
-                from .session import evaluate, export, generate_from_export
-                if args.command == "generate":
-                    result = generate_from_export(config, args.weights, args.output,
-                                                  prepared=args.prepared, sample_index=args.sample_index,
-                                                  parameters=_generation_parameters_file(args.parameters),
-                                                  output_kind=args.output_kind)
-                elif args.command == "evaluate":
-                    result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
-                                      parameters=_generation_parameters_file(args.parameters),
-                                      prepared=args.prepared, stream=args.stream)
-                else:
-                    result = export(config, args.checkpoint, args.output)
+                if args.command != "export":
+                    raise ValueError("native outputs require export first, then the standalone Program inference config")
+                with redirect_diagnostics():
+                    from .native import export_native
+                    result = export_native(config, args.checkpoint, args.output)
+            else:
+                with redirect_diagnostics():
+                    from .session import evaluate, export, generate_from_export
+                    if args.command == "generate":
+                        result = generate_from_export(config, args.weights, args.output,
+                                                      prepared=args.prepared, sample_index=args.sample_index,
+                                                      parameters=_generation_parameters_file(args.parameters),
+                                                      output_kind=args.output_kind)
+                    elif args.command == "evaluate":
+                        result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
+                                          parameters=_generation_parameters_file(args.parameters),
+                                          prepared=args.prepared, stream=args.stream)
+                    else:
+                        result = export(config, args.checkpoint, args.output)
         if type(result) is int:
             # Native front doors already emit their own original receipts.
             return result

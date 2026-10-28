@@ -96,6 +96,14 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'),
             resume=dict(supported=True, scope='same source/assets/stream/topology; recapture transient graphs',
                         verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'))
+    if workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1':
+        result['capabilities']['export'] = dict(supported=True,
+            api='distillctl export <native-training-with-output-policy> --checkpoint <complete-native-checkpoint> --output <portable>',
+            scope='same-topology native CURRENT full unmerged G + pinned Wan2.1 VAE; terminal checkpoints allowed; explicit capacity/codec policy',
+            standalone_generation='Program single-process native sampler + actual Wan2.1 VAE on NEW preencoded prompts',
+            verification='SOURCE_AND_CPU_ONLY; NATIVE_PRETRAINED_GPU_OUTPUT_NOT_RUN')
+        result['capabilities']['generate'] = dict(supported=False,
+            reason='export first, then distillctl generate with the emitted standalone Program inference config')
     if helios_stream:
         result.update(native_api="distillschedule.training.helios_worker:run_reference",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
@@ -682,6 +690,42 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
     """Run CPU source/schema/selected-plan admission; no reservation or CUDA."""
     workload, source, paths, admitted = _admit(config)
     return _report(config, workload, source, paths, admitted)
+
+
+def export_native(config: TrainingConfig, checkpoint, output):
+    """Same native owner/complete restore, output-only; never a training cycle.
+
+    Output policy is an explicit export-command supplement to the training
+    config. Ordinary native training continues to reject trainer.export, so
+    no output knob is silently ignored by a training invocation.
+    """
+    _require(_workload(config) == 'W1', 'portable native output currently supports W1 only')
+    _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1',
+             'native W1 export requires its complete fresh-stream checkpoint binding')
+    raw = config.to_dict()
+    request = raw['trainer'].pop('export', None)
+    _require(isinstance(request, dict), 'trainer.export must supply the explicit native output/codec policy')
+    # Checkpoint CLI argument owns restoration; do not re-open an unrelated
+    # historical trainer.resume_from or write into the old training run.
+    raw['trainer'].pop('resume_from', None)
+    raw['trainer']['checkpoint_every'] = 0
+    destination = Path(output).expanduser().resolve()
+    raw['trainer']['output_dir'] = str(destination.with_name(destination.name+'.native-owner'))
+    training = TrainingConfig.from_dict(raw, source=config.source)
+    workload, source, paths, admitted = _admit(training)
+    _require(not source['identity']['dirty'], 'execution requires a clean committed source checkout')
+    from distillschedule.strategies.wan_task import OriginalWanTask
+    from distillschedule.strategies.wan_strategy import WanStrategy
+    from distillschedule.strategies.wan_worker import OriginalWanAssets, run_worker
+    from .wan_native_inference import NativeOutputRequest
+    callback = NativeOutputRequest(request, destination)
+    result = run_worker(OriginalWanTask.from_dict(admitted['task']),
+        OriginalWanAssets.from_dict(admitted.get('assets') or _object(paths['assets'],'execution.assets')),
+        output=paths['output'], mode='export',
+        strategy=None if paths['plan'] else WanStrategy.from_dict(admitted['selected']),plan_path=paths['plan'],
+        cycles=training.trainer['cycles'], stream_path=_path(training,'data','prepared'),
+        checkpoint_every=0, resume_from=Path(checkpoint).expanduser().resolve(), native_output=callback)
+    return result['inference_export']
 
 
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
