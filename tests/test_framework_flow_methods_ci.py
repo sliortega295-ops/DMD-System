@@ -142,6 +142,8 @@ def _sharding_proofs(family):
              'test_native_full_shadow_oracle_and_fresh_process_checkpoint'),
             ('tests/test_open_workload_frozen_roots.py',
              'test_private_native_flow_frozen_teacher_G1_F5'),
+            ('tests/test_training_flow_owned_generation.py',
+             'test_native_owned_generation_restored_current_student_and_closed_groups'),
         )
         for mode in ('fsdp2_reshard', 'fsdp2_keep_forward')
     ]
@@ -183,7 +185,7 @@ def _collect_command(proof_command):
 
 
 @pytest.mark.parametrize('family', SHARDING_LANES)
-def test_flow_sharding_ci_keeps_exact_provider_dependencies_and_requires_four_native_proofs(family):
+def test_flow_sharding_ci_keeps_exact_provider_dependencies_and_requires_six_native_proofs(family):
     workflow, job, step, receipt = _lane(family, SHARDING_LANES)
     _, old_job, old_step, _ = _lane(family)
     assert job == old_job  # Reuse the original provider lane and its pinned stack.

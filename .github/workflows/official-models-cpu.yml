@@ -282,12 +282,16 @@ jobs:
             'tests/test_open_workload_parameter_shadows.py::test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_keep_forward]' \
             'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_reshard]' \
             'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_keep_forward]' \
+            'tests/test_training_flow_owned_generation.py::test_native_owned_generation_restored_current_student_and_closed_groups[ltx25-fsdp2_reshard]' \
+            'tests/test_training_flow_owned_generation.py::test_native_owned_generation_restored_current_student_and_closed_groups[ltx25-fsdp2_keep_forward]' \
             --junitxml=ltx-flow-sharding-cpu.xml
           python scripts/check_cpu_receipt.py ltx-flow-sharding-cpu.xml \
             --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_reshard]' \
             --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[ltx25-fsdp2_keep_forward]' \
             --require 'test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_reshard]' \
-            --require 'test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_keep_forward]'
+            --require 'test_private_native_flow_frozen_teacher_G1_F5[ltx25-fsdp2_keep_forward]' \
+            --require 'test_native_owned_generation_restored_current_student_and_closed_groups[ltx25-fsdp2_reshard]' \
+            --require 'test_native_owned_generation_restored_current_student_and_closed_groups[ltx25-fsdp2_keep_forward]'
       - uses: actions/upload-artifact@v4
         if: ${{ always() && matrix.family == 'ltx25' }}
         with:
