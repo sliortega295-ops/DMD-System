@@ -51,3 +51,12 @@ benchmark plan, use the separate [original Grid1000 reference lifecycle](../h3-g
 It retains the existing trainer and Grid objective, requires an explicit original
 config and qualified assets, and keeps optional optimized paths OFF. CPU source
 and restart mechanics do not promote the historical optimized numerical FAIL.
+
+## Independent current-Student inference
+
+The [converted Grid inference guide](../../docs/guides/h3_grid_inference.md)
+describes the actual frozen-base/current-LoRA/four-table representation and
+original four-step sampler. New-source CPU tests include strict common export
+and public new-process generation of packed AV tokens. Native checkpoint
+export ownership and the media-codec ABI remain separate unfinished bindings;
+W6 output code is not substituted, and the optimized backward hold is unchanged.
