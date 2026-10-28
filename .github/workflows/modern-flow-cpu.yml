@@ -166,6 +166,15 @@ jobs:
             --require 'test_private_native_flow_frozen_teacher_G1_F5[flux2-klein-base-fsdp2_keep_forward]' \
             --require 'test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_reshard]' \
             --require 'test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_keep_forward]'
+      - name: Actual frozen native local-shard construction
+        run: |
+          python -m pytest -q \
+            'tests/test_training_flow_sharded_weight_loading.py::test_actual_native_frozen_shard_loader_cpu2[flux2-float32]' \
+            'tests/test_training_flow_sharded_weight_loading.py::test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2' \
+            --junitxml=native-shard-loading-cpu.xml
+          python scripts/check_cpu_receipt.py native-shard-loading-cpu.xml \
+            --require 'test_actual_native_frozen_shard_loader_cpu2[flux2-float32]' \
+            --require test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2
       - name: Installed wheel user path, no checkout imports or model downloads
         run: python scripts/check_framework_install.py --modern-flow --work-dir "${{ runner.temp }}/installed-modern" --output installed-modern.json
       - name: Separate optional native-image and native-video CUDA lifecycle receipt
@@ -180,6 +189,7 @@ jobs:
             modern-flow-cpu.xml
             flux-flow-methods-cpu.xml
             flux-flow-sharding-cpu.xml
+            native-shard-loading-cpu.xml
             optional-modern-cuda.xml
             installed-modern.json
           if-no-files-found: error

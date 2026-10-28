@@ -285,3 +285,53 @@ def test_common_cpu_collector_and_triggers_include_sharding_and_ci_regressions()
     workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
     paths = workflow['on']['pull_request']['paths']
     assert 'tests/test_open_workload_*.py' in paths
+
+
+NATIVE_LOADER_LANE = {
+    'frozen-native-shards': ('modern-flow-cpu.yml', 'native-media-lifecycle',
+        'Actual frozen native local-shard construction', 'native-shard-loading-cpu.xml'),
+}
+NATIVE_LOADER_FILE = 'tests/test_training_flow_sharded_weight_loading.py'
+NATIVE_LOADER_PROOFS = [
+    'test_actual_native_frozen_shard_loader_cpu2[flux2-float32]',
+    'test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2',
+]
+
+
+def test_native_shard_loader_ci_reuses_modern_lane_and_requires_both_actual_proofs():
+    workflow, job, step, receipt = _lane('frozen-native-shards', NATIVE_LOADER_LANE)
+    _, original_job, _, _ = _lane('flux2-klein-base')
+    assert job == original_job
+    assert job['env']['DMD_MODERN_FLOW_CPU'] == '1'
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    assert 'if' not in step and 'continue-on-error' not in step and 'continue-on-error' not in job
+    assert workflow['permissions'] == {'contents': 'read'}
+    proof_command, gate_command = _commands(step)
+    assert proof_command == ['python', '-m', 'pytest', '-q',
+        *[f'{NATIVE_LOADER_FILE}::{name}' for name in NATIVE_LOADER_PROOFS], f'--junitxml={receipt}']
+    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', receipt,
+        *[word for name in NATIVE_LOADER_PROOFS for word in ('--require', name)]]
+    paths = workflow['on']['pull_request']['paths']
+    assert 'src/distillschedule/**' in paths
+    assert all(any(Path(name).match(pattern) for pattern in paths) for name in
+               (NATIVE_LOADER_FILE, 'tests/test_framework_flow_methods_ci.py'))
+    upload = next(item for item in job['steps'] if item.get('uses') == 'actions/upload-artifact@v4'
+                  and receipt in item['with']['path'].splitlines())
+    assert upload['if'] == 'always()' and upload['with']['if-no-files-found'] == 'error'
+
+
+def test_native_shard_loader_ci_exact_nodes_are_actually_collected():
+    _, _, step, _ = _lane('frozen-native-shards', NATIVE_LOADER_LANE)
+    proof_command, _ = _commands(step)
+    assert sorted(_collect_command(proof_command)) == sorted(
+        f'{NATIVE_LOADER_FILE}::{name}' for name in NATIVE_LOADER_PROOFS)
+
+
+@pytest.mark.parametrize('mutation', [None, 'missing-case', 'other-provider', 'skipped',
+                                     'failure', 'error', 'empty', 'missing-file'])
+def test_native_shard_loader_ci_real_receipt_gate_refuses_false_green(tmp_path, mutation):
+    """SYNTHETIC_TEST_ONLY metadata; native model proofs have separate receipts."""
+    _, _, step, receipt = _lane('frozen-native-shards', NATIVE_LOADER_LANE)
+    _assert_receipt_gate(tmp_path, step, receipt, NATIVE_LOADER_PROOFS, mutation,
+                         ['unqualified-' + name for name in NATIVE_LOADER_PROOFS])
