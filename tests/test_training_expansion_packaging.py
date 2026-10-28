@@ -214,3 +214,22 @@ def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework
             assert archive.extractfile(prefix + relative).read() == path.read_bytes(), relative
         assert not any('/docs/plans/' in name or name.endswith(('.pt', '.safetensors', '.nsys-rep', '.sqlite', '.env'))
                        for name in archive.getnames())
+
+
+def test_official_installed_ci_requires_actual_native_proof_without_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())
+    job = workflow['jobs']['installed-official-lifecycle']
+    assert job['env']['DMD_OFFICIAL_INSTALLED_CPU'] == '1'
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    proof = 'test_actual_installed_official_sd15_sdxl_self_forcing_resume_export_new_inputs'
+    for value in ('torch==2.10.0', '.[train,test,dmd2,self-forcing-official]',
+                  'recipes/dmd2_sd15/fetch_source.py',
+                  'recipes/self_forcing_official/fetch_source.py',
+                  'tests/test_framework_official_install.py::' + proof,
+                  'scripts/check_cpu_receipt.py installed-official-cpu.xml',
+                  '--require ' + proof):
+        assert value in commands
+    assert '--deselect' not in commands and '-k ' not in commands
