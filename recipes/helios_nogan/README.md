@@ -2,6 +2,9 @@
 
 **Original protocol:** Hierarchical AR; G1/C5/EMA5.
 
+For native complete-checkpoint export and independent new-prompt decoded video,
+see [Native Student output](NATIVE_OUTPUT.md).
+
 Explicit safe-incumbent cohort, not the older locked 94-second recipe. Later partial-retention derivatives remain independently pinned.
 
 ## Inspect the actual adapter (no GPU execution)

@@ -169,23 +169,25 @@ def reference_process_group():
         yield ownership
 
 
-def run_reference(config, admitted=None, source=None, *, admit=None):
+def run_reference(config, admitted=None, source=None, *, admit=None, native_output=None):
     """Public execution admits all local source/config files collectively first."""
-    return _run(config, admitted, source, admit=admit, optimized=False)
+    return _run(config, admitted, source, admit=admit, optimized=False, native_output=native_output)
 
 
-def run_safe_stream(config, admitted=None, source=None, *, admit=None):
+def run_safe_stream(config, admitted=None, source=None, *, admit=None, native_output=None):
     """Same original process/setup owner; explicit opt-in optimized controls."""
-    return _run(config, admitted, source, admit=admit, optimized=True)
+    return _run(config, admitted, source, admit=admit, optimized=True, native_output=native_output)
 
 
-def _run(config, admitted, source, *, admit, optimized):
+def _run(config, admitted, source, *, admit, optimized, native_output=None):
+    require(native_output is None or config.trainer.get("resume_from") and not config.trainer.get("checkpoint_every"),
+            "native output requires complete checkpoint and no training saves", path="helios.training")
     if admit is None:
         import torch.distributed as dist
         if dist.is_initialized():
-            return _run_admitted(config, admitted, source, optimized=optimized)
+            return _run_admitted(config, admitted, source, optimized=optimized, native_output=native_output)
         with reference_process_group() as ownership:
-            return _run_admitted(config, admitted, source, ownership=ownership, optimized=optimized)
+            return _run_admitted(config, admitted, source, ownership=ownership, optimized=optimized, native_output=native_output)
     from . import distributed
     with reference_process_group() as ownership:
         _, source, _, admitted = distributed.checked(admit, "Helios original source/config/input admission")
@@ -199,10 +201,11 @@ def _run(config, admitted, source, *, admit, optimized):
                 ("LOCAL_KERNELS", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF")),
                 "reference attention/allocator environment differs", path="helios.training"), "Helios original environment")
         backend = distributed.checked(_backend, "Helios original import/dependency admission")
-        return _run_admitted(config, admitted, source, ownership=ownership, backend=backend, optimized=optimized)
+        return _run_admitted(config, admitted, source, ownership=ownership, backend=backend, optimized=optimized,
+                             native_output=native_output)
 
 
-def _run_admitted(config, admitted, source, *, ownership=None, backend=None, optimized=False):
+def _run_admitted(config, admitted, source, *, ownership=None, backend=None, optimized=False, native_output=None):
     """Entered on every existing torchrun rank; never launches/reserves nodes."""
     from .helios_lifecycle import original_training_scope, admit_original_output
     if ownership is None:
@@ -239,6 +242,10 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
         identity["execution_policy"] = identity.pop("reference_policy")
     binding = {"config": config, "stream": stream, "identity": identity, "assets": admitted["assets"],
                "portable_reference":portable, **(ownership or {})}
+    if native_output is not None:
+        require(config.trainer.get("resume_from") and not config.trainer.get("checkpoint_every"),
+                "native output requires complete checkpoint and no training saves", path="helios.training")
+        binding["native_output"] = native_output
     if optimized:
         binding["implementation"] = admitted["implementation"]
     old = sys.argv
@@ -248,6 +255,10 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
             # Reject collectively outside P0's catch-all receipt writer. Record
             # publication eligibility only after all ranks admit their paths.
             admit_original_output(rank=int(os.environ["RANK"]))
+            if native_output is not None:
+                from .helios_lifecycle import _plane
+                with _plane(binding):
+                    native_output.admit()
             return (backend or _backend()).main()
     finally:
         sys.argv = old

@@ -109,6 +109,9 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
         result["capabilities"].update(modes=["reference"],
+            export=dict(supported=True, scope="native CURRENT unmerged G and actual Wan2.1 VAE; output-only complete restore",
+                        standalone_generation="independent Program new-prompt decoded video",
+                        verification="SOURCE_AND_CPU_ONLY; native pretrained GPU output pending"),
             bootstrap=dict(global_step=10, versions=dict(generator=2, critic=10, ema=10),
                 cold_start_supported=False,
                 asset_contract="distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"),
@@ -699,7 +702,11 @@ def export_native(config: TrainingConfig, checkpoint, output):
     config. Ordinary native training continues to reject trainer.export, so
     no output knob is silently ignored by a training invocation.
     """
-    _require(_workload(config) == 'W1', 'portable native output currently supports W1 only')
+    workload = _workload(config)
+    if workload == 'W2':
+        from .helios_native_inference import export_native as export_helios
+        return export_helios(config, checkpoint, output)
+    _require(workload == 'W1', 'portable native output currently supports W1/W2 only')
     _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1',
              'native W1 export requires its complete fresh-stream checkpoint binding')
     raw = config.to_dict()

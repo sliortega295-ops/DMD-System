@@ -33,7 +33,8 @@ def test_versioned_w2_reference_options_do_not_widen_fixed_measurements(tmp_path
         "cold_start_supported":False, "asset_contract":"distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"}
     assert described["capabilities"]["resume"]["supported"] is True
     assert described["capabilities"]["generate"]["supported"] is False
-    assert described["capabilities"]["export"]["supported"] is False
+    assert described["capabilities"]["export"]["supported"] is True
+    assert "CURRENT" in described["capabilities"]["export"]["scope"]
     raw = conf.to_dict()
     raw["data"] = {}
     raw["execution"]["mode"] = "plan"

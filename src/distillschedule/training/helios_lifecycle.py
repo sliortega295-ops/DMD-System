@@ -232,8 +232,9 @@ def seed_original_runtime(*, torch, rank):
 def validate_progress(header, binding):
     count = len(binding["stream"]["cohorts"])
     cycle = header["cycle"]
+    within_stream = type(cycle) is int and (cycle <= count if binding.get("native_output") is not None else cycle < count)
     require(header["policy"] == binding["checkpoint_policy"] and type(cycle) is int
-            and 0 < cycle == header["cursor"] < count and header["versions"] == expected_versions(cycle),
+            and 0 < cycle == header["cursor"] and within_stream and header["versions"] == expected_versions(cycle),
             "restart must be an incomplete-stream complete G1/C5/EMA5 boundary", path="helios.training")
 
 
@@ -271,6 +272,17 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             require(_versions(generator, critic, ema) == restored["versions"],
                     "restored original clocks differ from checkpoint", path="helios.training")
             del restored
+        if binding.get("native_output") is not None:
+            require(resume is not None, "native output requires a complete checkpoint", path="helios.training")
+            from types import SimpleNamespace
+            view = SimpleNamespace(generator=generator, args=args, request=binding["stream"]["identity"]["request"])
+            exported = binding["native_output"].publish(view, manifest=header, identity=binding["identity"])
+            result.update(schema_version="distillschedule.helios_native_output.v1", status="EXPORTED",
+                inference_export=exported, completed_cycles=0, resume_cycle=start,
+                final_versions=_versions(generator, critic, ema), numerical_status="NOT_RUN",
+                formal_timing_eligible=False, claimable_speedup=False,
+                output_only=dict(cycles=0, capture=0, optimizer_updates=0, ema_updates=0, merge_count=0))
+            return result
     # A value object only for _prepare_cycle's graph/call census. No generated
     # plan is selected, no winner inherited, and receipt_binding is not bypassed
     # for a saved plan: those combinations are rejected by public admission.

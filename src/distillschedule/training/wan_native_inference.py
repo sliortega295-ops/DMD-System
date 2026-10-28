@@ -94,22 +94,27 @@ class _FreshNoiseInputs:
 
 def fresh_noise_inputs(p):
     """Generate four explicit independent streams; preserve caller CPU/Python RNG."""
-    from distillschedule.strategies.wan_capture import input_stream
     from distillschedule.strategies.wan_task import OriginalWanTask
-    from runtime.official_baseline import stable_block_noise
     require(p.get('noise_protocol') == noise_protocol(), 'fresh inference noise protocol changed')
     require(type(p.get('seed')) is int and 0 <= p['seed'] < 2**63, 'invalid fresh inference seed')
     task = OriginalWanTask.from_dict(p['task'])
     require(p['geometry']['noise_shape'] == list(task.latent_shape) and p['native']['rollout'] == _rollout(task),
             'fresh inference shape/one-section/last-step rollout contract changed')
+    return _noise_inputs(task, p['seed'])
+
+
+def _noise_inputs(task, seed):
+    """Shared native geometry sampler; each public caller admits its own task."""
+    from distillschedule.strategies.wan_capture import input_stream
+    from runtime.official_baseline import stable_block_noise
     values = {}
     for name in ('entry_noise','rollout_noise'):
-        with input_stream(p['seed'],NOISE_SCHEMA,name):
+        with input_stream(seed,NOISE_SCHEMA,name):
             values[NOISE_PREFIX+'/'+name] = torch.randn(task.latent_shape,dtype=torch.bfloat16,device='cpu')
     b,c,t,_,_ = task.latent_shape
     for stage in (1,2):
         name = 'block_noise/'+str(stage);h,w = task.stage_spatial_shapes[stage]
-        with input_stream(p['seed'],NOISE_SCHEMA,name):
+        with input_stream(seed,NOISE_SCHEMA,name):
             noise = stable_block_noise(b*c*t*(h//2)*(w//2),device='cpu',dtype=torch.float32)
         values[NOISE_PREFIX+'/'+name] = noise.view(b,c,t,h//2,w//2,2,2).permute(
             0,1,2,3,5,4,6).reshape(b,c,t,h,w)
@@ -252,12 +257,13 @@ def _budget(budget):
             'explicit generator/codec/transient/all-rank capacity budget required')
 
 
-def _generator(p, *, meta):
+def _generator(p, *, meta, lora_rank=None):
     from peft import LoraConfig
     from distillschedule.adapters.helios.reference_model import load_reference_model_class
     from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
     cls = load_reference_model_class(backend='torch-sdpa')
     a = p['architecture']
+    rank = p['task']['lora_rank'] if lora_rank is None else lora_rank
     require(isinstance(a,dict) and set(a) == set(inspect.signature(cls.__init__).parameters)-{'self'},
             'complete original Generator constructor required')
     require(all(a[k] == v for k,v in TRANSFORMER_ADDITIONAL_KWARGS.items())
@@ -274,7 +280,7 @@ def _generator(p, *, meta):
     with torch.device('meta' if meta else 'cpu'):
         g = cls(**a)
         targets = sorted(set(_all_linear_targets(g)+['patch_short','patch_mid','patch_long']))
-        require(p['peft'] == dict(r=p['task']['lora_rank'],lora_alpha=float(p['task']['lora_rank']),
+        require(p['peft'] == dict(r=rank,lora_alpha=float(rank),
             lora_dropout=0.,init_lora_weights='gaussian',target_modules=targets,exclude_modules=['down','up']),
             'full original LoRA/pyramid targets changed; unmerged FP32 LoRA required')
         for name,tensor in g.named_parameters():
@@ -383,6 +389,11 @@ def refuse_training(*args,**kwargs):
 
 
 def generate(state, feeds, parameters):
+    return _generate(state, feeds, parameters, prepare_noise=fresh_noise_inputs)
+
+
+def _generate(state, feeds, parameters, *, prepare_noise):
+    """Same native call/RNG transaction for admitted Wan and Helios tasks."""
     from distillschedule.strategies.wan_capture import native_primitives
     from .checkpoint import rng_state, restore_rng
     p,g = state['inference'],state['generator'].model
@@ -409,7 +420,7 @@ def generate(state, feeds, parameters):
                 # Fresh labelled CPU draws enter the original public operation
                 # seam. Native forward/scheduler/flow/history geometry are intact;
                 # no helper binding or global compatibility flag is modified.
-                inputs = fresh_noise_inputs(p)
+                inputs = prepare_noise(p)
                 result = native.post.run_generator(args=SimpleNamespace(training_config=SimpleNamespace(**p['native']['args'])),
                     accelerator=SimpleNamespace(device=device,is_main_process=True),transformer=g,
                     scheduler=native.scheduler(**p['native']['scheduler']),noise=inputs.shape_noise,
