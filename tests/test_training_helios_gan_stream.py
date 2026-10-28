@@ -39,6 +39,8 @@ def test_public_stream_admits_100_complete_cycles_not_legacy_two_cycle(tmp_path)
     report = describe_native(config)
     assert report["native_api"].endswith("helios_gan_training:run_training")
     assert report["capabilities"]["resume"]["supported"] is True
+    assert report["capabilities"]["export"]["supported"] is True
+    assert "CURRENT" in report["capabilities"]["export"]["scope"]
     assert report["gpu_execution"] == "NOT_RUN"
 
 
@@ -907,7 +909,7 @@ def test_native_cycles_layout_binds_identity_and_checkpoint_policy(cpu_native_cy
     assert calls[0]["critic"] is kwargs["critic_engine"]
 
 
-@pytest.mark.parametrize("outcome", ["success", "failure"])
+@pytest.mark.parametrize("outcome", ["success", "failure", "output", "output-invalid"])
 def test_installed_stream_wrapper_restores_real_hooks_and_policy_caches(
         cpu_native_cycle_admission, monkeypatch, outcome):
     """Real installer/runner/SAC bind and unwind; NO native math/kernel proof.
@@ -1014,10 +1016,14 @@ def test_installed_stream_wrapper_restores_real_hooks_and_policy_caches(
         core.state["current_fsdp_source"] = stream.validate_fsdp_source(fsdp_arg)
         core.state["checkpoint_source"] = "CPU_CHECKPOINT_STUB_NOT_NATIVE_SOURCE_ADMISSION"
     monkeypatch.setattr(stream.NativeDownStreamSAC, "validate_sources", cpu_checkpoint_source)
+    output_only = outcome.startswith("output")
+    if output_only:
+        binding["native_output"] = object()
     aborts, captured = [], []
     original_abort = stream.NativeDownStreamSAC.abort
     def record_abort(core):
-        assert core.current is not None and core.stores and core.rows
+        if not output_only:
+            assert core.current is not None and core.stores and core.rows
         aborts.append(core)
         original_abort(core)
     monkeypatch.setattr(stream.NativeDownStreamSAC, "abort", record_abort)
@@ -1031,7 +1037,8 @@ def test_installed_stream_wrapper_restores_real_hooks_and_policy_caches(
     loras = [m for model in (generator_model, critic_model) for m in model.modules() if isinstance(m, LoraLayer)]
     merges = [(layer, layer.merge) for layer in loras]
     all_modules = list(generator_model.modules()) + list(critic_model.modules())
-    error, returned = RuntimeError("INJECTED_AFTER_REAL_STREAM_CORE_BINDING"), object()
+    error = RuntimeError("INJECTED_AFTER_REAL_STREAM_CORE_BINDING")
+    returned = kwargs["result"] if output_only else object()
     def execute(**kw):
         core = binding["gan_core"]
         captured.append(core)
@@ -1049,6 +1056,13 @@ def test_installed_stream_wrapper_restores_real_hooks_and_policy_caches(
             core.stores["CPU_POLICY_REFERENCE"] = {"queue": [object()]}
             core.current, core.cohort, core.rows = {"CPU_ACTIVE_GRAPH": True}, 0, {(1000, "B1_DENOISE"): 11040}
             raise error
+        if output_only:
+            assert core.started_at is core.completed is None
+            kw["result"].update(status="EXPORTED", completed_cycles=0,
+                output_only=dict(cycles=0, capture=0, optimizer_updates=0, ema_updates=0, merge_count=0))
+            if outcome == "output-invalid":
+                core.calls = 1
+            return returned
         # Synthetic drained completion exercises the real finish guard only;
         # it is not a completed training cycle or an executed-effects receipt.
         core.started_at, core.completed = 0, 1
@@ -1075,15 +1089,18 @@ def test_installed_stream_wrapper_restores_real_hooks_and_policy_caches(
                     assert_restored()
         except RuntimeError as raised:
             assert outcome == "failure" and raised is error
+        except ValueError as raised:
+            assert outcome == "output-invalid" and "UNTOUCHED_OUTPUT_ONLY_GAN_STREAM" in str(raised)
         else:
-            assert outcome == "success"
+            assert outcome in ("success", "output")
     assert len(captured) == len(loads) == 1 and device_calls == [0]
     assert kwargs["result"]["build"]["gan_manual_runtime"] is receipt
     assert receipt["down40"] is captured[0].state and receipt["runner_calls"] == 1
-    assert receipt["restored"] is (outcome == "success")
-    assert receipt.get("failed", False) is (outcome == "failure")
-    assert captured[0].state.get("failed", False) is (outcome == "failure")
-    assert aborts == ([captured[0]] if outcome == "failure" else [])
+    failed = outcome in ("failure", "output-invalid")
+    assert receipt["restored"] is (not failed)
+    assert receipt.get("failed", False) is failed
+    assert captured[0].state.get("failed", False) is failed
+    assert aborts == ([captured[0]] if failed else [])
     assert receipt["numerical_status"] == "REVIEW" and receipt["formal_speedup_eligible"] is False
     assert helios_lifecycle.current_training() is None
 

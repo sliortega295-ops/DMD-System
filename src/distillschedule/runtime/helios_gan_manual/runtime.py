@@ -245,7 +245,10 @@ def manual_runtime_scope(p0):
                     binding['gan_core'] = core
                     try:
                         result = original(**kwargs)
-                        core.finish()
+                        if binding.get('native_output') is None:
+                            core.finish()
+                        else:
+                            training.validate_output_runtime(core, result)
                         _audit_unmerged(state,(generator,critic),'AFTER_COMPLETE_STREAM')
                     except BaseException:
                         core.abort()

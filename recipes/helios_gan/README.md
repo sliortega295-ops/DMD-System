@@ -46,6 +46,9 @@ complete source/mechanism/runtime mapping and the
 reference/fresh-input and saved-plan paths. CPU admission does not certify
 GPU execution, numerical parity, quality or speedup.
 
-Portable current-Generator CPU export and explicit native latent diagnostics:
-[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Default generation still
-requires a real decoder; this recipe supplies no decoded-video or quality claim.
+For the full fresh-stream recipe, complete native checkpoint → current
+unmerged Student + Wan2.1 VAE → independent new-prompt decoded video:
+[NATIVE_OUTPUT.md](NATIVE_OUTPUT.md). This includes source/CPU acceptance;
+pretrained world16/GPU output and generation quality are separate checks.
+The older CPU-only diagnostic remains at
+[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md).

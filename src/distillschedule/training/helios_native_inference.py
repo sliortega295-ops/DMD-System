@@ -88,14 +88,18 @@ def _native(value, task):
 
 
 def fresh_noise_inputs(p):
+    return _fresh_noise_inputs(p, variant='no-gan')
+
+
+def _fresh_noise_inputs(p, *, variant):
     task = OriginalHeliosRequest.from_dict(p['task'])
-    require(task.variant == 'no-gan' and p['noise_protocol'] == video.noise_protocol()
+    require(task.variant == variant and p['noise_protocol'] == video.noise_protocol()
         and p['geometry']['noise_shape'] == list(task.latent_shape), 'W2 fresh inference identity changed')
     _native(p['native'], task)
     return video._noise_inputs(task, p['seed'])
 
 
-def _probe(parameters):
+def _probe(parameters, *, schema=SCHEMA, variant='no-gan', source_factory=None):
     """Admit source, geometry and meta inventory before a real model allocation."""
     from .checkpoint import rng_state, restore_rng
     require(isinstance(parameters, dict) and set(parameters) <= {'schema_version', 'precision', 'source',
@@ -104,11 +108,11 @@ def _probe(parameters):
     p = video.plain({k: v for k, v in parameters.items() if k != 'device'})
     require(set(p) == {'schema_version', 'precision', 'source', 'runtime', 'architecture', 'peft', 'task',
         'native', 'noise_protocol', 'geometry', 'budget', 'seed', 'evidence_kind', 'codec'}
-        and p['schema_version'] == SCHEMA and p['precision'] == PRECISION, 'explicit W2 inference ABI required')
-    require(p['source'] == inference_source() and p['runtime'] == video.runtime_identity(),
+        and p['schema_version'] == schema and p['precision'] == PRECISION, 'explicit native Helios inference ABI required')
+    require(p['source'] == (source_factory or inference_source)() and p['runtime'] == video.runtime_identity(),
             'portable W2 source/runtime changed')
     task = OriginalHeliosRequest.from_dict(p['task'])
-    require(task.variant == 'no-gan' and p['evidence_kind'] in video.EVIDENCE_KINDS
+    require(task.variant == variant and p['evidence_kind'] in video.EVIDENCE_KINDS
         and p['codec']['evidence_kind'] == p['evidence_kind']
         and type(p['seed']) is int and 0 <= p['seed'] < 2**63, 'W2 variant/evidence/seed changed')
     _budget(p['budget'])
@@ -154,15 +158,20 @@ def _probe(parameters):
 
 
 def _metadata(p):
-    return dict(schema_version=SCHEMA, scope='NATIVE_W2_CURRENT_G_DECODED_VIDEO', precision=PRECISION,
+    role = 'W3' if p['task']['variant'] == 'gan' else 'W2'
+    return dict(schema_version=p['schema_version'], scope='NATIVE_' + role + '_CURRENT_G_DECODED_VIDEO', precision=PRECISION,
         parameters=deepcopy(p), generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA',
         evidence_kind=p['evidence_kind'], training_resume='NOT_SUPPORTED_PORTABLE_INFERENCE_ONLY',
         quality_validation='NOT_RUN', claimable_speedup=False)
 
 
 def build_inference_model(parameters):
+    return _build_inference_model(parameters, probe=_probe, generate_callback=generate)
+
+
+def _build_inference_model(parameters, *, probe, generate_callback, refuse=video.refuse_training):
     device = video._environment(parameters.get('device', 'cpu'))
-    p, _, _, sizes = _probe(parameters)
+    p, _, _, sizes = probe(parameters)
     host_bytes = sizes['host_bytes'] + (sizes['device_bytes'] if device.type == 'cpu' else 0)
     _host_admit(host_bytes, p['budget']['host_reserve_bytes'])
     _device_admit(device, sizes['device_bytes'], p['budget']['device_reserve_bytes'])
@@ -174,22 +183,22 @@ def build_inference_model(parameters):
     def decode(generated, options):
         require(not options, 'codec overrides are not supported')
         return video.decode(state, generated)
-    return ModelComponents(state=state, metadata=_metadata(p), generate=generate, decode=decode,
-                           admit_training=video.refuse_training).validate()
+    return ModelComponents(state=state, metadata=_metadata(p), generate=generate_callback, decode=decode,
+                           admit_training=refuse).validate()
 
 
 def generate(state, feeds, options):
     return video._generate(state, feeds, options, prepare_noise=fresh_noise_inputs)
 
 
-def _project(view, codec, request):
+def _project(view, codec, request, *, schema=SCHEMA, variant='no-gan', source_factory=None, factory=FACTORY):
     from distillschedule.open_workload.torch_backend import unwrap_module
     from .helios_inference import SHIFT_KEYS
     g = unwrap_module(view.generator.module)
     require(set(g.peft_config) == {'default'} and all(not getattr(m, 'merged', False) for m in g.modules()),
             'CURRENT unmerged default G required; no merged shadow or EMA substitution')
     peft, task = g.peft_config['default'], OriginalHeliosRequest.from_dict(view.request)
-    p = video.plain(dict(schema_version=SCHEMA, precision=PRECISION, source=inference_source(),
+    p = video.plain(dict(schema_version=schema, precision=PRECISION, source=(source_factory or inference_source)(),
         runtime=video.runtime_identity(), architecture={k: v for k, v in dict(g.config).items() if not k.startswith('_')},
         peft=dict(r=peft.r, lora_alpha=peft.lora_alpha, lora_dropout=peft.lora_dropout,
                   init_lora_weights=peft.init_lora_weights, target_modules=sorted(peft.target_modules),
@@ -200,7 +209,7 @@ def _project(view, codec, request):
             prompt_shape=request['prompt_shape'], video_shape=[task.video_frames, task.video_height, task.video_width, 3],
             fps=request['fps']), budget=request['budget'], seed=request['seed'], evidence_kind=request['evidence_kind'],
         codec=video.codec_parameters(codec, evidence_kind=request['evidence_kind'], provenance=request['codec']['provenance'])))
-    p, probe, codec_probe, sizes = _probe(p)
+    p, probe, codec_probe, sizes = _probe(p, schema=schema, variant=variant, source_factory=source_factory)
     for live, expected, label in ((g, probe, 'G'), (codec, codec_probe, 'codec')):
         actual, target = live.state_dict(), expected.state_dict()
         require(actual.keys() == target.keys() and all(actual[k].shape == target[k].shape
@@ -217,10 +226,13 @@ def _project(view, codec, request):
     _host_admit(3 * codec_bytes * local_world + (primary_bytes if node == 0 else 0), p['budget']['host_reserve_bytes'])
     _device_admit(next(g.parameters()).device, sizes['transient_bytes'], p['budget']['device_reserve_bytes'])
     components = ModelComponents(state=dict(generator=video.CurrentGenerator(g), codec=codec), metadata=_metadata(p)).validate()
-    return InferenceProjection(components, FACTORY, p).validate()
+    return InferenceProjection(components, factory, p).validate()
 
 
 class NativeOutputRequest:
+    export_schema = EXPORT_SCHEMA
+    factory = FACTORY
+
     def __init__(self, value, output):
         self.value, self.output = video.plain(value), Path(output).expanduser().resolve()
         self.config_path = self.output.with_name(self.output.name + '.inference.json')
@@ -230,7 +242,7 @@ class NativeOutputRequest:
         def local():
             p = self.value
             require(isinstance(p, dict) and set(p) == {'schema_version', 'seed', 'prompt_shape', 'fps', 'budget', 'codec', 'evidence_kind'}
-                and p['schema_version'] == EXPORT_SCHEMA, 'explicit W2 trainer.export policy required')
+                and p['schema_version'] == self.export_schema, 'explicit native Helios trainer.export policy required')
             _budget(p['budget'])
             require(type(p['seed']) is int and 0 <= p['seed'] < 2**63 and p['evidence_kind'] in video.EVIDENCE_KINDS
                 and type(p['fps']) is int and 1 <= p['fps'] <= 120
@@ -253,21 +265,24 @@ class NativeOutputRequest:
         value = distributed.checked(local, 'W2 native output codec/capacity admission')
         require(all(row == value for row in distributed.gather(value)), 'ranks disagree on W2 codec/output request')
 
+    def project(self, view):
+        return _project(view, self.codec, self.value)
+
     def publish(self, view, *, manifest, identity):
         from .inference import publish_export
         from .plugins import load_callable
-        projection = distributed.checked(lambda: _project(view, self.codec, self.value), 'native W2 CURRENT G projection')
-        _, source = distributed.checked(lambda: load_callable(FACTORY), 'W2 inference factory source')
+        projection = distributed.checked(lambda: self.project(view), 'native Helios CURRENT G projection')
+        _, source = distributed.checked(lambda: load_callable(self.factory), 'Helios inference factory source')
         metadata = dict(projection.components.metadata)
         exported = publish_export(projection.components, self.output,
-            model=dict(factory=FACTORY, source=source, parameters=projection.parameters, metadata=metadata),
+            model=dict(factory=self.factory, source=source, parameters=projection.parameters, metadata=metadata),
             identity=dict(model=source, model_metadata=metadata, training_provenance=identity),
             cycle=manifest['cycle'], primary_only=True)
         def write_config():
             import uuid
             temporary = self.config_path.with_name('.' + self.config_path.name + '.tmp-' + uuid.uuid4().hex)
             config = video.standalone_config(exported, self.config_path)
-            config['algorithm']['factory'] = 'distillschedule.training.helios_native_inference:refuse_training'
+            config['algorithm']['factory'] = self.factory.rpartition(':')[0] + ':refuse_training'
             try:
                 temporary.write_text(json.dumps(config, indent=2, sort_keys=True) + '\n')
                 os.link(temporary, self.config_path)

@@ -131,6 +131,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         result.update(native_api="distillschedule.training.helios_gan_training:run_training",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"]["export"] = dict(supported=True,
+            scope="native CURRENT unmerged G and Wan2.1 VAE after complete GAN/head/Adam/EMA restore; N70 off",
+            standalone_generation="independent Program new-prompt decoded video",
+            verification="SOURCE_AND_CPU_ONLY; native pretrained GPU output pending")
         result["capabilities"].update(modes=["manual"],
             cycles=dict(min=2, fresh_inputs="original_helios_gan_cohort_stream.v1", finite_prepared_stream=True,
                         scheduler="original native constant; no invented finite horizon"),
@@ -703,10 +707,13 @@ def export_native(config: TrainingConfig, checkpoint, output):
     no output knob is silently ignored by a training invocation.
     """
     workload = _workload(config)
+    if workload == 'W3':
+        from .helios_gan_native_inference import export_native as export_gan
+        return export_gan(config, checkpoint, output)
     if workload == 'W2':
         from .helios_native_inference import export_native as export_helios
         return export_helios(config, checkpoint, output)
-    _require(workload == 'W1', 'portable native output currently supports W1/W2 only')
+    _require(workload == 'W1', 'portable native output currently supports W1/W2/W3 only')
     _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1',
              'native W1 export requires its complete fresh-stream checkpoint binding')
     raw = config.to_dict()

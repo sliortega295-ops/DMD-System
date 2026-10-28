@@ -244,6 +244,22 @@ def _checkpoint_policy(identity, *, optimized):
             "identity_sha256": fingerprint(identity)}
 
 
+def publish_native_output(*, args, generator, critic, ema, binding, manifest, result):
+    """Shared post-restore output seam; each algorithm owns its version gate."""
+    from types import SimpleNamespace
+    from distillschedule.runtime.helios_planner_cycle import _versions
+    require(binding.get("native_output") is not None and binding["config"].trainer.get("resume_from"),
+            "native output requires a complete checkpoint", path="helios.training")
+    view = SimpleNamespace(generator=generator, args=args, request=binding["stream"]["identity"]["request"])
+    exported = binding["native_output"].publish(view, manifest=manifest, identity=binding["identity"])
+    result.update(schema_version="distillschedule.helios_native_output.v1", status="EXPORTED",
+        inference_export=exported, completed_cycles=0, resume_cycle=manifest["cycle"],
+        final_versions=_versions(generator, critic, ema), numerical_status="NOT_RUN",
+        formal_timing_eligible=False, claimable_speedup=False,
+        output_only=dict(cycles=0, capture=0, optimizer_updates=0, ema_updates=0, merge_count=0))
+    return result
+
+
 def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, negative,
                    rank, device, binding, result, progress=None):
     """One original preparation/dispatch per fresh cohort; persistent owners."""
@@ -274,15 +290,8 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             del restored
         if binding.get("native_output") is not None:
             require(resume is not None, "native output requires a complete checkpoint", path="helios.training")
-            from types import SimpleNamespace
-            view = SimpleNamespace(generator=generator, args=args, request=binding["stream"]["identity"]["request"])
-            exported = binding["native_output"].publish(view, manifest=header, identity=binding["identity"])
-            result.update(schema_version="distillschedule.helios_native_output.v1", status="EXPORTED",
-                inference_export=exported, completed_cycles=0, resume_cycle=start,
-                final_versions=_versions(generator, critic, ema), numerical_status="NOT_RUN",
-                formal_timing_eligible=False, claimable_speedup=False,
-                output_only=dict(cycles=0, capture=0, optimizer_updates=0, ema_updates=0, merge_count=0))
-            return result
+            return publish_native_output(args=args, generator=generator, critic=critic, ema=ema, binding=binding,
+                                         manifest=header, result=result)
     # A value object only for _prepare_cycle's graph/call census. No generated
     # plan is selected, no winner inherited, and receipt_binding is not bypassed
     # for a saved plan: those combinations are rejected by public admission.

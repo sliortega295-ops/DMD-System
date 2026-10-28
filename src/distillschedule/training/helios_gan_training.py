@@ -146,7 +146,9 @@ def _checkpoint_policy(identity):
 
 def validate_progress(header, binding):
     cycle = header["cycle"]
-    require(type(cycle) is int and 0 < cycle == header["cursor"] < len(binding["stream"]["cohorts"])
+    count = len(binding["stream"]["cohorts"])
+    within_stream = type(cycle) is int and (cycle <= count if binding.get("native_output") is not None else cycle < count)
+    require(type(cycle) is int and 0 < cycle == header["cursor"] and within_stream
             and header["versions"] == expected_versions(cycle) and header["policy"] == binding["checkpoint_policy"],
             "GAN restart requires an incomplete-stream complete G1/C5/EMA1 boundary", path="helios.gan.training")
 
@@ -268,6 +270,17 @@ def validate_boundary(state, generator, critic, trace):
             validate()
 
 
+def validate_output_runtime(core, result):
+    """Output restores state, but must not start or pretend to finish training."""
+    require(isinstance(result, dict) and result.get("status") == "EXPORTED"
+            and result.get("completed_cycles") == 0
+            and result.get("output_only") == dict(cycles=0, capture=0, optimizer_updates=0, ema_updates=0, merge_count=0)
+            and core.started_at is core.completed is core.cohort is core.current is None
+            and core.calls == 0 and not core.rows and not core.stores
+            and core.state["combined_context_count"] == 0 and not core.state["audit_errors"],
+            "UNTOUCHED_OUTPUT_ONLY_GAN_STREAM", path="helios.gan.training")
+
+
 def run_native_cycles(*, p0, args, policy, result, output, rank, device, logical,
                       generator_engine, critic_engine, ema, diagnostics, negative, cfg, generator_free_memory):
     from .helios_lifecycle import current_training, _plane
@@ -310,6 +323,11 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
             restored = restore_checkpoint(resume, state, identity=binding["identity"])
             start = restored["cycle"]
             require(_versions(generator, critic, ema) == expected_versions(start), "restored GAN clocks differ", path="helios.gan.training")
+        if binding.get("native_output") is not None:
+            require(resume is not None, "GAN output requires complete checkpoint", path="helios.gan.training")
+            from .helios_lifecycle import publish_native_output
+            return publish_native_output(args=args, generator=generator, critic=critic, ema=ema, binding=binding,
+                                         manifest=header, result=result)
     stream = binding["stream"]
     result.update(schema_version=SCHEMA, status="RUNNING", mode="manual", preset=PRESET_ID,
         same_process=True, initializations=1, cycles=[], source_cohort_policy="fresh_step_qualified_original_GAN_inputs",
@@ -375,9 +393,11 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
     return result
 
 
-def run_training(config, *, admit):
+def run_training(config, *, admit, native_output=None):
     from .helios_worker import _backend
     from .helios_lifecycle import original_training_scope, admit_original_output
+    require(native_output is None or config.trainer.get("resume_from") and not config.trainer.get("checkpoint_every"),
+            "GAN output requires complete checkpoint and no training saves", path="helios.gan.training")
     with distributed.world16_reference_process_group("W3") as ownership:
         _, source, _, admitted = distributed.checked(admit, "Helios GAN source/config/input admission")
         distributed.checked(lambda: require(not source["identity"]["dirty"], "execution requires clean committed source", path="helios.gan.training"),
@@ -390,11 +410,17 @@ def run_training(config, *, admit):
             "execution_policy":admitted["selected"], "bootstrap_logical_hash":admitted["bootstrap"]["logical_manifest_hash"]}
         binding = {"config":config, "stream":admitted["stream"], "assets":admitted["assets"], "identity":identity,
                    "gan_stream":True, "portable_reference":True, "implementation":admitted["implementation"], **ownership}
+        if native_output is not None:
+            binding["native_output"] = native_output
         old = sys.argv
         try:
             sys.argv = ["original-helios-gan-stream-v1", *admitted["argv"]]
             with original_training_scope(binding):
                 admit_original_output(rank=int(os.environ["RANK"]))
+                if native_output is not None:
+                    from .helios_lifecycle import _plane
+                    with _plane(binding):
+                        native_output.admit()
                 return backend.main()
         finally:
             sys.argv = old
