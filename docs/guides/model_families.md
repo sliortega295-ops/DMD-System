@@ -51,6 +51,16 @@ shape/precision disagreement, wrong prediction meaning and incomplete restore
 state fail before training or output publication. A compatible shape alone is
 not permission to substitute epsilon, velocity, flow or x0.
 
+The modern-flow native loader checks every safetensors shard header before
+constructing the model, then copies and releases one shard at a time instead
+of accumulating all shards in a second CPU checkpoint. A single-file checkpoint
+is still one full-size shard. Native tied parameters and
+constructor-owned buffers are preserved; conflicting aliases or nonfinite
+weights are rejected. Explicit BF16 storage-to-FP32 loading remains a storage
+conversion, not a change to runtime precision. Allow memory for the concrete
+model, the current shard and conversion temporaries; parameter-count admission
+alone is not a total host-memory or multi-role capacity estimate.
+
 See the runnable source-specific guides:
 
 - [SD1.5 DMD2](../../recipes/dmd2_sd15/README.md)

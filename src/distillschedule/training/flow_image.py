@@ -180,12 +180,12 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
                 and set(weight_map.values()) == {p.name for p in weights}, 'incomplete safe weight shard index')
     else:
         require(len(weights) == 1, 'multiple safe shards need an explicit complete index')
-    state = {}
+    headers = {}
     for path in weights:
         with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
             for raw_key in handle.keys():
                 key = rename(raw_key)
-                require(key in layout and key not in state and (weight_map is None or weight_map.get(raw_key) == path.name),
+                require(key in layout and key not in headers and (weight_map is None or weight_map.get(raw_key) == path.name),
                         'unexpected/duplicate/wrong-shard native safe weight: ' + key)
                 header = handle.get_slice(raw_key)
                 expected_dtype = layout[key].dtype
@@ -194,12 +194,17 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
                 require(tuple(header.get_shape()) == tuple(layout[key].shape)
                         and header.get_dtype() in allowed_dtype,
                         'native safetensor shape/dtype mismatch; FP32-only qualification: ' + key)
-                # Record headers before loading any payload from this shard.
-                state[key] = None
-    require(complete(set(state)) and (weight_map is None or set(state) == {rename(k) for k in weight_map}),
+                # Admit every shard before constructing a concrete model.
+                headers[key] = path
+    require(complete(set(headers)) and (weight_map is None or set(headers) == {rename(k) for k in weight_map}),
             'incomplete native weights; random fallback forbidden')
-    for path in weights:
+
+    def copy_shard(path):
+        # This scope owns all tensor payload references: after return, the next
+        # read cannot retain the previous shard (including BF16 cast temporaries).
         payload = {rename(key): tensor for key, tensor in load_file(path, device='cpu').items()}
+        require(set(payload) == {key for key, shard in headers.items() if shard == path},
+                'native safe weight keys changed after header admission')
         for key, tensor in payload.items():
             if tensor.is_floating_point():
                 require(tensor.dtype in ((torch.float32,) if dtype_policy == 'strict_fp32' else (torch.float32, torch.bfloat16))
@@ -207,25 +212,43 @@ def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config
                 # BF16 -> FP32 is exact, explicitly source/manifest-bound storage
                 # conversion only. It is NOT BF16 runtime/GPU qualification.
                 payload[key] = tensor.float()
-            require(payload[key].dtype == layout[key].dtype, 'native weight dtype differs from FP32 compute layout: ' + key)
-        state.update(payload)
-    for group in alias_groups:
-        supplied = sorted(group & state.keys())
-        value = state[supplied[0]]
-        require(all(torch.equal(value, state[key]) for key in supplied), 'contradictory native tied weight aliases')
-        for key in group:
-            state[key] = value
-    require(set(state) == set(layout) and all(t is not None for t in state.values()),
-            'incomplete native weights; random fallback forbidden')
+            require(payload[key].dtype == layout[key].dtype and payload[key].shape == layout[key].shape,
+                    'native weight shape/dtype differs from FP32 compute layout: ' + key)
+        for group in alias_groups:
+            supplied = sorted(group & payload.keys())
+            if not supplied:
+                continue
+            value = payload[supplied[0]]
+            require(all(torch.equal(value, payload[key]) for key in supplied)
+                    and (not group & loaded_keys or torch.equal(value, live_state[supplied[0]])),
+                    'contradictory native tied weight aliases')
+            for key in group:
+                payload[key] = value
+        result = model.load_state_dict(payload, strict=False, assign=False)
+        require(not result.unexpected_keys and set(result.missing_keys) == layout.keys() - payload.keys(),
+                'native partial shard load changed the admitted state layout')
+        loaded_keys.update(payload)
+
     # Native nonpersistent RoPE caches must be initialized by the actual CPU
-    # constructor, not left on meta or approximated/reimplemented here.
-    native_config = architecture(cls, effective_config)
-    with torch.device('cpu'):
-        model = (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
-    require({frozenset(group) for group in _parameter_alias_groups(model, model.state_dict())}
-            == {frozenset(group) for group in alias_groups}, 'native constructor parameter aliases changed')
-    model.load_state_dict(state, strict=True)
-    require(all(not p.is_meta for p in (*model.parameters(), *model.buffers())), 'uninitialized meta native state')
+    # constructor. Copy one shard at a time instead of keeping a second complete
+    # checkpoint alive alongside it. Failure must not consume caller RNG just
+    # because the concrete constructor now precedes payload validation.
+    rng = torch.get_rng_state()
+    try:
+        native_config = architecture(cls, effective_config)
+        with torch.device('cpu'):
+            model = (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
+        live_state = model.state_dict()
+        require({frozenset(group) for group in _parameter_alias_groups(model, live_state)}
+                == {frozenset(group) for group in alias_groups}, 'native constructor parameter aliases changed')
+        loaded_keys = set()
+        for path in weights:
+            copy_shard(path)
+        require(loaded_keys == layout.keys(), 'incomplete native weights; random fallback forbidden')
+        require(all(not p.is_meta for p in (*model.parameters(), *model.buffers())), 'uninitialized meta native state')
+    except BaseException:
+        torch.set_rng_state(rng)
+        raise
     model.eval()
     return model, config
 
