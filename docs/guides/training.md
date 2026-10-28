@@ -354,8 +354,6 @@ for a real held-out metric and fresh-process restart example.
 ```sh
 distillctl evaluate train.json --checkpoint run/checkpoints/cycle-000004 --output generated
 distillctl export train.json --checkpoint run/checkpoints/cycle-000004 --output exported
-distillctl generate train.json --weights exported \
-  --prepared new-prepared/manifest.json --sample-index 0 --output new-generated
 ```
 
 `evaluate` reads a **training checkpoint** with its original training request
@@ -379,12 +377,86 @@ denoising step counts cannot silently enter different collective sequences.
 
 `export` creates `distillschedule.inference_export.v1`: named, full module state
 dictionaries in `weights.pt`, plus `export.json` binding every file hash, the
-original factory reference/source hash, effective non-device factory arguments
+exported factory reference/source hash, effective non-device factory arguments
 (including the supplied default seed), model metadata and module state layout.
 The directory is atomically published after the complete manifest and its
 hash-bound `_SUCCESS` marker are written. It is explicitly labeled
 **INFERENCE_WEIGHTS_NOT_RESUMABLE_CHECKPOINT**: no optimizer, scheduler, data
 cursor or RNG restart state is exported. Do not pass it to `train --resume`.
+
+### Build a separate inference request
+
+Program adapters may export an **inference projection**, not their training
+factory. Official DMD2 SD1.5/SDXL, official Self-Forcing and modern flow models
+do this: their exported factory constructs only the inference components.
+Consequently, `generate train.json --weights exported` is not a portable
+recipe and rejects when its model factory or parameters differ from the export.
+Keep the original request for `evaluate` and `export`; create `inference.json`
+for `generate` instead. This uses the existing training-request schema, not a
+new configuration type.
+
+First prepare genuinely new inputs with your model recipe's preparer. The
+[export-only preparer](export_inputs.md) is available only for its explicitly
+admitted modern flow adapters, **not** SD or official Self-Forcing. Once
+`new-prepared/manifest.json` is ready, run the following in your installed model
+environment. The four shell arguments are paths relative to the current working
+directory (absolute paths also work); relative fields inside `train.json`,
+including a local algorithm factory, resolve relative to that original file.
+
+```sh
+python - train.json exported new-prepared/manifest.json inference.json <<'PY'
+import json
+import sys
+from pathlib import Path
+
+from distillschedule.training.config import TrainingConfig, load_training_config
+from distillschedule.training.inference import read_export
+
+train_path, weights_path, prepared_path, inference_path = (
+    Path(arg).expanduser().resolve() for arg in sys.argv[1:]
+)
+training = load_training_config(train_path)
+_, manifest = read_export(weights_path)
+request = {
+    "schema_version": "distillschedule.training.v1",
+    "model": {key: manifest["model"][key] for key in ("factory", "parameters")},
+    "algorithm": dict(training.algorithm),
+    "data": {"prepared": str(prepared_path)},
+    "execution": {"adapter": "program", "mode": "reference"},
+    "trainer": {
+        "cycles": 1, "seed": 909, "device": "cpu",
+        "output_dir": str(inference_path.parent / "unused-inference-run"),
+    },
+}
+inference = TrainingConfig.from_dict(request, source=inference_path)
+inference_path.write_text(json.dumps(inference.to_dict(), indent=2) + "\n")
+PY
+distillctl generate inference.json --weights exported \
+  --prepared new-prepared/manifest.json --sample-index 0 \
+  --output new-generated --output-kind image
+```
+
+The Python step validates the export's completeness and hashes with `read_export`
+and validates the new request with `TrainingConfig`; it does not load weights,
+import/build the model or algorithm, read the old training data or run training.
+Copy **only** the exported `model.factory` and exact `model.parameters`, not
+the whole export `model` object (`source`, `metadata` and `modules` are not
+request fields), and do not retain the old registered `model.name`. Keep every
+exported parameter, including its model-initialization seed and explicit external
+source paths, unchanged. Do not add old base `model_id`/asset paths, Teacher/Fake
+or EMA state. Required matching external source/dependencies remain necessary.
+
+The algorithm section is retained as schema metadata only; generation never
+calls its factory. The new request deliberately drops old streams, validation,
+distributed/resume settings, manual overrides and saved plans. Its one cycle
+and unused trainer output directory satisfy the schema but are not executed.
+The independent inference seed is `trainer.seed: 909`; it does not replace the
+exported model seed. Choose an explicitly supported single inference device if
+changing the CPU default, with capacity for the complete inference model.
+Run `generate` as a **single process**, not under torchrun or with leftover
+distributed-launch environment variables. Use `--output-kind image` for SD and
+image flow models, `video` for official Self-Forcing, or `audio_video` for an
+adapter that actually supplies both modalities (for example, admitted LTX).
 
 `generate` is single-process inference from that artifact and a **new explicit
 prepared manifest**. It does not open the original training dataset, run or

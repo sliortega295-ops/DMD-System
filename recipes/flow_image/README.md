@@ -292,10 +292,12 @@ all training assets/checkpoints. The existing image asset-based preparer below
 remains available and still explicitly requires its original asset bundle.
 
 Prepare genuinely new prompts with the same codec binding, then export the
-restored current Student. The returned export manifest supplies the exact
-`build_inference_model` factory and parameters for an inference config. Keep
-those model parameters unchanged; choose an independent inference RNG seed in
-the trainer section. Run:
+restored current Student. Use the
+[common inference-request builder](../../docs/guides/training.md#generate-and-export)
+with your training request, completed export and new prepared manifest to create
+`inference.json`. It copies the export's exact `build_inference_model` factory
+and parameters, with an independent inference RNG seed in the trainer section,
+instead of reusing the training factory or its assets/streams. Run:
 
 ```sh
 "$PY" -m distillschedule generate "$RUN/inference.json" --weights "$RUN/export" \

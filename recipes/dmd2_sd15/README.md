@@ -215,6 +215,17 @@ files, which may be copied to a different directory independently of the old
 base weights. Tokenizer-only input preparation does not load or require a VAE.
 New raw/preencoded image inputs additionally bind the matching VAE bytes.
 
+For this SD1.5 recipe and [SDXL](../dmd2_sdxl/README.md), follow the
+[common inference-request builder and generation steps](../../docs/guides/training.md#generate-and-export)
+after export and native preparation of new prompts. Supply your original
+training request, the completed export and the new prepared manifest to create
+`inference.json`, then generate with `--output-kind image`. Do not reuse the
+training request's `sd15`/`sdxl` name or training factory: use only the exact
+inference factory and parameters from the verified export, preserving the
+explicit external source root. Keep an independent inference seed in the
+trainer section. The common export-only **input preparer** is not admitted for
+SD; continue to use this recipe's native SD input preparation.
+
 ### Official generator-weight mapping
 
 The common export's `weights.pt` is a named mapping: `generator` contains the
