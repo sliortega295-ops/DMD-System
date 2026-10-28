@@ -320,6 +320,7 @@ class ResidentTrial:
         self._cuda_claimed = False
         self._device = None
         self._session = self._outputs = self._expected = None
+        self._publication = None
         self._backup = self._original = self._outer = self._recovery_error = None
         self.receipt = dict(schema_version=SCHEMA, closed=False, adopted=False,
             scope='CPU managed state/snapshot/result/scratch; not RSS, training activations or CUDA capacity')
@@ -557,6 +558,7 @@ class ResidentTrial:
                     del _CUDA_TRIALS[str(self._device)]
             self._cuda_claimed = False
         self._backup = self._original = self._outer = self._expected = self._session = self._outputs = None
+        self._publication = None
         self._slots = []; self._physical = (); self._retained = {}
         owner = getattr(self, 'owner', None)
         if getattr(owner, '_resident_trial_active', None) is self:
@@ -589,6 +591,7 @@ class ResidentTrial:
 
     def _rollback(self):
         self._adopt = False
+        self._publication = None
         self._session = self._outputs = None
         try:
             self.owner._resident_trial_cleanup()
@@ -663,12 +666,12 @@ class ResidentTrial:
             raise
 
     def candidate(self, implementation, order=None, *, measure=False, execute=None,
-                  persistent=False, rtol=1e-5, atol=1e-7):
+                  persistent=False, rtol=1e-5, atol=1e-7, report_inactive=False):
         from .checkpoint_policy import native_effect_evidence
         self._require_active_snapshot()
         _require(self._expected is not None and not self.receipt['closed'], 'capture a reference first')
-        _require(type(self.budget) is not CudaTrialBudget or not measure,
-                 'private CUDA trials measure allocator boundaries; per-call peak resets are not admitted')
+        _require(type(report_inactive) is bool, 'explicit inactive-candidate reporting flag required')
+        self.receipt.pop('candidate_admission', None)
         try:
             if self._dirty: self._rollback()
             self._guard()
@@ -687,6 +690,13 @@ class ResidentTrial:
             gate = streaming_compare(self._expected, result, scratch_bytes=self.budget.scratch_bytes,
                                      rtol=rtol, atol=atol)
             native = [native_effect_evidence(implementation, self._session.effects)]
+            # Preserve actual rejection details even when inactive effects raise
+            # before the candidate can return them to the planning caller.
+            self.receipt['candidate_admission'] = dict(reference_gate=gate,
+                                                       native_capability_evidence=native)
+            if report_inactive and not all(row['active'] for row in native):
+                self._rollback()
+                return None, None, gate, native
             _require(all(row['active'] for row in native), 'selected native capability was not exercised')
             if gate['status'] != 'PASS':
                 self._rollback()
@@ -698,16 +708,23 @@ class ResidentTrial:
             self._recover(error)
             raise
 
-    def accept(self):
+    def restore(self):
+        """Restore between calibration samples before reading initial identity."""
+        self._require_active_snapshot()
+        if self._dirty: self._recover(None)
+
+    def accept(self, *, publish=None):
         """Request adoption on successful context exit, *after* publication.
 
         Merely returning a candidate never adopts it. Any subsequent exception
         inside the context (including publication failure) still rolls back.
         """
         self._require_active_snapshot()
+        _require(publish is None or callable(publish), 'publication callback must be callable')
         _require(self._session is not None and self._dirty and not self.receipt['closed'],
                  'only a numerically/effect-admitted candidate may be adopted')
         self._adopt = True
+        self._publication = publish
 
     def __exit__(self, kind, error, tb):
         _require(self._ready or self._recovery_error is not None, 'active admitted snapshot required')
@@ -731,6 +748,12 @@ class ResidentTrial:
                     # successfully adopted owner with unfinished finalization.
                     self._observe_cuda('adopt')
                     self._restore_outer_rng()
+                    if self._publication is not None:
+                        # Last fallible boundary. A publisher receives the exact
+                        # success receipt that becomes true immediately after it
+                        # returns; a publication exception still rolls back.
+                        self._publication(dict(self.receipt, closed=True, adopted=True,
+                            publication_order='final_gates_then_publication_then_adoption'))
                 except BaseException as exc:
                     self._recover(exc)
                     raise

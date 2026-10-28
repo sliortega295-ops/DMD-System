@@ -372,6 +372,11 @@ class Session:
     def run(self, order=None, *, measure=False):
         require(not self._ran,'sessions are one-shot; clone original initial state for each trial',path='open.runtime')
         self._ran=True
+        resident = None
+        if measure and self.device.type == 'cuda':
+            from .resident_trial import cuda_trial_active
+            resident = next((owner._resident_trial_active for owner in self.state.values()
+                             if cuda_trial_active(owner)), None)
         by_id={c.id:c for c in self.workload.program.calls}
         def dispatch(ctx):
             c=by_id[ctx.operation.operation_id]
@@ -403,7 +408,11 @@ class Session:
             if measure:
                 self.synchronize()
             if measure and self.device.type=='cuda':
-                before=torch.cuda.memory_allocated(self.device); torch.cuda.reset_peak_memory_stats(self.device)
+                before=torch.cuda.memory_allocated(self.device)
+                # ResidentTrial owns device-global counters across the complete
+                # atomic native phase, including setup and comparison. Never
+                # erase its high-water evidence at a nested call boundary.
+                if resident is None: torch.cuda.reset_peak_memory_stats(self.device)
             start_event = end_event = None
             if measure and self.device.type == 'cuda':
                 # GPU device time is a diagnostic; conservative scheduling cost
@@ -442,7 +451,9 @@ class Session:
             if measure and self.device.type=='cuda':
                 after=torch.cuda.memory_allocated(self.device)
                 retained=max(retained,after-before,0)
-                workspace=max(0,torch.cuda.max_memory_allocated(self.device)-before-retained)
+                peak=torch.cuda.max_memory_allocated(self.device)
+                workspace=(max(0,peak-before-retained) if resident is None else
+                           max(0,peak-resident._phase_start['allocated_bytes']))
             self.static_bytes=max(self.static_bytes,storage_bytes((self.state,self.feeds)))
             self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace,
                 'timing_method':('synchronized_component_host_wall' if measure
@@ -450,6 +461,10 @@ class Session:
             if gpu_event_ns is not None:
                 self.profile[c.id].update(cuda_event_ns=gpu_event_ns,
                     timing_method='synchronized_cuda_event_and_host_wall',
+                    capacity_measurement=('isolated_operation_allocator_peak' if resident is None
+                                          else 'resident_phase_high_water_bound'),
+                    allocator_peak_counter_reset=resident is None,
+                    peak_allocated_bytes=peak,
                     # Host wall time, which includes NCCL completion at this
                     # call boundary, is the optimization objective.
                     scheduling_time_source='host_wall_ns')
