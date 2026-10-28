@@ -34,6 +34,52 @@ def module_method_binding(module_key, method_name):
     return invoke
 
 
+def shard_boundary_modules(state, declarations, roots):
+    """Resolve an explicit, disjoint native group cut without inferring blocks."""
+    import torch
+    require(isinstance(declarations, Mapping), 'shard boundaries must be a mapping', path='open.replica')
+    result = {}
+    if not declarations:
+        return result
+    from torch.distributed.tensor import DTensor
+    for root, paths in declarations.items():
+        require(isinstance(root, str) and root in roots and isinstance(paths, (tuple, list)) and paths
+                and all(isinstance(path, str) and path and all(part for part in path.split('.')) for path in paths),
+                'shard boundaries require owned roots and nonempty child paths', path='open.replica')
+        require(len(set(paths)) == len(paths) and all(
+                    not other.startswith(path + '.') for path in paths for other in paths if other != path),
+                'shard boundaries must be unique disjoint child paths', path='open.replica')
+        model = state[root]
+        children = []
+        for path in paths:
+            try:
+                child = model.get_submodule(path)
+            except (AttributeError, TypeError):
+                child = None
+            require(isinstance(child, torch.nn.Module) and child is not model
+                    and bool(list(child.parameters())) and type(child).forward is not torch.nn.Module.forward,
+                    'shard boundary child must be a nonempty module with a forward entry', path='open.replica')
+            children.append((path, child))
+        require(len({id(child) for _, child in children}) == len(children),
+                'shard boundary module aliases cross groups', path='open.replica')
+        owners = {}; storages = {}
+        for name, parameter in model.named_parameters(remove_duplicate=False):
+            group = next((path for path in paths if name.startswith(path + '.')), None)
+            require(id(parameter) not in owners or owners[id(parameter)] == group,
+                    'shard boundary parameter aliases cross groups', path='open.replica')
+            owners[id(parameter)] = group
+            # Dense storage aliases can use different Parameter objects. Local
+            # empty DTensor shards have no global alias identity; installation
+            # already checked the original dense tensors before replacement.
+            if not isinstance(parameter, DTensor) and parameter.numel():
+                storage = (str(parameter.device), parameter.untyped_storage().data_ptr())
+                require(storage not in storages or storages[storage] == group,
+                        'shard boundary parameter storage aliases cross groups', path='open.replica')
+                storages[storage] = group
+        result[root] = tuple(children)
+    return result
+
+
 @dataclass(frozen=True)
 class ReplicaSemantics:
     module_bindings: Mapping[str, str]
@@ -51,6 +97,8 @@ class ReplicaSemantics:
     # Separately owned immutable roots may opt into native forward lifetimes.
     # They never acquire optimizer, gradient-reduction, or shadow ownership.
     frozen_module_bindings: Mapping[str, str] = field(default_factory=dict)
+    # Ordered disjoint child groups; the outer root owns all remaining parameters.
+    shard_boundaries: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     @property
     def forward_module_bindings(self):
@@ -93,6 +141,9 @@ class ReplicaSemantics:
             require(frozen <= set(workload.immutable_modules),
                     'frozen forward roots require whole-root immutable declarations', path='open.replica')
         forwards = self.forward_module_bindings
+        require(not self.shard_boundaries or self.forward_interface == 'registered_methods',
+                'shard boundaries require registered_methods ownership', path='open.replica')
+        shard_boundary_modules(workload.state, self.shard_boundaries, set(forwards.values()))
         require(set(forwards) <= set(workload.bindings), 'unknown module binding', path='open.replica')
         require(isinstance(self.forward_methods, Mapping), 'method bindings must be a mapping', path='open.replica')
         if self.forward_interface == 'registered_methods':
@@ -157,7 +208,9 @@ class ReplicaSemantics:
                 **({'random_streams': self.random_streams} if self.random_streams != 'shared_logical_call' else {}),
                 **({'forward_methods': dict(self.forward_methods)} if self.forward_methods else {}),
                 **({'parameter_shadows': dict(self.parameter_shadows)} if self.parameter_shadows else {}),
-                **({'frozen_module_bindings': dict(self.frozen_module_bindings)} if self.frozen_module_bindings else {})}
+                **({'frozen_module_bindings': dict(self.frozen_module_bindings)} if self.frozen_module_bindings else {}),
+                **({'shard_boundaries': {key: list(paths) for key, paths in self.shard_boundaries.items()}}
+                   if self.shard_boundaries else {})}
 
 
 def ddp_completion_edges(program, semantics, context_modules=None):

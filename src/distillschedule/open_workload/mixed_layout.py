@@ -20,6 +20,8 @@ MODE = 'per_module'
 
 
 def domains(workload, topology=None):
+    if workload.replica_semantics.shard_boundaries:
+        return {}
     result = {}
     order = tuple(c.id for c in workload.program.calls) + ('__open_finish__',)
     for key in sorted(set(workload.replica_semantics.module_bindings.values())):
@@ -66,6 +68,8 @@ def option(local, assignment, topology):
 
 
 def graph(workload, implementation):
+    require(not workload.replica_semantics.shard_boundaries,
+            'shard boundaries require a uniform FSDP layout', path='open.mixed')
     context = {key for key, value in implementation['module_layouts'].items() if value != 'post_backward'}
     return execution_graph(workload.program, workload.replica_semantics, 'ddp_overlap', context)
 
@@ -77,6 +81,8 @@ class MixedLifecycle(ReplicaLifecycle):
         from .topology import discover
         topology = discover()
         def validate():
+            require(not self.workload.replica_semantics.shard_boundaries,
+                    'shard boundaries require a uniform FSDP layout', path='open.mixed')
             mapping = self.option.get('module_layouts')
             require(isinstance(mapping, dict), 'per-module layout mapping required', path='open.mixed')
             admitted = domains(self.workload, topology)

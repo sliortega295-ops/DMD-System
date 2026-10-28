@@ -12,7 +12,7 @@ import torch
 import torch.distributed as dist
 from distillschedule.core.contracts import require
 from .replicated import ReplicaLifecycle, checked, gather, identity, forward_order_admitted, BACKEND
-from .replica_contract import execution_graph
+from .replica_contract import execution_graph, shard_boundary_modules
 from .torch_backend import storage_key, physical_tensor, signature, unwrap_module
 from distillschedule.workloads.best_known.registry import fingerprint
 
@@ -103,12 +103,17 @@ def rejection(workload, module_keys=None):
 
 
 def shard_roots(session, module_keys, mesh, *, reshard_after_forward, forward_methods=None,
-                parameter_shadows=None):
+                parameter_shadows=None, shard_boundaries=None):
     """Common native installation; untouched optimizer groups/moments stay intact."""
     from torch.distributed.fsdp import fully_shard
     from torch.distributed.tensor import DTensor, distribute_tensor
     from distillschedule.training.tensor_state import validate_parameter_shadows
     shadows = {} if parameter_shadows is None else parameter_shadows
+    boundaries = {} if shard_boundaries is None else shard_boundaries
+    require(not boundaries or forward_methods,
+            'shard boundaries require registered outer forward methods', path='open.fsdp')
+    children = shard_boundary_modules(session.state, boundaries, set(forward_methods or ()))
+    require(set(children) <= set(module_keys), 'shard boundaries reference an uninstalled root', path='open.fsdp')
     validate_parameter_shadows(session.state, shadows,
                                {key for key, value in session.state.items() if isinstance(value, torch.nn.Module)})
     # A leaf/subgroup installation cannot silently migrate only part of a full
@@ -122,6 +127,10 @@ def shard_roots(session, module_keys, mesh, *, reshard_after_forward, forward_me
     for key in module_keys:
         model = session.state[key]
         original = dict(model.named_parameters())
+        # Capture original IDs before any child replacement, then migrate the
+        # full root's optimizer and shadows exactly once after all groups exist.
+        for _, child in children.get(key, ()):
+            fully_shard(child, mesh=mesh, reshard_after_forward=reshard_after_forward)
         parameter_bytes += sum(p.numel()*p.element_size() for p in original.values())
         fully_shard(model, mesh=mesh, reshard_after_forward=reshard_after_forward)
         if forward_methods and key in forward_methods:
@@ -197,11 +206,17 @@ class ShardedLifecycle(ReplicaLifecycle):
         self.forward_methods = methods
         self.forward_contract = semantics.to_dict()
         self.parameter_shadows = dict(semantics.parameter_shadows)
+        self.shard_boundaries = {key: tuple(paths) for key, paths in semantics.shard_boundaries.items()}
         self.full_parameter_bytes, sharded_count, migrated = shard_roots(
             session, self.module_keys, mesh,
             reshard_after_forward=self.option['reduction'].endswith('_reshard'), forward_methods=methods,
-            parameter_shadows=self.parameter_shadows)
+            parameter_shadows=self.parameter_shadows, shard_boundaries=self.shard_boundaries)
         self.shadow_ownership = ParameterShadowOwnership(session, self.parameter_shadows)
+        self.boundary_owners = {key: {path: (session.state[key].get_submodule(path),
+            dict(session.state[key].get_submodule(path).named_parameters(remove_duplicate=False))) for path in paths}
+            for key, paths in self.shard_boundaries.items()}
+        if self.shard_boundaries:
+            session.effects['fsdp_shard_boundaries'] = {key: list(paths) for key, paths in self.shard_boundaries.items()}
         if methods: session.effects['fsdp_forward_methods'] = methods
         if self.parameter_shadows: session.effects['parameter_shadows'] = self.parameter_shadows
         session.effects.update(distributed=True,world_size=self.world,reduction=self.option['reduction'],
@@ -220,13 +235,20 @@ class ShardedLifecycle(ReplicaLifecycle):
         require(all(x==orders[0] for x in orders),'rank execution orders differ',path='open.fsdp')
         def validate():
             semantics = self.workload.replica_semantics
-            if semantics.frozen_module_bindings:
+            if semantics.frozen_module_bindings or semantics.shard_boundaries:
                 semantics.validate(replace(self.workload, state=session.state, feeds=session.feeds))
             require(semantics.forward_interface == self.forward_interface and
                     semantics.to_dict() == self.forward_contract,
                     'installed FSDP method contract changed between cycles', path='open.fsdp')
             require(semantics.parameter_shadows == self.parameter_shadows,
                     'installed FSDP parameter shadow bindings changed between cycles', path='open.fsdp')
+            for key, owners in self.boundary_owners.items():
+                for path, (installed, parameters) in owners.items():
+                    current = session.state[key].get_submodule(path)
+                    actual = dict(current.named_parameters(remove_duplicate=False))
+                    require(current is installed and actual.keys() == parameters.keys()
+                            and all(actual[name] is parameter for name, parameter in parameters.items()),
+                            'installed shard boundary object/parameter identity changed', path='open.fsdp')
             self.shadow_ownership.validate(session)
             from distillschedule.training.tensor_state import validate_parameter_shadows
             validate_parameter_shadows(session.state, self.parameter_shadows, self.module_keys, feeds=session.feeds)
@@ -241,7 +263,12 @@ class ShardedLifecycle(ReplicaLifecycle):
     def finish(self,session):
         # Inference-only final calls may retain full parameters in keep-forward
         # mode. Complete the plan with sharded state before inspecting moments.
-        for key in self.module_keys:session.state[key].reshard()
+        for key in self.module_keys:
+            # Native reshard() is not recursive. Frozen/no-grad children in
+            # keep-forward mode must also return to shards before checkpoint.
+            for path in self.shard_boundaries.get(key, ()):
+                session.state[key].get_submodule(path).reshard()
+            session.state[key].reshard()
         session.synchronize()
         digests=gather(fingerprint(signature(session.state)))
         require(len(set(digests))==1,'FSDP model/optimizer state diverged',path='open.fsdp')
