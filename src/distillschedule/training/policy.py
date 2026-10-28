@@ -177,8 +177,20 @@ class CyclePolicy:
                     self.bound['resident_budget'] = admission.budget.to_dict()
                 self.session = session
                 return session, outputs
-            default = backend.inventory(1)["candidates"][0]
-            implementation = self.execution.get("implementation", default) if mode == "manual" else default
+            construction_owned = False
+            if (backend.distributed and not backend.native_owner and mode == "manual"
+                    and "implementation" in self.execution):
+                from distillschedule.open_workload.sharded import manual_construction_handoff
+                construction_owned = manual_construction_handoff(workload, self.execution["implementation"])
+            if construction_owned:
+                # A certificate, not a flag: all native shards have already
+                # passed collective ownership admission. No unused default is
+                # inventoried or cloned. Ordinary dense/manual/auto paths keep
+                # their original inventory and native descriptor gates.
+                implementation = self.execution["implementation"]
+            else:
+                default = backend.inventory(1)["candidates"][0]
+                implementation = self.execution.get("implementation", default) if mode == "manual" else default
             order = self.execution.get("order")
             from distillschedule.open_workload.owner_execution import selected
             gate = {"status": "NOT_RUN", "reason": "explicit user strategy"}

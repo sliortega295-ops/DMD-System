@@ -291,6 +291,9 @@ class ReplicaLifecycle:
 
 def make_session(workload, implementation, *, copy_state=True, persistent=False):
     checked(lambda: workload.validate(), 'session preflight')
+    options = gather(implementation)
+    require(all(option == options[0] for option in options),
+            'ranks selected different implementations', path='open.replicated')
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
     from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     checked(lambda: require(workload.replica_semantics is not None and
@@ -306,5 +309,8 @@ def make_session(workload, implementation, *, copy_state=True, persistent=False)
         return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation),
                        copy_state=copy_state,persistent=persistent)
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
+    if lifecycle is ShardedLifecycle:
+        from .sharded import construction_handoffs
+        construction_handoffs(workload, implementation, copy_state=copy_state)
     return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation),
                    copy_state=copy_state,persistent=persistent)

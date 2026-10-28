@@ -37,6 +37,9 @@ class ModelComponents:
     close: Callable | None = None
     # Actual observations, not checkpoint/source identity (allocator state varies).
     construction_receipt: Mapping[str, Any] = field(default_factory=dict)
+    # Ephemeral, construction-owned frozen-root handoff. Never serialized as
+    # training state or treated as permission to adopt arbitrary DTensors.
+    sharded_construction: Any = None
 
     @contextmanager
     def managed(self):
@@ -79,6 +82,10 @@ class ModelComponents:
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")
+        if self.sharded_construction is not None:
+            if not all(callable(getattr(self.sharded_construction, name, None))
+                       for name in ('bind_workload', 'close')):
+                raise ValueError("sharded construction must bind workloads and own its lifetime")
         return self
 
 

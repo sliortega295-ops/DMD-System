@@ -178,12 +178,18 @@ class Workload:
     def identity(self):
         self.validate()
         classes={type(m) for obj in self.state.values() if isinstance(obj,nn.Module) for m in obj.modules()}
+        from torch.distributed.fsdp import FSDPModule
+        if any(issubclass(cls, FSDPModule) for cls in classes):
+            from .sharded import construction_model_code
+            model_code = construction_model_code(self, classes)
+        else:
+            model_code = {k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes}
         from .owner_execution import workload_inventory
         owners = workload_inventory(self)
         return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state)),
                 'feeds':fingerprint(signature(self.feeds)), 'seed':self.seed,
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
-                'model_code':{k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes},
+                'model_code':model_code,
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),
                 'torch':torch.__version__,'device':str(self.device),
                 **({'owner_execution': owners} if owners else {}),

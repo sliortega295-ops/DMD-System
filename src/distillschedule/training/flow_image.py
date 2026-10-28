@@ -7,6 +7,7 @@ allowed only in explicitly labeled fixture creators outside this module.
 """
 from contextlib import nullcontext
 from copy import deepcopy
+from dataclasses import replace
 import importlib.metadata
 import inspect
 import json
@@ -21,13 +22,118 @@ from .dmd import FlowDMDMethods
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
-from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
+from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches,
+    FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
 
 ASSET_SCHEMA = 'distillschedule.flow_image_assets.v1'
 INPUT_SCHEMA = 'distillschedule.flow_image_inputs.v1'
 CUDA_TRIAL_LIMIT = ('CUDA native image trial cloning requires a capacity-bounded snapshot/restore; '
                     'only reference or exact persistent manual immutable sharing is admitted; '
                     'auto/plan/calibration and CUDA owner cloning remain unsupported')
+
+
+class _FrozenTeacherConstruction:
+    """Model-owned provider for exactly one CPU native frozen Teacher child."""
+    def __init__(self, parameters, request, factory, builder):
+        from distillschedule.open_workload.sharded import _FrozenRootHandoff, frozen_construction_mesh
+        self.parameters, self.factory, self.builder = deepcopy(parameters), factory, builder
+        self.option = deepcopy(request.execution['implementation'])
+        self.handoff = _FrozenRootHandoff(frozen_construction_mesh(), self.option)
+        self.started = self.attached = self.closed = False
+
+    @staticmethod
+    def local(function, label):
+        from distillschedule.open_workload.replicated import checked
+        return checked(function, label)
+
+    def construct(self, factory, parameters):
+        self.local(lambda: require(not self.started and not self.closed and factory is self.factory
+            and parameters == self.parameters,
+            'construction provider is single-use and bound to effective parameters'), 'construction provider ownership')
+        self.started = True
+        try:
+            return self.builder(parameters, construction=self)
+        except BaseException:
+            self.close()
+            raise
+
+    def load_teacher(self, cls, base, spec, *, config_transform=None):
+        return self.handoff.load(cls, base, spec, config_transform=config_transform)
+
+    def wrap_teacher(self, role_class, **kwargs):
+        def construct_root():
+            require(inspect.isclass(role_class) and issubclass(role_class, nn.Module)
+                    and role_class.__new__ is object.__new__,
+                    'construction requires an ordinary new outer role class, not a caller root/callback')
+            root = role_class(self.handoff.native, **kwargs).eval()
+            require(type(root) is role_class, 'outer role constructor returned a foreign root')
+            self.handoff.bind(root, key='teacher', child_path='native', method='dmd_forward')
+            return root
+        return self.local(construct_root, 'frozen Teacher outer-root construction')
+
+    def attach(self, components):
+        def admit():
+            require(self.started and not self.closed and not self.attached
+                    and components.sharded_construction is self
+                    and components.state.get('teacher') is self.handoff.root
+                    and self.handoff.status == 'bound' and 'teacher' in components.immutable_modules,
+                    'factory returned a foreign/expired frozen Teacher construction')
+            from .tensor_state import ParameterShadows
+            if 'student_ema' in components.state:
+                require(type(components.state['student_ema']) is dict,
+                        'construction expects the existing dense full-parameter Student EMA')
+                components.state['student_ema'] = ParameterShadows('student', components.state['student_ema'])
+            components.metadata = {**components.metadata, 'precision': 'FP32_NATIVE_CPU_1D_FSDP2',
+                'replication': 'EXPLICIT_EQUAL_RANK_LOCAL_B1_NATIVE_FSDP_MEAN', 'construction': dict(
+                schema_version=FROZEN_TEACHER_CONSTRUCTION, frozen_root='teacher', child='native',
+                trainable_initialization='DENSE_STUDENT_FAKE_CONSTRUCTOR_AND_LORA_ORDER_UNCHANGED',
+                teacher_constructor_rng='NOT_DENSE_CONSTRUCTOR_STREAM_EQUIVALENCE',
+                caller_training_rng='PRESERVED_BY_CONSTRUCTION_SCOPE',
+                scope='CPU_GLOO_1D_MANUAL_ONLY_NOT_ALL_ROLE_MEMORY_SOLVED')}
+            self.components = components
+            self.attached = True
+        self.local(admit, 'frozen Teacher construction attachment')
+
+    def bind_workload(self, components, workload):
+        """Reuse the existing registered-method/frozen/shadow contracts."""
+        require(self.attached and not self.closed and self.components is components
+                and workload.state.get('teacher') is self.handoff.root,
+                'frozen Teacher construction lifetime/root changed')
+        require(workload.replica_semantics is not None, 'construction requires the existing distributed flow Program')
+        semantics = replace(workload.replica_semantics, forward_interface='registered_methods',
+            forward_methods={binding: 'dmd_forward' for binding in
+                             ('student_forward', 'fake_forward', 'teacher_forward')},
+            frozen_module_bindings={'teacher_forward': 'teacher'},
+            parameter_shadows={'student_ema': 'student'} if 'student_ema' in workload.state else {},
+            shard_boundaries={'teacher': ('native',)})
+        self.handoff.validate(workload.state, semantics, self.option, session=self.handoff.session)
+        workload.replica_semantics = semantics
+        return workload
+
+    def close(self):
+        self.handoff.close()
+        self.closed = True
+
+
+def admit_frozen_teacher_construction(*, parameters, request, budget, factory, builder):
+    """Preconstruction opt-in; default construction stays byte/order compatible."""
+    from .distributed import checked, gather, rank_world
+    choice = parameters.get('construction')
+    choices = gather(choice)
+    require(all(value == choices[0] for value in choices), 'ranks selected different construction providers')
+    if choice is None:
+        return None
+    def admit():
+        require(choice == FROZEN_TEACHER_CONSTRUCTION and budget is None
+                and parameters.get('device', 'cpu') == request.trainer.get('device', 'cpu') == 'cpu'
+                and rank_world()[1] >= 2 and torch.distributed.get_backend() == 'gloo'
+                and request.trainer.get('distributed', {}).get('backend') == 'gloo'
+                and set(request.execution) <= {'adapter', 'mode', 'implementation'}
+                and execution_policy_matches(request.execution, FLOW_FROZEN_TEACHER_EXECUTION),
+                'frozen Teacher construction requires explicit CPU/Gloo 1D manual fsdp2_reshard; '
+                'automatic, saved plans, CUDA, HSDP and trials are unsupported')
+    checked(admit, 'frozen Teacher construction request')
+    return _FrozenTeacherConstruction(parameters, request, factory, builder)
 
 
 def require(condition, message):
@@ -632,7 +738,7 @@ def _metadata(api, descriptor, *, replicated=False):
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA')
 
 
-def _components(api, state, descriptor, *, training):
+def _components(api, state, descriptor, *, training, construction=None):
     from distillschedule.data.flow_image_inputs import encode_export_input
     from .distributed import rank_world
     qualify_trial_roles(state, descriptor['evidence_kind'])
@@ -653,7 +759,8 @@ def _components(api, state, descriptor, *, training):
         generate=api.generate, decode=state['media'].decode,
         encode_input=None if training else encode_export_input,
         inference_projection=api.project_current_generator if training else None,
-        admit_training=api.admit_training if training else None).validate()
+        admit_training=api.admit_training if training else None,
+        sharded_construction=construction).validate()
 
 
 def load_media_bundle(assets, api, *, device=None):
@@ -719,17 +826,25 @@ def load_media_bundle(assets, api, *, device=None):
     return media, manifest, roots, runtime, binding, media_config, empty, documents
 
 
-def build_family(parameters, api):
+def build_family(parameters, api, *, construction=None):
     from .dmd import sigmas, training_state
-    allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
-    require(isinstance(parameters, dict) and set(parameters) <= allowed
-            and allowed - {'device', 'seed'} <= parameters.keys(), 'complete explicit native image model parameters required; unknown options rejected')
-    device = admit_fp32(parameters, require=require, allow_replicated=True)
-    require(type(parameters.get('seed', 0)) is int, 'integer construction seed required')
-    require(isinstance(parameters['trainable'], dict) and parameters['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
-    schedule = sigmas(parameters['generation_sigmas'])
-    media, manifest, roots, runtime, binding, media_config, empty, documents = load_media_bundle(
-        parameters['assets'], api, device=device)
+    local = construction.local if construction is not None else lambda function, label: function()
+    def preflight():
+        allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
+        effective = parameters if construction is None else {key: value for key, value in parameters.items() if key != 'construction'}
+        require(isinstance(effective, dict) and set(effective) <= allowed
+                and allowed - {'device', 'seed'} <= effective.keys(), 'complete explicit native image model parameters required; unknown options rejected')
+        if construction is not None:
+            require(type(construction) is _FrozenTeacherConstruction
+                    and parameters.get('construction') == FROZEN_TEACHER_CONSTRUCTION,
+                    'frozen Teacher requires the admitted construction provider')
+        device = admit_fp32(effective, require=require, allow_replicated=True)
+        require(type(effective.get('seed', 0)) is int, 'integer construction seed required')
+        require(isinstance(effective['trainable'], dict) and effective['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
+        return device, sigmas(effective['generation_sigmas'])
+    device, schedule = local(preflight, 'native image construction parameters')
+    media, manifest, roots, runtime, binding, media_config, empty, documents = local(
+        lambda: load_media_bundle(parameters['assets'], api, device=device), 'native image media construction')
     native_cls = api.classes()[0]
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
         # Offline preparation owns the exact CPU null-prompt encoding. Move it,
@@ -738,35 +853,50 @@ def build_family(parameters, api):
         place_module(media, device, require=require)
         roles = {}; config = None
         for role in ('student', 'fake', 'teacher'):
-            native, current = load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
-                dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'),
-                config_transform=getattr(api, 'transformer_config', None))
-            api.validate_architecture(current, media_config)
-            config = current if config is None else config
-            require(current == config, 'first recipe requires exact same-family role architectures')
-            if role == 'teacher':
-                native.eval().requires_grad_(False)
+            if role == 'teacher' and construction is not None:
+                # Teacher is LAST: Student/Fake dense constructor and LoRA
+                # random draws remain in their original exact order.
+                native, current = construction.load_teacher(native_cls,
+                    Path(parameters['assets']).resolve().parent, manifest['roles'][role],
+                    config_transform=getattr(api, 'transformer_config', None))
             else:
-                trainable_scope(native, parameters['trainable'])
-                native.train()
-            place_module(native, device, require=require)
-            roles[role] = api.Role(native, api=api, config=config, media_config=media_config,
-                binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule)
+                native, current = local(lambda: load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
+                    dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'),
+                    config_transform=getattr(api, 'transformer_config', None)), 'native image dense role loading')
+            def prepare_role():
+                api.validate_architecture(current, media_config)
+                require(config is None or current == config, 'first recipe requires exact same-family role architectures')
+                if role == 'teacher':
+                    native.eval().requires_grad_(False)
+                else:
+                    trainable_scope(native, parameters['trainable'])
+                    native.train()
+                if role != 'teacher' or construction is None:
+                    place_module(native, device, require=require)
+                return dict(api=api, config=current, media_config=media_config,
+                    binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule)
+            kwargs = local(prepare_role, 'native image role preparation')
+            roles[role] = (construction.wrap_teacher(api.Role, **kwargs) if role == 'teacher' and construction is not None
+                else local(lambda: api.Role(native, **kwargs), 'native image role ownership'))
+            config = current if config is None else config
             if role == 'teacher':
                 roles[role].eval()
         with torch.device(device):
-            state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
-                fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
+            state = local(lambda: training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
+                fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay']),
+                'native image optimizer/EMA construction')
         resident_flow_state(state, device)
     state['media'] = media
     descriptor = dict(architecture=config, media_config=media_config, binding=binding, runtime=runtime,
         trainable=deepcopy(parameters['trainable']), generation_sigmas=list(schedule), evidence_kind=manifest['evidence_kind'],
         asset_identity=dict(manifest_sha256=file_sha256(Path(parameters['assets'])),roles=deepcopy(manifest['roles']),media=deepcopy(manifest['media'])))
     # Recheck all immutable files after materialization; no silent cache reuse.
-    for name, spec in {**manifest['roles'], **manifest['media']}.items():
-        asset_files(Path(parameters['assets']).resolve().parent, spec)
-    require(json_object(parameters['assets']) == manifest, 'asset manifest changed during load')
-    return _components(api, state, descriptor, training=True)
+    def finish():
+        for name, spec in {**manifest['roles'], **manifest['media']}.items():
+            asset_files(Path(parameters['assets']).resolve().parent, spec)
+        require(json_object(parameters['assets']) == manifest, 'asset manifest changed during load')
+        return _components(api, state, descriptor, training=True, construction=construction)
+    return local(finish, 'native image construction publication')
 
 
 def admit_training(api, *, state, request, prepared_identity, prepared_manifest):
@@ -779,7 +909,12 @@ def admit_training(api, *, state, request, prepared_identity, prepared_manifest)
         require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
                 and request.data.get('sharding') == 'rank_strided',
                 'explicit distributed backend and rank_strided data required')
-        require(execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+        from distillschedule.open_workload.sharded import _CONSTRUCTION_HANDOFFS
+        owner = _CONSTRUCTION_HANDOFFS.get(state['teacher'])
+        construction = (owner is not None and owner.status == 'bound' and device.type == 'cpu'
+                        and request.execution.get('implementation') == owner.option
+                        and execution_policy_matches(request.execution, FLOW_FROZEN_TEACHER_EXECUTION))
+        require(construction or execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
                 'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
     else:
         require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')

@@ -18,6 +18,16 @@ FLOW_REPLICATED_EXECUTION = {
         'local': FLOW_CUDA_EXECUTION['manual_implementation']},
 }
 
+# Explicit CPU-only construction recipe, NOT an additional automatic candidate.
+FROZEN_TEACHER_CONSTRUCTION = 'cpu-fsdp2-frozen-teacher-v1'
+FLOW_FROZEN_TEACHER_EXECUTION = {
+    'modes': ['manual'], 'forbidden_fields': ['order', 'plan', 'resident_budget'],
+    'manual_implementation': {'backend': 'torch-callable-replicated-v1',
+        'reduction': 'fsdp2_reshard', 'bucket_cap_mb': 0,
+        'local': {'backend': 'torch-callable-resident-v1',
+                  'share_immutable': False, 'checkpoint_bindings': []}},
+}
+
 
 def _exact_value(actual, expected):
     if type(actual) is not type(expected):

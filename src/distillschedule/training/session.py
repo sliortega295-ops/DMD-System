@@ -106,7 +106,8 @@ def _construct_model(config, *, source=None):
         raise ValueError('model factory declined resident preconstruction admission')
     components = None
     try:
-        components = factory(parameters)
+        construct_owned = getattr(admission, 'construct', None)
+        components = construct_owned(factory, parameters) if callable(construct_owned) else factory(parameters)
         if not isinstance(components, ModelComponents):
             raise ValueError("model factory must return ModelComponents")
         components.validate()

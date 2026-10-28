@@ -9,7 +9,8 @@ from copy import deepcopy
 import importlib.metadata
 import json
 import re
-from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches, _exact_value
+from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches, _exact_value,
+    FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -182,20 +183,22 @@ register_model('ltx25', factory='distillschedule.training.ltx:build_model',
 
 # Source-qualified image families. Validation levels remain distinct: actual
 # tiny native CPU fixtures are not pretrained/GPU/quality acceptance.
-for _name, _module, _model_id, _revision in (
-    ('flux2-klein-base', 'flux', 'black-forest-labs/FLUX.2-klein-base-4B', 'a3b4f4849157f664bdbc776fd7453c2783562f4d'),
-    ('qwen-image', 'qwen_image', 'Qwen/Qwen-Image', '75e0b4be04f60ec59a75f475837eced720f823b6'),
+for _name, _module, _model_id, _revision, _construction in (
+    ('flux2-klein-base', 'flux', 'black-forest-labs/FLUX.2-klein-base-4B', 'a3b4f4849157f664bdbc776fd7453c2783562f4d',
+     dict(recipe=FROZEN_TEACHER_CONSTRUCTION, device='cpu', backend='gloo', execution=FLOW_FROZEN_TEACHER_EXECUTION)),
+    ('qwen-image', 'qwen_image', 'Qwen/Qwen-Image', '75e0b4be04f60ec59a75f475837eced720f823b6', None),
 ):
     register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
         description='Pinned native T2I FP32; explicit post-backward B1 replication; flow DMD, not official DMD2',
         execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
+        construction_constraint=_construction,
         source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
         validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', replicated='NOT_RUN', quality='NOT_RUN'),
         compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
             devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
             model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
-                'scheduler_gamma', 'ema_decay', 'generation_sigmas']))
+                'scheduler_gamma', 'ema_decay', 'generation_sigmas', *(['construction'] if _construction else [])]))
 
 
 register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build_model',
@@ -236,13 +239,24 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
         if 'native_owner_compatibility' in entry:
             _validate_native_request(entry['native_owner_compatibility'], model, algorithm, trainer, execution or {})
         replicated = ('distributed' in trainer and 'replicated' in entry.get('execution_constraints', {}))
+        construction = model.get('parameters', {}).get('construction')
+        if construction is not None:
+            constraint = entry.get('construction_constraint')
+            devices = (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', trainer.get('device', 'cpu')))
+            if (not constraint or construction != constraint['recipe'] or not replicated
+                    or any(value != constraint['device'] for value in devices)
+                    or trainer['distributed'].get('backend') != constraint['backend']
+                    or set(execution or {}) - {'adapter', 'mode', 'implementation'}
+                    or not execution_policy_matches(execution or {}, constraint['execution'])):
+                raise ValueError('unsupported construction recipe/device/manual execution: ' + model['factory'])
         # Device-conditional policy admission is metadata-only. In particular,
         # unsupported trial cloning must fail before model/codec ownership, not
         # after a CUDA request has already materialized all native role weights.
         for device in (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', 'cpu')):
             family = device.split(':', 1)[0] if isinstance(device, str) else None
             policy_kind = 'replicated' if replicated else family
-            policy = entry.get('execution_constraints', {}).get(policy_kind)
+            policy = (entry['construction_constraint']['execution'] if construction is not None else
+                      entry.get('execution_constraints', {}).get(policy_kind))
             if policy is not None:
                 settings = execution or {}
                 if not execution_policy_matches(settings, policy):

@@ -119,6 +119,17 @@ def build_model(parameters):
     return common.build_family(parameters, sys.modules[__name__])
 
 
+def _build_owned(parameters, *, construction):
+    return common.build_family(parameters, sys.modules[__name__], construction=construction)
+
+
+def _admit_construction(**kwargs):
+    return common.admit_frozen_teacher_construction(**kwargs, factory=build_model, builder=_build_owned)
+
+
+build_model.admit_construction = _admit_construction
+
+
 def build_inference_model(parameters):
     return common.build_inference_family(parameters, sys.modules[__name__])
 

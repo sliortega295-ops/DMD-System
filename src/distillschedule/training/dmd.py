@@ -539,4 +539,6 @@ def build_algorithm(components, feeds, parameters, cycle, seed):
         sum(name in call.writes for call in workload.program.calls)) for name in sorted(state)))
     for name in ('dmd_counters', 'student_scheduler', 'fake_scheduler'):
         state[name].bind_progress(progress)
+    if components.sharded_construction is not None:
+        workload = components.sharded_construction.bind_workload(components, workload)
     return workload.validate()
