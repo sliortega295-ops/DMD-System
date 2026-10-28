@@ -9,7 +9,7 @@ from copy import deepcopy
 import importlib.metadata
 import json
 import re
-from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
+from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches, _exact_value
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -84,6 +84,84 @@ def describe():
     return dict(models=_registry('model'), algorithms=_registry('algorithm'))
 
 
+# Static request contracts only. Source/assets, geometry, precision, live world
+# size and qualified resident capacity remain the actual native owners' gates.
+_NATIVE_SINGLE = dict(devices=['cpu', 'cuda'], distributed=False)
+_DMD2_DDP = dict(devices=['cpu', 'cuda'], distributed=True, forbidden_fields=['order', 'plan'],
+                 fixed_parameters={'native_checkpoint_policy': 'coupled-v1'})
+_DMD2_FSDP = dict(_DMD2_DDP, devices=['cuda'])
+_SF_FSDP = dict(devices=['cuda'], distributed=True, fixed_parameters={'native_cache_lifetime': 'native-v1'})
+_NATIVE_IMPLEMENTATION = dict(backend='torch-callable-native-owner-v1', local=dict(
+    backend='torch-callable-resident-v1', share_immutable=False, checkpoint_bindings=[]))
+_OFFICIAL_REQUESTS = {
+    'sd15': dict(algorithm='distillschedule.training.dmd2:build_dmd2',
+        default_backend=_NATIVE_SINGLE, backends={'single-device-v1': _NATIVE_SINGLE,
+                  'ddp-fp32-v1': _DMD2_DDP, 'fsdp2-native-sd15-v1': _DMD2_FSDP},
+        profiles={'dmd2-sd15-resident-tree-v1': dict(_DMD2_FSDP, allowed_role_backends=[])},
+        resident_forbidden_parameters=['native_role_backend', 'optimization_profile', 'generator_checkpoint']),
+    'sdxl': dict(algorithm='distillschedule.training.dmd2:build_dmd2',
+        default_backend=_NATIVE_SINGLE, backends={'single-device-v1': _NATIVE_SINGLE, 'ddp-fp32-v1': _DMD2_DDP},
+        profiles={}, resident_forbidden_parameters=['native_role_backend', 'optimization_profile', 'generator_checkpoint']),
+    'self-forcing-wan': dict(algorithm='distillschedule.training.self_forcing:build_self_forcing',
+        default_backend=_NATIVE_SINGLE, backends={'fsdp2-native-bf16-v1': _SF_FSDP},
+        profiles={'self-forcing-wan-fsdp2-r6-v1': dict(_SF_FSDP, allowed_role_backends=['fsdp2-native-bf16-v1'])},
+        resident_forbidden_parameters=['native_role_backend', 'optimization_profile']),
+}
+
+
+def _validate_native_request(contract, model, algorithm, trainer, execution):
+    """Reject known official mismatches without importing a numerical provider."""
+    if algorithm.get('factory') != contract['algorithm'] or algorithm.get('parameters'):
+        raise ValueError('official native algorithm required without algorithm overrides: ' + model['factory'])
+    if execution.get('adapter', 'program') != 'program':
+        raise ValueError('official native execution requires the Program adapter')
+    parameters = model.get('parameters', {})
+    if 'optimization_profile' in parameters:
+        profile = parameters['optimization_profile']
+        if not isinstance(profile, str) or profile not in contract['profiles']:
+            raise ValueError('official native optimization profile is not supported by this model')
+        selected = contract['profiles'][profile]
+        if ('native_role_backend' in parameters
+                and parameters['native_role_backend'] not in selected['allowed_role_backends']):
+            raise ValueError('official native profile owns its backend; conflicting backend override')
+    elif 'native_role_backend' in parameters:
+        backend = parameters['native_role_backend']
+        if not isinstance(backend, str) or backend not in contract['backends']:
+            raise ValueError('official native role backend is not supported by this model')
+        selected = contract['backends'][backend]
+    else:
+        selected = contract['default_backend']
+    devices = (trainer.get('device', 'cpu'), parameters.get('device', trainer.get('device', 'cpu')))
+    if any(not isinstance(device, str) or re.fullmatch(r'cpu|cuda(?::[0-9]+)?', device) is None
+           or device.split(':')[0] not in selected['devices'] for device in devices):
+        raise ValueError('official native device is not supported by the selected backend')
+    if (devices[0].split(':')[0] != devices[1].split(':')[0]
+            or all(':' in device for device in devices) and int(devices[0].split(':')[1]) != int(devices[1].split(':')[1])):
+        raise ValueError('official native trainer/model device mismatch')
+    if ('distributed' in trainer) != selected['distributed']:
+        raise ValueError('official native backend requires matching explicit trainer.distributed ownership')
+    for name, expected in selected.get('fixed_parameters', {}).items():
+        if name in parameters and not _exact_value(parameters[name], expected):
+            raise ValueError('official native backend owns this policy: ' + name)
+    mode, implementation = execution.get('mode', 'reference'), execution.get('implementation', {})
+    if selected['distributed']:
+        distribution = trainer['distributed']
+        if (not isinstance(distribution, dict)
+                or distribution.get('backend') != {'cpu': 'gloo', 'cuda': 'nccl'}[devices[0].split(':')[0]]):
+            raise ValueError('official native distributed device/backend mismatch')
+        if set(execution) & set(selected.get('forbidden_fields', [])):
+            raise ValueError('official native execution requires original order without a saved plan')
+        if (mode not in ('reference', 'manual') or mode == 'reference' and bool(implementation)
+                or mode == 'manual' and not _exact_value(implementation, _NATIVE_IMPLEMENTATION)):
+            raise ValueError('official native collective execution requires its reference or exact native-owner policy')
+    if 'resident_budget' in execution:
+        if selected['distributed'] or set(parameters) & set(contract['resident_forbidden_parameters']):
+            raise ValueError('official native resident budget does not admit collective or initialization overrides')
+    elif devices[0].startswith('cuda') and not selected['distributed']:
+        if mode not in ('reference', 'manual') or 'owner_execution' in implementation:
+            raise ValueError('official native CUDA trial execution requires qualified resident admission')
+
+
 for _name, _factory, _caps, _description in (
     ('sd15', 'sd:build_sd15', ('image', 'epsilon', 'gan'), 'Stable Diffusion 1.5'),
     ('sdxl', 'sd:build_sdxl', ('image', 'epsilon', 'lora', 'pooled_text'), 'Stable Diffusion XL'),
@@ -95,7 +173,8 @@ for _name, _factory, _caps, _description in (
     ('h3-ar', 'h3_cached_public:build_model', ('video', 'audio', 'history', 'lora'), 'Cached H3 autoregressive / W6'),
 ):
     register_model(_name, factory='distillschedule.training.' + _factory,
-                   capabilities=_caps, description=_description)
+                   capabilities=_caps, description=_description,
+                   **({'native_owner_compatibility': _OFFICIAL_REQUESTS[_name]} if _name in _OFFICIAL_REQUESTS else {}))
 
 register_model('ltx25', factory='distillschedule.training.ltx:build_model',
     capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video',
@@ -154,6 +233,8 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
     """
     entries = [row for row in _registry('model').values() if row['factory'] == model.get('factory')]
     for entry in entries:
+        if 'native_owner_compatibility' in entry:
+            _validate_native_request(entry['native_owner_compatibility'], model, algorithm, trainer, execution or {})
         replicated = ('distributed' in trainer and 'replicated' in entry.get('execution_constraints', {}))
         # Device-conditional policy admission is metadata-only. In particular,
         # unsupported trial cloning must fail before model/codec ownership, not

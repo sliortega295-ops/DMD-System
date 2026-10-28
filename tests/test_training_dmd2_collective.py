@@ -56,6 +56,7 @@ def test_actual_distributed_continuation_is_exact_across_fresh_processes(tmp_pat
     value = json.loads(path.read_text())
     value['model']['parameters']['native_role_backend'] = 'ddp-fp32-v1'
     value['data']['sharding'] = 'rank_strided'
+    value['trainer']['distributed'] = dict(backend='gloo', timeout_seconds=180)
     path.write_text(json.dumps(value))
     _, first = _phase(tmp_path, 'first', path, 1)
     resumed_dir, resumed = _phase(tmp_path, 'resumed', path, 3, first)
