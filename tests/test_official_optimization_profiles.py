@@ -99,3 +99,22 @@ def test_source_lock_contains_real_helpers_not_experiment_launchers():
         name for row in rows for name in row['definitions']}
     assert all(not Path(row['target']).is_absolute() for row in rows)
     assert all('native_fsdp2_pair' not in row['target'] for row in rows)
+
+
+@pytest.mark.parametrize('fa2,fa3', [(False, False), (False, True), (True, True), (True, False)])
+def test_native_sf_attention_preconstruction_flag_gate(fa2, fa3):
+    """Flag contract only; actual binary/import acceptance is a separate gate."""
+    from types import SimpleNamespace
+    from distillschedule.training.self_forcing_fsdp import validate_native_attention
+    module = SimpleNamespace(FLASH_ATTN_2_AVAILABLE=fa2, FLASH_ATTN_3_AVAILABLE=fa3)
+    calls = []
+    def original_module(name):
+        calls.append(name)
+        return module
+    source = SimpleNamespace(import_module=original_module)
+    if fa2 and not fa3:
+        assert validate_native_attention(source) is module
+    else:
+        with pytest.raises(ValueError, match='native A100 FA2 provider required'):
+            validate_native_attention(source)
+    assert calls == ['wan.modules.attention']

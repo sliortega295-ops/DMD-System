@@ -48,7 +48,17 @@ def admit(parameters):
     require(parameters.get('native_cache_lifetime', 'native-v1') == 'native-v1',
             'native FSDP2 owns the full early-C/post-commit-G cache lifecycle; no second release policy')
     verify_sources(PROFILE)
+    from .self_forcing_source import original
+    validate_native_attention(original(parameters['source_root']).source)
     return device
+
+
+def validate_native_attention(source):
+    """Resolve the original GPU provider before allocating native model roles."""
+    attention = source.import_module('wan.modules.attention')
+    require(attention.FLASH_ATTN_2_AVAILABLE and not attention.FLASH_ATTN_3_AVAILABLE,
+            'actual native A100 FA2 provider required; no SDPA fallback')
+    return attention
 
 
 def validate_settings(args):

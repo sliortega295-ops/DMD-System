@@ -271,3 +271,7 @@ The distributed loader maps the read-only source pages, then copies into each
 role's independent parameters before sharding; training never mutates the asset
 file. This avoids a second private full-Teacher input allocation on every rank.
 The ordinary single-device reference still accepts its existing legacy format.
+
+The native A100 path requires a matching FlashAttention-2 package importable as
+`flash_attn`. Provider availability is checked before allocating the role
+models. The CPU reference does not require this optional GPU dependency.
