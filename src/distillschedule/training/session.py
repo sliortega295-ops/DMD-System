@@ -19,6 +19,7 @@ from distillschedule.workloads.best_known.registry import file_sha256
 from . import distributed
 from .adapters import InferenceProjection, ModelComponents
 from .checkpoint import (
+    _read_collective_checkpoint,
     cpu_tree,
     read_checkpoint,
     read_manifest,
@@ -416,7 +417,10 @@ def _restore_for_output(config, checkpoint, components, dataset, algorithm, iden
     # The saved DDP/FSDP/HSDP owner must exist BEFORE decoding local shards.
     # Reuse the persistent Program lifecycle, without executing a train update.
     session = policy.prepare_resume(workload)
-    payload = distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission")
+    # Reuse restart's complete collective proof before loading local shards;
+    # do not rehash every model-sized peer file independently on every rank.
+    payload = (_read_collective_checkpoint(checkpoint, identity=identity) if world > 1 else
+               distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission"))
     distributed.checked(lambda: sampling.validate_progress(payload["cycle"], payload["cursor"]),
                         "output shard sampling progress admission")
     unpack_state(payload["state"], session.state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
