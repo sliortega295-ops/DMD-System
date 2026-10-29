@@ -264,8 +264,13 @@ pretrained quality data**. For real raw prompts, fill
 `inputs.prompts.template.json` with the actual local native T5 architecture,
 checkpoint SHA and tokenizer directory, then use
 `distillctl data prepare ... --preparer distillschedule.data.self_forcing_inputs:prepare_inputs`.
-The template's T5 dimensions describe the pinned native UMT5-XXL constructor,
-not a tiny substitute; the bounded test builds a separately labeled small T5.
+The template declares the native BF16 UMT5-XXL checkpoint and exact FP32 output
+widening. For an FP32 checkpoint, explicitly set `encoder.precision.weights` to
+`float32`; the loader never converts a checkpoint to make its declared dtype fit.
+Its T5 dimensions describe the pinned native constructor, not a tiny substitute.
+The complete 5.68B-parameter BF16 encoder has also prepared new raw prompts
+through this public path on CPU; the bounded tests use a separately labeled
+small T5.
 `inputs.preencoded.template.json` supplies exact already-native embeddings.
 The static `training.json` selects the actual registered model/workflow and
 independent G1/C5 streams; fill its explicit paths before use.

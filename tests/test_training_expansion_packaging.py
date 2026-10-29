@@ -68,6 +68,11 @@ def test_official_self_forcing_static_config_uses_registered_native_workflow():
     for mode in ('prompts', 'preencoded'):
         value = json.loads((ROOT/f'recipes/self_forcing_official/inputs.{mode}.template.json').read_text())
         assert value['mode'] == mode and value['schema_version'] == 'distillschedule.official_self_forcing_inputs.v1'
+        if mode == 'prompts':
+            assert value['encoder']['precision'] == {'weights': 'bfloat16', 'output': 'float32'}
+            assert value['encoder']['config']['dim'] == 4096
+            assert value['encoder']['config']['num_layers'] == 24
+            assert value['encoder']['text_len'] == 512
 
 
 def test_public_resident_provider_ci_requires_real_lifecycle_not_skips():
