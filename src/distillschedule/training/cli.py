@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import os
 import platform
 import sys
 from pathlib import Path
@@ -16,13 +17,21 @@ from .config import TrainingConfig, load_training_config
 def doctor(config=None):
     packages = {}
     for name in ("distillschedule", "torch", "numpy", "Pillow", "omegaconf", "diffusers", "deepspeed",
-                 "transformers", "peft", "sentencepiece", "torchaudio", "safetensors"):
+                 "transformers", "peft", "sentencepiece", "torchaudio", "safetensors",
+                 "tensorflow", "tensorflow-cpu"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             packages[name] = None
+    controls = {name: os.environ.get(name) for name in ("USE_TF", "USE_FLAX")}
+    warnings = []
+    if any(packages[name] is not None for name in ("tensorflow", "tensorflow-cpu")) and controls["USE_TF"] != "0":
+        warnings.append({"code": "OPTIONAL_TENSORFLOW_IMPORTS", "message":
+            "For PyTorch-only recipes, set USE_TF=0 and USE_FLAX=0 before preparing assets and launching workers. "
+            "Unused TensorFlow/Keras/OpenCV imports can change library paths during model setup."})
     result = {"status": "INSPECTED", "python": platform.python_version(),
               "executable": sys.executable, "packages": packages,
+              "environment_controls": controls, "import_warnings": warnings,
               "model_imported": False, "cuda_initialized": False, "gpu_execution": "NOT_RUN"}
     if config is not None:
         if config.execution.get("adapter", "program") == "native":

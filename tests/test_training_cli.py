@@ -23,6 +23,31 @@ def test_doctor_does_not_import_torch_or_initialize_cuda(command):
         assert parsed["model_imported"] is False
 
 
+def test_doctor_reports_optional_tensorflow_import_advice_without_loading_it(monkeypatch):
+    import importlib.metadata
+    from distillschedule.training.cli import doctor
+
+    def version(name):
+        if name == "tensorflow":
+            return "SYNTHETIC_METADATA_ONLY"
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", version)
+    monkeypatch.delenv("USE_TF", raising=False)
+    monkeypatch.delenv("USE_FLAX", raising=False)
+    result = doctor()
+    assert result["environment_controls"] == {"USE_TF": None, "USE_FLAX": None}
+    assert result["import_warnings"][0]["code"] == "OPTIONAL_TENSORFLOW_IMPORTS"
+    assert "USE_TF=0" in result["import_warnings"][0]["message"]
+    assert "tensorflow" not in sys.modules and "keras" not in sys.modules
+    monkeypatch.setenv("USE_TF", "0")
+    monkeypatch.setenv("USE_FLAX", "0")
+    configured = doctor()
+    assert configured["environment_controls"] == {"USE_TF": "0", "USE_FLAX": "0"}
+    assert configured["import_warnings"] == []
+    assert configured["gpu_execution"] == "NOT_RUN"
+
+
 def test_training_config_invalid_before_plugin_import(tmp_path):
     raw = {"schema_version": "distillschedule.training.v1", "model": {"factory": "missing:build"},
            "algorithm": {"factory": "missing:build"}, "data": {"prepared": "missing.json"},
