@@ -186,6 +186,8 @@ jobs:
             'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
             'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
             'tests/test_training_sharded_construction.py::test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]' \
+            'tests/test_training_sharded_construction.py::test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]' \
+            'tests/test_training_sharded_construction.py::test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]' \
             --junitxml=flux2-construction-handoff-cpu.xml
           python scripts/check_cpu_receipt.py flux2-construction-handoff-cpu.xml \
             --require 'test_caller_pre_sharded_actual_native_root_still_rejected[flux2]' \
@@ -195,7 +197,9 @@ jobs:
             --require 'test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]' \
             --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
             --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
-            --require 'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]'
+            --require 'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]' \
+            --require 'test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]' \
+            --require 'test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]'
       - name: Installed wheel user path, no checkout imports or model downloads
         run: python scripts/check_framework_install.py --modern-flow --work-dir "${{ runner.temp }}/installed-modern" --output installed-modern.json
       - name: Separate optional native-image and native-video CUDA lifecycle receipt

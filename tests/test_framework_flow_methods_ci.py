@@ -352,6 +352,8 @@ NATIVE_CONSTRUCTION_HANDOFF_PROOFS = [
     'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]',
     'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]',
     'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]',
+    'test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]',
+    'test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]',
 ]
 
 
