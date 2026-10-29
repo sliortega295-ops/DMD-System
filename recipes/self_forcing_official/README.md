@@ -79,6 +79,33 @@ with `schema_version: distillschedule.official_self_forcing_inputs.v1`:
   uses explicit false, avoiding protobuf conversion of a slow-only tokenizer
   without inventing an encoder or installing another dependency.
 
+By default prompt preparation requires native **FP32 checkpoint / FP32 encoder
+output**, with the original FP32 path unchanged. For an existing native BF16
+T5 checkpoint, opt in explicitly in the manifest's `encoder` object:
+
+```json
+"precision": {"weights": "bfloat16", "output": "float32"}
+```
+
+The actual native T5 parameters are declared BF16 before strict loading; the
+checkpoint must already have that exact dtype, keys and shapes. No checkpoint
+is recast, repacked or downloaded. Original `WanTextEncoder.forward` and
+`T5Encoder` produce native BF16 conditioning, including original padding; only
+that result is widened exactly to FP32 at the public prepared-embedding
+boundary, without scaling, resizing or normalization. `encode_text` applies
+the same declaration when preparing the matching negative prompt. Explicit
+`{"weights": "float32", "output": "float32"}` is also accepted; other
+precision/output values, missing or unknown precision fields, and checkpoint
+dtype mismatches are rejected before publication. The complete declaration
+is bound into prepared encoder provenance and its parameter hash, alongside
+the original local checkpoint/tokenizer/source identities. Preencoded inputs
+still require FP32 and never gain an implicit dtype conversion.
+
+BF16 encoding is an explicit data-preparation precision choice, not a claim
+of bitwise equivalence to FP32 encoding. It does not change training precision,
+attention backends or exported inference precision, or establish pretrained
+encoder capacity, GPU performance, generated-video quality or convergence.
+
 Raw prompt text becomes model conditioning during explicit data preparation;
 training and exported inference accept the exact prepared embedding boundary.
 New prompts can be prepared separately and used by exported inference without

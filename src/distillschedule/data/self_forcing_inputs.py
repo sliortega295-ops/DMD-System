@@ -4,6 +4,7 @@ Prepared BLC tensors are never reshaped, normalized, resized or synthesized.
 The optional prompt encoder runs the original WanTextEncoder.forward and
 T5Encoder layers from the same external source lock, with explicit local-only
 weights/tokenizer and only the CUDA device property ported to CPU placement.
+Declared BF16 native encoding may widen its output exactly to public FP32 BLC.
 """
 from __future__ import annotations
 
@@ -16,6 +17,15 @@ from .preparation import _publish
 from .tensors import tensor_tree
 
 SCHEMA = 'distillschedule.official_self_forcing_inputs.v1'
+
+
+def _encoder_precision(spec):
+    from distillschedule.training.self_forcing_source import require
+    precision = spec.get('precision', dict(weights='float32', output='float32'))
+    require(isinstance(precision, dict) and set(precision) == {'weights', 'output'}
+            and precision['weights'] in ('float32', 'bfloat16') and precision['output'] == 'float32',
+            'native T5 precision requires weights float32/bfloat16 and output float32 only')
+    return precision
 
 
 def validate_row(row, *, shape=None, device='cpu'):
@@ -36,8 +46,9 @@ def build_local_text_encoder(spec, *, base_dir):
     from distillschedule.training.self_forcing_source import original, require
     from distillschedule.training.self_forcing import _asset_file
     require(isinstance(spec, dict) and {'source_root', 'config', 'weights', 'tokenizer', 'text_len'} <= set(spec)
-            <= {'source_root', 'config', 'weights', 'tokenizer', 'text_len', 'tokenizer_use_fast'},
+            <= {'source_root', 'config', 'weights', 'tokenizer', 'text_len', 'tokenizer_use_fast', 'precision'},
             'native local T5 requires source/config/weights/tokenizer/text_len')
+    precision = _encoder_precision(spec)
     root = Path(base_dir).resolve(strict=True)
     api = original(spec['source_root'])
     config = deepcopy(spec['config'])
@@ -60,6 +71,9 @@ def build_local_text_encoder(spec, *, base_dir):
                {'device': property(lambda self: next(self.text_encoder.parameters()).device)})
     encoder = cls.__new__(cls); torch.nn.Module.__init__(encoder)
     encoder.text_encoder = api.t5.T5Encoder(**config).eval().requires_grad_(False)
+    if precision['weights'] == 'bfloat16':
+        # Declare the destination module dtype before exact layout validation/load.
+        encoder.text_encoder.to(dtype=torch.bfloat16)
     from distillschedule.training.checkpoint import _validate_layout
     weights = torch.load(checkpoint, map_location='cpu', weights_only=True)
     _validate_layout(encoder.text_encoder.state_dict(), weights, 'native local T5')
@@ -76,16 +90,29 @@ def build_local_text_encoder(spec, *, base_dir):
     return encoder, documents
 
 
+def _encode_prompts(encoder, prompts, spec):
+    import torch
+    from distillschedule.training.self_forcing_source import require
+    precision = _encoder_precision(spec)
+    with torch.no_grad():
+        result = encoder(text_prompts=prompts)
+    if precision['weights'] == 'bfloat16':
+        require(isinstance(result, dict) and set(result) == {'prompt_embeds'}
+                and type(result['prompt_embeds']) is torch.Tensor
+                and result['prompt_embeds'].dtype == torch.bfloat16,
+                'declared native BF16 T5 output required before exact FP32 widening')
+        result = {'prompt_embeds': result['prompt_embeds'].float()}
+    return result
+
+
 def encode_text(text_prompts, spec, *, base_dir):
     """Raw strings -> original local Wan/T5 numerical conditioning, no fetch."""
-    import torch
     from distillschedule.training.self_forcing_source import require
     prompts = [text_prompts] if isinstance(text_prompts, str) else text_prompts
     require(isinstance(prompts, list) and prompts and all(isinstance(text, str) for text in prompts),
             'nonempty prompt string batch required')
     encoder, documents = build_local_text_encoder(spec, base_dir=base_dir)
-    with torch.no_grad():
-        result = encoder(text_prompts=prompts)
+    result = _encode_prompts(encoder, prompts, spec)
     validate_row(result)
     for document in documents:
         validate_source(document)
@@ -106,8 +133,7 @@ def encode_record(record, parameters, *, encoder=None):
                 'prompt must be a string or nonempty string batch')
         if encoder is None:
             encoder, _ = build_local_text_encoder(parameters['encoder'], base_dir=root)
-        with torch.no_grad():
-            row = encoder(text_prompts=prompts)
+        row = _encode_prompts(encoder, prompts, parameters['encoder'])
     return validate_row(row)
 
 
