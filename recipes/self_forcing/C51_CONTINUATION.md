@@ -95,6 +95,18 @@ default requires an owned CUDA context; native worker admission retains that
 import and source check. Record the actual training environment, not a CPU
 preparation snapshot, in the training asset document.
 
+Use the same explicit PyTorch-only import controls during asset preparation
+and on every worker:
+
+```bash
+export USE_TF=0
+export USE_FLAX=0
+```
+
+These controls are included in the asset environment identity. They prevent
+unneeded TensorFlow/Keras/OpenCV imports during model setup from changing the
+dynamic-library search path after it has been recorded.
+
 Original Wan `save_pretrained` configs omit several `ignore_for_config`
 constructor arguments. The adapter uses their pinned original defaults for
 patch shape, attention window and norm flags. Explicit conflicting values,

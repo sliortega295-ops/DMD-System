@@ -38,6 +38,18 @@ requires its separate saved-plan contract and remains bounded to two cycles.
 The following API builds the **real** asset document from your own files and
 the already validated execution environment; it does not create dummy hashes:
 
+This is a PyTorch training path. Set the following controls before preparing
+assets and keep them in every worker's launch environment:
+
+```bash
+export USE_TF=0
+export USE_FLAX=0
+```
+
+They are recorded by `environment_snapshot`, alongside the library paths.
+This avoids unused optional TensorFlow/Keras/OpenCV imports changing those
+paths during FSDP setup.
+
 ```python
 import importlib.metadata
 import json

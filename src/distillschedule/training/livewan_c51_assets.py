@@ -134,7 +134,10 @@ def admit_runtime(value):
     for kind, name in KERNEL_ENV.items():
         require(actual_env.pop(name, None) == value["kernels"][kind]["root"],
                 "explicit effective C51 kernel environment/root differs: " + name)
-    require(actual_env == runtime["environment"], "effective C51 precision/environment controls changed")
+    changed = sorted(name for name in actual_env.keys() | runtime["environment"].keys()
+                     if actual_env.get(name) != runtime["environment"].get(name))
+    require(actual_env == runtime["environment"],
+            "effective C51 precision/environment controls changed: " + ", ".join(changed))
     require(str(torch.__version__) == "2.10.0+cu128", "C51 requires validated Torch 2.10 CUDA 12.8")
     for name, expected in runtime["dependency_versions"].items():
         require(importlib.metadata.version(name) == expected, "C51 dependency changed: " + name)

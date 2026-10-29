@@ -80,7 +80,7 @@ def environment_snapshot(environment):
     prefixes = ("LIVEWAN_", "DISTILLSCHEDULE_", "DMD_", "NCCL_", "TORCH_", "PYTORCH_",
                 "CUDA_", "CUBLAS_", "CUDNN_", "NSYS_", "NCU_")
     names = {"LOCAL_KERNELS", "PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD", "OMP_NUM_THREADS",
-             "MKL_NUM_THREADS", "MALLOC_ARENA_MAX", "TRITON_CACHE_DIR"}
+             "MKL_NUM_THREADS", "MALLOC_ARENA_MAX", "TRITON_CACHE_DIR", "USE_TF", "USE_FLAX"}
     # Test intake is never a production launch override.
     return nonsecret_environment_snapshot(environment, prefixes=prefixes, names=names,
         exclude={"DMD_LIVEWAN_TEST_UPSTREAM", "DMD_WAN21_TEST_UPSTREAM"})

@@ -1399,6 +1399,25 @@ def test_c51_hf_synthetic_runtime_chain_reaches_both_role_callables(c51_hf_runti
     assert admit_runtime(c51_hf_runtime.value) == runtime
 
 
+@pytest.mark.parametrize("change", ["added", "changed", "removed"])
+def test_c51_environment_drift_reports_changed_control_before_provider_load(c51_hf_runtime, monkeypatch, change):
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    key = "CUBLAS_WORKSPACE_CONFIG"
+    expected = c51_hf_runtime.value["native"]["runtime"]["environment"]
+    if change == "added":
+        expected.pop(key, None)
+        monkeypatch.setenv(key, ":4096:8")
+    elif change == "changed":
+        expected[key] = ":16:8"
+        monkeypatch.setenv(key, ":4096:8")
+    else:
+        expected[key] = ":16:8"
+        monkeypatch.delenv(key, raising=False)
+    with pytest.raises(ValueError, match="effective C51 precision/environment controls changed.*" + key):
+        admit_runtime(c51_hf_runtime.value)
+    assert c51_hf_runtime.loads == []
+
+
 @pytest.mark.parametrize("name", ["flash_attn", "flash_attn2", "flash_attn3", "flash_attn_interface", "_flash_attn2_cuda_a511a4c"])
 def test_c51_hf_foreign_preloads_fail_before_native_load(c51_hf_runtime, monkeypatch, name):
     from distillschedule.training.livewan_c51_assets import admit_runtime
