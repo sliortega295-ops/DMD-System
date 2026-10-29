@@ -564,6 +564,14 @@
       "integrated_sha256": "fa1a12ae87a5131e1ef107ae37d171776d161b544f140db4c211f2ea993fe700",
       "source_commit": "6a4a8cabf05c75dc5540f862ccd843cc9d1d828c",
       "change": "Public import-weights help and dispatch for existing trained-Generator initialization/export, exact committed CLI bytes from 6a4a8cab. Native training/model/loss/update/backend code is unchanged; original source import and prior overlays are preserved. Source-scoped CPU and output receipts exist; no formal-review or new native GPU claim."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "0d59ba0ab29e8d1a85c69a25bd4d11d5f3145d81ce1fe90c06822fb63869c7c1",
+      "integrated_sha256": "5406cd09fef5c7b5b0485ab7597c095d9cc8ab1d9056f18412991480fa43ecf2",
+      "source_commit": "2c94ca49464323f674ae5a229e276bc53c6b65fa",
+      "change": "Explicit default-OFF C51 host-phase scalar receipt seams, exact committed2c94 worker bytes. Original model/loss/optimizer/backend/communication/timer execution and external512MiB reserve unchanged; enabled diagnostics are nonperformance partial history. Reviewed five-path implementation with actual target Torch2.10 CPU37 cases per node; native GPU diagnosis remains NOT_RUN. Prior source import and overlay receipts preserved."
     }
   ]
 }
