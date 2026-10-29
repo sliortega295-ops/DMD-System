@@ -148,5 +148,9 @@ weights of a different historical experiment.
 Receipts retain actual losses/norms, five successful input operations, actual
 G/C/EMA versions, RNG identity, source/runtime origins and capacity observations.
 They are not a formal performance or cross-reference numerical qualification.
-Fresh C51 physical drain/shadow/two-slot recovery and unified native VAE output
-remain separate unimplemented adapters, not silently supplied by this route.
+The separate [full C51 continuation](C51_CONTINUATION.md) implements its
+physical drain, shadow and two-slot recovery. Its
+[native output bridge](../../docs/guides/livewan_native_output.md) exports the
+current Student and generates on new inputs. These are explicit adapters,
+not optimizations silently enabled by this reference route; their native GPU
+qualification is recorded separately.

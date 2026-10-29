@@ -3,7 +3,7 @@
 **Source / CPU protocol integration only. Native two-node CUDA continuation,
 cross-reference numerical comparison, and 100 actual fresh DMD cycles with a
 midpoint process restart are NOT_RUN. Numerical status remains REVIEW.**
-This is W4 LiveWan, not official Self-Forcing W4-alternative, not the sequential
+This is W4 LiveWan, not the separate official Self-Forcing workflow or sequential
 reference, and not a new benchmark. Existing recipes/templates remain unchanged.
 
 Use `training.c51-stream.json` as an explicit opt-in request. It enters the same
@@ -14,8 +14,12 @@ dependency installation, cluster reservation, or implicit asset download.
 
 ## Inputs and assets
 
-Prepare **80 distinct original Teacher archives per cycle**: 8000 for horizon
-100, not two old cohorts relabeled with new keys. The existing restricted-load,
+Each cycle consumes **80 distinct original Teacher archives**. By default,
+records are also disjoint across cycles: horizon 100 requires 8000 archives.
+Alternatively, explicitly enable the finite-pool epoch policy shown below to
+reuse at least 80 genuine archives across cycles. It preserves distinct records
+within each cycle and fresh operation-keyed RNG, without relabeling archives
+as new Teacher samples. The existing restricted-load,
 exact source, unique path/archive/latent-content, prompt, full 368x640/81-frame,
 global B16 and original four-step/dynamic-world/continuous-sigma gates remain.
 
@@ -23,8 +27,14 @@ global B16 and original four-step/dynamic-world/continuous-sigma gates remain.
 distillctl data prepare-livewan-c51-inputs \
   --data-root /PROJECT/teacher --prompts /PROJECT/prompts.pt \
   --source-root /PROJECT/clean-pinned-livewan --cycles 100 --seed 31415 \
+  --input-policy distillschedule.livewan_teacher_epochs.v1 \
   --output /PROJECT/c51-inputs.json
 ```
+
+Omit `--input-policy` for the original disjoint-record policy. Both paths use
+the same native `TeacherLatents` reader and existing training owner. See the
+[input policy](../../docs/contracts/original_livewan_teacher_epochs_v1.md) for
+the exact permutation, progress and checkpoint identity.
 
 Cached original Teacher data is allowed. Supplied archive metadata does **not**
 attest pretrained Teacher quality or upstream sequential RNG equivalence.
@@ -65,7 +75,9 @@ Supply an explicit capacity policy with schema
 `gpu_metric`, all-rank `memory_limits`, `host_limits`, `gpu_reserve_bytes` and
 `host_reserve_bytes` gates. There are no fabricated default budgets or disabled
 numerical/capacity checks. Large checkpoint staging must fit the admitted host
-reserve. Inference generation/export are not offered by this adapter.
+reserve. For current-Student export and new-input generation, use the
+[native output guide](../../docs/guides/livewan_native_output.md) with a
+complete checkpoint from this adapter.
 
 ## Horizon 100, stop at 50, fresh-process restore
 

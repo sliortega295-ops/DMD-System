@@ -5,8 +5,11 @@
 `InputLoader`. It is **not** a fresh C51 training command, a model checkpoint,
 or proof of pretrained quality. A separate opt-in
 [original reference lifecycle](../../recipes/self_forcing/REFERENCE_TRAINING.md)
-now consumes this input kind for finite complete-cycle training and restart;
-the optimized C51 pipeline's fresh-training/restart route remains unavailable.
+consumes this legacy input kind for finite complete-cycle training and restart.
+For the full optimized two-pool pipeline, use the separate
+[C51 continuous training and restart recipe](../../recipes/self_forcing/C51_CONTINUATION.md).
+That adapter supports an explicit finite Teacher-pool epoch policy, described
+below; the legacy default still requires disjoint records across cycles.
 The selected C51 two-cycle binding and historical `FormalTrace` semantics,
 including the default historical prefix behavior, are unchanged. A historical
 50-cycle reused trace is not fresh input.
@@ -122,15 +125,17 @@ has reached a save-safe boundary.
 
 ## Deliberately not implemented here
 
-Before fresh public C51 training or restart, the existing native cycle owner
-must expose a drain boundary **before** next-cycle precompute. All transport,
-shadow, optimizer and staged-send effects must be complete; a barrier alone
-does not suffice. Exact generator trainables, critic LoRA, both named Adam
-states, versions, rank-local RNG and this data cursor must be saved in an
-atomic all-rank same-topology checkpoint. Frozen bases/temporary caches and
-teacher/shadow identities must be reconstructed and verified. EMA remains
-zero. Native VAE output/export is another separate bridge. This unit neither
-lifts worker cycle bounds nor supplies a substitute solver/update loop.
+The legacy input adapter alone does not supply C51 training or restart. The
+separate [full C51 adapter](../../recipes/self_forcing/C51_CONTINUATION.md)
+connects the existing native cycle owner to the public lifecycle. Its drain
+boundary occurs **before** next-cycle precompute and waits for transport,
+shadow, optimizer and staged-send effects. It saves Generator trainables,
+Critic LoRA, both named Adam states, versions, rank-local RNG and the data
+cursor in an atomic all-rank same-topology checkpoint. Frozen bases and
+temporary caches are reconstructed; EMA remains zero. The separate
+[current-Student export and generation guide](livewan_native_output.md)
+covers the native output bridge. Neither route substitutes another training
+loop or changes the legacy input contract.
 
 The opt-in CPU tests require `DMD_LIVEWAN_TEST_UPSTREAM` to name the actual
 pinned checkout. They use stride-expanded native-shape fixtures with small
