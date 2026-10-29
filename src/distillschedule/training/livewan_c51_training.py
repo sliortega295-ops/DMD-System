@@ -16,7 +16,7 @@ from distillschedule.search.livewan_request import LiveWanRequest
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 from . import distributed
 from .livewan_reference_assets import document, require
-from .livewan_c51_assets import C51Assets, asset_config, admit_runtime, source_origins
+from .livewan_c51_assets import C51Assets, asset_config, admit_runtime, source_origins, uses_hf_provider, provider_binding
 from .livewan_c51_state import PoolInputs, Progress, WindowedRunaheadTransport, owner_state, physical_versions
 
 SCHEMA = "distillschedule.livewan_c51_continuation.v1"
@@ -105,11 +105,19 @@ def source_files():
     return {str(p.relative_to(root)): file_sha256(p) for p in sorted(paths)}
 
 
-def training_identity(head, admitted, config):
-    return dict(schema_version=SCHEMA, source_head=head, source_files=source_files(),
+def training_identity(head, admitted, config, *, runtime=None):
+    result = dict(schema_version=SCHEMA, source_head=head, source_files=source_files(),
                 assets_sha256=fingerprint(admitted["assets"]), input_sha256=admitted["inputs"]["input_sha256"],
                 horizon=config.trainer["cycles"], seed=config.trainer["seed"], checkpoint_every=config.trainer["checkpoint_every"],
                 topology=deepcopy(TOPOLOGY), capacity_policy=deepcopy(admitted["capacity_policy"]), contract=descriptor())
+    if uses_hf_provider(admitted["assets"]):
+        require(type(runtime) is dict and type(runtime.get("attention_provider")) is dict,
+                "C51 v2 checkpoint identity requires observed runtime provider")
+        observed = runtime["attention_provider"]
+        require({key: observed.get(key) for key in ("provider", "kernels")} == provider_binding(admitted["assets"]),
+                "C51 checkpoint runtime/provider asset binding changed")
+        result["attention_provider"] = deepcopy(observed)
+    return result
 
 
 def checkpoint_policy(identity):
@@ -152,6 +160,8 @@ def make_plan(assets, output, *, identity=None, stop=None):
     for role, name in (("generator", "student"), ("score", "critic"), ("teacher", "teacher")):
         plan["workload"][role]["checkpoint"] = assets["native"]["models"][name]["root"]
     plan["evidence"] = dict(output_dir=str(output), continuation_schema=SCHEMA)
+    if uses_hf_provider(assets):
+        plan["evidence"]["attention_provider"] = provider_binding(assets)
     if identity is not None:
         plan["evidence"]["continuation_identity"] = deepcopy(identity)
         plan["evidence"]["requested_stop_cycle"] = stop
@@ -186,6 +196,10 @@ class Continuation:
             if sources[project]["root"] not in sys.path:
                 sys.path.insert(0, sources[project]["root"])
         value = dict(schema_version=SCHEMA, sources=deepcopy(sources))
+        if uses_hf_provider(assets):
+            require(self.bootstrap.value.get("attention_provider") == provider_binding(assets),
+                    "C51 native bootstrap/provider identity changed")
+            value["attention_provider"] = deepcopy(self.identity["attention_provider"])
         return dict(value, source_receipt_sha256=fingerprint(value))
 
     def bind(self, *, torch, rank, bundle, versions, pairs):
@@ -211,7 +225,10 @@ class Continuation:
     def validate_constructed(self):
         self.bootstrap.unchanged()
         source_origins(self.admitted["assets"])
-        admit_runtime(self.admitted["assets"])
+        runtime = admit_runtime(self.admitted["assets"])
+        if uses_hf_provider(self.admitted["assets"]):
+            require(runtime["attention_provider"] == self.identity["attention_provider"],
+                    "C51 constructed provider/checkpoint runtime identity changed")
 
     def transport(self, **kwargs):
         return WindowedRunaheadTransport(start_cycle=self.start_cycle, **kwargs)
@@ -328,7 +345,9 @@ def run_training(config, *, admit, native_output=None):
         result = distributed.checked(admit, "C51 public source/assets/input/policy admission")
         _, source, paths, admitted = result
         require(not source["identity"]["dirty"], "C51 execution requires committed source, not a fake Git identity")
-        identity = training_identity(source["identity"]["head"], admitted, config)
+        provider_runtime = (distributed.checked(lambda: admit_runtime(admitted["assets"]),
+            "C51 v2 observed provider before checkpoint identity") if uses_hf_provider(admitted["assets"]) else None)
+        identity = training_identity(source["identity"]["head"], admitted, config, runtime=provider_runtime)
         require(all(row == identity for row in distributed.gather(identity)), "C51 rank source/input/policy identities differ")
         stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
         require(all(row == stop for row in distributed.gather(stop)), "C51 rank stop controls differ")
@@ -338,7 +357,8 @@ def run_training(config, *, admit, native_output=None):
         output = Path(paths["output"])
         _reserve_output(output)
         rank = distributed.rank_world()[0]
-        runtime = distributed.checked(lambda: admit_runtime(admitted["assets"]), "C51 pinned runtime/precision/kernel roots")
+        runtime = (provider_runtime if provider_runtime is not None else
+                   distributed.checked(lambda: admit_runtime(admitted["assets"]), "C51 pinned runtime/precision/kernel roots"))
         observer = ResourceObserver(output/"capacity"/f"rank-{rank:05d}.json", "full-C51-continuation", rank//8,
                                     capacity_policy=admitted["capacity_policy"])
         binding = _bind_devices(torch, observer, rank=rank)

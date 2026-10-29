@@ -150,6 +150,15 @@ def _model(row, *, size, verify_payloads):
 
 
 def asset_config(value, *, verify_payloads=False):
+    """Public v1 is always the complete original pip-FA2 contract."""
+    return _asset_config(value, verify_payloads=verify_payloads, dependencies=DEPENDENCIES)
+
+
+def _asset_config(value, *, verify_payloads, dependencies):
+    """Shared checks; only the separately versioned C51 provider owns substitution.
+
+    No public reference flag can omit a dependency or admit a provider.
+    """
     require(type(value) is dict and set(value) == {"schema_version", "sources", "models", "initial_student",
             "critic_lora_seed", "initial_versions", "optimizer_steps", "runtime"} and value["schema_version"] == SCHEMA,
             "explicit versioned original-reference assets required; no benchmark bootstrap")
@@ -182,7 +191,7 @@ def asset_config(value, *, verify_payloads=False):
     require(type(runtime) is dict and set(runtime) == {"dependency_versions", "environment", "backend"}
             and runtime["backend"] == BACKEND, "fixed original reference backend/precision policy required")
     versions = runtime["dependency_versions"]
-    require(type(versions) is dict and set(versions) == DEPENDENCIES
+    require(type(versions) is dict and set(versions) == dependencies
             and all(type(v) is str and v for v in versions.values()), "explicit complete original dependency versions required")
     _environment(runtime["environment"])
     return deepcopy(value)

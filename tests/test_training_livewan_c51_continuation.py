@@ -1213,3 +1213,365 @@ def test_c51_final_receipt_rechecks_capacity_without_checkpoint_cadence(
     with pytest.raises(ValueError, match="final receipt host peak"): value.complete()
     assert len(checks) == end+1 and not list((tmp_path/"output").rglob("_SUCCESS"))
     assert not (tmp_path/"output/continuation/rank-00008.json").exists()
+
+
+@pytest.fixture
+def c51_hf_assets(tmp_path, monkeypatch):
+    """SYNTHETIC_TEST_ONLY: tiny files, NOT actual HF/native/GPU qualification."""
+    from test_training_livewan_reference import asset_document
+    from distillschedule.training import livewan_reference_assets as reference, livewan_c51_assets as assets
+    from distillschedule.workloads.best_known.registry import file_sha256
+    sources = {name: dict(root=str(tmp_path/name), head="0"*40, files={"LICENSE": "0"*64})
+               for name in ("livewan", "wan21")}
+    monkeypatch.setattr(reference, "source_identity", lambda root, *, project: deepcopy(sources[project]))
+    native = asset_document(tmp_path, sources)
+    native["runtime"]["dependency_versions"].pop("flash-attn")
+    extension = tmp_path/"SYNTHETIC_TEST_ONLY_torch_C.so"
+    extension.write_bytes(b"SYNTHETIC_TEST_ONLY_NOT_A_NATIVE_EXTENSION")
+    files, kernels = {}, {}
+    names = {"fa2": ("metadata.json", "__init__.py", "_ops.py", "bert_padding.py", "flash_attn_interface.py",
+                       "flash_attn2/__init__.py", "_flash_attn2_cuda_a511a4c.abi3.so"),
+             "fa3": ("metadata.json", "__init__.py", "_ops.py", "flash_attn_interface.py",
+                       "flash_attn_config.py", "flash_attn3/__init__.py", "_flash_attn3_cuda_373a45c.abi3.so")}
+    for kind, paths in names.items():
+        root = tmp_path/("SYNTHETIC_TEST_ONLY_"+kind); root.mkdir()
+        for name in paths:
+            path = root/name; path.parent.mkdir(exist_ok=True)
+            path.write_text("# SYNTHETIC_TEST_ONLY " + kind + ":" + name + "\n")
+        files[kind] = {name: file_sha256(root/name) for name in paths}
+        kernels[kind] = dict(root=str(root), files=deepcopy(files[kind]))
+    monkeypatch.setattr(assets, "kernel_files", lambda **kwargs: deepcopy(files))
+    try:
+        from distillschedule.runtime import livewan_c51_provider as provider
+    except ImportError:
+        pass  # The red test precedes the new production module.
+    else:
+        monkeypatch.setattr(provider, "provider_files", lambda: deepcopy(files))
+    overlay = dict(root=str(tmp_path/"SYNTHETIC_TEST_ONLY_overlay"), files={"wan/modules/attention.py": "0"*64})
+    monkeypatch.setattr(assets, "overlay_inventory", lambda native, root: deepcopy(overlay))
+    value = dict(schema_version="distillschedule.livewan_c51_assets.v2", native=native, kernels=kernels,
+        wan21_overlay=overlay, attention_provider=dict(schema_version="distillschedule.livewan_c51_hf_provider.v1",
+            abi=dict(torch="2.10.0+cu128", torch_cuda="12.8", cxx11_abi=True, system="Linux", machine="x86_64",
+                     torch_extension_sha256=file_sha256(extension))))
+    return SimpleNamespace(value=value, extension=extension, files=files)
+
+
+def test_c51_hf_v2_is_explicit_and_keeps_reference_and_c51_v1_strict(c51_hf_assets):
+    from distillschedule.training import livewan_c51_assets as assets, livewan_reference_assets as reference
+    value = c51_hf_assets.value
+    assert assets.asset_config(value) == value
+    with pytest.raises(ValueError, match="complete original dependency"):
+        reference.asset_config(value["native"])
+    legacy = deepcopy(value); legacy["schema_version"] = assets.SCHEMA; legacy.pop("attention_provider")
+    with pytest.raises(ValueError, match="complete original dependency"):
+        assets.asset_config(legacy)
+    missing = deepcopy(value); missing.pop("attention_provider")
+    with pytest.raises(ValueError):
+        assets.asset_config(missing)
+
+
+@pytest.mark.parametrize("damage", ["provider", "abi", "hash", "missing_file", "dependency"])
+def test_c51_hf_v2_rejects_missing_changed_or_unbound_assets(c51_hf_assets, damage):
+    from distillschedule.training.livewan_c51_assets import asset_config
+    value = deepcopy(c51_hf_assets.value)
+    if damage == "provider": value["attention_provider"]["schema_version"] = "unregistered"
+    elif damage == "abi": value["attention_provider"]["abi"]["torch_cuda"] = "13.0"
+    elif damage == "hash": value["kernels"]["fa2"]["files"]["bert_padding.py"] = "0"*64
+    elif damage == "missing_file": (Path(value["kernels"]["fa3"]["root"])/"_ops.py").unlink()
+    else: value["native"]["runtime"]["dependency_versions"].pop("numpy")
+    with pytest.raises(ValueError):
+        asset_config(value)
+
+
+def test_c51_hf_owner_and_native_plan_bind_the_complete_provider(c51_hf_assets):
+    from distillschedule.training.livewan_c51_assets import C51Assets
+    from distillschedule.training.livewan_c51_training import make_plan
+    from distillschedule.workloads.best_known.registry import fingerprint
+    value = c51_hf_assets.value
+    owner = C51Assets.load(value)
+    assert owner.sha256 == fingerprint(value)
+    marker = owner.value["attention_provider"]
+    assert marker["provider"] == value["attention_provider"] and marker["kernels"] == value["kernels"]
+    assert owner.native_plan()["evidence"]["attention_provider"] == marker
+    assert make_plan(value, "/SYNTHETIC_TEST_ONLY/output")["evidence"]["attention_provider"] == marker
+    owner.unchanged()
+    (Path(value["kernels"]["fa2"]["root"])/"bert_padding.py").write_text("# SYNTHETIC_TEST_ONLY changed\n")
+    with pytest.raises(ValueError):
+        owner.unchanged()
+
+
+@pytest.fixture
+def c51_hf_runtime(c51_hf_assets, monkeypatch):
+    """SYNTHETIC_TEST_ONLY native loader/mapping and Torch ABI stand-ins.
+
+    Real production asset/runtime/bytecode/owner/checkpoint code is exercised;
+    these tiny Python files are NOT the actual HF providers or extensions.
+    """
+    import importlib.metadata
+    import importlib.util
+    import types
+    import torch
+    from distillschedule.runtime import livewan_c51_provider as provider
+    from distillschedule.runtime import livewan_attention_backend as fa2, livewan_score_fa3 as fa3
+    from distillschedule.training import livewan_c51_assets as assets
+    from distillschedule.workloads.best_known.registry import file_sha256
+    value = c51_hf_assets.value
+    modules, loads = {}, []
+    for kind in ("fa2", "fa3"):
+        root = Path(value["kernels"][kind]["root"])
+        text = '''# SYNTHETIC_TEST_ONLY; NOT an HF/native implementation.
+import torch
+calls = []
+class FlashAttnFunc(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, q): return q
+    @staticmethod
+    def backward(ctx, gradient): return gradient
+class FlashAttnVarlenFunc(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, q): return q
+    @staticmethod
+    def backward(ctx, gradient): return gradient
+def flash_attn_func(q, k=None, v=None):
+    calls.append("dense")
+    return q
+def flash_attn_varlen_func(q, k=None, v=None):
+    calls.append("varlen")
+    return q
+'''
+        source = root/"flash_attn_interface.py"; source.write_text(text)
+        sha = file_sha256(source)
+        value["kernels"][kind]["files"][source.name] = c51_hf_assets.files[kind][source.name] = sha
+        name = "SYNTHETIC_TEST_ONLY_"+kind+".flash_attn_interface"
+        spec = importlib.util.spec_from_file_location(name, source)
+        interface = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, name, interface); spec.loader.exec_module(interface)
+        package = types.ModuleType("flash_attn"+kind[-1])
+        package.__file__ = str(root/(package.__name__+"/__init__.py"))
+        package.flash_attn_func, package.flash_attn_varlen_func = interface.flash_attn_func, interface.flash_attn_varlen_func
+        monkeypatch.setitem(sys.modules, package.__name__, package)
+        modules[kind] = package
+    def load(kind):
+        loads.append(kind)
+        return modules[kind], Path(value["kernels"][kind]["root"])
+    monkeypatch.setattr(fa2, "_load_flash_attn2", lambda: load("fa2"))
+    monkeypatch.setattr(fa3, "load_flash_attn3", lambda: load("fa3"))
+    monkeypatch.setattr(provider, "_extension_identity", lambda kind, root: dict(
+        path=str(root/(provider.EXTENSIONS[kind]+".abi3.so")),
+        sha256=c51_hf_assets.files[kind][provider.EXTENSIONS[kind]+".abi3.so"],
+        evidence_scope="SYNTHETIC_TEST_ONLY_NOT_A_NATIVE_EXTENSION"))
+    monkeypatch.setattr(provider, "_dispatcher_identity", lambda kind, module, torch: dict(
+        evidence_scope="SYNTHETIC_TEST_ONLY_NOT_REGISTERED_NATIVE_DISPATCHERS"))
+    facade = SimpleNamespace(__version__="2.10.0+cu128", version=SimpleNamespace(cuda="12.8"),
+        _C=SimpleNamespace(__file__=str(c51_hf_assets.extension), _GLIBCXX_USE_CXX11_ABI=True), autograd=torch.autograd,
+        get_default_dtype=lambda: "torch.float32", get_float32_matmul_precision=lambda: "highest",
+        are_deterministic_algorithms_enabled=lambda: False,
+        backends=SimpleNamespace(cuda=SimpleNamespace(matmul=SimpleNamespace(allow_tf32=False)),
+            cudnn=SimpleNamespace(allow_tf32=True, benchmark=False)))
+    monkeypatch.setitem(sys.modules, "torch", facade)
+    versions = value["native"]["runtime"]["dependency_versions"]
+    def version(name):
+        if name not in versions: raise importlib.metadata.PackageNotFoundError(name)
+        return versions[name]
+    monkeypatch.setattr(importlib.metadata, "version", version)
+    monkeypatch.setenv(assets.KERNEL_ENV["fa2"], value["kernels"]["fa2"]["root"])
+    monkeypatch.setenv(assets.KERNEL_ENV["fa3"], value["kernels"]["fa3"]["root"])
+    # Provider runtime installs only this explicit alias; restore it per test.
+    monkeypatch.setitem(sys.modules, "flash_attn", None)
+    monkeypatch.delitem(sys.modules, "flash_attn")
+    return SimpleNamespace(value=value, modules=modules, loads=loads, facade=facade, version=version, real_torch=torch)
+
+
+def test_c51_hf_synthetic_runtime_chain_reaches_both_role_callables(c51_hf_runtime):
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    runtime = admit_runtime(c51_hf_runtime.value)
+    provider = runtime["attention_provider"]
+    assert c51_hf_runtime.loads == ["fa2", "fa3"]
+    assert set(runtime["dependencies"]) == set(c51_hf_runtime.value["native"]["runtime"]["dependency_versions"])
+    assert "flash-attn" not in runtime["dependencies"]
+    assert set(provider["components"]) == {"fa2", "fa3"}
+    assert set(provider["role_bindings"]) == {"generator", "score"}
+    assert sys.modules["flash_attn"] is c51_hf_runtime.modules["fa2"]
+    for role, kind in (("generator", "fa2"), ("score", "fa3")):
+        assert kind in provider["role_bindings"][role]
+        assert c51_hf_runtime.modules[kind].flash_attn_func("SYNTHETIC_TEST_ONLY_"+role) == "SYNTHETIC_TEST_ONLY_"+role
+        assert provider["components"][kind]["functions"]["flash_attn_func"]["original_public_and_autograd_bytecode_attested"]
+    assert admit_runtime(c51_hf_runtime.value) == runtime
+
+
+@pytest.mark.parametrize("name", ["flash_attn", "flash_attn2", "flash_attn3", "flash_attn_interface", "_flash_attn2_cuda_a511a4c"])
+def test_c51_hf_foreign_preloads_fail_before_native_load(c51_hf_runtime, monkeypatch, name):
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    foreign = SimpleNamespace(__file__=__file__)
+    monkeypatch.setitem(sys.modules, name, foreign)
+    with pytest.raises(ValueError, match="origin|foreign"):
+        admit_runtime(c51_hf_runtime.value)
+    assert c51_hf_runtime.loads == []
+
+
+@pytest.mark.parametrize("damage", ["torch_cuda", "cxx11", "torch_extension", "callable", "autograd", "default"])
+def test_c51_hf_observed_abi_and_loaded_code_fail_closed(c51_hf_runtime, damage):
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    value = c51_hf_runtime
+    if damage == "torch_cuda": value.facade.version.cuda = "13.0"
+    elif damage == "cxx11": value.facade._C._GLIBCXX_USE_CXX11_ABI = False
+    elif damage == "torch_extension": Path(value.facade._C.__file__).write_bytes(b"SYNTHETIC_TEST_ONLY_CHANGED")
+    else:
+        fn = value.modules["fa2"].flash_attn_func
+        if damage == "callable": value.modules["fa2"].flash_attn_func = lambda *args: args[0]
+        elif damage == "default": fn.__defaults__ = (1, None)
+        else: fn.__globals__["FlashAttnFunc"].forward = staticmethod(lambda ctx, q: q)
+    with pytest.raises(ValueError, match="ABI|FUNCTION|SOURCE|DEFAULT|autograd"):
+        admit_runtime(value.value)
+
+
+def test_c51_hf_unchanged_rejects_a_late_foreign_preload(c51_hf_assets, monkeypatch):
+    from distillschedule.training.livewan_c51_assets import C51Assets
+    owner = C51Assets.load(c51_hf_assets.value)
+    monkeypatch.setitem(sys.modules, "flash_attn2", SimpleNamespace(__file__=__file__))
+    with pytest.raises(ValueError, match="origin"):
+        owner.unchanged()
+
+
+def test_c51_hf_original_v1_runtime_still_requires_distribution(c51_hf_runtime):
+    import importlib.metadata
+    from distillschedule.training import livewan_c51_assets as assets
+    value = deepcopy(c51_hf_runtime.value)
+    value["schema_version"] = assets.SCHEMA; value.pop("attention_provider")
+    value["native"]["runtime"]["dependency_versions"]["flash-attn"] = "MUST_BE_REAL_DISTRIBUTION_NOT_PROVIDER_VERSION"
+    with pytest.raises(importlib.metadata.PackageNotFoundError):
+        assets.admit_runtime(value)
+    assert c51_hf_runtime.loads == []
+
+
+def test_c51_hf_continuation_consumes_owner_provider_and_observed_identity(c51_hf_runtime, tmp_path, monkeypatch):
+    from distillschedule.training import livewan_c51_training as training, livewan_c51_assets as assets
+    admitted = dict(assets=c51_hf_runtime.value, inputs=dict(input_sha256="1"*64), capacity_policy={})
+    config = SimpleNamespace(trainer=dict(cycles=4, seed=31, checkpoint_every=1))
+    with pytest.raises(ValueError, match="observed runtime"):
+        training.training_identity("a"*40, admitted, config)
+    runtime = assets.admit_runtime(admitted["assets"])
+    identity = training.training_identity("a"*40, admitted, config, runtime=runtime)
+    assert identity["attention_provider"] == runtime["attention_provider"]
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    owner = assets.C51Assets.load(admitted["assets"])
+    continuation = training.Continuation(config=config, admitted=admitted, identity=identity, output=tmp_path,
+        bootstrap=owner, loader=SimpleNamespace(inputs=SimpleNamespace(cycles=4)), header=None, capacity_check=lambda: None)
+    receipt = continuation.configure_sources()
+    assert receipt["attention_provider"] == identity["attention_provider"]
+    continuation.validate_constructed()
+    continuation.identity = deepcopy(identity)
+    continuation.identity["attention_provider"]["role_bindings"]["score"] = "foreign"
+    with pytest.raises(ValueError, match="constructed provider/checkpoint"):
+        continuation.validate_constructed()
+
+
+def test_c51_hf_provider_observation_is_in_real_checkpoint_restore_identity(c51_hf_assets, tmp_path):
+    """Real one-CPU checkpoint, synthetic provider receipt; NOT native world16."""
+    import torch
+    from distillschedule.training import checkpoint, livewan_c51_training as training
+    from distillschedule.training.livewan_c51_assets import provider_binding
+    admitted = dict(assets=c51_hf_assets.value, inputs=dict(input_sha256="1"*64), capacity_policy={})
+    config = SimpleNamespace(trainer=dict(cycles=4, seed=31, checkpoint_every=1))
+    observed = dict(**provider_binding(admitted["assets"]), components=dict(evidence_scope="SYNTHETIC_TEST_ONLY"))
+    identity = training.training_identity("a"*40, admitted, config, runtime=dict(attention_provider=observed))
+    state = dict(tiny=torch.nn.Linear(1, 1))
+    saved = checkpoint.save_checkpoint(tmp_path/"SYNTHETIC_TEST_ONLY-checkpoint", state, identity=identity,
+        cycle=1, cursor=5, versions=dict(generator=1, critic=5, ema=0), policy=training.checkpoint_policy(identity))
+    assert checkpoint.read_manifest(saved, identity=identity)["identity"]["attention_provider"] == observed
+    restored = dict(tiny=torch.nn.Linear(1, 1))
+    checkpoint.restore_checkpoint(saved, restored, identity=identity)
+    assert torch.equal(state["tiny"].weight, restored["tiny"].weight)
+    changed = deepcopy(identity)
+    changed["attention_provider"]["provider"]["abi"]["torch_extension_sha256"] = "f"*64
+    with pytest.raises(ValueError, match="identity changed"):
+        checkpoint.read_manifest(saved, identity=changed)
+
+
+def test_c51_hf_wrapper_process_salted_names_are_not_checkpoint_identity(c51_hf_runtime, monkeypatch):
+    """Same attested bytes, different process-local HF wrapper module names."""
+    import importlib.util
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    baseline = admit_runtime(c51_hf_runtime.value)
+    for kind, package in c51_hf_runtime.modules.items():
+        source = Path(c51_hf_runtime.value["kernels"][kind]["root"])/"flash_attn_interface.py"
+        # Import the identical tiny file under the other synthetic namespace.
+        # The production wrapper derives this namespace from a salted hash.
+        name = "SYNTHETIC_TEST_ONLY_other_process_"+kind+".flash_attn_interface"
+        spec = importlib.util.spec_from_file_location(name, source)
+        module = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, name, module)
+        # Use the already real Torch import, not the synthetic ABI facade.
+        with monkeypatch.context() as context:
+            context.setitem(sys.modules, "torch", c51_hf_runtime.real_torch)
+            spec.loader.exec_module(module)
+        package.flash_attn_func = module.flash_attn_func
+        package.flash_attn_varlen_func = module.flash_attn_varlen_func
+    assert admit_runtime(c51_hf_runtime.value) == baseline
+
+
+def test_c51_hf_native_extension_cannot_be_attested_from_a_filename_or_spec(c51_hf_assets, monkeypatch):
+    """SYNTHETIC_TEST_ONLY fake .so cannot pass real loader/map attestation."""
+    import importlib.machinery
+    from distillschedule.runtime import livewan_c51_provider as provider
+    root = Path(c51_hf_assets.value["kernels"]["fa2"]["root"])
+    name = provider.EXTENSIONS["fa2"]
+    path = root/(name+".abi3.so")
+    module = SimpleNamespace(__file__=str(path), __spec__=None)
+    monkeypatch.setitem(sys.modules, name, module)
+    with pytest.raises(ValueError, match="extension loader"):
+        provider._extension_identity("fa2", root)
+    module.__spec__ = SimpleNamespace(loader=importlib.machinery.ExtensionFileLoader(name, str(path)))
+    with pytest.raises(ValueError, match="unmapped"):
+        provider._extension_identity("fa2", root)
+
+
+def test_c51_hf_dispatcher_cannot_be_attested_from_a_python_callable(c51_hf_assets):
+    import torch
+    from distillschedule.runtime import livewan_c51_provider as provider
+    module = SimpleNamespace(flash_attn_func=lambda q: q)
+    with pytest.raises(ValueError, match="actual registered native CustomOpDefs"):
+        provider._dispatcher_identity("fa2", module, torch)
+
+
+def test_c51_hf_default_kernel_contract_remains_the_v1_three_and_five_files():
+    from distillschedule.training.livewan_c51_assets import kernel_files, SCHEMA
+    from distillschedule.runtime.livewan_c51_provider import provider_files
+    assert SCHEMA == "distillschedule.livewan_c51_assets.v1"
+    assert {name: len(files) for name, files in kernel_files().items()} == dict(fa2=3, fa3=5)
+    assert {name: len(files) for name, files in provider_files().items()} == dict(fa2=7, fa3=7)
+
+
+def test_c51_hf_v1_owner_value_plan_and_digest_are_unchanged(c51_hf_assets):
+    from distillschedule.training.livewan_c51_assets import C51Assets, SCHEMA
+    from distillschedule.training.livewan_reference_assets import ReferenceAssets
+    value = deepcopy(c51_hf_assets.value)
+    value["schema_version"] = SCHEMA; value.pop("attention_provider")
+    value["native"]["runtime"]["dependency_versions"]["flash-attn"] = "SYNTHETIC_TEST_ONLY"
+    legacy = C51Assets.load(value)
+    reference = ReferenceAssets.load(value["native"])
+    assert legacy.value == reference.value and legacy.native_plan() == reference.native_plan()
+    assert legacy.sha256 == reference.sha256
+
+
+def test_c51_hf_all_eight_real_distribution_versions_stay_mandatory(c51_hf_runtime, monkeypatch):
+    import importlib.metadata
+    from distillschedule.training.livewan_c51_assets import admit_runtime
+    def changed(name):
+        return "SYNTHETIC_TEST_ONLY_WRONG_VERSION" if name == "numpy" else c51_hf_runtime.version(name)
+    monkeypatch.setattr(importlib.metadata, "version", changed)
+    with pytest.raises(ValueError, match="dependency changed: numpy"):
+        admit_runtime(c51_hf_runtime.value)
+    assert c51_hf_runtime.loads == []
+
+
+def test_c51_hf_metadata_provider_import_is_torch_free():
+    script = '''import sys
+from distillschedule.runtime.livewan_c51_provider import provider_files
+from distillschedule.training.livewan_c51_assets import HF_SCHEMA, SCHEMA
+assert {name: len(files) for name, files in provider_files().items()} == {"fa2": 7, "fa3": 7}
+assert HF_SCHEMA != SCHEMA
+assert "torch" not in sys.modules
+assert not any(name.startswith(("flash_attn", "wan.", "wanstreamer.")) for name in sys.modules)
+'''
+    subprocess.run([sys.executable, "-B", "-c", script], check=True)
