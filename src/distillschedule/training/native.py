@@ -125,6 +125,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
             resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
                         verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
+        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1":
+            from distillschedule.runtime.helios_native_history import descriptor
+            result["capabilities"]["native_history"] = descriptor()
+            result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
         if _helios_safe_stream(config, workload):
             result["native_api"] = "distillschedule.training.helios_worker:run_safe_stream"
             result["capabilities"]["modes"] = ["manual"]
@@ -235,7 +239,8 @@ def _h3_ar_stream(config, workload):
 
 
 def _helios_stream(config, workload):
-    return workload == "W2" and config.data.get("input_kind") == "original_helios_cohort_stream.v1"
+    return workload == "W2" and config.data.get("input_kind") in (
+        "original_helios_cohort_stream.v1", "original_helios_native_history_cohort_stream.v1")
 
 
 def _helios_safe_stream(config, workload):
@@ -408,6 +413,11 @@ def _options(config, workload):
         stop_cycle(config)
         return "reference"
     if _helios_stream(config, workload):
+        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1":
+            _require(config.execution.get("mode", "reference") == "reference"
+                     and not any(key in config.execution for key in
+                                 ("preset", "plan", "implementation", "transport", "capacity_policy")),
+                     "native W2 history currently requires explicit reference; no benchmark/saved-plan fallback")
         if _helios_safe_stream(config, workload):
             _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
                      and 2 <= config.trainer["cycles"] <= HELIOS_MAX_COHORTS,

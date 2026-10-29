@@ -47,6 +47,12 @@ separate [`training.reference.json`](training.reference.json) and
 [direct-reference guide](REFERENCE_TRAINING.md). This requires an actual pinned
 original Step10 G2/C10/EMA10 package; it does not invent a default checkpoint.
 
+For rank-local amplified exits produced by all-zero native history, use the
+separate [native-history continuation](NATIVE_HISTORY.md). It retains the
+original per-rank rollout rather than forcing normal-branch inputs; the aligned
+FSDP2 phase implementation is CPU-verified, with full-size GPU capacity still
+requiring admission.
+
 [`training.json`](training.json) selects `helios_nogan.safe_ed8.v1` with explicit
 `mode: manual` and `execution.preset`; supply your qualified original assets
 and output directory, **not a historical saved plan**. The existing typed

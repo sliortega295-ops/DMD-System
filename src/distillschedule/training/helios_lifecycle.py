@@ -178,7 +178,8 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             require(not os.path.lexists(output / "ranks" / f"rank_{rank:02d}.json"),
                     "new output directory required; old rank receipt is preserved", path="helios.training")
             stream = load_stream(binding["config"].data["prepared"],
-                                 cycles=binding["config"].trainer["cycles"], verify_rank=rank)
+                                 cycles=binding["config"].trainer["cycles"], verify_rank=rank,
+                                 expected_kind=binding["config"].data["input_kind"])
             require(stream["stream_sha256"] == binding["identity"]["stream_sha256"],
                     "stream changed during worker admission", path="helios.training")
             identity = {**binding["identity"], "verified_immutable_assets": immutable_assets(binding["assets"])}
@@ -201,7 +202,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
                         and args.logical_package.resolve() == Path(binding["assets"]["assets"]["logical_checkpoint"]["path"]).resolve()
                         and args.trace_bundle.resolve() == Path(first["trace_bundle"]).resolve(),
                         "direct reference bootstrap/startup binding changed", path="helios.training")
-                trace = load_cohort(HeliosCohortTask(0), first["trace_bundle"], expected_hash=first["trace_hash"])
+                trace = load_cohort(HeliosCohortTask.from_dict(first["task"]), first["trace_bundle"], expected_hash=first["trace_hash"])
                 controls = [trace.load_critic_entry(rank=rank, step=step, device="cpu") for step in trace.logical_steps]
                 for group in chunked(controls, policy.rollout_batch_size):
                     validate_rollout_entries(group)
@@ -268,6 +269,12 @@ def validate_progress(header, binding):
 
 
 def _checkpoint_policy(identity, *, optimized):
+    if "native_history" in identity:
+        from distillschedule.runtime.helios_native_history import descriptor
+        require(not optimized and identity["native_history"] == descriptor(),
+                "native history checkpoint phase policy changed", path="helios.training")
+        return {"schema_version":"distillschedule.helios_native_history_checkpoint_policy.v1",
+                "identity_sha256":fingerprint(identity)}
     return {"schema_version": ("distillschedule.helios_safe_stream_checkpoint_policy.v1" if optimized
                                else "distillschedule.helios_training_checkpoint_policy.v1"),
             "identity_sha256": fingerprint(identity)}
@@ -303,6 +310,16 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         require(implementation == safe.implementation() and binding.get("effective_configuration") is not None,
                 "safe stream preconstruction physical binding missing", path="helios.training")
     state = engine_state({"generator": generator, "critic": critic}, ema=ema)
+    native_history = "native_history_policy" in binding["stream"]["identity"]
+    if native_history:
+        from distillschedule.runtime.helios_native_history import admit_engine, descriptor
+        require(not optimized and binding["identity"].get("native_history") == descriptor(),
+                "native history identity/phase policy differs", path="helios.training")
+        with _plane(binding):
+            capability = distributed.checked(lambda: admit_engine(generator), "W2 native history whole-block phase admission")
+            require(all(row == capability for row in distributed.gather(capability)),
+                    "rank native history FSDP/checkpoint topology differs", path="helios.training")
+        result["native_history"] = {"policy":descriptor(), "actual_capability":capability}
     require(_versions(generator, critic, ema) == expected_versions(0),
             "original bootstrap G/C/EMA clocks changed", path="helios.training")
     start = 0
@@ -351,6 +368,10 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
         generation="UNSUPPORTED", export="UNSUPPORTED")
     from distillschedule.data.helios_epoch_inputs import receipt as input_receipt
     result.update(input_receipt(stream, cycle=start))
+    if native_history:
+        result.update(schema_version="distillschedule.original_helios_native_history_training.v1",
+                      source_history_policy=stream["identity"]["native_history_policy"],
+                      native_input_kind=binding["config"].data["input_kind"])
     if optimized:
         result.update(schema_version="distillschedule.original_helios_safe_stream.v1", mode="manual",
             candidate_id=implementation.id, preset=safe.PRESET_ID,
@@ -359,8 +380,8 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             capacity_validation="NOT_RUN; source bridge does not establish native setup/checkpoint/restore reserve")
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
     for index in range(start, end):
-        task = HeliosCohortTask(index)
         entry = stream["cohorts"][index]
+        task = HeliosCohortTask.from_dict(entry["task"])
         with _plane(binding):
             trace = distributed.checked(lambda: load_cohort(task, entry["trace_bundle"], expected_hash=entry["trace_hash"]),
                                         "Helios fresh cohort binding")
@@ -395,6 +416,10 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
                "trace_hash": entry["trace_hash"], "semantic_validation": validation,
                "dispatch": prepared.receipt(), "selected_order": list(order),
                "actions": observer.actions, "final_versions": versions, "status": "PASS"}
+        if native_history:
+            row["native_history"] = {"task":task.to_dict(), "rank_control_validation":trace.rank_control_validation,
+                                    "phases":[action["native_history_phase"] for action in observer.actions
+                                              if "native_history_phase" in action]}
         if effects is not None:
             row.update(candidate_bundle=effects, rollout_lifetimes=observer.lifetimes,
                        peak_live_rollouts=observer.peak_live, retained_rollouts=len(observer.live))

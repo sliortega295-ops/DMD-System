@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W2"
+  },
+  "data": {
+    "input_kind": "original_helios_native_history_cohort_stream.v1",
+    "prepared": "REPLACE_WITH_PROJECT_NATIVE_HISTORY_STREAM/stream.json"
+  },
+  "algorithm": {
+    "name": "original_helios_nogan"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "reference",
+    "task": "task.json",
+    "assets": "assets.reference.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 1,
+    "output_dir": "REPLACE_WITH_NEW_PROJECT_RUN_DIRECTORY"
+  }
+}

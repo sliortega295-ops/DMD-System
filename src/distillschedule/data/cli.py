@@ -28,6 +28,9 @@ def main(argv=None):
     helios.add_argument("--sources", type=Path, required=True)
     helios.add_argument("--training-config", type=Path, required=True)
     helios.add_argument("--output", type=Path, required=True)
+    from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
+    helios.add_argument("--history-policy", choices=(NATIVE_HISTORY_POLICY,),
+                        help="opt in to original rank-local amplified history; requires its new W2 stream kind")
     gan = sub.add_parser("prepare-helios-gan-stream", help="prepare fresh original W3 world16 GAN cohorts on CPU")
     gan.add_argument("--sources", type=Path, required=True)
     gan.add_argument("--training-config", type=Path, required=True)
@@ -86,7 +89,8 @@ def main(argv=None):
                     raise ValueError("explicit source cohort list required")
                 sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
                 result = prepare_stream(OriginalHeliosRequest(), sources, args.training_config, args.output,
-                                        input_policy=args.input_policy)
+                                        input_policy=args.input_policy,
+                                        **({"native_policy":args.history_policy} if args.history_policy is not None else {}))
             elif args.command == "prepare-helios-gan-stream":
                 from distillschedule.training.helios_gan_inputs import HeliosCohortSources, prepare_stream
                 values = json.loads(args.sources.read_text())

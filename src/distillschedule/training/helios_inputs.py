@@ -13,10 +13,13 @@ from types import SimpleNamespace
 
 from distillschedule.core.contracts import require
 from distillschedule.search.helios_request import OriginalHeliosRequest
+from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, write_new_json
 
 KIND = "original_helios_cohort_stream.v1"
 SCHEMA = "distillschedule." + KIND
+NATIVE_KIND = "original_helios_native_history_cohort_stream.v1"
+NATIVE_SCHEMA = "distillschedule." + NATIVE_KIND
 TRACE_KEY = "distillschedule_helios_training_cohort"
 MAX_COHORTS = 100
 
@@ -25,15 +28,22 @@ MAX_COHORTS = 100
 class HeliosCohortTask:
     index: int
     request: OriginalHeliosRequest = OriginalHeliosRequest()
+    native_policy: str | None = None
 
     def __post_init__(self):
         require(type(self.index) is int and 0 <= self.index < MAX_COHORTS,
                 f"cohort index must be in [0,{MAX_COHORTS-1}]", path="helios.inputs")
         require(self.request == OriginalHeliosRequest(),
                 "fresh reference currently requires original No-GAN33/222/world16/B1", path="helios.inputs")
+        require(self.native_policy is None or self.native_policy == NATIVE_HISTORY_POLICY,
+                "unsupported explicit W2 native history policy", path="helios.inputs")
 
     def __getattr__(self, name):
         return getattr(self.request, name)
+
+    @property
+    def stage_schedule_policy(self):
+        return self.native_policy or self.request.stage_schedule_policy
 
     @property
     def first_step(self):
@@ -44,14 +54,21 @@ class HeliosCohortTask:
         return tuple(range(self.first_step, self.first_step + 5))
 
     def to_dict(self):
-        return {"schema_version": "distillschedule.helios_training_cohort.v1", "index": self.index,
+        value = {"schema_version": "distillschedule.helios_training_cohort.v1", "index": self.index,
                 "request": self.request.to_dict(), "source_steps": list(self.source_steps)}
+        if self.native_policy is not None:
+            value.update(schema_version="distillschedule.helios_native_history_cohort.v1",
+                         native_policy=self.native_policy)
+        return value
 
     @classmethod
     def from_dict(cls, value):
-        require(isinstance(value, dict) and set(value) == {"schema_version", "index", "request", "source_steps"},
+        require(isinstance(value, dict), "explicit Helios cohort required", path="helios.inputs")
+        native = value.get("schema_version") == "distillschedule.helios_native_history_cohort.v1"
+        require(set(value) == {"schema_version", "index", "request", "source_steps"} | ({"native_policy"} if native else set()),
                 "complete explicit Helios cohort required", path="helios.inputs")
-        task = cls(value["index"], OriginalHeliosRequest.from_dict(value["request"]))
+        task = cls(value["index"], OriginalHeliosRequest.from_dict(value["request"]),
+                   value["native_policy"] if native else None)
         require(value == task.to_dict(), "cohort task changed", path="helios.inputs")
         return task
 
@@ -185,7 +202,10 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
             for name, tensor in tensors.items():
                 writer.add_tensor(prefix + "/" + name, tensor, role=name)
             keys = list(_keys(step, phase).values())
-            control = stage_control(native, task, sources.seed, task.index, step, phase)
+            options = ({"all_history_zero": all(bool(tensors[name].sum() == 0)
+                        for name in ("history_short", "history_mid", "history_long")), "rank": rank}
+                       if task.native_policy is not None else {})
+            control = stage_control(native, task, sources.seed, task.index, step, phase, **options)
             writer.add_operation(prefix + "/rollout", component=phase, operation="native_pyramid_rollout",
                                  tensor_keys=keys, control=control)
             writer.add_operation(prefix + ("/dmd" if phase == "generator" else "/train"), component=phase,
@@ -195,15 +215,18 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
         "dtype": "bfloat16", "dfake_gen_update_ratio": 5})
 
 
-def prepare_stream(request, sources, training_config, output, *, input_policy=None):
+def prepare_stream(request, sources, training_config, output, *, input_policy=None, native_policy=None):
     """Immutable explicit finite stream. Failed/incomplete output is preserved."""
     from runtime.operation_trace import write_operation_trace_bundle_manifest
     from distillschedule.strategies.wan_capture import read_training_config
     from distillschedule.data.helios_epoch_inputs import build_cohorts, cohort_identity
+    from functools import partial
+    task_type = partial(HeliosCohortTask, request=request, native_policy=native_policy)
+    task_type(0)  # Reject an invalid policy before reading inputs or creating output.
     if input_policy is None:
         require(isinstance(sources, (list, tuple)) and 2 <= len(sources) <= MAX_COHORTS
                 and all(type(s) is HeliosCohortSources for s in sources), f"2..{MAX_COHORTS} typed cohorts required", path="helios.inputs")
-        tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
+        tasks = [task_type(i) for i in range(len(sources))]
         _require_fresh_cohorts(sources)
         config = read_training_config(training_config)
         inventories = [_inventory(t, s) for t, s in zip(tasks, sources, strict=True)]
@@ -211,14 +234,15 @@ def prepare_stream(request, sources, training_config, output, *, input_policy=No
         epoch_policy = None
     else:
         # The task validator still owns the exact native W2 request.
-        HeliosCohortTask(0, request)
-        sources, inventories, epoch_policy = build_cohorts(sources, task_type=HeliosCohortTask, input_policy=input_policy)
-        tasks = [HeliosCohortTask(i, request) for i in range(len(sources))]
+        sources, inventories, epoch_policy = build_cohorts(sources, task_type=task_type, input_policy=input_policy)
+        tasks = [task_type(i) for i in range(len(sources))]
         config = read_training_config(training_config)
     identity = {"request": request.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
                 "training_config_sha256": file_sha256(Path(training_config)), "source_fingerprint": source_fingerprint()}
     if epoch_policy is not None:
         identity["input_policy"] = epoch_policy
+    if native_policy is not None:
+        identity["native_history_policy"] = native_policy
     root = Path(output).resolve(); root.mkdir(parents=True, exist_ok=False)
     write_new_json(root / "inputs.json", identity)
     entries = []
@@ -237,31 +261,39 @@ def prepare_stream(request, sources, training_config, output, *, input_policy=No
             and source_fingerprint() == identity["source_fingerprint"]
             and all(file_sha256(Path(row["path"])) == row["sha256"] for rows in inventories for row in rows),
             "inputs/source changed during capture", path="helios.inputs")
-    document = {"schema_version": SCHEMA, "status": "READY_FRESH_COHORT_STREAM", "identity": identity,
+    document = {"schema_version": NATIVE_SCHEMA if native_policy is not None else SCHEMA,
+                "status": "READY_FRESH_COHORT_STREAM", "identity": identity,
                 "cohorts": entries, "gpu_execution": "NOT_RUN", "claimable_speedup": False}
     document["stream_sha256"] = fingerprint(document)
     write_new_json(root / "stream.json", document)
     return document
 
 
-def load_stream(path, *, cycles, verify_rank=None):
+def load_stream(path, *, cycles, verify_rank=None, expected_kind=KIND):
     """Source-bound metadata admission; local tensor admission is worker-owned."""
     path = Path(path).resolve(); doc = json.loads(path.read_text()); unsigned = dict(doc)
     sha = unsigned.pop("stream_sha256", None)
-    require(doc.get("schema_version") == SCHEMA and doc.get("status") == "READY_FRESH_COHORT_STREAM"
+    require(expected_kind in (KIND, NATIVE_KIND), "unsupported W2 input kind", path="helios.inputs")
+    require(doc.get("schema_version") == "distillschedule." + expected_kind and doc.get("status") == "READY_FRESH_COHORT_STREAM"
             and sha == fingerprint(unsigned), "stream identity changed/incomplete", path="helios.inputs")
     identity = doc["identity"]; request = OriginalHeliosRequest.from_dict(identity["request"])
+    native_policy = identity.get("native_history_policy")
+    require((expected_kind == NATIVE_KIND and native_policy == NATIVE_HISTORY_POLICY)
+            or (expected_kind == KIND and "native_history_policy" not in identity),
+            "stream kind/native policy mismatch", path="helios.inputs")
+    from functools import partial
+    task_type = partial(HeliosCohortTask, request=request, native_policy=native_policy)
     sources = [HeliosCohortSources.from_dict(s) for s in identity["sources"]]
     require(type(cycles) is int and 2 <= cycles <= MAX_COHORTS
             and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
             and identity["source_fingerprint"] == source_fingerprint(), "stream cycles/source changed", path="helios.inputs")
     from distillschedule.data.helios_epoch_inputs import validate_identity, cohort_identity
     if "input_policy" in identity:
-        validate_identity(identity, task_type=HeliosCohortTask)
+        validate_identity(identity, task_type=task_type)
     else:
         _require_fresh_cohorts(sources, identity["inventory"])
     for index, entry in enumerate(doc["cohorts"]):
-        task = HeliosCohortTask(index, request)
+        task = task_type(index)
         require(entry["index"] == index and entry["task"] == task.to_dict()
                 and Path(entry["trace_bundle"]).resolve() == path.parent / f"cohort-{index:04d}",
                 "cohort order/path/task changed", path="helios.inputs")
@@ -300,10 +332,12 @@ def validate_rank_payload(trace, rank, source):
             timestep = value.tensor(prefix + ("/dmd_timestep" if phase == "generator" else "/critic_timestep"))
             require(bool(((timestep >= 20) & (timestep <= 980)).all()),
                     "original score timestep outside native clamp", path="helios.inputs")
-            require(not all(bool(value.tensor(prefix+"/"+name).sum() == 0)
-                            for name in ("history_short", "history_mid", "history_long")),
+            zero = all(bool(value.tensor(prefix+"/"+name).sum() == 0)
+                       for name in ("history_short", "history_mid", "history_long"))
+            require(trace.task.native_policy is not None or not zero,
                     "normal reference forbids rank-local amplified zero history", path="helios.inputs")
-            expected = stage_control(native, trace.task, source.seed, trace.task.index, step, phase)
+            options = {"all_history_zero": zero, "rank": rank} if trace.task.native_policy is not None else {}
+            expected = stage_control(native, trace.task, source.seed, trace.task.index, step, phase, **options)
             require(value.operation(prefix + "/rollout")["control"] == expected,
                     "original stage grid/RNG exits changed", path="helios.inputs")
         mask = value.tensor(f"step/{step}/sample/attention_mask")
@@ -332,7 +366,8 @@ def load_cohort(task, root, *, expected_hash):
     obj._control, obj._loaded = controls, {}
     # Unchanged legacy geometry/branch/rank validator, on the explicitly NEW
     # cohort object. StaticWorld16Trace.__init__ and its fixed ABI stay intact.
-    StaticWorld16Trace._validate(obj)
+    if task.native_policy is None:
+        StaticWorld16Trace._validate(obj)
     return obj
 
 
@@ -346,6 +381,9 @@ def validate_controls(task, controls):
                 and "distillschedule_original_wan_task" not in contract
                 and "distillschedule_original_helios_request" not in contract,
                 "new Helios cohort required; old traces cannot be relabelled", path="helios.inputs")
+        if task.native_policy is not None:
+            from distillschedule.runtime.helios_native_history import validate_contract
+            validate_contract(task, value)
         keys = [op["key"] for op in value.manifest["operations"]]
         expected = [f"step/{s}/branch" for s in task.source_steps]
         for step in task.source_steps:
@@ -380,13 +418,18 @@ def validate_controls(task, controls):
                         require(descriptor["shape"] == shape and descriptor["dtype"] == dtype,
                                 f"native {role} shape/precision changed", path="helios.inputs")
                 schedule = value.operation(f"step/{step}/{phase}/rollout")["control"]["pyramid_stage_call_sequence"]
+                control = value.operation(f"step/{step}/{phase}/rollout")["control"]
+                budget = 4 if task.native_policy is not None and control.get("all_history_zero") is True else 2
                 require(len(schedule) == 3 and [s["stage"] for s in schedule] == [0,1,2]
-                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= 2
-                                and s["denoising_step_budget"] == 2 for s in schedule),
+                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= budget
+                                and s["denoising_step_budget"] == budget for s in schedule),
                         "native222 stage scope changed", path="helios.inputs")
         require(len(keys) == len(set(keys)) == len(expected) and set(keys) == set(expected),
                 "another cycle/branch/work inventory", path="helios.inputs")
     require(len(conditioning) == 1, "rank/step conditioning geometry differs", path="helios.inputs")
+    if task.native_policy is not None:
+        from distillschedule.runtime.helios_native_history import validate_schedules
+        return validate_schedules(task, controls)
     return validate_official_rank_stage_schedule_semantics(controls)
 
 

@@ -65,7 +65,7 @@ def admit_reference(config, task_value, assets_value, paths):
         require(assets == assets_value, "assets changed during admission", path="helios.training")
         observed = verify_assets(profile, assets)
     stream_path = Path(config.data["prepared"])
-    stream = load_stream(stream_path, cycles=config.trainer["cycles"])
+    stream = load_stream(stream_path, cycles=config.trainer["cycles"], expected_kind=config.data["input_kind"])
     require(stream["identity"]["request"] == request.to_dict(), "stream/task differs", path="helios.training")
     resume = config.trainer.get("resume_from")
     if resume:
@@ -74,7 +74,7 @@ def admit_reference(config, task_value, assets_value, paths):
         require((root / "manifest.json").is_file() and (root / "_SUCCESS").is_file()
                 and (root / "_SUCCESS").read_text().strip() == file_sha256(root / "manifest.json"),
                 "complete native resume checkpoint required", path="helios.training")
-    return {"task": request.to_dict(), "assets": assets, "stream": stream,
+    admitted = {"task": request.to_dict(), "assets": assets, "stream": stream,
         "selected": {"schema_version": "distillschedule.helios_reference_policy.v1", "mesh": "world16-fsdp",
                      "rollout_window": 1, "chunk_tokens": 512, "optimizer": "original_restored_AdamW",
                      "checkpoint": "native_recompute", "attention": "sdpa"},
@@ -83,6 +83,14 @@ def admit_reference(config, task_value, assets_value, paths):
         "bootstrap": ({"logical_manifest_hash":logical.manifest_hash, "trace_bundle_hash":stream["cohorts"][0]["trace_hash"]}
                       if portable else None),
         "validation_scope": "CPU_W2_SOURCE_ASSET_STREAM_METADATA; ORIGINAL_PAYLOAD_AND_PHYSICAL_GATES_ON_WORKER"}
+    if "native_history_policy" in stream["identity"]:
+        from distillschedule.runtime.helios_native_history import descriptor
+        require(portable and config.execution.get("mode", "reference") == "reference"
+                and not any(key in config.execution for key in
+                            ("preset", "plan", "implementation", "transport", "capacity_policy")),
+                "native history requires explicit portable W2 reference assets/policy", path="helios.training")
+        admitted["selected"] = {**admitted["selected"], "native_history":descriptor()}
+    return admitted
 
 
 def admit_safe_stream(config, task_value, assets_value, paths):
@@ -239,6 +247,15 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
         "bootstrap_trace_hash": stream["cohorts"][0]["trace_hash"] if portable else bootstrap["DISTILLSCHEDULE_TRACE_BUNDLE_HASH"]}
     from distillschedule.data.helios_epoch_inputs import identity_binding
     identity.update(identity_binding(stream))
+    if "native_history_policy" in stream["identity"]:
+        from distillschedule.runtime.helios_native_history import descriptor
+        from .helios_inputs import NATIVE_KIND, NATIVE_SCHEMA
+        require(not optimized and config.data.get("input_kind") == NATIVE_KIND
+                and stream["schema_version"] == NATIVE_SCHEMA
+                and admitted["selected"].get("native_history") == descriptor(),
+                "native history phase implementation not bound", path="helios.training")
+        identity.update(schema_version="distillschedule.helios_native_history_training_identity.v1",
+                        native_history=descriptor())
     if optimized:
         identity["schema_version"] = "distillschedule.helios_safe_stream_identity.v1"
         identity["execution_policy"] = identity.pop("reference_policy")

@@ -409,7 +409,6 @@ def test_existing_public_data_command_requires_explicit_policy(finite_pool,tmp_p
 
 
 @pytest.mark.parametrize("function,sha",[
-    (nogan.capture_rank,"536933ea1409fae1893327e216c290bc9cf960178edc70c001f192551e672ea5"),
     (gan.capture_rank,"8439fe7e9692ccc71297826a40b812af866a3e96ab14caa9ee36aa797fe3d24f"),
     (nogan._require_fresh_cohorts,"463342446fc2cfe30bd428e7d5e61751d37d0db13987ab6f97f873b4ea181ef2"),
 ])
@@ -417,6 +416,14 @@ def test_native_capture_math_and_frozen_v1_freshness_are_byte_identical(function
     import hashlib
     import inspect
     assert hashlib.sha256(inspect.getsource(function).rstrip("\n").encode()).hexdigest() == sha
+
+
+def test_nogan_capture_has_only_the_versioned_reviewed_native_history_opt_in():
+    import inspect
+    from helios_capture_source_review import assert_nogan_capture_lineage
+    # Actual source is reviewed as a bounded extension, never called byte-identical.
+    # The helper retains the original golden and compares with its actual parent.
+    assert_nogan_capture_lineage(inspect.getsource(nogan.capture_rank))
 
 
 @pytest.mark.parametrize("inputs,command",[(nogan,"prepare-helios-stream"),(gan,"prepare-helios-gan-stream")])
