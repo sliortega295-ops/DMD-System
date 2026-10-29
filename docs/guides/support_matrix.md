@@ -18,7 +18,7 @@ including rank-local amplified zero-history. Its strict tensor comparison
 remains **REVIEW**; restart distances are no larger than the measured
 same-start repeat noise for the replicated role/optimizer/EMA state. These
 cohorts reuse synthetic features: this is not real-data or long-run quality
-acceptance. See [GPU acceptance](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+acceptance. See GPU acceptance (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 
 | Entry | Data | Execution | Continuous progress | Save/resume | Generate/export | Held-out validation | This integration's verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -77,7 +77,7 @@ now binds that original native session, its complete Graph/cast/fusion bundle,
 fresh 2..100-cohort input owner and common all-rank checkpoint path. CPU scalar
 autograd/Adam/EMA and fresh-process restart tests exercise the actual dispatcher
 and controller lifecycle with explicitly fake CUDA capture drivers. The later
-[actual world16 continuation](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation)
+actual world16 continuation (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation`)
 is separate evidence, not a relabeling of those CPU tests. Captures are bounded to the first cycle
 of each process; a valid stream with a later novel signature is rejected rather
 than silently falling back. The original fixed-trace v1 preset stays unchanged.
@@ -116,8 +116,8 @@ weights, with no Generator allocation on Score ranks. Its independent original
 four-step streamer and embedded VAE currently execute CPU FP32; actual original
 tiny models, checkpoint-owner edges and real Gloo role partitioning have CPU
 tests. Native CUDA/world16 output and pretrained quality remain separate gates.
-The original [reference input receipt](../../artifacts/framework/20261021/original_livewan_inputs_cpu.json)
-and [reference state receipt](../../artifacts/framework/20261021/original_livewan_reference_cpu.json)
+The original reference input receipt (source checkout: `artifacts/framework/20261021/original_livewan_inputs_cpu.json`)
+and reference state receipt (source checkout: `artifacts/framework/20261021/original_livewan_reference_cpu.json`)
 retain their original scope; they are not relabelled as C51 evidence.
 
 The generic media preparer supplies decode/import/provenance; each production
@@ -162,7 +162,7 @@ new-process recovery and current-G generation/export under an explicit
 deterministic test policy. These are single-device real-model-class tests,
 not full pretrained training or qualification of the separate native
 distributed owners described below. The table's CPU evidence stays separate. See
-[exact scope and failures](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+exact scope and failures (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 
 | Integration | Actual CPU reference | Data/output and continuation | Not established |
 | --- | --- | --- | --- |
@@ -180,9 +180,9 @@ prompt/raw-media preparation for the four admitted modern-flow image/video
 adapters, with public CLI decoded-output proofs after deleting all training
 assets/checkpoints. Other adapters have no encoding hook and refuse. This is
 actual tiny-class **SYNTHETIC_TEST_ONLY** CPU evidence. The separately
-[qualified FLUX/Qwen CUDA reference](../../artifacts/framework/20261024/modern_image_cuda_acceptance.json)
+qualified FLUX/Qwen CUDA reference (source checkout: `artifacts/framework/20261024/modern_image_cuda_acceptance.json`)
 also generates new-prompt PNGs from exported current-Student weights after
-retiring training assets. [Wan2.2/Hunyuan CUDA qualification](../../artifacts/framework/20261024/native_video_cuda_acceptance.json)
+retiring training assets. Wan2.2/Hunyuan CUDA qualification (source checkout: `artifacts/framework/20261024/native_video_cuda_acceptance.json`)
 likewise exercises actual native video roles/codecs and export-only new-prompt
 RGB frames, with exact current-Student CPU relocation. None of these tiny-class
 receipts establishes pretrained capacity/quality or changes a frozen workload
@@ -191,7 +191,7 @@ contract; CUDA planning remains separately unqualified.
 The five common-flow families above (LTX LoRA, FLUX, Qwen-Image, Wan2.2
 and HunyuanVideo) additionally have an explicit **single-CUDA manual immutable
 sharing** path through the existing Program runtime. The
-[separate native acceptance receipt](../../artifacts/framework/20261024/native_flow_cuda_immutable_sharing.json)
+separate native acceptance receipt (source checkout: `artifacts/framework/20261024/native_flow_cuda_immutable_sharing.json`)
 records ten actual tiny-class CUDA tests: three-cycle reference/manual complete
 state, gradients, RNG and output parity; real frozen-parameter aliases and
 lower tracked resident storage; fresh-process restart and current-Student
@@ -205,12 +205,12 @@ CPU-tested writer change, not relabeled as another GPU run. See the
 
 FLUX and Qwen-Image additionally support explicit **equal-B1 post-backward
 replication**, reference or exact manual immutable sharing. The
-[replica acceptance](../../artifacts/framework/20261024/native_flow_image_replicated_acceptance.json)
+replica acceptance (source checkout: `artifacts/framework/20261024/native_flow_image_replicated_acceptance.json`)
 contains actual native Gloo2 and A100 NCCL2 evidence: an independent three-cycle
 gradient-mean oracle, full-rank fresh-process recovery, current-Student export
 and new-prompt PNG output. This is not FSDP/DDP-forward wrapping, AMP, CUDA
 planning or pretrained-capacity/quality evidence. A
-[separate world16 follow-up](../../artifacts/framework/20261025/native_flow_image_world16_acceptance.json)
+separate world16 follow-up (source checkout: `artifacts/framework/20261025/native_flow_image_world16_acceptance.json`)
 now verifies both image families on two A100 nodes: 16/16 independent-B1 oracle
 ranks, all-rank full-state new-process restart, and exact reference/manual state
 across three cycles. New-prompt decoded output is checked CPU-side from the

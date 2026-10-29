@@ -50,7 +50,7 @@ reference lifecycles remain separate in the [native guide](native_workloads.md).
 | [W6](../../recipes/h3_ar/training.json) `h3_ar.zero3_ap.v1` | `H3ARImplementation("zero3-ap")`: existing ZeRO-3 selected-cache/unit prefetch, CPU-staged replay, pointwise/LoRA/SwiGLU/RMS/CUTLASS and communication overlap bundle | `e88d21c1` integration evidence | REVIEW; source/input/checkpoint audits and explicit live capacity policy; original previous/current AV, 8-step G1/F1/LoRA64 |
 
 Source origins describe provenance, **not the currently authorized execution
-HEAD**. [`native_presets.py`](../../src/distillschedule/training/native_presets.py)
+HEAD**. `native_presets.py` (source checkout: `src/distillschedule/training/native_presets.py`)
 contains the versioned metadata, mechanism owners and exact typed factories.
 No frozen profile, source-import map, historical FAIL or publication receipt
 is rewritten. Future changes to a preset's contract require a new preset ID.

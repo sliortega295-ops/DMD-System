@@ -53,17 +53,33 @@ def test_public_guide_dependencies_have_installed_data_file_destinations():
             if not target.is_relative_to(ROOT):
                 continue
             source = target.relative_to(ROOT)
-            if ((source.parts[:2] in (("docs", "contracts"), ("docs", "runbooks"),
-                                     ("docs", "architecture"), ("docs", "workloads"))
-                 and source.suffix == ".md") or source == Path("THIRD_PARTY.md")):
-                assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
-                dependencies.add(source)
+            assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
+            dependencies.add(source)
     # Independent regression: the packaged H3 continuation recipe needs this policy.
     assert Path("docs/contracts/original_h3_ar_record_epochs_v1.md") in dependencies
     missing = [str(source) for source in sorted(dependencies)
                if ROOT / source not in installed.get(
                    (Path("share/distillschedule") / source.parent).as_posix(), set())]
     assert not missing, f"public guide dependencies lack their installed data-file destination: {missing}"
+
+
+def test_public_source_checkout_references_keep_real_paths_without_payload_links():
+    guides = sorted((ROOT / "docs/guides").glob("*.md")) + sorted((ROOT / "recipes").rglob("*.md"))
+    references = []
+    for guide in guides:
+        for value in re.findall(r"source checkout: `([^`]+)`", guide.read_text()):
+            source = value.split("#", 1)[0]
+            target = (ROOT / source).resolve()
+            assert target.is_relative_to(ROOT), (guide, source)
+            assert target.is_file(), (guide, source)
+            assert not target.suffix in {".pt", ".pth", ".safetensors", ".nsys-rep", ".sqlite"}
+            references.append(source)
+    assert references, "source-only references must not look like broken installed links"
+    assert ".github/workflows/h3-grid-native-cpu.yml" in references
+    assert "src/distillschedule/runtime/livewan_crossscale_worker.py" in references
+    installation = (ROOT / "docs/guides/installation.md").read_text()
+    assert "https://github.com/sliortega295-ops/DMD-System" in installation
+    assert "unpublished" in installation and "matching" in installation
 
 
 def test_livewan_wan21_source_license_copies_match_manifest():
@@ -292,7 +308,8 @@ def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_met
                if step.get("with", {}).get("repository") == "huggingface/diffusers"]
     assert len(sources) == 1 and sources[0]["ref"] == "9284607295a09f759aadd65ed08f48b35feea6d9"
     assert ".[train,test,test-helios,test-h3]" in commands
-    assert "get('skipped', '0')" in commands
+    assert "python scripts/check_cpu_receipt.py h3-grid-cpu.xml" in commands
+    assert "--require 'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation'" in commands
 
 
 @pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])

@@ -163,12 +163,12 @@ suite with `CUDA_VISIBLE_DEVICES=''`, offline Hub modes and one CPU thread:
 | `train,test,ltx25` | `LTX_SOURCE_ROOT`; `tests/test_training_dmd_flow.py`, `tests/test_training_ltx_*.py` |
 | `train,test,livewan-wan21-reference` | Optional exact Wan2.1 codec source through `DMD_WAN21_TEST_UPSTREAM`; the three public LiveWan input/training/inference test files |
 
-The [dedicated CI workflow](../../.github/workflows/official-models-cpu.yml)
+The dedicated CI workflow (source checkout: `.github/workflows/official-models-cpu.yml`)
 fetches the hash-locked source/license closures, supplies those roots and
 requires actual named proofs with **zero skips**. A missing upstream root may
 skip optional cases in a broad generic test collection; that is not provider
 acceptance. Each provider lane must execute its original native tests.
-The separate [modern-flow CI](../../.github/workflows/modern-flow-cpu.yml)
+The separate modern-flow CI (source checkout: `.github/workflows/modern-flow-cpu.yml`)
 requires actual native image/video, raw container decode, measured three-family
 plans, export-only inputs and installed-wheel lifecycle proofs without skips.
 Its TF5 lane does not run the original W2 SafeBundle/Helios TF4 fixtures.

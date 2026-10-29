@@ -30,7 +30,7 @@ Diffusers0.37.1 route is distinct from the native-Wan0.35 qualification lane.
 Tiny random assets used by tests are explicitly labeled fixtures, not a
 pretrained model, media encoder or quality result.
 
-See the [source-scoped CPU acceptance](../../docs/status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md)
+See the source-scoped CPU acceptance (source checkout: `docs/status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md`)
 for actual model, restart, projection and new-input checks and their limits.
 
 ## Prepare supplied original inputs

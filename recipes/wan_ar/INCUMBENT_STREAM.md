@@ -132,7 +132,7 @@ branch during fresh cohort capture. That capture failed before GPU execution;
 no seed selection, dropout change or fixed-trace substitution was used. The
 separate v1 fixed-trace preset completed 16-rank functional execution, but this
 does not qualify v2 stream checkpoint/restart. See
-[actual GPU and stream boundary](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+actual GPU and stream boundary (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 
 ### Resident native-history follow-up (2026-10-24)
 
@@ -158,7 +158,7 @@ The two cohorts deliberately reuse existing **synthetic source-shaped features**
 with distinct native RNG/cohort identities. They prove the execution and
 checkpoint lifecycle, not real-media training or quality. Native generation,
 export, arbitrary later Graph signatures and 100-cycle stability remain
-unqualified. [Detailed evidence and limits](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation).
+unqualified. Detailed evidence and limits (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md#resident-stream-follow-up-actual-world16-continuation`).
 
 The original `training.json`/`wan_ar.incumbent21a.v1` two-cycle fixed-trace
 preset, immutable asset pins, G3/G4 rules and fixed call census are unchanged.

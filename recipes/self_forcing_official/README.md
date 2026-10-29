@@ -130,7 +130,7 @@ training-boundary `.cuda()` lookups changed to `noise.device`. Uncached causal
 execution is rejected rather than quietly removing its causal mask. No global
 Torch/CUDA/module monkeypatches are installed. Full pretrained GPU training
 and media quality remain `NOT_RUN`; tiny tests are not quality evidence. See
-[GPU acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+GPU acceptance scope (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 
 Modules, native non-buffer schedules, complex128 RoPE, VAE normalization and
 negative/unconditional embeddings are resident before AdamW construction.

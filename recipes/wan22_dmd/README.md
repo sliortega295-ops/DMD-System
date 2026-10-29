@@ -136,7 +136,7 @@ updates; shared/unshared parity; fresh-process exact complete restart; new-promp
 portable decode while original assets are hidden and training checkpoints deleted;
 and explicit refusal cases. No fake denoiser/codec stands in for end-to-end proof.
 
-The separate [native CUDA acceptance](../../artifacts/framework/20261024/native_video_cuda_acceptance.json)
+The separate native CUDA acceptance (source checkout: `artifacts/framework/20261024/native_video_cuda_acceptance.json`)
 covers three actual tiny Wan2.2 tests on a non-default owned CUDA device:
 native forward/gradient/Euler/text/VAE comparison; complete DMD/Adam/EMA/RNG
 state; and new-process restart plus export-only new-prompt RGB video generation.

@@ -25,7 +25,7 @@ consumption, complete outstanding transfers, reconstruct shadows or supply
 physical cycle/version admission. The distinct reference state factory binds
 actual world16 Generator DTensors and replicated Critic owners; it does not
 relax this resident factory or supply C51 physical drain/recovery.
-The [CPU state-owner receipt](../../artifacts/framework/20261021/original_livewan_state_cpu.json)
+The CPU state-owner receipt (source checkout: `artifacts/framework/20261021/original_livewan_state_cpu.json`)
 separates tiny original-LoRA/Adam continuation from untested full-model and
 distributed behavior.
 

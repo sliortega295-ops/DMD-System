@@ -44,7 +44,7 @@ A useful diagnosis needs the first failing rank's stage and a native fatal-signa
 backtrace on the reproducing runtime. Python exit code0 elsewhere, normal local
 GDB runs, a different Torch version or an additional cleanup/barrier does not
 establish the cause. Preserve the original failed job and source identity.
-Published [acceptance reports](../status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md)
+Published acceptance reports (source checkout: `docs/status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md`)
 retain this limit rather than claiming universal hosted-CI success.
 
 ## Checkpoint versus inference weights

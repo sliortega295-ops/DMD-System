@@ -204,7 +204,7 @@ still fail rather than dropping fields or falling back to a fixed recipe.
 Manual training retains `initial_reference_gate.status=NOT_RUN`: it does not
 manufacture a per-user paired numerical admission. The separately recorded
 native tiny-model reference/manual and restart tests qualify only their tested
-scope; use the [hardware acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md)
+scope; use the hardware acceptance record (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`)
 for actual evidence, not a catalog flag or a skipped optional CUDA test.
 
 ### Explicit image replication with immutable sharing

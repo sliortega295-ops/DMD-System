@@ -52,7 +52,7 @@ The latter require a capacity-bounded snapshot owner, not whole-model CUDA
 copies. CPU measured planning remains separately supported. New CUDA acceptance
 tests use actual random-tiny upstream AV classes, full/LoRA updates, a direct
 flow-DMD oracle and fresh-process restore/export; **unexecuted or skipped tests
-are not acceptance**. See [the current hardware acceptance record](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md)
+are not acceptance**. See the current hardware acceptance record (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`)
 for executed scope. Pretrained capacity and generation quality remain unverified.
 
 ```sh

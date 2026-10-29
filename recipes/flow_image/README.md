@@ -48,7 +48,7 @@ planning, saved plans and manual policies other than exact immutable sharing sti
 CPU planning remains independently supported for the documented tiny fixtures.
 Do not infer full pretrained models fit merely from the parameter-count budget.
 
-[The exact acceptance receipt](../../artifacts/framework/20261024/modern_image_cuda_acceptance.json)
+The exact acceptance receipt (source checkout: `artifacts/framework/20261024/modern_image_cuda_acceptance.json`)
 records native-oracle loss/gradient/Adam/EMA checks, new-process C1-to-C3 restart,
 and current-Student new-prompt PNG generation with training assets removed.
 Exact CUDA comparisons use an explicit deterministic **test** policy, not a
@@ -282,7 +282,7 @@ denoise methods do not pass through a role's `forward`; DDP-overlap wrappers,
 FSDP/HSDP, auto/saved-plan trials, autocast and unrelated caches remain explicitly
 refused. Construction still materializes all roles. Tiny-model replica tests
 cannot establish that pretrained 4B/20B configurations fit or converge; see the
-[acceptance status](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+acceptance status (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 
 ## New input and portable output
 

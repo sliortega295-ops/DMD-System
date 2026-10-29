@@ -181,7 +181,7 @@ saved-plan mode, use its exact `asset_config`; do not edit a path in a saved
 receipt to make it fit another machine. Asset locations
 inside a native manifest follow its original API (usually explicit absolute
 paths), not the training-config path rules. Existing original asset preparation
-remains authoritative: [Wan asset template](../../configs/distillschedule/original_wan/assets.template.json),
+remains authoritative: Wan asset template (source checkout: `configs/distillschedule/original_wan/assets.template.json`),
 W6 `workloads native prepare-assets`, and the workload runbooks. Assets carry
 real SHA256 identities, not placeholder zero hashes or a claim that a directory
 exists. Physical source/runtime, upstream revision, full tensor/trace, allocated
@@ -345,7 +345,7 @@ shard** has been written and hashed. State I/O is separately recorded outside
 the original compute timer. A failed write is not a valid checkpoint.
 CPU tests exercise original dispatch/cursor logic and actual engine/Adam
 restart. W1's existing world16 two-cohort continuation and fresh-process
-restore are documented in the [acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+restore are documented in the acceptance record (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 The original baseline/Resident 50-cycle training records are reused; only new
 output or lifecycle behavior needs additional checks, not another long run.
 
@@ -372,7 +372,7 @@ JSON for that complete-cycle publication.
 Historical W3 finalization failure/REVIEW, W4 REVIEW and W5 sampled-backward
 FAIL boundaries remain unchanged. Existing correctness receipt bindings and
 native gates are not waived by this front door. Read the
-[six-workload correction](../status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md).
+six-workload correction (source checkout: `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`).
 CPU binding tests and dry-runs create no new large-model quality or speedup
 result. Reuse the named existing W1 and historical native GPU receipts; the
 newly connected GAN/C51/AR continuation and decoded-output paths still need

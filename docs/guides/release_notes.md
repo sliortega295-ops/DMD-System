@@ -49,7 +49,7 @@ No new throughput, speedup, convergence or quality result is claimed.
   fresh-process restart and current-G generation/export. Exact assertions use
   an explicit deterministic test policy in every process, not changed training
   defaults. This does not qualify pretrained weights, full-GAN training or
-  production capacity. See the [GPU acceptance scope](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+  production capacity. See the GPU acceptance scope (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
   CPU-only Torch still reports these suites NOT_RUN; a skip is never GPU proof.
   The unchanged reference profiles still refuse distributed/AMP execution and
   CUDA clone-based auto/plan trials. A separate explicit DMD2 FP32 role-DDP

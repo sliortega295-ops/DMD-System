@@ -193,7 +193,7 @@ AMP, full-model capacity, production video geometries,
 performance and quality gates V3–V5 remain **NOT_RUN**. This does not complete
 the mature-framework plan or full U15 acceptance.
 
-The separate [native CUDA acceptance](../../artifacts/framework/20261024/native_video_cuda_acceptance.json)
+The separate native CUDA acceptance (source checkout: `artifacts/framework/20261024/native_video_cuda_acceptance.json`)
 covers three actual tiny HunyuanVideo tests, including a non-default owned CUDA
 device, native forward/gradient/Euler/text/VAE comparison, complete-state
 fresh-process restart and current-Student video export. New-prompt export

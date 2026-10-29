@@ -16,9 +16,9 @@ Continue through the existing [native runbook](../../docs/runbooks/original_h3_a
 
 ## Code ownership
 
-- [`src/distillschedule/strategies/h3_ar_cli.py`](../../src/distillschedule/strategies/h3_ar_cli.py)
-- [`src/distillschedule/strategies/h3_ar_session.py`](../../src/distillschedule/strategies/h3_ar_session.py)
-- [`src/distillschedule/strategies/h3_ar_planning.py`](../../src/distillschedule/strategies/h3_ar_planning.py)
+- source checkout: `src/distillschedule/strategies/h3_ar_cli.py`
+- source checkout: `src/distillschedule/strategies/h3_ar_session.py`
+- source checkout: `src/distillschedule/strategies/h3_ar_planning.py`
 
 W6 uses its original native task schema; it is not added by cloning a W5 legacy profile.
 
@@ -26,11 +26,11 @@ Shared integration origin: `ea29129342741b54e59c4773e07454f541fadcc7`. Subsequen
 
 ## Hardware/evidence
 
-A100 manual/saved-plan evidence: [source-bound record](../../artifacts/publications/20261019/evidence/planner/six_workload_native_match.json), status `MATCHED_DIAGNOSTIC_TARGET_MET`. Its fixed training source is `e88d21c168ce54be99134cecd195c961319cb45a`.
+A100 manual/saved-plan evidence: source-bound record (source checkout: `artifacts/publications/20261019/evidence/planner/six_workload_native_match.json`), status `MATCHED_DIAGNOSTIC_TARGET_MET`. Its fixed training source is `e88d21c168ce54be99134cecd195c961319cb45a`.
 
-H100 measured source: `sliortega295-ops/DMD-System@0419b96b9ed9a8dd76737042e6c5020c80f6673a`. Published source: `0419b96b9ed9a8dd76737042e6c5020c80f6673a`. This is a separately pinned implementation, not automatic proof of this checkout's H100 runtime. The archived [measurement index](../../artifacts/publications/20261019/h100/measured_results.csv) defines the actual denominator and numerical status.
+H100 measured source: `sliortega295-ops/DMD-System@0419b96b9ed9a8dd76737042e6c5020c80f6673a`. Published source: `0419b96b9ed9a8dd76737042e6c5020c80f6673a`. This is a separately pinned implementation, not automatic proof of this checkout's H100 runtime. The archived measurement index (source checkout: `artifacts/publications/20261019/h100/measured_results.csv`) defines the actual denominator and numerical status.
 
-Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before interpreting any number. No new GPU or quality result is created by this recipe.
+Read the six-workload correction (source checkout: `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`) before interpreting any number. No new GPU or quality result is created by this recipe.
 
 ## Public training configuration
 

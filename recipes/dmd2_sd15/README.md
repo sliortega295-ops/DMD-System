@@ -122,7 +122,7 @@ quality and performance remain NOT_RUN; AMP and FSDP ownership remain rejected.
 A separate opt-in [FP32 native role DDP reference](../../docs/guides/native_owner_backends.md#persistent-native-dmd2-role-ddp)
 has actual CPU2 training and fresh-process continuation evidence; it does not
 qualify GAN or the measured mixed-precision GPU portfolio. See
-[acceptance scope](../../docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+acceptance scope (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
 The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
 including native plain conditioning/scheduler tensors.

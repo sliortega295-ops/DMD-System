@@ -38,6 +38,21 @@ at runtime. Legacy native recipes which load audited root scripts still require
 that checkout. An installed wheel is not a substitute for a native
 source/environment receipt.
 
+## Installed documentation and source references
+
+Relative navigation from public guides and recipes stays within the
+installed `share/distillschedule` documentation. A reference labeled
+**source checkout:** gives a path relative to the matching DMD-System source
+checkout, rather than a file under that installed directory. Source-only code,
+CI definitions and archived result summaries are not duplicated as documentation
+payloads in the wheel.
+
+Browse the [DMD-System source repository](https://github.com/sliortega295-ops/DMD-System)
+at the release or source revision recorded for your build/run. For an unpublished
+development build, use its original local checkout; the default `main` branch
+need not contain that build's files. Source references preserve their original
+paths and, when present, section anchors.
+
 ## Installed-only native tiny image/video tutorial (CPU, not pretrained)
 
 Use a **new Python3.12 environment**, separate from original-model TF4 and LTX
@@ -220,7 +235,7 @@ specific installed acceptance; do not combine it with modern-flow or LTX.
 | Native Wan/source-qualified Self-Forcing regression | `train,test,native-wan` | Diffusers0.35.2; not the Helios0.34 or full-model0.37 lane |
 | Full original Helios CPU model and W1/W2/W3 Program references | `train,helios-reference` | Diffusers0.37.1; add `test` separately, not a test-only runtime dependency |
 | Maintained original cached H3 AV CPU reference | `train,h3-cached-reference` | Independent small cached-only source closure; not the full DiffSynth/SFT distribution |
-| Original Grid H3 CPU source qualification | Dedicated [workflow](../../.github/workflows/h3-grid-native-cpu.yml) | Additional exact upstream source/dependency pins; no pretrained-model validation |
+| Original Grid H3 CPU source qualification | Dedicated workflow (source checkout: `.github/workflows/h3-grid-native-cpu.yml`) | Additional exact upstream source/dependency pins; no pretrained-model validation |
 | New native image/video flow CPU reference | `modern-flow` | Torch2.10/Diffusers0.37.1/Transformers5.14.1/PEFT0.18.1; separate Python3.12 lane, not a TF4/LTX upgrade |
 | Official DMD2 SD1.5/SDXL | `dmd2` | Explicit original noncommercial source; Torch2.10/Diffusers0.37.1/Transformers4.51.3/PEFT0.17.1 |
 | Official causal Self-Forcing | `self-forcing-official` | Explicit official source/native conditions; compatible TF4 original-model stack, not LiveWan |
