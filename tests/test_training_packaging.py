@@ -53,15 +53,16 @@ def test_public_guide_dependencies_have_installed_data_file_destinations():
             if not target.is_relative_to(ROOT):
                 continue
             source = target.relative_to(ROOT)
-            if (source.parts[:2] in (("docs", "contracts"), ("docs", "runbooks"),
-                                    ("docs", "architecture")) and source.suffix == ".md"):
+            if ((source.parts[:2] in (("docs", "contracts"), ("docs", "runbooks"),
+                                     ("docs", "architecture"), ("docs", "workloads"))
+                 and source.suffix == ".md") or source == Path("THIRD_PARTY.md")):
                 assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
                 dependencies.add(source)
     # Independent regression: the packaged H3 continuation recipe needs this policy.
     assert Path("docs/contracts/original_h3_ar_record_epochs_v1.md") in dependencies
     missing = [str(source) for source in sorted(dependencies)
                if ROOT / source not in installed.get(
-                   "share/distillschedule/" + source.parent.as_posix(), set())]
+                   (Path("share/distillschedule") / source.parent).as_posix(), set())]
     assert not missing, f"public guide dependencies lack their installed data-file destination: {missing}"
 
 

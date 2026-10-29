@@ -139,3 +139,11 @@ include = ["distillschedule*", "runtime*"]
     "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",
 ]
 "share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
+
+# Public guide dependencies; repository-only CI/source/evidence remain outside this set.
+"share/distillschedule" = ["THIRD_PARTY.md"]
+"share/distillschedule/docs/workloads" = [
+    "docs/workloads/open_role_pools.md",
+    "docs/workloads/open_workload_program.md",
+    "docs/workloads/original_wan_fresh_training.md",
+]
