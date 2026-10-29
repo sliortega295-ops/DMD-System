@@ -61,6 +61,7 @@ def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_sile
     files = _api()['test_files'](ROOT)
     assert 'tests/test_runtime_fsdp2_variable_forward.py' in files
     assert 'tests/test_runtime_fsdp2_variable_forward_cpu.py' in files
+    assert 'tests/test_training_helios_gan_native_history.py' in files
     workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
     assert 'tests/test_runtime_*.py' in workflow['on']['pull_request']['paths']
     job = workflow['jobs']['lifecycle']
@@ -68,6 +69,7 @@ def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_sile
     gate = next(step['run'] for step in job['steps'] if step.get('name') ==
                 'Require original Helios startup and persistent state proof')
     assert 'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng' in gate
+    assert 'test_target_original_gan_zero_history_capture_exact_rng_crops_and_r1' in gate
     # Exercise the actual CI gate with marked synthetic XML, not a second
     # implementation of its required-case or no-skip rules.
     import tempfile
@@ -75,13 +77,16 @@ def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_sile
         root = Path(directory)
         cases = ['test_actual_original_helpers_three_cycles_checkpoint_resume_equal',
                  *[f'test_public_to_original_p0_collectively_admits_before_model[{n}]' for n in range(13)],
-                 'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng']
-        for mutation in ('valid', 'missing', 'skipped', 'failure'):
-            rows = ['<testcase name="' + name + '"/>' for name in cases]
-            if mutation == 'missing': rows.pop()
-            elif mutation != 'valid': rows[-1] = '<testcase name="' + cases[-1] + '"><' + mutation + '/></testcase>'
-            (root / 'framework-cpu.xml').write_text('<testsuite>' + ''.join(rows) + '</testsuite>')
-            # The inline here-doc is the current production CI consumer.
-            source = gate.split("python - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
-            result = subprocess.run([sys.executable, '-c', source], cwd=root, capture_output=True, text=True)
-            assert (result.returncode == 0) is (mutation == 'valid'), (mutation, result.stderr)
+                 'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng',
+                 'test_target_original_gan_zero_history_capture_exact_rng_crops_and_r1']
+        for selected in (-2, -1):
+            for mutation in ('valid', 'missing', 'skipped', 'failure'):
+                rows = ['<testcase name="' + name + '"/>' for name in cases]
+                if mutation == 'missing': rows.pop(selected)
+                elif mutation != 'valid':
+                    rows[selected] = '<testcase name="' + cases[selected] + '"><' + mutation + '/></testcase>'
+                (root / 'framework-cpu.xml').write_text('<testsuite>' + ''.join(rows) + '</testsuite>')
+                # Execute the production here-doc; XML is SYNTHETIC_TEST_ONLY.
+                source = gate.split("python - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+                result = subprocess.run([sys.executable, '-c', source], cwd=root, capture_output=True, text=True)
+                assert (result.returncode == 0) is (mutation == 'valid'), (selected, mutation, result.stderr)

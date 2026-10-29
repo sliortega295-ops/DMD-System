@@ -33,7 +33,7 @@ test = ["pytest>=7", "omegaconf>=2.3", "setuptools>=77.0.0", "wheel"]
 # CPU qualification of licensed original Helios input/rollout helpers. This is
 # not the CUDA training environment and does not replace native-wan's pins.
 test-helios = [
-    "diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2",
+    "diffusers==0.34.0", "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
     "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "kernels==0.9.0",
     # The licensed original SDPA receipt imports JIT definitions, but these
     # Linux/x86 CPU tests never compile or launch them. Not a public train dep.
@@ -137,6 +137,9 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/status" = [
     "docs/status/official_optimized_framework.md",
     "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",
+]
+"share/distillschedule/artifacts/framework/20261029" = [
+    "artifacts/framework/20261029/wan_portable_output_acceptance.json",
 ]
 "share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
 

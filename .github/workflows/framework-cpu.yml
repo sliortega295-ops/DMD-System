@@ -55,10 +55,12 @@ jobs:
                      'test_public_to_original_p0_collectively_admits_before_model[')]
           phase = [case for case in cases if case.get('name') ==
                    'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng']
+          gan_history = [case for case in cases if case.get('name') ==
+                         'test_target_original_gan_zero_history_capture_exact_rng_crops_and_r1']
           assert len(restart) == 1 and len(startup) == 13
-          assert len(phase) == 1
+          assert len(phase) == 1 and len(gan_history) == 1
           assert all(case.find('skipped') is None for case in restart + startup)
-          assert all(case.find(kind) is None for case in phase
+          assert all(case.find(kind) is None for case in phase + gan_history
                      for kind in ('skipped', 'failure', 'error'))
           PY
       - name: Installed wheel outside the checkout

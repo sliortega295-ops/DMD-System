@@ -271,7 +271,8 @@ def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
 
 def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_metadata):
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
-    for package in ("diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1", "ftfy==6.3.1", "kernels==0.9.0"):
+    for package in ("diffusers==0.34.0", "transformers==4.51.3", "peft==0.17.1",
+                    "einops==0.8.1", "ftfy==6.3.1", "kernels==0.9.0"):
         assert f'{package};extra=="test-helios"' in requirements
     from packaging.requirements import Requirement
     triton = [Requirement(value) for value in wheel_metadata.get_all("Requires-Dist")
