@@ -98,12 +98,15 @@ For new H3 AR inputs, use [raw previous/current AV preparation](h3_audio_video_e
 with supplied original text features. W5 continues to use its separate
 text-condition inventory, not the W6 input format.
 
-Existing W1 world16 continuation evidence is retained. The new W3/C51/W6
-native continuity and the six current-Student output paths have source/CPU proof;
-pretrained native GPU and 100-cycle stability acceptance remain separate.
-For that final acceptance, use one seed, 100 complete DMD cycles, and one
-midpoint complete-cycle checkpoint resumed in a new process. A native iteration
-or an individual Critic update must not be relabelled as a complete DMD cycle.
+Reuse existing completed training runs of **50 or more complete DMD cycles**;
+do not repeat them just to validate a new framework revision. W1 already has
+complete-incumbent world16 continuation and fresh-process restart evidence,
+and LiveWan already has baseline/full 100-cycle training records. Keep each
+record's source and mechanism scope. Check only changed public lifecycle or
+output endpoints with bounded integration tests. W3/C51/W6 public continuity
+and six current-Student output paths have source/CPU coverage where recorded;
+that does not fill a missing native GPU endpoint. An individual Critic update
+must not be relabelled as a complete DMD cycle.
 
 ## Explicit presets, reference or saved plans; no hidden winner
 
@@ -342,8 +345,9 @@ shard** has been written and hashed. State I/O is separately recorded outside
 the original compute timer. A failed write is not a valid checkpoint.
 CPU tests exercise original dispatch/cursor logic and actual engine/Adam
 restart. W1's existing world16 two-cohort continuation and fresh-process
-restore are documented in the [acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md);
-real-data 100-cycle acceptance remains a separate step.
+restore are documented in the [acceptance record](../status/FRAMEWORK_A100_ACCEPTANCE_20261024.md).
+The original baseline/Resident 50-cycle training records are reused; only new
+output or lifecycle behavior needs additional checks, not another long run.
 
 W2/W4's direct references and W5's original-config reference also expose atomic
 complete-cycle restart over actual original owners. Their guides specify
