@@ -78,26 +78,35 @@ def storage_bytes(value):
     return sum({storage_key(t): physical_tensor(t).untyped_storage().nbytes() for t in tensors(value)}.values())
 
 
-def tensor_signature(t):
+def tensor_signature(t, *, _local_shards=False):
+    if _local_shards:
+        from torch.distributed.tensor import DTensor
+        if isinstance(t, DTensor):
+            from distillschedule.training.tensor_state import layout
+            # Native admission compares before/after on every real rank and
+            # binds those rank hashes in order. No logical tensor gather is
+            # necessary: retain exact local bytes AND the full shard layout.
+            return fingerprint({'local_shard_layout': layout(t),
+                                'local_tensor': tensor_signature(t.to_local())})
     t=full_tensor(t)
     v=t.detach().contiguous().cpu()
     return fingerprint({'shape':list(t.shape),'stride':list(t.stride()),'dtype':str(t.dtype),
         'bytes':hashlib.sha256(v.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()})
 
 
-def signature(value, *, _metadata=False):
-    if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value)}
+def signature(value, *, _metadata=False, _local_shards=False):
+    if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value, _local_shards=_local_shards)}
     if isinstance(value, nn.Module):
         return {'class':type(value).__module__+'.'+type(value).__qualname__,
                 'training':[ (n,m.training) for n,m in value.named_modules()],
-                'tensors':{k:signature(v) for k,v in value.state_dict().items()},
+                'tensors':{k:signature(v, _local_shards=_local_shards) for k,v in value.state_dict().items()},
                 'requires_grad':{k:p.requires_grad for k,p in value.named_parameters(remove_duplicate=False)}}
-    if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict())}
+    if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict(), _local_shards=_local_shards)}
     if _stateful(value):
         return {'stateful':type(value).__module__+'.'+type(value).__qualname__,
-                'state':signature(value.state_dict(), _metadata=True)}
-    if isinstance(value, Mapping): return {str(k):signature(v, _metadata=_metadata) for k,v in value.items()}
-    if isinstance(value,(tuple,list)): return [signature(v, _metadata=_metadata) for v in value]
+                'state':signature(value.state_dict(), _metadata=True, _local_shards=_local_shards)}
+    if isinstance(value, Mapping): return {str(k):signature(v, _metadata=_metadata, _local_shards=_local_shards) for k,v in value.items()}
+    if isinstance(value,(tuple,list)): return [signature(v, _metadata=_metadata, _local_shards=_local_shards) for v in value]
     # E.g. ReduceLROnPlateau deliberately starts with best=+/-inf. Bind
     # those scheduler sentinels explicitly without admitting nonfinite inputs.
     if _metadata and type(value) is float and math.isinf(value):
@@ -186,8 +195,10 @@ class Workload:
             model_code = {k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes}
         from .owner_execution import workload_inventory
         owners = workload_inventory(self)
-        return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state)),
-                'feeds':fingerprint(signature(self.feeds)), 'seed':self.seed,
+        from .collective_owner import present
+        native_shards = present(self)
+        return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state, _local_shards=native_shards)),
+                'feeds':fingerprint(signature(self.feeds, _local_shards=native_shards)), 'seed':self.seed,
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
                 'model_code':model_code,
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),

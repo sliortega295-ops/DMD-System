@@ -112,12 +112,12 @@ def admit(workload):
     source = dict(provider_code={cls.__module__ + '.' + cls.__qualname__: code_signature(cls)
                                  for cls in type(owner).__mro__ if cls is not object},
                   protocol_code={name: _method_signature(owner, name) for name in (*_METHODS, 'runtime_tensors')})
-    before, rng = signature(owner), _rng()
+    before, rng = signature(owner, _local_shards=True), _rng()
     try:
         spec = owner.collective_execution_spec()
         repeated = owner.collective_execution_spec()
         pure = signature(_rng()) == signature(rng)
-        _require(spec == repeated and pure and signature(owner) == before,
+        _require(spec == repeated and pure and signature(owner, _local_shards=True) == before,
                  'native collective spec must be pure and stable')
     finally:
         _restore_rng(rng)

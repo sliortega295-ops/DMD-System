@@ -744,3 +744,97 @@ def test_policy_structure_preserves_integer_key_hash_and_saved_policy_resume(tmp
     assert prepared.state['model'] is w.state['model'] and not prepared._ran
     assert all(type(key) is int for key in w.program.parameters['schedule'])
     assert not torch.cuda.is_initialized()
+
+
+class ShardedAuxiliaryOwner(CollectiveOwner):
+    """Actual CPU/DDP learner with an owned DTensor auxiliary, not a CUDA mock."""
+    def __init__(self, rank, auxiliary):
+        super().__init__(rank)
+        self.auxiliary = auxiliary
+
+    def state_dict(self):
+        return dict(super().state_dict(), auxiliary=self.auxiliary)
+
+    def load_state_dict(self, value):
+        super().load_state_dict(value)
+        self.auxiliary = value['auxiliary']
+
+    def runtime_tensors(self):
+        yield from super().runtime_tensors()
+        yield self.auxiliary
+
+    def collective_execution_spec(self):
+        value = super().collective_execution_spec()
+        if self.fault == 'local_shard_mutation' and dist.get_rank() == 1:
+            self.auxiliary.to_local().add_(1)
+        return value
+
+
+def local_native_signature_worker(rank, filename, output, placement):
+    from torch.distributed.device_mesh import init_device_mesh
+    from torch.distributed.tensor import DTensor, Replicate, Shard, Partial
+    from distillschedule.open_workload.torch_backend import signature
+    from distillschedule.training.policy import CyclePolicy
+    from test_training_end_to_end import equal
+    initialize(rank, filename, timeout=30)
+    original = DTensor.full_tensor
+    try:
+        mesh = init_device_mesh('cpu', (2,), mesh_dim_names=('fsdp',))
+        local = torch.arange(4, dtype=torch.float32).reshape(2, 2) + rank * 4
+        physical = Replicate() if placement == 'replicate' else Shard(0 if placement == 'rows' else 1)
+        shape = (2, 2) if placement == 'replicate' else (4, 2) if placement == 'rows' else (2, 4)
+        auxiliary = DTensor.from_local(local, mesh, (physical,), run_check=False,
+                                      shape=torch.Size(shape), stride=(shape[1], 1))
+        def forbidden(*args, **kwargs):
+            raise AssertionError('native metadata must not gather the full logical tensor')
+        DTensor.full_tensor = forbidden
+        before = signature(auxiliary, _local_shards=True)
+        assert signature(auxiliary, _local_shards=True) == before
+        if rank:
+            auxiliary.to_local()[0, 0].add_(1)
+        changed = signature(auxiliary, _local_shards=True) != before
+        assert changed is bool(rank)
+        empty = DTensor.from_local(torch.ones(1) if rank == 0 else torch.empty(0),
+                                   mesh, (Shard(0),), run_check=False,
+                                   shape=torch.Size([1]), stride=(1,))
+        assert signature(empty, _local_shards=True) == signature(empty, _local_shards=True)
+        partial = DTensor.from_local(local, mesh, (Partial(),), run_check=False,
+                                     shape=torch.Size([2, 2]), stride=(2, 1))
+        with pytest.raises(ValueError, match='non-partial'):
+            signature(partial, _local_shards=True)
+        owner = ShardedAuxiliaryOwner(rank, auxiliary)
+        control = CollectiveOwner(rank)
+        assert signature(control, _local_shards=True) == signature(control)
+        native = CyclePolicy(dict(mode='manual', implementation=option()))
+        reference = CyclePolicy(dict(mode='manual', implementation=option()))
+        for cycle in range(2):
+            reference.run(workload(rank, owner=control, cycle=cycle), output + '/control')
+            native.run(workload(rank, owner=owner, cycle=cycle), output + '/native')
+        assert all(torch.equal(t, control.state_dict()['model'][name])
+                   for name, t in owner.state_dict()['model'].items())
+        actual = owner.state_dict()
+        actual.pop('auxiliary')
+        assert equal(actual, control.state_dict())
+        owner.fault = 'local_shard_mutation'
+        with pytest.raises(ValueError, match='pure|stable|rank failures'):
+            ExecutionBackend(workload(rank, owner=owner, cycle=2))
+        assert owner.steps == control.steps == 2
+        assert_group_usable(rank)
+        Path(output, f'rank-{rank}.json').write_text(json.dumps(dict(
+            rank=rank, placement=placement, updates=owner.steps, full_tensor_calls=0,
+            local_change_detected=changed, one_rank_impurity_rejected=True,
+            control_parameters_optimizer_rng_equal=True, control_parameters_equal=True,
+            empty_shards_checked=True, cuda_initialized=torch.cuda.is_initialized())))
+    finally:
+        DTensor.full_tensor = original
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('placement', ['rows', 'columns', 'replicate'])
+def test_native_dtensor_signatures_bind_local_bytes_without_gathers(tmp_path, placement):
+    mp.spawn(local_native_signature_worker,
+             args=(str(tmp_path / 'rdzv'), str(tmp_path), placement), nprocs=2, join=True)
+    rows = [json.loads((tmp_path / f'rank-{rank}.json').read_text()) for rank in range(2)]
+    assert all(row['updates'] == 2 and row['full_tensor_calls'] == 0
+               and row['control_parameters_equal'] and row['one_rank_impurity_rejected']
+               and not row['cuda_initialized'] for row in rows)
