@@ -311,9 +311,9 @@ links each configuration and its historical measurements. Its
 [validation appendix](../status/official_optimized_framework.md) separates
 source/helper/CPU integration from historical native GPU outcomes, which retain
 their **REVIEW** numerical status. The same appendix records the actual public
-SD1.5 optimized 100-cycle/restart result and the separate first-two-cycle
-Self-Forcing native execution. Full-native exports/new-input outputs and the
-unfinished Self-Forcing long-run/restart still need validation; none of these
+SD1.5 optimized and official Self-Forcing 100-cycle runs, both with durable
+cycle 50 checkpoints and fresh-process continuation to cycle 100.
+Full-native exports/new-input outputs remain separate validation items; none of these
 results are inherited from the seven tiny single-device CUDA tests. Clone-based automatic planning
 is not enabled for these distributed owners. Existing single-device FP32
 defaults and the W1–W6 contracts remain unchanged.

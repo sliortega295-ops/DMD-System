@@ -41,7 +41,7 @@ attest pretrained Teacher quality or upstream sequential RNG equivalence.
 The existing six independent operation-keyed seed streams are preserved.
 Legacy `prepare-livewan-inputs` remains its own schema and 1..64 contract.
 
-The new asset schema is `distillschedule.livewan_c51_assets.v1`, with exactly:
+The default asset schema is `distillschedule.livewan_c51_assets.v1`, with exactly:
 
 - `native`: the complete existing `distillschedule.livewan_reference_assets.v1`
   object described in [REFERENCE_TRAINING.md](REFERENCE_TRAINING.md), including
@@ -61,6 +61,44 @@ The new asset schema is `distillschedule.livewan_c51_assets.v1`, with exactly:
   "files": { ... } }`. `training.livewan_c51_assets.kernel_files()` gives the
   mandatory unchanged C51 artifact hashes. Missing or changed files fail before
   model construction. No private historical run/mount is required.
+
+### Existing local Hugging Face attention providers
+
+For the same native FA2/FA3 kernels supplied as local HF artifacts rather than
+a pip `flash-attn` distribution, explicitly select
+`distillschedule.livewan_c51_assets.v2`. It keeps the fields above and adds
+`attention_provider`. The nested `native.runtime.dependency_versions` records
+the other eight original distributions; a bare reference-v1 document still
+requires all nine. Do not invent a `flash-attn` version or change the reference
+asset contract to select this path.
+
+Use `kernel_files(hf_provider=True)` for the complete seven-file inventory of
+each component. Construct the provider descriptor in the intended runtime:
+
+```python
+from pathlib import Path
+import torch
+from distillschedule.runtime.livewan_c51_provider import ABI, SCHEMA
+from distillschedule.workloads.best_known.registry import file_sha256
+
+attention_provider = {
+    "schema_version": SCHEMA,
+    "abi": {**ABI, "torch_extension_sha256": file_sha256(Path(torch._C.__file__))},
+}
+```
+
+The v2 owner binds the real provider functions, native extensions and ABI to
+its effective plan and checkpoint. It uses the original loaders and attention
+math, with no dependency installation or kernel substitution. CPU provider
+admission does not import the original Wan model package, whose T5 class
+default requires an owned CUDA context; native worker admission retains that
+import and source check. Record the actual training environment, not a CPU
+preparation snapshot, in the training asset document.
+
+Original Wan `save_pretrained` configs omit several `ignore_for_config`
+constructor arguments. The adapter uses their pinned original defaults for
+patch shape, attention window and norm flags. Explicit conflicting values,
+missing core geometry or changed config/weight hashes still fail.
 
 Set `DISTILLSCHEDULE_FLASH_ATTN_KERNEL` and `DISTILLSCHEDULE_SCORE_FA3_KERNEL`
 to those exact explicit roots. All other effective recorded environment,
