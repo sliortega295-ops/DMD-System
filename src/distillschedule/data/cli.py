@@ -35,6 +35,8 @@ def main(argv=None):
     gan.add_argument("--sources", type=Path, required=True)
     gan.add_argument("--training-config", type=Path, required=True)
     gan.add_argument("--output", type=Path, required=True)
+    gan.add_argument("--history-policy", choices=(NATIVE_HISTORY_POLICY,),
+                     help="opt in to independent W3 native-history stream; retains original full GAN bundle")
     from .helios_epoch_inputs import EPOCH_POLICY as HELIOS_EPOCH_POLICY
     for command in (helios, gan):
         command.add_argument("--input-policy", choices=(HELIOS_EPOCH_POLICY,),
@@ -97,7 +99,8 @@ def main(argv=None):
                 if args.input_policy is None and not isinstance(values, list):
                     raise ValueError("explicit source cohort list required")
                 sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
-                result = prepare_stream(sources, args.training_config, args.output, input_policy=args.input_policy)
+                result = prepare_stream(sources, args.training_config, args.output, input_policy=args.input_policy,
+                                        **({"native_policy": args.history_policy} if args.history_policy is not None else {}))
             elif args.command == "prepare-helios-gan-reference":
                 from .helios_native_inputs import prepare_inputs
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))

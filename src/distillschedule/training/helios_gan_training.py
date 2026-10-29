@@ -47,7 +47,7 @@ def effective_flags():
     return {name.replace("-", "_"): name.replace("-", "_") in enabled for name in _OFF}
 
 
-def descriptor():
+def descriptor(native_policy=None):
     root = repository_root()
     owners = tuple("src/distillschedule/" + name for name in (
         "training/helios_gan_training.py", "training/helios_gan_inputs.py", "training/helios_gan_assets.py",
@@ -57,7 +57,15 @@ def descriptor():
         "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
         "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
         "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py")
-    return {"schema_version": "distillschedule.helios_gan_stream_policy.v1", "preset": PRESET_ID,
+    if native_policy is not None:
+        from distillschedule.runtime.helios_gan_native_history import descriptor as history_descriptor, require_task
+        require_task(inputs.GANCohortTask(0, native_policy=native_policy))
+        owners += ("src/distillschedule/runtime/helios_gan_native_history.py",
+                   "src/distillschedule/runtime/helios_native_history.py",
+                   "src/distillschedule/runtime/fsdp2_variable_forward.py",
+                   "src/distillschedule/runtime/fsdp2_nograd_persistence.py",
+                   "src/distillschedule/runtime/helios_planner_cycle.py")
+    value = {"schema_version": "distillschedule.helios_gan_stream_policy.v1", "preset": PRESET_ID,
         "implementation": implementation().assignment, "candidate_bundle": implementation().candidate_bundle.cost_identity(),
         "current_integration_sha256": {name: file_sha256(root / name) for name in owners},
         "source_policy": "EXPLICIT_CURRENT_INTEGRATION_NOT_FROZEN_TWO_CYCLE_IDENTITY",
@@ -65,6 +73,10 @@ def descriptor():
         "checkpoint": "native_local_shards_same_topology_complete_cycle", "scheduler": "original_native_constant_unbounded",
         "bootstrap": "explicit_systems_only_G2_C10_EMA800_NOT_OFFICIAL_CHECKPOINT1000",
         "numerical_status": "REVIEW", "gpu_execution": "NOT_RUN"}
+    if native_policy is not None:
+        value.update(schema_version="distillschedule.helios_gan_native_history_stream_policy.v1",
+                     native_history=history_descriptor())
+    return value
 
 
 def validate_environment(environment=None):
@@ -80,7 +92,7 @@ def validate_environment(environment=None):
                     "unbound GAN environment control: " + key, path="helios.gan.training")
 
 
-def bind_effective(*, args, policy):
+def bind_effective(*, args, policy, native_policy=None):
     validate_environment()
     require(args.variant == "gan" and args.timing_mode and not args.profile_mode and not args.profile_diagnostics
             and not args.validate_only and args.critic_only_step is None and not args.operation_source,
@@ -99,7 +111,7 @@ def bind_effective(*, args, policy):
             and policy.generator_nograd_persistent_unshard_flush_allocator_cache is True
             and args._planner_gan_manual_bundle is True,
             "GAN full world16/C2048/p1/window5/FA3/head policy changed", path="helios.gan.training")
-    return descriptor()
+    return descriptor(native_policy)
 
 
 def native_argv(assets, stream, output, logical_hash):
@@ -124,7 +136,7 @@ def admit_training(config, task_value, assets_value, paths):
     require(assets == assets_value, "GAN assets changed during admission", path="helios.gan.training")
     observations = assets_io.verify_pins(assets)
     logical, _ = assets_io.load_bootstrap(assets, verify_payloads=False)
-    stream = inputs.load_stream(config.data["prepared"], cycles=config.trainer["cycles"])
+    stream = inputs.load_stream(config.data["prepared"], cycles=config.trainer["cycles"], expected_kind=config.data["input_kind"])
     require(stream["identity"]["training_config_sha256"] == assets["assets"]["gan_config"]["sha256"],
             "GAN stream and runtime config identities differ", path="helios.gan.training")
     resume = config.trainer.get("resume_from")
@@ -133,7 +145,8 @@ def admit_training(config, task_value, assets_value, paths):
         require((path / "manifest.json").is_file() and (path / "_SUCCESS").is_file()
                 and (path / "_SUCCESS").read_text().strip() == file_sha256(path / "manifest.json"),
                 "complete native GAN resume checkpoint required", path="helios.gan.training")
-    return {"task": task_value, "assets": assets, "stream": stream, "selected": descriptor(),
+    return {"task": task_value, "assets": assets, "stream": stream,
+            "selected": descriptor(stream["identity"].get("native_history_policy")),
             "implementation": implementation(), "plan": None, "asset_observations": observations,
             "bootstrap": {"logical_manifest_hash": logical.manifest_hash},
             "argv": native_argv(assets, stream, paths["output"], logical.manifest_hash),
@@ -141,6 +154,13 @@ def admit_training(config, task_value, assets_value, paths):
 
 
 def _checkpoint_policy(identity):
+    if "gan_native_history" in identity:
+        from distillschedule.runtime.helios_gan_native_history import descriptor as history_descriptor
+        require(identity["gan_native_history"] == history_descriptor()
+                and identity["execution_policy"].get("native_history") == history_descriptor(),
+                "GAN native history checkpoint capability changed", path="helios.gan.training")
+        return {"schema_version": "distillschedule.helios_gan_native_history_checkpoint_policy.v1",
+                "identity_sha256": fingerprint(identity)}
     return {"schema_version": "distillschedule.helios_gan_stream_checkpoint_policy.v1", "identity_sha256": fingerprint(identity)}
 
 
@@ -162,9 +182,11 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             and binding.get("metadata_group") is not None, "owned original GAN world16/Gloo scope required", path="helios.gan.training")
     with _plane(binding):
         def local():
-            effective = bind_effective(args=args, policy=policy)
+            effective = bind_effective(args=args, policy=policy,
+                                       native_policy=binding["stream"]["identity"].get("native_history_policy"))
             require(binding["identity"]["execution_policy"] == effective, "GAN source/policy binding changed", path="helios.gan.training")
-            stream = inputs.load_stream(binding["config"].data["prepared"], cycles=binding["config"].trainer["cycles"], verify_rank=rank)
+            stream = inputs.load_stream(binding["config"].data["prepared"], cycles=binding["config"].trainer["cycles"],
+                                        verify_rank=rank, expected_kind=binding["config"].data["input_kind"])
             require(stream["stream_sha256"] == binding["identity"]["stream_sha256"], "GAN stream changed", path="helios.gan.training")
             frozen = assets_io.immutable_assets(binding["assets"])
             logical, _ = assets_io.load_bootstrap(binding["assets"], verify_payloads=False)
@@ -180,7 +202,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
                 "GAN original bootstrap/local asset binding changed", path="helios.gan.training")
             from runtime.gst_pool_contract import NegativePromptAsset
             from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
-            trace = inputs.load_cohort(inputs.GANCohortTask(0), first["trace_bundle"], expected_hash=first["trace_hash"])
+            trace = inputs.load_cohort(inputs.task_for_stream(stream, 0), first["trace_bundle"], expected_hash=first["trace_hash"])
             for step in trace.logical_steps:
                 validate_rollout_entries([trace.load_critic_entry(rank=rank, step=step, device="cpu")])
             identity = {**binding["identity"], "verified_immutable_assets": frozen}
@@ -296,6 +318,14 @@ def run_native_cycles(*, p0, args, policy, result, output, rank, device, logical
     require(cfg is not None and cfg.training_config.is_separate_gan_grad is False,
             "original joint GAN gradient owner required", path="helios.gan.training")
     with _plane(binding):
+        if "native_history_policy" in binding.get("stream", {}).get("identity", {}):
+            from distillschedule.runtime.helios_gan_native_history import admit_engine, descriptor as history_descriptor
+            def native_history_capability():
+                require(binding["identity"].get("gan_native_history") == history_descriptor(),
+                        "native GAN history identity changed", path="helios.gan.training")
+                return admit_engine(generator_engine)
+            capability = distributed.checked(native_history_capability, "Helios GAN complete-block native history owner")
+            result["native_history"] = {"policy": history_descriptor(), "actual_capability": capability}
         layout = distributed.checked(lambda: owner_layout(generator_engine, critic_engine), "Helios GAN native owner layout")
         saved = binding["identity"].get("native_owner_layout")
         distributed.checked(lambda: require(not binding["config"].trainer.get("resume_from") or saved == layout,
@@ -343,11 +373,14 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
         initial_versions=expected_versions(start), initial_curriculum_versions=logical_versions(start), latest_checkpoint=resume,
         numerical_status="REVIEW", native_GPU_continuation="NOT_RUN", capacity_validation="NOT_RUN",
         formal_timing_eligible=False, claimable_speedup=False, generation="UNSUPPORTED", export="UNSUPPORTED")
+    if "native_history_policy" in stream["identity"]:
+        result.update(schema_version="distillschedule.original_helios_gan_native_history_training.v1",
+                      source_history_policy=stream["identity"]["native_history_policy"])
     from distillschedule.data.helios_epoch_inputs import receipt as input_receipt
     result.update(input_receipt(stream, cycle=start))
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
     for index in range(start, end):
-        entry, task = stream["cohorts"][index], inputs.GANCohortTask(index)
+        entry, task = stream["cohorts"][index], inputs.task_for_stream(stream, index)
         trace = observer = prepared = None
         try:
             with _plane(binding):
@@ -429,6 +462,10 @@ def run_training(config, *, admit, native_output=None):
             "execution_policy":admitted["selected"], "bootstrap_logical_hash":admitted["bootstrap"]["logical_manifest_hash"]}
         from distillschedule.data.helios_epoch_inputs import identity_binding
         identity.update(identity_binding(admitted["stream"]))
+        if "native_history_policy" in admitted["stream"]["identity"]:
+            from distillschedule.runtime.helios_gan_native_history import descriptor as history_descriptor
+            identity.update(schema_version="distillschedule.helios_gan_native_history_training_identity.v1",
+                            gan_native_history=history_descriptor())
         binding = {"config":config, "stream":admitted["stream"], "assets":admitted["assets"], "identity":identity,
                    "gan_stream":True, "portable_reference":True, "implementation":admitted["implementation"], **ownership}
         if native_output is not None:

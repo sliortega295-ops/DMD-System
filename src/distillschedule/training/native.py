@@ -153,6 +153,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"),
             resume=dict(supported=True, scope="drained complete G1/C5/EMA1 boundary; same source/assets/stream/world16/full bundle",
                         verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"))
+        if config.data.get("input_kind") == "original_helios_gan_native_history_cohort_stream.v1":
+            from distillschedule.runtime.helios_gan_native_history import descriptor
+            result["capabilities"]["native_history"] = descriptor()
+            result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
     if helios_stream or _helios_gan_stream(config, workload):
         result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
             checkpoint_required=True, immutable_horizon=True,
@@ -368,11 +372,13 @@ def _options(config, workload):
     if _helios_gan_stream(config, workload):
         _require(config.execution.get("mode") == "manual" and "capacity_policy" not in config.execution
                  and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
-                 and config.data["input_kind"] == "original_helios_gan_cohort_stream.v1"
+                 and config.data["input_kind"] in ("original_helios_gan_cohort_stream.v1",
+                                                   "original_helios_gan_native_history_cohort_stream.v1")
                  and config.trainer["cycles"] >= 2,
                  "W3 full bundle stream requires explicit fresh native GAN cohorts; no replay/plan/policy fallback")
         return "manual"
-    _require(config.data.get("input_kind") != "original_helios_gan_cohort_stream.v1",
+    _require(config.data.get("input_kind") not in ("original_helios_gan_cohort_stream.v1",
+                                                  "original_helios_gan_native_history_cohort_stream.v1"),
              "W3 fresh GAN stream requires its explicit full bundle stream preset")
     if _livewan_c51_stream(config, workload):
         _require(config.data.get("input_kind") == "original_livewan_c51_teacher_stream.v1"

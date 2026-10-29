@@ -81,6 +81,11 @@ continues to admit 2..64 finite Grid1000 G1/F5 cycles; its optimized numerical
 backward issue remains open. The W4 reference input owner is still separately
 available; it is not the full C51 schema or a substitute for dual-pool recovery.
 
+W3 additionally exposes an explicit [native-history stream](../contracts/helios_gan_native_history_v1.md)
+for the original rank-local amplified-history branch. It retains the full GAN
+bundle and original detached-rollout persistence; its aligned G phase has
+source/CPU validation, with full-size GPU capacity and restart still unverified.
+
 For W1/W2, native current-G video export uses the complete native checkpoint and
 explicit Wan2.1 VAE policy. W3 has the same output consumer but retains its own
 GAN restore owner and ABI, with N70 OFF. See [W1 output](../../recipes/wan_ar/NATIVE_OUTPUT.md),

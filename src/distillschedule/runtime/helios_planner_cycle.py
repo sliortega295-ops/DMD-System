@@ -214,8 +214,12 @@ class _Observer:
                          "stage_schedule_policy": self.impl.request.stage_schedule_policy,
                          "all_history_zero": control.get("all_history_zero", False)})
         if getattr(native_task, "native_policy", None) is not None:
-            from distillschedule.runtime.helios_native_history import SEMANTICS
-            require(self.impl.request is None and self.impl.variant == "no-gan",
+            if self.impl.variant == "gan":
+                from .helios_gan_native_history import SEMANTICS, require_task
+                require_task(native_task)
+            else:
+                from .helios_native_history import SEMANTICS
+            require(self.impl.request is None and self.impl.variant == native_task.request.variant,
                     "native history cannot use a generated benchmark request")
             item.update(native_history_policy=native_task.native_policy, native_history_semantics=SEMANTICS,
                         native_task_sha256=native_task.digest, stage_schedule=control["pyramid_stage_call_sequence"],
@@ -375,7 +379,10 @@ class _Observer:
 
 
 def _validate_action(row, impl):
-    from .helios_native_history import validate_action as validate_native_history_action
+    if impl.variant == "gan":
+        from .helios_gan_native_history import validate_action as validate_native_history_action
+    else:
+        from .helios_native_history import validate_action as validate_native_history_action
     validate_native_history_action(row)
     name, counts = row["action_id"], row["counts"]
     expected = {key: 0 for key in _COUNTS}
@@ -518,6 +525,17 @@ def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, d
         task = getattr(trace, "task", None)
         if getattr(task, "native_policy", None) is None:
             return nullcontext((observer.generator, None))
+        if observer.impl.variant == "gan":
+            from .helios_gan_native_history import generator_phase, require_task
+            from distillschedule.training.helios_gan_training import implementation
+            require_task(task)
+            require(observer.impl == implementation() and policy.rollout_batch_size == 1
+                    and policy.generator_nograd_persistent_unshard is True,
+                    "native GAN history requires unchanged full world16/window5 bundle")
+            if not with_grad:
+                require(action_id == "r_all", "native GAN history requires original detached window5 owner")
+                return nullcontext((observer.generator, None))
+            return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
         from .helios_native_history import generator_phase
         require(observer.impl.variant == "no-gan" and observer.impl.request is None
                 and not observer.impl.candidate_bundle.enabled and observer.impl.mesh == "world16-fsdp"
