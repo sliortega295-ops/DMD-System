@@ -18,7 +18,7 @@ EXCLUDED = frozenset({
     "test_training_livewan_inference_cpu.py",
 })
 PATTERNS = ("test_data_*.py", "test_training_*.py", "test_open_workload_*.py",
-            "test_framework_*.py", "test_cpu_receipt_gate.py")
+            "test_framework_*.py", "test_runtime_*.py", "test_cpu_receipt_gate.py")
 
 
 def test_files(root):

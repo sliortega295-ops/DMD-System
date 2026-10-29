@@ -18,13 +18,13 @@ def _api():
 def test_collection_excludes_provider_files_before_passing_explicit_pytest_args(tmp_path):
     source = tmp_path / 'tests'; source.mkdir()
     names = ('test_data_real.py', 'test_training_real.py', 'test_open_workload_real.py',
-             'test_framework_real.py', 'test_cpu_receipt_gate.py',
+             'test_framework_real.py', 'test_cpu_receipt_gate.py', 'test_runtime_real.py',
              'test_training_livewan_reference_inputs.py', 'test_training_livewan_public_cpu.py',
              'test_training_livewan_inference_cpu.py', 'unrelated.py')
     for name in names:
         (source / name).write_text('')
     selected = _api()['test_files'](tmp_path)
-    assert selected == ['tests/' + name for name in sorted(names[:5])]
+    assert selected == ['tests/' + name for name in sorted(names[:6])]
     with pytest.raises(ValueError, match='no common CPU tests'):
         _api()['test_files'](tmp_path / 'empty')
 
@@ -54,3 +54,34 @@ def test_collection_is_import_light_in_a_fresh_process():
         str(ROOT / 'scripts/run_framework_cpu_tests.py'), str(ROOT)], text=True,
         capture_output=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_silently_skip():
+    import yaml
+    files = _api()['test_files'](ROOT)
+    assert 'tests/test_runtime_fsdp2_variable_forward.py' in files
+    assert 'tests/test_runtime_fsdp2_variable_forward_cpu.py' in files
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert 'tests/test_runtime_*.py' in workflow['on']['pull_request']['paths']
+    job = workflow['jobs']['lifecycle']
+    assert job['strategy']['matrix']['python'] == ['3.10', '3.12']
+    gate = next(step['run'] for step in job['steps'] if step.get('name') ==
+                'Require original Helios startup and persistent state proof')
+    assert 'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng' in gate
+    # Exercise the actual CI gate with marked synthetic XML, not a second
+    # implementation of its required-case or no-skip rules.
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        cases = ['test_actual_original_helpers_three_cycles_checkpoint_resume_equal',
+                 *[f'test_public_to_original_p0_collectively_admits_before_model[{n}]' for n in range(13)],
+                 'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng']
+        for mutation in ('valid', 'missing', 'skipped', 'failure'):
+            rows = ['<testcase name="' + name + '"/>' for name in cases]
+            if mutation == 'missing': rows.pop()
+            elif mutation != 'valid': rows[-1] = '<testcase name="' + cases[-1] + '"><' + mutation + '/></testcase>'
+            (root / 'framework-cpu.xml').write_text('<testsuite>' + ''.join(rows) + '</testsuite>')
+            # The inline here-doc is the current production CI consumer.
+            source = gate.split("python - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+            result = subprocess.run([sys.executable, '-c', source], cwd=root, capture_output=True, text=True)
+            assert (result.returncode == 0) is (mutation == 'valid'), (mutation, result.stderr)

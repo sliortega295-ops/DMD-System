@@ -11,6 +11,7 @@ on:
       - 'scripts/check_framework_install.py'
       - 'scripts/run_framework_cpu_tests.py'
       - 'tests/test_framework_*.py'
+      - 'tests/test_runtime_*.py'
       - 'tests/test_cpu_receipt_gate.py'
       - 'pyproject.toml'
       - '.github/workflows/framework-cpu.yml'
@@ -52,8 +53,13 @@ jobs:
                      'test_actual_original_helpers_three_cycles_checkpoint_resume_equal']
           startup = [case for case in cases if case.get('name', '').startswith(
                      'test_public_to_original_p0_collectively_admits_before_model[')]
+          phase = [case for case in cases if case.get('name') ==
+                   'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng']
           assert len(restart) == 1 and len(startup) == 13
+          assert len(phase) == 1
           assert all(case.find('skipped') is None for case in restart + startup)
+          assert all(case.find(kind) is None for case in phase
+                     for kind in ('skipped', 'failure', 'error'))
           PY
       - name: Installed wheel outside the checkout
         run: python scripts/check_framework_install.py --output installed-framework.json
