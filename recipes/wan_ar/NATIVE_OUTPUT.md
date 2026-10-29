@@ -1,8 +1,12 @@
 # Native W1 checkpoint → current G → NEW-input decoded output
 
-This fills only the native W1 output gap. Do not repeat already-qualified
-training/restore or CPU-reference work. This path has source/CPU evidence;
-**full pretrained 1.3B native GPU output and quality are not yet qualified**.
+This fills the native W1 output gap without repeating qualified training or
+restore runs. The public portable consumer has generated **33 decoded
+384×640 frames on one A100** from an existing trained full 1.3B Generator and
+new text features. See the
+[output acceptance receipt](../../artifacts/framework/20261029/wan_portable_output_acceptance.json).
+The reused Generator was saved at G4; this is output/lifecycle acceptance,
+not a 50-cycle model-quality result.
 W2/W3/W5/W6 output work is separate. See the
 [versioned contract](../../docs/contracts/WAN_NATIVE_OUTPUT_V1.md).
 
@@ -121,5 +125,7 @@ diagnostic, never a substitute for decoded-output acceptance.
 
 Publication failure must not be treated as a successful output. Distributed
 unpublished `.tmp-*` staging is deliberately retained for failure audit; never
-manually add `_SUCCESS`. Existing exports are never overwritten. Full native
-pretrained GPU, world16 and quality gates remain separately `NOT_RUN`.
+manually add `_SUCCESS`. Existing exports are never overwritten. The single-GPU
+portable consumer is now checked at full size; the distinct all-rank
+checkpoint→export endpoint and model-quality evaluation retain their own
+verification status.

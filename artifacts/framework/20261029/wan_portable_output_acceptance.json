@@ -1,0 +1,70 @@
+{
+  "schema_version": "distillschedule.native_output_acceptance.v1",
+  "status": "PASS_REAL_PUBLIC_PORTABLE_W1_CUDA_OUTPUT",
+  "workload": "W1 Wan1.3B",
+  "verification_date_utc": "2026-10-29T19:08:56.324942+00:00",
+  "source_commit": "6a4a8cabf05c75dc5540f862ccd843cc9d1d828c",
+  "source_scope": "R235 immutable source proposal; generation core bytes match integration commit",
+  "factory_sha256": "6b3c143d7a925b215e26b1c4a9cfaee5e38f2c4697c4373a0e5332c5c6fb744b",
+  "artifact": {
+    "checkpoint_cycle": 0,
+    "manifest_sha256": "f9478454adf44c8180b0b3217598e32900d358c7095b008edf867a672a9822a6",
+    "origin_cycle": 2,
+    "origin_numerical_status": "REQUIRES_MATCHED_REFERENCE",
+    "origin_source_head": "3d7bb03982890e1b5bd46f8510243009902a3d47",
+    "origin_versions": {
+      "critic": 20,
+      "ema": 20,
+      "generator": 4
+    },
+    "weights": {
+      "bytes": 4802610732,
+      "sha256": "13d4520c4815f0611be337153f7c91503aedf6c37632b8050dc65be2462f3332"
+    }
+  },
+  "input_identity": "d8417f31e14b8eb5987db9ff5ab9a8930ddf291b1fa70bb714510ee6160beb7c",
+  "inference_seed": 721,
+  "public_command": "distillctl generate CONFIG --weights PORTABLE --prepared NEW_PROMPTS --sample-index 0 --output-kind video --output OUTPUT",
+  "actual_execution": {
+    "device": "single A100-SXM4-40GB",
+    "frames": 33,
+    "video_shape": [
+      33,
+      384,
+      640,
+      3
+    ],
+    "output_format": "THWC uint8 PNG sequence and generation.pt",
+    "generation_sha256": "23f4bbc512cc69315a867eab663866e6de79b70780696c9cff84749c8c64240b",
+    "first_frame_sha256": "38869ec17cede8778f4654de15816235949841a3c475839bf2c13075b6b5f224",
+    "complete_generator_weights_bytes": 4802610732,
+    "training_starts": 0,
+    "optimizer_constructed": false,
+    "original_asset_reopen_guard": "NO_FORBIDDEN_OPEN_OBSERVED"
+  },
+  "target_CPU": {
+    "passed": 23,
+    "skipped": 0,
+    "CUDA_initialized": false
+  },
+  "resources": {
+    "samples": 37,
+    "minimum_sampled_driver_free_bytes": 29909581824,
+    "host_OOM_increment": 0,
+    "host_OOM_kill_increment": 0,
+    "cleanup_pass": true,
+    "node_lock_released": true
+  },
+  "evidence": {
+    "launch_sha256": "0452d692cd323bcac6f9282b369c73d3f61826ed45cd698f89bfb5a249d24923",
+    "worker_receipt_sha256": "b96d9e3c760ee77ebee6db5d46c87440323c92de4f4037f3049a307ab1f07427",
+    "lifecycle_sha256": "06e0556404b47c7f49bfb58a7bbf129487125312961b5559d845eb876eb5f494",
+    "resource_raw_sha256": "b5697c64d095fb47f7d70ce01dfefe7ab3bfdc36322c428bf3f3b3682d8501f0"
+  },
+  "quality_validation": "NOT_RUN",
+  "numerical_status": "REQUIRES_MATCHED_REFERENCE",
+  "checkpoint_restore_scope": "INITIALIZATION_ONLY_CYCLE0; original R7 origin cycle2 G4/C20/EMA20, not a50cycle checkpoint",
+  "previous_CPU_timeout": "1500s timeout retained; CUDA output ran once, no training repeated",
+  "collector_repair": "Oversize raw resource JSON retained remote; CPU-only small-summary extraction, no second output invocation",
+  "all_rank_checkpoint_export": "NOT_RUN_BY_THIS_CHECK"
+}
