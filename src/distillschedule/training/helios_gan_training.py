@@ -177,6 +177,7 @@ def validate_progress(header, binding):
 
 def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
     from .helios_lifecycle import current_training, _plane, seed_original_runtime, admit_stop_control, stop_cycle
+    from .helios_lifecycle import _bind_native_history_construction
     binding = current_training()
     require(binding is not None and binding.get("gan_stream") is True and dist.get_world_size() == 16
             and binding.get("metadata_group") is not None, "owned original GAN world16/Gloo scope required", path="helios.gan.training")
@@ -225,6 +226,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             validate_progress(header, binding)
             if binding.get("native_output") is None:
                 stop_cycle(binding["config"], start=header["cycle"])
+        _bind_native_history_construction(policy=policy)
     if seed_runtime:
         seed_original_runtime(torch=torch, rank=rank)
 

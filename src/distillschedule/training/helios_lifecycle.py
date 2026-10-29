@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import timedelta
 import json
 import os
@@ -25,6 +26,64 @@ _ACTIVE = ContextVar("original_helios_training", default=None)
 
 def current_training():
     return _ACTIVE.get()
+
+
+@dataclass(frozen=True)
+class _NativeHistoryConstruction:
+    identity_sha256: str
+    policy: object
+
+
+def _construction_identity(binding):
+    return fingerprint({"identity": binding["identity"],
+        "input_kind": binding["config"].data["input_kind"],
+        "stream_sha256": binding["stream"]["stream_sha256"]})
+
+
+def _bind_native_history_construction(*, policy):
+    """Mint only after the original collective source/input/startup admission."""
+    binding = current_training()
+    stream = binding["stream"]
+    if "native_history_policy" not in stream["identity"]:
+        return
+    from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy
+    from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
+    if binding.get("gan_stream") is True:
+        from .helios_gan_inputs import GANCohortTask as Task, NATIVE_KIND, NATIVE_SCHEMA
+        from distillschedule.runtime.helios_gan_native_history import descriptor
+        schema = "distillschedule.helios_gan_native_history_training_identity.v1"
+        capability, selected = "gan_native_history", "execution_policy"
+    else:
+        from .helios_inputs import HeliosCohortTask as Task, NATIVE_KIND, NATIVE_SCHEMA
+        from distillschedule.runtime.helios_native_history import descriptor
+        schema = "distillschedule.helios_native_history_training_identity.v1"
+        capability, selected = "native_history", "reference_policy"
+    task = Task.from_dict(stream["cohorts"][0]["task"])
+    identity = binding["identity"]
+    require(type(policy) is StaticFSDP2P0Policy and policy.mesh_policy == "world16-fsdp"
+            and binding.get("portable_reference") is True
+            and binding["config"].data["input_kind"] == NATIVE_KIND
+            and stream["schema_version"] == NATIVE_SCHEMA
+            and task.native_policy == stream["identity"]["native_history_policy"] == NATIVE_HISTORY_POLICY
+            and identity["schema_version"] == schema
+            and identity.get(capability) == identity[selected].get("native_history") == descriptor()
+            and identity["stream_sha256"] == stream["stream_sha256"]
+            and "verified_immutable_assets" in identity,
+            "native history construction identity/policy changed", path="helios.training")
+    binding["_native_history_construction"] = _NativeHistoryConstruction(_construction_identity(binding), policy)
+
+
+def native_history_cpu_first_construction(*, policy):
+    """Construction capability, not a new model/sharder or a benchmark flag."""
+    binding = current_training()
+    capability = None if binding is None else binding.get("_native_history_construction")
+    if capability is None:
+        return False
+    require(type(capability) is _NativeHistoryConstruction and capability.policy == policy
+            and policy.mesh_policy == "world16-fsdp"
+            and capability.identity_sha256 == _construction_identity(binding),
+            "native history construction identity/policy changed", path="helios.training")
+    return True
 
 
 @contextmanager
@@ -241,6 +300,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             validate_progress(header, binding)
             if binding.get("native_output") is None:
                 stop_cycle(binding["config"], start=header["cycle"])
+        _bind_native_history_construction(policy=policy)
     if seed_runtime:
         seed_original_runtime(torch=torch, rank=rank)
 

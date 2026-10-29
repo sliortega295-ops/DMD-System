@@ -303,8 +303,14 @@ def _build_static_model(
     # applying the existing bottom-up block policy directly to the CPU model
     # therefore materializes at most one block before immediately sharding it.
     # This is construction-only and does not add parameter offload or change
-    # the persistent HSDP execution graph.
+    # the persistent execution graph. The public native-history lifecycle can
+    # admit the same CPU-first order on its unchanged CUDA world16 mesh, only
+    # after original source/input/policy admission. Legacy world16 and normal
+    # public streams retain their existing eager whole-role transfer.
     fsdp_first_construction = policy.mesh_policy == "node-hsdp"
+    if not fsdp_first_construction:
+        from distillschedule.training.helios_lifecycle import native_history_cpu_first_construction
+        fsdp_first_construction = native_history_cpu_first_construction(policy=policy)
     if not fsdp_first_construction:
         model.to(device)
     sharding = apply_blockwise_fsdp2_policy(
