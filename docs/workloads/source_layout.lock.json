@@ -548,6 +548,14 @@
       "integrated_sha256": "a85057c901e2c513d63368a621a70b85932c0b2970921ca687d048c2526dbc5e",
       "source_commit": "087779ad926cea001e191cf0c2bb03445843bb10",
       "change": "R66 test-only native C2 timing/census and resumed-segment regression repair; record the already committed test source without rewriting its historical import receipt. No training/runtime math change."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "f8027442c43cb631287464a9e279ce1858e06f3cc8a94d0474b63e88bb5338fd",
+      "integrated_sha256": "0d59ba0ab29e8d1a85c69a25bd4d11d5f3145d81ce1fe90c06822fb63869c7c1",
+      "source_commit": "56ba6b7bcfb5639c9e3eeed56f1c1f610ff67a15",
+      "change": "R83 reviewed opt-in finite LiveWan Teacher epochs: recognize the versioned prepared-input marker and preserve its declared epoch policy in continuation evidence. Exact committed worker bytes; legacy no-replay paths, native model math and prior import/overlay receipts remain unchanged."
     }
   ]
 }
