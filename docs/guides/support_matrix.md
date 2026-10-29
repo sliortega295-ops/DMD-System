@@ -163,9 +163,9 @@ distributed owners described below. The table's CPU evidence stays separate. See
 
 | Integration | Actual CPU reference | Data/output and continuation | Not established |
 | --- | --- | --- | --- |
-| SD1.5 official DMD2 | Original SDUniModel/SDGuidance, native G1/C10 clock; actual UNet/CLIP/VAE | Prompt-only + independent guidance/real/denoising streams as selected; actual raw VAE intake; exact complete-state new-process recovery; new-prompt current-G image output. Separate native FSDP2 reference/Resident-DDP source paths below | Public native distributed GPU training/restart/output qualification, pretrained CUDA capacity/quality, full production GAN acceptance |
+| SD1.5 official DMD2 | Original SDUniModel/SDGuidance, native G1/C10 clock; actual UNet/CLIP/VAE | Prompt-only + independent guidance/real/denoising streams as selected; actual raw VAE intake; exact complete-state new-process recovery; new-prompt current-G image output. Separate native FSDP2 reference/Resident-DDP source paths below | Full-native distributed output/export, pretrained quality and settings outside the qualified optimized runtime; FSDP2 reference qualification remains separate |
 | SDXL official DMD2 | Original dual CLIP/added conditions, four-step and explicitly initialized single-step399; real unmerged LoRA | Independent native stream counts; actual VAE/CLIP, safe full-state resume and current-G images; separate CPU/Gloo native role-DDP continuation | Pretrained CUDA capacity/quality, CUDA native role-DDP qualification, AMP/FSDP2; SD1.5 optimized profile does not apply |
-| Official Self-Forcing | Actual CausalWan/Wan/DMD classes, native 21-latent-frame block3 random-exit/KV/EMA rules | Actual native T5 preparation or exact embeddings; independent G/C streams; exact continuation; current-G full-step native inference/VAE. Separate native FSDP2 reference/optimized source paths below | >21-latent-frame decode/reencode training, I2V, uncached flex, public native FSDP2 GPU training/restart/output qualification, pretrained CUDA capacity/quality |
+| Official Self-Forcing | Actual CausalWan/Wan/DMD classes, native 21-latent-frame block3 random-exit/KV/EMA rules | Actual native T5 preparation or exact embeddings; independent G/C streams; exact continuation; current-G full-step native inference/VAE. Separate native FSDP2 reference/optimized source paths below | >21-latent-frame decode/reencode training, I2V, uncached flex, full native FSDP2 long-run/restart/output qualification, pretrained quality |
 | LTX-2.5 | Actual bounded native AV Transformer, Gemma4/connectors and native AV codecs; generic explicit G1/F5 flow DMD, full or separate LoRA | Actual raw media/prompts/exact native features; original-format tiny safetensors import; clock-aware exact recovery; current-G new-input AV decode; common measured auto/saved-plan CPU fixture with real immutable sharing. Actual A100 single-device FP32 reference: native oracle and full/LoRA fresh-process recovery/export, 4/4 PASS | Full monolithic 22B pipeline, native architectures outside the documented bounds, distributed ownership, CUDA trial planning, pretrained capacity/quality/performance |
 | FLUX.2 klein Base 4B T2I | Actual Flux2/Qwen3/Flux2 VAE tiny classes; same-family unmerged LoRA; common flow-DMD G1/F5 and exact immutable sharing | Native raw RGB/prompts/hash-bound features, actual empty text, four-step generation, exact fresh-process restart and portable current-Student native PNG; actual A100 FP32 reference native-oracle/update/restart/export, 2/2 PASS; separate reference/manual Gloo2/NCCL2/world16 replica receipts below | CUDA/distributed planning; full pretrained CPU/GPU execution, other FLUX variants, full-parameter, CFG>1, edit/causal, AMP/FSDP/HSDP/DDP-overlap, long-run/quality/performance |
 | Original Qwen-Image T2I | Actual QwenImage/Qwen2.5-VL/Qwen VAE tiny classes; native template/crop34/masks; common flow-DMD and exact immutable sharing | Fixed native masked right padding without silent truncation, raw/preencoded/prompts, exact restart and current-Student decoded new-prompt PNG; actual A100 FP32 reference complex-RoPE ownership/native-oracle/restart/export, 2/2 PASS; separate reference/manual Gloo2/NCCL2/world16 replica receipts below | CUDA/distributed planning; full pretrained CPU/GPU execution, edit/new generations, full-parameter, native norm-rescaled CFG>1, causal/extra time/3D RoPE, AMP/FSDP/HSDP/DDP-overlap, quality/performance |
@@ -296,6 +296,10 @@ historical run directory or calibration plan:
 - **SD1.5 optimized:** `recipes/dmd2_sd15/training.optimized.json` selects the
   source-bound Resident/DDP mixed-precision profile, with its actual fused
   Adam, activation retention, classifier packing and cast scopes.
+  The actual full-native public runtime completed 100 cycles on 16 A100 GPUs,
+  including a durable cycle 50 checkpoint and fresh-process continuation to 100.
+  This exact-source runtime check uses deterministic random initialization and
+  synthetic prepared records, not a pretrained-quality or new timing result.
 - **Official Self-Forcing:** `training.fsdp2-reference.json` and
   `training.optimized.json` under `recipes/self_forcing_official/` select native
   FSDP2 reference and complete R6 optimization respectively, with BF16 compute,
@@ -306,8 +310,10 @@ The [official chooser and launch/resume guide](official_optimized_training.md)
 links each configuration and its historical measurements. Its
 [validation appendix](../status/official_optimized_framework.md) separates
 source/helper/CPU integration from historical native GPU outcomes, which retain
-their **REVIEW** numerical status. The new public distributed optimized
-training/restart/export paths still require GPU qualification; they do not
-inherit the seven tiny single-device CUDA tests. Clone-based automatic planning
+their **REVIEW** numerical status. The same appendix records the actual public
+SD1.5 optimized 100-cycle/restart result and the separate first-two-cycle
+Self-Forcing native execution. Full-native exports/new-input outputs and the
+unfinished Self-Forcing long-run/restart still need validation; none of these
+results are inherited from the seven tiny single-device CUDA tests. Clone-based automatic planning
 is not enabled for these distributed owners. Existing single-device FP32
 defaults and the W1–W6 contracts remain unchanged.
