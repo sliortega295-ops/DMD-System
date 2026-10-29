@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import pickle
+import re
 import subprocess
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, SHA256_RE
@@ -96,6 +97,27 @@ def _environment(value):
     require(not any(credential_key(k) for k in value), "credentials must not be embedded in reference environment")
 
 
+def _c51_phase_environment(value):
+    """C51-only paired scalar diagnostics; never filter the captured identity.
+
+    Public reference admission still calls the original _environment exactly.
+    No arbitrary key allowlist or caller-selected policy is exposed.
+    """
+    require(type(value) is dict and all(type(k) is str and type(v) is str for k, v in value.items()),
+            "explicit effective runtime environment required")
+    flag, run = "DISTILLSCHEDULE_LIVEWAN_C51_PHASE_RECEIPTS", "DISTILLSCHEDULE_RUN_ID"
+    if flag not in value and run not in value:
+        return _environment(value)
+    require(value.get(flag) == "v1" and type(value.get(run)) is str
+            and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", value[run]) is not None and value[run].strip("."),
+            "C51 diagnostics require paired explicit phase=v1 and stable valid run ID")
+    forbidden = ("LIVEWAN_", "DISTILLSCHEDULE_", "DMD_", "NSYS_", "NCU_", "TORCH_COMPILE", "TORCH_LOGS")
+    require(not any(k.startswith(forbidden) and k not in {flag, run} for k in value)
+            and not any(value.get(k) for k in ("LOCAL_KERNELS", "LD_PRELOAD", "PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF")),
+            "C51 phase diagnostics cannot admit benchmark/optimization/profiling/allocator overrides")
+    require(not any(credential_key(k) for k in value), "credentials must not be embedded in C51 environment")
+
+
 def _payload_files(root):
     one = root / "diffusion_pytorch_model.safetensors"
     shards = sorted(root.glob("diffusion_pytorch_model-*-of-*.safetensors"))
@@ -159,7 +181,7 @@ def asset_config(value, *, verify_payloads=False):
     return _asset_config(value, verify_payloads=verify_payloads, dependencies=DEPENDENCIES)
 
 
-def _asset_config(value, *, verify_payloads, dependencies):
+def _asset_config(value, *, verify_payloads, dependencies, c51_phase_diagnostics=False):
     """Shared checks; only the separately versioned C51 provider owns substitution.
 
     No public reference flag can omit a dependency or admit a provider.
@@ -198,7 +220,11 @@ def _asset_config(value, *, verify_payloads, dependencies):
     versions = runtime["dependency_versions"]
     require(type(versions) is dict and set(versions) == dependencies
             and all(type(v) is str and v for v in versions.values()), "explicit complete original dependency versions required")
-    _environment(runtime["environment"])
+    require(type(c51_phase_diagnostics) is bool, "explicit C51 phase metadata policy required")
+    if c51_phase_diagnostics:
+        _c51_phase_environment(runtime["environment"])
+    else:
+        _environment(runtime["environment"])
     return deepcopy(value)
 
 

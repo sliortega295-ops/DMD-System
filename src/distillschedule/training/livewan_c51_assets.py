@@ -14,7 +14,7 @@ import sys
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 from .livewan_reference_assets import (
-    BACKEND, DEPENDENCIES, ReferenceAssets, asset_config as native_assets, _asset_config,
+    BACKEND, DEPENDENCIES, ReferenceAssets, _asset_config,
     environment_snapshot, require,
 )
 
@@ -97,9 +97,11 @@ def asset_config(value, *, verify_payloads=False):
     if hf:
         from distillschedule.runtime.livewan_c51_provider import provider_config
         provider_config(value["attention_provider"])
-        _asset_config(value["native"], verify_payloads=verify_payloads, dependencies=DEPENDENCIES - {"flash-attn"})
+        _asset_config(value["native"], verify_payloads=verify_payloads, dependencies=DEPENDENCIES - {"flash-attn"},
+                      c51_phase_diagnostics=True)
     else:
-        native_assets(value["native"], verify_payloads=verify_payloads)
+        _asset_config(value["native"], verify_payloads=verify_payloads, dependencies=DEPENDENCIES,
+                      c51_phase_diagnostics=True)
     require(type(value["wan21_overlay"]) is dict and set(value["wan21_overlay"]) == {"root", "files"}
             and Path(value["wan21_overlay"]["root"]).is_absolute()
             and value["wan21_overlay"] == overlay_inventory(value["native"], value["wan21_overlay"]["root"]),
