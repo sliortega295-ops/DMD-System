@@ -468,6 +468,7 @@ def _decoder(vae):
         image = vae.decode(latent / vae.config.scaling_factor).sample.float()
         require(image.ndim == 4 and image.shape[0] == 1 and image.shape[1] == 3,
                 'public image output requires one native BCHW RGB sample')
+        require(bool(torch.isfinite(image).all()), 'nonfinite decoded image')
         return {'image': ((image[0].clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).permute(1, 2, 0).contiguous()}
     return decode
 

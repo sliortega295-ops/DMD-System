@@ -11,6 +11,51 @@ from distillschedule.training.config import load_training_config
 from distillschedule.training.session import export, train
 
 
+@pytest.mark.parametrize("bad_pixel", [float("nan"), float("inf"), -float("inf")])
+def test_sd_decoder_rejects_nonfinite_pixels_before_uint8_conversion(bad_pixel):
+    from types import SimpleNamespace
+    from distillschedule.training.sd import _decoder
+
+    class VAE(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.anchor = torch.nn.Parameter(torch.zeros(()), requires_grad=False)
+            self.config = SimpleNamespace(scaling_factor=0.5)
+
+        def decode(self, latent):
+            image = torch.zeros(1, 3, 2, 2)
+            image[0, 0, 0, 0] = bad_pixel
+            return SimpleNamespace(sample=image)
+
+    with pytest.raises(ValueError, match="nonfinite decoded image"):
+        _decoder(VAE())({"latents": torch.zeros(1, 4, 2, 2)}, {})
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_sd_decoder_preserves_native_cast_scaling_and_finite_pixels(dtype):
+    from types import SimpleNamespace
+    from distillschedule.training.sd import _decoder
+
+    image = torch.tensor([-2, -1, -0.5, 0, 0.25, 0.5, 0.9, 1, 2, 0.1, 0.2, 0.3], dtype=dtype).reshape(1, 3, 2, 2)
+    latents = torch.arange(16, dtype=torch.float32).reshape(1, 4, 2, 2)
+
+    class VAE(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.anchor = torch.nn.Parameter(torch.zeros((), dtype=dtype), requires_grad=False)
+            self.config = SimpleNamespace(scaling_factor=0.5)
+
+        def decode(self, latent):
+            assert latent.dtype == dtype
+            assert torch.equal(latent, latents.to(dtype) / self.config.scaling_factor)
+            return SimpleNamespace(sample=image)
+
+    result = _decoder(VAE())({"latents": latents}, {})["image"]
+    expected = ((image.float()[0].clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).permute(1, 2, 0).contiguous()
+    assert torch.equal(result, expected)
+    assert result.shape == (2, 2, 3) and result.dtype == torch.uint8
+
+
 def test_export_generation_uses_new_inputs_without_training_data(tmp_path):
     from distillschedule.training.session import generate_from_export
     old, new = tmp_path / "training-media", tmp_path / "new-inputs"
