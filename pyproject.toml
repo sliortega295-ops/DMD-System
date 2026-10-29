@@ -131,6 +131,9 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/recipes/wan22_dmd" = ["recipes/wan22_dmd/*.md", "recipes/wan22_dmd/*.json", "recipes/wan22_dmd/*.py"]
 "share/distillschedule/recipes/wan_ar" = ["recipes/wan_ar/*.md", "recipes/wan_ar/*.json"]
 "share/distillschedule/docs/guides" = ["docs/guides/*.md"]
+"share/distillschedule/docs/contracts" = ["docs/contracts/*.md"]
+"share/distillschedule/docs/runbooks" = ["docs/runbooks/*.md"]
+"share/distillschedule/docs/architecture" = ["docs/architecture/*.md"]
 "share/distillschedule/docs/status" = [
     "docs/status/official_optimized_framework.md",
     "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",

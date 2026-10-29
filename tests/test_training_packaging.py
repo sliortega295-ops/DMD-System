@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -9,6 +10,7 @@ import venv
 import zipfile
 from email.parser import BytesParser
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 import pytest
 
@@ -26,6 +28,41 @@ LICENSE_SHA256 = {
     "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724",
 }
+
+
+def test_public_guide_dependencies_have_installed_data_file_destinations():
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10: pytest's TOML dependency.
+        import tomli as tomllib
+
+    data_files = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["setuptools"]["data-files"]
+    installed = {destination: {path for pattern in patterns for path in ROOT.glob(pattern)}
+                 for destination, patterns in data_files.items()}
+    guides = {path for paths in installed.values() for path in paths
+              if path.suffix == ".md" and (path.relative_to(ROOT).parts[0] == "recipes"
+                  or path.relative_to(ROOT).parts[:2] == ("docs", "guides"))}
+    assert guides, "public recipes and guides must be declared as package data"
+    dependencies = set()
+    for guide in sorted(guides):
+        for href in re.findall(r"\]\(([^)\s]+)\)", guide.read_text()):
+            link = urlsplit(href)
+            if link.scheme or link.netloc or not link.path:
+                continue
+            target = (guide.parent / unquote(link.path)).resolve()
+            if not target.is_relative_to(ROOT):
+                continue
+            source = target.relative_to(ROOT)
+            if (source.parts[:2] in (("docs", "contracts"), ("docs", "runbooks"),
+                                    ("docs", "architecture")) and source.suffix == ".md"):
+                assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
+                dependencies.add(source)
+    # Independent regression: the packaged H3 continuation recipe needs this policy.
+    assert Path("docs/contracts/original_h3_ar_record_epochs_v1.md") in dependencies
+    missing = [str(source) for source in sorted(dependencies)
+               if ROOT / source not in installed.get(
+                   "share/distillschedule/" + source.parent.as_posix(), set())]
+    assert not missing, f"public guide dependencies lack their installed data-file destination: {missing}"
 
 
 def test_livewan_wan21_source_license_copies_match_manifest():
