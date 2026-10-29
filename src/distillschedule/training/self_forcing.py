@@ -189,6 +189,18 @@ def _asset_file(root, spec):
     return path
 
 
+def _load_local_role_state(model, path, *, role, memory_map=False):
+    import torch
+    from .checkpoint import _validate_layout
+    weights = torch.load(path, map_location='cpu', weights_only=True, mmap=memory_map)
+    _validate_layout(model.state_dict(), weights, 'native local ' + role)
+    require(all(type(tensor) is torch.Tensor and tensor.device.type == 'cpu'
+                and tensor.layout == torch.strided and bool(tensor.isfinite().all())
+                for tensor in weights.values()),
+            'native weights must be finite dense CPU tensors; no implicit precision cast')
+    model.load_state_dict(weights, strict=True)
+
+
 def _native_config(cls, spec):
     signature = inspect.signature(cls.__init__)
     defaults = {key: deepcopy(parameter.default) for key, parameter in signature.parameters.items()
@@ -408,6 +420,9 @@ def _build_placed(parameters, args, device):
             and bundle['evidence_kind'] in ('RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED',
                                            'EXPLICIT_LOCAL_NATIVE_WEIGHTS_QUALITY_NOT_VERIFIED'),
             'unsupported explicit native asset manifest')
+    if sharded:
+        from .self_forcing_fsdp import validate_role_architectures
+        validate_role_architectures(bundle, api)
     children, configs, assets = {}, {}, {}
     for role in ('generator', 'real_score', 'fake_score', 'vae'):
         spec = bundle[role]
@@ -418,13 +433,9 @@ def _build_placed(parameters, args, device):
             child, configs[role] = _wrapper(api, spec['config'], causal=role == 'generator',
                 shape=args.image_or_video_shape, scheduler_shift=args.scheduler_shift)
         path = _asset_file(root, spec['weights'])
-        weights = torch.load(path, map_location='cpu', weights_only=True)
-        from .checkpoint import _validate_layout
-        _validate_layout(child.model.state_dict(), weights, 'native local ' + role)
-        require(all(type(tensor) is torch.Tensor and tensor.device.type == 'cpu'
-                    and tensor.layout == torch.strided and bool(tensor.isfinite().all())
-                    for tensor in weights.values()), 'native weights must be finite dense CPU tensors; no implicit precision cast')
-        child.model.load_state_dict(weights, strict=True)
+        # Full world16 native roles share read-only file-backed input pages;
+        # load_state_dict still copies into each role's owned FP32 parameters.
+        _load_local_role_state(child.model, path, role=role, memory_map=sharded)
         child.requires_grad_(role in ('generator', 'fake_score'))
         children[role] = child
         assets[role] = {'path': str(path), 'sha256': _sha(path)}

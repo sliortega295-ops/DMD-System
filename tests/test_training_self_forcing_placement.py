@@ -15,6 +15,60 @@ from test_training_end_to_end import equal
 from test_training_self_forcing_cpu import fixture_assets, model_and_data, source_root
 
 
+def test_native_role_state_mapping_preserves_values_and_releases_source(tmp_path):
+    from distillschedule.training.self_forcing import _load_local_role_state
+    layer = torch.nn.Linear(3, 2)
+    expected = {name: value.detach().clone() for name, value in layer.state_dict().items()}
+    path = tmp_path / 'native-role.pt'
+    torch.save(expected, path)
+    with torch.no_grad():
+        for value in layer.parameters():
+            value.zero_()
+    _load_local_role_state(layer, path, role='real_score', memory_map=True)
+    assert all(torch.equal(value, expected[name]) for name, value in layer.state_dict().items())
+    # The model owns its tensors, not the mapped source storage.
+    with torch.no_grad():
+        layer.weight.add_(1)
+    assert equal(torch.load(path, map_location='cpu', weights_only=True), expected)
+
+
+def test_native_role_state_legacy_reference_and_invalid_payload(tmp_path):
+    from distillschedule.training.self_forcing import _load_local_role_state
+    layer = torch.nn.Linear(3, 2)
+    expected = {name: value.detach().clone() for name, value in layer.state_dict().items()}
+    path = tmp_path / 'legacy-role.pt'
+    torch.save(expected, path, _use_new_zipfile_serialization=False)
+    _load_local_role_state(layer, path, role='generator', memory_map=False)
+    assert equal(layer.state_dict(), expected)
+    invalid = {name: value.clone() for name, value in expected.items()}
+    invalid['weight'][0, 0] = float('nan')
+    path = tmp_path / 'nonfinite-role.pt'
+    torch.save(invalid, path)
+    with pytest.raises(ValueError, match='finite dense CPU'):
+        _load_local_role_state(layer, path, role='fake_score', memory_map=True)
+    assert equal(layer.state_dict(), expected)
+
+
+def test_native_fsdp_architecture_admission_is_payload_free_and_rng_neutral(source_root):
+    from distillschedule.training.self_forcing import original
+    from distillschedule.training.self_forcing_fsdp import validate_role_architectures
+    api = original(source_root)
+    small = dict(model_type='t2v', dim=1536, ffn_dim=8960, freq_dim=256,
+                 num_heads=12, num_layers=30, in_dim=16, out_dim=16, text_len=512)
+    large = dict(small, dim=5120, ffn_dim=13824, num_heads=40, num_layers=40)
+    bundle = {name: dict(config=config, weights={'path': 'MUST_NOT_BE_READ', 'sha256': '0' * 64})
+              for name, config in [('generator', dict(small, local_attn_size=-1, sink_size=0)),
+                                   ('real_score', large), ('fake_score', small)]}
+    before = torch.get_rng_state().clone()
+    assert not torch.cuda.is_initialized()
+    validate_role_architectures(bundle, api)
+    assert torch.equal(before, torch.get_rng_state()) and not torch.cuda.is_initialized()
+    bundle['real_score']['config'] = small
+    with pytest.raises(ValueError, match='UNEXPECTED_NATIVE_MODEL:real_score'):
+        validate_role_architectures(bundle, api)
+    assert torch.equal(before, torch.get_rng_state()) and not torch.cuda.is_initialized()
+
+
 def test_actual_factory_preserves_caller_rng_without_touching_cuda(fixture_assets, monkeypatch):
     config, _, data = model_and_data(fixture_assets)
     before = rng_state(device='cpu')

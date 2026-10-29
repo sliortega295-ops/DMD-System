@@ -255,3 +255,19 @@ explains checkpoint versus inference identity.
 ## Optimized distributed configuration
 
 Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.
+
+Both native world16 FSDP2 configurations use these role architectures:
+
+| Role | Native class | Blocks / width |
+|---|---|---|
+| Generator | `CausalWanModel` | 30 / 1536 (Wan1.3B) |
+| Teacher / Real Score | `WanModel` | 40 / 5120 (Wan14B) |
+| Fake Score | `WanModel` | 30 / 1536 (Wan1.3B) |
+
+The public constructor checks these boundaries on meta tensors before loading
+role payloads. A 1.3B Teacher is not a substitute for this profile. Supply native
+FP32 role checkpoints in the ZIP format written by the default `torch.save`.
+The distributed loader maps the read-only source pages, then copies into each
+role's independent parameters before sharding; training never mutates the asset
+file. This avoids a second private full-Teacher input allocation on every rank.
+The ordinary single-device reference still accepts its existing legacy format.

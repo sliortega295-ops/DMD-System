@@ -60,6 +60,24 @@ def validate_settings(args):
             'native FSDP2 profile shape/update/checkpoint/precision/EMA contract changed')
 
 
+def validate_role_architectures(bundle, api):
+    """Apply the measured role contract before allocating full CPU/GPU roles."""
+    import torch
+    from .self_forcing import _native_config
+    from .official_optimizations.bound_source import SourceBoundHelpers
+    backend = SourceBoundHelpers(api.source).module('sf_fsdp2_layout_backend')
+    with torch.random.fork_rng(devices=[]), torch.device('meta'):
+        for role in ('generator', 'real_score', 'fake_score'):
+            spec = bundle[role]
+            require(isinstance(spec, dict) and set(spec) == {'config', 'weights'},
+                    'native role needs config and pinned weights')
+            cls = api.causal.CausalWanModel if role == 'generator' else api.wan.WanModel
+            wrapper = torch.nn.Module()
+            wrapper.model = cls(**_native_config(cls, spec['config']))
+            wrapper.requires_grad_(role != 'real_score')
+            backend.role_blocks(wrapper, role)
+
+
 def place_roles(children, api):
     """Shard CPU-loaded weights before any full 14B role can be moved to CUDA."""
     validate_environment()
