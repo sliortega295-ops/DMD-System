@@ -572,6 +572,38 @@
       "integrated_sha256": "5406cd09fef5c7b5b0485ab7597c095d9cc8ab1d9056f18412991480fa43ecf2",
       "source_commit": "2c94ca49464323f674ae5a229e276bc53c6b65fa",
       "change": "Explicit default-OFF C51 host-phase scalar receipt seams, exact committed2c94 worker bytes. Original model/loss/optimizer/backend/communication/timer execution and external512MiB reserve unchanged; enabled diagnostics are nonperformance partial history. Reviewed five-path implementation with actual target Torch2.10 CPU37 cases per node; native GPU diagnosis remains NOT_RUN. Prior source import and overlay receipts preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+      "previous_sha256": "701298c250a6db3d615126b06fefb7fcc68dc60bd1da1523442619cb740d2ce2",
+      "integrated_sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_adaln.py",
+      "previous_sha256": "e9506e32e261049e3ae4ede4b5baca52e62ea0ca3dcdd8b7907e3076787c318c",
+      "integrated_sha256": "e80755094038d10908f6a7e4325d0831faab9e38af2f6a42e731cc6a0669d325",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
+      "previous_sha256": "7560c4f89a133f984bc712eecf30d8a17c568930bfab16d38da323fd12735202",
+      "integrated_sha256": "b5e0c1cf78309f68d6250bad31c0fa294b23e058f4e6cb184d2191921d393b8e",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "0551a314280cb71a33e1e5a366f058cda598f91b249b7bc2e803e253445bc5ca",
+      "integrated_sha256": "022e9fcbcb766f736209de25000e06018ec47f920a004796f40532908818c8e9",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
     }
   ]
 }

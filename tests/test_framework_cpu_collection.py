@@ -63,6 +63,14 @@ def test_native_phase_consumer_is_in_actual_common_lane_and_triggers_ci():
     assert 'tests/test_evidence_livewan_c51_phases.py' in workflow['on']['pull_request']['paths']
 
 
+def test_native_attention_capture_seam_is_in_actual_common_lane_and_triggers_ci():
+    import yaml
+    name = 'tests/test_refactor_h3_attention_capture_entrypoint.py'
+    assert name in _api()['test_files'](ROOT)
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert name in workflow['on']['pull_request']['paths']
+
+
 def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_silently_skip():
     import yaml
     files = _api()['test_files'](ROOT)
