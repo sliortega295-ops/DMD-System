@@ -13,6 +13,7 @@ on:
       - 'tests/test_framework_*.py'
       - 'tests/test_runtime_*.py'
       - 'tests/test_cpu_receipt_gate.py'
+      - 'tests/test_evidence_livewan_c51_phases.py'
       - 'pyproject.toml'
       - '.github/workflows/framework-cpu.yml'
   push:

@@ -56,6 +56,13 @@ def test_collection_is_import_light_in_a_fresh_process():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_native_phase_consumer_is_in_actual_common_lane_and_triggers_ci():
+    import yaml
+    assert 'tests/test_evidence_livewan_c51_phases.py' in _api()['test_files'](ROOT)
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert 'tests/test_evidence_livewan_c51_phases.py' in workflow['on']['pull_request']['paths']
+
+
 def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_silently_skip():
     import yaml
     files = _api()['test_files'](ROOT)
