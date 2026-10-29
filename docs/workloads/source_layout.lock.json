@@ -604,6 +604,14 @@
       "integrated_sha256": "022e9fcbcb766f736209de25000e06018ec47f920a004796f40532908818c8e9",
       "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
       "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "1f24a82c66cac25604bbb706473fdf1baeda7223bec6eaf1a6a53076d75d0c2b",
+      "integrated_sha256": "5f31d0354f13bf2b38cee44a25aae106981d0a7e2ab03f26f5f549137e1eceb7",
+      "source_commit": "26490858d6e333447c9822d29b6029d9484bb337",
+      "change": "R268 exact committed26490858 source/input-admitted native-history CPU-first construction on unchanged CUDA world16 FSDP2 mesh; same bottom-up block/root policy and model/optimizer ordering. Legacy world16 and existing HSDP paths retained. Source and actual targetTorch2.10 CPU proof only; full-size CUDA construction/capacity NOT_RUN."
     }
   ]
 }
