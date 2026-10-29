@@ -83,6 +83,7 @@ class _Runtime:
     raw_backward: Callable[..., Any]
     stats: FA3ReplayCacheStats
     staged_pool: "_PageableStagingPool | None" = None
+    tuple_capture: Any | None = None
 
 
 _RUNTIME: _Runtime | None = None
@@ -168,6 +169,8 @@ class _CompactFA3Autograd(torch.autograd.Function):
         ctx.save_for_backward(q, k, v, out, softmax_lse)
         ctx.scale = float(scale)
         ctx.block_index = int(_CACHE_BLOCK_INDEX.get())
+        capture = _RUNTIME.tuple_capture if _RUNTIME is not None else None
+        ctx.tuple_capture_token = capture.bind_forward(ctx.block_index) if capture is not None else None
         return out
 
     @staticmethod
@@ -177,7 +180,12 @@ class _CompactFA3Autograd(torch.autograd.Function):
             raise RuntimeError("H3 compact FA3 backward ran before installation")
         q, k, v, out, softmax_lse = ctx.saved_tensors
         dq, dk, dv = torch.empty_like(q), torch.empty_like(k), torch.empty_like(v)
-        runtime.raw_backward(
+        raw_backward = runtime.raw_backward
+        capture = runtime.tuple_capture
+        claim = capture.claim_backward(ctx.tuple_capture_token) if capture is not None else None
+        if claim is not None:
+            raw_backward = capture.wrap_raw(claim, raw_backward)
+        raw_backward(
             dout,
             q,
             k,
@@ -880,6 +888,7 @@ def install_fa3_replay_cache(
     storage: str = "cuda",
     max_d2h_inflight: int = 2,
     trim_before_backward: bool = False,
+    tuple_capture: Any | None = None,
 ) -> FA3ReplayCacheRegistration:
     """Install the exact replay cache after Grid scope and split2 wrappers."""
 
@@ -889,6 +898,8 @@ def install_fa3_replay_cache(
     max_d2h_inflight = parse_max_d2h_inflight(max_d2h_inflight)
     stats = FA3ReplayCacheStats()
     if not selected:
+        if tuple_capture is not None:
+            raise RuntimeError("Attention tuple capture requires actual enabled replay blocks")
         return FA3ReplayCacheRegistration(
             False, (), None, None, None, None, None, None, stats
         )
@@ -951,7 +962,7 @@ def install_fa3_replay_cache(
         max_d2h_inflight=max_d2h_inflight,
         trim_before_backward=bool(trim_before_backward),
     )
-    _RUNTIME = _Runtime(raw_forward, raw_backward, stats, staged_pool)
+    _RUNTIME = _Runtime(raw_forward, raw_backward, stats, staged_pool, tuple_capture)
 
     @functools.wraps(original_kernel)
     def kernel_wrapper(

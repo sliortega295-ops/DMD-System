@@ -24,8 +24,16 @@ def _measure_planner_two_cycle(trainer, original, *, torch, rank: int) -> None:
         calibration=os.environ.get("H3_PLANNER_CALIBRATION", "0") == "1",
         host_fenced_clock=os.environ.get("H3_PLANNER_CLOCK") == "host_fenced")
     trainer.planner_cycle_observer = observer
+    tuple_capture = None
     start = time.perf_counter()
     try:
+        if bool(os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG")) != bool(os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG_SHA256")):
+            raise ValueError("H3 capture opt-in requires both packet path and checksum")
+        if os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG"):
+            # Source/capability/owner admission precedes attachment. The original
+            # train/observer gates below remain authoritative and unchanged.
+            from .attention_tuple_capture import attach_native_capture
+            tuple_capture = attach_native_capture(trainer, observer, torch=torch, rank=rank)
         original(trainer)
         # Host-fenced mode already completed both stop events at its fourth
         # boundary fence. Preserve the existing final fence only in CUDA-event
@@ -34,6 +42,9 @@ def _measure_planner_two_cycle(trainer, original, *, torch, rank: int) -> None:
             torch.cuda.synchronize()
         wrapper_elapsed = time.perf_counter() - start
         row = observer.finish_after_sync(trainer)
+        if tuple_capture is not None:
+            from .attention_tuple_capture import finish_native_capture
+            finish_native_capture(tuple_capture, row)
         row["elapsed_including_trainer_setup_and_cycle_probes_s"] = wrapper_elapsed
         path = Path(os.environ["DISTILLSCHEDULE_RUN_ROOT"]) / "execution/ranks" / f"rank_{rank:03d}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,13 +70,24 @@ def _measure_planner_two_cycle(trainer, original, *, torch, rank: int) -> None:
                       f"preserving native {type(error).__name__}: {error}", file=sys.stderr)
         raise
     finally:
-        observer.close(trainer)
-        del trainer.planner_cycle_observer
+        try:
+            if tuple_capture is not None:
+                from .attention_tuple_capture import close_native_capture
+                close_native_capture(trainer, tuple_capture)
+        finally:
+            observer.close(trainer)
+            del trainer.planner_cycle_observer
 
 
 def main() -> None:
     from .planner_cycle_observer import planner_two_cycle_enabled
     two_cycle = planner_two_cycle_enabled()
+    if bool(os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG")) != bool(os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG_SHA256")):
+        raise ValueError("H3 capture opt-in requires both packet path and checksum")
+    if os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG") and not two_cycle:
+        raise ValueError("H3 attention capture requires the original two-cycle correctness entry")
+    if os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG") and os.environ.get("DISTILLSCHEDULE_RUN_KIND") != "correctness":
+        raise ValueError("H3 attention capture is correctness-only, never profile/native timing")
     from . import grid_entrypoint
     from .trainer import MiniMaxH3A100DmdTrainer
     from lightx2v_train.runtime.distributed import get_rank
