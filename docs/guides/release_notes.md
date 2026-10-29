@@ -59,6 +59,16 @@ No new throughput, speedup, convergence or quality result is claimed.
   Self-Forcing post-commit consumed-KV release have scoped native CPU evidence.
   These are opt-ins, not the full separately measured mixed-precision/fused
   native portfolios. See [native-owner policies](native_owner_backends.md).
+* The separate full-native optimized SD1.5 DMD2 and official Self-Forcing public
+  workflows completed 100 cycles on 16 A100s, including durable cycle-50
+  checkpoints and fresh-process continuation. DMD2 additionally completed
+  same-source native world16 current-Student export and independent new-prompt
+  512 × 512 image generation, with tensor/PNG integrity and owner cleanup accepted.
+  Official Self-Forcing full-native decoded-output acceptance remains pending.
+  DMD2 random initialization/synthetic records and Self-Forcing Wan base
+  initialization (not ODE) establish runtime stability, not pretrained quality.
+  [Exact source and receipt scope](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29)
+  remains separate from historical timing and tiny reference suites.
 * Modern FLUX.2 klein Base T2I, original Qwen-Image T2I, Wan2.2 TI2V-5B's T2V
   subpath and HunyuanVideo-1.5 T2V use actual tiny upstream native Transformers,
   text/tokenizers and VAEs. CPU1/FP32/B1 unmerged-LoRA G1/F5, raw media, complete
@@ -103,6 +113,10 @@ algorithm, topology, input inventory/cursors, source/runtime, policy, optimizer,
 EMA/schedulers and RNG. Missing/wrong source, changed cache/precision/geometry,
 unowned tensors or unsupported snapshot/clone layouts refuse before update;
 portable inference exports do not contain resumable training state.
+Distributed checkpoint `evaluate`/`export` now reuse resume's collective file
+admission before loading local shards. Six real Gloo/CPU FSDP2 output tests
+passed at source `12ead25e`; this is CPU verification, not another GPU run or
+permission to reuse an old checkpoint with a different training identity.
 
 Reviewed raw native serialization defaults are admitted by the specific adapter
 without rewriting the original source/config bytes or weakening inventory

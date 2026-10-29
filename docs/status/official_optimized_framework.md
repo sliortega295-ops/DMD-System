@@ -72,9 +72,25 @@ and `a2c8e153f93eb2629c79d4290715bec6aa2e860238fe71aa9ae356b1d59c3183`
 DMD2 uses full-size deterministic random initialization and synthetic prepared
 records; Self-Forcing uses existing Wan base weights, not the ODE initializer.
 This validates the stated runtime scope, not pretrained generation quality or
-new speed measurements. Full-size distributed export and new-input decoded
-outputs remain separate validation items. The source revisions above identify
-the actual executions, not every later framework commit.
+new speed measurements. The source revisions above identify the actual
+executions, not every later framework commit.
+
+DMD2 output run `framework-public-dmd2-export-generate-r2` subsequently restored
+that cycle-100 checkpoint on the original world16 topology and exported the
+current Student. Independent new CLIP-tokenized inputs produced a 512 × 512 RGB
+PNG. Source and checkpoint admission, complete finite output tensors, exact
+PNG/decoded-tensor agreement and both original-owner cleanups passed; no
+training was repeated and cgroup OOM/OOM-kill deltas were zero. The source
+remains `7b84ebb43067fd7fcfca6b1621fb53c5a7430c38`.
+
+The accepted output receipt is
+`r115_official_native_output_controller/reports/framework-public-dmd2-export-generate-r2-accepted.json`
+under the local/remote `research_artifacts/DMD-System/framework_maturation_20261023/`
+project, SHA256
+`f28efcd672aba4c20eb7c0b4d0f72540c1292efd13fc060c6496d41e8be61f5e`.
+It binds the cycle-100 manifest above, the export, new input and actual output
+bytes. Quality and numerical-equivalence validation remain **NOT_RUN**.
+Official Self-Forcing full-native decoded-output acceptance remains pending.
 
 ## Validation levels
 
@@ -94,8 +110,11 @@ opaque distributed owners is not enabled; direct training uses their explicit
 profile. SDXL and W4 LiveWan do not inherit an SD1.5 or official Self-Forcing
 profile merely because they share a model family.
 
-Complete-cycle, same-topology recovery is GPU-validated for both exact
-optimized executions above. Their full-scale portable generation remains a
-separate validation item. The CPU and GPU status of
-each path is kept separately in the integration report, rather than inferred from
-another workflow's result.
+Complete-cycle, same-topology recovery is GPU-validated for both exact optimized
+executions above; DMD2 also has the separate accepted output receipt above.
+At source `12ead25e7ec9049202384a41b541bca31c7f03eb`, distributed `evaluate` and
+`export` reuse resume's collective checkpoint admission. Six targeted real
+Gloo/CPU FSDP2 output cases passed with zero skips and CUDA uninitialized.
+This current-source CPU evidence does not rerun either native training job,
+relabel the older GPU executions or make their source-bound checkpoints
+interchangeable with a new training identity.

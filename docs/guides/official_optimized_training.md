@@ -20,8 +20,21 @@ FSDP2 is the primary baseline for both workflows.
 
 DMD2 also has an auxiliary Resident/DDP comparison: 6.114 → 3.475 s (1.759×).
 
-These are the latest optimization-run results. The implementation mapping and
-framework-integration checks are recorded in the [validation appendix](../status/official_optimized_framework.md).
+These optimization-run measurements are separate from the lifecycle validation
+below. Implementation details and verification records are in the
+[validation appendix](../status/official_optimized_framework.md).
+
+## Current public runtime status
+
+Both optimized public workflows separately completed 100 cycles on 16 A100s,
+with a durable cycle-50 checkpoint and fresh-process continuation to cycle 100.
+DMD2 also completed same-source native world16 export and independent new-prompt
+512 × 512 image generation; official Self-Forcing full-native decoded-output
+acceptance remains pending. See the
+[exact sources and output receipt](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29).
+DMD2 uses random initialization/synthetic records; Self-Forcing uses Wan base
+weights, not the ODE initializer. These are runtime checks, not pretrained
+quality or new performance measurements.
 
 ## Choose a configuration
 
