@@ -294,6 +294,7 @@ def test_public_provider_actual_native_teacher_adopt_update_and_new_process_rest
 
 
 def _refusal_worker(rank, rendezvous, directory, family, spec, only_kinds=None):
+    from functools import wraps
     from types import MethodType
     from distillschedule.training.session import _construct_model
     from distillschedule.training.checkpoint import rng_state
@@ -316,6 +317,8 @@ def _refusal_worker(rank, rendezvous, directory, family, spec, only_kinds=None):
                 w = dmd.build_algorithm(model, _feeds(family), _settings(), 0, 53)
                 handoff = model.sharded_construction.handoff
                 option = implementation()
+                session = (make_session(w, option, copy_state=False, persistent=True)
+                           if kind == 'installed_wrapped_method' else None)
                 if kind == 'forwarded':
                     assert next(iter(handoff.native._forward_pre_hooks.values())).__self__ is handoff
                     with pytest.raises(ValueError, match='cannot forward'):
@@ -340,6 +343,12 @@ def _refusal_worker(rank, rendezvous, directory, family, spec, only_kinds=None):
                             torch.nn.Parameter(parameter.detach().clone(), requires_grad=False))
                     elif kind == 'method':
                         handoff.root.dmd_forward = MethodType(NativeFlow.denoise, handoff.root)
+                    elif kind in ('wrapped_method', 'installed_wrapped_method'):
+                        original = handoff.root.dmd_forward
+                        @wraps(original)
+                        def foreign_method(self, *args, **kwargs):
+                            raise AssertionError('rebound custom method executed')
+                        handoff.root.dmd_forward = MethodType(foreign_method, handoff.root)
                     elif kind == 'mesh':
                         # A different real CPU mesh object cannot replace the
                         # construction mesh even if it names the same ranks.
@@ -367,9 +376,13 @@ def _refusal_worker(rank, rendezvous, directory, family, spec, only_kinds=None):
                     def no_full(*args, **kwargs):
                         raise AssertionError('rejected owner reached a tensor gather')
                     patch.setattr(DTensor, 'full_tensor', no_full)
-                    with pytest.raises(ValueError):
+                    message = ('frozen construction child or outer method was rebound'
+                               if kind in ('wrapped_method', 'installed_wrapped_method') else None)
+                    with pytest.raises(ValueError, match=message):
                         if kind == 'clone':
                             make_session(w, option, copy_state=True, persistent=True)
+                        elif session is not None:
+                            session.run()
                         else:
                             CyclePolicy(dict(mode='manual', implementation=option)).run(w, root / 'must-not-exist')
                 assert equal(before, rng_state(device='cpu'))
@@ -427,6 +440,14 @@ def test_real_frozen_handoff_refusals_are_collective_before_gather_or_update(tmp
 def test_issued_native_and_child_forward_rebinding_rejected_before_signatures(tmp_path, family, kind):
     spec = _assets(tmp_path, family)
     mp.spawn(_refusal_worker, args=(str(tmp_path / 'forward-rdzv'), str(tmp_path), family, spec,
+             (kind,)), nprocs=2, join=True)
+
+
+@pytest.mark.parametrize('family', ['flux1', 'flux2'])
+@pytest.mark.parametrize('kind', ['wrapped_method', 'installed_wrapped_method'])
+def test_wrapped_custom_method_rebinding_rejected_before_update(tmp_path, family, kind):
+    spec = _assets(tmp_path, family)
+    mp.spawn(_refusal_worker, args=(str(tmp_path / 'method-rdzv'), str(tmp_path), family, spec,
              (kind,)), nprocs=2, join=True)
 
 

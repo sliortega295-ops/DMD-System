@@ -120,15 +120,15 @@ class _FrozenRootHandoff:
         return getattr(method, '__func__', method)
 
     @staticmethod
-    def _forward_binding(module):
+    def _forward_binding(module, name='forward'):
         """Capture the issued module's actual callable and instance slot.
 
         Bound method objects are recreated on access, so retain their exact
         receiver/function instead. Native outer FSDP installation may change
         the class, but must not replace the original forward callable.
         """
-        forward = module.forward
-        return (type(module).forward, 'forward' in vars(module), vars(module).get('forward'),
+        forward = getattr(module, name)
+        return (getattr(type(module), name), name in vars(module), vars(module).get(name),
                 getattr(forward, '__self__', None), getattr(forward, '__func__', forward))
 
     def bind(self, root, *, key, child_path, method):
@@ -146,6 +146,7 @@ class _FrozenRootHandoff:
         self.root, self.key, self.child_path, self.method = root, key, child_path, method
         self.root_class = type(root)
         self.method_function = self._method(root, method)
+        self.method_binding = self._forward_binding(root, method)
         self.modules = dict(root.named_modules())
         self.forward_bindings = {name: self._forward_binding(module) for name, module in self.modules.items()}
         self.training_flags = {name: module.training for name, module in self.modules.items()}
@@ -178,7 +179,9 @@ class _FrozenRootHandoff:
         require(self.native._native_shard_load_status == 'ready'
                 and self.root.get_submodule(self.child_path) is self.native
                 and isinstance(self.native, FSDPModule)
-                and self._method(self.root, self.method) is self.method_function,
+                and self._method(self.root, self.method) is self.method_function
+                and all(actual is original for actual, original in
+                        zip(self._forward_binding(self.root, self.method), self.method_binding)),
                 'frozen construction child or outer method was rebound', path='open.fsdp')
         from torch.distributed.fsdp import fully_shard
         require(type(self.native) is self.generated_class and type(self.native).__mro__ == self.native_mro
@@ -224,6 +227,11 @@ class _FrozenRootHandoff:
         self.root_generated, self.root_mro = type(self.root), type(self.root).__mro__
         require(type(self.root).__bases__ == (FSDPModule, self.root_class),
                 'unexpected generated outer FSDP class', path='open.fsdp')
+        require(self._method(self.root, self.method) is self.method_function,
+                'frozen construction outer method changed during native adoption', path='open.fsdp')
+        # Only native registration may replace the issued custom method. Pin
+        # that real wrapper once; __wrapped__ equality alone is not ownership.
+        self.method_binding = self._forward_binding(self.root, self.method)
         self.root_state = FSDPModule._get_fsdp_state(self.root)
         self.session, self.status = session, 'installed'
 
