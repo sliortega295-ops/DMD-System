@@ -37,6 +37,9 @@ PRECISION = 'WAN_NATIVE_MIXED_BF16_BASE_FP32_LORA_UNMERGED'
 SCOPE = 'NATIVE_W1_CURRENT_G_SINGLE_PROCESS_DECODED_OUTPUT_NOT_QUALITY'
 NATIVE = dict(args=dict(base_seq_len=256,max_seq_len=4096,base_shift=.5,max_shift=1.15),
               scheduler=dict(shift=1.,stages=3,stage_range=[0,1/3,2/3,1],gamma=1/3))
+# The source-pinned original cls.from_config retains this raw Wan field in
+# model.config, but the complete original __init__ does not consume it.
+NON_CONSTRUCTOR_CONFIG_FIELDS = frozenset({'rope_max_seq_len'})
 
 
 def require(ok, message):
@@ -257,7 +260,7 @@ def _budget(budget):
             'explicit generator/codec/transient/all-rank capacity budget required')
 
 
-def _generator(p, *, meta, lora_rank=None):
+def _generator(p, *, meta, lora_rank=None, base_initializer=None):
     from peft import LoraConfig
     from distillschedule.adapters.helios.reference_model import load_reference_model_class
     from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
@@ -277,14 +280,22 @@ def _generator(p, *, meta, lora_rank=None):
         and a['ffn_dim'] <= 32768 and a['freq_dim'] <= 1024
         and all(type(n) is int and n > 0 and n%2 == 0 for n in a['rope_dim'])
         and sum(a['rope_dim']) == a['attention_head_dim'], 'original W1 architecture/conditioning changed')
+    require(base_initializer is None or callable(base_initializer) and not meta,
+            'base initializer is an internal CPU construction seam, never config')
     with torch.device('meta' if meta else 'cpu'):
-        g = cls(**a)
+        with torch.device('meta' if base_initializer is not None else ('meta' if meta else 'cpu')):
+            g = cls(**a)
         targets = sorted(set(_all_linear_targets(g)+['patch_short','patch_mid','patch_long']))
         require(p['peft'] == dict(r=rank,lora_alpha=float(rank),
             lora_dropout=0.,init_lora_weights='gaussian',target_modules=targets,exclude_modules=['down','up']),
             'full original LoRA/pyramid targets changed; unmerged FP32 LoRA required')
-        for name,tensor in g.named_parameters():
-            tensor.data = tensor.data.to(torch.float32 if any(k in name for k in cls._keep_in_fp32_modules) else torch.bfloat16)
+        if base_initializer is None:
+            for name,tensor in g.named_parameters():
+                tensor.data = tensor.data.to(torch.float32 if any(k in name for k in cls._keep_in_fp32_modules) else torch.bfloat16)
+        else:
+            # The original pretrained loader starts FP32 meta and casts only
+            # loaded keys. Missing pyramid patches must reset FP32, then BF16.
+            base_initializer(g)
         g.requires_grad_(False)
         g.add_adapter(LoraConfig(**p['peft']))
         for name,tensor in g.named_parameters():
@@ -509,16 +520,24 @@ def _load_codec(spec, budget, evidence_kind):
 
 def project_current_generator(session, codec, request, *, world_size):
     """Export-only live view of the actual restored OriginalWanSession G."""
+    from peft.tuners.tuners_utils import BaseTunerLayer
     from distillschedule.open_workload.torch_backend import unwrap_module
     g = unwrap_module(session.g.module)
     require(set(g.peft_config) == {'default'} and all(not getattr(m,'merged',False) for m in g.modules()),
             'CURRENT unmerged default Generator adapters required; never EMA or merged LoRA')
     peft = g.peft_config['default']
+    # PEFT may compress config targets to suffixes; only installed default
+    # A/B adapters prove the complete full-name inventory for strict admission.
+    targets = sorted(name for name, layer in g.named_modules()
+        if isinstance(layer, BaseTunerLayer) and 'default' in getattr(layer, 'lora_A', {})
+        and 'default' in getattr(layer, 'lora_B', {}))
     task = session.task
+    constructor = set(inspect.signature(type(g).__init__).parameters)-{'self'}
     parameters = plain(dict(schema_version=SCHEMA,precision=PRECISION,source=inference_source(),runtime=runtime_identity(),
-        architecture={k:v for k,v in dict(g.config).items() if not k.startswith('_')},
+        architecture={k:v for k,v in dict(g.config).items() if not k.startswith('_')
+            and (k in constructor or k not in NON_CONSTRUCTOR_CONFIG_FIELDS)},
         peft=dict(r=peft.r,lora_alpha=peft.lora_alpha,lora_dropout=peft.lora_dropout,init_lora_weights=peft.init_lora_weights,
-                  target_modules=sorted(peft.target_modules),exclude_modules=sorted(peft.exclude_modules)),
+                  target_modules=targets,exclude_modules=sorted(peft.exclude_modules)),
         native={**NATIVE,'rollout':_rollout(task)},task=task.to_dict(),
         noise_protocol=noise_protocol(),
         geometry=dict(noise_shape=list(task.latent_shape),prompt_shape=request['prompt_shape'],

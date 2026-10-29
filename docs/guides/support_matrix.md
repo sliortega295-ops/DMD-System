@@ -56,6 +56,16 @@ Current-G native video export is available for W1/W2/W3 after their own
 complete checkpoint restore. Ordinary training does not consume `trainer.export`;
 use the explicit export command and codec policy. Original GAN heads and
 optimizer state are restored but excluded from portable inference weights.
+
+For an existing trained Generator saved outside the complete-checkpoint format,
+`distillctl import-weights` provides a separate initialization-only path:
+[W1 complete LoRA + frozen base](wan_weights_initialization.md) and
+[W4 complete Student](livewan_weights_initialization.md). Both use the existing
+public publisher, strict inference factory and codec. Actual full-size trained
+weights have been published through this path without another training run;
+the original training source, counters and numerical status remain attached.
+The new export starts at cycle zero and is not a resumable training checkpoint.
+
 W6 now has an output-only native restore/export bridge and an independent
 original-model consumer. Original H3 video/audio codec execution is available
 through the separate `decode` command. [Original raw H3 AV preparation](h3_audio_video_encode.md) now encodes real previous/current frame directories and stereo WAV with supplied original text features, feeding the existing cached-input CPU reference without a new training loop. **W5 has its own source/CPU original-reference checkpoint export and an explicit original codec ABI**, including patch inversion and stereo ordering. Its four-step sampler is retained; W6 is not used as a replacement.

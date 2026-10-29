@@ -89,6 +89,9 @@ def main(argv=None):
     config_parser = sub.add_parser("config", help="validate or render a training configuration")
     config_parser.add_argument("action", choices=("validate", "show"))
     config_parser.add_argument("config", type=Path)
+    initialize = sub.add_parser('import-weights', help='initialize Generator weights and export; never resume/train')
+    initialize.add_argument('request', type=Path)
+    initialize.add_argument('--output', type=Path, required=True)
     for name in ("train", "evaluate", "export", "generate"):
         p = sub.add_parser(name)
         p.add_argument("config", type=Path)
@@ -141,6 +144,18 @@ def main(argv=None):
         elif args.command == "config":
             result = {"status": "VALID_CONFIG", "identity": config.identity,
                       "resolved": config.to_dict(), "gpu_execution": "NOT_RUN"}
+        elif args.command == 'import-weights':
+            with redirect_diagnostics():
+                from . import wan_generator_import
+                request = wan_generator_import.read_request(args.request)
+                schema = request.get('schema_version') if isinstance(request, dict) else None
+                if schema == wan_generator_import.SCHEMA:
+                    initialize = wan_generator_import.import_generator_weights
+                elif schema == 'distillschedule.livewan_generator_weights_initialization.v1':
+                    from .livewan_generator_import import import_generator_weights as initialize
+                else:
+                    raise ValueError('unsupported weights initialization schema')
+                result = initialize(args.request, args.output)
         elif args.command == "train":
             raw = config.to_dict()
             for key, value in (("output_dir", args.output), ("resume_from", args.resume), ("cycles", args.cycles)):

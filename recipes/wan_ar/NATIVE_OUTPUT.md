@@ -6,6 +6,12 @@ training/restore or CPU-reference work. This path has source/CPU evidence;
 W2/W3/W5/W6 output work is separate. See the
 [versioned contract](../../docs/contracts/WAN_NATIVE_OUTPUT_V1.md).
 
+If you have only an original native final-Generator trainables payload rather
+than a complete training checkpoint, use the separate
+[weights initialization/import](../../docs/guides/wan_weights_initialization.md)
+path. It combines the pinned original frozen base and trained unmerged adapter
+into the same portable inference format without running more training.
+
 ## 1. Keep the original complete native binding
 
 Use the exact W1 fresh-stream task/assets/bootstrap/source/runtime/topology and

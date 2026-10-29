@@ -5,6 +5,11 @@ from a complete checkpoint, then generate from new text features and a supplied
 clean opening world. This is the native dual-pool pipeline, not the separate
 CPU Program training recipe or official Self-Forcing.
 
+An existing assembled full Student can instead enter through
+[explicit weights initialization](livewan_weights_initialization.md).
+That command publishes the same portable format without repeating training;
+it does not restore an old optimizer or replace the complete-checkpoint route.
+
 ## Export
 
 Start with the same `training.c51-stream.json`, source, assets, input manifest,
@@ -60,7 +65,7 @@ fabricated history, resizing or implicit prefix crop is used.
 
 ```sh
 distillctl data import /PROJECT/new-inputs.json --output /PROJECT/prepared-new
-distillctl generate /PROJECT/outputs/current-student.inference.json \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 distillctl generate /PROJECT/outputs/current-student.inference.json \
   --weights /PROJECT/outputs/current-student \
   --prepared /PROJECT/prepared-new/manifest.json \
   --output /PROJECT/generated --output-kind video
