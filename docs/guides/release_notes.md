@@ -64,7 +64,9 @@ No new throughput, speedup, convergence or quality result is claimed.
   checkpoints and fresh-process continuation. DMD2 additionally completed
   same-source native world16 current-Student export and independent new-prompt
   512 × 512 image generation, with tensor/PNG integrity and owner cleanup accepted.
-  Official Self-Forcing full-native decoded-output acceptance remains pending.
+  Official Self-Forcing also completed same-source world16 Student export and
+  independent new-prompt 81-frame, 368 × 640 video generation, with every RGB
+  frame checked against the decoded tensor and both node owners cleaned up.
   DMD2 random initialization/synthetic records and Self-Forcing Wan base
   initialization (not ODE) establish runtime stability, not pretrained quality.
   [Exact source and receipt scope](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29)

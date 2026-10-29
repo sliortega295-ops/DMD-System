@@ -313,11 +313,11 @@ source/helper/CPU integration from historical native GPU outcomes, which retain
 their **REVIEW** numerical status. The same appendix records the actual public
 SD1.5 optimized and official Self-Forcing 100-cycle runs, both with durable
 cycle 50 checkpoints and fresh-process continuation to cycle 100.
-DMD2 additionally completed same-source native world16 cycle-100 export and
-independent new-prompt 512 × 512 image generation; the
-[output receipt](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29)
-records tensor/PNG integrity and both owner cleanups. Official Self-Forcing
-full-native decoded-output acceptance remains pending. These results are not
+Both completed same-source native world16 cycle-100 Student export and
+independent new-prompt generation: DMD2 produced a 512 × 512 image and official
+Self-Forcing an 81-frame, 368 × 640 video. The
+[output receipts](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29)
+record tensor/PNG integrity and both owner cleanups. These results are not
 inherited from the seven tiny single-device CUDA tests. Clone-based automatic
 planning is not enabled for these distributed owners. Existing single-device
 FP32 defaults and the W1–W6 contracts remain unchanged.

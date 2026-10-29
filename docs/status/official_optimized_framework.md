@@ -90,7 +90,22 @@ project, SHA256
 `f28efcd672aba4c20eb7c0b4d0f72540c1292efd13fc060c6496d41e8be61f5e`.
 It binds the cycle-100 manifest above, the export, new input and actual output
 bytes. Quality and numerical-equivalence validation remain **NOT_RUN**.
-Official Self-Forcing full-native decoded-output acceptance remains pending.
+Official Self-Forcing also restored and exported its cycle-100 Student on the
+original world16 topology. Generation run `framework-public-sf-export-generate-r2`
+used independently T5-encoded new prompts and produced 81 RGB frames at
+368 × 640. All generated tensors were nonempty and finite, every PNG matched
+the decoded tensor, both original owners cleaned up, and cgroup OOM/OOM-kill
+increments were zero. The framework source remains
+`b68c3c3a8bfec4e7adeb28c8b2eb598d1fa5be08`.
+
+The accepted output receipt is
+`r125_sf_native_output_binding/reports/framework-public-sf-export-generate-r2-accepted.json`
+under the same artifact project, SHA256
+`ade45ba8d93aa282852d9bf68991da64c0073fd11c588b0e83019079f16fbac2`.
+The original export succeeded in run r1; an empty peer-control JSON read then
+stopped that run before generation. Run r2 reused those exact export bytes
+under the original owners with bounded metadata waiting. It did not retrain or
+repeat the distributed export; the original failed receipt is retained.
 
 ## Validation levels
 
@@ -111,7 +126,7 @@ profile. SDXL and W4 LiveWan do not inherit an SD1.5 or official Self-Forcing
 profile merely because they share a model family.
 
 Complete-cycle, same-topology recovery is GPU-validated for both exact optimized
-executions above; DMD2 also has the separate accepted output receipt above.
+executions above; both also have the separate accepted output receipts above.
 At source `12ead25e7ec9049202384a41b541bca31c7f03eb`, distributed `evaluate` and
 `export` reuse resume's collective checkpoint admission. Six targeted real
 Gloo/CPU FSDP2 output cases passed with zero skips and CUDA uninitialized.

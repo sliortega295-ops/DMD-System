@@ -28,10 +28,11 @@ below. Implementation details and verification records are in the
 
 Both optimized public workflows separately completed 100 cycles on 16 A100s,
 with a durable cycle-50 checkpoint and fresh-process continuation to cycle 100.
-DMD2 also completed same-source native world16 export and independent new-prompt
-512 × 512 image generation; official Self-Forcing full-native decoded-output
-acceptance remains pending. See the
-[exact sources and output receipt](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29).
+Both also completed same-source native world16 Student export and independent
+new-prompt generation: a 512 × 512 image for DMD2 and an 81-frame, 368 × 640
+video for official Self-Forcing. Output tensor/PNG integrity and both node
+cleanups passed. See the
+[exact sources and output receipts](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29).
 DMD2 uses random initialization/synthetic records; Self-Forcing uses Wan base
 weights, not the ODE initializer. These are runtime checks, not pretrained
 quality or new performance measurements.
