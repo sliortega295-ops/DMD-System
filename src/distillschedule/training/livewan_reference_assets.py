@@ -139,7 +139,12 @@ def _model(row, *, size, verify_payloads):
         # Lazy metadata validation reads only configuration and index bytes.
         if verify_payloads or path.suffix == ".json":
             require(file_sha256(path) == pin["sha256"], "frozen file hash changed: " + str(path))
-    cfg = document(root / "config.json")
+    # Original WanModel.ignore_for_config omits these constructor defaults
+    # from save_pretrained configs. The source is pinned by source_identity;
+    # only these ignored fields inherit defaults, never the core geometry.
+    # Explicit values still take precedence and must pass the same checks.
+    cfg = {"patch_size": [1, 2, 2], "window_size": [-1, -1],
+           "qk_norm": True, "cross_attn_norm": True, **document(root / "config.json")}
     dims = ((1536, 8960, 12, 30) if size == "1.3B" else (5120, 13824, 40, 40))
     require(all(cfg.get(k) == v for k, v in zip(("dim", "ffn_dim", "num_heads", "num_layers"), dims))
             and cfg.get("freq_dim") == 256 and cfg.get("in_dim") == cfg.get("out_dim") == 16
