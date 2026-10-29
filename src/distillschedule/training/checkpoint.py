@@ -317,7 +317,7 @@ def _native_inventory(path, value, *, hashes=False):
 
 
 def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None,
-                    pre_publication_guard=None, native_checkpoint=None):
+                    pre_publication_guard=None, native_checkpoint=None, diagnostic_packing_observer=None):
     import torch
     if type(cycle) is not int or cycle < 0 or type(cursor) is not int or cursor < 0:
         raise ValueError("checkpoint must describe a complete cycle and data cursor")
@@ -355,8 +355,15 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
         staging.mkdir()
     distributed.primary(create, "checkpoint staging")
     try:
-        payload = distributed.checked(lambda: {"state": pack_state(state), "rng": rng_state(), "cycle": cycle,
-                   "cursor": cursor, "versions": dict(versions), "policy": policy}, "checkpoint packing")
+        def pack():
+            if diagnostic_packing_observer is not None:
+                diagnostic_packing_observer("checkpoint_pack_entry")
+            packed = pack_state(state)
+            if diagnostic_packing_observer is not None:
+                diagnostic_packing_observer("checkpoint_pack_exit")
+            return {"state": packed, "rng": rng_state(), "cycle": cycle,
+                    "cursor": cursor, "versions": dict(versions), "policy": policy}
+        payload = distributed.checked(pack, "checkpoint packing")
         if data_progress is not None:
             payload['data_progress'] = data_progress
         filename = "state.pt" if world == 1 else f"rank-{rank:05d}.pt"

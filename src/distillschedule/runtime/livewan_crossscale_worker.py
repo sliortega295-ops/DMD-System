@@ -4276,6 +4276,8 @@ def run_worker(
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     _require(world_size == WORLD_SIZE, "runtime is not world16")
+    if continuation is not None:
+        continuation.configure_phase_diagnostics(rank=rank)
     if not dist.is_initialized():
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
@@ -4564,11 +4566,16 @@ def run_worker(
         }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
+    if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="construction_entry",
+            cycle=continuation.start_cycle, versions=bootstrap.versions)
     build_started = time.perf_counter()
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
     if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="construction_exit",
+            cycle=continuation.start_cycle, versions=bootstrap.versions)
         from distillschedule.training import distributed as training_distributed
         training_distributed.checked(continuation.validate_constructed, "C51 original assets/imports/runtime unchanged after construction")
     bundle.metadata["cuda_library_setup"] = cuda_library_setup
@@ -4739,6 +4746,9 @@ def run_worker(
         )
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)
+    if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="setup_ready",
+            cycle=continuation.start_cycle, versions=bootstrap.versions, memory=setup_memory)
     if run_kind == "capacity":
         torch.cuda.synchronize(device)
         dist.barrier()
@@ -4794,6 +4804,8 @@ def run_worker(
     if continuation is not None:
         loader = continuation.bind(torch=torch, rank=rank, bundle=bundle, versions=versions,
                                    pairs=_pipeline_8x8_slot_pairs(plan))
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="public_bind_exit",
+            cycle=continuation.start_cycle, versions=versions)
     receipt_initial_versions = dict(versions)
     evidence = RunEvidence()
     critic_checkpoint_proxy = None
@@ -5491,6 +5503,9 @@ def run_worker(
     if continuation is not None:
         from distillschedule.runtime.livewan_c51_bundle import continuation_receipt_errors
         from distillschedule.training.livewan_c51_training import input_marker
+        if continuation.phase_diagnostics is not None:
+            receipt["phase_diagnostics"] = continuation.phase_diagnostics.descriptor()
+            receipt["formal_timing_eligible"] = False
         receipt["continuation"] = dict(schema_version=continuation.identity["schema_version"],
             identity=continuation.identity, start_cycle=continuation.start_cycle,
             completed_cycles=continuation.loader.cycle, executed_cycles=continuation.cycles_executed,
@@ -7399,6 +7414,9 @@ def _run_pipeline_8x8_continuous(
     for cycle in range(start_cycle, end_cycle):
         if _operation_calibrator is not None:
             _operation_calibrator.cycle = cycle + 1
+        if continuation is not None and getattr(continuation, "phase_diagnostics", None) is not None:
+            continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="full5_entry",
+                cycle=cycle+1, versions=versions)
         cycle_started = time.perf_counter()
         if trajectory_mode:
             incoming_application_calls = pending_application_calls
@@ -7472,6 +7490,9 @@ def _run_pipeline_8x8_continuous(
                 )
         role_returned = time.perf_counter()
         if continuation is not None:
+            if getattr(continuation, "phase_diagnostics", None) is not None:
+                continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="full5_exit",
+                    cycle=cycle+1, versions=versions)
             continuation.cycle_complete(torch=torch, rank=rank, cycle=cycle+1, versions=versions,
                 bundle=bundle, transport=runahead_host_transport, shadow=critic_shadow_hot_sync,
                 evidence=evidence, inventory=inventory, streamers=streamers, device=device)

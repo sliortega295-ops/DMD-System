@@ -187,6 +187,20 @@ class Continuation:
         self._loss_count = self._norm_count = self._backward_count = 0
         self._calls = {}
         self.mechanism_receipt = None
+        self.phase_diagnostics = None
+
+    def configure_phase_diagnostics(self, *, rank):
+        import os
+        flag = os.environ.get("DISTILLSCHEDULE_LIVEWAN_C51_PHASE_RECEIPTS", "0")
+        require(flag in {"0", "v1"}, "phase diagnostic flag must be 0 or explicit v1")
+        if flag == "0":
+            return
+        from .livewan_c51_diagnostics import from_environment
+        self.phase_diagnostics = from_environment(self, rank=rank)
+
+    def phase_receipt(self, **kwargs):
+        if self.phase_diagnostics is not None:
+            self.phase_diagnostics.record(**kwargs)
 
     def configure_sources(self):
         assets = self.admitted["assets"]
@@ -317,8 +331,13 @@ class Continuation:
         joint = validate_joint(distributed.gather(observation), cycle=cycle, pairs=self.pairs)
         distributed.checked(self.capacity_check, "C51 complete-cycle capacity/reserve/OOM gate")
         if cadence and cycle % cadence == 0:
+            packing_observer = None
+            if self.phase_diagnostics is not None:
+                packing_observer = lambda phase: self.phase_receipt(torch=torch, rank=rank, device=device,
+                    phase=phase, cycle=cycle, versions=versions)
             save_checkpoint(self.output/"checkpoints"/f"cycle-{cycle:06d}", self.state, identity=self.identity,
-                **joint, policy=checkpoint_policy(self.identity), pre_publication_guard=self.capacity_check)
+                **joint, policy=checkpoint_policy(self.identity), pre_publication_guard=self.capacity_check,
+                diagnostic_packing_observer=packing_observer)
         if cycle == self.end_cycle:
             distributed.checked(self.capacity_check, "C51 final completed-receipt capacity/reserve/OOM gate")
         atomic_json(self.output/"continuation"/f"rank-{rank:05d}.json", dict(schema_version=SCHEMA,
