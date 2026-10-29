@@ -68,6 +68,30 @@ Only complete-cycle, same-topology restart is supported. There is no mid-cycle,
 elastic or failed-update replay. The frozen 33B backbone is reconstructed from
 assets, not duplicated in checkpoints. Never restore untrusted native pickles.
 
+## Explicit epochs over a finite cached dataset
+
+To train for more cycles than the cached dataset has distinct records, select
+the [versioned record-epoch policy](../../docs/contracts/original_h3_ar_record_epochs_v1.md)
+instead of duplicating files or inventing fresh record IDs. Supply a source list
+with `rank`, `record_id`, `path`, `sha256` and `sources`, but no `cycle` or
+caller-authored `metadata`. Each original rank needs at least one genuine
+compatible record. The original parser and rank-specific geometry still apply.
+
+```sh
+distillctl data prepare-h3-ar-stream --sources /project/data/rank-pool.json \
+  --assets /project/native-assets.json --cycles 50 --seed 42 \
+  --input-policy distillschedule.h3_ar_record_epochs.v1 \
+  --output /project/data/prepared-w6-epochs.json
+```
+
+Bind the returned path/hash in `assets.cache_manifest`, and set training data to
+`{"input_kind":"original_h3_ar_epoch_stream.v1","prepared":"/project/data/prepared-w6-epochs.json"}`.
+Keep the immutable horizon at 50, checkpoint cadence at 25, and first stop at
+25; resume the same document in a new process through cycle 50. With one record
+per rank this uses 16 real sources and 800 explicit logical draws. Scheduling
+uses a private RNG; the original training RNG and update loop are unchanged.
+The same native export entry accepts either declared input kind.
+
 ## Current Student output
 
 Use the same training identity with an explicit output policy to export a

@@ -54,6 +54,8 @@ def main(argv=None):
     h3_stream.add_argument("--cycles", type=int, required=True)
     h3_stream.add_argument("--seed", type=int, required=True)
     h3_stream.add_argument("--output", type=Path, required=True)
+    h3_stream.add_argument("--input-policy", choices=("distillschedule.h3_ar_record_epochs.v1",),
+                           help="explicit rank-local cached AV epochs; default v1 forbids source reuse")
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
@@ -109,7 +111,8 @@ def main(argv=None):
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))
             elif args.command == "prepare-h3-ar-stream":
                 from .h3_ar_stream import prepare_inputs
-                result = prepare_inputs(args.sources, args.output, assets_path=args.assets, cycles=args.cycles, seed=args.seed)
+                policy = {"input_policy": args.input_policy} if args.input_policy is not None else {}
+                result = prepare_inputs(args.sources, args.output, assets_path=args.assets, cycles=args.cycles, seed=args.seed, **policy)
             elif args.command in ("prepare-livewan-inputs", "prepare-livewan-c51-inputs"):
                 from .livewan_inputs import prepare_inputs, prepare_c51_inputs
                 prepare_inputs = prepare_c51_inputs if args.command == "prepare-livewan-c51-inputs" else prepare_inputs

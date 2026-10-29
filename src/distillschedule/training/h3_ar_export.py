@@ -162,7 +162,7 @@ def export_native(config, checkpoint, output):
     from .config import TrainingConfig
     from .native import _admit, _h3_ar_stream
     from .h3_ar_training import run_training
-    require(_h3_ar_stream(config,'W6') and config.data.get('input_kind')=='original_h3_ar_fresh_stream.v1'
+    require(_h3_ar_stream(config,'W6') and config.data.get('input_kind') in ('original_h3_ar_fresh_stream.v1','original_h3_ar_epoch_stream.v1')
         and bool(config.data.get('prepared')), 'complete fresh W6 native checkpoint required; fixed replay and W5 are not substituted')
     raw = config.to_dict()
     request = raw['trainer'].pop('export',None)

@@ -208,7 +208,8 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                       launch="enter on each already-launched world16 torchrun rank; no node/GPU reservation")
         result["source"]["selected_plan_is_authoritative"] = False
         result["capabilities"].update(modes=["reference", "manual"],
-            cycles=dict(min=2, max=100, fresh_inputs="original_h3_ar_fresh_stream.v1", immutable_horizon=True),
+            cycles=dict(min=2, max=100, fresh_inputs="original_h3_ar_fresh_stream.v1",
+                        epoch_inputs="original_h3_ar_epoch_stream.v1", immutable_horizon=True),
             checkpoint=dict(supported=True, scope="both native LoRAs/inactive head/native ZeRO3 FP32 master Adam/clocks/rank RNG/cursor",
                             verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
             resume=dict(supported=True, scope="complete drained native cycle; same source/assets/input/horizon/layout/world16/capacity",
@@ -229,7 +230,7 @@ def _livewan_c51_stream(config, workload):
 
 
 def _h3_ar_stream(config, workload):
-    return workload == "W6" and (config.data.get("input_kind") == "original_h3_ar_fresh_stream.v1"
+    return workload == "W6" and (config.data.get("input_kind") in ("original_h3_ar_fresh_stream.v1", "original_h3_ar_epoch_stream.v1")
                                 or config.execution.get("preset") == H3_AR_STREAM)
 
 
@@ -342,7 +343,7 @@ def _options(config, workload):
     if _h3_ar_stream(config, workload):
         mode = config.execution.get("mode")
         _require(set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
-                 and config.data["input_kind"] == "original_h3_ar_fresh_stream.v1"
+                 and config.data["input_kind"] in ("original_h3_ar_fresh_stream.v1", "original_h3_ar_epoch_stream.v1")
                  and bool(config.execution.get("capacity_policy"))
                  and type(config.trainer["cycles"]) is int and 2 <= config.trainer["cycles"] <= 100
                  and "seed" in config.trainer and "checkpoint_every" in config.trainer,

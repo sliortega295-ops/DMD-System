@@ -1,7 +1,7 @@
 """Opt-in actual native W6 finite continuation, not the CPU reference trainer.
 
 H3ARSession constructs the original DMD2Trainer/H3Adapter/AlternatingAdamW and
-ZeRO-3 engine once. This owner supplies fresh inputs and complete-cycle state;
+ZeRO-3 engine once. This owner supplies explicit inputs and complete-cycle state;
 it never implements losses, optimizers, a sampler or a replacement backend.
 """
 from copy import deepcopy
@@ -18,7 +18,7 @@ from distillschedule.strategies.h3_ar_task import H3ARTask, H3ARImplementation, 
 from distillschedule.strategies.h3_ar_planning import validate_policy, policy_for_node
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, repository_root, write_new_json
 from . import distributed
-from .h3_ar_inputs import KIND, H3ARInputStream, input_metadata
+from .h3_ar_inputs import KIND, EPOCH_KIND, EPOCH_POLICY, H3ARInputStream, input_metadata, record, source_identity
 from .h3_ar_state import NativeCheckpoint, Progress
 
 SCHEMA = "distillschedule.h3_ar_continuation.v1"
@@ -27,13 +27,17 @@ TOPOLOGY = dict(world_size=16, backend="nccl", node_groups=[list(range(8)), list
 DEEPSPEED_ENGINE_SHA256 = "ef3b4797809453f4941eaa769c9cd4e397e3b52085131e8916990ea78d4f0f6c"
 
 
-def descriptor():
-    return dict(schema_version=SCHEMA, owner="ORIGINAL_H3ARSession_DMD2Trainer_AlternatingAdamW_ZeRO3",
+def descriptor(input_kind=KIND):
+    result = dict(schema_version=SCHEMA, owner="ORIGINAL_H3ARSession_DMD2Trainer_AlternatingAdamW_ZeRO3",
         input_kind=KIND, task=H3ARTask().to_dict(), topology=deepcopy(TOPOLOGY), native_config=native_config(),
         horizon=dict(min=2, max=100), updates=dict(student=1, fake=1, ema=0),
         checkpoint="actual_engine_save_checkpoint_load_checkpoint_same_topology",
         transient="attention replay/FIFO/prefetch/results reconstructed cold; pinned buffers process-local",
         numerical_status="REVIEW", gpu_continuation="NOT_RUN", decoded_AV="NOT_IMPLEMENTED", claimable_speedup=False)
+    require(input_kind in (KIND, EPOCH_KIND), "unsupported W6 descriptor input kind", path="h3_ar.training")
+    if input_kind == EPOCH_KIND:
+        result.update(input_kind=EPOCH_KIND, input_policy=EPOCH_POLICY)
+    return result
 
 
 def _source_layout():
@@ -52,6 +56,8 @@ def admit_training(config, task_value, assets_value, paths):
     source_layout = _source_layout()
     assets_validation = assets.validate()
     inputs = input_metadata(config.data["prepared"], cycles=config.trainer["cycles"], seed=config.trainer["seed"], verify_files=True)
+    require(config.data["input_kind"] == inputs["input_kind"],
+            "W6 declared input kind differs from actual prepared policy", path="h3_ar.training")
     reference = dict(path=str(Path(config.data["prepared"]).resolve()), sha256=file_sha256(Path(config.data["prepared"])))
     require(assets.cache_manifest == reference, "assets.cache_manifest must bind the actual fresh prepared stream, not a private historical cache",
             path="h3_ar.training")
@@ -65,7 +71,7 @@ def admit_training(config, task_value, assets_value, paths):
         impl = preset_implementation("W6", H3_AR_STREAM)
     return dict(task=task.to_dict(), assets=assets.to_dict(), selected=impl.to_dict(), inputs=inputs,
         capacity_policy=policy, source_layout_sha256=source_layout, asset_admission=assets_validation,
-        lifecycle=descriptor(), native_worker="distillschedule.training.h3_ar_training:run_training",
+        lifecycle=descriptor(inputs["input_kind"]), native_worker="distillschedule.training.h3_ar_training:run_training",
         validation_scope="SOURCE_LAYOUT_ASSETS_FINITE_INPUT_BYTES_AND_CAPACITY_SCHEMA_ONLY; NATIVE_CUDA_CONTINUATION_NOT_RUN")
 
 
@@ -81,7 +87,7 @@ def training_identity(head, admitted, config, *, runtime=None):
         source_layout_sha256=admitted["source_layout_sha256"], assets_sha256=fingerprint(admitted["assets"]),
         input_sha256=admitted["inputs"]["input_sha256"], horizon=config.trainer["cycles"], seed=config.trainer["seed"],
         checkpoint_every=config.trainer["checkpoint_every"], implementation=admitted["selected"],
-        topology=deepcopy(TOPOLOGY), capacity_policy=deepcopy(admitted["capacity_policy"]), runtime=runtime, contract=descriptor())
+        topology=deepcopy(TOPOLOGY), capacity_policy=deepcopy(admitted["capacity_policy"]), runtime=runtime, contract=descriptor(admitted["inputs"]["input_kind"]))
 
 
 def checkpoint_policy(identity):
@@ -106,10 +112,9 @@ def validate_joint(rows, *, cycle, inputs):
     require(len(rows) == 16 and [r.get("rank") for r in rows] == list(range(16)),
             "all sixteen native W6 rank boundaries required", path="h3_ar.training")
     for rank, row in enumerate(rows):
-        expected = inputs["records"][(cycle-1)*16+rank]
+        expected = record(inputs, cycle, rank)
         require(row.get("cycle") == cycle and row.get("versions") == dict(student=cycle, fake=cycle, ema=0)
-                and row.get("native_global_steps") == 2*cycle and row.get("input_identity") == {
-                    k: expected[k] for k in ("path", "sha256", "record_id", "cycle")},
+                and row.get("native_global_steps") == 2*cycle and row.get("input_identity") == source_identity(expected),
                 "W6 rank fresh source/cursor/native clock mismatch", path="h3_ar.training")
 
 

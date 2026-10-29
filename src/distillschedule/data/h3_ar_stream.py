@@ -1,4 +1,4 @@
-"""CPU admission of explicit fresh native previous/current AV cached records."""
+"""CPU admission of explicit native previous/current AV cached record streams."""
 import json
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from distillschedule.core.contracts import require
 from distillschedule.strategies.h3_ar_assets import H3ARAssets, HELPER_PINS, checked, validate_source_tree
 
 
-def prepare_inputs(sources, output, *, assets_path, cycles, seed):
+def prepare_inputs(sources, output, *, assets_path, cycles, seed, input_policy=None):
     # Preparation needs the pinned original parser, not a historical cache or
     # a loaded model. The completed manifest becomes assets.cache_manifest for
     # training; requiring it to exist here would be a circular dependency.
@@ -21,4 +21,4 @@ def prepare_inputs(sources, output, *, assets_path, cycles, seed):
     native = assets.source_module("h3_dmd2")
     from distillschedule.training.h3_ar_inputs import prepare_stream
     return prepare_stream(sources, output, native=native, torch=torch, cycles=cycles, seed=seed,
-                          pre_publication_guard=assets.audit_imports)
+                          pre_publication_guard=assets.audit_imports, input_policy=input_policy)
