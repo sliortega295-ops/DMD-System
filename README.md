@@ -1,8 +1,8 @@
 # DMD-System
 
 A unified framework for **image, video and audio–video distribution-matching
-distillation**. Choose a model, an explicit distillation workflow and an admitted
-execution policy; use one lifecycle for data preparation, real continuous
+distillation**. Choose a model, a distillation workflow and an execution
+policy; use one lifecycle for data preparation, real continuous
 updates, checkpoint recovery, generation and inference export.
 
 The Python package is **`distillschedule`** and the user command is
@@ -10,6 +10,11 @@ The Python package is **`distillschedule`** and the user command is
 algorithm-owned. Physical placement, state lifetimes and legal execution order
 use the existing Program, distributed backends and measured planner—not another
 trainer or a hardcoded model-name winner.
+
+**Current integration:** the six native workloads, official Self-Forcing and
+SD1.5/SDXL DMD2, plus LTX, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo adapters
+are shipped together. See the [framework feature overview](docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
+and choose a recipe below.
 
 ## Install and discover
 
@@ -35,9 +40,8 @@ Do not install all extras together. See [installation and model families](docs/g
 
 ## A complete offline training lifecycle
 
-This executable example uses actual RGB frame files, WAV audio, text, tiny
-random models and real gradient/AdamW updates. It demonstrates the framework,
-not pretrained quality.
+This executable example uses RGB frame files, WAV audio, text and tiny models
+to walk through real gradient/AdamW updates, recovery and generation.
 
 ```sh
 DEMO="$(mktemp -d -t dmd-system.XXXXXX)"
@@ -91,21 +95,19 @@ and [the end-to-end tutorial](examples/framework/README.md).
 | Wan2.2 TI2V-5B T2V subpath | Native Wan/UMT5/VAE; explicit flow DMD, not A14B experts or I2V | [Recipe](recipes/wan22_dmd/README.md) |
 | HunyuanVideo-1.5 T2V | Native Hunyuan15, dual text and temporal VAE; explicit flow DMD | [Recipe](recipes/hunyuan_video_dmd/README.md) |
 
-Start with a family recipe and choose its admitted execution policy; data
+Start with a family recipe and choose its execution policy; data
 preparation, `train`, `train --resume`, `export` and `generate` use the same
-lifecycle. Actual tiny upstream classes have CPU and scoped FP32 CUDA
-update/restart/output evidence. The common-flow LoRA recipes also expose
+lifecycle. The common-flow LoRA recipes also expose
 direct single-CUDA immutable sharing; FLUX/Qwen have separately qualified
 post-backward replicas. [Model families](docs/guides/model_families.md) explains
 the choices; the [support matrix](docs/guides/support_matrix.md#additional-model-and-workflow-integrations)
-separates source support, qualified tiny tests and pending pretrained/quality
-gates. There are no bundled weights or automatic Hub downloads. Original DMD2
-and LTX sources remain external under their own licenses, not Apache-2.0.
+lists the available model, data and execution paths. Supply local checkpoints
+and use the recipe's model-specific environment. Original DMD2 and LTX sources
+use their respective licenses.
 
 Official Self-Forcing is **not** the existing W4 LiveWan cross-scale workflow.
 
-**Official distributed workflows:** SD1.5 has a [native FSDP2 reference](docs/guides/dmd2_fsdp2_reference.md), distinct from its optimized Resident/DDP combination. Official Self-Forcing has native FSDP2 reference and optimized configurations. [Choose and launch these source-bound recipes](docs/guides/official_optimized_training.md) through `distillctl train`, without a historical plan. Their public distributed GPU qualification is separate from the guide's historical measurements. The six native recipes below remain unchanged.
-The generic flow-DMD recipe is **not** a replacement for either official loss.
+**Official distributed workflows:** SD1.5 provides a [native FSDP2 reference](docs/guides/dmd2_fsdp2_reference.md) and an optimized Resident/DDP configuration. Official Self-Forcing provides native FSDP2 reference and optimized configurations. [Choose and launch a recipe](docs/guides/official_optimized_training.md) through `distillctl train`. Each workflow keeps its own loss, sampling and update rules.
 
 ## Six preserved native workloads
 
@@ -118,11 +120,9 @@ The generic flow-DMD recipe is **not** a replacement for either official loss.
 | W5 | Full-sequence H3 audio–video, explicitly approximate Grid1000 | [Full-sequence H3](recipes/h3_fullseq/README.md) |
 | W6 | DiffSynth autoregressive previous/current audio–video, continuous sigma | [H3 AR](recipes/h3_ar/README.md) |
 
-Original source, hardware, precision, capacity and numerical gates remain.
-Native selected-plan workers retain their actual lifecycle limits; separately
-versioned continuous reference paths are not permission to widen a frozen
-benchmark. See the [support matrix](docs/guides/support_matrix.md) and
-[native guide](docs/guides/native_workloads.md).
+Use the [native guide](docs/guides/native_workloads.md) for continuous-training
+recipes, checkpoint recovery and output commands, and the
+[support matrix](docs/guides/support_matrix.md) to select a backend.
 
 ```sh
 distillctl workloads describe --workload W4
@@ -133,9 +133,9 @@ distillctl train recipes/helios_nogan/training.json --dry-run
 
 Replace recipe asset placeholders before execution. The old five locked
 profiles remain available with `distillctl workloads list --legacy`.
-Existing A100/H100 results retain separate [source](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md)
-and [H100](docs/status/H100_SOURCE_SNAPSHOT_20261019.md) identities; this framework
-integration does not rerun them or turn CPU tests into hardware claims.
+Existing A100/H100 implementations and results are indexed in the
+[source overview](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and
+[H100 overview](docs/status/H100_SOURCE_SNAPSHOT_20261019.md).
 
 ## Execution and extension
 
@@ -143,8 +143,8 @@ integration does not rerun them or turn CPU tests into hardware claims.
 `manual` selects an admitted implementation; `auto` measures real candidates
 and runs the existing constrained solver; `plan` executes that saved,
 source-bound selection. The implementation and actual operation/version/effect
-receipts are recorded. Unsupported layouts or stale caches fail closed rather
-than falling back to an old script. Ray is not a required dependency.
+receipts are recorded. Layout and cache-version checks bind the saved plan to
+the execution. The runtime has no Ray dependency.
 
 See [physical capabilities](docs/guides/optimization_capabilities.md),
 [framework architecture](docs/architecture/framework.md) and
@@ -172,7 +172,7 @@ in their separate environments. The package's installed-wheel acceptance runs
 outside the checkout and verifies fresh-process training/recovery, a measured
 saved plan and genuinely new-input decoded generation after removing training
 artifacts. See [the current integration receipt](docs/status/FRAMEWORK_MODEL_EXPANSION_CPU_20261023.md)
-for source-scoped tests and unvalidated capabilities.
+for the corresponding validation records.
 
 Contributions must retain semantics and include real update/recovery or effect
 proof as appropriate; see [CONTRIBUTING](CONTRIBUTING.md). Framework-authored

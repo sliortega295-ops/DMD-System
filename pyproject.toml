@@ -137,6 +137,10 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/status" = [
     "docs/status/official_optimized_framework.md",
     "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",
+    "docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md",
+]
+"share/distillschedule/artifacts/framework/20261030" = [
+    "artifacts/framework/20261030/livewan_native_recovery_scope.json",
 ]
 "share/distillschedule/artifacts/framework/20261029" = [
     "artifacts/framework/20261029/wan_portable_output_acceptance.json",

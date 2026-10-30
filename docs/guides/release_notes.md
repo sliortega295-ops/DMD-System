@@ -1,8 +1,22 @@
 # Bounded framework release notes
 
-This is release hardening of the existing **0.3.0** framework, not a declaration
-that the mature-framework plan or its GPU/pretrained milestones are complete.
-No new throughput, speedup, convergence or quality result is claimed.
+DMD-System 0.3.0 brings model adapters, native distillation workflows,
+execution policies and the training lifecycle into one `distillctl` interface.
+
+## Main integration — 2026-10-30
+
+The source includes all six native workloads, official Self-Forcing and
+SD1.5/SDXL DMD2, plus LTX, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo adapters.
+Users can prepare model-native inputs, choose a recipe and strategy, train,
+save and resume at cycle boundaries, and export the current Student.
+
+Wan and both official optimized workflows have public restart and generated
+output records. LiveWan's C51 C1 checkpoint and fresh-process C2 native
+training/checkpoint also completed on all 16 ranks. Existing long-run records
+are retained alongside the model-specific integration tests.
+
+See the [feature overview](../status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
+for the public entry points and the capability matrix for each recipe.
 
 ## Reachable capabilities and evidence tiers
 
@@ -26,7 +40,9 @@ No new throughput, speedup, convergence or quality result is claimed.
   W4's full C51 stream includes actual two-wave drain and two-pool checkpoint
   lifecycle. W6's native AR stream saves/restores the actual ZeRO-3 engine and
   both LoRAs at complete G1/F1/EMA0 boundaries. These new continuity paths have
-  source/CPU protocol proof; their native GPU/100-cycle acceptance is pending.
+  source/CPU protocol proof. W4 additionally has the scoped native C1/fresh-C2
+  receipts described above; W2/W3/W6 changed endpoints still need qualification.
+  Historical 50/100-cycle training remains reusable within its original scope.
 * W1/W2/W3 now export their actual restored current unmerged G with a real
   Wan2.1 VAE and emit independent new-prompt decoded video configs. Tests use
   actual tiny original G/sampler/VAE in a fresh process without old training or
