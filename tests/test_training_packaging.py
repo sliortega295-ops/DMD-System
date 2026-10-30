@@ -285,10 +285,12 @@ def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_met
     from packaging.requirements import Requirement
     triton = [Requirement(value) for value in wheel_metadata.get_all("Requires-Dist")
               if Requirement(value).name == "triton"]
-    assert len(triton) == 1 and str(triton[0].specifier) == "==3.6.0"
-    assert triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Linux", "platform_machine": "x86_64"})
-    assert not triton[0].marker.evaluate({"extra": "train", "platform_system": "Linux", "platform_machine": "x86_64"})
-    assert not triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Darwin", "platform_machine": "arm64"})
+    assert len(triton) == 2 and all(str(item.specifier) == "==3.6.0" for item in triton)
+    for extra in ("test-helios", "test-helios-native-history"):
+        assert sum(item.marker.evaluate({"extra": extra, "platform_system": "Linux", "platform_machine": "x86_64"}) for item in triton) == 1
+        assert not any(item.marker.evaluate({"extra": extra, "platform_system": "Darwin", "platform_machine": "arm64"}) for item in triton)
+    for extra in ("train", "helios-reference", "test-helios-model"):
+        assert not any(item.marker.evaluate({"extra": extra, "platform_system": "Linux", "platform_machine": "x86_64"}) for item in triton)
     import yaml
     workflow = yaml.safe_load((ROOT / ".github/workflows/framework-cpu.yml").read_text())
     commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["lifecycle"]["steps"])

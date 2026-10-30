@@ -442,8 +442,12 @@ def test_owned_entry_complete_cycle_resume_in_a_new_process_and_version_refusal(
     output = tmp_path/'resumed.pt'
     command = ('from test_training_flow_model_methods import _resume_owned; import sys; '
                '_resume_owned(sys.argv[1], sys.argv[2])')
+    paths = [str(Path(__file__).resolve().parent)]
+    if os.environ.get('PYTHONPATH'):
+        paths.append(os.environ['PYTHONPATH'])
     process = subprocess.run([sys.executable, '-c', command, str(checkpoint), str(output)],
-        capture_output=True, text=True, env={**os.environ, 'OMP_NUM_THREADS': '1'})
+        capture_output=True, text=True, env={**os.environ, 'OMP_NUM_THREADS': '1',
+                                           'PYTHONPATH': os.pathsep.join(paths)})
     assert process.returncode == 0, process.stdout + process.stderr
     assert equal(expected, torch.load(output, weights_only=True))
 

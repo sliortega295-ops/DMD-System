@@ -10,8 +10,8 @@ import pytest
 import helios_capture_source_review as review
 
 
-def _current_source():
-    path = Path(__file__).resolve().parents[1] / review.SOURCE_PATH
+def _current_source(source_path=review.SOURCE_PATH):
+    path = Path(__file__).resolve().parents[1] / source_path
     text = path.read_text()
     function = next(node for node in ast.parse(text).body
                     if isinstance(node, ast.FunctionDef) and node.name == "capture_rank")
@@ -94,3 +94,45 @@ def test_contract_cannot_relabel_the_parent_or_reviewed_source(tmp_path, monkeyp
     monkeypatch.setattr(review, "REVIEW_PATH", path)
     with pytest.raises(AssertionError):
         review.assert_nogan_capture_lineage(_current_source())
+
+
+def test_gan_review_retains_the_actual_parent_golden_and_only_the_two_opt_in_nodes():
+    contract = review.load_gan_review()
+    parent = "\n".join(contract["parent_source_lines"])
+    assert contract["parent_commit"] == "f85dfda02b7958a383a3391205f4df588ab1dd5b"
+    assert hashlib.sha256(parent.encode()).hexdigest() == review.GAN_ORIGINAL_SHA256
+    source = _current_source(review.GAN_SOURCE_PATH)
+    review.assert_gan_capture_lineage(source)
+    review.assert_native_history_ast(parent, source, control_name="controls")
+
+
+@pytest.mark.parametrize("old,new", [
+    ("torch.randn(task.latent_shape", "torch.zeros(task.latent_shape"),
+    ("tensors[name].sum() == 0", "tensors[name].sum() != 0"),
+    ("all(bool(tensors[name]", "any(bool(tensors[name]"),
+    ('"rank": rank}', '"rank": 0}'),
+    ("task.native_policy is not None else {}", 'task.native_policy is not None else {"rank": rank}'),
+    ("*, rank, output, provenance", "*, rank=0, output, provenance"),
+    ("step, phase, **options)", "step, phase)"),
+    ("torch.randint(0, 25", "torch.randint(0, 24"),
+    (_OPTIONS, ""),
+])
+def test_gan_unreviewed_sampling_crop_scope_and_default_changes_are_rejected(old, new):
+    source = _current_source(review.GAN_SOURCE_PATH)
+    changed = source.replace(old, new, 1)
+    assert changed != source
+    parent = "\n".join(review.load_gan_review()["parent_source_lines"])
+    with pytest.raises(AssertionError):
+        review.assert_native_history_ast(parent, changed, control_name="controls")
+    with pytest.raises(AssertionError):
+        review.assert_gan_capture_lineage(changed)
+
+
+def test_gan_review_cannot_relabel_the_historical_parent(tmp_path, monkeypatch):
+    contract = deepcopy(review.load_gan_review())
+    contract["parent_source_sha256"] = contract["reviewed_source_sha256"]
+    path = tmp_path / "unreviewed-gan.json"
+    path.write_text(json.dumps(contract))
+    monkeypatch.setattr(review, "GAN_REVIEW_PATH", path)
+    with pytest.raises(AssertionError, match="GAN source review mapping changed"):
+        review.assert_gan_capture_lineage(_current_source(review.GAN_SOURCE_PATH))

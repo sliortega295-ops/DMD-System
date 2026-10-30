@@ -144,6 +144,7 @@ def test_public_unified_cli_dispatch_is_initialization_only(tmp_path, monkeypatc
                     scope='SYNTHETIC_DISPATCH_ONLY_NOT_UPSTREAM_EXECUTION')
     monkeypatch.setattr(api, 'import_generator_weights', initialize)
     request, output = tmp_path/'request.json', tmp_path/'portable'
+    request.write_text(json.dumps(dict(schema_version=api.SCHEMA)))
     assert main(['import-weights', str(request), '--output', str(output)]) == 0
     assert calls == [(request, output)]
     assert json.loads(capsys.readouterr().out)['training_cycles_executed'] == 0

@@ -528,7 +528,9 @@ def test_target_original_gan_zero_history_capture_exact_rng_crops_and_r1(tmp_pat
         samples.append(tuple(names))
     sources = inputs.HeliosCohortSources(42, tuple(samples))
     from distillschedule.strategies.wan_capture import input_stream, native_primitives, stage_control
-    native = native_primitives()  # Setup: cold library imports may consume Python RNG.
+    # Admit the real CPU helper closure before native capture reuses it; a
+    # plain import would leave an unadmitted namespace for later CPU proofs.
+    native = native_primitives(source_only=True)  # Cold imports may consume Python RNG.
     before, py_before = torch.get_rng_state().clone(), random.getstate()
     result = inputs.capture_rank(value, sources, inventory, config, rank=rank, output=tmp_path / "actual",
                                  provenance=dict(evidence_kind="CPU_SYNTHETIC_TEST_ONLY"))

@@ -62,8 +62,11 @@ def inference_config(root, manifest, prepared):
 
 
 def process(script, root):
+    paths = [str(Path(__file__).resolve().parent)]
+    if os.environ.get('PYTHONPATH'):
+        paths.append(os.environ['PYTHONPATH'])
     result = subprocess.run([sys.executable, "-B", "-c", script, str(root)], cwd=repository_root(),
-        env=dict(os.environ), text=True, capture_output=True, timeout=240)
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join(paths)), text=True, capture_output=True, timeout=240)
     assert result.returncode == 0, result.stdout + result.stderr
     return result
 

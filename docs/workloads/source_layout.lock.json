@@ -636,6 +636,22 @@
       "integrated_sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20",
       "source_commit": "112adf5fb165b59a4d975c110c00cb41ed38a1bc",
       "change": "Import the SHA-pinned local FA2 dispatch under explicit offline hub settings before sealing kernel lookup. Exact committed112adf5f worker bytes; SDPA order and original model, input, update and execution policies preserved. Three focused CPU cases and both existing Torch2.10 target import-order diagnostics passed; repaired native execution remains separately qualified."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_generator_rms_epilogue.py",
+      "previous_sha256": "351f35d44bbe8d3ee1a83cdb431139f9dd184d991f05d527e988092097d1ecdd",
+      "integrated_sha256": "2f9ab9c7c80e052f74bb095c1e2e24d2496a4f770020102782c5a37679555b05",
+      "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
+      "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_rollout_cast_cache.py",
+      "previous_sha256": "fc3b6a4dcbc2f9678b37cdf42fbd6dcd184819ac999e2062c65365fe4db721c7",
+      "integrated_sha256": "c1d2de5b4d2d1e9e63fd82f66fb5f40c5cb24fd13ede16513bd04f2792a57404",
+      "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
+      "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
     }
   ]
 }

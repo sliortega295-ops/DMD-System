@@ -107,6 +107,8 @@ print(json.dumps(dict(status='PASS_REAL_ORIGINAL_PUBLIC_W4_IMPORT_EXPORT_FRESH_G
     video_frames=81,checkpoint_cycle=0,training_cycles=0,native_1_3B='NOT_RUN',quality='NOT_RUN')))
 '''
     result = subprocess.run([sys.executable, '-B', '-c', script, str(tmp_path), str(prepared)],
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(__file__).resolve().parent),
+                                                       os.environ.get('PYTHONPATH', '')))),
         text=True, capture_output=True, timeout=180)
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'PASS_REAL_ORIGINAL_PUBLIC_W4_IMPORT_EXPORT_FRESH_GENERATE_DECODE_CPU_TINY_ONLY' in result.stdout

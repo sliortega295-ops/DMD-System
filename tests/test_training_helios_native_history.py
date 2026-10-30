@@ -374,7 +374,7 @@ def test_real_native_zero_history_capture_and_payload_grid_replay(tmp_path):
     from distillschedule.strategies.wan_capture import native_primitives, read_training_config
     from distillschedule.training.helios_inputs import capture_rank, HeliosCohortSources, validate_rank_payload
     from distillschedule.workloads.best_known.registry import repository_root,file_sha256
-    native=native_primitives();value=task();rank=0
+    native=native_primitives(source_only=True);value=task();rank=0
     cfg=yaml.safe_load((repository_root()/'configs/distillschedule/templates/helios_stage3_384x640.yaml').read_text())
     cfg['training_config']['noise_corrupt_clean_prob_history']=1.
     path=tmp_path/'native-config.yaml';path.write_text(yaml.safe_dump(cfg));cfg=read_training_config(path)
@@ -410,48 +410,6 @@ def test_real_native_zero_history_capture_and_payload_grid_replay(tmp_path):
     assert not torch.cuda.is_initialized()
 
 
-def test_target_actual_helios_block_class_checkpoint_and_cpu_fsdp_ownership(tmp_path):
-    """Small actual class/topology test for the pinned native environment.
-
-    No full-size model, GPU, numerical qualification or pretrained assets.
-    """
-    pytest.importorskip('ftfy');pytest.importorskip('omegaconf')
-    import torch
-    import torch.distributed as dist
-    from torch.distributed.device_mesh import init_device_mesh
-    from torch.distributed.fsdp import fully_shard, MixedPrecisionPolicy, FSDPModule
-    from distillschedule.training.helios_worker import _backend
-    from distillschedule.runtime.fsdp2_static import configure_fsdp2_checkpointing
-    from distillschedule.runtime.helios_native_history import admit_engine,generator_phase
-    _backend()  # original native namespace/dependency owner, no model or download
-    from runtime.critic_pool_helios import configure_offline_helios
-    configure_offline_helios()  # Same offline admission as the actual builder.
-    from helios.modules.transformer_helios import HeliosTransformer3DModel, HeliosTransformerBlock
-    assert not dist.is_initialized() and not torch.cuda.is_initialized()
-    dist.init_process_group('gloo',init_method='file://'+str(tmp_path/'actual-topology'),rank=0,world_size=1)
-    try:
-        model=HeliosTransformer3DModel(num_attention_heads=1,attention_head_dim=12,ffn_dim=24,
-            freq_dim=12,text_dim=4096,num_layers=40,rope_dim=(4,4,4),cross_attn_norm=True)
-        model.enable_gradient_checkpointing();configure_fsdp2_checkpointing(model)
-        mesh=init_device_mesh('cpu',(1,));mp=MixedPrecisionPolicy(param_dtype=torch.bfloat16,reduce_dtype=torch.float32)
-        for block in model.blocks:
-            assert isinstance(block,HeliosTransformerBlock)
-            fully_shard(block,mesh=mesh,mp_policy=mp,reshard_after_forward=True)
-        fully_shard(model,mesh=mesh,mp_policy=mp,reshard_after_forward=True)
-        assert isinstance(model,FSDPModule)
-        engine=NS(module=model,optimizer=NS(param_groups=[dict(params=list(model.parameters()))]))
-        actual=admit_engine(engine)
-        assert actual['checkpoint_blocks']==40 and actual['fsdp_units']==41
-        with generator_phase(engine,task=task(),with_grad=False,action_id='r0') as (_,receipt):
-            assert receipt['unshard_count']==41
-        assert receipt['reshard_count']==41 and receipt['restored']
-        original=model._gradient_checkpointing_func
-        model._gradient_checkpointing_func=lambda *a,**k:None
-        with pytest.raises(ValueError,match='checkpoint function'): admit_engine(engine)
-        model._gradient_checkpointing_func=original
-    finally:
-        dist.destroy_process_group()
-    assert not dist.is_initialized() and not torch.cuda.is_initialized()
 
 
 def test_native_history_recipe_discovery_needs_no_torch_cuda_or_assets():
@@ -511,3 +469,53 @@ def test_old_default_graph_helper_receives_same_engine_without_new_phase(phase_p
     assert fn(OperationContext(op,VersionLedger(dict(generator=0,critic=0,ema=0))))['original_engine_identity']
     assert 'native_history_phase' not in seen[0]
     assert not engine.events
+
+
+def _cpu_import_capability_probe(probe, *, cuda_version):
+    """Test-only exception normalization for the original optional import.
+
+    Probe the real runtime first. Only the CPU-wheel missing-CUDA assertion is
+    equivalent to the unsupported-GPU RuntimeError already handled upstream.
+    """
+    def checked(*args, **kwargs):
+        try:
+            return probe(*args, **kwargs)
+        except AssertionError as error:
+            if cuda_version is None and str(error) == 'Torch not compiled with CUDA enabled':
+                raise RuntimeError('CPU-only topology fixture has no CUDA attention capability') from error
+            raise
+    return checked
+
+
+def test_cpu_topology_import_probe_calls_original_and_preserves_success():
+    seen = []
+    value = object()
+    def original(*args, **kwargs):
+        seen.append((args, kwargs))
+        return value
+    probe = _cpu_import_capability_probe(original, cuda_version=None)
+    assert probe('device', explicit=True) is value
+    assert seen == [(('device',), {'explicit': True})]
+
+
+@pytest.mark.parametrize('cuda_version,error,translated', [
+    (None, AssertionError('Torch not compiled with CUDA enabled'), True),
+    ('12.8', AssertionError('Torch not compiled with CUDA enabled'), False),
+    (None, AssertionError('unrelated assertion'), False),
+    (None, RuntimeError('real unsupported GPU'), False),
+    (None, ValueError('unrelated failure'), False),
+])
+def test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda(cuda_version, error, translated):
+    seen = []
+    def original():
+        seen.append(True)
+        raise error
+    probe = _cpu_import_capability_probe(original, cuda_version=cuda_version)
+    with pytest.raises(RuntimeError if translated else type(error)) as caught:
+        probe()
+    assert seen == [True]
+    if translated:
+        assert caught.value.__cause__ is error
+        assert str(caught.value) == 'CPU-only topology fixture has no CUDA attention capability'
+    else:
+        assert caught.value is error

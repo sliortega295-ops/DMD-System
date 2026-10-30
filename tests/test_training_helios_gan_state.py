@@ -40,7 +40,7 @@ def original():
     from distillschedule.strategies.wan_capture import native_primitives
     root = repository_root() / "third_party/helios_compat"
     assert all(file_sha256(root / name) == sha for name, sha in SOURCES.items())
-    post = native_primitives().post
+    post = native_primitives(source_only=True).post
     assert Path(post.__file__).resolve() == root / "source/helios/utils/utils_helios_post.py"
     assert Path(post._critic_loss.__code__.co_filename).resolve() == Path(post.__file__).resolve()
     path = root / "source/helios/modules/transformer_helios.py"

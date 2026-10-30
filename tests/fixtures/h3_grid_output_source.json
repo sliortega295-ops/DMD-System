@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.h3_grid_output_test_source.v1",
+  "origin": "https://github.com/ModelTC/LightX2V",
+  "license": "Apache-2.0",
+  "upstream_commit": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be",
+  "trainer": "lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py",
+  "upstream_trainer_sha256": "e21e4244f0954a0db0b4dd2a356ba00d75db73463815de13cd14200222b2dda0",
+  "reviewed_trainer_sha256": "a940de8f73c0374c2ac5bf6b6bf6518d13ee0101b676e0625776396075f57b8a",
+  "patch_sha256": "64f91f1db0e869d8e6c2dbd4e1a34b2daa2774e928647918c54f0d47ad434224",
+  "provenance": "Exact trainer text retained by framework_maturation_20261023/r44_h3_grid_output/reports/existing-sources-r5.json; matches the existing h3_grid_inference.SOURCE_FILES identity.",
+  "scope": "Restore the existing inference source closure in an isolated test checkout. The historical change adds os and an explicit benchmark end-step selector in forward_loss; Grid inference never calls forward_loss. No sampler, packing, model, original forward, production source identity or weights are changed.",
+  "diffusers": {
+    "origin": "https://github.com/huggingface/diffusers",
+    "commit": "9284607295a09f759aadd65ed08f48b35feea6d9",
+    "version": "0.40.0.dev0",
+    "model_sha256": "1926b1bc15a5bebda05e3dc8cde1b3955d56641ba7f8f9d6e90c8f78c66ae30c"
+  }
+}

@@ -352,10 +352,14 @@ def test_fresh_process_horizon100_checkpoint50_preserves_data_and_rng(finite_poo
     full,partial,resumed = [tmp_path/f"{label}.json" for label in ("full","partial","resumed")]
     _checkpoint_protocol_run(spec,full)
     _checkpoint_protocol_run(spec,partial,end=50)
+    paths = [str(Path(__file__).resolve().parent)]
+    if os.environ.get('PYTHONPATH'):
+        paths.append(os.environ['PYTHONPATH'])
     child = subprocess.run([sys.executable,"-c",
         "from test_training_helios_epoch_inputs import _checkpoint_protocol_run; "
         "import sys; _checkpoint_protocol_run(sys.argv[1],sys.argv[2],resume=sys.argv[3])",
-        str(spec),str(resumed),str(tmp_path/"checkpoint50")],env=dict(os.environ),text=True,capture_output=True,timeout=120)
+        str(spec),str(resumed),str(tmp_path/"checkpoint50")],
+        env=dict(os.environ,PYTHONPATH=os.pathsep.join(paths)),text=True,capture_output=True,timeout=120)
     assert child.returncode == 0, child.stdout+child.stderr
     result = json.loads(full.read_text()); restored = json.loads(resumed.read_text())
     assert result == restored
@@ -409,7 +413,6 @@ def test_existing_public_data_command_requires_explicit_policy(finite_pool,tmp_p
 
 
 @pytest.mark.parametrize("function,sha",[
-    (gan.capture_rank,"8439fe7e9692ccc71297826a40b812af866a3e96ab14caa9ee36aa797fe3d24f"),
     (nogan._require_fresh_cohorts,"463342446fc2cfe30bd428e7d5e61751d37d0db13987ab6f97f873b4ea181ef2"),
 ])
 def test_native_capture_math_and_frozen_v1_freshness_are_byte_identical(function,sha):
@@ -424,6 +427,12 @@ def test_nogan_capture_has_only_the_versioned_reviewed_native_history_opt_in():
     # Actual source is reviewed as a bounded extension, never called byte-identical.
     # The helper retains the original golden and compares with its actual parent.
     assert_nogan_capture_lineage(inspect.getsource(nogan.capture_rank))
+
+
+def test_gan_capture_has_only_the_versioned_reviewed_native_history_opt_in():
+    import inspect
+    from helios_capture_source_review import assert_gan_capture_lineage
+    assert_gan_capture_lineage(inspect.getsource(gan.capture_rank))
 
 
 @pytest.mark.parametrize("inputs,command",[(nogan,"prepare-helios-stream"),(gan,"prepare-helios-gan-stream")])

@@ -289,6 +289,8 @@ assert state['generator'].model.freqs is state['generator'].rope_frequencies
 assert not torch.cuda.is_initialized()
 '''
     result = subprocess.run([sys.executable, '-B', '-c', script, str(tmp_path / 'export')],
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(__file__).resolve().parent),
+                                                       os.environ.get('PYTHONPATH', '')))),
         text=True, capture_output=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
 

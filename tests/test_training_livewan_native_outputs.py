@@ -1,7 +1,9 @@
 """C51 current-G output; CPU fixtures are not native world16 qualification."""
 from copy import deepcopy
 from pathlib import Path
+import ast
 import json
+import os
 import subprocess
 import sys
 from types import SimpleNamespace as NS
@@ -81,22 +83,127 @@ def test_native_export_dispatch_preserves_complete_source_identity(tmp_path,monk
         native.export_native(TrainingConfig.from_dict(bad,source=conf.source),tmp_path/'checkpoint',tmp_path/'no')
 
 
+def _reviewed_continuous_worker(parent):
+    """Apply only U3 input receipts and U7 opt-in phase receipts to the old AST.
+
+    56ba6b7bcfb5639c9e3eeed56f1c1f610ff67a15 and
+    2c94ca49464323f674ae5a229e276bc53c6b65fa added these exact statements.
+    The 422e5582 baseline and every other statement/call remain authoritative.
+    """
+    expected = deepcopy(parent)
+    dump = lambda node: ast.dump(node, include_attributes=False)
+    expr = lambda text: ast.parse(text, mode='eval').body
+    loops = [node for node in expected.body if isinstance(node, ast.For)
+             and isinstance(node.target, ast.Name) and node.target.id == 'cycle'
+             and dump(node.iter) == dump(expr('range(start_cycle, end_cycle)'))]
+    assert len(loops) == 1
+    loop = loops[0]
+    assert dump(loop.body[1]) == dump(ast.parse('cycle_started = time.perf_counter()').body[0])
+    completed = [node for node in loop.body if isinstance(node, ast.If)
+                 and dump(node.test) == dump(expr('continuation is not None'))]
+    assert len(completed) == 1 and len(completed[0].body) == 1
+    assert dump(completed[0].body[0].value.func) == dump(expr('continuation.cycle_complete'))
+    loop.body.insert(1, ast.parse('''
+if continuation is not None and getattr(continuation, 'phase_diagnostics', None) is not None:
+    continuation.phase_receipt(torch=torch, rank=rank, device=device,
+        phase='full5_entry', cycle=cycle + 1, versions=versions)
+''').body[0])
+    completed[0].body.insert(0, ast.parse('''
+if getattr(continuation, 'phase_diagnostics', None) is not None:
+    continuation.phase_receipt(torch=torch, rank=rank, device=device,
+        phase='full5_exit', cycle=cycle + 1, versions=versions)
+''').body[0])
+    receipts = [node.value for node in expected.body if isinstance(node, ast.Assign)
+                and [dump(target) for target in node.targets] == [dump(
+                    ast.parse('evidence.continuous_pipeline = {}').body[0].targets[0])]]
+    assert len(receipts) == 1 and isinstance(receipts[0], ast.Dict)
+    receipt = receipts[0]
+    positions = [i for i, key in enumerate(receipt.keys)
+                 if isinstance(key, ast.Constant) and key.value == 'source_reuse_across_cycles']
+    assert len(positions) == 1
+    index = positions[0]
+    assert dump(receipt.values[index]) == dump(expr('False if continuation is not None else trace.source_reuse_across_cycles'))
+    receipt.values[index] = expr('trace.source_reuse_across_cycles')
+    final = expected.body[-1]
+    assert isinstance(final, ast.If) and dump(final.test) == dump(expr('continuation is not None'))
+    assert len(final.body) == 1 and isinstance(final.body[0], ast.Expr)
+    update = final.body[0].value
+    assert isinstance(update, ast.Call) and dump(update.func) == dump(expr('evidence.continuous_pipeline.update'))
+    flags = [keyword for keyword in update.keywords if keyword.arg == 'source_reuse_across_cycles']
+    assert len(flags) == 1 and dump(flags[0].value) == dump(expr('False'))
+    flags[0].arg, flags[0].value = None, expr('input_marker(trace)')
+    final.body.insert(0, ast.parse('from distillschedule.training.livewan_c51_training import input_marker').body[0])
+    return expected
+
+
+def _assert_worker_lineage(parent, current):
+    def functions(text):
+        return {node.name: node for node in ast.parse(text).body if isinstance(node, ast.FunctionDef)}
+    old, new = functions(parent), functions(current)
+    names = ('_run_pipeline_8x8', 'generator_backward_for_sample', 'critic_backward_for_batch')
+    for name in names:
+        assert ast.dump(old[name], include_attributes=False) == ast.dump(new[name], include_attributes=False), name
+    name = '_run_pipeline_8x8_continuous'
+    assert ast.dump(_reviewed_continuous_worker(old[name]), include_attributes=False) == ast.dump(new[name], include_attributes=False), name
+
+
+def _worker_lineage_sources():
+    from distillschedule.runtime import livewan_crossscale_worker as worker
+    root=Path(worker.__file__).parents[3]
+    parent=subprocess.check_output(['git','show','422e5582be57c5b060738aea8be01004c8468f83:'+str(
+        Path(worker.__file__).relative_to(root))],cwd=root,text=True)
+    return parent, Path(worker.__file__).read_text()
+
+
 def test_real_worker_output_seam_precedes_any_context_or_transport_and_math_is_unchanged():
-    import ast
     from distillschedule.runtime import livewan_crossscale_worker as worker
     import inspect
     source=inspect.getsource(worker.run_worker)
     assert source.index('continuation.export_current(')<source.index('generator_streamers = []')
     assert source.index('continuation.export_current(')<source.index('build_score_context(')
     assert source.index('continuation.export_current(')<source.index('transport_factory =')
-    root=Path(worker.__file__).parents[3]
-    parent=subprocess.check_output(['git','show','422e5582be57c5b060738aea8be01004c8468f83:'+str(
-        Path(worker.__file__).relative_to(root))],cwd=root,text=True)
-    names=('_run_pipeline_8x8','_run_pipeline_8x8_continuous','generator_backward_for_sample','critic_backward_for_batch')
-    def functions(text):
-        return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(text).body if isinstance(n,ast.FunctionDef)}
-    old,new=functions(parent),functions(Path(worker.__file__).read_text())
-    assert all(old[n]==new[n] for n in names)
+    _assert_worker_lineage(*_worker_lineage_sources())
+
+
+@pytest.mark.parametrize('mutation', ['entry-name', 'exit-cycle', 'versions', 'phase-location',
+                                    'input-marker', 'reuse-flag', 'loop-bound', 'math-call'])
+def test_worker_source_review_rejects_unreviewed_receipt_or_math_changes(mutation):
+    parent, source = _worker_lineage_sources()
+    tree = ast.parse(source)
+    worker = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                  and node.name == '_run_pipeline_8x8_continuous')
+    phases = [node for node in ast.walk(worker) if isinstance(node, ast.Call)
+              and isinstance(node.func, ast.Attribute) and node.func.attr == 'phase_receipt']
+    assert len(phases) == 2
+    phase = {next(keyword.value.value for keyword in call.keywords if keyword.arg == 'phase'): call
+             for call in phases}
+    if mutation in ('entry-name', 'exit-cycle', 'versions'):
+        call = phase['full5_exit' if mutation == 'exit-cycle' else 'full5_entry']
+        key = {'entry-name': 'phase', 'exit-cycle': 'cycle', 'versions': 'versions'}[mutation]
+        next(keyword for keyword in call.keywords if keyword.arg == key).value = ast.Constant('UNREVIEWED')
+    elif mutation == 'phase-location':
+        loop = next(node for node in worker.body if isinstance(node, ast.For))
+        loop.body[1], loop.body[2] = loop.body[2], loop.body[1]
+    elif mutation == 'input-marker':
+        marker = next(node for node in ast.walk(worker) if isinstance(node, ast.Call)
+                      and isinstance(node.func, ast.Name) and node.func.id == 'input_marker')
+        marker.args = [ast.Name(id='other_trace', ctx=ast.Load())]
+    elif mutation == 'reuse-flag':
+        receipt = next(node.value for node in worker.body if isinstance(node, ast.Assign)
+                       and isinstance(node.value, ast.Dict) and any(isinstance(key, ast.Constant)
+                           and key.value == 'source_reuse_across_cycles' for key in node.value.keys))
+        index = next(i for i, key in enumerate(receipt.keys) if isinstance(key, ast.Constant)
+                     and key.value == 'source_reuse_across_cycles')
+        receipt.values[index] = ast.Constant(False)
+    elif mutation == 'loop-bound':
+        loop = next(node for node in worker.body if isinstance(node, ast.For))
+        loop.iter.args[-1] = ast.Constant(2)
+    else:
+        call = next(node for node in ast.walk(worker) if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name) and node.func.id == '_run_pipeline_8x8')
+        next(keyword for keyword in call.keywords if keyword.arg == 'step_offset').value = ast.Constant(0)
+    with pytest.raises(AssertionError):
+        _assert_worker_lineage(parent, ast.unparse(ast.fix_missing_locations(tree)))
 
 
 def _primary_worker(rank,rendezvous,root,fault):
@@ -293,7 +400,10 @@ assert len(list((root/'generated/frames').glob('*.png')))==81
 assert not torch.cuda.is_initialized()
 print(json.dumps(dict(status='PASS_REAL_ORIGINAL_CURRENT_STUDENT_FRESH_PROCESS_CPU',video_frames=81)))
 '''
-    result=subprocess.run([sys.executable,'-B','-c',script,str(case.root)],text=True,capture_output=True,timeout=150)
+    result=subprocess.run([sys.executable,'-B','-c',script,str(case.root)],
+        env=dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(__file__).resolve().parent),
+                                                       os.environ.get('PYTHONPATH', '')))),
+        text=True,capture_output=True,timeout=150)
     assert result.returncode==0,result.stdout+result.stderr
 
 

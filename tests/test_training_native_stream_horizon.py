@@ -268,8 +268,8 @@ def test_actual_helios_loop_horizon_and_restored_cursor_are_not_reset(tmp_path,m
     versions = lifecycle.expected_versions(0)
     generator,critic,ema = NS(global_steps=2),NS(global_steps=10),NS(optimization_step=10)
     binding = dict(config=NS(trainer=dict(cycles=100,output_dir=str(tmp_path),**(dict(resume_from='SYNTHETIC_TEST_ONLY') if start else {}))),
-        identity={},checkpoint_policy={},stream=dict(stream_sha256='SYNTHETIC_TEST_ONLY',cohorts=[
-            dict(trace_bundle=str(i),trace_hash=fingerprint(i)) for i in range(100)]))
+        identity={},checkpoint_policy={},stream=dict(identity={},stream_sha256='SYNTHETIC_TEST_ONLY',cohorts=[
+            dict(task=HeliosCohortTask(i).to_dict(),trace_bundle=str(i),trace_hash=fingerprint(i)) for i in range(100)]))
     monkeypatch.setattr(native_state,'engine_state',lambda *a,**kw:{})
     monkeypatch.setattr(lifecycle,'load_cohort',lambda task,*a,**kw:task)
     header = dict(cycle=50,cursor=50,policy={},versions=lifecycle.expected_versions(50))
@@ -361,7 +361,10 @@ def test_w2_public_100_metadata_lowering_keeps_reference_or_safe_policy(tmp_path
     stream = dict(identity=dict(request=HeliosCohortTask(0).request.to_dict()),cohorts=[
         dict(trace_bundle=str(tmp_path/f'c{i}'),trace_hash=fingerprint(i)) for i in range(100)])
     counts = []
-    def load(path,*,cycles): counts.append(cycles); return stream
+    def load(path,*,cycles,expected_kind):
+        assert expected_kind == 'original_helios_cohort_stream.v1'
+        counts.append(cycles)
+        return stream
     monkeypatch.setattr(worker,'load_stream',load)  # SYNTHETIC_TEST_ONLY physical assets/trace IO, real lowerer.
     report = native.validate_native(config)
     assert report['capabilities']['cycles']['max'] == 100 and counts == [100]
