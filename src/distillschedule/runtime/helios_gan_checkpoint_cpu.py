@@ -129,7 +129,7 @@ def admit_engine(engine,*,task=None):
     require(core is not None and core.generator is engine,'W3 exact original G role owner missing',path='helios.gan.checkpoint_cpu')
     callables=authenticate_callables(core,require_cohort=task is not None)
     from .helios_gan_manual.runtime import TRANSFORMER_SHA
-    require(file_sha256(transformer.__file__)==TRANSFORMER_SHA,
+    require(file_sha256(Path(transformer.__file__))==TRANSFORMER_SHA,
             'W3 original whole-block/head class source changed',path='helios.gan.checkpoint_cpu')
     if task is not None:
         require_task(task)

@@ -707,3 +707,33 @@ def test_actual_w3_phase_branch_installs_after_factory_and_releases_before_adam(
     assert receipt['checkpoint_input_cpu']['stats']['unused_release_count']==120-restores
     assert receipt['gan_g_checkpoint_boundary']['counts']['drained_before_g_backward'] is True
     assert binding['checkpoint_input_executions'][0]['checkpoint_input_cpu']==receipt['checkpoint_input_cpu']
+
+
+def test_native_source_authentication_reads_real_module_file_before_cuda_admission(
+        bound_original, monkeypatch):
+    """Real source checksum + real callable authentication; stop before CUDA gates.
+
+    The import stub supplies the actual immutable upstream file via __file__,
+    which Python exposes as str. It is not a simulated GPU/FSDP acceptance.
+    """
+    from distillschedule.runtime import helios_gan_checkpoint_cpu as runtime
+    from distillschedule.runtime import helios_gan_native_history as history
+    from distillschedule.training import helios_gan_checkpoint_cpu as policy
+    from distillschedule.workloads.best_known.registry import repository_root
+    b = bound_original
+    upstream = ModuleType('helios.modules.transformer_helios')
+    upstream.__file__ = str(repository_root() / 'third_party/helios_compat/source/helios/modules/transformer_helios.py')
+    upstream.HeliosTransformerBlock = TinyBlock
+    upstream.Discriminator3DHead = torch.nn.Linear
+    package = ModuleType('helios.modules')
+    package.transformer_helios = upstream
+    monkeypatch.setitem(sys.modules, 'helios.modules', package)
+    monkeypatch.setitem(sys.modules, 'helios.modules.transformer_helios', upstream)
+    monkeypatch.setattr(policy, 'require_binding', lambda: {'gan_core': b.core})
+    def stop_before_cuda_admission(task):
+        raise RuntimeError('TEST_STOP_AFTER_REAL_SOURCE_AUTHENTICATION')
+    monkeypatch.setattr(history, 'require_task', stop_before_cuda_admission)
+    # Source hashing and callable authentication are not mocked.
+    with pytest.raises(RuntimeError, match='TEST_STOP_AFTER_REAL_SOURCE_AUTHENTICATION'):
+        runtime.admit_engine(b.generator, task=object())
+    assert not torch.cuda.is_initialized()
