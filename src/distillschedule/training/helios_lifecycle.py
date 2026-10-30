@@ -53,6 +53,11 @@ def _bind_native_history_construction(*, policy):
         from distillschedule.runtime.helios_gan_native_history import descriptor
         schema = "distillschedule.helios_gan_native_history_training_identity.v1"
         capability, selected = "gan_native_history", "execution_policy"
+        from .helios_gan_training import checkpoint_cpu_policy
+        candidate = checkpoint_cpu_policy(binding["config"])
+        if candidate is not None:
+            candidate.require_binding()
+            schema = candidate.IDENTITY
     else:
         from .helios_inputs import HeliosCohortTask as Task, NATIVE_KIND, NATIVE_SCHEMA
         from . import helios_native_safe_stream, helios_checkpoint_cpu

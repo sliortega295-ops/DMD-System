@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM, HELIOS_GAN_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
 from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
 from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
@@ -164,6 +164,9 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             from distillschedule.runtime.helios_gan_native_history import descriptor
             result["capabilities"]["native_history"] = descriptor()
             result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
+        if config.execution.get("preset") == HELIOS_GAN_CHECKPOINT_CPU_STREAM:
+            from .helios_gan_checkpoint_cpu import checkpoint_input_preservation
+            result["capabilities"]["checkpoint_input_cpu"] = checkpoint_input_preservation()
     if helios_stream or _helios_gan_stream(config, workload):
         result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
             checkpoint_required=True, immutable_horizon=True,
@@ -259,7 +262,7 @@ def _helios_safe_stream(config, workload):
 
 
 def _helios_gan_stream(config, workload):
-    return workload == "W3" and config.execution.get("preset") == HELIOS_GAN_STREAM
+    return workload == "W3" and config.execution.get("preset") in (HELIOS_GAN_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM)
 
 
 def _h3_grid_training(config, workload):
@@ -377,7 +380,11 @@ def _options(config, workload):
                  "fresh W6 stop must be a complete checkpoint boundary inside its immutable horizon")
         return mode
     if _helios_gan_stream(config, workload):
-        _require(config.execution.get("mode") == "manual" and "capacity_policy" not in config.execution
+        checkpoint_cpu = config.execution.get("preset") == HELIOS_GAN_CHECKPOINT_CPU_STREAM
+        if checkpoint_cpu:
+            from .helios_gan_checkpoint_cpu import validate_config
+            validate_config(config)
+        _require(config.execution.get("mode") == "manual" and (checkpoint_cpu or "capacity_policy" not in config.execution)
                  and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
                  and config.data["input_kind"] in ("original_helios_gan_cohort_stream.v1",
                                                    "original_helios_gan_native_history_cohort_stream.v1")
@@ -689,7 +696,7 @@ def _admit(config):
     paths = {key: _path(config, "execution", key, required=(key in ("task", "assets")
                or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload)
                                                                                 or _livewan_c51_stream(config, workload)
-                                                                                or config.execution.get("preset") == HELIOS_CHECKPOINT_CPU_STREAM)))
+                                                                                or config.execution.get("preset") in (HELIOS_CHECKPOINT_CPU_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM))))
              for key in ("task", "assets", "plan", "capacity_policy", "transport")}
     if workload == "W1" and mode != "plan" and "preset" not in config.execution:
         paths["implementation"] = _path(config, "execution", "implementation")

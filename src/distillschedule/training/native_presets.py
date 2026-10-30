@@ -17,6 +17,7 @@ HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
 HELIOS_NATIVE_SAFE_STREAM = "helios_nogan.native_history_safe_ed8.v1"
 HELIOS_CHECKPOINT_CPU_STREAM = "helios_nogan.native_history_safe_ed8_checkpoint_cpu.v1"
 HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
+HELIOS_GAN_CHECKPOINT_CPU_STREAM = "helios_gan.native_history_fa3_down40_checkpoint_cpu.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 LIVEWAN_C51_STREAM = "self_forcing.c51_stream.v1"
 LIVEWAN_C51_RETIRE_TEXTKV_STREAM = "self_forcing.c51_stream_retire_textkv.v1"
@@ -70,6 +71,14 @@ _PRESETS = {
 
 def describe_preset(workload: str, preset_id: str) -> dict:
     """Metadata only: no Torch, model, asset access or numerical promotion."""
+    if workload == "W3" and preset_id == HELIOS_GAN_CHECKPOINT_CPU_STREAM:
+        value = describe_preset(workload, HELIOS_GAN_STREAM)
+        value.update(id=HELIOS_GAN_CHECKPOINT_CPU_STREAM,
+            runtime_binding="ORIGINAL_NATIVE_HISTORY_WORLD16_FULL_GAN_BUNDLE_G_CHECKPOINT_HIDDEN_CPU",
+            source_binding="current source/assets/native history/full GAN bundle/explicit bounded G-input capacity")
+        value["mechanisms"].append("generator_checkpoint_hidden_input_cpu")
+        value["implementation_paths"].extend(["training/helios_gan_checkpoint_cpu.py", "runtime/helios_gan_checkpoint_cpu.py"])
+        return value
     if workload == "W2" and preset_id == HELIOS_CHECKPOINT_CPU_STREAM:
         value = describe_preset(workload, HELIOS_NATIVE_SAFE_STREAM)
         value.update(id=HELIOS_CHECKPOINT_CPU_STREAM,

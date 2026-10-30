@@ -1,0 +1,8 @@
+{
+  "schema_version": "distillschedule.helios_gan_checkpoint_hidden_cpu_capacity.v1",
+  "storage": "pageable",
+  "rank_pageable_limit_bytes": 7593984000,
+  "rank_pinned_limit_bytes": 0,
+  "node_pageable_limit_bytes": 60751872000,
+  "node_pinned_limit_bytes": 0
+}

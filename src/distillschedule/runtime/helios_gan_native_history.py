@@ -85,6 +85,27 @@ def generator_phase(engine, *, task, with_grad, action_id):
     require_task(task)
     require(with_grad is True and action_id == "g", "GAN history phase is G-only; preserve original detached persistence",
             path="helios.gan.native_history")
+    from distillschedule.training.helios_lifecycle import current_training
+    from distillschedule.training.helios_gan_training import checkpoint_cpu_policy
+    binding = current_training()
+    if binding is not None and checkpoint_cpu_policy(binding["config"]) is not None:
+        from .helios_gan_checkpoint_cpu import generator_scope
+        # Factory sees original sharded FP32 slots, installation alone goes
+        # inside the unchanged complete-G phase. No W2 HSDP admission reuse.
+        registration, capability = generator_scope(engine, task=task)
+        with fsdp2_variable_forward_phase(engine, enabled=True, with_grad=True,
+                expected_units=41, checkpoint_block_type=HeliosTransformerBlock) as (view, receipt):
+            receipt.update(schema_version=SCHEMA, action_id=action_id, task_sha256=task.digest,
+                capability=capability, execution_requirement=REQUIREMENT)
+            try:
+                with registration:
+                    yield view, receipt
+            finally:
+                receipt["checkpoint_input_cpu"] = registration.session.receipt()
+                receipt["gan_g_checkpoint_boundary"] = registration.boundary.receipt()
+                binding.setdefault("checkpoint_input_executions", []).append(dict(
+                    checkpoint_input_cpu=receipt["checkpoint_input_cpu"],gan_g_checkpoint_boundary=receipt["gan_g_checkpoint_boundary"]))
+        return
     capability = admit_engine(engine)
     with fsdp2_variable_forward_phase(engine, enabled=True, with_grad=True,
             expected_units=capability["fsdp_units"], checkpoint_block_type=HeliosTransformerBlock) as (view, receipt):
@@ -118,6 +139,8 @@ def validate_action(row):
                 and phase.get("unshard_count") == phase.get("reshard_count") == 41
                 and phase.get("restored") is True and phase.get("backward_count") == phase.get("commit_count") == 1,
                 "native GAN actual G phase census changed", path="helios.gan.native_history")
+        from .helios_gan_checkpoint_cpu import validate_action as validate_capacity
+        validate_capacity(row)
     elif row["action_id"].startswith("r"):
         p = row.get("persistence", {})
         require(row["action_id"] == "r_all" and "native_history_phase" not in row

@@ -1,0 +1,27 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W3"
+  },
+  "algorithm": {
+    "name": "original_helios_gan"
+  },
+  "data": {
+    "input_kind": "original_helios_gan_native_history_cohort_stream.v1",
+    "prepared": "REPLACE_WITH_PREPARED_STREAM.json"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "preset": "helios_gan.native_history_fa3_down40_checkpoint_cpu.v1",
+    "task": "task.json",
+    "assets": "REPLACE_WITH_EXPLICIT_LOCAL_STREAM_ASSETS.json",
+    "capacity_policy": "capacity.native-history-checkpoint-cpu.template.json"
+  },
+  "trainer": {
+    "cycles": 2,
+    "checkpoint_every": 1,
+    "output_dir": "REPLACE_WITH_NEW_PROJECT_RUN_DIRECTORY",
+    "stop_after_cycle": 1
+  }
+}

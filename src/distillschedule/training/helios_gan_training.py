@@ -47,6 +47,11 @@ def effective_flags():
     return {name.replace("-", "_"): name.replace("-", "_") in enabled for name in _OFF}
 
 
+def checkpoint_cpu_policy(config):
+    from . import helios_gan_checkpoint_cpu
+    return helios_gan_checkpoint_cpu if getattr(config,"execution",{}).get("preset") == helios_gan_checkpoint_cpu.PRESET_ID else None
+
+
 def descriptor(native_policy=None):
     root = repository_root()
     owners = tuple("src/distillschedule/" + name for name in (
@@ -111,7 +116,10 @@ def bind_effective(*, args, policy, native_policy=None):
             and policy.generator_nograd_persistent_unshard_flush_allocator_cache is True
             and args._planner_gan_manual_bundle is True,
             "GAN full world16/C2048/p1/window5/FA3/head policy changed", path="helios.gan.training")
-    return descriptor(native_policy)
+    from .helios_lifecycle import current_training
+    binding = current_training()
+    candidate = None if binding is None else checkpoint_cpu_policy(binding["config"])
+    return descriptor(native_policy) if candidate is None else candidate.descriptor()
 
 
 def native_argv(assets, stream, output, logical_hash):
@@ -145,15 +153,26 @@ def admit_training(config, task_value, assets_value, paths):
         require((path / "manifest.json").is_file() and (path / "_SUCCESS").is_file()
                 and (path / "_SUCCESS").read_text().strip() == file_sha256(path / "manifest.json"),
                 "complete native GAN resume checkpoint required", path="helios.gan.training")
+    candidate = checkpoint_cpu_policy(config)
+    extra = {}
+    if candidate is not None:
+        candidate.validate_config(config)
+        require("native_history_policy" in stream["identity"], "W3 checkpoint CPU requires original native history", path="helios.gan.training")
+        extra = dict(selected=candidate.descriptor(), checkpoint_input_capacity=candidate.load_capacity(config))
     return {"task": task_value, "assets": assets, "stream": stream,
             "selected": descriptor(stream["identity"].get("native_history_policy")),
             "implementation": implementation(), "plan": None, "asset_observations": observations,
             "bootstrap": {"logical_manifest_hash": logical.manifest_hash},
             "argv": native_argv(assets, stream, paths["output"], logical.manifest_hash),
-            "validation_scope": "CPU_NATIVE_GAN_SOURCE_ASSET_STREAM; GPU_KERNEL_NUMERICAL_CAPACITY_NOT_RUN"}
+            "validation_scope": "CPU_NATIVE_GAN_SOURCE_ASSET_STREAM; GPU_KERNEL_NUMERICAL_CAPACITY_NOT_RUN", **extra}
 
 
 def _checkpoint_policy(identity):
+    from . import helios_gan_checkpoint_cpu as candidate
+    if (identity.get("schema_version") == candidate.IDENTITY or "checkpoint_input_capacity" in identity
+            or identity.get("execution_policy",{}).get("preset") == candidate.PRESET_ID):
+        candidate.validate_identity(identity)
+        return {"schema_version":candidate.CHECKPOINT, "identity_sha256":fingerprint(identity)}
     if "gan_native_history" in identity:
         from distillschedule.runtime.helios_gan_native_history import descriptor as history_descriptor
         require(identity["gan_native_history"] == history_descriptor()
@@ -216,6 +235,11 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
         stream, identity, startup = distributed.checked(local, "Helios GAN native input/asset admission")
         binding.update(stream=stream, identity=identity, startup=startup,
                        checkpoint_policy=_checkpoint_policy(identity))
+        candidate = checkpoint_cpu_policy(binding["config"])
+        if candidate is not None:
+            binding["effective_configuration"] = identity["execution_policy"]
+            distributed.checked(lambda: candidate.admit_startup(binding, rank=rank),
+                                "W3 checkpoint input extra host capacity before construction")
         distributed.admit_run_controls(binding["config"])
         admit_stop_control(binding["config"])
         require(all(item == identity for item in distributed.gather(identity)), "GAN rank source/stream differs", path="helios.gan.training")
@@ -325,6 +349,9 @@ def run_native_cycles(*, p0, args, policy, result, output, rank, device, logical
             def native_history_capability():
                 require(binding["identity"].get("gan_native_history") == history_descriptor(),
                         "native GAN history identity changed", path="helios.gan.training")
+                if checkpoint_cpu_policy(binding["config"]) is not None:
+                    from distillschedule.runtime.helios_gan_checkpoint_cpu import admit_engine as admit_capacity
+                    return {k:v for k,v in admit_capacity(generator_engine).items() if k != "callables"}
                 return admit_engine(generator_engine)
             capability = distributed.checked(native_history_capability, "Helios GAN complete-block native history owner")
             result["native_history"] = {"policy": history_descriptor(), "actual_capability": capability}
@@ -378,6 +405,11 @@ def execute_cycles(*, p0, args, policy, result, rank, device, generator, critic,
     if "native_history_policy" in stream["identity"]:
         result.update(schema_version="distillschedule.original_helios_gan_native_history_training.v1",
                       source_history_policy=stream["identity"]["native_history_policy"])
+    candidate = checkpoint_cpu_policy(binding["config"])
+    if candidate is not None:
+        result.update(schema_version="distillschedule.original_helios_gan_checkpoint_cpu_training.v1",preset=candidate.PRESET_ID,
+            checkpoint_input_cpu=dict(policy=candidate.descriptor(),capacity=binding["identity"]["checkpoint_input_capacity"],
+                startup=binding["checkpoint_input_startup"],executions=binding.setdefault("checkpoint_input_executions",[])))
     from distillschedule.data.helios_epoch_inputs import receipt as input_receipt
     result.update(input_receipt(stream, cycle=start))
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
@@ -468,6 +500,9 @@ def run_training(config, *, admit, native_output=None):
             from distillschedule.runtime.helios_gan_native_history import descriptor as history_descriptor
             identity.update(schema_version="distillschedule.helios_gan_native_history_training_identity.v1",
                             gan_native_history=history_descriptor())
+        candidate = checkpoint_cpu_policy(config)
+        if candidate is not None:
+            identity.update(schema_version=candidate.IDENTITY,checkpoint_input_capacity=admitted["checkpoint_input_capacity"])
         binding = {"config":config, "stream":admitted["stream"], "assets":admitted["assets"], "identity":identity,
                    "gan_stream":True, "portable_reference":True, "implementation":admitted["implementation"], **ownership}
         if native_output is not None:

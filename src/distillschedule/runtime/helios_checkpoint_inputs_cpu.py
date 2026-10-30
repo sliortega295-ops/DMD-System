@@ -121,7 +121,7 @@ class _BoundaryScope:
             raise RuntimeError('checkpoint input modified inplace before original backward/recompute')
         if session.device.type=='cuda':
             free,_=torch.cuda.mem_get_info(session.device)
-            require(free>=item.host.numel()*item.host.element_size()+policy.GPU_RESERVE,
+            require(free>=item.host.numel()*item.host.element_size()+session.policy.GPU_RESERVE,
                     'checkpoint restore exceeds unchanged GPU reserve',path='helios.checkpoint_cpu')
         result=item.host.to(item.device,non_blocking=False,copy=True)
         require(tuple(result.shape)==tuple(item.metadata['shape']) and str(result.dtype)==item.metadata['dtype']
@@ -136,18 +136,19 @@ class _BoundaryScope:
 class GCheckpointInputSession:
     """One admitted G action, with graph-owned weakly tracked CPU leases.
 
-    Production construction is solely through generator_scope below, AFTER the
-    unchanged whole-block/FSDP/callable checks. CPU direct construction is only
+    Native construction uses the W2 factory below or the independently admitted
+    W3 adapter, AFTER whole-block/FSDP/callable checks. CPU direct construction is only
     a component fixture, never native physical admission.
     """
-    def __init__(self,*,owner,blocks,capacity,identity,device):
+    def __init__(self,*,owner,blocks,capacity,identity,device,_policy=None,_original_validator=None):
         self.owner,self.blocks=owner,tuple(blocks)
-        self.original=_original_checkpoint(owner)
-        self.spec=policy.native_contract()
+        self.policy=policy if _policy is None else _policy
+        self.original=(_original_checkpoint if _original_validator is None else _original_validator)(owner)
+        self.spec=self.policy.native_contract()
         require(owner.gradient_checkpointing is True and len(self.blocks)==self.spec['checkpoint_blocks']
                 and len({id(b) for b in self.blocks})==len(self.blocks),
                 'checkpoint CPU requires all original whole blocks',path='helios.checkpoint_cpu')
-        self.capacity=policy.validate_capacity(capacity)
+        self.capacity=self.policy.validate_capacity(capacity)
         require(isinstance(identity,dict) and type(identity.get('generator_version')) is int
                 and identity['generator_version']>=2 and isinstance(identity.get('source'),str) and bool(identity['source'])
                 and isinstance(identity.get('task_sha256'),str) and len(identity['task_sha256'])==64,
@@ -169,7 +170,7 @@ class GCheckpointInputSession:
         if self.device.type=='cuda':
             from distillschedule.training.host_memory import admit_host_memory
             admit_host_memory(self.capacity['node_pinned_limit_bytes']+self.capacity['node_pageable_limit_bytes'],
-                              policy.RUNNING_RESERVE)
+                              self.policy.RUNNING_RESERVE)
         self.budget.reserve(size)
         self.stats['live_cpu_bytes']=self.budget.used
         self.stats['peak_live_cpu_bytes']=self.budget.peak
@@ -245,7 +246,7 @@ class GCheckpointInputSession:
         require(not changed,'checkpoint input wrapper replaced during G action',path='helios.checkpoint_cpu')
 
     def receipt(self):
-        return dict(schema_version=SCHEMA,policy=policy.PRESET_ID,enabled=True,identity=dict(self.identity),
+        return dict(schema_version=getattr(self.policy,'SESSION_SCHEMA',SCHEMA),policy=self.policy.PRESET_ID,enabled=True,identity=dict(self.identity),
             identity_sha256=self.identity_sha256,capacity=dict(self.capacity),native_contract=self.spec,
             stats=dict(self.stats),boundaries=[dict(row) for row in self.boundaries],closed=self.closed,
             original_callable_restored=self.owner._gradient_checkpointing_func is self.original,
@@ -271,9 +272,10 @@ def generator_scope(engine,*,task):
             generator_version=int(engine.global_steps),rank=binding['checkpoint_input_startup']['rank']))
 
 
-def validate_phase_receipt(receipt,*,with_grad,task_sha256,generator_version=None,rank=None,stage_schedule=None):
-    require(isinstance(receipt,dict) and receipt.get('schema_version')==SCHEMA
-            and receipt.get('policy')==policy.PRESET_ID and receipt.get('enabled') is with_grad,
+def validate_phase_receipt(receipt,*,with_grad,task_sha256,generator_version=None,rank=None,stage_schedule=None,_policy=None):
+    resolved_policy=policy if _policy is None else _policy
+    require(isinstance(receipt,dict) and receipt.get('schema_version')==getattr(resolved_policy,'SESSION_SCHEMA',SCHEMA)
+            and receipt.get('policy')==resolved_policy.PRESET_ID and receipt.get('enabled') is with_grad,
             'checkpoint CPU executed phase receipt missing/changed',path='helios.checkpoint_cpu')
     if not with_grad:return
     # This is the original executed/source-validated row trace, never a chosen
@@ -289,7 +291,7 @@ def validate_phase_receipt(receipt,*,with_grad,task_sha256,generator_version=Non
             'checkpoint CPU original executed stage schedule missing/changed',path='helios.checkpoint_cpu')
     first_live=max([0]+[stage for stage in (1,2) if stage_schedule[stage]['denoising_exit']>0])
     expected_restores=40*(3-first_live)
-    spec=policy.native_contract()
+    spec=resolved_policy.native_contract()
     expected_restored_bytes=40*sum(a*b*c*2 for a,b,c in spec['shapes'][first_live:])
     stats=receipt.get('stats',{})
     require(receipt.get('closed') is True and receipt.get('original_callable_restored') is True
@@ -300,7 +302,7 @@ def validate_phase_receipt(receipt,*,with_grad,task_sha256,generator_version=Non
             and stats.get('release_count')==120 and stats.get('cancel_count')==0
             and stats.get('live_cpu_bytes')==stats.get('live_leases')==0,
             'checkpoint CPU exact executed/copy/restore/lifetime census changed',path='helios.checkpoint_cpu')
-    capacity=policy.validate_capacity(receipt.get('capacity'))
+    capacity=resolved_policy.validate_capacity(receipt.get('capacity'))
     rank_bytes=capacity['rank_pageable_limit_bytes']+capacity['rank_pinned_limit_bytes']
     identity=receipt['identity']
     expected={(stage,block,tuple(shape)) for stage,shape in enumerate(spec['shapes']) for block in range(40)}
