@@ -68,16 +68,21 @@ def load_capacity(config):
     return validate_capacity(json.loads(path.read_text()))
 
 
-def descriptor():
-    return {**original.descriptor(), 'schema_version':SCHEMA, 'preset':PRESET_ID,
-        'checkpoint_input_preservation':dict(schema_version=SCHEMA,
+def checkpoint_input_preservation():
+    """Static capability metadata; native source costs belong to descriptor()."""
+    return dict(schema_version=SCHEMA,
             scope='exact_first_hidden_input_of_original_whole_G_block_checkpoint_only',
             native_contract=native_contract(), copies='synchronous_same_dtype_device_restore',
             other_checkpoint_inputs='KEEP_UNCHANGED_shared_encoder_rope_not_duplicated',
             parameter_optimizer_offload=False, original_checkpoint_callable=True,
             original_fresh_world16_two_node_process_group_required=True,
             startup_host_reserve_bytes=STARTUP_RESERVE, running_host_reserve_bytes=RUNNING_RESERVE,
-            gpu_reserve_bytes=GPU_RESERVE, target_torch_2_10='NOT_RUN', gpu_capacity='NOT_RUN')}
+            gpu_reserve_bytes=GPU_RESERVE, target_torch_2_10='NOT_RUN', gpu_capacity='NOT_RUN')
+
+
+def descriptor():
+    return {**original.descriptor(), 'schema_version':SCHEMA, 'preset':PRESET_ID,
+            'checkpoint_input_preservation':checkpoint_input_preservation()}
 
 
 def validate_config(config):

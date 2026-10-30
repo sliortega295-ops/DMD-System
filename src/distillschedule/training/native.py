@@ -140,8 +140,8 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             result["capabilities"]["bootstrap"]["asset_contract"] = "distillschedule.helios_reference_assets.v1; explicit local assets only"
             result["capabilities"]["physical_policy"] = "node-HSDP/C512/p0/window5/full SafeBundle/stride0; local pinned FA2 required"
     if config.execution.get("preset") == HELIOS_CHECKPOINT_CPU_STREAM:
-        from .helios_checkpoint_cpu import descriptor
-        result["capabilities"]["checkpoint_input_cpu"] = descriptor()["checkpoint_input_preservation"]
+        from .helios_checkpoint_cpu import checkpoint_input_preservation
+        result["capabilities"]["checkpoint_input_cpu"] = checkpoint_input_preservation()
     if _helios_gan_stream(config, workload):
         result.update(native_api="distillschedule.training.helios_gan_training:run_training",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")

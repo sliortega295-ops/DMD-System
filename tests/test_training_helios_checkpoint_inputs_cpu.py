@@ -40,6 +40,49 @@ def test_public_candidate_is_explicit_separate_and_old_presets_still_reject_capa
         with pytest.raises(ValueError): native._options(type(conf).from_dict(raw, source=conf.source), 'W2')
 
 
+def test_checkpoint_cpu_cold_metadata_does_not_require_a_native_source_checkout():
+    """Public config/doctor discovery must not evaluate source-bound costs."""
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    code = '''
+import contextlib, io, json, sys
+from pathlib import Path
+from distillschedule.cli import main
+from distillschedule.training.config import TrainingConfig
+from distillschedule.training.native import describe_native
+from distillschedule.training import helios_checkpoint_cpu as policy
+from distillschedule.search.helios_safe_bundle import HeliosSafeBundle
+def forbid_source(*args, **kwargs):
+    raise AssertionError('NATIVE_SOURCE_COST_IDENTITY_MUST_NOT_RUN_DURING_DISCOVERY')
+HeliosSafeBundle.source_identity = forbid_source
+path = Path(sys.argv[1])/'recipes/helios_nogan/training.native-history-safe-checkpoint-cpu.json'
+conf = TrainingConfig.from_dict(json.loads(path.read_text()), source=path)
+view = describe_native(conf)
+assert view['capabilities']['checkpoint_input_cpu']['native_contract']['checkpoint_blocks'] == 40
+for args in (['config', 'validate', str(path)], ['doctor', '--config', str(path)]):
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        assert main(args) == 0
+    json.loads(output.getvalue())
+try:
+    policy.descriptor()
+except AssertionError as error:
+    assert str(error) == 'NATIVE_SOURCE_COST_IDENTITY_MUST_NOT_RUN_DURING_DISCOVERY'
+else:
+    raise AssertionError('native execution descriptor lost its source gate')
+assert not any(n == 'torch' or n.startswith(('torch.', 'triton', 'cuda', 'diffusers', 'transformers')) for n in sys.modules)
+print('PASS_COLD_METADATA_NATIVE_SOURCE_GATE_PRESERVED')
+'''
+    env = dict(os.environ, PYTHONPATH=str(root/'src'), CUDA_VISIBLE_DEVICES='')
+    result = subprocess.run([sys.executable, '-B', '-c', code, str(root)], env=env,
+                            text=True, capture_output=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == 'PASS_COLD_METADATA_NATIVE_SOURCE_GATE_PRESERVED'
+
+
 def test_native_shape_contract_is_exact_three_original_stages_and_partitioned_node_bound():
     from distillschedule.training import helios_checkpoint_cpu as policy
     spec = policy.native_contract()
