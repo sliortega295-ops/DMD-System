@@ -49,7 +49,7 @@ def reference_argv(assets, output, *, stream=None, logical_hash=None):
     return args + ["--no-" + name for name in _OFF]
 
 
-def admit_reference(config, task_value, assets_value, paths):
+def _admit_inputs(config, task_value, assets_value, paths):
     from distillschedule.search.helios_request import OriginalHeliosRequest
     request = OriginalHeliosRequest.from_dict(task_value)
     HeliosCohortTask(0, request)
@@ -83,6 +83,13 @@ def admit_reference(config, task_value, assets_value, paths):
         "bootstrap": ({"logical_manifest_hash":logical.manifest_hash, "trace_bundle_hash":stream["cohorts"][0]["trace_hash"]}
                       if portable else None),
         "validation_scope": "CPU_W2_SOURCE_ASSET_STREAM_METADATA; ORIGINAL_PAYLOAD_AND_PHYSICAL_GATES_ON_WORKER"}
+    return admitted
+
+
+def admit_reference(config, task_value, assets_value, paths):
+    admitted = _admit_inputs(config, task_value, assets_value, paths)
+    stream = admitted["stream"]
+    portable = admitted["assets"].get("schema_version") == REFERENCE_ASSETS
     if "native_history_policy" in stream["identity"]:
         from distillschedule.runtime.helios_native_history import descriptor
         require(portable and config.execution.get("mode", "reference") == "reference"
@@ -99,16 +106,38 @@ def admit_safe_stream(config, task_value, assets_value, paths):
     require(assets_value.get("schema_version") == REFERENCE_ASSETS,
             "safe stream requires explicit local versioned assets, not historical benchmark defaults", path="helios.training")
     admitted = admit_reference(config, task_value, assets_value, paths)
+    return _lower_safe_stream(admitted, safe=safe, run_id="original-helios-safe-stream-v1",
+        validation_scope="CPU_W2_SOURCE_ASSET_FRESH_STREAM_SAFE_POLICY; NATIVE_KERNEL_CAPACITY_NUMERICAL_GATES_NOT_RUN")
+
+
+def admit_native_safe_stream(config, task_value, assets_value, paths):
+    from . import helios_native_safe_stream as combined
+    combined.validate_config(config)
+    require(assets_value.get("schema_version") == REFERENCE_ASSETS,
+            "native SafeBundle requires explicit local versioned assets", path="helios.training")
+    admitted = _admit_inputs(config, task_value, assets_value, paths)
+    require("native_history_policy" in admitted["stream"]["identity"],
+            "native SafeBundle history policy missing", path="helios.training")
+    return _lower_safe_stream(admitted, safe=combined, run_id="original-helios-native-safe-stream-v1",
+        validation_scope="CPU_NATIVE_HISTORY_FULL_SAFE_POLICY; GPU_CAPACITY_KERNEL_NUMERICAL_NOT_RUN")
+
+
+def _lower_safe_stream(admitted, *, safe, run_id, validation_scope):
     args = admitted["argv"]
-    args[args.index("--mesh-policy") + 1] = "node-hsdp"
-    args[args.index("--attention-backend") + 1] = "local-fa2"
-    args[args.index("--run-id") + 1] = "original-helios-safe-stream-v1"
+    for flag, value in (("--mesh-policy", "node-hsdp"), ("--attention-backend", "local-fa2"),
+                        ("--run-id", run_id)):
+        args[args.index(flag) + 1] = value
     for name, enabled in safe.effective_flags().items():
         if enabled:
             args[args.index("--no-" + name.replace("_", "-"))] = "--" + name.replace("_", "-")
-    admitted.update(selected=safe.descriptor(), implementation=safe.implementation(),
-        validation_scope="CPU_W2_SOURCE_ASSET_FRESH_STREAM_SAFE_POLICY; NATIVE_KERNEL_CAPACITY_NUMERICAL_GATES_NOT_RUN")
+    admitted.update(selected=safe.descriptor(), implementation=safe.implementation(), validation_scope=validation_scope)
     return admitted
+
+
+def _safe_policy(config):
+    from . import helios_safe_stream, helios_native_safe_stream
+    return (helios_native_safe_stream if config.execution.get("preset") == helios_native_safe_stream.PRESET_ID
+            else helios_safe_stream)
 
 
 def _backend():
@@ -228,7 +257,7 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
     stream = admitted["stream"]
     portable = admitted["assets"].get("schema_version") == REFERENCE_ASSETS
     if optimized:
-        from . import helios_safe_stream as safe
+        safe = _safe_policy(config)
         require(config.execution.get("mode") == "manual" and config.execution.get("preset") == safe.PRESET_ID
                 and portable and admitted.get("implementation") == safe.implementation()
                 and admitted["selected"] == safe.descriptor(),
@@ -248,16 +277,22 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
     from distillschedule.data.helios_epoch_inputs import identity_binding
     identity.update(identity_binding(stream))
     if "native_history_policy" in stream["identity"]:
-        from distillschedule.runtime.helios_native_history import descriptor
         from .helios_inputs import NATIVE_KIND, NATIVE_SCHEMA
-        require(not optimized and config.data.get("input_kind") == NATIVE_KIND
+        from . import helios_native_safe_stream as combined
+        if optimized:
+            combined.validate_config(config)
+            descriptor = combined.history_descriptor
+        else:
+            from distillschedule.runtime.helios_native_history import descriptor
+        require((not optimized or safe is combined) and config.data.get("input_kind") == NATIVE_KIND
                 and stream["schema_version"] == NATIVE_SCHEMA
                 and admitted["selected"].get("native_history") == descriptor(),
                 "native history phase implementation not bound", path="helios.training")
         identity.update(schema_version="distillschedule.helios_native_history_training_identity.v1",
                         native_history=descriptor())
     if optimized:
-        identity["schema_version"] = "distillschedule.helios_safe_stream_identity.v1"
+        identity["schema_version"] = (safe.IDENTITY if "native_history_policy" in stream["identity"]
+                                      else "distillschedule.helios_safe_stream_identity.v1")
         identity["execution_policy"] = identity.pop("reference_policy")
     binding = {"config": config, "stream": stream, "identity": identity, "assets": admitted["assets"],
                "portable_reference":portable, **(ownership or {})}

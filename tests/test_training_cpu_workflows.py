@@ -59,7 +59,15 @@ def test_full_original_helios_ci_requires_public_training_and_portable_current_g
         'tests/test_training_helios_public_inference_cpu.py',
         'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
         'test_public_fresh_os_process_four_vs_three_resume_exact[False]',
-        'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt'))
+        'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt',
+        'tests/test_training_helios_native_safe_stream.py',
+        'test_real_native_stream_producer_consumer_lowering_and_separate_checkpoint_identity',
+        'test_actual_checkpoint_publication_and_old_policy_refusal_for_new_identity',
+        'test_planner_consumer_cannot_treat_full_safe_action_as_old_reference_phase',
+        'test_native_safe_recipe_cold_discovery_avoids_torch_cuda_and_model_assets'))
+    text = (ROOT / '.github/workflows/helios-reference-model-cpu.yml').read_text()
+    assert "- 'tests/test_training_helios_native_safe_stream.py'" in text
+    assert "- 'recipes/helios_nogan/training.native-history-safe.json'" in text
     assert 'native-wan' not in commands
     assert "('skipped', 'failures', 'errors')" in commands
 

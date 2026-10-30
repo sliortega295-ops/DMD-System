@@ -381,6 +381,9 @@ class _Observer:
 def _validate_action(row, impl):
     if impl.variant == "gan":
         from .helios_gan_native_history import validate_action as validate_native_history_action
+    elif impl.candidate_bundle.enabled and any(entry.get("native_history_policy") is not None
+                                               for entry in row["trace_entries"]):
+        from .helios_native_safe_history import validate_action as validate_native_history_action
     else:
         from .helios_native_history import validate_action as validate_native_history_action
     validate_native_history_action(row)
@@ -535,6 +538,13 @@ def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, d
             if not with_grad:
                 require(action_id == "r_all", "native GAN history requires original detached window5 owner")
                 return nullcontext((observer.generator, None))
+            return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
+        from distillschedule.training.helios_native_safe_stream import implementation as native_safe_implementation
+        if observer.impl == native_safe_implementation():
+            from .helios_native_safe_history import generator_phase
+            require(policy.mesh_policy == "node-hsdp" and policy.rollout_batch_size == 1
+                    and not policy.generator_nograd_persistent_unshard,
+                    "native SafeBundle requires node-HSDP/window5/original p0 dispatch")
             return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
         from .helios_native_history import generator_phase
         require(observer.impl.variant == "no-gan" and observer.impl.request is None

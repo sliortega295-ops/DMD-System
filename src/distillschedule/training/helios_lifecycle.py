@@ -55,12 +55,19 @@ def _bind_native_history_construction(*, policy):
         capability, selected = "gan_native_history", "execution_policy"
     else:
         from .helios_inputs import HeliosCohortTask as Task, NATIVE_KIND, NATIVE_SCHEMA
-        from distillschedule.runtime.helios_native_history import descriptor
-        schema = "distillschedule.helios_native_history_training_identity.v1"
-        capability, selected = "native_history", "reference_policy"
+        from . import helios_native_safe_stream as combined
+        if binding["config"].execution.get("preset") == combined.PRESET_ID:
+            combined.validate_config(binding["config"])
+            descriptor = combined.history_descriptor
+            schema, capability, selected = combined.IDENTITY, "native_history", "execution_policy"
+        else:
+            from distillschedule.runtime.helios_native_history import descriptor
+            schema = "distillschedule.helios_native_history_training_identity.v1"
+            capability, selected = "native_history", "reference_policy"
     task = Task.from_dict(stream["cohorts"][0]["task"])
     identity = binding["identity"]
-    require(type(policy) is StaticFSDP2P0Policy and policy.mesh_policy == "world16-fsdp"
+    mesh = "node-hsdp" if schema == "distillschedule.helios_native_safe_stream_identity.v1" else "world16-fsdp"
+    require(type(policy) is StaticFSDP2P0Policy and policy.mesh_policy == mesh
             and binding.get("portable_reference") is True
             and binding["config"].data["input_kind"] == NATIVE_KIND
             and stream["schema_version"] == NATIVE_SCHEMA
@@ -80,7 +87,8 @@ def native_history_cpu_first_construction(*, policy):
     if capability is None:
         return False
     require(type(capability) is _NativeHistoryConstruction and capability.policy == policy
-            and policy.mesh_policy == "world16-fsdp"
+            and policy.mesh_policy == ("node-hsdp" if binding["identity"]["schema_version"] ==
+                                       "distillschedule.helios_native_safe_stream_identity.v1" else "world16-fsdp")
             and capability.identity_sha256 == _construction_identity(binding),
             "native history construction identity/policy changed", path="helios.training")
     return True
@@ -212,7 +220,8 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             implementation = binding.get("implementation")
             effective = None
             if implementation is not None:
-                from . import helios_safe_stream as safe
+                from .helios_worker import _safe_policy
+                safe = _safe_policy(binding["config"])
                 require(binding.get("portable_reference") and implementation == safe.implementation()
                         and binding["identity"].get("execution_policy") == safe.descriptor(),
                         "safe stream implementation/source binding changed", path="helios.training")
@@ -329,6 +338,10 @@ def validate_progress(header, binding):
 
 
 def _checkpoint_policy(identity, *, optimized):
+    from . import helios_native_safe_stream as combined
+    if identity.get("schema_version") == combined.IDENTITY:
+        combined.validate_identity(identity, optimized=optimized)
+        return {"schema_version":combined.CHECKPOINT, "identity_sha256":fingerprint(identity)}
     if "native_history" in identity:
         from distillschedule.runtime.helios_native_history import descriptor
         require(not optimized and identity["native_history"] == descriptor(),
@@ -366,14 +379,20 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
     implementation = binding.get("implementation") or HeliosImplementation("no-gan", "world16-fsdp", 512, 1, False)
     optimized = implementation.candidate_bundle.enabled
     if optimized:
-        from . import helios_safe_stream as safe
+        from .helios_worker import _safe_policy
+        safe = _safe_policy(binding["config"])
         require(implementation == safe.implementation() and binding.get("effective_configuration") is not None,
                 "safe stream preconstruction physical binding missing", path="helios.training")
     state = engine_state({"generator": generator, "critic": critic}, ema=ema)
     native_history = "native_history_policy" in binding["stream"]["identity"]
     if native_history:
-        from distillschedule.runtime.helios_native_history import admit_engine, descriptor
-        require(not optimized and binding["identity"].get("native_history") == descriptor(),
+        if optimized:
+            from distillschedule.runtime.helios_native_safe_history import admit_engine, descriptor
+            from .helios_native_safe_stream import validate_identity
+            validate_identity(binding["identity"], optimized=True)
+        else:
+            from distillschedule.runtime.helios_native_history import admit_engine, descriptor
+        require(binding["identity"].get("native_history") == descriptor(),
                 "native history identity/phase policy differs", path="helios.training")
         with _plane(binding):
             capability = distributed.checked(lambda: admit_engine(generator), "W2 native history whole-block phase admission")
@@ -433,7 +452,8 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
                       source_history_policy=stream["identity"]["native_history_policy"],
                       native_input_kind=binding["config"].data["input_kind"])
     if optimized:
-        result.update(schema_version="distillschedule.original_helios_safe_stream.v1", mode="manual",
+        result.update(schema_version=("distillschedule.original_helios_native_safe_stream.v1" if native_history
+                                      else "distillschedule.original_helios_safe_stream.v1"), mode="manual",
             candidate_id=implementation.id, preset=safe.PRESET_ID,
             effective_configuration=binding["effective_configuration"],
             numerical_status="REVIEW", gpu_kernel_numerical_parity="NOT_RUN",

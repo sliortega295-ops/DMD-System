@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
 from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
 from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
@@ -126,7 +126,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
                         verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
         if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1":
-            from distillschedule.runtime.helios_native_history import descriptor
+            if config.execution.get("preset") == HELIOS_NATIVE_SAFE_STREAM:
+                from .helios_native_safe_stream import history_descriptor as descriptor
+            else:
+                from distillschedule.runtime.helios_native_history import descriptor
             result["capabilities"]["native_history"] = descriptor()
             result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
         if _helios_safe_stream(config, workload):
@@ -248,7 +251,7 @@ def _helios_stream(config, workload):
 
 
 def _helios_safe_stream(config, workload):
-    return workload == "W2" and config.execution.get("preset") == HELIOS_SAFE_STREAM
+    return workload == "W2" and config.execution.get("preset") in (HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM)
 
 
 def _helios_gan_stream(config, workload):
@@ -419,7 +422,11 @@ def _options(config, workload):
         stop_cycle(config)
         return "reference"
     if _helios_stream(config, workload):
-        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1":
+        combined = config.execution.get("preset") == HELIOS_NATIVE_SAFE_STREAM
+        if combined:
+            from .helios_native_safe_stream import validate_config
+            validate_config(config)
+        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1" and not combined:
             _require(config.execution.get("mode", "reference") == "reference"
                      and not any(key in config.execution for key in
                                  ("preset", "plan", "implementation", "transport", "capacity_policy")),
@@ -698,8 +705,9 @@ def _admit(config):
         from .helios_gan_training import admit_training
         admitted = admit_training(config, task_value, assets_value, paths)
     elif _helios_stream(config, workload):
-        from .helios_worker import admit_reference, admit_safe_stream
-        admit = admit_safe_stream if _helios_safe_stream(config, workload) else admit_reference
+        from .helios_worker import admit_reference, admit_safe_stream, admit_native_safe_stream
+        admit = (admit_native_safe_stream if config.execution.get("preset") == HELIOS_NATIVE_SAFE_STREAM
+                 else admit_safe_stream if _helios_safe_stream(config, workload) else admit_reference)
         admitted = admit(config, task_value, assets_value, paths)
     elif _h3_grid_training(config, workload):
         from .h3_grid_training import admit_reference

@@ -14,6 +14,7 @@ from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
 SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
+HELIOS_NATIVE_SAFE_STREAM = "helios_nogan.native_history_safe_ed8.v1"
 HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 LIVEWAN_C51_STREAM = "self_forcing.c51_stream.v1"
@@ -68,6 +69,14 @@ _PRESETS = {
 
 def describe_preset(workload: str, preset_id: str) -> dict:
     """Metadata only: no Torch, model, asset access or numerical promotion."""
+    if workload == "W2" and preset_id == HELIOS_NATIVE_SAFE_STREAM:
+        value = describe_preset(workload, HELIOS_SAFE_STREAM)
+        value.update(id=HELIOS_NATIVE_SAFE_STREAM,
+            runtime_binding="ORIGINAL_NATIVE_HISTORY_NODE_HSDP_FULL_SAFE_BUNDLE",
+            source_binding="current source/assets/native-history stream/node-HSDP/full SafeBundle")
+        value["mechanisms"].append("aligned_complete_block_native_history_phase")
+        value["implementation_paths"].extend(["training/helios_native_safe_stream.py", "runtime/helios_native_safe_history.py"])
+        return value
     value = _PRESETS.get(workload)
     stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
     wan_stream = workload == "W1" and preset_id == WAN_INCUMBENT_STREAM
