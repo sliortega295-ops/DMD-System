@@ -64,10 +64,18 @@ def test_full_original_helios_ci_requires_public_training_and_portable_current_g
         'test_real_native_stream_producer_consumer_lowering_and_separate_checkpoint_identity',
         'test_actual_checkpoint_publication_and_old_policy_refusal_for_new_identity',
         'test_planner_consumer_cannot_treat_full_safe_action_as_old_reference_phase',
-        'test_native_safe_recipe_cold_discovery_avoids_torch_cuda_and_model_assets'))
+        'test_native_safe_recipe_cold_discovery_avoids_torch_cuda_and_model_assets',
+        'tests/test_training_helios_checkpoint_inputs_cpu.py',
+        'test_native_shape_contract_is_exact_three_original_stages_and_partitioned_node_bound',
+        'test_native_receipt_refuses_wrong_source_version_shape_dtype_or_lifetime[version]',
+        'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[direct-True]',
+        'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[detached_alias_after_gc-True]',
+        'recipes/helios_nogan/verify_checkpoint_inputs_target_cpu.py'))
     text = (ROOT / '.github/workflows/helios-reference-model-cpu.yml').read_text()
     assert "- 'tests/test_training_helios_native_safe_stream.py'" in text
     assert "- 'recipes/helios_nogan/training.native-history-safe.json'" in text
+    assert "- 'tests/test_training_helios_checkpoint_inputs_cpu.py'" in text
+    assert "- 'recipes/helios_nogan/**'" in text
     assert 'native-wan' not in commands
     assert "('skipped', 'failures', 'errors')" in commands
 

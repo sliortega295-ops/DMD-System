@@ -122,6 +122,19 @@ def admit_native_safe_stream(config, task_value, assets_value, paths):
         validation_scope="CPU_NATIVE_HISTORY_FULL_SAFE_POLICY; GPU_CAPACITY_KERNEL_NUMERICAL_NOT_RUN")
 
 
+def admit_checkpoint_cpu_stream(config, task_value, assets_value, paths):
+    from . import helios_checkpoint_cpu as candidate
+    candidate.validate_config(config)
+    require(assets_value.get("schema_version") == REFERENCE_ASSETS,
+            "checkpoint CPU requires explicit local versioned assets", path="helios.training")
+    admitted = _admit_inputs(config, task_value, assets_value, paths)
+    require("native_history_policy" in admitted["stream"]["identity"],
+            "checkpoint CPU native history policy missing", path="helios.training")
+    admitted["checkpoint_input_capacity"] = candidate.load_capacity(config)
+    return _lower_safe_stream(admitted, safe=candidate, run_id="original-helios-native-safe-checkpoint-cpu-v1",
+        validation_scope="CPU_NATIVE_HISTORY_FULL_SAFE_CHECKPOINT_INPUT_POLICY; TARGET_2_10_NATIVE_GPU_CAPACITY_NOT_RUN")
+
+
 def _lower_safe_stream(admitted, *, safe, run_id, validation_scope):
     args = admitted["argv"]
     for flag, value in (("--mesh-policy", "node-hsdp"), ("--attention-backend", "local-fa2"),
@@ -135,7 +148,9 @@ def _lower_safe_stream(admitted, *, safe, run_id, validation_scope):
 
 
 def _safe_policy(config):
-    from . import helios_safe_stream, helios_native_safe_stream
+    from . import helios_safe_stream, helios_native_safe_stream, helios_checkpoint_cpu
+    if config.execution.get("preset") == helios_checkpoint_cpu.PRESET_ID:
+        return helios_checkpoint_cpu
     return (helios_native_safe_stream if config.execution.get("preset") == helios_native_safe_stream.PRESET_ID
             else helios_safe_stream)
 
@@ -280,6 +295,7 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
         from .helios_inputs import NATIVE_KIND, NATIVE_SCHEMA
         from . import helios_native_safe_stream as combined
         if optimized:
+            combined = safe
             combined.validate_config(config)
             descriptor = combined.history_descriptor
         else:
@@ -302,6 +318,9 @@ def _run_admitted(config, admitted, source, *, ownership=None, backend=None, opt
         binding["native_output"] = native_output
     if optimized:
         binding["implementation"] = admitted["implementation"]
+        from . import helios_checkpoint_cpu as checkpoint_cpu
+        if safe is checkpoint_cpu:
+            identity["checkpoint_input_capacity"] = admitted["checkpoint_input_capacity"]
     old = sys.argv
     try:
         sys.argv = ["original-helios-training-v1", *admitted["argv"]]

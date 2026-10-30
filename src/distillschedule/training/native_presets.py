@@ -15,6 +15,7 @@ from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 SCHEMA = "distillschedule.native_training_preset.v1"
 HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
 HELIOS_NATIVE_SAFE_STREAM = "helios_nogan.native_history_safe_ed8.v1"
+HELIOS_CHECKPOINT_CPU_STREAM = "helios_nogan.native_history_safe_ed8_checkpoint_cpu.v1"
 HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 LIVEWAN_C51_STREAM = "self_forcing.c51_stream.v1"
@@ -69,6 +70,14 @@ _PRESETS = {
 
 def describe_preset(workload: str, preset_id: str) -> dict:
     """Metadata only: no Torch, model, asset access or numerical promotion."""
+    if workload == "W2" and preset_id == HELIOS_CHECKPOINT_CPU_STREAM:
+        value = describe_preset(workload, HELIOS_NATIVE_SAFE_STREAM)
+        value.update(id=HELIOS_CHECKPOINT_CPU_STREAM,
+            runtime_binding="ORIGINAL_NATIVE_HISTORY_NODE_HSDP_FULL_SAFE_BUNDLE_CHECKPOINT_HIDDEN_CPU",
+            source_binding="current source/assets/native history/full bundle/explicit bounded checkpoint input host capacity")
+        value["mechanisms"].append("checkpoint_hidden_input_cpu")
+        value["implementation_paths"].extend(["training/helios_checkpoint_cpu.py", "runtime/helios_checkpoint_inputs_cpu.py"])
+        return value
     if workload == "W2" and preset_id == HELIOS_NATIVE_SAFE_STREAM:
         value = describe_preset(workload, HELIOS_SAFE_STREAM)
         value.update(id=HELIOS_NATIVE_SAFE_STREAM,

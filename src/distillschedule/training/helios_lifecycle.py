@@ -55,8 +55,10 @@ def _bind_native_history_construction(*, policy):
         capability, selected = "gan_native_history", "execution_policy"
     else:
         from .helios_inputs import HeliosCohortTask as Task, NATIVE_KIND, NATIVE_SCHEMA
-        from . import helios_native_safe_stream as combined
-        if binding["config"].execution.get("preset") == combined.PRESET_ID:
+        from . import helios_native_safe_stream, helios_checkpoint_cpu
+        from .helios_worker import _safe_policy
+        combined = _safe_policy(binding["config"])
+        if combined in (helios_native_safe_stream, helios_checkpoint_cpu):
             combined.validate_config(binding["config"])
             descriptor = combined.history_descriptor
             schema, capability, selected = combined.IDENTITY, "native_history", "execution_policy"
@@ -66,7 +68,8 @@ def _bind_native_history_construction(*, policy):
             capability, selected = "native_history", "reference_policy"
     task = Task.from_dict(stream["cohorts"][0]["task"])
     identity = binding["identity"]
-    mesh = "node-hsdp" if schema == "distillschedule.helios_native_safe_stream_identity.v1" else "world16-fsdp"
+    mesh = "node-hsdp" if schema in ("distillschedule.helios_native_safe_stream_identity.v1",
+        "distillschedule.helios_checkpoint_hidden_cpu_identity.v1") else "world16-fsdp"
     require(type(policy) is StaticFSDP2P0Policy and policy.mesh_policy == mesh
             and binding.get("portable_reference") is True
             and binding["config"].data["input_kind"] == NATIVE_KIND
@@ -77,6 +80,9 @@ def _bind_native_history_construction(*, policy):
             and identity["stream_sha256"] == stream["stream_sha256"]
             and "verified_immutable_assets" in identity,
             "native history construction identity/policy changed", path="helios.training")
+    if schema == "distillschedule.helios_checkpoint_hidden_cpu_identity.v1":
+        from .helios_checkpoint_cpu import require_binding
+        require_binding()
     binding["_native_history_construction"] = _NativeHistoryConstruction(_construction_identity(binding), policy)
 
 
@@ -87,8 +93,9 @@ def native_history_cpu_first_construction(*, policy):
     if capability is None:
         return False
     require(type(capability) is _NativeHistoryConstruction and capability.policy == policy
-            and policy.mesh_policy == ("node-hsdp" if binding["identity"]["schema_version"] ==
-                                       "distillschedule.helios_native_safe_stream_identity.v1" else "world16-fsdp")
+            and policy.mesh_policy == ("node-hsdp" if binding["identity"]["schema_version"] in (
+                "distillschedule.helios_native_safe_stream_identity.v1",
+                "distillschedule.helios_checkpoint_hidden_cpu_identity.v1") else "world16-fsdp")
             and capability.identity_sha256 == _construction_identity(binding),
             "native history construction identity/policy changed", path="helios.training")
     return True
@@ -309,6 +316,10 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             validate_progress(header, binding)
             if binding.get("native_output") is None:
                 stop_cycle(binding["config"], start=header["cycle"])
+        from . import helios_checkpoint_cpu as checkpoint_cpu
+        if binding["identity"].get("schema_version") == checkpoint_cpu.IDENTITY:
+            binding["checkpoint_input_startup"] = distributed.checked(
+                lambda: checkpoint_cpu.admit_startup(binding, rank=rank), "Helios checkpoint input extra host capacity before construction")
         _bind_native_history_construction(policy=policy)
     if seed_runtime:
         seed_original_runtime(torch=torch, rank=rank)
@@ -338,7 +349,10 @@ def validate_progress(header, binding):
 
 
 def _checkpoint_policy(identity, *, optimized):
-    from . import helios_native_safe_stream as combined
+    from . import helios_native_safe_stream as combined, helios_checkpoint_cpu as checkpoint_cpu
+    if identity.get("schema_version") == checkpoint_cpu.IDENTITY:
+        checkpoint_cpu.validate_identity(identity, optimized=optimized)
+        return {"schema_version":checkpoint_cpu.CHECKPOINT, "identity_sha256":fingerprint(identity)}
     if identity.get("schema_version") == combined.IDENTITY:
         combined.validate_identity(identity, optimized=optimized)
         return {"schema_version":combined.CHECKPOINT, "identity_sha256":fingerprint(identity)}
@@ -387,9 +401,9 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
     native_history = "native_history_policy" in binding["stream"]["identity"]
     if native_history:
         if optimized:
-            from distillschedule.runtime.helios_native_safe_history import admit_engine, descriptor
-            from .helios_native_safe_stream import validate_identity
-            validate_identity(binding["identity"], optimized=True)
+            from distillschedule.runtime.helios_native_safe_history import admit_engine
+            descriptor = safe.history_descriptor
+            safe.validate_identity(binding["identity"], optimized=True)
         else:
             from distillschedule.runtime.helios_native_history import admit_engine, descriptor
         require(binding["identity"].get("native_history") == descriptor(),
@@ -458,6 +472,12 @@ def execute_cycles(*, p0, args, policy, generator, critic, ema, diagnostics, neg
             effective_configuration=binding["effective_configuration"],
             numerical_status="REVIEW", gpu_kernel_numerical_parity="NOT_RUN",
             capacity_validation="NOT_RUN; source bridge does not establish native setup/checkpoint/restore reserve")
+    from . import helios_checkpoint_cpu as checkpoint_cpu
+    if binding["identity"].get("schema_version") == checkpoint_cpu.IDENTITY:
+        result.update(schema_version="distillschedule.original_helios_native_checkpoint_cpu_training.v1",
+            checkpoint_input_cpu=dict(policy=checkpoint_cpu.descriptor(), capacity=binding["identity"]["checkpoint_input_capacity"],
+                startup=binding.get("checkpoint_input_startup"), target_torch_2_10="NOT_RUN", native_GO=False,
+                actions=binding.setdefault("checkpoint_input_executions", [])))
     cadence = binding["config"].trainer.get("checkpoint_every", 0)
     for index in range(start, end):
         entry = stream["cohorts"][index]
