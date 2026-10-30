@@ -46,6 +46,9 @@ jobs:
       TRANSFORMERS_OFFLINE: '1'
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
+      # Keep the CPU reference's BLAS reduction order independent of runner ISA.
+      # The pinned upstream gamma=1/3 sampler uses a boundary-PSD covariance.
+      MKL_CBWR: 'COMPATIBLE'
       PYTHONDONTWRITEBYTECODE: '1'
       HELIOS_PUBLIC_REQUIRE_STACK: '1'
       WAN_PUBLIC_REQUIRE_STACK: '1'
@@ -60,6 +63,41 @@ jobs:
         run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
       - name: Separate full-model dependencies; leave 0.34 helper and 0.35 Wan pins alone
         run: python -m pip install -e '.[train,test,test-helios-model]'
+      - name: Record and check the original CPU block-noise sampler
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from types import SimpleNamespace
+          from unittest.mock import patch
+          import torch
+          from distillschedule.strategies.wan_capture import native_primitives
+          runtime = dict(torch=torch.__version__, mkl_cbwr=os.environ['MKL_CBWR'],
+              cpu_capability=torch.backends.cpu.get_cpu_capability(), runtime=torch.__config__.show())
+          print(json.dumps(runtime, indent=2), flush=True)
+          native = native_primitives()
+          original = torch.distributions.MultivariateNormal
+          observed = []
+          def checked(*args, **kwargs):
+              covariance = kwargs['covariance_matrix']
+              observed.append(covariance.detach().clone())
+              return original(*args, **kwargs, validate_args=True)
+          with patch.object(torch.distributions, 'MultivariateNormal', checked):
+              torch.manual_seed(71)
+              noise = native.post.sample_block_noise(SimpleNamespace(config=SimpleNamespace(gamma=1/3)), 1, 4, 1, 4, 4)
+          assert len(observed) == 1 and noise.shape == (1, 4, 1, 4, 4)
+          assert torch.isfinite(noise).all() and not torch.cuda.is_initialized()
+          covariance = observed[0]
+          assert torch.equal(covariance, torch.eye(4)*(1+1/3)-torch.ones(4,4)*(1/3))
+          assert int(torch.linalg.cholesky_ex(covariance).info) == 0
+          def digest(tensor):
+              return hashlib.sha256(tensor.numpy().tobytes()).hexdigest()
+          receipt = dict(**runtime,
+              covariance_sha256=digest(covariance), noise_sha256=digest(noise),
+              strict_original_sampler=True, covariance_modified=False)
+          Path('helios-cpu-numerical-policy.json').write_text(json.dumps(receipt, indent=2)+'\n')
+          print(json.dumps(receipt, indent=2))
+          PY
       - name: Full original class and original G/C/EMA owners with fresh-process continuation
         run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py tests/test_training_helios_optimized_stream.py tests/test_training_helios_native_safe_stream.py tests/test_training_helios_checkpoint_inputs_cpu.py tests/test_helios_rollout_liveness_cpu.py tests/test_refactor_helios_compat_source.py --junitxml=helios-reference-model-cpu.xml
       - name: Exact checkpoint-input copies through the original 40-block class
@@ -130,5 +168,7 @@ jobs:
         if: always()
         with:
           name: helios-reference-model-cpu-py${{ matrix.python }}
-          path: helios-reference-model-cpu.xml
+          path: |
+            helios-reference-model-cpu.xml
+            helios-cpu-numerical-policy.json
           if-no-files-found: error

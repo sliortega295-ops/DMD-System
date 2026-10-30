@@ -53,7 +53,12 @@ test-helios-model = [
     "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
     "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "httpx==0.28.1", "safetensors>=0.4",
 ]
-test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
+# Independent original H3 CPU helper lane; its PEFT 0.15 source contract is
+# intentionally not combined with the Helios PEFT 0.17 qualification stack.
+test-h3 = [
+    "diffusers==0.34.0", "transformers==4.51.3", "peft==0.15.2", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "loguru==0.7.3", "imageio==2.37.4",
+]
 # Maintained cached-only source reference, independent of full-SFT/native H3.
 h3-cached-reference = ["torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"]
 # Decode-only external H3 codec source; does not install a training/backend stack.
@@ -122,7 +127,7 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/recipes/h3_ar" = ["recipes/h3_ar/*.md", "recipes/h3_ar/*.json"]
 "share/distillschedule/recipes/h3_fullseq" = ["recipes/h3_fullseq/*.md", "recipes/h3_fullseq/*.json"]
 "share/distillschedule/recipes/helios_gan" = ["recipes/helios_gan/*.md", "recipes/helios_gan/*.json"]
-"share/distillschedule/recipes/helios_nogan" = ["recipes/helios_nogan/*.md", "recipes/helios_nogan/*.json", "recipes/helios_nogan/*.yaml"]
+"share/distillschedule/recipes/helios_nogan" = ["recipes/helios_nogan/*.md", "recipes/helios_nogan/*.json", "recipes/helios_nogan/*.yaml", "recipes/helios_nogan/*.py"]
 "share/distillschedule/recipes/hunyuan_video_dmd" = ["recipes/hunyuan_video_dmd/*.md", "recipes/hunyuan_video_dmd/*.json", "recipes/hunyuan_video_dmd/*.py"]
 "share/distillschedule/recipes/ltx25" = ["recipes/ltx25/*.md", "recipes/ltx25/*.json", "recipes/ltx25/*.py"]
 "share/distillschedule/recipes/qwen_image_dmd" = ["recipes/qwen_image_dmd/*.md", "recipes/qwen_image_dmd/*.json"]

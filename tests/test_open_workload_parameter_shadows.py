@@ -441,18 +441,26 @@ def _negative_worker(rank, rendezvous, output):
             assert equal(packed, pack_state(session.state))
             assert equal(before_rng, rng_state())
             dist.barrier()
-        # A declaration cannot be silently removed on just one persistent
-        # rank after native layout installation.
-        changed = replace(session.workload, state=session.state,
-            program=replace(session.workload.program, initial_versions=progress['versions']))
-        if rank == 0:
-            changed.replica_semantics = replace(changed.replica_semantics, parameter_shadows={})
-        session.bind_cycle(changed, graph=ExecutionBackend(changed).graph(implementation()))
-        with pytest.raises(ValueError, match='FSDP cycle admission.*shadow bindings changed'):
-            session.run()
-        assert equal(packed, pack_state(session.state))
-        assert session.profile == {}
-        dist.barrier()
+        # Declarations belong to the whole installed method contract. The
+        # separate installed binding snapshot must also reject local drift.
+        for fault, message in (
+                ('declaration', 'installed FSDP method contract changed between cycles'),
+                ('installed_binding', 'installed FSDP parameter shadow bindings changed between cycles')):
+            changed = replace(session.workload, state=session.state, replica_semantics=w.replica_semantics,
+                program=replace(session.workload.program, initial_versions=progress['versions']))
+            if rank == 0:
+                if fault == 'declaration':
+                    changed.replica_semantics = replace(changed.replica_semantics, parameter_shadows={})
+                else:
+                    session.lifecycle.parameter_shadows = {}
+            session.bind_cycle(changed, graph=ExecutionBackend(changed).graph(implementation()))
+            before_rng = rng_state()
+            with pytest.raises(ValueError, match='FSDP cycle admission.*' + message):
+                session.run()
+            assert equal(packed, pack_state(session.state))
+            assert equal(before_rng, rng_state())
+            assert session.profile == {}
+            dist.barrier()
         Path(output, f'negative-{rank}.json').write_text(json.dumps(dict(checkpoint_faults=list(faults),
             asymmetric_preflight=True, unchanged_state=True, cuda_initialized=torch.cuda.is_initialized())))
     finally:

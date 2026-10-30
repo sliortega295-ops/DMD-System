@@ -87,7 +87,7 @@ def qualified_dependencies(roots, *, modern=False, official=False):
 # This instrumentation exists only in the explicit installed tiny-test lane.
 OFFICIAL_INPUT_WITNESS = r'''
 def materialize_cpu_reference_storage(*modules):
-    """Post-training CPU reference only: match fresh export-owned storage.
+    """Explicit tiny CPU test reference: match fresh owned tensor storage.
 
     Safetensor views can have nonzero SIMD alignment. CPU Linear reductions
     then differ by an ulp despite identical weights, inputs and strides. A

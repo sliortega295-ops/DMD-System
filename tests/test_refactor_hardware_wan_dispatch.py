@@ -102,9 +102,15 @@ def test_native_environment_excludes_caller_recipe_knobs(tmp_path, monkeypatch):
                "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE",
                "DISTILLSCHEDULE_INHERITED_GPU_LOCKS"))
     seen = []
-    monkeypatch.setattr(dispatch.os, "fstat", lambda fd: seen.append(fd))
+    # Replace this module's boundary, not the shared os.fstat used by pytest's
+    # file-descriptor capture while the monkeypatch fixture is still active.
+    real_os = dispatch.os
+    monkeypatch.setattr(dispatch, "os", SimpleNamespace(
+        environ=real_os.environ, fstat=lambda fd: seen.append(fd)))
     assert dispatch.launch_environment(value, inherited_locks=True)["DISTILLSCHEDULE_INHERITED_GPU_LOCKS"] == "1"
     assert seen == [7, 8, 9]
+    with (tmp_path / "capture-probe").open("wb") as handle:
+        assert real_os.fstat(handle.fileno()).st_size == 0
 
 
 def test_fixture_execution_is_rejected_before_native_callback(tmp_path, fixture_adapter):

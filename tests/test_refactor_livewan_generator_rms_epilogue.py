@@ -131,8 +131,15 @@ def test_cpu_temporary_scope_restores_grad_math_even_on_exception(monkeypatch):
 def test_only_prepare_rollout_is_scoped():
     from distillschedule.runtime.livewan_crossscale_worker import prepare_rollout,generator_backward_for_sample
     tree=ast.parse(inspect.getsource(prepare_rollout))
-    scopes=[n for n in ast.walk(tree) if isinstance(n,ast.With)]
+    scopes=[n for n in ast.walk(tree) if isinstance(n,ast.With) and any(
+        ast.unparse(item.context_expr)=='generator_rms_scope(torch, student)' for item in n.items)]
     assert len(scopes)==1
     assert ast.unparse(scopes[0].items[0].context_expr)=='torch.no_grad()'
     assert ast.unparse(scopes[0].items[2].context_expr)=='generator_rms_scope(torch, student)'
+    lifetimes=[n for n in ast.walk(tree) if isinstance(n,ast.With) and any(
+        ast.unparse(item.context_expr)=='generator_text_kv_payload_lifetime(torch, streamer)' for item in n.items)]
+    assert len(lifetimes)==1 and scopes[0] in lifetimes[0].body
+    rollout_calls=[n for n in ast.walk(tree) if isinstance(n,ast.Call)
+                   and ast.unparse(n.func)=='streamer.rollout_record']
+    assert len(rollout_calls)==1 and rollout_calls[0] in list(ast.walk(scopes[0]))
     assert 'generator_rms_scope' not in inspect.getsource(generator_backward_for_sample)

@@ -256,7 +256,10 @@ def test_native_inconsistent_checkpoint_rejected_before_restore_or_output_mutati
         next(model.state['student'].parameters()).fill_(-.75)
     before = pack_state(model.state)
     if entrypoint == 'output':
-        monkeypatch.setattr(lifecycle, 'construct', lambda _: (model, dataset, algorithm, identity))
+        def output_construct(actual_config, *, include_validation):
+            assert actual_config is config and include_validation is False
+            return model, dataset, algorithm, identity
+        monkeypatch.setattr(lifecycle, 'construct', output_construct)
     with pytest.raises(ValueError, match='complete-cycle|scheduler clock|logical.*version'):
         if entrypoint == 'restore':
             restore_checkpoint(path, model.state, identity=identity)

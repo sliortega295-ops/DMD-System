@@ -8,8 +8,7 @@ updates, checkpoint recovery, generation and inference export.
 The Python package is **`distillschedule`** and the user command is
 **`distillctl`**. Algorithm mathematics and native iteration clocks remain
 algorithm-owned. Physical placement, state lifetimes and legal execution order
-use the existing Program, distributed backends and measured planner—not another
-trainer or a hardcoded model-name winner.
+use the shared Program, distributed backends and measured planner.
 
 **Current integration:** the six native workloads, official Self-Forcing and
 SD1.5/SDXL DMD2, plus LTX, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo adapters
@@ -68,16 +67,16 @@ Configuration has five independent sections: **model, data, algorithm,
 execution, trainer**. Data can be raw images/video/audio/text, prompt-only, or
 already encoded native features; model-specific encoders prepare features
 offline. Independent generator/guidance/real-image streams keep their own
-sample progress. Missing conditioning never falls back to synthetic tensors.
+sample progress.
 
 A training checkpoint saves actual roles, optimizer/scheduler/EMA state, native
 and public clocks, RNG, input progress and versions. Recovery is at complete
-cycle boundaries with the same topology; it is not weight-only initialization.
+cycle boundaries with the same topology.
 Portable inference export contains current Student/Generator weights and the
-required owned inference components, **not** resumable optimizer/data state.
+required inference components.
 `generate --weights` uses new explicit inputs and does not need old training
 artifacts. Outputs are actual images, video frames, WAV audio or AV where the
-adapter supplies real decoders; explicit native latents are never called media.
+adapter supplies decoders. Native latent export is available separately.
 
 Read [data formats](docs/guides/data.md), [training and recovery](docs/guides/training.md)
 and [the end-to-end tutorial](examples/framework/README.md).
@@ -92,7 +91,7 @@ and [the end-to-end tutorial](examples/framework/README.md).
 | LTX-2.5 | Actual LTX AV model/codecs/Gemma with reusable No-GAN flow DMD; full parameters or unmerged LoRA | [Recipe; start with LoRA](recipes/ltx25/README.md) |
 | FLUX.2 klein Base 4B T2I | Native Flux2/Qwen3/VAE; explicit flow DMD with unmerged LoRA | [Recipe](recipes/flux_dmd/README.md) |
 | Original Qwen-Image T2I | Native QwenImage/Qwen2.5-VL/VAE and masked text conditions; explicit flow DMD | [Recipe](recipes/qwen_image_dmd/README.md) |
-| Wan2.2 TI2V-5B T2V subpath | Native Wan/UMT5/VAE; explicit flow DMD, not A14B experts or I2V | [Recipe](recipes/wan22_dmd/README.md) |
+| Wan2.2 TI2V-5B T2V | Native Wan/UMT5/VAE; flow DMD | [Recipe](recipes/wan22_dmd/README.md) |
 | HunyuanVideo-1.5 T2V | Native Hunyuan15, dual text and temporal VAE; explicit flow DMD | [Recipe](recipes/hunyuan_video_dmd/README.md) |
 
 Start with a family recipe and choose its execution policy; data
@@ -105,7 +104,8 @@ lists the available model, data and execution paths. Supply local checkpoints
 and use the recipe's model-specific environment. Original DMD2 and LTX sources
 use their respective licenses.
 
-Official Self-Forcing is **not** the existing W4 LiveWan cross-scale workflow.
+Official Self-Forcing and W4 LiveWan cross-scale training have separate recipes
+that preserve their respective rollout and update rules.
 
 **Official distributed workflows:** SD1.5 provides a [native FSDP2 reference](docs/guides/dmd2_fsdp2_reference.md) and an optimized Resident/DDP configuration. Official Self-Forcing provides native FSDP2 reference and optimized configurations. [Choose and launch a recipe](docs/guides/official_optimized_training.md) through `distillctl train`. Each workflow keeps its own loss, sampling and update rules.
 

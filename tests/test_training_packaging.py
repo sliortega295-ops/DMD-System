@@ -307,7 +307,8 @@ def test_original_helios_ci_requires_actual_public_admission_and_restart():
 def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_metadata):
     import yaml
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
-    for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"):
+    for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4",
+                    "diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1"):
         assert f'{package};extra=="test-h3"' in requirements
     workflow = yaml.safe_load((ROOT / ".github/workflows/h3-grid-native-cpu.yml").read_text())
     job = workflow["jobs"]["original-source-state"]
@@ -316,7 +317,9 @@ def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_met
     sources = [step["with"] for step in job["steps"]
                if step.get("with", {}).get("repository") == "huggingface/diffusers"]
     assert len(sources) == 1 and sources[0]["ref"] == "9284607295a09f759aadd65ed08f48b35feea6d9"
-    assert ".[train,test,test-helios,test-h3]" in commands
+    assert ".[train,test,test-h3]" in commands
+    assert "test-helios" not in commands, "H3 and Helios qualify separate PEFT versions"
+    assert not any('peft==0.17.1' in value and 'extra=="test-h3"' in value for value in requirements)
     assert "python scripts/check_cpu_receipt.py h3-grid-cpu.xml" in commands
     assert "--require 'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation'" in commands
 

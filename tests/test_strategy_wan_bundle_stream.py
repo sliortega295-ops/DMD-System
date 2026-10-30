@@ -1,5 +1,6 @@
 """Fresh incumbent lifecycle: CPU protocol/state evidence, not CUDA proof."""
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -382,8 +383,14 @@ with strategy_environment(f.strategy):
                     first_g=session.bundle_lifecycle.rollout.receipt['stream_lifecycle']['first_version'],
                     first_c=session.bundle_lifecycle.critic.receipt['stream_lifecycle']['first_version']), sys.argv[2])
 '''
+    # pytest adds tests/ to this interpreter's sys.path, not to its children's
+    # environment. The fresh-process proof must locate its explicit fixture.
+    paths = [str(Path(__file__).resolve().parent)]
+    if os.environ.get('PYTHONPATH'):
+        paths.append(os.environ['PYTHONPATH'])
+    child_env = dict(os.environ, PYTHONPATH=os.pathsep.join(paths))
     completed = subprocess.run([sys.executable, '-c', script, str(tmp_path/'restart'),
-        str(tmp_path/'child.pt'), json.dumps(identity)], env=os.environ, text=True, capture_output=True, timeout=60)
+        str(tmp_path/'child.pt'), json.dumps(identity)], env=child_env, text=True, capture_output=True, timeout=60)
     assert completed.returncode == 0, completed.stdout + completed.stderr
     child = torch.load(tmp_path/'child.pt', weights_only=False)
     assert equal(expected, child['state']) and equal(expected_rng, child['rng'])

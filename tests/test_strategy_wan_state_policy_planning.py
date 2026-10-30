@@ -145,7 +145,7 @@ def test_selected_policy_reaches_real_checkpoint_dispatch_and_cpu_backward(tmp_p
             for block in self.blocks: x = self._gradient_checkpointing_func(block, x)
             return x
 
-    with torch.random.fork_rng():
+    with torch.random.fork_rng(devices=[]):
         torch.manual_seed(71)
         g = Model(); control = Model(); child = copy.deepcopy(control)
     build = {role: {'metadata': {}} for role in ('generator', 'critic')}

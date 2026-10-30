@@ -46,7 +46,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
       - name: Install CPU helper dependencies, not the native CUDA environment
-        run: python -m pip install -e '.[train,test,test-helios,test-h3]'
+        run: python -m pip install -e '.[train,test,test-h3]'
       - name: Actual original loop, data cursor, atomic state and rejection tests
         run: python -m pytest -q tests/test_training_h3_grid.py tests/test_training_h3_grid_distributed.py tests/test_training_h3_grid_stop.py tests/test_training_native_state.py --junitxml=h3-grid-cpu.xml
       - name: Do not silently skip the original-source qualification

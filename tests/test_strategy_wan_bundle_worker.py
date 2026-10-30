@@ -100,6 +100,7 @@ class _CpuWorld16Transport:
         self.group = NS()
         self.events = []
         self.output = None
+        self.duplicate_shard_proof = False
 
     def init_process_group(self, backend, **kwargs):
         assert backend == 'nccl' and not self.initialized
@@ -138,6 +139,13 @@ class _CpuWorld16Transport:
                 peer = shards[0].with_name(f'rank-{rank:05d}.pt')
                 shutil.copyfile(shards[0], peer)
                 peers.append({peer.name: file_sha256(peer)})
+        elif isinstance(value, dict) and set(value) == {'rank', 'filename', 'sha256'}:
+            # Each synthetic peer owns the same bytes copied above, but the
+            # real collective restore requires one proof for each rank/name.
+            assert value['rank'] == 0 and value['filename'] == 'rank-00000.pt'
+            peers = [dict(value, rank=rank, filename=f'rank-{rank:05d}.pt') for rank in range(16)]
+            if self.duplicate_shard_proof:
+                peers[-1] = deepcopy(peers[0])
         else:
             peers = [deepcopy(value) for _ in rows]
         rows[:] = peers
@@ -174,10 +182,6 @@ def cpu_worker(native_cpu_bundle, monkeypatch, tmp_path):
     monkeypatch.setattr(torch.cuda, 'mem_get_info', lambda device: (1, 1))
     for name in ('memory_allocated', 'memory_reserved', 'max_memory_allocated', 'max_memory_reserved'):
         monkeypatch.setattr(torch.cuda, name, lambda device: 0)
-    # The real precision setup mutates these flags; keep other tests isolated.
-    monkeypatch.setattr(torch.backends.cuda.matmul, 'allow_tf32', torch.backends.cuda.matmul.allow_tf32)
-    monkeypatch.setattr(torch.backends.cudnn, 'allow_tf32', torch.backends.cudnn.allow_tf32)
-
     model_files = [dict(path='transformer/config.json', bytes=1, sha256='e'*64)]
     monkeypatch.setitem(ASSETS, 'model_identity_sha256', fingerprint(model_files))
     manifest = dict(lora_rank=256, model_files=model_files, model_identity_sha256=ASSETS['model_identity_sha256'],
@@ -277,6 +281,7 @@ def cpu_worker(native_cpu_bundle, monkeypatch, tmp_path):
     def run(name, *, every=1, resume=None, stop=None, public=False):
         transport.output = tmp_path / name
         event_start = len(transport.events)
+        precision = (torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32)
         try:
             if public:
                 from distillschedule.training.native import run_native
@@ -285,6 +290,9 @@ def cpu_worker(native_cpu_bundle, monkeypatch, tmp_path):
                 strategy=f.strategy, cycles=3, stream_path=stream, checkpoint_every=every, resume_from=resume,
                 **(dict(stop_after_cycle=stop) if stop is not None else {}))
         finally:
+            # These flags use dynamic setters, not instance attributes that
+            # MonkeyPatch can remove during undo. Restore the real values.
+            torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32 = precision
             assert not transport.initialized
             if len(transport.events) > event_start:
                 assert transport.events[event_start:][-2:] == ['destroy_gloo', 'destroy_nccl']
@@ -361,7 +369,7 @@ def test_worker_checkpoint_resume_matches_uninterrupted(cpu_worker, checkpoint_c
 @pytest.mark.parametrize('fault, message', [
     ('identity', 'identity changed'), ('policy', 'policy/progress'), ('cursor', 'policy/progress'),
     ('completed', 'policy/progress'), ('incomplete', 'checkpoint is not complete'),
-    ('shard', 'shard missing or hash changed')])
+    ('shard', 'shard missing or hash changed'), ('coverage', 'verification coverage changed')])
 def test_worker_rejects_invalid_resume_before_updates(cpu_worker, fault, message):
     h = cpu_worker
     h.run('source')
@@ -373,6 +381,8 @@ def test_worker_rejects_invalid_resume_before_updates(cpu_worker, fault, message
     elif fault == 'shard':
         with (checkpoint / 'rank-00000.pt').open('ab') as handle:
             handle.write(b'SYNTHETIC_TEST_ONLY_CORRUPTION')
+    elif fault == 'coverage':
+        h.transport.duplicate_shard_proof = True
     else:
         path = checkpoint / 'manifest.json'
         manifest = json.loads(path.read_text())
@@ -388,8 +398,8 @@ def test_worker_rejects_invalid_resume_before_updates(cpu_worker, fault, message
     with pytest.raises(ValueError, match=message):
         h.run('rejected', resume=checkpoint)
     assert len(h.begins) == count
-    assert len(h.parts) == (2 if fault == 'shard' else 1)
-    if fault == 'shard':
+    assert len(h.parts) == (2 if fault in ('shard', 'coverage') else 1)
+    if fault in ('shard', 'coverage'):
         assert not h.parts[-1].seen
         assert h.parts[-1].g.global_steps == h.parts[-1].c.global_steps == 0
     receipt = json.loads((h.root / 'rejected/rank_00.json').read_text())

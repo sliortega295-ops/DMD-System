@@ -20,6 +20,7 @@ from distillschedule.training.config import load_training_config
 from distillschedule.training.session import construct
 from distillschedule.training.checkpoint import rng_state, restore_rng, cpu_tree
 from test_training_end_to_end import equal, run_cli
+from test_framework_official_install import witness
 
 REPO = Path(__file__).resolve().parents[1]
 ORACLE_SHA = '55a8fca2e4fbf2f36c0c3a205f6fa18e92bfa7be06c8249561ce7780a4c68f7f'
@@ -174,6 +175,10 @@ def _oracle(owner, feeds, source_root):
 def test_direct_source_native_iterations_match_owner_losses_gradients_cache_and_clocks(fixture_assets, source_root):
     config, components, feeds = model_and_feeds(fixture_assets)
     owner = components.state['native_cycle']
+    # deepcopy owns aligned Torch storage; from_pretrained may expose unaligned
+    # safetensors views. Match storage ownership before an exact CPU oracle
+    # comparison, preserving every value, Parameter, gradient flag and RNG.
+    witness().materialize_cpu_reference_storage(owner.model)
     reference = deepcopy(owner)
     before_teacher = deepcopy(owner.model.guidance_model.real_unet.state_dict())
     outer_rng = rng_state()
@@ -397,6 +402,7 @@ def test_actual_sdxl_lora_ratio_one_and_inference_projection(source_root, tmp_pa
     for name, module in clone.state.items():
         module.load_state_dict(projection.components.state[name].state_dict(), strict=True)
         module.eval(); projection.components.state[name].eval()
+        witness().materialize_cpu_reference_storage(module, projection.components.state[name])
     with torch.no_grad():
         torch.manual_seed(123); a = clone.generate(clone.state, feeds['generator'][0], {})
         torch.manual_seed(123); b = projection.components.generate(projection.components.state, feeds['generator'][0], {})
@@ -420,7 +426,9 @@ def test_sdxl_single_step_explicit_checkpoint_native399_parity_and_missing_check
     value['data']['streams'].pop('denoising')
     Path(files['config']).write_text(json.dumps(value))
     _, components, feeds = model_and_feeds(files)
-    owner = components.state['native_cycle']; reference = deepcopy(owner)
+    owner = components.state['native_cycle']
+    witness().materialize_cpu_reference_storage(owner.model)
+    reference = deepcopy(owner)
     outer = rng_state(); expected = _oracle(reference, feeds, source_root); restore_rng(outer)
     actual = owner.run(feeds, cycle=0)
     assert actual['iterations'][0]['denoising_timesteps'] == [399]

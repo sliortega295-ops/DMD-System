@@ -25,6 +25,16 @@ EPOCH_POLICY = "distillschedule.livewan_teacher_epochs.v1"
 EVIDENCE = "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"
 
 
+def _fresh_process_environment():
+    # A child Python process does not inherit pytest's tests/ sys.path entry.
+    root = Path(__file__).resolve().parents[1]
+    paths = [str(root / 'tests'), str(root / 'src')]
+    if os.environ.get('PYTHONPATH'):
+        paths.append(os.environ['PYTHONPATH'])
+    return dict(os.environ, CUDA_VISIBLE_DEVICES='', PYTHONDONTWRITEBYTECODE='1',
+                PYTHONPATH=os.pathsep.join(paths))
+
+
 @pytest.fixture(scope="module")
 def finite_pool(tmp_path_factory):
     root = tmp_path_factory.mktemp("livewan-finite-epoch-cpu-fixture")
@@ -251,7 +261,7 @@ def test_actual_named_owner_epoch_checkpoint_new_process_resume(original_source,
         "import sys; from test_training_livewan_c51_continuation import cpu_owner_chain; "
         "cpu_owner_chain(sys.argv[1],sys.argv[2],sys.argv[3],role=sys.argv[4],resume=sys.argv[5])"),
         str(path), str(original_source), str(tmp_path / "resumed"), role, str(tmp_path / "first/midpoint")]
-    result = subprocess.run(command, env=dict(os.environ, CUDA_VISIBLE_DEVICES="", PYTHONDONTWRITEBYTECODE="1"),
+    result = subprocess.run(command, env=_fresh_process_environment(),
                             capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout+result.stderr
     resumed = torch.load(tmp_path / "resumed/result.pt", weights_only=True)
@@ -313,7 +323,7 @@ def test_horizon100_real_epoch_cursor_checkpoint50_new_process_restore(epoch_str
     run = subprocess.run([sys.executable, "-c", (
         "import sys; from test_training_livewan_epoch_inputs import epoch_cursor_resume_probe; "
         "epoch_cursor_resume_probe(*sys.argv[1:])"), str(epoch_stream[0]), str(checkpoint), str(output)],
-        env=dict(os.environ, CUDA_VISIBLE_DEVICES="", PYTHONDONTWRITEBYTECODE="1"),
+        env=_fresh_process_environment(),
         capture_output=True, text=True, timeout=120)
     assert run.returncode == 0, run.stdout+run.stderr
     restored = torch.load(output, weights_only=True)
