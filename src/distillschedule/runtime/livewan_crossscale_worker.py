@@ -2212,6 +2212,7 @@ def prepare_rollout(
     from distillschedule.runtime.livewan_generator_rms_epilogue import model_runtime_scope as generator_rms_scope
     from distillschedule.runtime.livewan_generator_modulation import model_runtime_scope as generator_modulation_scope
     from distillschedule.runtime.livewan_generator_gate import model_runtime_scope as generator_gate_scope
+    from distillschedule.runtime.livewan_cross_kv_cache import generator_text_kv_payload_lifetime
 
     reference_context = _cpu_reference_context(torch, reference_context)
     if reference_context is not None:
@@ -2230,13 +2231,14 @@ def prepare_rollout(
         if elide_full_context_lens
         else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
     )
-    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
-        student_context = student.text_embedding(raw_context)
-        streamer.set_text(student_context, context_lens)
-        streamer.rope_gap = row.rope_gap
-        streamer.set_world(z_teacher[:, :, : row.world_frames])
-        generator = torch.Generator(device=device).manual_seed(row.seeds["rollout"])
-        blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
+    with generator_text_kv_payload_lifetime(torch, streamer):
+        with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
+            student_context = student.text_embedding(raw_context)
+            streamer.set_text(student_context, context_lens)
+            streamer.rope_gap = row.rope_gap
+            streamer.set_world(z_teacher[:, :, : row.world_frames])
+            generator = torch.Generator(device=device).manual_seed(row.seeds["rollout"])
+            blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
     new = torch.cat([value.detach() for value in blocks], dim=2)
     x0 = torch.cat([z_teacher[:, :, : row.world_frames], new], dim=2)
     expected_shape = latent_shape() if reference_context is None else reference_context.latent_shape
@@ -4136,8 +4138,11 @@ def run_worker(
         from distillschedule.training.livewan_c51_training import Continuation
         _require(type(continuation) is Continuation and mode == "pipeline" and run_kind == "continuation",
                  "full C51 continuation requires its explicit typed native owner")
+        continuation.validate_text_kv_plan(plan)
     else:
         _require(run_kind != "continuation", "continuation cannot reuse historical trace/bootstrap execution")
+        _require("text_kv_payload_retirement" not in plan.get("evidence", {}),
+                 "text K/V retirement is public C51 continuation-only, not a benchmark/reference option")
     # Immutable, exact-plan installation BEFORE any model/Torch/CUDA setup.
     request = request_from_plan(plan)
     install_geometry(request, plan_sha256=_effective_plan_sha256(plan))
@@ -4671,6 +4676,9 @@ def run_worker(
         generator_streamers = _build_streamers(
             torch, student=bundle.student, count=streamer_count, device=device,
         )
+    if continuation is not None:
+        continuation.configure_text_kv_retirement(torch=torch, rank=rank, student=bundle.student,
+            streamers=generator_streamers, cache_receipt=generator_cross_kv_cache, plan=plan)
     score_context = (
         build_score_context(torch, bundle=bundle, loader=loader, device=device)
         if bundle.critic is not None or bundle.critic_shadow is not None else None
@@ -4881,7 +4889,7 @@ def run_worker(
         # Same actual observers as the terminal C51 receipt, now also required
         # before any complete-cycle checkpoint may become visible.
         def continuation_mechanisms():
-            return dict(workload_request=request.to_dict(), actual_latent_shapes=[list(s) for s in sorted(_observed_latent_shapes)],
+            value = dict(workload_request=request.to_dict(), actual_latent_shapes=[list(s) for s in sorted(_observed_latent_shapes)],
                 installed_plan_sha256=geometry().plan_sha256, physical_call_inventory=dict(inventory.counts),
                 planner_c51_bundle=dict(receipt_contract(), execution_status="PASS"),
                 score_residual_gate=score_residual_gate, score_layernorm=score_layernorm,
@@ -4897,6 +4905,9 @@ def run_worker(
                                       else dict(execution_status="NOT_APPLICABLE")),
                 generator_gate=(generator_gate.receipt() if generator_gate is not None else dict(execution_status="NOT_APPLICABLE")),
                 score_rmsnorm_kernel=score_rmsnorm_kernel)
+            if continuation.text_kv_retirement_policy is not None:
+                value["generator_text_kv_payload_retirement"] = continuation.text_kv_retirement_snapshot(rank=rank)
+            return value
         from distillschedule.runtime.livewan_c51_bundle import receipt_contract
         continuation.mechanism_receipt = continuation_mechanisms
     is_profile = run_kind == "profile"

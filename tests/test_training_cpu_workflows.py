@@ -90,6 +90,21 @@ def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradi
             assert repr(name) in commands
 
 
+def test_livewan_native_ci_requires_payload_lifetime_and_public_binding_proofs():
+    value = job('livewan-native-inputs-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert 'tests/test_training_livewan_text_kv_retirement.py' in commands
+    assert 'tests/test_training_livewan_c51_diagnostics.py' in commands
+    assert value['env']['DMD_LIVEWAN_TEST_UPSTREAM'].endswith('/third_party/livewan')
+    for name in (
+        'test_real_nonreentrant_checkpoint_output_all_grads_adam_rng_and_counters_equal',
+        'test_actual_prepare_rollout_runahead_and_fresh_resume_prime_retire_same_payload',
+        'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream.v1]',
+        'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream_retire_textkv.v1]',
+    ):
+        assert repr(name) in commands
+
+
 def test_original_wan_ci_requires_mixed_precision_update_restart_and_current_g():
     value = job('helios-reference-model-cpu.yml')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])

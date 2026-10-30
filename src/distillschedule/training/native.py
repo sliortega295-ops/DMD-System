@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
-from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, H3_AR_STREAM
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_GAN_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
 from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
 from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
@@ -234,7 +234,7 @@ def _wan_incumbent_stream(config, workload):
 
 
 def _livewan_c51_stream(config, workload):
-    return workload == "W4" and config.execution.get("preset") == LIVEWAN_C51_STREAM
+    return workload == "W4" and config.execution.get("preset") in (LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM)
 
 
 def _h3_ar_stream(config, workload):

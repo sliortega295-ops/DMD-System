@@ -18,6 +18,7 @@ from . import distributed
 from .livewan_reference_assets import document, require
 from .livewan_c51_assets import C51Assets, asset_config, admit_runtime, source_origins, uses_hf_provider, provider_binding
 from .livewan_c51_state import PoolInputs, Progress, WindowedRunaheadTransport, owner_state, physical_versions
+from .native_presets import LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM
 
 SCHEMA = "distillschedule.livewan_c51_continuation.v1"
 POLICY = "distillschedule.livewan_c51_checkpoint.v1"
@@ -35,6 +36,16 @@ def descriptor():
                 scheduling="depth1 lookahead; suppress only until explicit checkpoint/final drain completes",
                 scratch="two pinned host slots per role; streamer/KV/SAC/cast/shadow reconstructed, never checkpointed",
                 numerical_status="REVIEW", gpu_execution="NOT_RUN", claimable_speedup=False)
+
+
+def text_kv_retirement_policy(config):
+    """Only the separately versioned public stream admits this physical lifetime."""
+    preset = getattr(config, "execution", {}).get("preset", LIVEWAN_C51_STREAM)
+    require(preset in (LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM), "C51 stream preset/version changed")
+    if preset == LIVEWAN_C51_RETIRE_TEXTKV_STREAM:
+        from distillschedule.runtime.livewan_cross_kv_cache import payload_retirement_policy
+        return payload_retirement_policy()
+    return None
 
 
 def capacity_policy(value):
@@ -92,8 +103,12 @@ def admit_training(config, task_value, assets_value, paths):
                             source=assets["native"]["sources"]["livewan"])
     policy = capacity_policy(document(paths["capacity_policy"]))
     make_plan(assets, paths["output"])  # exact frozen mechanism admission before model construction
-    return dict(task=task_value, selected=dict(preset="self_forcing.c51_stream.v1", bundle="c51_full_v1"),
-                assets=assets, inputs=inputs, capacity_policy=policy, lifecycle=descriptor(),
+    lifecycle = descriptor()
+    retirement = text_kv_retirement_policy(config)
+    if retirement is not None:
+        lifecycle["text_kv_payload_retirement"] = retirement
+    return dict(task=task_value, selected=dict(preset=config.execution["preset"], bundle="c51_full_v1"),
+                assets=assets, inputs=inputs, capacity_policy=policy, lifecycle=lifecycle,
                 native_worker="distillschedule.training.livewan_c51_training:run_training",
                 validation_scope="SOURCE_INPUT_ASSET_METADATA_ONLY; NATIVE_CUDA_NUMERICAL_AND_CAPACITY_NOT_RUN")
 
@@ -110,6 +125,9 @@ def training_identity(head, admitted, config, *, runtime=None):
                 assets_sha256=fingerprint(admitted["assets"]), input_sha256=admitted["inputs"]["input_sha256"],
                 horizon=config.trainer["cycles"], seed=config.trainer["seed"], checkpoint_every=config.trainer["checkpoint_every"],
                 topology=deepcopy(TOPOLOGY), capacity_policy=deepcopy(admitted["capacity_policy"]), contract=descriptor())
+    retirement = text_kv_retirement_policy(config)
+    if retirement is not None:
+        result["text_kv_payload_retirement"] = retirement
     if uses_hf_provider(admitted["assets"]):
         require(type(runtime) is dict and type(runtime.get("attention_provider")) is dict,
                 "C51 v2 checkpoint identity requires observed runtime provider")
@@ -165,6 +183,11 @@ def make_plan(assets, output, *, identity=None, stop=None):
     if identity is not None:
         plan["evidence"]["continuation_identity"] = deepcopy(identity)
         plan["evidence"]["requested_stop_cycle"] = stop
+        if "text_kv_payload_retirement" in identity:
+            from distillschedule.runtime.livewan_cross_kv_cache import payload_retirement_policy
+            require(identity["text_kv_payload_retirement"] == payload_retirement_policy(),
+                    "C51 lowered text K/V retirement policy/version changed")
+            plan["evidence"]["text_kv_payload_retirement"] = deepcopy(identity["text_kv_payload_retirement"])
     require(validate_plan(plan, mode="pipeline"), "C51 exact full mechanism plan required")
     return plan
 
@@ -188,6 +211,61 @@ class Continuation:
         self._calls = {}
         self.mechanism_receipt = None
         self.phase_diagnostics = None
+        self.text_kv_retirement_policy = text_kv_retirement_policy(config)
+        require(identity.get("text_kv_payload_retirement") == self.text_kv_retirement_policy,
+                "C51 text K/V retirement preset/checkpoint identity changed")
+        self._text_kv_retirement = None
+        self._retirement_counts = {}
+
+    def validate_text_kv_plan(self, plan):
+        require(plan.get("evidence", {}).get("text_kv_payload_retirement") == self.text_kv_retirement_policy
+                and (self.text_kv_retirement_policy is None
+                     or plan.get("evidence", {}).get("continuation_identity") == self.identity),
+                "C51 text K/V retirement lowered plan/identity changed")
+
+    def configure_text_kv_retirement(self, *, torch, rank, student, streamers, cache_receipt, plan):
+        if self.text_kv_retirement_policy is None:
+            return
+        self.validate_text_kv_plan(plan)
+        require(self._text_kv_retirement is None, "C51 duplicate text K/V retirement configuration")
+        if rank >= 8:
+            require(student is None and not streamers and cache_receipt.get("role") == "score",
+                    "C51 Score cannot own Generator text K/V retirement")
+            return
+        require(student is not None and len(streamers) == 2 and cache_receipt.get("role") == "generator",
+                "C51 text K/V retirement requires both original Generator streamers")
+        from distillschedule.runtime.livewan_cross_kv_cache import bind_generator_text_kv_retirement
+        for streamer in streamers:
+            actual = bind_generator_text_kv_retirement(torch, streamer=streamer, student=student,
+                                                     policy=self.text_kv_retirement_policy)
+            require(actual is cache_receipt.get("text_kv_payload_retirement"),
+                    "C51 text K/V retirement cache observer identity changed")
+        require(actual["bound_streamer_count"] == 2, "C51 text K/V retirement streamer inventory changed")
+        self._text_kv_retirement = actual
+
+    def text_kv_retirement_snapshot(self, *, rank):
+        if rank >= 8:
+            return dict(policy=deepcopy(self.text_kv_retirement_policy), execution_status="NOT_APPLICABLE", role="score")
+        require(self._text_kv_retirement is not None, "C51 actual text K/V retirement observer missing")
+        return deepcopy(self._text_kv_retirement)
+
+    def text_kv_retirement_delta(self, *, rank, rows):
+        """Read actual cumulative retirement, never manufacture executed counts."""
+        snapshot = self.text_kv_retirement_snapshot(rank=rank)
+        if rank >= 8:
+            return snapshot
+        require(snapshot["policy"] == self.text_kv_retirement_policy and snapshot["execution_status"] == "EXECUTED"
+                and snapshot["bound_streamer_count"] == 2 and snapshot["contract_failure_count"] == 0
+                and snapshot["aborted_context_count"] == 0,
+                "C51 actual text K/V retirement policy/owner/failure changed")
+        names = ("retired_context_count", "retired_block_count", "retired_payload_bytes")
+        delta = {key: snapshot[key]-self._retirement_counts.get(key, 0) for key in names}
+        require(delta == dict(retired_context_count=len(rows),
+            retired_block_count=len(rows)*self.text_kv_retirement_policy["blocks"],
+            retired_payload_bytes=len(rows)*self.text_kv_retirement_policy["payload_bytes"]),
+            "C51 actual per-cycle text K/V retirement census differs from consumed rows")
+        self._retirement_counts = {key: snapshot[key] for key in names}
+        return dict(policy=deepcopy(self.text_kv_retirement_policy), delta=delta, actual_cumulative=snapshot)
 
     def configure_phase_diagnostics(self, *, rank):
         import os
@@ -291,6 +369,8 @@ class Continuation:
                       physical_call_inventory=dict(inventory.counts), logical_score_calls=dict(evidence.logical_score_calls),
                       losses=deepcopy(losses), optimizer_diagnostics=deepcopy(norms),
                       input_sha256=self.inputs.input_sha256, publication_boundary=publish)
+        if self.text_kv_retirement_policy is not None:
+            metric["text_kv_payload_retirement"] = self.text_kv_retirement_delta(rank=rank, rows=rows)
         self.metrics.append(metric)
         if not publish:
             # Keep the existing per-complete-cycle capacity/OOM/reserve gate.

@@ -228,8 +228,9 @@ def test_public_descriptor_and_checkpoint_source_closure_include_the_actual_help
     assert source_files()[helper] == file_sha256(package/helper)
 
 
+@pytest.mark.parametrize("preset", ["self_forcing.c51_stream.v1", "self_forcing.c51_stream_retire_textkv.v1"])
 def test_typed_public_config_native_runner_reaches_actual_diagnostic_setup(
-        stream, tmp_path, monkeypatch, scalar):
+        stream, tmp_path, monkeypatch, scalar, preset):
     """Actual public dispatch; admission/device/assets are CPU-only stand-ins.
 
     InputLoader, TrainingConfig, training identity, original output reservation,
@@ -241,7 +242,12 @@ def test_typed_public_config_native_runner_reaches_actual_diagnostic_setup(
     from distillschedule.search import resources
     from distillschedule.training import distributed, native, livewan_c51_training as training, livewan_training as reference
     from distillschedule.workloads.best_known.registry import file_sha256
+    from distillschedule.training.config import TrainingConfig
+    from distillschedule.workloads.best_known.registry import fingerprint
     config = public_config(tmp_path, stream[0])
+    raw = config.to_dict(); raw["execution"]["preset"] = preset
+    config = TrainingConfig.from_dict(raw, source=config.source)
+    retirement = preset == "self_forcing.c51_stream_retire_textkv.v1"
     assets = dict(native=dict(sources=dict(livewan=stream[1]["source"]),
         models={name: dict(root="/SYNTHETIC_TEST_ONLY/"+name) for name in ("student", "critic", "teacher")}))
     admitted = dict(assets=assets, inputs=stream[1], capacity_policy={})
@@ -260,9 +266,13 @@ def test_typed_public_config_native_runner_reaches_actual_diagnostic_setup(
     def enter(**invocation):
         value = invocation["continuation"]
         observed.append(value)
-        setup_worker(value, monkeypatch, tmp_path, rank=0, invocation=invocation, runner=actual_worker, catch=False)
+        # The new preset stops BEFORE its mandatory real G streamer/cache bind:
+        # this diagnostic fixture has no G model. Its actual cache binding and
+        # retirement are tested with real tiny original classes separately.
+        setup_worker(value, monkeypatch, tmp_path, rank=0, invocation=invocation, runner=actual_worker,
+                     build_error=retirement, catch=False)
     monkeypatch.setattr(worker, "run_worker", enter)
-    with pytest.raises(BoundaryStop, match="public-bind"):
+    with pytest.raises(BoundaryStop, match="model-construction" if retirement else "public-bind"):
         native.run_native(config)
     assert len(observed) == 1 and type(observed[0]) is training.Continuation
     value = observed[0]
@@ -271,8 +281,13 @@ def test_typed_public_config_native_runner_reaches_actual_diagnostic_setup(
     assert value.identity["source_files"][helper] == file_sha256(package/helper)
     result = json.loads((value.output/"capacity/phase-receipts/rank-00000.json").read_text())
     assert result["identity"]["source_files"][helper] == value.identity["source_files"][helper]
+    assert result["identity"]["training_identity_sha256"] == fingerprint(value.identity)
     assert result["identity"]["input_sha256"] == stream[1]["input_sha256"]
-    assert result["observations"][-1]["phase"] == "setup_ready" and scalar.samples == 3
+    assert result["observations"][-1]["phase"] == ("construction_entry" if retirement else "setup_ready")
+    assert scalar.samples == (1 if retirement else 3)
+    lowered = json.loads((value.output/"effective-training-plan.rank-00000.json").read_text())
+    assert ("text_kv_payload_retirement" in value.identity) is retirement
+    assert lowered["evidence"].get("text_kv_payload_retirement") == value.identity.get("text_kv_payload_retirement")
     failure = json.loads((value.output/"continuation/rank-00000.failed.json").read_text())
     assert failure["status"] == "FAIL" and failure["last_locally_completed_cycle"] == 0
     assert failure["native_cuda_numerical_qualification"] == "NOT_RUN"

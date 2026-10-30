@@ -17,6 +17,7 @@ HELIOS_SAFE_STREAM = "helios_nogan.safe_stream_ed8.v1"
 HELIOS_GAN_STREAM = "helios_gan.fa3_down40_nomerge_stream.v1"
 WAN_INCUMBENT_STREAM = "wan_ar.incumbent21a_stream.v2"
 LIVEWAN_C51_STREAM = "self_forcing.c51_stream.v1"
+LIVEWAN_C51_RETIRE_TEXTKV_STREAM = "self_forcing.c51_stream_retire_textkv.v1"
 H3_AR_STREAM = "h3_ar.zero3_ap_stream.v1"
 _PRESETS = {
     "W1": dict(id="wan_ar.incumbent21a.v1", numerical_status="REVIEW",
@@ -71,7 +72,7 @@ def describe_preset(workload: str, preset_id: str) -> dict:
     stream = workload == "W2" and preset_id == HELIOS_SAFE_STREAM
     wan_stream = workload == "W1" and preset_id == WAN_INCUMBENT_STREAM
     gan_stream = workload == "W3" and preset_id == HELIOS_GAN_STREAM
-    c51_stream = workload == "W4" and preset_id == LIVEWAN_C51_STREAM
+    c51_stream = workload == "W4" and preset_id in (LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM)
     h3_ar_stream = workload == "W6" and preset_id == H3_AR_STREAM
     if value is None or value["id"] != preset_id and not (stream or wan_stream or gan_stream or c51_stream or h3_ar_stream):
         raise ValueError(f"native training: unknown or mismatched preset {preset_id!r} for {workload}")
@@ -87,7 +88,7 @@ def describe_preset(workload: str, preset_id: str) -> dict:
             gpu_execution="NOT_RUN", source_binding="same source/assets/input/horizon/precision/layout/world16/capacity",
             reference_alternative="explicit zero3-native through the same stream owner; never CPU-reference substitution")
     if c51_stream:
-        return dict(schema_version=SCHEMA, workload=workload, **dict(deepcopy(value), id=LIVEWAN_C51_STREAM,
+        result = dict(schema_version=SCHEMA, workload=workload, **dict(deepcopy(value), id=preset_id,
             runtime="distillschedule.training.livewan_c51_training:run_training",
             implementation_paths=[*value["implementation_paths"], "training/livewan_c51_training.py",
                                   "training/livewan_c51_state.py", "training/livewan_c51_assets.py",
@@ -97,6 +98,12 @@ def describe_preset(workload: str, preset_id: str) -> dict:
             runtime_binding="ORIGINAL_C51_SHARED_WORKER_SETUP_AND_DUAL_POOL_NATIVE_MATH",
             lifecycle_verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_CONTINUATION_NOT_RUN",
             gpu_execution="NOT_RUN", source_binding="current sources/assets/inputs/policy/exact 8G+8Score topology; old templates unchanged")
+        if preset_id == LIVEWAN_C51_RETIRE_TEXTKV_STREAM:
+            from distillschedule.runtime.livewan_cross_kv_cache import payload_retirement_policy
+            result["text_kv_payload_retirement"] = payload_retirement_policy()
+            result["mechanisms"].append("generator_dead_text_kv_payload_retirement_v1")
+            result["implementation_paths"].append("runtime/livewan_cross_kv_cache.py")
+        return result
     if gan_stream:
         value = dict(deepcopy(value), id=HELIOS_GAN_STREAM,
             runtime="distillschedule.training.helios_gan_training:run_training",

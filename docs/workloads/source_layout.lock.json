@@ -612,6 +612,22 @@
       "integrated_sha256": "5f31d0354f13bf2b38cee44a25aae106981d0a7e2ab03f26f5f549137e1eceb7",
       "source_commit": "26490858d6e333447c9822d29b6029d9484bb337",
       "change": "R268 exact committed26490858 source/input-admitted native-history CPU-first construction on unchanged CUDA world16 FSDP2 mesh; same bottom-up block/root policy and model/optimizer ordering. Legacy world16 and existing HSDP paths retained. Source and actual targetTorch2.10 CPU proof only; full-size CUDA construction/capacity NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_cross_kv_cache.py",
+      "previous_sha256": "f9bf1e4cb841a80648105c2b327b3d5a3322b9a209a35b9300d64093fdb0812a",
+      "integrated_sha256": "578d83354dc1e91026cf772b6a13bfc247191baca6d5956dfbb44047c72f0d12",
+      "source_commit": "497e3aef5d44bda5ed80fdb4b3a5fd5f2639edae",
+      "change": "R292 default-OFF explicit self_forcing.c51_stream_retire_textkv.v1 public-continuation-only dead Generator text cross-K/V payload retirement after the original no-grad prepare_rollout scope; empty grad-bypass marker, original next-set_text invalidation/builds, native self-KV/prefix/raw context/model/RNG/optimizer/call/shape/reserve contracts preserved. Source commit is the exact integration base; original import and prior overlays unchanged. CPU/source lifecycle evidence only; native CUDA numerics, allocator/driver-free recovery, reserve acceptance and performance NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "5406cd09fef5c7b5b0485ab7597c095d9cc8ab1d9056f18412991480fa43ecf2",
+      "integrated_sha256": "aa3764c247826bb5c0dcb758e7e70c8dbdc29e530b16753b657f27d4c1fd1a30",
+      "source_commit": "497e3aef5d44bda5ed80fdb4b3a5fd5f2639edae",
+      "change": "R292 default-OFF explicit self_forcing.c51_stream_retire_textkv.v1 public-continuation-only dead Generator text cross-K/V payload retirement after the original no-grad prepare_rollout scope; empty grad-bypass marker, original next-set_text invalidation/builds, native self-KV/prefix/raw context/model/RNG/optimizer/call/shape/reserve contracts preserved. Source commit is the exact integration base; original import and prior overlays unchanged. CPU/source lifecycle evidence only; native CUDA numerics, allocator/driver-free recovery, reserve acceptance and performance NOT_RUN."
     }
   ]
 }

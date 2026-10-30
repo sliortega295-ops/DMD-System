@@ -12,6 +12,36 @@ original C51 worker setup, installers, persistent `ModelBundle`, two streamers,
 There is no reference fallback, synthetic trainer, automatic plan substitution,
 dependency installation, cluster reservation, or implicit asset download.
 
+### Separate dead text K/V payload lifetime opt-in
+
+`training.c51-stream-retire-textkv.json` selects the distinct research preset
+`self_forcing.c51_stream_retire_textkv.v1`. The original
+`self_forcing.c51_stream.v1`, reference/baseline, Score and frozen benchmark
+templates are unchanged. The full C51 bundle, math, calls, shapes, optimizer,
+RNG and explicit capacity/reserve policy remain mandatory.
+
+Only its two original Generator streamers retire the projected **text cross-K/V
+dictionary payload** after each complete `prepare_rollout` no-grad scope,
+including runahead/lookahead and fresh-process resume prime. The empty marker
+survives so gradient-enabled first forward and non-reentrant checkpoint replay
+still enter the original forward **before** cache-entry lookup. Context values,
+raw text, recorded steps, native self-KV/prefix slabs and active gradients are
+not retired. Any later no-grad use of a retired context fails closed; the next
+original `set_text` still invalidates once and unconditionally rebuilds.
+
+The exact versioned policy is part of the lowered evidence and training/checkpoint
+identity; it cannot resume a checkpoint from the other preset. Per-cycle metrics
+record actual runtime retired contexts, blocks and logical tensor bytes, in
+addition to unchanged build/hit/bypass/invalidation counters. A failed rollout
+cleans an already built payload under separate **aborted**, not success, counters.
+
+**CPU/source evidence only; native CUDA numerics, allocator/driver-free recovery,
+reserve acceptance, completed continuation/checkpoint and performance for this
+variant are NOT_RUN.** Native source geometry is 141,557,760 logical bytes per
+rollout (up to about 270 MiB across two dead contexts), not measured reclaimed
+GPU memory or a guarantee of satisfying the unchanged reserve. Do not infer
+the exact rejected sample or an OOM subphase from that arithmetic.
+
 ## Inputs and assets
 
 Each cycle consumes **80 distinct original Teacher archives**. By default,
