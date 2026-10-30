@@ -316,7 +316,7 @@ def test_original_model_provider_receipt_gate_rejects_false_green(tmp_path, name
 def test_native_cpu_fixture_preloads_admit_the_real_source_helper_namespace():
     import ast
     for filename in ('test_training_helios_gan_native_history.py', 'test_training_helios_gan_state.py',
-                     'test_training_helios_native_history.py'):
+                     'test_training_helios_native_history.py', 'test_training_helios_original.py'):
         calls = [node for node in ast.walk(ast.parse((ROOT / 'tests' / filename).read_text()))
                  if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                  and node.func.id == 'native_primitives']

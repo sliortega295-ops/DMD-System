@@ -59,8 +59,31 @@ def fresh_stream(tmp_path_factory, request):
                 names.append(str(path))
             samples.append(names)
         sources.append(HeliosCohortSources.from_dict({"seed": seed, "samples": samples}))
+    # This fixture also runs before the source-qualified GAN/helper tests.
+    # Admit the same pinned closure before legacy capture reuses its imports.
+    from distillschedule.strategies.wan_capture import native_primitives
+    native_primitives(source_only=True)
     document = prepare_stream(HeliosCohortTask(0).request, sources, config, root / "prepared")
     return root, document
+
+
+def test_original_stream_fixture_keeps_native_helpers_source_admitted(fresh_stream):
+    from distillschedule.adapters.helios import reference_helpers
+    from distillschedule.strategies import wan_capture
+    # The same fixture runs first in the collective-admission module. Its
+    # real native capture must leave a source-admitted closure for later CPU
+    # proofs, without deleting or replacing any already loaded helper.
+    before = reference_helpers._cached_modules()
+    identity = reference_helpers.reference_helper_identity(backend="torch-sdpa")
+    original = wan_capture.native_primitives()
+    admitted = wan_capture.native_primitives(source_only=True)
+    assert len(before) == len(identity["modules"]) == 11
+    assert reference_helpers._cached_modules() == before
+    assert original.post is admitted.post is before["helios.utils.utils_helios_post"]
+    assert original.history is admitted.history is before["helios.utils.utils_helios_base"]
+    assert original.scheduler is admitted.scheduler
+    assert original.dataset is admitted.dataset
+    assert not torch.cuda.is_initialized()
 
 
 def test_original_producer_consumer_and_full_rank_step_rng_admission(fresh_stream):
