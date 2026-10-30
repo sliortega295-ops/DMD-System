@@ -302,5 +302,5 @@ def owner_state(bundle, *, source_root, progress):
                         for s in value["optimizer"]["state"].values()), "C51 named Adam step/moment differs from actual clock")
 
     base = model_bundle_state(bundle, source_root=source_root)
-    return {key: (Optimizer(view.engine) if key.endswith(".optimizer") else Weights(view.engine))
+    return {key: (Optimizer(view.engine, in_place_restore=True) if key.endswith(".optimizer") else Weights(view.engine))
             for key, view in base.items()} | {"pool.progress": progress}

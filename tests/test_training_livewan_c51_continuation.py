@@ -1594,3 +1594,323 @@ assert "torch" not in sys.modules
 assert not any(name.startswith(("flash_attn", "wan.", "wanstreamer.")) for name in sys.modules)
 '''
     subprocess.run([sys.executable, "-B", "-c", script], check=True)
+
+
+# Serialization-only CPU tests: the original LoRA/Adam, PoolInputs, progress and
+# public checkpoint implementation are real; this is not a CUDA capacity gate.
+def _bounded_adam_owner(stream, original_source, original_lora, role, *, restore_cycle=None):
+    from distillschedule.training.livewan_c51_state import owner_state, Progress, physical_versions
+    if role == "generator":
+        return detached_text_generator(stream, original_source, original_lora, restore_cycle=restore_cycle)
+    current = owner(original_lora, role)
+    current.progress = Progress(pool(stream, 8), physical_versions(8, 0), restore_cycle=restore_cycle)
+    current.state = owner_state(current.bundle, source_root=original_source, progress=current.progress)
+    return current
+
+
+def _advance_bounded_adam(current):
+    from test_training_livewan_state import update
+    from distillschedule.training.checkpoint import cpu_tree
+    if current.role == "generator":
+        # Include the actual detached text-projector Adam slots in the chain.
+        advance_detached_text_generator(current)
+        return cpu_tree(current.model.projection.weight.detach())
+    result = [update(current) for _ in range(5)]
+    current.progress.actual["critic"] += 5
+    rows = consume(current.progress.cursor, current.progress.cursor.cycle)
+    return cpu_tree(dict(draws=result, rows=rows,
+                         losses=[(r["output"].float()-r["target"]).square().mean() for r in result]))
+
+
+def _bounded_adam_storage(current):
+    optimizer = current.optimizer
+    return dict(optimizer=id(optimizer), state=id(optimizer.state),
+                groups=id(optimizer.param_groups), group_objects=[id(g) for g in optimizer.param_groups],
+                group_parameter_lists=[id(g["params"]) for g in optimizer.param_groups],
+                parameters=[id(p) for p in current.model.parameters()],
+                slots=[(id(p), id(slots), key, id(t), t.data_ptr(), t.untyped_storage().data_ptr(),
+                        str(t.device), str(t.dtype), list(t.shape), list(t.stride()))
+                       for p, slots in optimizer.state.items() for key, t in slots.items()])
+
+
+@pytest.mark.parametrize("role", ["generator", "critic"])
+def test_c51_restore_copies_exact_materialized_adam_slots_without_staging(
+        stream, original_source, original_lora, tmp_path, monkeypatch, role):
+    import random
+    import numpy as np
+    import torch
+    from distillschedule.training.checkpoint import pack_state, cpu_tree, save_checkpoint, restore_checkpoint, rng_state
+    from distillschedule.training.native_state import OptimizerState
+    torch.manual_seed(32); random.seed(33); np.random.seed(34)
+    control = _bounded_adam_owner(stream, original_source, original_lora, role)
+    _advance_bounded_adam(control); _advance_bounded_adam(control)
+    saved = cpu_tree(pack_state(control.state))
+    identity = dict(scope="SYNTHETIC_TEST_ONLY_REAL_C51_SERIALIZATION_NOT_GPU", role=role)
+    path = save_checkpoint(tmp_path/"bounded-adam", control.state, identity=identity,
+                           cycle=2, cursor=10, versions=dict(generator=2, critic=10, ema=0))
+    expected_output = _advance_bounded_adam(control)
+    expected_state, expected_rng = cpu_tree(pack_state(control.state)), cpu_tree(rng_state())
+    resumed = _bounded_adam_owner(stream, original_source, original_lora, role, restore_cycle=2)
+    before = _bounded_adam_storage(resumed)
+    stages = []
+    original_stage = OptimizerState._stage
+    def counted_stage(self, value):
+        stages.append(type(self).__name__)
+        return original_stage(self, value)
+    monkeypatch.setattr(OptimizerState, "_stage", counted_stage)
+    restore_checkpoint(path, resumed.state, identity=identity)
+    assert stages == [], "C51 restore allocated a second complete optimizer staging object"
+    assert _bounded_adam_storage(resumed) == before
+    assert equal(cpu_tree(pack_state(resumed.state)), saved)
+    resumed.progress.restore_cycle = None
+    assert equal(_advance_bounded_adam(resumed), expected_output)
+    assert equal(cpu_tree(pack_state(resumed.state)), expected_state)
+    assert equal(cpu_tree(rng_state()), expected_rng)
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize("damage", [
+    "class", "names", "group", "source", "late_moment_dtype", "late_moment_shape", "late_moment_stride",
+    "step_dtype", "step_shape", "step_fractional", "step_nonfinite", "step_clock", "missing_state", "extra_state",
+    "missing_slot", "extra_slot", "moment_nonfinite", "second_moment_negative",
+])
+def test_c51_in_place_adam_rejects_late_invalid_saved_slot_before_weights_slots_rng_or_cursor_mutate(
+        stream, original_source, original_lora, damage):
+    import torch
+    from distillschedule.training.checkpoint import pack_state, unpack_state, cpu_tree, rng_state
+    source = _bounded_adam_owner(stream, original_source, original_lora, "generator")
+    _advance_bounded_adam(source)
+    saved = cpu_tree(pack_state(source.state))
+    view = saved["generator.optimizer"]["value"]
+    raw = view["optimizer"]
+    last_id = raw["param_groups"][0]["params"][-1]
+    last = raw["state"][last_id]
+    if damage == "class": view["class"] = "torch.optim.adam.Adam"
+    elif damage == "names": view["parameters"][0][-1] += ".different"
+    elif damage == "group": raw["param_groups"][0]["lr"] = 1.
+    elif damage == "source": view["identity"]["source"]["files"]["wanstreamer/lora.py"] = "f"*64
+    elif damage == "late_moment_dtype": last["exp_avg"] = last["exp_avg"].double()
+    elif damage == "late_moment_shape": last["exp_avg_sq"] = torch.zeros(1)
+    elif damage == "late_moment_stride":
+        # The final matrix-shaped parameter is text_embedding.weight.
+        matrix_id = raw["param_groups"][0]["params"][-2]
+        raw["state"][matrix_id]["exp_avg"] = raw["state"][matrix_id]["exp_avg"].T.contiguous().T
+    elif damage == "step_dtype": last["step"] = last["step"].double()
+    elif damage == "step_shape": last["step"] = last["step"].view(1)
+    elif damage == "step_fractional": last["step"].fill_(.5)
+    elif damage == "step_nonfinite": last["step"].fill_(float("nan"))
+    elif damage == "step_clock": last["step"].fill_(2.)
+    elif damage == "missing_state": del raw["state"][last_id]
+    elif damage == "extra_state": raw["state"][123456] = deepcopy(last)
+    elif damage == "missing_slot": del last["exp_avg"]
+    elif damage == "extra_slot": last["max_exp_avg_sq"] = last["exp_avg_sq"].clone()
+    elif damage == "moment_nonfinite": last["exp_avg"].fill_(float("nan"))
+    else: last["exp_avg_sq"].fill_(-1.)
+    resumed = _bounded_adam_owner(stream, original_source, original_lora, "generator", restore_cycle=1)
+    with torch.no_grad():
+        resumed.model.projection.weight.add_(3.)
+    before = cpu_tree(pack_state(resumed.state))
+    pointers, rng = _bounded_adam_storage(resumed), cpu_tree(rng_state())
+    with pytest.raises(ValueError):
+        unpack_state(saved, resumed.state, progress=dict(cycle=1, cursor=5,
+                     versions=dict(generator=1, critic=5, ema=0)))
+    assert equal(cpu_tree(pack_state(resumed.state)), before)
+    assert _bounded_adam_storage(resumed) == pointers
+    assert equal(cpu_tree(rng_state()), rng)
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize("damage", ["missing_slot", "dtype", "stride", "step_dtype", "extra_state", "alias", "source_alias"])
+def test_c51_in_place_adam_rejects_nonmaterialized_or_aliased_live_destinations_before_any_copy(
+        stream, original_source, original_lora, damage):
+    import torch
+    from distillschedule.training.checkpoint import pack_state, unpack_state, cpu_tree, rng_state
+    source = _bounded_adam_owner(stream, original_source, original_lora, "generator")
+    _advance_bounded_adam(source)
+    saved = cpu_tree(pack_state(source.state))
+    resumed = _bounded_adam_owner(stream, original_source, original_lora, "generator", restore_cycle=1)
+    parameter = resumed.parameters[0]
+    live = resumed.optimizer.state[parameter]
+    if damage == "missing_slot": del live["exp_avg"]
+    elif damage == "dtype": live["exp_avg"] = live["exp_avg"].double()
+    elif damage == "stride": live["exp_avg"] = live["exp_avg"].T.contiguous().T
+    elif damage == "step_dtype": live["step"] = live["step"].double()
+    elif damage == "extra_state": resumed.optimizer.state[torch.nn.Parameter(torch.zeros(1))] = deepcopy(live)
+    elif damage == "alias": live["exp_avg"] = parameter.detach()
+    else:
+        value = saved["generator.optimizer"]["value"]["optimizer"]
+        key = value["param_groups"][0]["params"][0]
+        value["state"][key]["exp_avg"] = live["exp_avg"]
+    # The damaged live optimizer may no longer serialize; use its raw actual
+    # objects rather than bypassing the production admission with a fake view.
+    def actual_values():
+        return cpu_tree(dict(model=resumed.model.state_dict(),
+                             optimizer={id(p): slots for p, slots in resumed.optimizer.state.items()},
+                             data=resumed.progress.cursor.state_dict(), rng=rng_state()))
+    before = actual_values()
+    pointers = _bounded_adam_storage(resumed)
+    with pytest.raises(ValueError):
+        unpack_state(saved, resumed.state, progress=dict(cycle=1, cursor=5,
+                     versions=dict(generator=1, critic=5, ema=0)))
+    assert equal(before, actual_values())
+    assert _bounded_adam_storage(resumed) == pointers
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize("role", ["generator", "critic"])
+def test_c51_in_place_and_original_staged_restore_match_next_native_adam_update(
+        stream, original_source, original_lora, tmp_path, role):
+    from distillschedule.training.checkpoint import pack_state, save_checkpoint, restore_checkpoint, cpu_tree, rng_state
+    source = _bounded_adam_owner(stream, original_source, original_lora, role)
+    _advance_bounded_adam(source)
+    identity = dict(scope="SYNTHETIC_TEST_ONLY_OLD_STAGING_PARITY", role=role)
+    path = save_checkpoint(tmp_path/"checkpoint", source.state, identity=identity,
+                           cycle=1, cursor=5, versions=dict(generator=1, critic=5, ema=0))
+    results = []
+    for in_place in (False, True):
+        resumed = _bounded_adam_owner(stream, original_source, original_lora, role, restore_cycle=1)
+        # Exercise the unchanged original fallback, including the same C51
+        # _admit/clock checks, not a hand-coded reference Adam implementation.
+        resumed.state[role+".optimizer"]._in_place_restore = in_place
+        restore_checkpoint(path, resumed.state, identity=identity)
+        resumed.progress.restore_cycle = None
+        output = _advance_bounded_adam(resumed)
+        results.append(dict(output=output, state=cpu_tree(pack_state(resumed.state)), rng=cpu_tree(rng_state())))
+    assert equal(results[0], results[1])
+
+
+def test_resident_default_view_preserves_original_staging_not_in_place(stream, original_source, original_lora, monkeypatch):
+    from distillschedule.training.livewan_state import model_bundle_state
+    from distillschedule.training.native_state import OptimizerState
+    from distillschedule.training.checkpoint import pack_state, unpack_state
+    current = owner(original_lora, "critic")
+    state = model_bundle_state(current.bundle, source_root=original_source)
+    assert state["critic.optimizer"]._in_place_restore is False
+    saved = pack_state(state)
+    before = _bounded_adam_storage(current)
+    stages = []
+    original = OptimizerState._stage
+    def counted(self, value):
+        stages.append(type(self).__name__)
+        return original(self, value)
+    monkeypatch.setattr(OptimizerState, "_stage", counted)
+    unpack_state(saved, state)
+    assert stages == ["_Optimizer", "_Optimizer"]
+    after = _bounded_adam_storage(current)
+    assert before["optimizer"] == after["optimizer"] and before["parameters"] == after["parameters"]
+    assert before["state"] != after["state"] and before["slots"] != after["slots"]
+
+
+def _c51_bounded_adam_collective_worker(rank, world, rendezvous, manifest, source, output, damage):
+    """Real two-rank Gloo + actual C51 state views, not a native CUDA pool."""
+    from datetime import timedelta
+    import torch
+    import torch.distributed as dist
+    from distillschedule.training import checkpoint as cp
+    from distillschedule.training.livewan_state import _source, _reference_lora
+    root = Path(output)
+    torch.set_num_threads(1)
+    os.environ.update(WORLD_SIZE=str(world), RANK=str(rank), LOCAL_RANK=str(rank),
+                      LOCAL_WORLD_SIZE=str(world), GROUP_RANK="0")
+    dist.init_process_group("gloo", init_method="file://"+rendezvous, rank=rank, world_size=world,
+                            timeout=timedelta(seconds=60))
+    try:
+        upstream = _source(source)
+        original_class = _reference_lora(upstream)
+        lora = SimpleNamespace(LoRALinear=original_class)
+        role = "generator" if rank == 0 else "critic"
+        inputs = (Path(manifest), None)
+        current = _bounded_adam_owner(inputs, source, lora, role)
+        _advance_bounded_adam(current)
+        identity = dict(scope="SYNTHETIC_TEST_ONLY_REAL_GLOO_C51_CHECKPOINT")
+        path = cp.save_checkpoint(root/"checkpoint", current.state, identity=identity,
+                                 cycle=1, cursor=5, versions=dict(generator=1, critic=5, ema=0))
+        expected = _advance_bounded_adam(current)
+        expected_state, expected_rng = cp.cpu_tree(cp.pack_state(current.state)), cp.cpu_tree(cp.rng_state())
+        if damage:
+            if rank == 1:
+                file = path/"rank-00001.pt"
+                payload = torch.load(file, weights_only=True)
+                raw = payload["state"]["critic.optimizer"]["value"]["optimizer"]
+                last = raw["param_groups"][0]["params"][-1]
+                raw["state"][last]["exp_avg"] = raw["state"][last]["exp_avg"].double()
+                torch.save(payload, file)
+            dist.barrier()
+            if rank == 0:
+                document = json.loads((path/"manifest.json").read_text())
+                document["files"]["rank-00001.pt"] = cp._sha(path/"rank-00001.pt")
+                (path/"manifest.json").write_text(json.dumps(document))
+                (path/"_SUCCESS").write_text(cp._sha(path/"manifest.json")+"\n")
+            dist.barrier()
+        resumed = _bounded_adam_owner(inputs, source, lora, role, restore_cycle=1)
+        before = cp.cpu_tree(cp.pack_state(resumed.state))
+        pointers, before_rng = _bounded_adam_storage(resumed), cp.cpu_tree(cp.rng_state())
+        if damage:
+            with pytest.raises(ValueError) as rejected:
+                cp.restore_checkpoint(path, resumed.state, identity=identity)
+            assert equal(before, cp.cpu_tree(cp.pack_state(resumed.state)))
+            assert equal(before_rng, cp.cpu_tree(cp.rng_state()))
+            assert _bounded_adam_storage(resumed) == pointers
+            errors = cp.distributed.gather(str(rejected.value))
+            assert errors[0] == errors[1]
+        else:
+            cp.restore_checkpoint(path, resumed.state, identity=identity)
+            assert _bounded_adam_storage(resumed) == pointers
+            resumed.progress.restore_cycle = None
+            assert equal(_advance_bounded_adam(resumed), expected)
+            assert equal(cp.cpu_tree(cp.pack_state(resumed.state)), expected_state)
+            assert equal(cp.cpu_tree(cp.rng_state()), expected_rng)
+        healthy = torch.tensor(rank+1)
+        dist.all_reduce(healthy)
+        assert healthy.item() == 3 and not torch.cuda.is_initialized()
+        (root/f"rank-{rank}.json").write_text(json.dumps(dict(
+            status="PASS_CPU_COLLECTIVE_REJECTION" if damage else "PASS_CPU_COLLECTIVE_RESTORE",
+            evidence_kind="SYNTHETIC_TEST_ONLY", role=role, ranks=world, CUDA_initialized=False)))
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize("damage", [False, True])
+def test_c51_real_gloo_complete_checkpoint_and_all_rank_admission_remain_premutation(
+        stream, original_source, tmp_path, damage):
+    import torch.multiprocessing as mp
+    mp.spawn(_c51_bounded_adam_collective_worker,
+             args=(2, str(tmp_path/"rendezvous"), str(stream[0]), str(original_source), str(tmp_path), damage),
+             nprocs=2, join=True)
+    rows = [json.loads((tmp_path/f"rank-{r}.json").read_text()) for r in range(2)]
+    assert len(rows) == 2 and rows[0]["status"] == rows[1]["status"]
+
+
+def test_c51_bounded_restore_preserves_original_fused_adam_scalar_device_and_slots(
+        stream, original_source, original_lora, tmp_path):
+    import torch
+    from distillschedule.runtime.livewan_crossscale_worker import materialize_adam_state
+    from distillschedule.training.livewan_c51_state import owner_state
+    from distillschedule.training.checkpoint import pack_state, cpu_tree, save_checkpoint, restore_checkpoint
+    def fused_owner(restore=None):
+        current = _bounded_adam_owner(stream, original_source, original_lora, "generator", restore_cycle=restore)
+        current.optimizer = torch.optim.AdamW(current.parameters, lr=2e-6, betas=(0., .99),
+                                              weight_decay=0., eps=1e-8, fused=True)
+        current.bundle.generator_optimizer = current.optimizer
+        current.bundle.metadata["student"]["optimizer_impl"] = "fused_adamw"
+        current.bundle.metadata["student"]["optimizer"] = materialize_adam_state(torch, current.optimizer)
+        current.state = owner_state(current.bundle, source_root=original_source, progress=current.progress)
+        return current
+    control = fused_owner()
+    _advance_bounded_adam(control)
+    identity = dict(scope="SYNTHETIC_TEST_ONLY_REAL_CPU_FUSED_ADAM_NOT_CUDA")
+    path = save_checkpoint(tmp_path/"fused", control.state, identity=identity,
+                           cycle=1, cursor=5, versions=dict(generator=1, critic=5, ema=0))
+    saved = cpu_tree(pack_state(control.state))
+    expected = _advance_bounded_adam(control)
+    expected_state = cpu_tree(pack_state(control.state))
+    resumed = fused_owner(1)
+    before = _bounded_adam_storage(resumed)
+    restore_checkpoint(path, resumed.state, identity=identity)
+    assert _bounded_adam_storage(resumed) == before
+    assert equal(cpu_tree(pack_state(resumed.state)), saved)
+    resumed.progress.restore_cycle = None
+    assert equal(_advance_bounded_adam(resumed), expected)
+    assert equal(cpu_tree(pack_state(resumed.state)), expected_state)
+    assert all(slots["step"].device == p.device for p, slots in resumed.optimizer.state.items())
+    assert not torch.cuda.is_initialized()

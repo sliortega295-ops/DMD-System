@@ -243,6 +243,15 @@ class _Weights(TrainableWeights):
 
 
 class _Optimizer(OptimizerState):
+    def __init__(self, engine, *, in_place_restore=False):
+        # Only the C51 resident owner opts in. The generic/default serialization
+        # and the reference FSDP/DTensor adapter retain their original staging.
+        _require(type(in_place_restore) is bool
+                 and (not in_place_restore or type(engine) is _ResidentRole),
+                 "in-place Adam restore requires the exact resident owner")
+        super().__init__(engine)
+        self._in_place_restore = in_place_restore
+
     def _admit(self, value):
         import torch
         self.engine.validate()
@@ -285,13 +294,83 @@ class _Optimizer(OptimizerState):
                  and moment.stride() == parameter.stride(), "AdamW moment storage layout changed")
 
     def state_dict(self):
+        if self._in_place_restore:
+            self._in_place_parameters()
         value = {**super().state_dict(), "identity": deepcopy(self.engine.identity)}
         self._admit(value)
         return value
 
+    def _in_place_parameters(self):
+        self.engine.validate()
+        optimizer = self.engine.optimizer
+        parameters = [p for group in optimizer.param_groups for p in group["params"]]
+        _require({id(p) for p in optimizer.state} == {id(p) for p in parameters},
+                 "live materialized AdamW parameter inventory changed")
+        return parameters
+
     def _stage(self, value):
         self._admit(value)
         return super()._stage(value)
+
+    def _in_place_slots(self, value):
+        import torch
+        from distillschedule.open_workload.torch_backend import storage_key
+        # Run the original C51/source/clock/finite/raw-layout checks before any
+        # copy. _stage's ownership check must not be lost when staging is absent.
+        self._admit(value)
+        optimizer = self.engine.optimizer
+        _require(value["parameters"] == self._names() and value["class"] == _class(optimizer),
+                 "native optimizer parameter ownership changed")
+        parameters = self._in_place_parameters()
+        occupied = {storage_key(t)[:2] for t in
+                    (*self.engine.module.parameters(), *self.engine.module.buffers(),
+                     *(p.grad for p in parameters if p.grad is not None)) if t.numel()}
+        slots = []
+        for group, saved_group in zip(optimizer.param_groups, value["optimizer"]["param_groups"], strict=True):
+            for parameter, parameter_id in zip(group["params"], saved_group["params"], strict=True):
+                live = optimizer.state[parameter]
+                _require(type(live) is dict and set(live) == {"step", "exp_avg", "exp_avg_sq"},
+                         "live materialized AdamW slots changed")
+                saved = value["optimizer"]["state"][parameter_id]
+                for key in ("step", "exp_avg", "exp_avg_sq"):
+                    source, target = saved[key], live[key]
+                    device = (parameter.device if key != "step" or group.get("fused")
+                              else torch.device("cpu"))
+                    _require(type(source) is torch.Tensor and source.device.type == "cpu"
+                             and source.layout == torch.strided
+                             and type(target) is torch.Tensor and target.layout == torch.strided
+                             and target.device == device and not target.requires_grad
+                             and target.shape == source.shape and target.dtype == source.dtype
+                             and target.stride() == source.stride(),
+                             "live materialized AdamW slot layout/device changed")
+                    key_storage = storage_key(target)[:2]
+                    _require(not target.numel() or key_storage not in occupied,
+                             "live materialized AdamW slot aliases owned storage")
+                    if target.numel():
+                        occupied.add(key_storage)
+                    slots.append((source, target))
+        # CPU checkpoint tensors must not alias a destination that a previous
+        # copy could overwrite. Real pack/load already creates separate storage.
+        _require(all(not source.numel() or storage_key(source)[:2] not in occupied
+                     for source, _ in slots), "saved AdamW slot aliases live owned storage")
+        return slots
+
+    def validate_state_dict(self, value):
+        if not self._in_place_restore:
+            return super().validate_state_dict(value)
+        self._in_place_slots(value)
+
+    def load_state_dict(self, value):
+        if not self._in_place_restore:
+            return super().load_state_dict(value)
+        import torch
+        slots = self._in_place_slots(value)
+        # checkpoint.unpack_state has completed its all-rank premutation gate.
+        # No .to(device), load_state_dict clone, state.clear or group replacement:
+        # copy all moments/scalar steps into their already-materialized storage.
+        with torch.no_grad():
+            for source, target in slots:
+                target.copy_(source)
 
 
 def model_bundle_state(bundle, *, source_root):
