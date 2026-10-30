@@ -40,7 +40,8 @@ def test_public_candidate_is_explicit_separate_and_old_presets_still_reject_capa
         with pytest.raises(ValueError): native._options(type(conf).from_dict(raw, source=conf.source), 'W2')
 
 
-def test_checkpoint_cpu_cold_metadata_does_not_require_a_native_source_checkout():
+@pytest.mark.parametrize('preloaded_cuda_namespace', [False, True])
+def test_checkpoint_cpu_cold_metadata_does_not_require_a_native_source_checkout(preloaded_cuda_namespace):
     """Public config/doctor discovery must not evaluate source-bound costs."""
     import os
     from pathlib import Path
@@ -49,6 +50,7 @@ def test_checkpoint_cpu_cold_metadata_does_not_require_a_native_source_checkout(
     root = Path(__file__).resolve().parents[1]
     code = '''
 import contextlib, io, json, sys
+initial_modules = set(sys.modules)
 from pathlib import Path
 from distillschedule.cli import main
 from distillschedule.training.config import TrainingConfig
@@ -73,9 +75,12 @@ except AssertionError as error:
     assert str(error) == 'NATIVE_SOURCE_COST_IDENTITY_MUST_NOT_RUN_DURING_DISCOVERY'
 else:
     raise AssertionError('native execution descriptor lost its source gate')
-assert not any(n == 'torch' or n.startswith(('torch.', 'triton', 'cuda', 'diffusers', 'transformers')) for n in sys.modules)
+assert not any(n == 'torch' or n.startswith(('torch.', 'triton', 'cuda.', 'diffusers', 'transformers')) or (n == 'cuda' and n not in initial_modules) for n in sys.modules)
 print('PASS_COLD_METADATA_NATIVE_SOURCE_GATE_PRESERVED')
 '''
+    if preloaded_cuda_namespace:
+        # cuda-python can preload its empty namespace via the target site's .pth.
+        code = "import sys, types; sys.modules.setdefault('cuda', types.ModuleType('cuda'))\n" + code
     env = dict(os.environ, PYTHONPATH=str(root/'src'), CUDA_VISIBLE_DEVICES='')
     result = subprocess.run([sys.executable, '-B', '-c', code, str(root)], env=env,
                             text=True, capture_output=True, timeout=30)
