@@ -11,15 +11,17 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def job(name):
+def job(name, job_id=None):
     workflow = yaml.safe_load((ROOT / '.github/workflows' / name).read_text())
     assert workflow['permissions'] == {'contents': 'read'}
+    if job_id is not None:
+        return workflow['jobs'][job_id]
     assert len(workflow['jobs']) == 1
     return next(iter(workflow['jobs'].values()))
 
 
 def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
-    value = job('h3-cached-reference-cpu.yml')
+    value = job('h3-cached-reference-cpu.yml', 'original-cached-av')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,h3-cached-reference]'" in commands
     assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
@@ -35,7 +37,7 @@ def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
 
 
 def test_cached_h3_ci_requires_current_student_export_and_fresh_AV_inference():
-    value = job('h3-cached-reference-cpu.yml')
+    value = job('h3-cached-reference-cpu.yml', 'original-cached-av')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert 'tests/test_training_h3_cached_inference_cpu.py' in commands
     assert all(name in commands for name in (
@@ -67,6 +69,25 @@ def test_original_helper_ci_is_not_silently_repinned_to_full_model_extra():
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,test-helios]'" in commands
     assert 'test-helios-model' not in commands and 'native-wan' not in commands
+
+
+def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradients():
+    value = job('helios-reference-model-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert 'tests/test_helios_rollout_liveness_cpu.py' in commands
+    assert 'DMD_TEST_REARRANGE_PROVIDER' not in value['env']
+    assert '-k ' not in commands and '--deselect' not in commands
+    for name in (
+        'test_liveness_fixture_restores_rng_threads_and_import_namespaces',
+        'test_candidate_changes_only_two_stored_aliases',
+        'test_default_checkpoint_cpp_storage_lifetime_without_saved_tensor_hooks[exits0]',
+    ):
+        assert repr(name) in commands
+    for hooks in (False, True):
+        for sections, frames in ((2, 4), (3, 4), (3, 6)):
+            name = ('test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state'
+                    f'[{hooks}-{sections}-{frames}]')
+            assert repr(name) in commands
 
 
 def test_original_wan_ci_requires_mixed_precision_update_restart_and_current_g():

@@ -10,9 +10,9 @@
   "integration_source_root": "source",
   "historical_reference_root": "reference",
   "expected_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
-  "content_tree_sha256": "0d21cad0e2bb6bea7a5bf38cc467f3dcb08eb2986f4746765d4315ff00fe14d4",
+  "content_tree_sha256": "03168f1fab58fc3945dcc3a8d14b1a361244251551be90adc0d502e7a83825e1",
   "file_count": 83,
-  "total_bytes": 1799673,
+  "total_bytes": 1799691,
   "files": [
     {
       "path": "LICENSE.txt",
@@ -593,9 +593,9 @@
     {
       "path": "source/helios/utils/utils_helios_post.py",
       "source_path": "helios/utils/utils_helios_post.py",
-      "source_git_blob": "706f6d9608e692bdd19f0c8d2d3dc4257f1074d4",
-      "sha256": "e3ff9e5f8bf025ee740e436bc0c209c972f1e56eb0236b968fe6bd8284107004",
-      "bytes": 184631,
+      "source_git_blob": "18b7f967a3c7f648e4ee54d7d371c2415bf56f70",
+      "sha256": "3bb57f4aaa65c59cf2f928765be67e601d8bec69bd3aeb384cbe4e8982724488",
+      "bytes": 184649,
       "usage": "integration_source"
     },
     {
@@ -715,5 +715,29 @@
     "reference/requirements.txt is original historical metadata with mutable upstream requirements, not a reproducible dependency lock and not an install command.",
     "Model weights, trace bundles, pre-cast checkpoints, FlashAttention binary and environment package identities remain external assets.",
     "The GAN branch launcher default Transformer SHA is not the C25 kernel-installer SHA. Restore the measured effective override; do not bypass identity checks."
+  ],
+  "reviewed_overlays": [
+    {
+      "path": "source/helios/utils/utils_helios_post.py",
+      "origin": {
+        "original_manifest_row": {
+          "path": "source/helios/utils/utils_helios_post.py",
+          "source_path": "helios/utils/utils_helios_post.py",
+          "source_git_blob": "706f6d9608e692bdd19f0c8d2d3dc4257f1074d4",
+          "sha256": "e3ff9e5f8bf025ee740e436bc0c209c972f1e56eb0236b968fe6bd8284107004",
+          "bytes": 184631,
+          "usage": "integration_source"
+        },
+        "original_manifest_sha256": "a3d98faab5787f4f9f4e1155eb577235a885f14babc677004affb42877118bd1",
+        "original_defining_commit": "e05bc75a691386dbae7c6c2214800e0a2d4cd6b0",
+        "reviewed_live_git_blob": "18b7f967a3c7f648e4ee54d7d371c2415bf56f70",
+        "reason": "only stored no-grad-consumer aliases detached; historical origin preserved separately from live blob"
+      },
+      "current_sha256": "3bb57f4aaa65c59cf2f928765be67e601d8bec69bd3aeb384cbe4e8982724488",
+      "current_git_blob": "18b7f967a3c7f648e4ee54d7d371c2415bf56f70",
+      "patch_sha256": "0885502d3ae547d33dc3c16b412ec859eed42ed7f770e05f29a50e8d5c119940",
+      "change": "Detach only two stored aliases whose sole consumer is add_noise under no_grad; active rollout and generated-history gradient paths remain unchanged. Original source row and Transformer source identity retained.",
+      "validation_scope": "CPU exact helper/checkpoint/RNG and generated-history parity; full-model capacity/native restart not yet validated"
+    }
   ]
 }

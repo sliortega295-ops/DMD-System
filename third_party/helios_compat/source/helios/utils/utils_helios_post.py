@@ -1669,7 +1669,7 @@ def inference_with_trajectory_stage2(
             )
 
         pred_x0 = None
-        start_point_list = [noisy_model_input]
+        start_point_list = [noisy_model_input.detach()]
         should_compute_grad = k >= start_gradient_section_index
         for i_s in range(stage2_num_stages):
             if is_consistency_align and should_compute_grad:
@@ -1728,7 +1728,7 @@ def inference_with_trajectory_stage2(
                     noise = noise.to(device=accelerator.device, dtype=noisy_model_input.dtype)
                 noisy_model_input = alpha * noisy_model_input + beta * noise  # To fix the block artifact
 
-                start_point_list.append(noisy_model_input)
+                start_point_list.append(noisy_model_input.detach())
 
             if use_dynamic_shifting:
                 temp_sigmas, temp_sigmas_per_stage = apply_schedule_shift(

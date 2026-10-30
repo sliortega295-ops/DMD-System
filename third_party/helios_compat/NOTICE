@@ -16,3 +16,8 @@ Recovered compatibility commit:
 manifest, integrity verifier and integration documentation were added.
 No model or training source bytes were edited during this relocation.
 Source copyrights and the original license are retained.
+
+2026-10-30: DMD-System modified source/helios/utils/utils_helios_post.py.
+Two stored rollout aliases are detached because their only consumer runs under
+torch.no_grad. Active rollout, consistency and generated-history gradient paths
+are retained. source_manifest.json records both original and modified identities.
