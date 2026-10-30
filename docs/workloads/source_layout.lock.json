@@ -628,6 +628,14 @@
       "integrated_sha256": "aa3764c247826bb5c0dcb758e7e70c8dbdc29e530b16753b657f27d4c1fd1a30",
       "source_commit": "497e3aef5d44bda5ed80fdb4b3a5fd5f2639edae",
       "change": "R292 default-OFF explicit self_forcing.c51_stream_retire_textkv.v1 public-continuation-only dead Generator text cross-K/V payload retirement after the original no-grad prepare_rollout scope; empty grad-bypass marker, original next-set_text invalidation/builds, native self-KV/prefix/raw context/model/RNG/optimizer/call/shape/reserve contracts preserved. Source commit is the exact integration base; original import and prior overlays unchanged. CPU/source lifecycle evidence only; native CUDA numerics, allocator/driver-free recovery, reserve acceptance and performance NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "5f31d0354f13bf2b38cee44a25aae106981d0a7e2ab03f26f5f549137e1eceb7",
+      "integrated_sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20",
+      "source_commit": "112adf5fb165b59a4d975c110c00cb41ed38a1bc",
+      "change": "Import the SHA-pinned local FA2 dispatch under explicit offline hub settings before sealing kernel lookup. Exact committed112adf5f worker bytes; SDPA order and original model, input, update and execution policies preserved. Three focused CPU cases and both existing Torch2.10 target import-order diagnostics passed; repaired native execution remains separately qualified."
     }
   ]
 }
