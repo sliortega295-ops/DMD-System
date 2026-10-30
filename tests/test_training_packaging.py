@@ -19,7 +19,7 @@ LICENSE_SHA256 = {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "NOTICE": "bc15142557d3efcc5a4bc60eef15e8d58a718953e36f231110ac87ac0631bad4",
     "THIRD_PARTY.md": "95595d8f994a10d713f7f7e47a1cde7103a3a9a45f44267a6367003ca1746ca7",
-    "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
+    "third_party/helios_compat/NOTICE": "731209f5f2fc28cc824102244eb2a2962e5d37d4befd7de802f82f3b0bf732f1",
     "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
     "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0": "d43b96112d60d83595395649e61c6bc215f568052a979320489556c6c1262eb1",
@@ -28,6 +28,14 @@ LICENSE_SHA256 = {
     "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724",
 }
+
+
+def test_helios_notice_keeps_original_notices_and_identifies_modified_source():
+    current = (ROOT / "third_party/helios_compat/NOTICE").read_bytes()
+    original, changes = current.split(b"\n2026-10-30:", 1)
+    assert hashlib.sha256(original).hexdigest() == "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9"
+    assert b"source/helios/utils/utils_helios_post.py" in changes
+    assert b"source_manifest.json" in changes
 
 
 def test_public_guide_dependencies_have_installed_data_file_destinations():
