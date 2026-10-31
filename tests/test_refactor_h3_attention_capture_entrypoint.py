@@ -584,3 +584,108 @@ def test_invalid_typed_metadata_or_insufficient_budget_fails_before_train(native
     with pytest.raises(ValueError):
         run(f)
     assert not f.prepared and not f.captures
+
+
+def use_prepared_geometry_packet(f):
+    """SYNTHETIC_TEST_ONLY: the original fixture's three packed rows, not W5."""
+    f.packet["schema_version"] = "distillschedule.h3_native_attention_capture_opt_in.v2"
+    f.packet["selector"] = "h3.w5.c1.fake0.block10.actualtuple.v2"
+    shape = dict(batch_size=1, video_tokens=[1, 1, 2], audio_tokens=[1, 1, 2])
+    f.packet["expected_input"]["latent_shape"] = shape
+    f.trainer._latent_shape = lambda sample: shape
+    original = f.trainer.prepare_fake_update
+
+    def prepare(*args):
+        item = original(*args)
+        item.condition = dict(text_token_tags=cpu_torch.ones(1, dtype=cpu_torch.long),
+                              prompt_embeds=cpu_torch.zeros(1, 1, 4, dtype=cpu_torch.bfloat16))
+        return item
+
+    f.trainer.prepare_fake_update = prepare
+    f.trainer.shared_model.denoiser_module().config = SimpleNamespace(num_attention_heads=2, attention_head_dim=2)
+    f.seal()
+
+
+def test_v2_captures_actual_prepared_sequence_not_the_reviewed_maximum(monkeypatch, native_boundary):
+    f = native_boundary
+    use_prepared_geometry_packet(f)
+    # The maximum/capacity shape is NOT the selected sample's actual shape.
+    monkeypatch.setattr(capture_module, "NATIVE_Q_SHAPE", (1, 5, 2, 2))
+    monkeypatch.setattr(capture_module, "NATIVE_LSE_SHAPE", (1, 2, 5))
+    run(f)
+    row = receipt(f)
+    assert row["attention_tuple_capture"]["selector"] == f.packet["selector"]
+    manifest = capture_module.load_capture(f.run_root / f.packet["output_relative"], max_file_bytes=1 << 20)
+    assert manifest["binding"]["prepared_geometry"] == f.packet["geometry"]
+    assert manifest["tensors"][0]["original"]["shape"] == [1, 3, 2, 2]
+    assert len(f.raw_calls) == 10 and f.actual_updates == {"student": 2, "fake": 10}
+
+
+@pytest.mark.parametrize("drift", ["text", "heads", "head_dim", "batch", "embedding_rows"])
+def test_v2_rejects_actual_prepared_geometry_drift_before_fake_backward(native_boundary, drift):
+    f = native_boundary
+    use_prepared_geometry_packet(f)
+    if drift in ("heads", "head_dim"):
+        setattr(f.trainer.shared_model.denoiser_module().config,
+                "num_attention_heads" if drift == "heads" else "attention_head_dim", 3)
+    else:
+        original = f.trainer.prepare_fake_update
+
+        def prepare(*args):
+            item = original(*args)
+            if drift == "text":
+                item.condition["text_token_tags"] = cpu_torch.ones(2, dtype=cpu_torch.long)
+                item.condition["prompt_embeds"] = cpu_torch.zeros(1, 2, 4)
+            elif drift == "embedding_rows":
+                item.condition["prompt_embeds"] = cpu_torch.zeros(1, 2, 4)
+            else:
+                item.condition["prompt_embeds"] = cpu_torch.zeros(2, 1, 4)
+            return item
+
+        f.trainer.prepare_fake_update = prepare
+    with pytest.raises(ValueError, match="prepared.*geometry"):
+        run(f)
+    assert not f.raw_calls and not f.io_events
+    assert not (f.run_root / f.packet["output_relative"] / "_SUCCESS").exists()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("q_shape", [1, 4, 2, 2]), ("q_shape", [True, 3, 2, 2]),
+    ("q_shape", [1, 0, 2, 2]), ("q_shape", [2, 3, 2, 2]),
+    ("q_shape", [1, 3, 3, 2]), ("lse_shape", [1, 3, 2]),
+    ("q_dtype", "torch.float32"), ("lse_dtype", "torch.bfloat16"), ("layout", "BHSD"),
+])
+def test_v2_rejects_geometry_over_budget_or_wrong_precision_before_train(native_boundary, field, value):
+    f = native_boundary
+    use_prepared_geometry_packet(f)
+    f.packet["geometry"][field] = value
+    f.seal()
+    with pytest.raises(ValueError, match="geometry|shape/precision"):
+        run(f)
+    assert not f.prepared and not f.captures and not f.raw_calls
+
+
+@pytest.mark.parametrize("version,selector", [("v1", "v2"), ("v2", "v1"), ("v3", "v2")])
+def test_capture_packet_versions_cannot_be_mixed(native_boundary, version, selector):
+    f = native_boundary
+    use_prepared_geometry_packet(f)
+    f.packet["schema_version"] = "distillschedule.h3_native_attention_capture_opt_in." + version
+    f.packet["selector"] = "h3.w5.c1.fake0.block10.actualtuple." + selector
+    f.seal()
+    with pytest.raises(ValueError, match="selector"):
+        run(f)
+    assert not f.prepared and not f.captures
+
+
+def test_real_w5_shape_metadata_does_not_assume_fifty_text_tokens():
+    """Real failure dimensions; metadata-only tensors, no full model/GPU payload."""
+    item = SimpleNamespace(condition=dict(
+        text_token_tags=cpu_torch.empty(17, device="meta", dtype=cpu_torch.long),
+        prompt_embeds=cpu_torch.empty(1, 17, 5120, device="meta", dtype=cpu_torch.bfloat16)),
+        latent_shape=dict(batch_size=1, video_tokens=[1, 37296, 96], audio_tokens=[1, 414, 32]))
+    trainer = SimpleNamespace(shared_model=SimpleNamespace(denoiser_module=lambda: SimpleNamespace(
+        config=SimpleNamespace(num_attention_heads=56, attention_head_dim=128))))
+    geometry = capture_module.prepared_native_geometry(trainer, item)
+    assert geometry["q_shape"] == [1, 37727, 56, 128]
+    assert geometry["lse_shape"] == [1, 56, 37727]
+    assert not cpu_torch.cuda.is_initialized()

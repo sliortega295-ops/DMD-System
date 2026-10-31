@@ -145,9 +145,15 @@ class TupleCapture:
         if expected is not None:
             require(dict(sample_identity=sample_identity, latent_shape=json_copy(item.latent_shape),
                          cache_key=json_copy(item.cache_key)) == expected, "actual prepared input binding mismatch")
+        geometry = {}
+        if getattr(self, "native_bind_prepared_geometry", False):
+            actual = prepared_native_geometry(trainer, item)
+            require(_exact_json(actual, self.native_geometry),
+                    f"actual prepared geometry mismatch: expected={self.native_geometry}, actual={actual}")
+            geometry["prepared_geometry"] = actual
         require(id(item) not in self.prepared, "prepared item bound twice")
         self.prepared[id(item)] = (item,dict(sample=sample, cache_key=json_copy(item.cache_key),
-                                        latent_shape=json_copy(item.latent_shape)))
+                                        latent_shape=json_copy(item.latent_shape), **geometry))
 
     @contextmanager
     def fake_scope(self, trainer, item):
@@ -224,7 +230,10 @@ class TupleCapture:
             expected_dtype = "torch.float32" if name == "softmax_lse" else "torch.bfloat16"
             require(metadata["shape"] == expected_shape and metadata["dtype"] == expected_dtype
                     and metadata["element_size"] == (4 if name == "softmax_lse" else 2)
-                    and metadata["layout"] == "torch.strided", "actual tensor dtype/shape/layout mismatch")
+                    and metadata["layout"] == "torch.strided",
+                    f"actual tensor dtype/shape/layout mismatch for {name}: "
+                    f"expected={expected_dtype}/{expected_shape}/torch.strided, "
+                    f"actual={metadata['dtype']}/{metadata['shape']}/{metadata['layout']}")
             span = storage_span(metadata["shape"],metadata["stride"],metadata["storage_offset"],metadata["element_size"])
             require(span <= metadata["storage_nbytes"], "tensor span exceeds original storage")
             logical = math.prod(metadata["shape"]) * metadata["element_size"]
@@ -489,6 +498,7 @@ NATIVE_Q_SHAPE = (1, 37760, 56, 128)
 NATIVE_LSE_SHAPE = (1, 56, 37760)
 REMOTE_PERSISTENT_ROOT = Path("/share/project")
 NATIVE_SELECTOR = "h3.w5.c1.fake0.block10.actualtuple.v1"
+PREPARED_GEOMETRY_SELECTOR = "h3.w5.c1.fake0.block10.actualtuple.v2"
 RAW_BACKWARD_SCHEMA = "_flash_attn3_cuda_373a45c::_flash_attn_backward(Tensor dout, Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor? cu_seqlens_q=None, Tensor? cu_seqlens_k=None, Tensor? sequed_q=None, Tensor? sequed_k=None, SymInt? max_seqlen_q=None, SymInt? max_seqlen_k=None, Tensor(a12!)? dq=None, Tensor(a13!)? dk=None, Tensor(a14!)? dv=None, float? softmax_scale=None, bool is_causal=False, SymInt window_size_left=-1, SymInt window_size_right=-1, float softcap=0., bool deterministic=False, SymInt sm_margin=0) -> Tensor"
 _NATIVE_FILES = ("attention_tuple_capture.py", "integrated_entrypoint.py", "trainer_loop.py",
                  "grid_adaln.py", "fa3_replay_cache.py")
@@ -497,6 +507,55 @@ _NATIVE_FILES = ("attention_tuple_capture.py", "integrated_entrypoint.py", "trai
 def _exact_json(actual, expected):
     # In particular True is not rank1/cycle1 and float1.0 is not integer1.
     return json.dumps(actual, sort_keys=True, allow_nan=False) == json.dumps(expected, sort_keys=True, allow_nan=False)
+
+
+def native_capture_geometry(packet):
+    """Shared producer/consumer geometry contract; not an admission decision."""
+    bind_prepared = packet["schema_version"] == "distillschedule.h3_native_attention_capture_opt_in.v2"
+    selector = PREPARED_GEOMETRY_SELECTOR if bind_prepared else NATIVE_SELECTOR
+    require(packet["schema_version"] in ("distillschedule.h3_native_attention_capture_opt_in.v1",
+                                         "distillschedule.h3_native_attention_capture_opt_in.v2")
+            and packet["selector"] == selector, "capture schema/selector binding mismatch")
+    q_shape, lse_shape = list(NATIVE_Q_SHAPE), list(NATIVE_LSE_SHAPE)
+    if bind_prepared:
+        # The exact declared sample must still fit the reviewed maximum.
+        # record_prepared separately checks the real condition before Fake.
+        q_shape = packet["geometry"]["q_shape"]
+        require(isinstance(q_shape, list) and len(q_shape) == 4
+                and all(type(n) is int and n > 0 for n in q_shape)
+                and q_shape[0] == 1 and q_shape[2:] == list(NATIVE_Q_SHAPE[2:])
+                and q_shape[1] <= NATIVE_Q_SHAPE[1], "capture shape exceeds reviewed geometry")
+        lse_shape = [q_shape[0], q_shape[2], q_shape[1]]
+    geometry = dict(q_shape=q_shape, lse_shape=lse_shape,
+                    q_dtype="torch.bfloat16", lse_dtype="torch.float32", layout="BSHD")
+    require(_exact_json(packet["geometry"], geometry), "capture shape/precision/layout metadata mismatch")
+    return json_copy(geometry)
+
+
+def prepared_native_geometry(trainer, item):
+    """Read metadata only from the original padless [text | audio | video] input.
+
+    Text length belongs to the selected sample, not the maximum cache capacity.
+    No tensor values, additional layout construction, device copy or RNG is used.
+    The native condition/packing gates still validate token contents themselves.
+    """
+    tags = item.condition["text_token_tags"]
+    embeds = item.condition["prompt_embeds"]
+    latent = item.latent_shape
+    video, audio = latent["video_tokens"], latent["audio_tokens"]
+    require(len(tags.shape) == 1 and len(embeds.shape) == 3
+            and embeds.shape[0] == 1 and embeds.shape[1] == tags.shape[0]
+            and type(latent["batch_size"]) is int and latent["batch_size"] == 1
+            and len(video) == len(audio) == 3 and video[0] == audio[0] == 1
+            and all(type(n) is int and n > 0 for n in (*video, *audio, *tags.shape, *embeds.shape)),
+            "invalid actual prepared condition geometry")
+    config = trainer.shared_model.denoiser_module().config
+    heads, dim = config.num_attention_heads, config.attention_head_dim
+    require(type(heads) is int and type(dim) is int and heads > 0 and dim > 0,
+            "invalid actual prepared model geometry")
+    sequence = tags.shape[0] + video[1] + audio[1]
+    return dict(q_shape=[1, sequence, heads, dim], lse_shape=[1, heads, sequence],
+                q_dtype="torch.bfloat16", lse_dtype="torch.float32", layout="BSHD")
 
 
 def _checked_reference(reference):
@@ -557,17 +616,16 @@ def attach_native_capture(trainer, observer, *, torch, rank):
                                         sha256=env.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG_SHA256")))
     require(packet_path.stat().st_size <= 1 << 20, "capture metadata packet exceeds 1MiB")
     packet = json.loads(packet_path.read_text())
-    require(packet["schema_version"] == "distillschedule.h3_native_attention_capture_opt_in.v1"
-            and packet["selector"] == NATIVE_SELECTOR and packet["candidate_id"] == impl.id
+    bind_prepared = packet["schema_version"] == "distillschedule.h3_native_attention_capture_opt_in.v2"
+    expected_geometry = native_capture_geometry(packet)
+    require(packet["candidate_id"] == impl.id
             and packet["run_id"] == env.get("DISTILLSCHEDULE_RUN_ID"), "capture run/selector/candidate binding mismatch")
     require(packet.get("profile") is False and packet.get("formal_timing_eligible") is False,
             "capture is correctness-only; profile and timing eligibility must be explicitly false")
     expected_target = dict(rank=0, world_size=16, cycle=1, role="fake", fake_index=0, micro_index=0,
                            block_index=10, versions=dict(student=1, fake=0, ema=0))
     require(_exact_json(packet["target"], expected_target), "capture target rank/role/cycle/block/version metadata mismatch")
-    expected_geometry = dict(q_shape=list(NATIVE_Q_SHAPE), lse_shape=list(NATIVE_LSE_SHAPE),
-                             q_dtype="torch.bfloat16", lse_dtype="torch.float32", layout="BSHD")
-    require(_exact_json(packet["geometry"], expected_geometry), "capture shape/precision/layout metadata mismatch")
+    q_shape, lse_shape = expected_geometry["q_shape"], expected_geometry["lse_shape"]
     expected_input = packet["expected_input"]
     require(isinstance(expected_input, dict) and set(expected_input) == {"sample_identity", "latent_shape", "cache_key"}
             and isinstance(expected_input["sample_identity"], str) and bool(json.loads(expected_input["sample_identity"]))
@@ -609,8 +667,8 @@ def attach_native_capture(trainer, observer, *, torch, rank):
     ceilings = CaptureBudget(4339077120, 13017231360, 541327360, 6442450944, 2147483648)
     require(all(value <= ceilings.__dict__[name] for name, value in budget.__dict__.items()),
             "capture budget exceeds reviewed bounded proposal")
-    largest = math.prod(NATIVE_Q_SHAPE) * 2
-    payload = 8 * largest + math.prod(NATIVE_LSE_SHAPE) * 4
+    largest = math.prod(q_shape) * 2
+    payload = 8 * largest + math.prod(lse_shape) * 4
     require(budget.max_tensor_bytes >= largest and budget.max_payload_bytes >= payload
             and budget.max_replay_span_bytes >= payload and budget.max_file_bytes >= payload
             and budget.max_host_working_bytes >= 2 * largest + (8 << 20),
@@ -623,8 +681,11 @@ def attach_native_capture(trainer, observer, *, torch, rank):
     require(not output.is_symlink() and not output.exists(), "capture output already exists")
     capture = TupleCapture(target=CaptureTarget(), rank=rank, budget=budget, provenance=provenance,
                            io=_NativeTorchSnapshotIO(torch, native_device=native_device), output=output,
-                           q_shape=NATIVE_Q_SHAPE, lse_shape=NATIVE_LSE_SHAPE)
+                           q_shape=q_shape, lse_shape=lse_shape)
     capture.native_expected_input = json_copy(expected_input)
+    capture.native_bind_prepared_geometry = bind_prepared
+    capture.native_geometry = json_copy(expected_geometry)
+    capture.native_selector = packet["selector"]
     capture.native_packet_sha256 = env["H3_ATTENTION_TUPLE_CAPTURE_CONFIG_SHA256"]
     if rank == capture.target.rank:
         output.parent.mkdir(exist_ok=True)
@@ -637,7 +698,7 @@ def finish_native_capture(capture, row):
     """Only call AFTER original train + final observer/state gates returned."""
     complete = capture.require_complete_after_native()
     diagnostic = dict(status="CAPTURED_AFTER_NATIVE_SEMANTIC_GATES" if complete else "NOT_SELECTED_NO_CAPTURE_IO",
-                      selector=NATIVE_SELECTOR, rank=capture.rank, target_rank=capture.target.rank,
+                      selector=capture.native_selector, rank=capture.rank, target_rank=capture.target.rank,
                       packet_sha256=capture.native_packet_sha256, formal_timing_eligible=False,
                       numerical_cross_reference="NOT_RUN_W5_FAIL_RETAINED")
     if complete:
