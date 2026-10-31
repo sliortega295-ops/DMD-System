@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "campaign_id": null,
+  "workload_id": null,
+  "semantic_contract": null,
+  "hardware_id": null,
+  "timer_scope": null,
+  "claim_class": null,
+  "baseline": {
+    "id": null,
+    "source_identity": null,
+    "seconds": null,
+    "evidence": []
+  },
+  "validators": [],
+  "budget": {
+    "max_gpu_hours": null,
+    "max_full_runs": null
+  },
+  "validation_by_risk": {
+    "local": [
+      "V0",
+      "V1"
+    ],
+    "stateful": [
+      "V0",
+      "V1",
+      "V2"
+    ],
+    "approximation": [
+      "V0",
+      "V1",
+      "V2",
+      "V3"
+    ]
+  },
+  "timing": {
+    "repeat_count": null,
+    "max_candidates": null,
+    "minimum_effect_seconds": null,
+    "alpha": 0.05,
+    "max_control_relative_drift": null
+  },
+  "notes": "Optional confirmation protocol. Freeze a feasible repeat budget before sampling. Use the repository's existing protocol when appropriate. Nulls cannot initialize a campaign."
+}

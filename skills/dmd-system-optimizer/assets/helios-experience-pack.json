@@ -1,0 +1,1066 @@
+{
+  "schema_version": 2,
+  "title": "Helios conditional optimization experience",
+  "curated_date": "2026-10-30",
+  "evidence_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+  "policy": "Historical evidence is a prior; correctness conditions and performance conditions are separate. No automatic application.",
+  "patterns": [
+    {
+      "id": "parameter-residency",
+      "title": "重复 forward 的参数保留与驻留",
+      "tags": [
+        "retention",
+        "residency",
+        "unshard",
+        "gather",
+        "FSDP",
+        "memory",
+        "参数",
+        "保留",
+        "驻留",
+        "显存",
+        "重复"
+      ],
+      "mechanism": "同一权重版本反复消费时，阶段内保留可能减少重复聚合或搬运；收益由关键路径上的可消除开销决定。",
+      "correctness_conditions": {
+        "weights_stable_during_reuse": true,
+        "state_release_validated": true
+      },
+      "performance_conditions": {
+        "repeated_forwards": true,
+        "exposed_gather": true,
+        "memory_headroom": true
+      },
+      "probe": "先数实际 gather/释放次数和版本边界；测一个代表性完整周期的暴露通信、峰值和更新时间。",
+      "details": "references/knowledge/parameter-residency.md"
+    },
+    {
+      "id": "memory-tradeoffs",
+      "title": "offload、激活保留与容量交换",
+      "tags": [
+        "offload",
+        "recompute",
+        "activation",
+        "capacity",
+        "memory",
+        "显存",
+        "内存",
+        "重算",
+        "余量"
+      ],
+      "mechanism": "释放内存可以解锁更有价值的驻留或减少重算；新增传输、同步和峰值也可能抵消收益。",
+      "correctness_conditions": {
+        "state_lifetime_preserved": true
+      },
+      "performance_conditions": {
+        "capacity_limits_candidate": true,
+        "enabled_gain_exceeds_transfer": true
+      },
+      "probe": "先做逐阶段容量账：常驻、激活、临时 gather、workspace、pinned 和 checkpoint；再量传输与计算重叠。",
+      "details": "references/knowledge/memory-tradeoffs.md"
+    },
+    {
+      "id": "role-scheduling",
+      "title": "多角色调度与流水的适用边界",
+      "tags": [
+        "pipeline",
+        "schedule",
+        "role",
+        "parallel",
+        "topology",
+        "overlap",
+        "流水",
+        "调度",
+        "并行",
+        "角色"
+      ],
+      "mechanism": "独立阶段可重叠，但拆分资源会改变每个角色的效率，并引入传输、等待和填充排空。",
+      "correctness_conditions": {
+        "logical_work_preserved": true,
+        "versions_and_dependencies_validated": true
+      },
+      "performance_conditions": {
+        "independent_work_available": true,
+        "overlap_exceeds_partition_cost": true
+      },
+      "probe": "按 G/C/Teacher/EMA 的真实频率建最小依赖图，比较相同资源的顺序方案；先测阶段服务时间和跨角色传输。",
+      "details": "references/knowledge/role-scheduling.md"
+    },
+    {
+      "id": "host-synchronization",
+      "title": "消除 metadata 同步与 CPU 提交空隙",
+      "tags": [
+        "metadata",
+        "barrier",
+        "item",
+        "sync",
+        "host",
+        "launch",
+        "同步",
+        "屏障",
+        "调度",
+        "空隙"
+      ],
+      "mechanism": "频繁读取 GPU 上的 metadata 可能阻断 CPU 提交；可推导的 host 状态可减少这些同步。",
+      "correctness_conditions": {
+        "metadata_semantics_preserved": true,
+        "host_state_lifetime_validated": true
+      },
+      "performance_conditions": {
+        "host_sync_on_critical_path": true
+      },
+      "probe": "定位 item/DtoH/同步调用及其依赖；用开关只改变 metadata 路径，确认调用、版本和缓存输入一致。",
+      "details": "references/knowledge/host-synchronization.md"
+    },
+    {
+      "id": "attention-routing",
+      "title": "Attention backend 与真实调用覆盖",
+      "tags": [
+        "attention",
+        "flash",
+        "FA2",
+        "FA3",
+        "SDPA",
+        "backend",
+        "shape",
+        "路由",
+        "后端",
+        "注意力"
+      ],
+      "mechanism": "可用且更快的 backend 依赖真实 shape、dtype、梯度和缓存路径；局部 benchmark 只支持对应调用。",
+      "correctness_conditions": {
+        "attention_semantics_supported": true,
+        "backward_and_cache_validated": true
+      },
+      "performance_conditions": {
+        "target_shapes_hit_fast_path": true,
+        "backend_e2e_advantage": true
+      },
+      "probe": "枚举实际 shape/dtype/grad/mask/cache 调用，记录 fast-path 与 fallback 次数，再测完整周期。",
+      "details": "references/knowledge/attention-routing.md"
+    },
+    {
+      "id": "fusion-numerics",
+      "title": "融合、精度边界与 no-grad 复用",
+      "tags": [
+        "fusion",
+        "lora",
+        "bf16",
+        "fp32",
+        "rounding",
+        "grad",
+        "kernel",
+        "融合",
+        "精度",
+        "梯度",
+        "舍入"
+      ],
+      "mechanism": "融合可减少中间访存和 launch，但 dtype、舍入点、布局及 backward 决定实现是否可复用。",
+      "correctness_conditions": {
+        "dtype_layout_supported": true,
+        "gradient_path_supported": true,
+        "numerical_contract_preserved": true
+      },
+      "performance_conditions": {
+        "fusion_cost_on_critical_path": true,
+        "saved_traffic_exceeds_overhead": true
+      },
+      "probe": "按实际调用比较 forward、输入/参数梯度和保存中间量；确认 fast path 命中，计算额外 copy 与完整周期成本。",
+      "details": "references/knowledge/fusion-numerics.md"
+    },
+    {
+      "id": "graphs-and-ema",
+      "title": "图捕获、EMA 与固定状态假设",
+      "tags": [
+        "graph",
+        "compile",
+        "EMA",
+        "optimizer",
+        "launch",
+        "cuda",
+        "编译",
+        "图捕获",
+        "更新"
+      ],
+      "mechanism": "图捕获与批量提交可减少 host 开销；形状、系数、状态地址和阶段变化会影响正确性与命中率。",
+      "correctness_conditions": {
+        "dynamic_state_and_coefficients_preserved": true,
+        "capture_paths_validated": true
+      },
+      "performance_conditions": {
+        "launch_bound": true,
+        "capture_amortized": true
+      },
+      "probe": "核对 capture/replay 与 fallback 计数，跨阶段和系数变化测试；比较短工作和稳态完整周期。",
+      "details": "references/knowledge/graphs-and-ema.md"
+    },
+    {
+      "id": "state-caching",
+      "title": "缓存、预计算与状态失效",
+      "tags": [
+        "cache",
+        "AdaLN",
+        "replay",
+        "KV",
+        "version",
+        "预计算",
+        "缓存",
+        "状态",
+        "版本"
+      ],
+      "mechanism": "重复计算可以被缓存替换，但 key、版本、随机性和维护成本决定复用是否正确且合算。",
+      "correctness_conditions": {
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true
+      },
+      "performance_conditions": {
+        "cache_reuse_sufficient": true,
+        "saved_compute_exceeds_cache_cost": true
+      },
+      "probe": "先列 value 依赖的输入、shape、dtype、conditioning、timestep、权重、adapter、模式与随机性；验证命中和失效。",
+      "details": "references/knowledge/state-caching.md"
+    },
+    {
+      "id": "measurement-identity",
+      "title": "对照身份、计时范围与因果归因",
+      "tags": [
+        "baseline",
+        "control",
+        "timing",
+        "denominator",
+        "profile",
+        "evidence",
+        "对照",
+        "分母",
+        "计时",
+        "证据"
+      ],
+      "mechanism": "只有逻辑工作、资源和窗口可比较，时间差才支持所宣称的优化增量。",
+      "correctness_conditions": {
+        "matched_comparison_contract": true
+      },
+      "performance_conditions": {
+        "representative_measurement": true
+      },
+      "probe": "记录源码含 dirty 改动、配置、输入/状态、硬件、timer、rank 聚合和独立重复；拆开主表、消融与当前 control。",
+      "details": "references/knowledge/measurement-identity.md"
+    },
+    {
+      "id": "validation-lifecycle",
+      "title": "按风险验证数值、状态与训练生命周期",
+      "tags": [
+        "validation",
+        "loss",
+        "gradient",
+        "resume",
+        "checkpoint",
+        "numerical",
+        "验证",
+        "数值",
+        "梯度",
+        "恢复"
+      ],
+      "mechanism": "不同改动需要不同深度的验证；训练 loss 走势、数值一致性和输出质量是不同判断。",
+      "correctness_conditions": {
+        "current_validation_contract_defined": true
+      },
+      "performance_conditions": {},
+      "probe": "先用能够暴露该风险的短测试；状态变化补 continuation/resume；长期近似或残余漂移问题再做轨迹和质量检查。",
+      "details": "references/knowledge/validation-lifecycle.md"
+    },
+    {
+      "id": "implementation-reuse",
+      "title": "先核对已有实现，再决定移植或重写",
+      "tags": [
+        "reuse",
+        "implementation",
+        "library",
+        "kernel",
+        "guard",
+        "fallback",
+        "复用",
+        "实现",
+        "库"
+      ],
+      "mechanism": "已有源码提供候选实现；模型名、接口相同或库存存在都不证明当前调用可用。",
+      "correctness_conditions": {
+        "implementation_guards_match": true,
+        "license_and_dependencies_checked": true
+      },
+      "performance_conditions": {
+        "fast_path_active": true
+      },
+      "probe": "读实际入口、guard、fallback、精度和 backward；用当前调用的最小测试确认命中，再做组合校准。",
+      "details": "references/knowledge/implementation-reuse.md"
+    },
+    {
+      "id": "experiment-decisions",
+      "title": "小收益、失败成本和重试条件",
+      "tags": [
+        "budget",
+        "small",
+        "gain",
+        "retry",
+        "experiment",
+        "预算",
+        "小收益",
+        "失败",
+        "重试"
+      ],
+      "mechanism": "探索优先级、实测收益保留和默认启用是三个决定；失败记录应缩小搜索而不封死可迁移机制。",
+      "correctness_conditions": {
+        "cost_and_evidence_scope_defined": true
+      },
+      "performance_conditions": {},
+      "probe": "为实验写一个可否证问题、成本和停止条件；记录预计与实测差异以及改变判断所需的新证据。",
+      "details": "references/knowledge/experiment-decisions.md"
+    }
+  ],
+  "cases": [
+    {
+      "id": "helios-w2-retention-r36",
+      "pattern": "parameter-residency",
+      "title": "W2：参数保留有小幅正向观察，同时增加显存",
+      "outcome": "positive_observation",
+      "observation": "原生 C2 83.970328451→83.023064643 秒；peak allocated 26.418→30.911 GiB；16 ranks，单配对，numerical REVIEW。",
+      "lesson": "重复使用可以产生小收益；时间和容量一起评估，尚不能据此默认启用。",
+      "scope": "W2 Helios14B No-GAN；该源、该保留范围、两周期的单配对。",
+      "conditions": {
+        "workload": "W2",
+        "update_ratio": "G1/C5/EMA5",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "locator": "control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w3-retention-r1",
+      "pattern": "parameter-residency",
+      "title": "W3：冻结 replay 保留只带来小增量",
+      "outcome": "positive_observation",
+      "observation": "C2 117.074207036→116.673757426 秒，约 0.400 秒；numerical REVIEW。",
+      "lesson": "保留收益按当前 GAN 合同计算；不能与另一提交的最好成绩叠加。",
+      "scope": "W3 r1 该源同源增量，非长期等价证明。",
+      "conditions": {
+        "workload": "W3",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "locator": "rows[workload=W3]",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w6-retention-r1",
+      "pattern": "parameter-residency",
+      "title": "W6：同类保留尝试变慢",
+      "outcome": "negative_observation",
+      "observation": "C2 255.363757909→260.582584122 秒，增加约 5.219 秒；未晋级。",
+      "lesson": "其他 workload 的保留正例不决定 W6 的收益。净减速已观察，具体成本来源仍需局部测量。",
+      "scope": "W6 r1 的该实现和工作量，numerical REVIEW。",
+      "conditions": {
+        "workload": "W6",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "net_slowdown_cause_not_isolated",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "保留范围、重复消费次数、暴露通信或容量条件改变后，先做成本探针再重新配对。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "locator": "rows[workload=W6]",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w1-tail8-oom",
+      "pattern": "parameter-residency",
+      "title": "W1：扩大到 whole-block tail8 出现 OOM",
+      "outcome": "implementation_failure",
+      "observation": "公开回执记为 CUDA_OOM_NOT_PROMOTED；候选没有有效 C2。",
+      "lesson": "容量失败限定当时保留范围；没有候选速度值，不能把它记作慢或零收益。",
+      "scope": "W1 当时 tail8 实现与 A100-40GB 容量。",
+      "conditions": {
+        "workload": "W1",
+        "gpu_memory_gib": 40
+      },
+      "failure": {
+        "category": "capacity",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "更小保留集合、额外内存释放或不同容量/拓扑后可重新做容量验证；不直接重跑原组合。",
+      "evidence_status": "HISTORICAL_CUDA_OOM",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "locator": "followups.wan_tail8; cleanup[0].unpaired_tail8_source_control",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w4-capacity-r3",
+      "pattern": "memory-tradeoffs",
+      "title": "W4：完成运行与全程容量宽裕是不同结论",
+      "outcome": "inconclusive",
+      "observation": "完整仅B臂 C2 为 42.123914 秒，末边界 driver free 4.375 MiB；回执明确它不是全程最小余量。",
+      "lesson": "边界采样不能证明峰值余量；allocated/reserved/driver 指标不能互换。",
+      "scope": "W4 C51 R3；旧 baseline/full 来自父源，新臂 n=1，数值 REVIEW。",
+      "conditions": {
+        "workload": "W4",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "peak_headroom_not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+          "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+          "locator": "results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-allocator-policy-r36",
+      "pattern": "memory-tradeoffs",
+      "title": "parameter reserve 与 driver free 不能混用",
+      "outcome": "source_contract",
+      "observation": "r36 的容量口径是 allocated highwater 留 2 GiB，明确不是 driver free 留 2 GiB。",
+      "lesson": "沿用实验原容量合同，新增硬件按自己的真实资源约束判断。",
+      "scope": "r36 回执的原始容量政策；不是推荐所有 workload 使用 2 GiB。",
+      "conditions": {
+        "workload": "W2"
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_POLICY",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "locator": "allocator_reserve_policy; host_reserve_GiB",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-pipeline-c10-lead",
+      "pattern": "role-scheduling",
+      "title": "早期顺序与流水：改进流水不等于胜过顺序",
+      "outcome": "unverified",
+      "observation": "本地会话报告：C10 相比前一版流水有改进，仍慢于顺序执行；这里未重新取得原运行回执，不发布该比值为实测结论。",
+      "lesson": "同时保留当前流水对照和最佳顺序对照，避免只看局部迭代进步。",
+      "scope": "早期 G1/C5/EMA0、16卡与8G+8Score探索的会话线索；不等于当前 W1/W2。",
+      "conditions": {
+        "update_ratio": "G1/C5/EMA0",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "unverified_net_slowdown",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "阶段比例、角色效率、microbatch 或拓扑变化后，先比较服务时间及填充排空成本。",
+      "evidence_status": "UNVERIFIED_CONVERSATION_LEAD",
+      "evidence": [],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w6-metadata-r46",
+      "pattern": "host-synchronization",
+      "title": "W6：同 FA3 对照下 metadata barrier 消除有正向观察",
+      "outcome": "positive_observation",
+      "observation": "两臂同 FA3：C2 262.384847224→253.740367298 秒，节省 8.644479926 秒；单配对 REVIEW。",
+      "lesson": "这是 metadata 变化的该次增量；不能把更早 SDPA 的 255.528 秒代入分母。",
+      "scope": "W6 r46 相同训练源加外部 packet；非长期数值或最终全系统收益。",
+      "conditions": {
+        "workload": "W6",
+        "attention_backend": "FA3",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+          "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe",
+          "locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w6-fa3-r43",
+      "pattern": "attention-routing",
+      "title": "W6：FA3 已启用仍可能整体变慢",
+      "outcome": "negative_observation",
+      "observation": "实际 FA3 每周期每 rank 350 次调用；C2 255.528302602→257.709695683 秒。",
+      "lesson": "快路径命中证据与收益证据分开；后续去同步的收益不把这次 backend 试验改写为成功。",
+      "scope": "W6 r43 的同源单配对，grad/selected attention 未改，numerical REVIEW。",
+      "conditions": {
+        "workload": "W6",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "net_slowdown_cause_not_isolated",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "后端调用边界、同步、layout 或真实几何改变后，重新测该组合。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+          "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957",
+          "locator": "actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w1-fa3-r25",
+      "pattern": "attention-routing",
+      "title": "W1：primitive 覆盖与实际路由范围必须分开",
+      "outcome": "positive_observation",
+      "observation": "原生 C2 单配对节省 0.324606359 秒；实际只路由 11040-token 调用；1880/4308 strict tensor comparisons not allclose。",
+      "lesson": "不能用探针覆盖其他长度来宣称它们在整模型内生效；正向时间不消除 numerical REVIEW。",
+      "scope": "W1 r25 手工 FA3 路由与当时 retain4 对照，非默认或长期晋级。",
+      "conditions": {
+        "workload": "W1",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+          "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a",
+          "locator": "saved_s; coverage_caveat; review_note; long_trajectory",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "wan-lora-rounding-source",
+      "pattern": "fusion-numerics",
+      "title": "Wan LoRA epilogue：保留 FP32 乘加舍入与 BF16 输出",
+      "outcome": "source_contract",
+      "observation": "源码用独立 mul.rn.f32/add.rn.f32 后 BF16 store；要求 BF16 base、FP32 update、同形且连续的 CUDA 输入。",
+      "lesson": "代数等价不足以复用实现；这条路径为 no-grad 设计，训练梯度需另行支持和验证。",
+      "scope": "静态源码核对，未在本次执行 CUDA 或训练验收。",
+      "conditions": {
+        "model_family": "wan",
+        "grad_mode": "no_grad",
+        "base_dtype": "bf16",
+        "lora_dtype": "fp32"
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
+      "evidence": [
+        {
+          "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+          "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+          "locator": "module docstring; fused_lora_epilogue; inline PTX",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "livewan-modulation-source",
+      "pattern": "fusion-numerics",
+      "title": "LiveWan：Generator 与 Score 的调制 dtype 不同",
+      "outcome": "source_contract",
+      "observation": "源码注释区分 G 的 FP32 scale 与 frozen Score 的 BF16 scale；G 实现有 no-grad、B1、width1536 与源码 guard。",
+      "lesson": "不能只因数学形式相同就跨角色套 kernel；检查 dtype、broadcast、grad 与 wrapper scope。",
+      "scope": "C32 canary 实现静态核对；不是全模型通用实现或本次 GPU 验证。",
+      "conditions": {
+        "model_family": "livewan",
+        "grad_mode": "no_grad",
+        "batch": 1,
+        "width": 1536
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
+      "evidence": [
+        {
+          "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+          "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+          "locator": "build.op guards; canary_scope; PLAN_CONTRACT",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w1-ema-r34",
+      "pattern": "graphs-and-ema",
+      "title": "W1：固定 EMA 系数图的有效期只覆盖已测 steps",
+      "outcome": "positive_observation",
+      "observation": "C2 19.720700→19.549642 秒，约0.171秒；仅已知 EMA decays11–20 两周期；REVIEW。",
+      "lesson": "小正值可保留为组合候选；有限系数范围不能包装成生产无限训练支持。",
+      "scope": "r34 exact EMA submission graph，同 streams/order；长期未跑，生产未晋级。",
+      "conditions": {
+        "workload": "W1",
+        "ema_coefficients": "known_steps_11_20"
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+          "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341",
+          "locator": "scope; coefficient_scope; claim; production_ready",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w6-adaln-r41",
+      "pattern": "state-caching",
+      "title": "W6：AdaLN bank 尝试没有带来时间收益",
+      "outcome": "negative_observation",
+      "observation": "C2 255.602136769→256.312003678 秒；exact cache input gate 通过，参数未删除、权重未合并。",
+      "lesson": "缓存输入条件通过不保证净收益；需要区分计算节省和维护/访问成本。",
+      "scope": "W6 r41 单周期配对，完整状态或轨迹 REVIEW。",
+      "conditions": {
+        "workload": "W6",
+        "ranks": 16
+      },
+      "failure": {
+        "category": "net_slowdown_cause_not_isolated",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "reuse 数量、缓存布局或访问成本改变后，用可判别的小测量重新估算。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+          "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a",
+          "locator": "exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w1-frozen-down-r1",
+      "pattern": "state-caching",
+      "title": "W1：RETAIN4 与 frozen_down 的条件边际不可相加",
+      "outcome": "negative_observation",
+      "observation": "20.028682893→20.169802765 秒，MEASURED_NO_C2_GAIN；范围标为 RETAIN4_VS_FROZEN_DOWN_ONLY。",
+      "lesson": "两个替代策略的比较不支持叠加它们的收益。",
+      "scope": "r1 followup 对应源和该对照，不是所有 frozen_down 路径都无效。",
+      "conditions": {
+        "workload": "W1"
+      },
+      "failure": {
+        "category": "net_slowdown_comparison_scope",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "locator": "followups.wan_frozen_down",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w3-observer-failure",
+      "pattern": "measurement-identity",
+      "title": "W3：计时完成与 observer 失败分别保留",
+      "outcome": "inconclusive",
+      "observation": "N70-OFF C2 116.253523015 秒，16 ranks merge=0；原回执计时后 observer KeyError 失败，strict numerical REVIEW。",
+      "lesson": "保留可支持的计时事实，同时保留原失败；CPU 离线核对不等于端到端 PASS。",
+      "scope": "指定 no-merge retime；formal_speedup_eligible=false，不是旧113.59秒记录。",
+      "conditions": {
+        "workload": "W3",
+        "merged_lora": false
+      },
+      "failure": {
+        "category": "post_timer_instrumentation_failure",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+          "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
+          "locator": "section 2: N70-OFF retime and preserved failure",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md"
+        },
+        {
+          "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+          "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496",
+          "locator": "status; strict_numerical_status; rank records",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w4-ablation-sources",
+      "pattern": "measurement-identity",
+      "title": "W4：新两臂与旧 baseline 的来源不同",
+      "outcome": "inconclusive",
+      "observation": "R3 新 only-A 和 complete-B 同源；旧 baseline 与 joint-full 来自父源，没有在 R3 重跑全四格。",
+      "lesson": "可以引用各自观察；不能拼成同源完整因果消融，也不能因有四个数字就相加边际贡献。",
+      "scope": "W4 R3 对照来源审计。",
+      "conditions": {
+        "workload": "W4"
+      },
+      "failure": {
+        "category": "comparison_identity",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+          "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+          "locator": "source_boundary; baseline; joint_reference",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-planner-increment",
+      "pattern": "measurement-identity",
+      "title": "保存计划接近手工结果与全系统加速分别归因",
+      "outcome": "source_contract",
+      "observation": "公开纠偏文档列出手工/保存计划逐项配对，并保留 W5 NOT_RUN。",
+      "lesson": "planner 复现手工选择的增量用手工作对照；不能把相对普通 FSDP 的系统收益全算成搜索收益。",
+      "scope": "20261019 六工作量历史索引；不代表全局最优或当前 head GPU 验收。",
+      "conditions": {},
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_EVIDENCE_SCOPE",
+      "evidence": [
+        {
+          "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+          "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
+          "locator": "section 5: manual vs saved plan",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-w5-numerical-failure",
+      "pattern": "validation-lifecycle",
+      "title": "W5：后向诊断并未消除原数值失败",
+      "outcome": "correctness_failure",
+      "observation": "r1 记录两次真实 local backward diagnostics，但 prior numerical FAIL unresolved；没有 speed pair。",
+      "lesson": "运行诊断、finite 和完成调用不能替代原验收门；没有速度配对应记 NOT_RUN。",
+      "scope": "W5 full-sequence Grid1000 近似合同；不能推广成 W6 continuous AR 的失败。",
+      "conditions": {
+        "workload": "W5",
+        "sigma_contract": "Grid1000"
+      },
+      "failure": {
+        "category": "numerical_cause_unresolved",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "定位并修复该失败，保持原验收标准；重新验证后才比较速度。",
+      "evidence_status": "HISTORICAL_FAIL_UNRESOLVED",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "locator": "rows[workload=W5]; numerical_policy",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-loss-trend-lead",
+      "pattern": "validation-lifecycle",
+      "title": "loss 上升应与匹配 baseline 比较",
+      "outcome": "unverified",
+      "observation": "本地会话纠正过把 loss 上升直接当作数值异常的判断；该会话没有补齐匹配 baseline 的一致性证据。",
+      "lesson": "关注优化版相对 baseline 的额外偏离和梯度/参数/optimizer 状态；单臂趋势不能裁决一致性。",
+      "scope": "会话提炼的方法线索；不作为 H3 AR 正确或错误的实验结论。",
+      "conditions": {
+        "workload": "W6"
+      },
+      "failure": {
+        "category": "missing_matched_baseline",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "取得匹配 baseline 和状态/轨迹证据后再判定。",
+      "evidence_status": "UNVERIFIED_CONVERSATION_LEAD",
+      "evidence": [],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "livewan-checkpoint-memory-lead",
+      "pattern": "validation-lifecycle",
+      "title": "恢复时重复分配 Adam 状态可能出现额外峰值",
+      "outcome": "unverified",
+      "observation": "本地会话提出 LiveWan 恢复时避免第二份完整 Adam 分配；当时只有 CPU 检查线索，GPU 结果未在本库核实。",
+      "lesson": "训练稳态能运行，不说明恢复峰值可承受；检查载入过程是否复用现有 optimizer state。",
+      "scope": "私有会话线索，未公开原始执行回执，不能称已解决所有恢复 OOM。",
+      "conditions": {
+        "model_family": "livewan"
+      },
+      "failure": {
+        "category": "suspected_restore_allocation",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "检查实际 checkpoint restore 实现，测量恢复峰值并核对恢复后 optimizer 更新。",
+      "evidence_status": "UNVERIFIED_CONVERSATION_LEAD",
+      "evidence": [],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "dmd-implementation-inventory",
+      "pattern": "implementation-reuse",
+      "title": "14 个已有实现入口可检索，仍需检查 guards",
+      "outcome": "source_contract",
+      "observation": "该快照 implementation_library 的 ENTRIES 有14个入口，涵盖 modulation、LoRA、RMSNorm、splitKV、SwiGLU 等。",
+      "lesson": "库存为复用提供起点；其自身也要求 workload adapter、成本校准和组合验证。",
+      "scope": "静态库存，不执行模型导入，不宣称14项都适配新 workload。",
+      "conditions": {},
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
+      "evidence": [
+        {
+          "path": "src/distillschedule/search/implementation_library.py",
+          "sha256": "5aae39955bcde32414542576f73c61f88951760052e55b15be59a893e5db1809",
+          "locator": "ENTRIES; implementation_inventory.search_admission",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/implementation_library.py"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-budget-units-r36",
+      "pattern": "experiment-decisions",
+      "title": "累计 owner phases 不是完整训练 run 数",
+      "outcome": "source_contract",
+      "observation": "r36 campaign_charges=92，回执明确是累计 owner phases，包含失败，不是92次world16训练。",
+      "lesson": "把成本单位和失败消耗写清，不能跨会话重置，也不能错把 phase 当 run。",
+      "scope": "该历史实验记账口径；新项目使用自己的明确成本定义。",
+      "conditions": {},
+      "failure": {
+        "category": "not_established",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "在目标 workload 上重新确认条件、数值和完整周期收益。",
+      "evidence_status": "HISTORICAL_ACCOUNTING_SCOPE",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "locator": "campaign_charges; ledger; charged_stage_phases",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    },
+    {
+      "id": "helios-small-gain-review-r14",
+      "pattern": "experiment-decisions",
+      "title": "小正向时间与数值 REVIEW 可以同时存在",
+      "outcome": "inconclusive",
+      "observation": "W4 C2 42.488375→42.334359 秒；Critic Adam sketch nL2=0.2127849，未建立 symmetric noise floor，未默认晋级。",
+      "lesson": "不因收益小就丢弃线索，也不因时间变快就升级数值结论；保留候选状态和剩余问题。",
+      "scope": "r14 单配对和原始统计范围，非严格等价或已确认小收益。",
+      "conditions": {
+        "workload": "W4"
+      },
+      "failure": {
+        "category": "numerical_uncertainty",
+        "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
+      },
+      "reentry": "用预先确定的对照和验证解决状态差异，再判断小收益是否稳定。",
+      "evidence_status": "HISTORICAL_REVIEW",
+      "evidence": [
+        {
+          "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+          "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7",
+          "locator": "status; numerical; saved_seconds",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json"
+        }
+      ],
+      "provenance": {
+        "collection": "Helios optimization history",
+        "public_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+        "freshly_reproduced": false
+      }
+    }
+  ]
+}

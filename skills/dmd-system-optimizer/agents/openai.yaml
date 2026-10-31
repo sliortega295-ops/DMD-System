@@ -1,0 +1,6 @@
+interface:
+  display_name: "DMD Workload Optimizer"
+  short_description: "Accelerate DMD workloads with reusable code and checked evidence"
+  default_prompt: "Use $dmd-system-optimizer to inspect my training workload, reuse applicable implementations and prior evidence, and carry out bounded optimization while preserving its semantics."
+policy:
+  allow_implicit_invocation: true

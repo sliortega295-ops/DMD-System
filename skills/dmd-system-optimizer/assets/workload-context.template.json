@@ -1,0 +1,14 @@
+{
+  "workload": null,
+  "model_family": null,
+  "update_ratio": null,
+  "grad_mode": null,
+  "attention_backend": null,
+  "ranks": null,
+  "weights_stable_during_reuse": null,
+  "state_release_validated": null,
+  "repeated_forwards": null,
+  "exposed_gather": null,
+  "memory_headroom": null,
+  "note": "Only populate from the current workload. Null is unknown. Add condition keys relevant to retrieved mechanisms."
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "opportunities": [
+    {
+      "id": "choose-mechanism-id",
+      "layer": "L",
+      "kind": "ordinary",
+      "analysis_id": null,
+      "control_id": null,
+      "mechanism": null,
+      "semantic_risks": null,
+      "selection_reason": null,
+      "evidence": [
+        {
+          "path": null,
+          "sha256": null,
+          "locator": "Exact command, receipt field, rank/phase or source location"
+        }
+      ],
+      "estimate": null,
+      "cost": {
+        "engineer_hours": null,
+        "gpu_hours": null,
+        "full_runs": null
+      },
+      "probe": {
+        "question": null,
+        "stop_rule": null
+      },
+      "enables": []
+    }
+  ]
+}

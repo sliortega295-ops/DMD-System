@@ -1,0 +1,25 @@
+{
+  "candidate_id": null,
+  "source_identity": null,
+  "control_id": null,
+  "contract_sha256": null,
+  "workload_id": null,
+  "semantic_contract": null,
+  "hardware_id": null,
+  "timer_scope": null,
+  "claim_class": null,
+  "validation_scope": null,
+  "checks": {
+    "V0": "NOT_RUN",
+    "V1": "NOT_RUN",
+    "V2": "NOT_RUN",
+    "V3": "NOT_RUN"
+  },
+  "compatibility": "UNKNOWN",
+  "fallback": "UNKNOWN",
+  "unprofiled": null,
+  "repeat_unit": "independent_processes",
+  "timings": [],
+  "evidence": [],
+  "notes": "Each timing block: run_id, process_ids (three unique invocation ids), control_before, candidate, control_after. Never fill with invented times or checks."
+}

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "campaign_id": "choose-a-stable-campaign-id",
+  "analysis_id": "change-when-control-or-model-changes",
+  "workload_id": null,
+  "semantic_contract": null,
+  "timer_scope": null,
+  "hardware_id": null,
+  "search_mode": "target-seeking",
+  "baseline": {
+    "id": null,
+    "seconds": null,
+    "evidence_grade": "unknown",
+    "source_identity": null,
+    "timer_scope": null,
+    "semantic_contract": null,
+    "hardware_id": null,
+    "evidence": [
+      {
+        "path": null,
+        "sha256": null,
+        "locator": "Exact command, receipt field, rank/phase or source location"
+      }
+    ],
+    "claim_class": null
+  },
+  "control": {
+    "id": null,
+    "seconds": null,
+    "evidence_grade": "unknown",
+    "source_identity": null,
+    "timer_scope": null,
+    "semantic_contract": null,
+    "hardware_id": null,
+    "evidence": [
+      {
+        "path": null,
+        "sha256": null,
+        "locator": "Exact command, receipt field, rank/phase or source location"
+      }
+    ],
+    "claim_class": null
+  },
+  "target": {
+    "speedup": 1.5,
+    "interpretation": "PROVISIONAL throughput +50%; not latency -50%; verify against user objective"
+  },
+  "survey": {
+    "M": {
+      "status": "unknown",
+      "evidence_note": null
+    },
+    "L": {
+      "status": "unknown",
+      "evidence_note": null
+    },
+    "Q": {
+      "status": "unknown",
+      "evidence_note": null
+    },
+    "K": {
+      "status": "unknown",
+      "evidence_note": null
+    }
+  },
+  "budget": {
+    "max_gpu_hours": null,
+    "used_gpu_hours": 0.0,
+    "max_full_runs": null,
+    "used_full_runs": 0
+  },
+  "policy": {
+    "noise_floor_seconds": 0.0,
+    "small_gain_fraction_of_gap": 0.1
+  },
+  "notes": "Nulls mean unknown. Never populate from historical provenance as a current measurement. Budget numbers are not execution permission.",
+  "claim_class": null
+}
