@@ -58,6 +58,10 @@ Keep the native decision and actual validation scope; indexing does not certify 
 checker. A source snapshot lets later sessions inspect a rolled-back adaptation.
 Use the returned qualified_id with case/locate and the same store.
 
+Malformed private records are skipped with `memory_warnings`, not deleted. A cycle
+in correction links is marked for review without blocking healthy records. Synthetic
+fixtures cannot invalidate actual observations. Missing stores still report an error.
+
 If lookup or indexing fails, preserve the error and native logs, inspect trusted
 source/notes directly and continue safe work. Do not delete history, call a broken
 store empty, or spend GPU experiments repairing bookkeeping. A plain handoff is

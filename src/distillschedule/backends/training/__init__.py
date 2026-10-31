@@ -1,3 +1,1 @@
-from .base import BackendState, TrainingBackend
-
-__all__ = ["BackendState", "TrainingBackend"]
+"""Model-native training backends; lifecycle ownership lives in training/."""

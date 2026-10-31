@@ -64,8 +64,14 @@ class UnifiedMemoryTests(KnowledgeTests):
         self.assertEqual(old["correction"]["status"], "SCOPE_UNKNOWN")
         self.record("c", "参数上卡等待", supersedes=[{"id": "d", "kind": "correction", "conditions": {}, "reason": "fixture"}])
         self.record("d", "参数上卡等待", supersedes=[{"id": "c", "kind": "correction", "conditions": {}, "reason": "fixture"}])
-        with self.assertRaisesRegex(ValueError, "cycle"):
-            m.recall("参数上卡", {}, stores=[self.store])
+        result = m.recall("参数上卡", {}, stores=[self.store])
+        rows = [c for p in result["matches"] for group in p["cases"].values() for c in group]
+        self.assertTrue(any(c["id"].endswith(":a") for c in rows))
+        for ident in ("c", "d"):
+            row = next(c for c in rows if c["id"].endswith(":" + ident))
+            self.assertEqual(row["correction"]["status"], "CORRECTION_NEEDS_REVIEW")
+            self.assertIn("cycle", row["correction"]["warning"])
+            self.assertEqual(row["correction"]["current_successors"], [])
 
     def test_stale_correction_does_not_silently_replace_valid_evidence(self):
         self.record("a", "参数上卡等待")

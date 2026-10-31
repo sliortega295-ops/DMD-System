@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Install the repository's self-contained Codex skill without replacing an existing copy."""
+"""Install the standalone skill; explicit updates preserve the previous copy."""
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import shutil
 import sys
+import tempfile
 
 
 def files(root):
@@ -15,36 +15,65 @@ def files(root):
             and p.suffix not in {".pyc", ".pyo"}}
 
 
-def install(source, destination):
-    source, destination = source.resolve(), destination.expanduser().absolute()
+def install(source, destination, *, update=False):
+    source = source.resolve()
+    destination = destination.expanduser().absolute()
+    if destination.is_symlink():
+        raise ValueError("destination is a symlink; update its source or choose another directory")
+    destination = destination.resolve()
     if not (source / "SKILL.md").is_file():
         raise ValueError("skill source is missing")
-    if destination.is_relative_to(source):
-        raise ValueError("destination must be outside the source skill")
+    if destination.is_relative_to(source) or source.is_relative_to(destination):
+        raise ValueError("source and destination must not overlap")
     expected = files(source)
-    if destination.exists() or destination.is_symlink():
-        if destination.is_dir() and not destination.is_symlink() and files(destination) == expected:
+    previous = None
+    if destination.exists():
+        if not destination.is_dir() or not (destination / "SKILL.md").is_file():
+            raise ValueError("destination is not an installed skill; choose another directory")
+        previous = files(destination)
+        if previous == expected:
             return {"status": "ALREADY_INSTALLED", "path": str(destination), "files": len(expected)}
-        raise ValueError("destination already exists; use a different directory or manage the existing version explicitly")
+        if not update:
+            raise ValueError("destination already exists; use --update to preserve it as a backup and install this version")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.mkdir()  # exclusive; never copy into another writer's directory
+    stage = Path(tempfile.mkdtemp(prefix=".dmd-install-", dir=destination.parent))
+    backup = None
     try:
-        shutil.copytree(source, destination, dirs_exist_ok=True,
+        shutil.copytree(source, stage, dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
-        if files(destination) != expected:
+        if files(stage) != expected:
             raise ValueError("installed files differ from source snapshot")
+        if (files(destination) if destination.is_dir() else None) != previous:
+            raise ValueError("destination changed during installation; retry after inspecting it")
+        if destination.exists():
+            # Outside a skills/ discovery root: the old skill must not load twice.
+            backups = (destination.parent.parent / "skill-backups" if destination.parent.name == "skills"
+                       else destination.parent / ".skill-backups")
+            backups.mkdir(parents=True, exist_ok=True)
+            backup = Path(tempfile.mkdtemp(prefix=destination.name + "-", dir=backups)) / destination.name
+            destination.rename(backup)
+        stage.rename(destination)
     except BaseException:
-        shutil.rmtree(destination)  # only the directory this call just created
+        if backup is not None and backup.exists() and not destination.exists():
+            backup.rename(destination)
         raise
-    return {"status": "INSTALLED", "path": str(destination), "files": len(expected)}
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    result = {"status": "UPDATED" if backup else "INSTALLED", "path": str(destination), "files": len(expected)}
+    if backup:
+        result["backup"] = str(backup)
+    return result
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--destination", type=Path, default=Path(os.environ.get("CODEX_HOME", str(Path.home()/".codex"))) / "skills/dmd-system-optimizer")
+    p.add_argument("--destination", type=Path, default=Path.home() / ".agents/skills/dmd-system-optimizer")
+    p.add_argument("--update", action="store_true", help="back up an existing skill before replacing it; private files stay in the backup")
     a = p.parse_args()
     try:
-        print(json.dumps(install(Path(__file__).resolve().parents[1]/"skills/dmd-system-optimizer", a.destination)))
+        print(json.dumps(install(Path(__file__).resolve().parents[1] / "skills/dmd-system-optimizer",
+                                 a.destination, update=a.update)))
         return 0
     except (OSError, ValueError) as exc:
         print(json.dumps({"status": "INVALID", "error": str(exc)}), file=sys.stderr)

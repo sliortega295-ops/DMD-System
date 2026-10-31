@@ -54,7 +54,7 @@ def callsite_matches(source, ref):
 
 
 def validate_catalog(path=CATALOG):
-    from dmd_knowledge import validate_reference
+    from dmd_sources import validate_reference
     data = load(path)
     require(data.get("schema_version") == 1, "implementation map schema must be 1")
     entries = data.get("implementations")
@@ -127,7 +127,7 @@ def summarize(case, catalog):
 
 
 def inspect_reference(ref, repo=None, source_repos=None, show_code=False):
-    from dmd_knowledge import DEFAULT_REPOSITORY, verify_references
+    from dmd_sources import DEFAULT_REPOSITORY, verify_references
     check = verify_references([ref], repo, source_repos)
     # Never carry a prior result's excerpt/local verification into a new check.
     derived = {"excerpt", "excerpt_truncated", "local_path", "read_revision", "symbol_status",
@@ -168,7 +168,7 @@ def inspect_reference(ref, repo=None, source_repos=None, show_code=False):
 
 
 def locate(implementation_id, context, repo=None, source_repos=None, show_code=False, catalog=None):
-    from dmd_knowledge import condition_match
+    from dmd_conditions import condition_match
     catalog = validate_catalog() if catalog is None else catalog
     require(implementation_id in catalog, "unknown implementation: " + implementation_id)
     entry = catalog[implementation_id]

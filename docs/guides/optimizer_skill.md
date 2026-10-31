@@ -7,8 +7,20 @@
 
     python3 tools/install_optimizer_skill.py
 
-只需 Python 3.10+ 标准库，不加载模型或启动 GPU。安装器不会覆盖不同内容的旧副本；
-显式选择新目录或管理旧副本。新会话中可直接说：
+只需 Python 3.10+ 标准库，不加载模型或启动 GPU。默认安装到
+`~/.agents/skills/dmd-system-optimizer`。在本仓库中使用时，`.agents/skills/`
+已链接到同一份源码，不必再复制。其他项目使用个人安装副本即可。
+
+更新个人安装副本：
+
+    python3 tools/install_optimizer_skill.py --update
+
+更新会把旧目录（包括本地修改）完整移到返回的 backup 路径，再安装新版；
+不会自动合并旧修改或上传私人记录。备份位于 Skill 发现目录之外，避免旧版重复加载。
+使用旧客户端或自定义位置时显式传 `--destination /path/to/skill`；不会扫描或删除
+`~/.codex` 中的旧安装。没有 `--update` 时仍拒绝覆盖不同内容。
+
+新会话中可直接说：
 
 > 用 $dmd-system-optimizer 优化当前 workload。先找可复用代码和历史经验，
 > 解决端到端瓶颈。每轮快速检查，最后验证组合，用现有 runner 和 WORK_LOG。
