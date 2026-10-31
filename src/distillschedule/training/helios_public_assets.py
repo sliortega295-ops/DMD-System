@@ -101,7 +101,9 @@ def inspect_safe(pin, *, evidence_kind, precision='FP32'):
 def admit_assets(parameters):
     from distillschedule.adapters.helios.reference_model import reference_model_identity
     from .helios_step_owner import HeliosStepOwner
-    require(set(parameters) <= {'asset_manifest','seed','device'}, 'unsupported factory parameters')
+    require(set(parameters) <= {'asset_manifest','seed','device','inference_noise_policy'}, 'unsupported factory parameters')
+    from .reference_inference_noise import enabled
+    enabled(parameters)
     require(parameters.get('device','cpu') == 'cpu', 'CPU1 only; no CUDA substitution')
     HeliosStepOwner._validate_topology()
     path = local_file(parameters.get('asset_manifest'))

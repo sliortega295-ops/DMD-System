@@ -366,7 +366,14 @@ def test_current_projection_nonmutating_next_actual_update_and_immutable_rope(fi
     first = decode(dataset.sample(0),a.task)
     a.run(first,descriptor(first.reference_document))
     before = deepcopy(a.state_dict()); outer = rng_state()
-    projection = components.inference_projection(components,dict(seed=773))
+    training_noise_policy = os.environ.get('DISTILLSCHEDULE_STABLE_BLOCK_NOISE')
+    with monkeypatch.context() as patch:
+        # Projection has an independent output contract, not the CPU training
+        # fixture's environment-selected compatibility policy.
+        patch.delenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',raising=False)
+        assert 'DISTILLSCHEDULE_STABLE_BLOCK_NOISE' not in os.environ
+        projection = components.inference_projection(components,dict(seed=773))
+    assert os.environ.get('DISTILLSCHEDULE_STABLE_BLOCK_NOISE') == training_noise_policy
     assert projection.components.state['generator'] is a.generator.module
     assert equal(before,a.state_dict()) and equal(outer,rng_state())
     cls = load_reference_model_class(backend='torch-sdpa')

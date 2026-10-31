@@ -36,7 +36,8 @@ def inference_config(root,manifest,prepared):
 
 
 def process(script,root):
-    result = subprocess.run([sys.executable,'-c',script,str(root)],cwd=repository_root(),env=dict(os.environ),
+    env=dict(os.environ);env.pop('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',None)
+    result = subprocess.run([sys.executable,'-c',script,str(root)],cwd=repository_root(),env=env,
         text=True,capture_output=True,timeout=300)
     assert result.returncode == 0,result.stdout+result.stderr
     return result.stdout
@@ -47,26 +48,39 @@ def portable(tmp_path_factory):
     root = tmp_path_factory.mktemp('wan-portable')
     old = root/'training-payloads'
     files = fixture_files(old/'local',cohorts=2)
-    trained = session.train(config_for(files,old/'first',1))
+    first_config=config_for(files,old/'first',1)
+    first_raw=first_config.to_dict();first_raw['model']['parameters']['inference_noise_policy']='fresh_projection_v1'
+    first_config=TrainingConfig.from_dict(first_raw,source=first_config.source)
+    with pytest.MonkeyPatch.context() as scope:
+        scope.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE','1')
+        trained = session.train(first_config)
     resumed_config = config_for(files,old/'resumed',2,resume=trained['checkpoint'])
+    resumed_raw=resumed_config.to_dict();resumed_raw['model']['parameters']['inference_noise_policy']='fresh_projection_v1'
+    resumed_config=TrainingConfig.from_dict(resumed_raw,source=resumed_config.source)
     write_json(root/'resume.json',resumed_config.to_dict())
     prepared = new_inputs(root/'NEW-inputs')
     script = r'''
 from pathlib import Path
-import json,sys,torch
+import json,os,sys,torch
 from distillschedule.training import session
 from distillschedule.training.config import load_training_config
 from distillschedule.training.inference import restore_modules
 from distillschedule.training.plugins import load_callable
 from test_training_wan_inference_cpu import inference_config
 root=Path(sys.argv[1]);config=load_training_config(root/'resume.json')
-resumed=session.train(config)
+try:
+ os.environ['DISTILLSCHEDULE_STABLE_BLOCK_NOISE']='1'
+ resumed=session.train(config)
+finally:os.environ.pop('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',None)
 assert resumed['resume_cycle']==1 and resumed['cursor']==2
 original=session._load_for_output;captured=[]
 def load(*args,**kw):
  result=original(*args,**kw);captured.append(result[0]);return result
 session._load_for_output=load
 manifest=session.export(config,resumed['checkpoint'],root/'export')
+assert manifest['model']['parameters']['schema_version'].endswith('.v2')
+assert manifest['model']['parameters']['noise_protocol']['policy']=='fresh_projection_v1'
+assert 'DISTILLSCHEDULE_STABLE_BLOCK_NOISE' not in os.environ
 owner=captured[0].state['native_cycle'];g=owner.generator.module
 assert owner.versions==dict(generator=2,critic=10,ema=10)
 weights=torch.load(root/'export/weights.pt',weights_only=True)

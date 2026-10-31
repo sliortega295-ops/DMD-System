@@ -481,6 +481,28 @@ of factory initialization or RNG consumed assembling a training workload.
 Receipts record this `inference_seed` separately from the exported model's seed,
 alongside the actual canonical `generation_parameters` passed to the callbacks.
 
+For Helios and Wan CPU-reference exports, select the projection-based output
+noise policy in the training model configuration before the first checkpoint:
+
+```json
+"model": {
+  "factory": "distillschedule.training.helios_nogan_public:build_model",
+  "parameters": {
+    "asset_manifest": "/path/to/assets.cpu-reference.json",
+    "inference_noise_policy": "fresh_projection_v1"
+  }
+}
+```
+
+The same parameter is supported by the Wan CPU-reference factory. The exported
+v2 inference projection records its noise protocol and uses private random
+streams selected by the independent `trainer.seed`. It draws the original
+rank-three block covariance directly, without a Cholesky factorization. Export
+and generation need no process-wide sampler override; use the exact model
+parameters from the export when constructing the inference request above.
+The policy is part of checkpoint identity. Native GPU recipes retain their
+existing rollout inputs and execution paths.
+
 Portable `generate` defaults to decoded video, but explicitly supports
 `--output-kind image|video|audio|audio_video|latents`. The adapter must actually
 supply the requested output; no guessed latent reshape is a decoder.

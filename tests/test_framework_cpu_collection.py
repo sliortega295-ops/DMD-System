@@ -352,3 +352,50 @@ def test_operator_grid_codec_missing_manifest_is_an_error_not_a_skip():
     result = subprocess.run([sys.executable, '-c', script], cwd=ROOT, env=env,
                             capture_output=True, text=True, timeout=30)
     assert result.returncode != 0 and "KeyError: 'DMD_H3_GRID_CODEC_TEST_MANIFEST'" in result.stderr
+
+
+def test_original_cpu_noise_policies_are_scoped_to_their_actual_runtime_contracts():
+    import yaml
+    job=yaml.load((ROOT/'.github/workflows/helios-reference-model-cpu.yml').read_text(),Loader=yaml.BaseLoader)['jobs']['original-full-model']
+    flag='DISTILLSCHEDULE_STABLE_BLOCK_NOISE'
+    assert flag not in job['env']
+    owner=next(s for s in job['steps'] if s.get('name','').startswith('Full original class'))
+    native=next(s for s in job['steps'] if s.get('name')=='Explicit outputs and native contracts without inherited sampler override')
+    assert owner['env'][flag]=='1' and flag not in native.get('env',{})
+    for name in ('test_training_helios_public_inference_cpu.py','test_training_wan_inference_cpu.py',
+                 'test_training_helios_optimized_stream.py','test_training_helios_native_safe_stream.py'):
+        assert name in native['run'] and name not in owner['run']
+    default=next(s for s in job['steps'] if s.get('name')=='Original default sampler and explicit PSD-policy contracts')
+    output=next(s for s in job['steps'] if s.get('name')=='Explicit v2 output protocol and exact restart without inherited environment')
+    assert flag not in default.get('env',{}) and flag not in output.get('env',{})
+    assert 'tests/test_helios_reference_inference_noise_cpu.py' in output['run']
+    assert 'tests/test_helios_reference_inference_noise_cpu.py' not in _api()['test_files'](ROOT)
+    assert '--require test_native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd' in default['run']
+    for family in ('helios','wan'):
+        for name in ('test_fresh_process_v2_export_and_generate_uses_real_operation_inputs_without_env',
+                     'test_resume_identity_binds_explicit_output_policy','test_unselected_v1_keeps_original_call_and_environment_rejection'):
+            assert "--require '"+name+'['+family+"]'" in output['run']
+
+
+@pytest.mark.parametrize('mutation',[None,'owner-missing','native-missing','native-empty','missing-proof','skipped','failure','error'])
+def test_scoped_owner_output_native_junit_consumer_requires_both_real_suites(tmp_path,mutation):
+    """Actual CI consumer with SYNTHETIC_TEST_ONLY XML; not GPU evidence."""
+    import ast,yaml
+    import xml.etree.ElementTree as ET
+    job=yaml.load((ROOT/'.github/workflows/helios-reference-model-cpu.yml').read_text(),Loader=yaml.BaseLoader)['jobs']['original-full-model']
+    step=next(s for s in job['steps'] if s.get('name')=='Require the full-source proofs without skips')
+    script=step['run'].split("python - <<'PY'\n",1)[1].rsplit('\nPY',1)[0]
+    required=ast.literal_eval(next(n.value for n in ast.parse(script).body if isinstance(n,ast.Assign)
+        and any(isinstance(t,ast.Name) and t.id=='required' for t in n.targets)))
+    for index,path in enumerate(('helios-reference-model-cpu.xml','helios-native-policy-cpu.xml')):
+        root=ET.Element('testsuite',name='SYNTHETIC_TEST_ONLY')
+        for name in sorted(required)[index::2]:ET.SubElement(root,'testcase',name=name,classname='SYNTHETIC_TEST_ONLY')
+        if index==1:
+            if mutation=='native-empty':root.clear()
+            elif mutation=='missing-proof':root.remove(root[-1])
+            elif mutation in ('skipped','failure','error'):
+                ET.SubElement(root[-1],mutation)
+                root.set({'skipped':'skipped','failure':'failures','error':'errors'}[mutation],'1')
+        if mutation!=('owner-missing' if index==0 else 'native-missing'):ET.ElementTree(root).write(tmp_path/path)
+    result=subprocess.run([sys.executable,'-c',script],cwd=tmp_path,capture_output=True,text=True)
+    assert (result.returncode==0) is (mutation is None),result.stdout+result.stderr

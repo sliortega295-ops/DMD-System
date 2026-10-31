@@ -449,3 +449,61 @@ def test_real_program_generation_binds_codec_callback_to_factory_state(monkeypat
     assert result['decoded']['decoder']['latent_clamp'] is False
     with pytest.raises(ValueError,match='overrides'):
         components.decode(generated,dict(fps=999))
+
+
+def _original_block_noise_function():
+    """Exact source function, same lightweight ownership as the default canary."""
+    import ast,math,os
+    from distillschedule.workloads.best_known.registry import repository_root
+    path=repository_root()/'third_party/helios_compat/source/helios/utils/utils_helios_post.py'
+    node=next(n for n in ast.parse(path.read_bytes()).body if isinstance(n,ast.FunctionDef) and n.name=='sample_block_noise')
+    namespace=dict(torch=torch,math=math,os=os)
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),str(path),'exec'),namespace)
+    return namespace['sample_block_noise']
+
+
+def test_explicit_stable_block_noise_policy_matches_primitive_and_rng(monkeypatch):
+    from types import SimpleNamespace as NS
+    import runtime.official_baseline as official
+    sampler=_original_block_noise_function();primitive=official.stable_block_noise;calls=[]
+    def observed(blocks,**kwargs):calls.append((blocks,kwargs));return primitive(blocks,**kwargs)
+    monkeypatch.setattr(official,'stable_block_noise',observed)
+    monkeypatch.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE','1')
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(819);expected=primitive(2*3*2*3)
+        expected=expected.view(1,2,3,2,3,2,2).permute(0,1,2,3,5,4,6).reshape(1,2,3,4,6)
+        expected_rng=torch.get_rng_state().clone()
+        torch.manual_seed(819);actual=sampler(NS(config=NS(gamma=1/3)),1,2,3,4,6)
+        assert torch.equal(actual,expected) and torch.equal(torch.get_rng_state(),expected_rng)
+        assert actual.dtype==torch.float32 and actual.device.type=='cpu'
+    assert calls==[(36,{})] and not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('gamma',[0.,0.25,0.5])
+def test_stable_block_noise_policy_rejects_other_gamma_before_rng(monkeypatch,gamma):
+    from types import SimpleNamespace as NS
+    monkeypatch.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE','1');before=torch.get_rng_state().clone()
+    with pytest.raises(ValueError,match='requires gamma=1/3'):
+        _original_block_noise_function()(NS(config=NS(gamma=gamma)),1,2,3,4,6)
+    assert torch.equal(before,torch.get_rng_state()) and not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('flag',['unset','0','true'])
+def test_default_block_noise_still_uses_original_distribution(monkeypatch,flag):
+    from types import SimpleNamespace as NS
+    import runtime.official_baseline as official
+    if flag=='unset':monkeypatch.delenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',raising=False)
+    else:monkeypatch.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',flag)
+    def forbidden(*args,**kwargs):pytest.fail('default sampler selected stable opt-in without exact flag=1')
+    monkeypatch.setattr(official,'stable_block_noise',forbidden)
+    original=torch.distributions.MultivariateNormal;calls=[]
+    def observed(loc,**kwargs):calls.append((loc,kwargs['covariance_matrix']));return original(loc,**kwargs)
+    monkeypatch.setattr(torch.distributions,'MultivariateNormal',observed)
+    # Non-singular gamma isolates routing. The preexisting gamma=1/3 canary
+    # separately retains the unmodified platform-dependent Cholesky behavior.
+    gamma=.25
+    with torch.random.fork_rng(devices=[]):
+        value=_original_block_noise_function()(NS(config=NS(gamma=gamma)),1,2,3,4,6)
+    assert len(calls)==1 and torch.equal(calls[0][0],torch.zeros(4))
+    assert torch.equal(calls[0][1],torch.eye(4)*(1+gamma)-torch.ones(4,4)*gamma)
+    assert value.shape==(1,2,3,4,6) and value.dtype==torch.float32 and not torch.cuda.is_initialized()

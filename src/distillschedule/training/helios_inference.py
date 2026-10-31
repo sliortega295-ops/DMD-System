@@ -19,6 +19,7 @@ from .adapters import InferenceProjection, ModelComponents
 from .helios_public_assets import EVIDENCE_KINDS, require, runtime_identity
 
 SCHEMA = 'distillschedule.helios_current_generator_inference.v1'
+PROJECTION_SCHEMA = 'distillschedule.helios_current_generator_inference.v2'
 FACTORY = 'distillschedule.training.helios_inference:build_inference_model'
 SCOPE = 'CPU1_FP32_ORIGINAL_NATIVE_ZERO_HISTORY_LATENT_DIAGNOSTIC'
 SHIFT_KEYS = ('base_seq_len', 'max_seq_len', 'base_shift', 'max_shift')
@@ -64,7 +65,7 @@ def _environment():
 
 def _metadata(parameters):
     # No current parameter VALUES: those are bound by the complete export hashes.
-    return dict(schema_version=SCHEMA, scope=SCOPE, parameters=deepcopy(parameters),
+    return dict(schema_version=parameters['schema_version'], scope=SCOPE, parameters=deepcopy(parameters),
                 generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA',
                 evidence_kind=parameters['evidence_kind'], quality_validation='NOT_RUN', claimable_speedup=False,
                 latent_schema={'latents': dict(layout='BCTHW', shape=parameters['geometry']['noise_shape'],
@@ -77,11 +78,17 @@ def _admit(parameters):
     from distillschedule.adapters.helios.reference_model import load_reference_model_class
     require(isinstance(parameters, dict) and set(parameters) <= {
         'schema_version', 'source', 'runtime', 'architecture', 'peft', 'native', 'geometry',
-        'budget', 'evidence_kind', 'seed', 'device'}, 'unsupported inference factory parameters')
+        'budget', 'evidence_kind', 'seed', 'device','noise_protocol'}, 'unsupported inference factory parameters')
     p = _json({k:v for k,v in parameters.items() if k != 'device'})
-    require(set(p) == {'schema_version', 'source', 'runtime', 'architecture', 'peft', 'native',
-                      'geometry', 'budget', 'evidence_kind', 'seed'} and p['schema_version'] == SCHEMA,
+    fields = {'schema_version', 'source', 'runtime', 'architecture', 'peft', 'native',
+              'geometry', 'budget', 'evidence_kind', 'seed'}
+    projection = p.get('schema_version') == PROJECTION_SCHEMA
+    require(set(p) == fields | ({'noise_protocol'} if projection else set())
+            and p.get('schema_version') in (SCHEMA,PROJECTION_SCHEMA),
             'complete explicit inference parameter schema required')
+    if projection:
+        from .reference_inference_noise import protocol
+        require(p['noise_protocol'] == protocol('torch.float32'), 'inference noise protocol/source changed')
     require(parameters.get('device', 'cpu') == 'cpu', 'inference CPU FP32 only; no CUDA substitution')
     _environment()
     require(type(p['seed']) is int and 0 <= p['seed'] < 2**63 and p['evidence_kind'] in EVIDENCE_KINDS,
@@ -204,6 +211,9 @@ def project_current_generator(components, effective_training_parameters):
                            stage_range=list(c.stage2_stage_range), gamma=c.stage2_scheduler_gamma), rollout=rollout),
         geometry=deepcopy(components.metadata['assets']['geometry']), budget=deepcopy(components.metadata['assets']['budget']),
         evidence_kind=components.metadata['evidence_kind'], seed=effective_training_parameters['seed']))
+    from .reference_inference_noise import enabled, protocol
+    if enabled(effective_training_parameters):
+        parameters.update(schema_version=PROJECTION_SCHEMA,noise_protocol=protocol('torch.float32'))
     _admit(parameters)
     # This view has no generate callback: exporting must never freeze/eval or
     # run the live training G. The separate inference factory installs its own.
@@ -253,12 +263,21 @@ def generate(state, feeds, parameters):
     # Original run_generator draws actual noise; this tensor supplies its exact
     # admitted native geometry/dtype, not fabricated GT history or a recurrence.
     noise = torch.zeros(p['geometry']['noise_shape'], dtype=torch.float32, device='cpu')
+    inputs = None
+    kwargs = {}
+    if p['schema_version'] == PROJECTION_SCHEMA:
+        from .reference_inference_noise import prepare
+        inputs = prepare(p,torch.float32)
+        noise = inputs.shape_noise
+        kwargs = dict(operation_trace=inputs,trace_prefix=p['noise_protocol']['operation_prefix'])
     args = SimpleNamespace(training_config=SimpleNamespace(**p['native']['args']))
     with torch.device('cpu'):
         scheduler = native.scheduler(**p['native']['scheduler'])
         result = native.post.run_generator(args=args,
             accelerator=SimpleNamespace(device=torch.device('cpu'), is_main_process=True),
-            transformer=generator, scheduler=scheduler, noise=noise, prompt_embeds=prompt, **p['native']['rollout'])
+            transformer=generator, scheduler=scheduler, noise=noise, prompt_embeds=prompt, **kwargs, **p['native']['rollout'])
+    if inputs is not None:
+        inputs.finish()
     latents = result[0]
     require(isinstance(latents, torch.Tensor) and list(latents.shape) == p['geometry']['noise_shape']
             and latents.dtype == torch.float32 and not latents.requires_grad and bool(latents.isfinite().all()),
