@@ -1,0 +1,261 @@
+{
+  "schema": "dmd.branch-retirement.freeze.v1",
+  "repo": "sliortega295-ops/DMD-System",
+  "main_sha": "1c920e7fc1b016e82532f90743c5d00bb27aee16",
+  "protected": [
+    "agent/dmd-joint-planner-20260907",
+    "agent/fsdp2-gpu-residual-20260816",
+    "agent/fsdp2-p0-batched-rollout-hsdp-20260815",
+    "agent/fsdp2-static-full5-baselines-20260814",
+    "agent/general-workload-planning-20261012",
+    "agent/helios14b-modnorm-materialization-20260825",
+    "agent/lightx2v-minimax-dmd-world16-20260817",
+    "agent/lightx2v-minimax-fsdp-first-segmented-checkpoint-20260818",
+    "agent/lightx2v-minimax-matched-schedule-20260817",
+    "agent/lightx2v-minimax-nsys-attribution-20260818",
+    "agent/livewan-crossscale-pipeline-20260830",
+    "agent/original-wan-strategy-20261012",
+    "agent/parameterized-hierarchical-planner-20261011",
+    "agent/parameterized-native-backend-20261011",
+    "agent/profile-guided-planner-v0-20260814",
+    "agent/runtime-convergence-issue9-20260813",
+    "agent/strategy-native-integration-20261012",
+    "agent/unified-strategy-planner-20261012",
+    "agent/wan13b-fair-resident-fsdp2-20260822",
+    "agent/wan13b-fsdp-upper-bound-20260820",
+    "agent/wan13b-lora-cast-20260824",
+    "codex/h3-ar-uncached-rollout-fa3-20261018",
+    "codex/h3-full-local-state-diagnostic-20261018",
+    "codex/six-native-incumbents-20261023",
+    "main",
+    "maintenance/dmd-git-history-archive-20261031"
+  ],
+  "candidates": [
+    {
+      "branch": "agent/fsdp2-forward-prefetch-20260823",
+      "sha": "012fc0519aaddfa8015c555a21305fe630062674"
+    },
+    {
+      "branch": "agent/fsdp2-timing-clean-20260823",
+      "sha": "c21e8973cab931152e3b33d5707b2efb3e9c06ea"
+    },
+    {
+      "branch": "agent/generic-workload-capabilities-20261012",
+      "sha": "c0188872a9e62184c19ac4bb50a146664e1611f1"
+    },
+    {
+      "branch": "agent/h100-helios-nograd-retain-20261014",
+      "sha": "8fc70e8ce9f6e0243604812120119c9f4c078e55"
+    },
+    {
+      "branch": "agent/h100-helios-official-lowvram-20261014",
+      "sha": "624515e7c8d1511aa688e95e69cf94f1a2a273f7"
+    },
+    {
+      "branch": "agent/h100-livewan-teacher-resident-20261015",
+      "sha": "1b8236c243323ff21023935f3b8192ab3e5d136d"
+    },
+    {
+      "branch": "agent/h100-w6-resident-adaln-staging-20261015",
+      "sha": "0419b96b9ed9a8dd76737042e6c5020c80f6673a"
+    },
+    {
+      "branch": "agent/h100-wan13b-rankcache-20261015",
+      "sha": "97b8ecc9cf7747d93619acad1a6083f98faae084"
+    },
+    {
+      "branch": "agent/helios14b-nograd-cross-kv-cache-20260825",
+      "sha": "945a9f3bd16e4666224f697451f924f8f7292cf6"
+    },
+    {
+      "branch": "agent/helios14b-nograd-kv-cache-20260825",
+      "sha": "5dc7e5c9cde20d6bb29435e422934508ccbff1b3"
+    },
+    {
+      "branch": "agent/helios-trajectory-50c-20260903",
+      "sha": "c84525ac93474d68d1d4a8942b7e6db1296b2bc8"
+    },
+    {
+      "branch": "agent/integrate-five-workload-winners-20260905",
+      "sha": "ee4abdf7ed8b9d04e731380e8fc88a4e9f62647f"
+    },
+    {
+      "branch": "agent/integrate-livewan-c34-20260906",
+      "sha": "fd1746c5d4adff85e7dfd4887fca797ace4edb27"
+    },
+    {
+      "branch": "agent/lightx2v-minimax-selective-boundary-offload-20260818",
+      "sha": "c0c9985cfd9c3716a0fa3e78f810dd637dad60a6"
+    },
+    {
+      "branch": "agent/lightx2v-minimax-selective-boundary-offload-nsys-20260818",
+      "sha": "17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8"
+    },
+    {
+      "branch": "agent/livewan-continuous-c21-20260901",
+      "sha": "54351707288c8d8a8d2efd789ece708852a07033"
+    },
+    {
+      "branch": "agent/livewan-steady130-20260905",
+      "sha": "4c994edca7d83ff553cab6025d8b93b279cd1634"
+    },
+    {
+      "branch": "agent/livewan-trajectory-50c-20260903",
+      "sha": "e255179c5a5755321502e3bb98093dd8917f7213"
+    },
+    {
+      "branch": "agent/nsight-activity-overlay-issue9-20260814",
+      "sha": "c2a151825187318064b3657a7c41a6aa9b378058"
+    },
+    {
+      "branch": "agent/parameterized-native-wan-20261011",
+      "sha": "eed0ab14f92fdbf1167291f4c2c5ee1b3f4e13d4"
+    },
+    {
+      "branch": "agent/pr15-vllm-omni-019-tp1x1-20260815",
+      "sha": "207c613e9de7c3c5c8e9de13e803f06e450c9250"
+    },
+    {
+      "branch": "agent/runtime-stable-convergence-20260813",
+      "sha": "19adc497e5913e3b49542e70bb5becd05f90523c"
+    },
+    {
+      "branch": "agent/strategy-parameterization-20261012",
+      "sha": "c6f296cf3e924816ed9a06cf2f663b21ad56e152"
+    },
+    {
+      "branch": "agent/wan13b-resident-async-reducer-20260823",
+      "sha": "b9dd25e36dfa45e6768428eb08f549afa7d3895e"
+    },
+    {
+      "branch": "agent/wan13b-trajectory-50c-20260903",
+      "sha": "2de26887b86038b0b9d3b5387e15d70bbd2b1d66"
+    },
+    {
+      "branch": "codex/distributable-optimizer-skill-20261030",
+      "sha": "06de1a643868dd3395c29d37e984f774ff813724"
+    },
+    {
+      "branch": "codex/gan-cuda-baseline-opt-20260829",
+      "sha": "a78827099c89795416f9ac6c77284dd5bacb0383"
+    },
+    {
+      "branch": "codex/gan-pipeline-prototype",
+      "sha": "b0c1186e04f32866731d34bbd9912c690cd7a3ab"
+    },
+    {
+      "branch": "codex/gan-pipeline-prototype-v2",
+      "sha": "b0c1186e04f32866731d34bbd9912c690cd7a3ab"
+    },
+    {
+      "branch": "codex/gan-pipeline-prototype-v3",
+      "sha": "e5ab926b73345b0e2c477dc2540ba5ea7e730b17"
+    },
+    {
+      "branch": "codex/gan-pipeline-rolephase-handoff-20260812",
+      "sha": "ffd779b0c8f50dfccbea8d6deef845bce39a0d0f"
+    },
+    {
+      "branch": "codex/gan-rolephase-v1-20260812",
+      "sha": "7b603f66a6a20cb59f6009fe3abc2bed414b1b22"
+    },
+    {
+      "branch": "codex/gan-rolephase-world16-exec-20260812",
+      "sha": "217e2ec0cee0323d9311db05b0fc373a570661ee"
+    },
+    {
+      "branch": "codex/gan-routea-baseline",
+      "sha": "9683064afcf90971408f70c5434ea15ee05c1d26"
+    },
+    {
+      "branch": "codex/issue-nsight-utilization-assets-20260814",
+      "sha": "5f26d192247f4fb84039f2bcc88a149f22873db6"
+    },
+    {
+      "branch": "codex/livewan-c51-tail4-census-20261017",
+      "sha": "0dfce74b66499419fdf38ec40b5e621544d8b904"
+    },
+    {
+      "branch": "codex/livewan-r2-capacity-offload-20261019",
+      "sha": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f"
+    },
+    {
+      "branch": "codex/nogan-partial-parameter-retention-20261018",
+      "sha": "e2374f084977a31ef1fd06a2e81a5e9582af818c"
+    },
+    {
+      "branch": "codex/open-source-framework-20261021",
+      "sha": "7a6bbbec3a85604d20b0846182d1178b8ffc5848"
+    },
+    {
+      "branch": "codex/optimizer-user-experience-cleanup-20261031",
+      "sha": "705f6c2d347446edefe457fd483415b1f2adaaec"
+    },
+    {
+      "branch": "codex/pr3-ci-and-suite-fix",
+      "sha": "894be31b41fde4f08783022dd0cdd928f35e28d5"
+    },
+    {
+      "branch": "codex/rb16-full5-lifecycle-optimization",
+      "sha": "15a0511803ba97d860f80b6ecd5b88121cbccdf7"
+    },
+    {
+      "branch": "codex/repo-retirement-hygiene-20261031",
+      "sha": "032e3ed1948df2a5ac866b7ab2038466b7f97d81"
+    },
+    {
+      "branch": "codex/routea-world16-repository-hardening",
+      "sha": "03980c7cb8a998159169806cbaf369ed983556aa"
+    },
+    {
+      "branch": "codex/state-retention-six-20261017",
+      "sha": "155ffbb585356a29b544573a391eb456b790a15a"
+    },
+    {
+      "branch": "codex/systems-gan-exec-20260810",
+      "sha": "da27021a00ede6e3567cd422af8473ce027aafcc"
+    },
+    {
+      "branch": "codex/systems-gan-pipeline-exec-20260811",
+      "sha": "2862e424c8e64efa86043d147939492748ab9d0e"
+    },
+    {
+      "branch": "codex/w1-r2-fsdp-compatible-b-20261019",
+      "sha": "7fa27ff8cab0a483a65fd857e0df762d46194d6d"
+    },
+    {
+      "branch": "codex/wan13b-resident-clean-20260822",
+      "sha": "af240f5e53f9a43eefe523a6473aa6a9fba0164e"
+    },
+    {
+      "branch": "codex/wan13b-shadow-noise30-20261012",
+      "sha": "c69876197aeaccbab19b515b54d1022f07634422"
+    },
+    {
+      "branch": "codex/wan-grid-static-shared-20261014",
+      "sha": "7cde0ff8101725d8bab2843c52dcde127b09525a"
+    },
+    {
+      "branch": "codex/wan-large-attention-backend-20261018",
+      "sha": "a5b550af56b3eb7e8b5f570be94540134fc49ad5"
+    },
+    {
+      "branch": "codex/wan-state-policy-planner-20261017",
+      "sha": "ea29129342741b54e59c4773e07454f541fadcc7"
+    },
+    {
+      "branch": "server-adaptation-20260808",
+      "sha": "cc8fae3855a34f95022b9cbbe8f2a6cae8eefba7"
+    },
+    {
+      "branch": "v0.2-runtime-complete",
+      "sha": "b315afacd9b84cfd06162a2233c22ed8553650e6"
+    }
+  ],
+  "counts": {
+    "old_branches": 81,
+    "open_prs": 21,
+    "candidates": 55
+  },
+  "comment": "Only SHA-pinned existing refs; all source revisions tagged before deleting. PR dependencies and branch HEAD rechecked immediately before each deletion."
+}
