@@ -1,11 +1,14 @@
 """Real Gloo restore: distributed file hashing, complete admission, local load."""
 from collections import Counter
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import timedelta
 import json
 import os
 from pathlib import Path
 import shutil
+import sys
+import time
 
 import pytest
 import torch
@@ -14,6 +17,80 @@ import torch.multiprocessing as mp
 
 from distillschedule.training import checkpoint as cp
 from test_training_end_to_end import equal
+
+
+def _checkpoint_io_resources():
+    def read(path):
+        try:
+            with Path(path).open() as stream:
+                value = stream.read(4097)
+            return value if len(value) <= 4096 else {"error": "metadata exceeds 4096 characters"}
+        except OSError as error:
+            return {"error": type(error).__name__ + ": " + str(error)}
+
+    status = read("/proc/self/status")
+    process = {key: value.strip() for line in status.splitlines()
+               if ":" in line for key, value in [line.split(":", 1)]
+               if key in ("Threads", "VmRSS", "VmSize")} if isinstance(status, str) else status
+    membership = read("/proc/self/cgroup")
+    root = Path("/sys/fs/cgroup")
+    cgroup = {"membership": membership, "mount_root": str(root)}
+    paths = {"mount_root": root}
+    if isinstance(membership, str):
+        unified = [line[3:] for line in membership.splitlines() if line.startswith("0::")]
+        if len(unified) == 1:
+            current = (root / unified[0].lstrip("/")).resolve()
+            if current.is_relative_to(root):
+                paths["current"] = current
+            else:
+                cgroup["current_error"] = "namespace membership is outside visible cgroup mount"
+    for scope, path in paths.items():
+        cgroup[scope] = {"path": str(path), "files": {name: read(path / name) for name in (
+            "pids.current", "pids.max", "pids.events", "memory.current", "memory.max", "memory.events")}}
+    try:
+        import resource
+        limits = {name: list(resource.getrlimit(getattr(resource, name)))
+                  for name in ("RLIMIT_NPROC", "RLIMIT_NOFILE")}
+    except (ImportError, OSError, AttributeError) as error:
+        limits = {"error": type(error).__name__ + ": " + str(error)}
+    try:
+        affinity = sorted(os.sched_getaffinity(0))
+    except (AttributeError, OSError) as error:
+        affinity = {"error": type(error).__name__ + ": " + str(error)}
+    return {"process_status": process, "cgroup": cgroup, "limits": limits, "affinity": affinity,
+            "torch_threads": {"intra": torch.get_num_threads(), "interop": torch.get_num_interop_threads()},
+            "CUDA_initialized": torch.cuda.is_initialized()}
+
+
+def _checkpoint_io_event(rank, world, phase, event, error=None):
+    if os.environ.get("DISTILLSCHEDULE_CHECKPOINT_IO_TRACE") != "1":
+        return
+    try:
+        resources = _checkpoint_io_resources()
+    except Exception as failure:
+        resources = {"diagnostic_error": type(failure).__name__ + ": " + str(failure)}
+    row = {"schema_version": "distillschedule.test_checkpoint_io_phase.v1", "rank": rank,
+           "world_size": world, "pid": os.getpid(), "monotonic_ns": time.monotonic_ns(),
+           "phase": phase, "event": event, "resources": resources}
+    if error is not None:
+        row["error"] = type(error).__name__ + ": " + str(error)
+    try:
+        sys.stderr.write("CHECKPOINT_IO_PHASE " + json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
+        sys.stderr.flush()
+    except (OSError, ValueError):
+        pass  # Diagnostics must not replace the worker's actual result or exception.
+
+
+@contextmanager
+def _checkpoint_io_phase(rank, world, phase):
+    _checkpoint_io_event(rank, world, phase, "ENTER")
+    try:
+        yield
+    except BaseException as error:
+        _checkpoint_io_event(rank, world, phase, "ERROR", error)
+        raise
+    else:
+        _checkpoint_io_event(rank, world, phase, "RETURN")
 
 
 class _NativeFiles:
@@ -70,13 +147,17 @@ def _save(path, state, *, native=None):
 
 
 def _valid_worker(rank, world, rendezvous, output, with_native):
-    _init(rank, world, rendezvous)
+    _checkpoint_io_event(rank, world, "worker", "ENTER")
+    with _checkpoint_io_phase(rank, world, "init"):
+        _init(rank, world, rendezvous)
     root = Path(output)
     try:
-        original = _state(rank)
+        with _checkpoint_io_phase(rank, world, "state.original"):
+            original = _state(rank)
         expected = deepcopy(cp.pack_state(original))
         native = _NativeFiles(rank, world) if with_native else None
-        path = _save(root / "checkpoint", original, native=native)
+        with _checkpoint_io_phase(rank, world, "save"):
+            path = _save(root / "checkpoint", original, native=native)
         hashes, loads = [], []
         actual_sha, actual_load = cp._sha, torch.load
 
@@ -92,13 +173,16 @@ def _valid_worker(rank, world, rendezvous, output, with_native):
         identity = {"source": "collective-io-test"}
         try:
             # Public direct reads retain their complete all-shard validation.
-            public = cp.read_checkpoint(path, identity=identity)
+            with _checkpoint_io_phase(rank, world, "read"):
+                public = cp.read_checkpoint(path, identity=identity)
             expected_files = {f"rank-{peer:05d}.pt" for peer in range(world)}
             assert Counter(name for name in hashes if name.endswith(".pt")) == Counter(expected_files)
             hashes.clear(); loads.clear()
-            target = _state(rank + 20)
+            with _checkpoint_io_phase(rank, world, "state.target"):
+                target = _state(rank + 20)
             parameter_ids = [id(parameter) for parameter in target["model"].parameters()]
-            payload = cp.restore_checkpoint(path, target, identity=identity, native_checkpoint=native)
+            with _checkpoint_io_phase(rank, world, "restore"):
+                payload = cp.restore_checkpoint(path, target, identity=identity, native_checkpoint=native)
         finally:
             cp._sha, torch.load = actual_sha, actual_load
         assert equal(payload, public)
@@ -112,12 +196,15 @@ def _valid_worker(rank, world, rendezvous, output, with_native):
             assert Counter(name for name in hashes if name.startswith("native/")) == Counter(
                 f"native/opaque-{peer}.bin" for peer in range(world))
             assert native.loads == 1
-        records = cp.distributed.gather({"rank": rank, "hashes": hashes, "loads": loads})
+        with _checkpoint_io_phase(rank, world, "gather"):
+            records = cp.distributed.gather({"rank": rank, "hashes": hashes, "loads": loads})
         assert Counter(name for row in records for name in row["hashes"] if name.endswith(".pt")) == Counter(expected_files)
         (root / f"valid-rank-{rank}.json").write_text(json.dumps(records))
         assert not torch.cuda.is_initialized()
     finally:
-        dist.destroy_process_group()
+        with _checkpoint_io_phase(rank, world, "destroy"):
+            dist.destroy_process_group()
+    _checkpoint_io_event(rank, world, "worker", "RETURN")
 
 
 @pytest.mark.parametrize("world,with_native", [(2, False), (4, False), (2, True)])
@@ -398,3 +485,60 @@ def test_public_output_rejects_before_payload_load_or_state_mutation(tmp_path):
     source = _output_fixture(tmp_path, 2)
     mp.spawn(_output_rejection_worker, args=(str(tmp_path / "rdzv"), str(tmp_path), str(source)),
              nprocs=2, join=True)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_checkpoint_io_phase_trace_is_opt_in_and_rng_neutral(monkeypatch, capfd, enabled):
+    import sys
+
+    flag = "DISTILLSCHEDULE_CHECKPOINT_IO_TRACE"
+    if enabled:
+        monkeypatch.setenv(flag, "1")
+    else:
+        monkeypatch.delenv(flag, raising=False)
+    calls = []
+    def resources():
+        calls.append("read")
+        return {"scope": "SYNTHETIC_DIAGNOSTIC_TEST_ONLY"}
+    monkeypatch.setattr(sys.modules[__name__], "_checkpoint_io_resources", resources, raising=False)
+    before = cp.rng_state(device="cpu")
+    threads = torch.get_num_threads(), torch.get_num_interop_threads()
+    with _checkpoint_io_phase(2, 4, "state"):
+        value = 7
+    assert value == 7 and equal(cp.rng_state(device="cpu"), before)
+    assert (torch.get_num_threads(), torch.get_num_interop_threads()) == threads
+    output = capfd.readouterr()
+    assert not output.out
+    if enabled:
+        rows = [json.loads(line.split(" ", 1)[1]) for line in output.err.splitlines()]
+        assert [row["event"] for row in rows] == ["ENTER", "RETURN"]
+        assert all(row["phase"] == "state" and row["rank"] == 2 and row["world_size"] == 4
+                   and row["pid"] == os.getpid() for row in rows)
+        assert calls == ["read", "read"]
+    else:
+        assert output.err == "" and calls == []
+
+
+def test_checkpoint_io_phase_trace_preserves_original_exception(monkeypatch, capfd):
+    monkeypatch.setenv("DISTILLSCHEDULE_CHECKPOINT_IO_TRACE", "1")
+    failure = RuntimeError("original worker failure")
+    before = cp.rng_state(device="cpu")
+    with pytest.raises(RuntimeError) as raised:
+        with _checkpoint_io_phase(1, 4, "restore"):
+            raise failure
+    assert raised.value is failure and equal(cp.rng_state(device="cpu"), before)
+    rows = [json.loads(line.split(" ", 1)[1]) for line in capfd.readouterr().err.splitlines()]
+    assert [row["event"] for row in rows] == ["ENTER", "ERROR"]
+    assert rows[-1]["error"] == "RuntimeError: original worker failure"
+
+
+def test_checkpoint_io_phase_resources_are_read_only_metadata():
+    before = cp.rng_state(device="cpu")
+    threads = torch.get_num_threads(), torch.get_num_interop_threads()
+    resources = _checkpoint_io_resources()
+    json.dumps(resources, allow_nan=False)
+    assert "process_status" in resources and "cgroup" in resources and "limits" in resources
+    assert resources["torch_threads"] == {"intra": threads[0], "interop": threads[1]}
+    assert resources["CUDA_initialized"] is False
+    assert equal(cp.rng_state(device="cpu"), before)
+    assert (torch.get_num_threads(), torch.get_num_interop_threads()) == threads

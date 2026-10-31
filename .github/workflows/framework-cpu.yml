@@ -49,6 +49,7 @@ jobs:
           TRANSFORMERS_OFFLINE: '1'
           OMP_NUM_THREADS: '1'
           PYTHONFAULTHANDLER: '1'
+          DISTILLSCHEDULE_CHECKPOINT_IO_TRACE: '1'
         run: python scripts/run_framework_cpu_tests.py --junitxml=framework-cpu.xml
       - name: Require original Helios startup and persistent state proof
         run: |
