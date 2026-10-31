@@ -19,6 +19,25 @@ from distillschedule.training import checkpoint as cp
 from test_training_end_to_end import equal
 
 
+@pytest.fixture(autouse=True)
+def _checkpoint_io_ci_trace(monkeypatch):
+    # Only these workers need the diagnostic control. Keeping it out of the
+    # shared CI environment preserves other native providers' strict admission.
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        monkeypatch.setenv("DISTILLSCHEDULE_CHECKPOINT_IO_TRACE", "1")
+
+
+@pytest.mark.parametrize("ci", [False, True])
+def test_checkpoint_io_trace_is_scoped_and_restores_the_parent_environment(monkeypatch, ci):
+    monkeypatch.delenv("DISTILLSCHEDULE_CHECKPOINT_IO_TRACE", raising=False)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true" if ci else "false")
+    before = dict(os.environ)
+    with pytest.MonkeyPatch.context() as scoped:
+        _checkpoint_io_ci_trace.__wrapped__(scoped)
+        assert os.environ.get("DISTILLSCHEDULE_CHECKPOINT_IO_TRACE") == ("1" if ci else None)
+    assert dict(os.environ) == before
+
+
 def _checkpoint_io_resources():
     def read(path):
         try:

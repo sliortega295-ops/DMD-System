@@ -171,6 +171,71 @@ assert set(distribution.metadata.get_all("License-File")) == set(expected)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_optimizer_skill_wheel_preserves_complete_runtime_without_tests_or_caches(framework_wheel):
+    skill = ROOT / "skills/dmd-system-optimizer"
+    expected = {path.relative_to(ROOT).as_posix(): path for path in skill.rglob("*")
+                if path.is_file() and path.relative_to(skill).parts[0] != "tests"
+                and "__pycache__" not in path.parts and path.suffix not in {".pyc", ".pyo"}}
+    assert expected
+    assert all(path.name == "LICENSE" or path.suffix in {".md", ".py", ".json", ".yaml"}
+               for path in expected.values())
+    assert all(path.stat().st_size < 2_000_000 for path in expected.values())
+    with zipfile.ZipFile(framework_wheel) as wheel:
+        guides = [name for name in wheel.namelist()
+                  if name.endswith(".data/data/share/distillschedule/docs/guides/optimizer_skill.md")]
+        assert len(guides) == 1
+        prefix = guides[0].removesuffix("docs/guides/optimizer_skill.md")
+        actual = {name.removeprefix(prefix) for name in wheel.namelist()
+                  if name.startswith(prefix + "skills/dmd-system-optimizer/") and not name.endswith("/")}
+        assert actual == set(expected), "the installed skill needs its full authored runtime, not tests/cache/raw payloads"
+        expected["tools/install_optimizer_skill.py"] = ROOT / "tools/install_optimizer_skill.py"
+        for relative, source in expected.items():
+            assert wheel.read(prefix + relative) == source.read_bytes(), relative
+
+
+def test_installed_optimizer_skill_links_and_public_helpers_work_without_checkout(framework_wheel, tmp_path):
+    target = tmp_path / "installed"
+    venv.EnvBuilder(with_pip=True).create(target)
+    python = target / "bin/python"
+    env = {key: value for key, value in os.environ.items() if key not in ("PYTHONPATH", "PYTHONHOME")}
+    result = subprocess.run(
+        [str(python), "-I", "-m", "pip", "install", "--no-index", "--no-deps", str(framework_wheel)],
+        cwd=tmp_path, env=env, capture_output=True, text=True, check=False, timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    installed = target / "share/distillschedule"
+    skill = installed / "skills/dmd-system-optimizer"
+    assert skill.is_dir() and not skill.is_relative_to(ROOT)
+    documents = [installed / "docs/guides/optimizer_skill.md", *skill.rglob("*.md")]
+    for document in documents:
+        for href in re.findall(r"\]\(([^)\s]+)\)", document.read_text()):
+            link = urlsplit(href)
+            if link.scheme or link.netloc or not link.path:
+                continue
+            dependency = (document.parent / unquote(link.path)).resolve()
+            assert dependency.is_relative_to(installed), (document, href)
+            assert dependency.is_file(), (document, href)
+    commands = [
+        (skill / "scripts/dmd_knowledge.py", ["validate-pack"]),
+        (skill / "scripts/dmd_knowledge.py", ["recall", "--brief", "--query", "参数反复上卡"]),
+        (skill / "scripts/dmd_knowledge.py", ["case", "--id", "helios-crosskv-gan-positive"]),
+        (skill / "scripts/dmd_knowledge.py", ["sources", "--query", "H100"]),
+        (skill / "scripts/dmd_perf.py", ["dag", "--input", str(skill / "examples/synthetic-dag.json")]),
+        (installed / "tools/install_optimizer_skill.py", ["--destination", str(tmp_path / "skill-copy")]),
+    ]
+    results = []
+    for script, arguments in commands:
+        result = subprocess.run([str(python), "-B", str(script), *arguments], cwd=tmp_path, env=env,
+                                capture_output=True, text=True, check=False, timeout=30)
+        assert result.returncode == 0, result.stdout + result.stderr
+        results.append(json.loads(result.stdout))
+    pack = json.loads((skill / "assets/helios-experience-pack.json").read_text())
+    assert results[0] == {"status": "VALID", "patterns": len(pack["patterns"]),
+                          "cases": len(pack["cases"]), "gpu_validation": "NOT_RUN"}
+    assert results[-1]["status"] == "INSTALLED"
+    assert (tmp_path / "skill-copy/SKILL.md").read_bytes() == (skill / "SKILL.md").read_bytes()
+
+
 def test_train_extra_declares_the_public_fsdp_api_minimum(wheel_metadata):
     assert wheel_metadata["Requires-Python"] == ">=3.10"
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
