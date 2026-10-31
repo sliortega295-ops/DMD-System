@@ -342,3 +342,115 @@ def test_sidecar_failure_does_not_fabricate_config_or_discard_committed_weights(
     assert manifest['status'] == 'EXPORTED' and (root / 'weights.pt').is_file()
     assert callback.result is None and not callback.config_path.exists()
     assert not list(tmp_path.glob('.portable.inference.json.tmp-*'))
+
+
+def _compressed_original_projection(tmp_path, variant):
+    """Real two-block class/LoRA256: PEFT's >=20-target compression, no training."""
+    from copy import deepcopy
+    import inspect
+    import torch
+    from test_training_helios_public_cpu import STACK_AVAILABLE
+    if not STACK_AVAILABLE:
+        pytest.skip('original optional Helios CPU stack required')
+    from peft import LoraConfig
+    from peft.tuners.tuners_utils import BaseTunerLayer, MIN_TARGET_MODULES_FOR_OPTIMIZATION
+    from test_training_wan_native_outputs import codec_request
+    from distillschedule.adapters.helios.reference_model import load_reference_model_class
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    from distillschedule.training import helios_native_inference as common
+    from distillschedule.training import helios_gan_native_inference as gan
+    from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
+    module = gan if variant == 'gan' else common
+    cls = load_reference_model_class(backend='torch-sdpa')
+    architecture = common.video.plain({k: p.default for k, p in inspect.signature(cls.__init__).parameters.items()
+                                      if k != 'self'})
+    architecture.update(num_attention_heads=1, attention_head_dim=16, freq_dim=16, ffn_dim=32,
+                        num_layers=2, rope_dim=[4, 6, 6], **TRANSFORMER_ADDITIONAL_KWARGS)
+    g = cls(**architecture)
+    for name, value in g.named_parameters():
+        value.data = value.data.to(torch.float32 if any(k in name for k in cls._keep_in_fp32_modules)
+                                   else torch.bfloat16)
+    targets = sorted(set(_all_linear_targets(g) + ['patch_short', 'patch_mid', 'patch_long']))
+    assert len(targets) == 29 and len(targets) >= MIN_TARGET_MODULES_FOR_OPTIMIZATION
+    g.requires_grad_(False)
+    g.add_adapter(LoraConfig(r=256, lora_alpha=256., lora_dropout=0., init_lora_weights='gaussian',
+                            target_modules=targets, exclude_modules=['down', 'up']))
+    for name, value in g.named_parameters():
+        if 'lora_' in name:
+            value.data = value.data.float()
+    actual = sorted(name for name, layer in g.named_modules() if isinstance(layer, BaseTunerLayer)
+                    and 'default' in getattr(layer, 'lora_A', {}) and 'default' in getattr(layer, 'lora_B', {}))
+    assert actual == targets and len(g.peft_config['default'].target_modules) < len(targets)
+    g.enable_gradient_checkpointing(); g.train()
+    # Materialize real optimizer state independently of a model forward/update.
+    optimizer = torch.optim.AdamW([value for value in g.parameters() if value.requires_grad], lr=.001)
+    for value in g.parameters():
+        if value.requires_grad:
+            optimizer.state[value] = dict(step=torch.tensor(2.), exp_avg=torch.full_like(value, .017),
+                                          exp_avg_sq=torch.full_like(value, .021))
+            value.grad = torch.full_like(value, .009)
+    request = codec_request(tmp_path / 'codec')
+    request.update(schema_version=module.EXPORT_SCHEMA, budget=output_budget())
+    codec, _ = common.video._load_codec(request['codec'], request['budget'], request['evidence_kind'])
+    callback = module.NativeOutputRequest(request, tmp_path / 'portable')
+    callback.codec = codec
+    view = NS(generator=NS(module=g), request=OriginalHeliosRequest(variant=variant).to_dict())
+    return NS(model=g, optimizer=optimizer, callback=callback, view=view, targets=targets, module=module,
+              original_config=deepcopy(g.peft_config['default'].to_dict()))
+
+
+def _projection_owned_snapshot(case):
+    from copy import deepcopy
+    from distillschedule.training.checkpoint import rng_state
+    g = case.model
+    return dict(parameters={name: (id(value), value._version, value.requires_grad, value.detach().clone(),
+                                   None if value.grad is None else value.grad.detach().clone())
+                            for name, value in g.named_parameters()},
+                buffers={name: value.detach().clone() for name, value in g.named_buffers()},
+                flags=[(name, module.training) for name, module in g.named_modules()],
+                checkpoint=g.gradient_checkpointing, peft=deepcopy(g.peft_config['default'].to_dict()),
+                optimizer=deepcopy(case.optimizer.state_dict()),
+                optimizer_parameters=[[id(value) for value in group['params']] for group in case.optimizer.param_groups],
+                rng=rng_state(device='cpu'))
+
+
+@pytest.mark.parametrize('variant', ['no-gan', 'gan'], ids=['W2', 'W3'])
+def test_native_projection_uses_actual_installed_targets_after_peft_compression(tmp_path, variant):
+    from test_training_end_to_end import equal
+    from distillschedule.training import helios_native_inference as common
+    case = _compressed_original_projection(tmp_path, variant)
+    before = _projection_owned_snapshot(case)
+    projection = case.callback.project(case.view)
+    assert equal(before, _projection_owned_snapshot(case))
+    assert case.model.peft_config['default'].to_dict() == case.original_config
+    assert projection.parameters['peft']['target_modules'] == case.targets
+    assert projection.parameters['source'] == case.module.inference_source()
+    assert projection.parameters['schema_version'] == case.module.SCHEMA and projection.factory == case.module.FACTORY
+    assert projection.components.state['generator'].model is case.model
+    if variant == 'gan':
+        assert projection.parameters['source'] != common.inference_source()
+
+
+@pytest.mark.parametrize('variant', ['no-gan', 'gan'], ids=['W2', 'W3'])
+@pytest.mark.parametrize('fault', ['missing-A', 'missing-B', 'extra-target', 'dtype', 'merged'])
+def test_native_compressed_targets_keep_exact_adapter_and_state_refusals(tmp_path, variant, fault):
+    from copy import deepcopy
+    import torch
+    from peft.tuners.tuners_utils import BaseTunerLayer
+    from test_training_end_to_end import equal
+    case = _compressed_original_projection(tmp_path, variant)
+    layer = next(layer for layer in case.model.modules() if isinstance(layer, BaseTunerLayer))
+    if fault == 'missing-A':
+        layer.lora_A.pop('default')
+    elif fault == 'missing-B':
+        layer.lora_B.pop('default')
+    elif fault == 'extra-target':
+        case.model.add_module('unexpected_adapter', deepcopy(layer))
+    elif fault == 'dtype':
+        layer.lora_A['default'].weight.data = layer.lora_A['default'].weight.data.to(torch.bfloat16)
+    else:
+        layer.merged_adapters.append('default')
+    before = _projection_owned_snapshot(case)
+    with pytest.raises(ValueError, match='LoRA/pyramid targets|state/dtype layout|CURRENT unmerged default'):
+        case.callback.project(case.view)
+    assert equal(before, _projection_owned_snapshot(case))
