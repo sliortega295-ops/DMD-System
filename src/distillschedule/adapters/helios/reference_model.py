@@ -250,7 +250,7 @@ def _admit(backend):
                 "name": "cpu-fp32-final-gan-linear-owned64-v1",
                 "scope": "DEFAULT_LOADER_FINAL_GAN_LINEAR_32_TO_1_ONLY",
                 "device": "cpu", "dtype": "torch.float32", "alignment_bytes": 64,
-                "max_parameter_bytes": 132, "path": str(Path(__file__).resolve()),
+                "max_parameter_bytes": 132, "module": __name__,
                 "sha256": file_sha256(Path(__file__).resolve())},
             "backend": {"name": "torch-sdpa", "module": _BACKEND_MODULE,
                         "path": str(_BACKEND_PATH), "sha256": _BACKEND_SHA256, "varlen": False}}

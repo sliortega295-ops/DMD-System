@@ -1012,7 +1012,8 @@ def test_pretrained_cpu_storage_policy_is_explicit_and_live_bound(monkeypatch):
     assert policy['scope'] == 'DEFAULT_LOADER_FINAL_GAN_LINEAR_32_TO_1_ONLY'
     assert policy['device'] == 'cpu' and policy['dtype'] == 'torch.float32'
     assert policy['alignment_bytes'] == 64 and policy['max_parameter_bytes'] == 132
-    assert Path(policy['path']).resolve() == Path(provider.__file__).resolve()
+    assert policy['module'] == provider.__name__ and 'path' not in policy
+    assert Path(sys.modules[policy['module']].__spec__.origin).resolve() == Path(provider.__file__).resolve()
     assert policy['sha256'] == hashlib.sha256(Path(provider.__file__).read_bytes()).hexdigest()
     wrapper = cls.from_pretrained.__func__
     assert wrapper.__module__ == provider.__name__
