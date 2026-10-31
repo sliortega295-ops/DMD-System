@@ -23,3 +23,16 @@ The separate Route-A/Route-B retirement and its source inventory remain
 documented in [legacy route retirement](legacy_route_retirement.md).
 Reports linked by the public Skill experience index, currently maintained recipe docs,
 frozen source maps, and machine-readable result receipts were not removed.
+
+## Unreferenced standalone helpers
+
+The following legacy, developer-only Python files had no imported symbol,
+script caller, documentation link, CI reference or source-lock dependency in
+the audited current tree. Their bytes remain in [pre-cleanup Git history](https://github.com/sliortega295-ops/DMD-System/tree/447f2613631a7271a0a4b294bc838df6ecdacd5e).
+This does **not** retire shared Critic training, ZeRO/FSDP, checkpoint comparison
+as a technique or any public runtime API.
+
+| Former path | SHA-256 |
+| --- | --- |
+| `scripts/distillschedule/critic_only_protocol.py` | `9a46b3a87c6367e937c9c877befde4583beea10fb41b064911e2ac44789b18f9` |
+| `scripts/distillschedule/compare_zero1_checkpoints.py` | `702ee0db15f57cbaaa566f6b1288102f83eba7ef0c2b3dbf7e4e92a24933e9f1` |
