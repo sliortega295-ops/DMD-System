@@ -1,95 +1,94 @@
-# Experiment protocol and persistent state
+# Practical experiment loop
 
-## State without a second research operating system
+This is guidance for ordinary optimization, not mandatory paperwork. Use the
+project's runner, checker, log and existing resource rules. A WORK_LOG with code,
+commands and actual output paths is sufficient; no separate ledger is required.
 
-Reuse the project's current run roots, receipts, checkpoint and decision ledger. The optional
-`campaign.template.json` and `opportunities.template.json` are lightweight indexes, not a
-replacement for the existing schemas. Keep raw files outside Git. Small final source/claim
-manifests can follow repository conventions. Only one coordinator updates shared decisions.
+## Start once, then iterate
 
-Persist goal interpretation; original baseline; current verified control; workload/semantic/
-timer/hardware/source identities; evidence references; remaining budgets; candidate status;
-forecasts versus measurements; failed mechanisms and re-entry conditions. Reuse unchanged
-records across sessions. Branch names and a new agent do not create a fresh budget.
+Identify the workload, original baseline, best verified version and relevant
+uncommitted changes. Preserve logical samples, precision, G/Score/EMA clocks,
+loss and gradient semantics. Reuse valid prior runs. Missing setup should block
+only the work that depends on it, not all useful inspection or CPU tests.
+Do not edit frozen plans/import digests to conceal a changed workload.
 
-Never edit frozen canonical profiles/locks or imported-source digests to conceal a performance
-experiment. Prepare a distinct candidate/config using the repository-supported extension or
-an isolated worktree. Where the native path deliberately forbids an override, first propose
-a reviewed candidate interface preserving the existing canonical contract. Do not bypass its
-validator, silently unlock the registry, or put performance knobs in assets JSON.
+For each round:
 
-## Before allocating GPU time
+1. Read the current bottleneck and relevant implementation/experience.
+2. Explain the mechanism, likely benefit, principal risk and cheapest useful test.
+3. Make a reversible change, or a coherent group behind separable switches.
+4. Run affected quick checks, then short representative timing. Revert clearly
+   wrong/worse defaults; keep promising candidates separate from verified ones.
+5. Append actual results and approximate effort to WORK_LOG. Index reusable
+   experience when convenient, including failures and unresolved observations.
 
-Declare which question this run answers and the cheapest adequate evidence tier:
+No full M/L/Q/K report, new profile, complete cluster cycle or formal statistical
+confirmation is required after every edit. Add detail when it changes the next
+choice. A documentation edit does not invalidate an unchanged numerical run.
+A source/config change affecting behavior does require appropriate new checks.
 
-- **Static/CPU**: source and dependency checks, version DAG, hash and config validation,
-  source/import audit, shape/memory/traffic analysis. No 14B construction just to test a launcher.
-- **Primitive/trace probe**: bounded local performance, memory or scheduling uncertainty.
-  Can be smaller than the final workload, but state what extrapolation remains unverified.
-- **Functional target run**: real rank topology, workload calls, gradients/updates, numerical
-  gates, checkpoint lineage and lifecycle. Functional PASS is not timing PASS.
-- **Matched unprofiled timing**: only after appropriate functional/numerical acceptance;
-  use the exact timer, warmup and aggregation of the workload.
+## Cheap checks first; final stack later
 
-Reuse valid previous evidence. Full cluster startup is not obligatory after each textual edit.
-First reject impossible capacity/traffic models, then validate a representative mechanism,
-then spend on the complete workload. Do not use mock/cached outputs or skipped updates for
-final timing, and do not time only Critic when the target is Full5.
+Use source/CPU checks for interfaces and launch logic; a representative primitive
+for kernel behavior; a target run for state, update or distributed interactions.
+Forward-only evidence does not qualify a backward change. Exercise the actual
+accelerated branch, not just the old branch with checking turned on.
 
-## Correctness questions specific to DMD
+Low-risk local checks may admit an experimental stack for further screening.
+At a useful milestone or final delivery, check the combination against the
+original baseline and exercise the required complete logical updates. Test
+continuation, checkpoints and version invalidation when those paths changed.
+High-risk numerical changes need appropriate trajectory/quality evidence earlier.
+Non-bitwise alone is not a requirement for a 100-step run.
 
-- Which operation consumes G@v/C@v/EMA@v? Can prefetch/overlap cross the version boundary?
-- Does a shared Real/Fake Score base retain independent LoRA activation, mutable buffers,
-  autograd graphs and mode state? A global adapter toggle cannot race with an in-flight call.
-- Are frozen G and Score truly the same checkpoint? For Helios they are not.
-- Does gradient flow through the intended G path? Has no-grad, detach or cache reuse severed it?
-- Cache keys cover sample/shape/dtype/device, prompt/conditioning, timestep/sigma, weights and
-  adapter versions, train/eval mode and randomness whenever they affect the cached value.
-- Does batching change loss reduction, RNG draws, optimizer order, mixed-precision scaling,
-  EMA timing, samples, staleness or update counts? Prove allowed equivalence; otherwise make
-  a separately authorized semantic experiment with its own baseline and claim class.
-- Can no-grad frozen weight/LoRA fusion be invalidated correctly at every update? Training
-  LoRA gradients must not be silently folded away.
-- Are CPU copies/pinned buffers reused only after consumers complete? Include double buffers,
-  transient all-gathers, activation retention, fragmentation and checkpoint peaks in capacity.
+Never replace actual training work with mocks or cached answers for a performance
+claim. Tiny stand-ins and synthetic timings qualify their workflow only.
+See [validation](validation.md) for quick versus final evidence.
 
-## Fair timing and uncertainty
+## DMD questions to ask when relevant
 
-Use identical inputs/workload semantics, hardware allocation, software versions and timer
-scope. For changed execution layouts, fix total resources and logical work; separately report
-what physical plan differs. Time the window required by the contract, including relevant
-fill/drain and boundary completion. Cold start and amortized warm state are separate metrics.
-Never warm up by silently advancing the checkpoint that should start the measured window.
+- Which G/Score/EMA version does a consumer use? Does overlap cross an update?
+- Does sharing preserve independent trainable adapters, buffers and autograd?
+- Does a cache depend on prompt/sample, shape, timestep, precision, randomness,
+  train/eval mode or weight version? Is it invalidated at the right boundary?
+- Does batching alter sample weighting, RNG consumption, reduction, update or EMA
+  order? Logical work must remain equivalent even when physical launches change.
+- Do source buffers remain alive until async copies/consumers complete? Does the
+  full phase fit memory, including temporary activations and collectives?
 
-Functional instrumentation, FLOP counting and nsys/ncu overhead are not part of unprofiled
-claim timing. Count independent runs, not correlated steps, as repeats. Predeclare repeat
-budget and minimal meaningful effect based on control variability. Interleave matched A/B
-when possible; retain all valid results, individual values and dispersion. Tiny or ambiguous
-changes are INCONCLUSIVE, not a reason to select the fastest run. A single diagnostic run
-may guide a next probe but cannot meet stronger repeat/claim requirements by itself.
+These are risk-directed questions, not fields that every candidate must fill.
 
-The CPU helper's `compare` reports descriptive medians and paired differences only; it does
-not produce significance or grant promotion. Changing a base, shape, window or relevant
-hardware/software invalidates affected evidence and requires a fresh comparison.
+## Timing without overtesting
 
-## Promotion, budgets and safety
+Use matched work, allocated hardware, input/initial-state policy and timer scope.
+Separate cold setup from steady state and count fill/drain and cleanup when they
+belong to the delivered run. Warmup must not silently advance only one arm's state.
+Profiler/validation overhead is not unprofiled performance evidence.
 
-Per-direction default: two expensive full-scale attempts before re-ranking. Configure actual
-GPU-hour/full-run/wall-time budget from the user's resource grant; absent grant = no autonomous
-expensive launch. Give probes an explicit stopping rule. Failure, compilation and authorized
-allocated idle time cost resources too; queue time costs wall time but not unallocated GPU-hours.
+Short timing screens ideas; single-pair differences remain descriptive. For a
+shortlist or final result, repeat/interleave with the baseline as needed for
+observed noise and the intended claim. Preserve valid slow samples and failures;
+do not keep rerunning until the desired number appears. No fixed number of ABA
+blocks is required by this default workflow. If a formal protocol was already
+adopted, its requirements still apply and cannot be loosened after failure.
 
-One runner owns an allocation, run-id, rendezvous port range, cache/output namespaces and child
-process group. Record both hosts and all ranks; terminate only task-owned processes following
-the existing coordinator. Do not kill another experiment, change system drivers, install
-packages cluster-wide or send private artifacts to an external model/provider without permission.
+## Effort, stalled runs and stopping
 
-GPU-memory pressure and a requested host reserve are not identical to actual CUDA/cgroup OOM.
-Preserve the active contract's memory-admission rule. Failed/partial/missing-rank runs cannot
-be promoted. Preserve numerical REVIEW and approximate labels; passing CPU integration does
-not validate cluster behavior. Do not lower thresholds or replace goldens to pass.
+Record approximate elapsed time and attempts. Do not require exact GPU-hours or
+a predeclared full-run count when the user did not request them. After a few
+unproductive rounds, re-evaluate the mechanism and available alternatives; this
+is a reminder to think, not a permanent ban after two attempts. A changed label
+is not new evidence. Prefer a feasible small gain over an unaffordable large idea.
 
-After each completed batch, compare forecast with observed gain and explain discrepancy.
-Retain the last verified control if a candidate is slower, wrong or inconclusive. Re-entry
-requires new evidence or a changed cost structure, not another candidate name. Stop a doomed
-route promptly, but do not mistake a poor first implementation for a physical impossibility.
+Explicit caps, allocated devices, project rules and user stops are binding.
+Absence of numeric fields does not authorize new resources. Leave room for final
+checks; do not start a run likely to exceed an explicit remaining limit. Use the
+existing runner's timeout/cancel path for a stalled job, stopping only owned
+processes. Save partial results and the best verified control at exhaustion or
+stop. No final PASS is required to finish an honest handoff.
+
+Optional indexing/accounting failures must not erase results or force more GPU
+work. Record the tool error, keep native outputs and use a plain handoff. Existing
+frozen studies are not silently reset: preserve their costs, failed evidence and
+unmet requirements. See [advanced helpers](campaign-tools.md) only if that study
+actually needs them.
