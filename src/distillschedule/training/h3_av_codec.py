@@ -270,3 +270,9 @@ def build_decoder(parameters):
                 quality_validation='NOT_RUN')).validate()
     finally:
         restore_rng(before)
+
+
+def build_fl2va_decoder(parameters):
+    """Explicit raw FL2VA import; the canonical v1 factory stays unchanged."""
+    from .h3_av_weight_import import build_decoder as build_imported_decoder
+    return build_imported_decoder(parameters)

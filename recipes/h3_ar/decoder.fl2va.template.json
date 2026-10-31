@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.original_h3_fl2va_decoder.v1",
+  "weight_format": "ORIGINAL_FL2VA_SAFETENSORS",
+  "codec_manifest": {
+    "path": "/REPLACE_WITH_OPERATOR_CODEC_MANIFEST/codec.json",
+    "bytes": 0,
+    "sha256": "REPLACE_WITH_ACTUAL_CODEC_MANIFEST_SHA256"
+  },
+  "converter_source": {
+    "root": "/REPLACE_WITH_EXISTING_COMPATIBLE_ORIGINAL_H3_SOURCE",
+    "files": {
+      "diffsynth/utils/state_dict_converters/minimax_h3_video_vae.py": "5035fea7e141afca89cf45ac71c0a10251868cba6cd3886edeb8cd214672a7f8",
+      "diffsynth/utils/state_dict_converters/minimax_h3_audio_vae.py": "03db95337d3752148b7b51a6de1307f585f9ba877a777712432eb125f098495f",
+      "diffsynth/configs/model_configs.py": "009d524def453d1d08d8aa051c582546ddabc27fc2649f7ecd6f403bea886b1d"
+    },
+    "provenance": {
+      "origin": "REPLACE_WITH_ACTUAL_SOURCE_ORIGIN_AND_REVISION",
+      "license": "REPLACE_WITH_APPLICABLE_SOURCE_TERMS",
+      "terms_accepted": false
+    }
+  }
+}

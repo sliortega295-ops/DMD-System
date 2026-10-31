@@ -24,7 +24,8 @@ training environment just to decode media.
    Source and model weights are external assets, not redistributed by this
    adapter. Record the real source origin and applicable terms, then explicitly
    accept them. A hash is not a license or permission grant.
-2. Supply local safetensor shards in the original native VAE state-dict format.
+2. For the default factory, supply local safetensor shards in the canonical
+   original DiffSynth VAE state-dict format (`WarpedTensor` keys end in `.weight`).
    A complete native VAE or its exact decoder-only state is accepted. The loader
    admits every header and reads only `post_quant_conv`/`decoder` for video and
    `dec_in_proj`/`decoder` for audio. Missing or unknown keys fail. It never
@@ -38,6 +39,72 @@ training environment just to decode media.
    Full native video decoding has about 2.42B parameters, plus about 64.94M
    audio parameters: give it explicit construction/working-set/host-reserve
    capacity. A smaller Student does not make this decoder smaller.
+
+### Original FL2VA weight files: explicit import, not automatic fallback
+
+Original FL2VA safetensors use a different parameter namespace from the
+canonical DiffSynth codec classes. Do not point raw files at the default
+`build_decoder` factory or manually ignore its strict-load errors. The separate
+`build_fl2va_decoder` factory imports them through the exact associated official
+DiffSynth converters, without rewriting or copying the weight payloads:
+
+- Video register tokens and block scales are relabeled to `.weight`. The one
+  officially excluded `decoder.mask_token` is checked for its original shape
+  and storage dtype; the original decoder appends zeros and never owns this
+  parameter. No other unknown/missing keys are ignored.
+- Audio's three `pre_block.attn` bias keys are relabeled to `.weight`, not
+  dropped. All original full-state headers are admitted even though only
+  decoder-owned tensors are materialized.
+
+First fill a normal `decoder.native.template.json` codec manifest with your
+actual original source, architecture, geometry, raw weight pins and budgets.
+Then fill [decoder.fl2va.template.json](../../recipes/h3_ar/decoder.fl2va.template.json)
+with its actual manifest pin and an operator-supplied compatible converter
+source tree. The two converter files and their model-config association are
+source-pinned separately from the three codec definitions. The template names
+the supported original FL2VA source version; another revision/format is not
+silently accepted. Supply the actual origin/license terms and explicitly
+accept them. Neither source nor pretrained weights are fetched or bundled.
+
+In the same public `decode.json` shown below, change **only** the decoder block:
+
+```json
+{
+  "factory": "distillschedule.training.h3_av_codec:build_fl2va_decoder",
+  "parameters": {"manifest": {
+    "path": "/project/h3-output/fl2va-import.json",
+    "bytes": 1234,
+    "sha256": "REPLACE_WITH_ACTUAL_IMPORT_MANIFEST_SHA256"
+  }}
+}
+```
+
+Run the same `distillctl decode` command. Raw/canonical format is explicit:
+there is no format detection, alternate decoder, precision fallback, crop or
+reduced production architecture. BF16 storage requires the base manifest's
+existing explicit `bfloat16_to_float32` policy. Complete full-native or exact
+decoder-only **raw** inventories are required; mixed raw/canonical names fail.
+The import receipt reports actual per-role key/rename/exclusion counts and
+converter/source identities, not campaign-specific counts or checkpoint IDs.
+
+An optional bounded preflight is available before materializing weights:
+
+```python
+from distillschedule.training.h3_av_weight_import import inspect_headers
+report = inspect_headers({"manifest": {
+    "path": "/project/h3-output/fl2va-import.json",
+    "bytes": actual_import_bytes,
+    "sha256": actual_import_sha256,
+}})
+```
+
+Run that in the same explicit CPU/world1 Torch2.10 environment. It checks
+source, original meta layouts, safe headers and geometry/budget arithmetic.
+Its `HEADERS_ONLY_NOT_WEIGHT_HASH_LOAD_OR_DECODE` result is **not** a full
+weight-payload SHA, finite-weight, host-headroom, strict-load or media proof.
+Actual decode retains all those original gates and restores caller RNG. The
+default v1 decoder and separate encoder/grid consumers remain unchanged; raw
+import is opted into only through this new factory.
 
 ## Prepare latent inputs
 
