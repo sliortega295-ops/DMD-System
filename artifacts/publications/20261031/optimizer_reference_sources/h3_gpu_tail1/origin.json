@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "historical_repository": "sliortega295-ops/DMD-System",
+  "historical_local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+  "historical_commit_publicly_fetchable": false,
+  "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT",
+  "purpose": "Historical code navigation; not a standalone runnable package",
+  "gpu_revalidation": "NOT_RUN",
+  "component_tests_run": "NOT_RUN",
+  "files": [
+    {
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "historical_path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf"
+    },
+    {
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
+      "historical_path": "tests/test_h3_ar_hybrid_cache.py",
+      "sha256": "491f074f644d5d6700c34625b34921145ed199c768957470752604d6ebe75230"
+    }
+  ]
+}

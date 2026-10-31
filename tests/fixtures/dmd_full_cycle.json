@@ -1,0 +1,97 @@
+{
+  "include": [
+    "../../configs/distillschedule/fragments/video_384x640_f81.json",
+    "../../configs/distillschedule/fragments/dmd_full5.json"
+  ],
+  "schema_version": "1",
+  "id": "synthetic-full-cycle-v1",
+  "workload": {
+    "adapter": "generic",
+    "generator": {
+      "name": "helios-distilled-generator",
+      "family": "fixture",
+      "size": "14b",
+      "role": "generator",
+      "checkpoint": "/fixture/generator",
+      "subfolder": "transformer_ode",
+      "precision": "bf16",
+      "adapter": {
+        "kind": "lora",
+        "rank": 256,
+        "trainable": true
+      }
+    },
+    "score": {
+      "name": "helios-base-score",
+      "family": "fixture",
+      "size": "14b",
+      "role": "score",
+      "checkpoint": "/fixture/score",
+      "subfolder": "transformer",
+      "precision": "bf16",
+      "adapter": {
+        "kind": "lora",
+        "rank": 256,
+        "trainable": true
+      }
+    },
+    "name": "synthetic-full-cycle"
+  },
+  "hardware": {
+    "nodes": 1,
+    "local_world_size": 1,
+    "world_size": 1,
+    "gpu_memory_gib": 40,
+    "node_memory_gib": 760,
+    "reserve_gib": 64,
+    "device_type": "cuda"
+  },
+  "rank_groups": [
+    {
+      "name": "combined",
+      "ranks": [
+        0
+      ],
+      "components": [
+        "generator",
+        "score",
+        "critic",
+        "ema"
+      ]
+    }
+  ],
+  "training_backends": {
+    "generator": {
+      "kind": "native"
+    },
+    "score": {
+      "kind": "native"
+    }
+  },
+  "rollout": {
+    "engine": "native",
+    "protocol": "in_process",
+    "exact_version": true,
+    "max_version_staleness": 0
+  },
+  "evidence": {
+    "run_id": "synthetic-full-cycle",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR:-/tmp/dmd-fixture}",
+    "start_step": 10,
+    "steps": 5,
+    "instrumentation": "memory",
+    "semantic_assertions": true,
+    "metadata": {
+      "initial_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 10
+      }
+    },
+    "operation_trace": "/fixture/trace",
+    "checkpoint": "/fixture/checkpoint-10"
+  },
+  "metadata": {
+    "scope": "CPU plan/compiler fixture only; no model execution or performance evidence."
+  }
+}

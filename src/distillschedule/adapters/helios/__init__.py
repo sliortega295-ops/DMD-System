@@ -1,3 +1,5 @@
-from .adapter import HeliosDMDAdapter
+"""Current Helios reference model and input helpers.
 
-__all__ = ["HeliosDMDAdapter"]
+The pre-FSDP2 Route-A launch adapter was retired; use recipes/helios_*
+and the public training API for current Helios workloads.
+"""

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -14,20 +13,11 @@ from runtime.gst_pool_contract import (
     source_identity,
     write_negative_prompt_asset,
 )
-from runtime.gst_pool_exchange import (
-    atomic_torch_save,
-    exchange_paths,
-    lane_source_ids,
-    make_input_payload,
-    validate_input_payload,
-)
 from runtime.gst_pool_trace import EXPECTED_TRACE_CONTRACT, validate_gst_trace_bundle
 from runtime.operation_trace import (
     OperationTraceWriter,
     write_operation_trace_bundle_manifest,
 )
-from scripts.distillschedule import summarize_gst_pool_candidate
-from scripts.distillschedule.probe_gst_pool_generator import _optimizer_config
 
 
 def _candidate(tmp_path: Path, **changes) -> Path:
@@ -67,13 +57,6 @@ def test_candidate_is_fail_closed(tmp_path: Path) -> None:
         GeneratorOffloadCandidate.load(bad)
 
 
-def test_generator_runtime_precision_matches_native_world8_checkpoint() -> None:
-    config = _optimizer_config()
-    assert config["fp16"]["enabled"] is False
-    assert config["bf16"]["enabled"] is True
-    assert config["zero_optimization"]["stage"] == 1
-
-
 def test_source_identity_is_two_rank_qualified_waves() -> None:
     assert source_identity(0) == {
         "source_id": 0,
@@ -87,29 +70,6 @@ def test_source_identity_is_two_rank_qualified_waves() -> None:
     assert source_identity(15)["generator_wave"] == 1
     with pytest.raises(ValueError):
         source_identity(16)
-
-
-def test_capacity_exchange_keeps_rank_identity_and_is_immutable(tmp_path: Path) -> None:
-    assert lane_source_ids(0) == (0, 4, 8, 12)
-    x0 = torch.zeros((1, 16, 9, 48, 80), dtype=torch.bfloat16)
-    payload = make_input_payload(
-        run_id="run",
-        source_id=9,
-        generator_version=3,
-        trace_identity_sha256="b" * 64,
-        x0=x0,
-    )
-    recovered = validate_input_payload(
-        payload,
-        run_id="run",
-        source_id=9,
-        trace_identity_sha256="b" * 64,
-    )
-    assert torch.equal(recovered, x0)
-    path = exchange_paths(tmp_path, 9)["input"]
-    atomic_torch_save(path, payload)
-    with pytest.raises(FileExistsError):
-        atomic_torch_save(path, payload)
 
 
 def test_negative_prompt_asset_round_trip_and_rejects_drift(tmp_path: Path) -> None:
@@ -209,89 +169,3 @@ def test_target_trace_bundle_validates_all_16_rank_controls(tmp_path: Path) -> N
     assert result["status"] == "PASS"
     assert result["bundle_hash"] == bundle["bundle_hash"]
     assert result["rank_count"] == 16
-
-
-def test_target_candidate_summarizer_requires_all_role_ranks(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    candidate_path = _candidate(tmp_path)
-    candidate = GeneratorOffloadCandidate.load(candidate_path)
-    run_root = tmp_path / "run"
-    rank_root = run_root / "rank_results"
-
-    def samples(source_ids: tuple[int, ...]) -> list[dict[str, object]]:
-        return [
-            {
-                "source_id": source_id,
-                "trace_identity_sha256": f"trace-{source_id}",
-                "x0_sha256": f"x0-{source_id}",
-            }
-            for source_id in source_ids
-        ]
-
-    common = {
-        "status": "PASS",
-        "candidate_manifest_sha256": candidate.manifest_sha256,
-        "contract_digest": candidate.contract_digest,
-        "memory": [],
-    }
-    for rank in range(8):
-        path = rank_root / "generator" / f"rank_{rank:02d}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {
-                    **common,
-                    "rank": rank,
-                    "streamed_blocks": list(candidate.streamed_blocks),
-                    "waves": samples((rank, rank + 8)),
-                    "final": {
-                        "generator_version_before": 3,
-                        "generator_version_after": 4,
-                        "accumulation_boundaries": 1,
-                    },
-                    "block_profile": [],
-                }
-            )
-        )
-    for lane in range(4):
-        source_ids = lane_source_ids(lane)
-        student = rank_root / "student" / f"rank_{lane:02d}.json"
-        student.parent.mkdir(parents=True, exist_ok=True)
-        student.write_text(
-            json.dumps({**common, "rank": lane, "samples": samples(source_ids)})
-        )
-        teacher_rank = lane + 4
-        teacher = rank_root / "teacher" / f"rank_{teacher_rank:02d}.json"
-        teacher.parent.mkdir(parents=True, exist_ok=True)
-        teacher.write_text(
-            json.dumps(
-                {**common, "rank": teacher_rank, "samples": samples(source_ids)}
-            )
-        )
-
-    output = tmp_path / "result.json"
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "summarize_gst_pool_candidate.py",
-            "--run-root",
-            str(run_root),
-            "--candidate-manifest",
-            str(candidate_path),
-            "--contract-digest",
-            candidate.contract_digest,
-            "--generator-return-code",
-            "0",
-            "--score-return-code",
-            "0",
-            "--output",
-            str(output),
-        ],
-    )
-    assert summarize_gst_pool_candidate.main() == 0
-    result = json.loads(output.read_text())
-    assert result["status"] == "PASS"
-    assert result["validation"]["logical_samples"] == 16
-    assert result["validation"]["trace_and_x0_identity"] == "exact"

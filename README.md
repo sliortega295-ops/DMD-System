@@ -137,6 +137,15 @@ Existing A100/H100 implementations and results are indexed in the
 [source overview](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and
 [H100 overview](docs/status/H100_SOURCE_SNAPSHOT_20261019.md).
 
+## Optimize your own workload with Codex
+
+Install the [dmd-system-optimizer Skill](docs/guides/optimizer_skill.md) to use
+Codex with a local, embedding-free experience library. Conditional mechanism
+cards link positive, negative and unresolved Helios cases; correctness
+preconditions and performance conditions are checked separately. Bring an
+existing training repository or use a DMD-System recipe. Historical results
+remain priors and require validation on the current workload.
+
 ## Execution and extension
 
 `reference` is a usable starting point; automatic planning is optional.

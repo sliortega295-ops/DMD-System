@@ -652,6 +652,14 @@
       "integrated_sha256": "c1d2de5b4d2d1e9e63fd82f66fb5f40c5cb24fd13ede16513bd04f2792a57404",
       "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
       "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/adapters/__init__.py",
+      "previous_sha256": "5ba99905fd6afac962634d5c11949a050f64e07fe8aefe403f47a25464b58ab6",
+      "integrated_sha256": "ab79e89eee9369830670b0f350d34ff2e551448df43153ee655976b3ada6b000",
+      "source_commit": "f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e",
+      "change": "Retire the pre-FSDP2 Route-A Helios launch adapter from the default typed registry; current Helios reference helpers and public/native training remain. Exact deletion manifest: docs/architecture/legacy_route_retirement.json. No algorithm replacement or GPU validation."
     }
   ]
 }

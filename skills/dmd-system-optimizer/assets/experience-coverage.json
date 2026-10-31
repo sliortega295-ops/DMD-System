@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "curated_date": "2026-10-31",
+  "patterns": 21,
+  "entries": 109,
+  "entries_by_collection": {
+    "Helios optimization history": 23,
+    "Helios A100 history": 45,
+    "Helios H100 history": 16,
+    "ResearchBoost external": 25
+  },
+  "entries_by_outcome": {
+    "positive_observation": 28,
+    "negative_observation": 11,
+    "implementation_failure": 7,
+    "inconclusive": 11,
+    "source_contract": 42,
+    "correctness_failure": 7,
+    "unverified": 3
+  },
+  "publicly_referenced_entries": 106,
+  "source_files": 116,
+  "source_review_status": {
+    "DISCOVERED_NOT_CURATED": 36,
+    "CURATED_EXCERPTS": 80
+  },
+  "history_screening": {
+    "main_final_messages": 1108,
+    "h100_final_messages": 568,
+    "total_final_messages": 1676,
+    "unique_normalized_bodies": 1243,
+    "duplicate_bodies": 433,
+    "method": "bounded snapshot of assistant final messages; keyword screening; selected source-backed curation, not exhaustive manual transcript review"
+  },
+  "completeness_claim": false,
+  "gpu_reproduction": "NOT_RUN",
+  "external_reproduction": "NOT_RUN",
+  "privacy": "Raw conversations, session IDs, private paths and large artifacts are not included.",
+  "code_navigation": {
+    "case_status_counts": {
+      "linked": 55,
+      "method_only": 23,
+      "unresolved": 31
+    },
+    "implementation_entries": 29,
+    "unique_code_files": 50,
+    "entries_without_targeted_test_reference": [
+      "helios-cross-kv",
+      "helios-static-context",
+      "helios-modulation-chunks",
+      "helios-modnorm",
+      "helios-crossnorm-canary",
+      "helios-history-fusion",
+      "helios-fsdp-layout",
+      "optimizer-dispatch-warmup",
+      "helios-selective-checkpoint",
+      "h3-adaln-bank",
+      "checkpoint-lifecycle",
+      "role-producer-dispatch",
+      "helios-trainable-timestep-residual"
+    ],
+    "relationship_notice": "历史实际实现、当前复用候选、需适配示例、诊断工具和概念相关分别返回；均不自动通过当前复用验收。",
+    "gpu_validation": "NOT_RUN"
+  },
+  "evidence_locator_counts": {
+    "literal_observation_anchor": 44,
+    "structured_source_locator": 23,
+    "report_scope_not_case_exact": 51
+  },
+  "content_review": {
+    "scope": "Named content errors, explicitly described boundary issues, related mechanism conditions and six source-backed omissions",
+    "full_library_content_audit": false,
+    "gpu_reproduction": "NOT_RUN"
+  },
+  "retirement": {
+    "date": "2026-10-31",
+    "historical_cutoff": "2026-08-15",
+    "cases_removed": 25,
+    "implementation_entries_removed": 6,
+    "source_entries_removed": 25,
+    "recovery_commit": "f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e",
+    "scope": "Early Route-A/Route-B, fixed-role and staging/offload prototypes; shared current training dependencies are retained."
+  }
+}
