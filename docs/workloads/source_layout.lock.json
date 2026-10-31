@@ -660,6 +660,14 @@
       "integrated_sha256": "ab79e89eee9369830670b0f350d34ff2e551448df43153ee655976b3ada6b000",
       "source_commit": "f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e",
       "change": "Retire the pre-FSDP2 Route-A Helios launch adapter from the default typed registry; current Helios reference helpers and public/native training remain. Exact deletion manifest: docs/architecture/legacy_route_retirement.json. No algorithm replacement or GPU validation."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_b1_attribution.py",
+      "previous_sha256": "1460298d419d6c1fe2142b64203b4ec315aa89b5d86601b7179ffe411cfad5e1",
+      "integrated_sha256": "c7e3e06bad84a91a6fa8fd61a1b1606927a4b30397c99319ee55993126d686fc",
+      "source_commit": "0bd8822d6282e505143015e4cf914d9b0c2c8013",
+      "change": "Test-only Python 3.13 AST serialization portability: explicitly retain empty fields, preserving the original B2 AST fingerprint and all training code. Exact test bytes committed at 0bd8822; original import map and earlier overlays remain unchanged. CPU/source check only, no new GPU qualification."
     }
   ]
 }
