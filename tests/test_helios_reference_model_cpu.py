@@ -4,6 +4,9 @@ Deliberately outside test_training_*.py's original Diffusers 0.34 helper group.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -222,6 +225,69 @@ def _inputs(batch=1):
                 encoder_hidden_states=torch.randn(batch, 3, 8), return_dict=False)
 
 
+def _loader_execution_metadata(model):
+    """Observe CPU layout/backend differences without normalizing either side."""
+    import torch
+    def layout(value):
+        return dict(dtype=str(value.dtype), shape=list(value.shape), stride=list(value.stride()),
+                    storage_offset=value.storage_offset(), alignment_mod64=value.data_ptr() % 64)
+    return dict(
+        python=sys.version, torch=str(torch.__version__),
+        cpu_capability=torch.backends.cpu.get_cpu_capability(),
+        num_threads=torch.get_num_threads(), num_interop_threads=torch.get_num_interop_threads(),
+        default_dtype=str(torch.get_default_dtype()),
+        matmul_precision=torch.get_float32_matmul_precision(),
+        mkldnn_enabled=torch.backends.mkldnn.enabled,
+        deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+        parameters={name: layout(value) for name, value in model.named_parameters()},
+        buffers={name: dict(layout(value), sha256=hashlib.sha256(
+            value.detach().contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest())
+            for name, value in model.named_buffers()},
+    )
+
+
+def _loader_output_failure(outputs, expected, model, reference_metadata):
+    """Keep strict failure, but preserve the failing process's actual evidence."""
+    import torch
+    differences = []
+    for index, (actual, reference) in enumerate(zip(outputs, expected, strict=True)):
+        if not torch.equal(actual, reference):
+            max_abs = float((actual - reference).abs().max())
+            differences.append(dict(index=index, shape=list(actual.shape), dtype=str(actual.dtype),
+                unequal=int(torch.count_nonzero(actual != reference)),
+                actual_nonfinite=int(torch.count_nonzero(~torch.isfinite(actual))),
+                reference_nonfinite=int(torch.count_nonzero(~torch.isfinite(reference))),
+                max_abs=max_abs if math.isfinite(max_abs) else None))
+    return json.dumps(dict(error='strict fresh-process output mismatch', differences=differences,
+        reference=reference_metadata, actual=_loader_execution_metadata(model)), sort_keys=True, allow_nan=False)
+
+
+@pytest.mark.parametrize('nonfinite', [False, True])
+def test_loader_failure_diagnostic_preserves_rng_tensors_and_strict_failure(nonfinite):
+    """Synthetic tensor diagnostic, not an original-model qualification proof."""
+    import torch
+    model = torch.nn.Linear(2, 1)
+    reference = torch.tensor([1., 2.])
+    actual = reference.clone()
+    actual[0] = float('nan') if nonfinite else torch.nextafter(actual[0], torch.tensor(float('inf')))
+    actual_bits = actual.view(torch.int32).clone()
+    metadata = _loader_execution_metadata(model)
+    rng = torch.get_rng_state().clone()
+    state = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    with pytest.raises(AssertionError, match='strict fresh-process output mismatch') as error:
+        assert torch.equal(actual, reference), _loader_output_failure(
+            [actual], [reference], model, metadata)
+    details = json.loads(str(error.value).split('\n', 1)[0])
+    assert details['differences'] == [dict(index=0, shape=[2], dtype='torch.float32',
+        unequal=1, actual_nonfinite=int(nonfinite), reference_nonfinite=0,
+        max_abs=None if nonfinite else float(actual[0] - reference[0]))]
+    assert details['actual'] == metadata == details['reference']
+    assert torch.equal(torch.get_rng_state(), rng)
+    assert torch.equal(reference, torch.tensor([1., 2.]))
+    assert torch.equal(actual.view(torch.int32), actual_bits)
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in state.items())
+
+
 def test_full_original_class_dense_flow_and_original_gan_head_backward():
     import torch
     native_before = {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
@@ -390,7 +456,9 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
     model.save_pretrained(tmp_path / "model", safe_serialization=True)
     assert (tmp_path / "model/config.json").is_file()
     assert (tmp_path / "model/diffusion_pytorch_model.safetensors").is_file()
-    torch.save({"inputs": kwargs, "outputs": expected, "state": model.state_dict()}, tmp_path / "expected.pt")
+    torch.save({"inputs": kwargs, "outputs": expected, "state": model.state_dict(),
+                "buffers": dict(model.named_buffers()),
+                "execution_metadata": _loader_execution_metadata(model)}, tmp_path / "expected.pt")
     _fresh('''
         from pathlib import Path
         import sys
@@ -408,7 +476,17 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
         assert all(torch.equal(v, actual[n]) for n, v in fixture["state"].items())
         with torch.no_grad():
             outputs = model(**fixture["inputs"], gan_mode=True)
-        assert all(torch.equal(a, b) for a, b in zip(outputs, fixture["outputs"]))
+        def failure_details():
+            # Import diagnostics only after a genuine original forward failure;
+            # do not change allocator/import state before computing its outputs.
+            from test_helios_reference_model_cpu import _loader_output_failure
+            return _loader_output_failure(outputs, fixture["outputs"], model, fixture["execution_metadata"])
+        assert len(outputs) == len(fixture["outputs"])
+        assert all(torch.equal(a, b) for a, b in zip(outputs, fixture["outputs"])), \
+            failure_details()
+        buffers = dict(model.named_buffers())
+        assert buffers.keys() == fixture["buffers"].keys()
+        assert all(torch.equal(v, buffers[n]) for n, v in fixture["buffers"].items())
         assert type(model).__module__ == reference_model_identity(backend="torch-sdpa")["model_module"]
         assert not torch.cuda.is_initialized()
     ''', tmp_path, default_loader)

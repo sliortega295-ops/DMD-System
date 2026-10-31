@@ -142,7 +142,7 @@ def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output()
     assert value['env']['CUDA_VISIBLE_DEVICES'] == ''
     assert value['strategy']['matrix']['python'] == ['3.10', '3.12']
     assert 'tests' in value['env']['PYTHONPATH'].split(':')
-    assert 'runner.temp' in value['env']['HELIOS_NOGAN_PUBLIC_FIXTURE']
+    assert 'HELIOS_NOGAN_PUBLIC_FIXTURE' not in value['env']
     assert "'.[train,test,helios-reference]'" in commands
     assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
     assert all(name in commands for name in (
@@ -157,6 +157,20 @@ def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output()
         'test_fresh_process_new_prompt_without_old_paths_owners_or_optimizer'))
     assert "('skipped', 'failures', 'errors')" in commands
     assert 'native-wan' not in commands and 'test-helios]' not in commands
+
+
+@pytest.mark.parametrize('step_name', [
+    'Original warm updates and exact restart',
+    'Independent current-G output without old training payloads',
+])
+def test_nogan_fixture_path_uses_runner_context_only_at_step_scope(step_name):
+    value = job('helios-nogan-reference-cpu.yml')
+    # GitHub rejects runner.* in job.env before it can create either matrix job.
+    assert 'HELIOS_NOGAN_PUBLIC_FIXTURE' not in value['env']
+    step = next(step for step in value['steps'] if step.get('name') == step_name)
+    assert 'python -m pytest' in step['run']
+    assert step['env']['HELIOS_NOGAN_PUBLIC_FIXTURE'] == \
+        '${{ runner.temp }}/helios-nogan-reference'
 
 
 def test_nogan_ci_releases_its_large_training_fixture_before_independent_output():

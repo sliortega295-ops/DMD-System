@@ -32,7 +32,6 @@ jobs:
       MKL_NUM_THREADS: '1'
       PYTHONDONTWRITEBYTECODE: '1'
       HELIOS_NOGAN_PUBLIC_REQUIRE_STACK: '1'
-      HELIOS_NOGAN_PUBLIC_FIXTURE: '${{ runner.temp }}/helios-nogan-reference'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,6 +44,8 @@ jobs:
           python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -e '.[train,test,helios-reference]'
       - name: Original warm updates and exact restart
+        env:
+          HELIOS_NOGAN_PUBLIC_FIXTURE: '${{ runner.temp }}/helios-nogan-reference'
         run: >-
           python -m pytest -q tests/test_training_helios_nogan_bootstrap_cpu.py
           tests/test_training_helios_nogan_public_cpu.py
@@ -63,6 +64,8 @@ jobs:
               shutil.rmtree(path)
           PY
       - name: Independent current-G output without old training payloads
+        env:
+          HELIOS_NOGAN_PUBLIC_FIXTURE: '${{ runner.temp }}/helios-nogan-reference'
         run: >-
           python -m pytest -q
           tests/test_training_helios_nogan_inference_cpu.py
