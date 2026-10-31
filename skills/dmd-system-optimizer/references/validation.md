@@ -1,64 +1,87 @@
-# Risk-based validation and result decisions
+# Quick checks while exploring; validate the final combination
 
-Freeze validators, input/checkpoint identity, tolerances and the intended claim
-before changing a candidate. Validation depth follows the affected mechanism.
-Existing stronger project requirements still apply.
+Be strict about training semantics and honest claims, flexible about process.
+Use the existing adequate project checker and its actual output. Do not build a
+new acceptance system just because it emits native JSON/text instead of JUnit.
+Existing frozen project requirements take precedence. Never lower tolerances
+because a candidate failed them.
 
-| Change | Usually needed | Failure the checks must expose |
-| --- | --- | --- |
-| Equivalent pointwise/fusion path | V0, V1 | rounding/dtype, forward and backward, fallback, one complete update cycle |
-| Residency/offload/prefetch/cache | V0, V1, V2 | transient memory, races, stale versions, continuation, checkpoint and composition |
-| Distribution/batching/reduction | V0, V1, V2; V3 if risk remains | all-rank work, logical operation identity, reduction/RNG/update order |
-| Authorized approximation or altered numerical regime | V0, V1, V2, risk-specific V3 | paired trajectory/quality under declared tolerances and population |
+## During exploration
 
-These are starting points, not automatic PASS rules. Removing a copy can affect
-alias lifetime; a kernel that passed no-grad is not qualified for training.
-Validate source guards against the actual call. No-grad frozen-base LoRA fusion
-cannot silently remove trainable LoRA gradients. Compose changes against the
-current accepted control; do not add gains from incompatible counterfactuals.
+Run the cheapest check that addresses the change's risk. Source tests can catch
+bad launch/config edits; primitive forward/backward checks can screen a fusion;
+a short real update can expose dead gradients or wrong optimizer state. Check
+the actual modified path and its fallback. Do not claim training qualification
+from no-grad-only tests or a scalar CPU stand-in.
 
-Non-bitwise results can be acceptable under a predeclared numerical contract.
-A changed tensor's tolerance, gradient relative error, actual parameter/optimizer
-updates, update counters and a complete cycle may resolve a local arithmetic
-change. State changes require boundary and continuation checks. Long validation
-must answer a particular residual question; there is no blanket 100-step rule.
+For a small local change, a relevant quick check plus short timing can be enough
+to continue exploring with that candidate. It is not final acceptance. There is
+no requirement to rerun a full distributed cycle after every edit or to run
+100 steps just because tensors are not bitwise identical.
 
-Loss rising in one optimized run is neither proof of an error nor proof of
-equivalence. Compare the same baseline trajectory, gradient/parameter/state
-deviations and natural variation. An unavailable baseline leaves REVIEW.
-Successful training does not establish resume, export, generation or output
-quality; test the lifecycle endpoints relevant to the claimed delivery.
+Stateful caches, offload, overlap, distribution and batching can fail only across
+boundaries. Test the affected update/version, consumer lifetime, all-rank or
+continuation behavior before relying on them. A suspected semantic/gradient
+failure needs diagnosis now, not postponement until final validation.
 
-## Confirmation
+When one component is inherently non-bitwise, a reference stand-in can help
+isolate other changes. Check the real final combination too: stand-in results
+do not validate interactions unique to the replacement.
 
-The bundled campaign tool provides one conservative **optional statistical
-confirmation protocol**, suitable for stable full-cycle measurements:
+## At a milestone or delivery
 
-- Predeclare independent unprofiled process blocks, each control-before,
-  candidate, control-after; retain all blocks and include all resource cost.
-- For each block compute saving against the faster control. Reject excess
-  within-block control drift. Process identifiers are invocation ids, not reusable
-  OS PIDs. Independence and stable resource conditions still require runner checks.
-- Test the number of savings above a declared effect floor with a one-sided,
-  fixed-sample sign test. Divide alpha by the maximum number of confirmations.
-  The init check rejects a repeat budget that could never reach this threshold.
-- A successful test supports positive typical savings above that floor under
-  independent, appropriately matched blocks. It is not a confidence interval for
-  mean speedup, protection against every systematic bias, or long-run quality proof.
+Compare the combined candidate with the **original baseline**, not only the
+previous iteration. Cover required G/Score/optimizer/EMA updates and relevant
+resume/export behavior. Longer multi-seed trajectories or generated-quality
+checks are for the risks and claims that need them, especially authorized
+precision/approximation changes or accumulating unexplained error. Loss curves
+alone do not establish gradient/state correctness or unchanged final quality.
 
-For example, six all-positive blocks with one predeclared candidate give
-p=1/64 at alpha=.05. An actual 1% gain can pass; 1% is neither discarded nor
-guaranteed significant. Noise, overhead and resource use still matter. This
-example is arithmetic, not an experiment result.
+If final validation is unavailable, preserve the best verified version and label
+the candidate and missing checks clearly. Do not certify it by changing the
+checker, inventing evidence, or exhausting resources to force a PASS.
 
-Use an existing suitable repository protocol instead when present. Freeze it and
-retain its result; do not squeeze it into this helper by inventing process blocks.
-The simpler `dmd_perf.py compare` is descriptive only. Diagnostic trials and
-cheap probes do not require the full confirmation protocol.
+## Small gains and capacity value
 
-Result meanings: wrong -> DISCARD; unvalidated -> REVIEW; correct but uncertain
-timing -> REVIEW; correct reproducible benefit -> KEEP; evidenced capacity value
-without proven speed gain -> KEEP_OPTIONAL. Default promotion additionally
-requires applicability and fallback PASS and a non-diagnostic claim. Approximate
-results keep their approximation label. The current best control changes only
-after an explicit successful promotion; the original baseline is immutable.
+Separate retaining code from claiming a speedup or changing defaults:
+
+| Evidence | Practical decision |
+| --- | --- |
+| Relevant checks pass; repeatable small gain, even 1% | Keep within the tested scope; final stack checks still apply. |
+| Quick checks pass; only one small/noisy timing difference | Retain as promising/unresolved, default off when not adequately checked. |
+| Correct and useful memory/capacity improvement | Keep optional; disclose measured or unknown latency cost. |
+| Wrong gradient/state, incompatible semantics or target-capacity failure | Revert unsafe defaults and preserve failure evidence. |
+| Interrupted, stopped or out of resources | Save partial work; do not require more runs to record it. |
+
+A change can be worth keeping without being worth more tuning. The best verified
+version and an experimental stack may coexist without a database promotion step.
+Do not sum individual gains; measure the combination.
+
+## Timing effort follows the claim
+
+Use matched unprofiled comparisons with consistent warmup and window boundaries.
+A short probe screens a hypothesis; repeated/interleaved runs help resolve small
+wins. Report every valid sample and its variability. More repetitions are useful
+only when they can change a decision at acceptable cost. No automatic six-block
+ABA rule or 2% minimum applies to the lightweight workflow. Do not claim formal
+significance from visual similarity or one favorable measurement.
+
+`dmd_perf.py compare` gives descriptive medians and paired differences, not a
+numerical PASS or statistical certification. The original baseline stays available
+while the current verified control advances.
+
+## Advanced, opt-in fixed-sample confirmation
+
+Only use `dmd_campaign.py` when a formal study or project explicitly chooses this
+protocol. Its conservative test is unchanged: predeclare independent unprofiled
+control/candidate/control blocks, compare each candidate to the faster control,
+check control drift, and run a one-sided fixed-sample sign test above the declared
+effect floor with multiplicity adjustment. Six all-positive blocks for one
+candidate yield p=1/64; this is arithmetic, not a required default experiment.
+It is not a confidence interval for mean speedup or proof of training quality.
+
+Once adopted, keep that protocol, evidence and resource accounting intact. A
+partial or failed formal check does not become PASS by switching to lightweight
+mode. You can always hand off its incomplete result without new experiments.
+Native suitable acceptance processes need not be converted into this schema.
+See [campaign tools](campaign-tools.md) for commands and assurance limits.
