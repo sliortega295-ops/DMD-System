@@ -41,12 +41,84 @@ def fixture(tmp_path, samples=6):
 
 def test_fresh_process_resume_matches_all_training_state_and_generates(tmp_path):
     root, config = fixture(tmp_path)
+    # A real user plugin can configure stdout logging while it is imported.
+    # Keep the actual model, algorithm, checkpoint and inference chain intact.
+    plugin = root / 'noisy.py'
+    plugin.write_text('''import logging
+import sys
+from distillschedule.examples import tiny_av
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+logger.propagate = False
+def diagnostic(stage):
+    print(stage + " print")
+    logger.warning(stage + " log")
+    logging.warning(stage + " root log")
+    logging.getLogger("preconfigured.child").warning(stage + " named log")
+diagnostic("import")
+def build_model(parameters):
+    diagnostic("model")
+    components = tiny_av.build_model(parameters)
+    components.generate = generate
+    components.decode = decode
+    return components
+def build_algorithm(*args):
+    diagnostic("algorithm")
+    return tiny_av.build_algorithm(*args)
+def generate(*args):
+    diagnostic("generate")
+    return tiny_av.generate(*args)
+def decode(*args):
+    diagnostic("decode")
+    return tiny_av.decode(*args)
+''')
+    raw = config.to_dict()
+    raw['model']['factory'] = str(plugin) + ':build_model'
+    raw['algorithm']['factory'] = str(plugin) + ':build_algorithm'
+    (root / 'train.json').write_text(json.dumps(raw))
+
+    def noisy_cli(*args):
+        script = '''import io
+import logging
+import sys
+from distillschedule.cli import main
+stdout, stderr = sys.stdout, sys.stderr
+handler = logging.StreamHandler(stdout)
+logging.getLogger().addHandler(handler)
+logger = logging.getLogger("preconfigured.child")
+logger.propagate = False
+named_handler = logging.StreamHandler(stdout)
+logger.addHandler(named_handler)
+unrelated = io.StringIO()
+unrelated_handler = logging.StreamHandler(unrelated)
+logger.addHandler(unrelated_handler)
+code = main(sys.argv[1:])
+assert sys.stdout is stdout and sys.stderr is stderr
+assert handler.stream is stdout and named_handler.stream is stdout
+assert unrelated_handler.stream is unrelated and not unrelated.closed
+assert "model named log" in unrelated.getvalue()
+raise SystemExit(code)
+'''
+        completed = subprocess.run([sys.executable, '-c', script, *map(str, args)],
+                                   capture_output=True, text=True,
+                                   env={**os.environ, 'OMP_NUM_THREADS': '1'})
+        assert completed.returncode == 0, completed.stdout + completed.stderr
+        result = json.loads(completed.stdout)
+        stages = ['import', 'model']
+        if args[0] in ('train', 'evaluate', 'export'):
+            stages.append('algorithm')
+        if args[0] in ('evaluate', 'generate'):
+            stages.extend(('generate', 'decode'))
+        assert all(stage + ' ' + kind in completed.stderr for stage in stages
+                   for kind in ('print', 'log', 'root log', 'named log'))
+        return result
+
     assert run_cli("doctor", "--config", root / "train.json")["model_imported"] is False
-    first = run_cli("train", root / "train.json")
+    first = noisy_cli("train", root / "train.json")
     checkpoint = Path(first["checkpoint"])
-    resumed = run_cli("train", root / "train.json", "--resume", checkpoint,
+    resumed = noisy_cli("train", root / "train.json", "--resume", checkpoint,
                       "--cycles", 6, "--output", root / "resumed")
-    uninterrupted = run_cli("train", root / "train.json", "--cycles", 6,
+    uninterrupted = noisy_cli("train", root / "train.json", "--cycles", 6,
                             "--output", root / "uninterrupted")
     a = torch.load(Path(resumed["checkpoint"]) / "state.pt", weights_only=True)
     b = torch.load(Path(uninterrupted["checkpoint"]) / "state.pt", weights_only=True)
@@ -56,14 +128,17 @@ def test_fresh_process_resume_matches_all_training_state_and_generates(tmp_path)
     assert resumed["final_versions"]["student"] == 6
     assert resumed["final_versions"]["fake"] == 12
     assert resumed["final_versions"]["teacher"] == 0
-    generated = run_cli("evaluate", root / "train.json", "--checkpoint", checkpoint,
+    generated = noisy_cli("evaluate", root / "train.json", "--checkpoint", checkpoint,
                         "--output", root / "generated")
     artifact = torch.load(generated["artifact"], weights_only=True)
     assert artifact["decoded"]["video"].dtype == torch.uint8
-    exported = run_cli("export", root / "train.json", "--checkpoint", checkpoint,
+    exported = noisy_cli("export", root / "train.json", "--checkpoint", checkpoint,
                        "--output", root / "exported")
     assert exported["kind"] == "INFERENCE_WEIGHTS_NOT_RESUMABLE_CHECKPOINT"
     assert torch.load(root / "exported/weights.pt", weights_only=True)["student"]
+    portable = noisy_cli('generate', root / 'train.json', '--weights', root / 'exported',
+                        '--prepared', root / 'prepared/manifest.json', '--output', root / 'portable')
+    assert torch.load(portable['artifact'], weights_only=True)['decoded']['video'].dtype == torch.uint8
     rows = [json.loads(row) for row in (root / "resumed/metrics.jsonl").read_text().splitlines()]
     assert [row["sample_id"] for row in rows] == ["sample-000004", "sample-000005"]
 

@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import weakref
 
 import pytest
 import torch
@@ -53,10 +54,13 @@ def test_actual_original_loader_configurator_keyops_and_builder_execute(native_c
     api, reference, path, _, _ = native_checkpoint
     builder_api = api.source.import_module('ltx_core.loader.single_gpu_model_builder')
     actual_build = builder_api.SingleGPUModelBuilder.build
-    calls = []
+    calls = []; builder_storage = {}; builder_parameters = {}
     def observed(self, *args, **kwargs):
         calls.append((type(self).__module__, self.model_sd_ops.name, kwargs))
-        return actual_build(self, *args, **kwargs)
+        model = actual_build(self, *args, **kwargs)
+        builder_storage.update({name: value.data_ptr() for name, value in model.state_dict().items()})
+        builder_parameters.update({name: id(value) for name, value in model.named_parameters(remove_duplicate=False)})
+        return model
     monkeypatch.setattr(builder_api.SingleGPUModelBuilder, 'build', observed)
     loaded, architecture, receipt = load_original_transformer(api.source, path, file_sha256(path),
         max_parameters=200_000, dtype_policy='strict_fp32')
@@ -70,11 +74,101 @@ def test_actual_original_loader_configurator_keyops_and_builder_execute(native_c
     assert architecture['num_layers'] == 1 and architecture['attention_head_dim'] == 24
     for name, value in reference.state_dict().items():
         assert torch.equal(value, loaded.state_dict()[name]), name
+        assert loaded.state_dict()[name].data_ptr() != builder_storage[name], 'own storage, not safetensors views'
+    assert {name: id(value) for name, value in loaded.named_parameters(remove_duplicate=False)} == builder_parameters
+    assert receipt['storage_ownership'] == 'INDEPENDENT_TORCH_STORAGE_PRESERVE_PARAMETER_OBJECTS'
     attention_api = api.source.import_module('ltx_core.model.transformer.attention')
     for child in loaded.modules():
         if isinstance(child, attention_api.Attention):
             assert child.attention_function.label == child.masked_attention_function.label == 'SDPA[MATH]'
     assert torch.cuda.is_initialized() is False
+
+
+@pytest.mark.parametrize('dtype', [torch.float32, torch.bfloat16])
+def test_original_native_builder_reuses_one_validated_payload(native_checkpoint, tmp_path, monkeypatch, dtype):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    from safetensors.torch import save_file
+    api, reference, _, state, metadata = native_checkpoint
+    checkpoint = tmp_path / 'one-payload.safetensors'
+    save_file({name: value.to(dtype) for name, value in state.items()}, checkpoint, metadata=metadata)
+    digest = file_sha256(checkpoint)
+    loader = api.source.import_module('ltx_core.loader.sft_loader').SafetensorsModelStateDictLoader
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    original_load, original_build = loader.load, builder.build
+    loads = []; registries = []
+    def load(self, *args, **kwargs):
+        loads.append((args, kwargs))
+        return original_load(self, *args, **kwargs)
+    def build(self, *args, **kwargs):
+        registries.append(self.registry)
+        return original_build(self, *args, **kwargs)
+    monkeypatch.setattr(loader, 'load', load)
+    monkeypatch.setattr(builder, 'build', build)
+    loaded, _, _ = load_original_transformer(api.source, checkpoint, digest,
+        max_parameters=200_000, dtype_policy='strict_fp32' if dtype == torch.float32 else 'cast_native_float_to_fp32')
+    assert len(loads) == 1, 'validation and actual native build must share a single loader payload'
+    assert len(registries) == 1 and registries[0].get([str(checkpoint)],
+        api.source.import_module('ltx_core.model.transformer.model_configurator').LTXV_MODEL_COMFY_RENAMING_MAP) is None
+    for name, expected in reference.state_dict().items():
+        assert torch.equal(loaded.state_dict()[name], expected.to(dtype).float())
+    with torch.no_grad():
+        next(loaded.parameters()).add_(1)
+    assert file_sha256(checkpoint) == digest, 'training must not mutate checkpoint-backed storage'
+    assert not torch.cuda.is_initialized()
+
+
+def test_original_validation_does_not_retain_a_model_sized_cast_copy(native_checkpoint, tmp_path, monkeypatch):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    from safetensors.torch import save_file
+    api, _, _, state, metadata = native_checkpoint
+    checkpoint = tmp_path / 'cast-lifetime.safetensors'
+    save_file({name: value.bfloat16() for name, value in state.items()}, checkpoint, metadata=metadata)
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    original_float, original_build = torch.Tensor.float, builder.build
+    cast_refs = []; build_calls = []
+    def cast(tensor, *args, **kwargs):
+        value = original_float(tensor, *args, **kwargs)
+        if tensor.dtype == torch.bfloat16:
+            assert not any(ref() is not None for ref in cast_refs), 'only one validation cast may be live'
+            cast_refs.append(weakref.ref(value))
+        return value
+    def build(self, *args, **kwargs):
+        build_calls.append(1)
+        assert not any(ref() is not None for ref in cast_refs), 'validation casts must be released before native build'
+        return original_build(self, *args, **kwargs)
+    monkeypatch.setattr(torch.Tensor, 'float', cast)
+    monkeypatch.setattr(builder, 'build', build)
+    load_original_transformer(api.source, checkpoint, file_sha256(checkpoint),
+        max_parameters=200_000, dtype_policy='cast_native_float_to_fp32')
+    assert build_calls == [1] and cast_refs
+    assert all(ref() is None for ref in cast_refs)
+
+
+@pytest.mark.parametrize('failure', ['weight', 'raise'])
+def test_original_builder_failure_releases_cached_payload(native_checkpoint, monkeypatch, failure):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    api, _, checkpoint, _, _ = native_checkpoint
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    operations = api.source.import_module('ltx_core.model.transformer.model_configurator').LTXV_MODEL_COMFY_RENAMING_MAP
+    original_build = builder.build
+    registries = []
+    def broken(self, *args, **kwargs):
+        registries.append(self.registry)
+        if failure == 'raise':
+            raise RuntimeError('native build fixture failed')
+        model = original_build(self, *args, **kwargs)
+        with torch.no_grad():
+            next(model.parameters()).add_(1)
+        return model
+    monkeypatch.setattr(builder, 'build', broken)
+    with pytest.raises((ValueError, RuntimeError), match='exact selected weight|native build fixture failed'):
+        load_original_transformer(api.source, checkpoint, file_sha256(checkpoint),
+            max_parameters=200_000, dtype_policy='strict_fp32')
+    assert len(registries) == 1
+    assert registries[0].get([str(checkpoint)], operations) is None
 
 
 def test_original_architecture_rejected_before_native_materialization_if_not_reconstructable(
@@ -106,7 +200,7 @@ def test_original_architecture_rejected_before_native_materialization_if_not_rec
         calls.append('build'); return actual_build(self, *args, **kwargs)
     monkeypatch.setattr(builder, 'meta_model', meta)
     monkeypatch.setattr(builder, 'build', build)
-    with pytest.raises(ValueError, match='bounded explicit CPU native architecture'):
+    with pytest.raises(ValueError, match='bounded explicit native architecture'):
         load_original_transformer(api.source, path, file_sha256(path),
             max_parameters=count + 1, dtype_policy='strict_fp32')
     assert not calls, 'reject before even the native meta-model sizing/materialization stage'

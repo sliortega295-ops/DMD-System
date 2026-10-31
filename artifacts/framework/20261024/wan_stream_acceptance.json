@@ -1,0 +1,382 @@
+{
+  "schema_version": "distillschedule.framework_native_acceptance.v1",
+  "workload": "W1",
+  "scope": "ACTUAL_WORLD16_RESIDENT_FINITE_COHORT_RESTART_NOT_REAL_DATA_OR_QUALITY",
+  "source": {
+    "head": "3d7bb03982890e1b5bd46f8510243009902a3d47",
+    "tree": "26d1c698586f54dcc98feae5dec3eba7470d1f36",
+    "parent": "bf5b3d0856f4cc7b8b4d4fac784e9590a786febf",
+    "remote_source": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/source-3d7bb039"
+  },
+  "hardware": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "gpu": "A100-SXM4-40GB"
+  },
+  "policy": "wan_ar.incumbent21a_stream.v2",
+  "history_policy": "source_native_amplified_v1",
+  "status": "FUNCTIONAL_RESTART_COMPLETED_NUMERICAL_REVIEW",
+  "data": {
+    "origin": "existing synthetic source-shaped native features",
+    "cohorts": 2,
+    "seed": 42,
+    "features_reused_across_cohorts": true,
+    "amplified_history_entries": [
+      62,
+      58
+    ],
+    "history_dropout_unchanged": true
+  },
+  "runs": {
+    "continuous": {
+      "ranks": 16,
+      "rank_cycles": 32,
+      "versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "nodes": [
+        {
+          "node": 0,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/continuous/ownership/lifecycle/node0/lifecycle.json",
+          "lifecycle_sha256": "d3f1c17d2c7d73ff4391f61e612970bf623c7e5df02c4816cc04f9cf4c490cf8",
+          "resources_sha256": "6d156ca3ae9bb6fe03bd66e304cfc297457196accaa4e1c8129d815d8ed8a0fa"
+        },
+        {
+          "node": 1,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/continuous/ownership/lifecycle/node1/lifecycle.json",
+          "lifecycle_sha256": "9e552fb7b521de1fbced9559d9c3e9d0b5f9d2421ee0fd3e9d3913c8e3d21290",
+          "resources_sha256": "c8d13a913f913a4875d102771d25bfab86a990ff93858f1855bd25c7ee8bf412"
+        }
+      ]
+    },
+    "resumed": {
+      "ranks": 16,
+      "rank_cycles": 16,
+      "versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "nodes": [
+        {
+          "node": 0,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/resumed/ownership/lifecycle/node0/lifecycle.json",
+          "lifecycle_sha256": "3b71440e5c23653d7d27ff1ea51c248405e43360b4b2ca2d2d73194f4ad56c8b",
+          "resources_sha256": "36ad9d19aa8bde3cd6fe735391081db874aa618cfa26055b6e898f78c5e41005"
+        },
+        {
+          "node": 1,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/resumed/ownership/lifecycle/node1/lifecycle.json",
+          "lifecycle_sha256": "aecbf2d6b8c752711ae911194d839d637bf34d4151b904e58aeaedd47d013908",
+          "resources_sha256": "d4fc4ba8af8f715348b5521719fb38bf1d46881cb276b09fb37a2cd9df9f0079"
+        }
+      ]
+    },
+    "resumed-noise-repeat": {
+      "ranks": 16,
+      "rank_cycles": 16,
+      "versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "nodes": [
+        {
+          "node": 0,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/resumed-noise-repeat/ownership/lifecycle/node0/lifecycle.json",
+          "lifecycle_sha256": "3489a4482dfa0af4f125ed72bab01dee5bcaa5b6ea4dea92ae3836c128bbd6b8",
+          "resources_sha256": "d5c3a06429cefd6fb0313fee136e83db82cfea799d399ebd57ad444b7f872962"
+        },
+        {
+          "node": 1,
+          "cleanup": true,
+          "cgroup_delta": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0
+          },
+          "lifecycle_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/artifacts/resumed-noise-repeat/ownership/lifecycle/node1/lifecycle.json",
+          "lifecycle_sha256": "c0b4b61408283ce5281bdcd3e8a73471b63fb26b336b8c55fbb87788f821374e",
+          "resources_sha256": "2b3e44bb58ff6a1828973da8ffb65df3002b0ef68208681d6977f52951f5b79c"
+        }
+      ]
+    }
+  },
+  "numerical": {
+    "status": "REVIEW_NATIVE_STREAM_RESTART",
+    "rtol": 1e-05,
+    "atol": 1e-07,
+    "complete_state_comparison_ranks": 16,
+    "rng_exact_all_ranks": true,
+    "metadata_exact_all_ranks": true,
+    "thresholds_changed": false,
+    "repeat_status": "REVIEW",
+    "distance_scope": "FULL_REPLICATED_RANK0_G_C_ADAM_EMA",
+    "distance_rows": [
+      {
+        "elements": 358973440,
+        "reference_norm_sq": 2729.1923556163183,
+        "restart_difference_sq": 2.4947929610468994e-09,
+        "repeat_difference_sq": 2.5753403134956945e-09,
+        "restart_max_abs": 5.8132870890403865e-06,
+        "repeat_max_abs": 5.596530286311463e-06,
+        "tensors": 618,
+        "role": "generator",
+        "category": "all",
+        "restart_nL2": 9.560930955504993e-07,
+        "repeat_nL2": 9.714047885821248e-07,
+        "restart_vs_repeat_distance_ratio": 0.9842375771546539
+      },
+      {
+        "elements": 178864128,
+        "reference_norm_sq": 2729.1862185476393,
+        "restart_difference_sq": 1.203692715408869e-11,
+        "repeat_difference_sq": 1.47246000496059e-11,
+        "restart_max_abs": 1.3830140233039856e-07,
+        "repeat_max_abs": 4.544854164123535e-07,
+        "tensors": 309,
+        "role": "generator",
+        "category": "lora_A",
+        "restart_nL2": 6.641118526663143e-08,
+        "repeat_nL2": 7.345226101965149e-08,
+        "restart_vs_repeat_distance_ratio": 0.9041407894695539
+      },
+      {
+        "elements": 180109312,
+        "reference_norm_sq": 0.006137068674391083,
+        "restart_difference_sq": 2.482756033892811e-09,
+        "repeat_difference_sq": 2.5606157134460885e-09,
+        "restart_max_abs": 5.8132870890403865e-06,
+        "repeat_max_abs": 5.596530286311463e-06,
+        "tensors": 309,
+        "role": "generator",
+        "category": "lora_B",
+        "restart_nL2": 0.0006360430792788785,
+        "repeat_nL2": 0.0006459393045205483,
+        "restart_vs_repeat_distance_ratio": 0.9846793264128502
+      },
+      {
+        "elements": 356597760,
+        "reference_norm_sq": 2711.4047204373173,
+        "restart_difference_sq": 8.10013401144528e-09,
+        "repeat_difference_sq": 9.430005098383174e-09,
+        "restart_max_abs": 9.748973752721213e-07,
+        "repeat_max_abs": 1.301474412684911e-06,
+        "tensors": 612,
+        "role": "critic",
+        "category": "all",
+        "restart_nL2": 1.7284185876523899e-06,
+        "repeat_nL2": 1.8649139168395956e-06,
+        "restart_vs_repeat_distance_ratio": 0.9268087776305945
+      },
+      {
+        "elements": 177668096,
+        "reference_norm_sq": 2711.3971979492126,
+        "restart_difference_sq": 3.130530092691001e-10,
+        "repeat_difference_sq": 3.810248878221838e-10,
+        "restart_max_abs": 1.1781230568885803e-07,
+        "repeat_max_abs": 1.210719347000122e-07,
+        "tensors": 306,
+        "role": "critic",
+        "category": "lora_A",
+        "restart_nL2": 3.3979138994489655e-07,
+        "repeat_nL2": 3.74869494434168e-07,
+        "restart_vs_repeat_distance_ratio": 0.9064258228261045
+      },
+      {
+        "elements": 178929664,
+        "reference_norm_sq": 0.00752248810545414,
+        "restart_difference_sq": 7.78708100217619e-09,
+        "repeat_difference_sq": 9.04898021056099e-09,
+        "restart_max_abs": 9.748973752721213e-07,
+        "repeat_max_abs": 1.301474412684911e-06,
+        "tensors": 306,
+        "role": "critic",
+        "category": "lora_B",
+        "restart_nL2": 0.0010174348076981182,
+        "repeat_nL2": 0.0010967788432554595,
+        "restart_vs_repeat_distance_ratio": 0.9276572154493496
+      },
+      {
+        "elements": 717946880,
+        "reference_norm_sq": 0.04502929598578668,
+        "restart_difference_sq": 4.093079474291459e-09,
+        "repeat_difference_sq": 4.1721089467055274e-09,
+        "restart_max_abs": 8.653732948005199e-07,
+        "repeat_max_abs": 8.285860531032085e-07,
+        "tensors": 1236,
+        "role": "generator_optimizer",
+        "category": "all",
+        "restart_nL2": 0.0003014931922403873,
+        "repeat_nL2": 0.00030438990271973985,
+        "restart_vs_repeat_distance_ratio": 0.9904835526623247
+      },
+      {
+        "elements": 357728256,
+        "reference_norm_sq": 1.490121062280561e-05,
+        "restart_difference_sq": 5.718753297009413e-15,
+        "repeat_difference_sq": 1.750252612511447e-14,
+        "restart_max_abs": 7.476614882762078e-10,
+        "repeat_max_abs": 3.323805231048027e-09,
+        "tensors": 618,
+        "role": "generator_optimizer",
+        "category": "lora_A",
+        "restart_nL2": 1.959024666055004e-05,
+        "repeat_nL2": 3.427201116353111e-05,
+        "restart_vs_repeat_distance_ratio": 0.5716106524088684
+      },
+      {
+        "elements": 360218624,
+        "reference_norm_sq": 0.04501439477516387,
+        "restart_difference_sq": 4.093073755538162e-09,
+        "repeat_difference_sq": 4.172091444179404e-09,
+        "restart_max_abs": 8.653732948005199e-07,
+        "repeat_max_abs": 8.285860531032085e-07,
+        "tensors": 618,
+        "role": "generator_optimizer",
+        "category": "lora_B",
+        "restart_nL2": 0.0003015428794223892,
+        "repeat_nL2": 0.00030443964138520774,
+        "restart_vs_repeat_distance_ratio": 0.9904849383291932
+      },
+      {
+        "elements": 713195520,
+        "reference_norm_sq": 0.2405347140920221,
+        "restart_difference_sq": 1.8665572561540563e-07,
+        "repeat_difference_sq": 2.0541489278266447e-07,
+        "restart_max_abs": 1.1372612789273262e-05,
+        "repeat_max_abs": 1.3361568562686443e-05,
+        "tensors": 1224,
+        "role": "critic_optimizer",
+        "category": "all",
+        "restart_nL2": 0.0008809104800560297,
+        "repeat_nL2": 0.0009241172608791582,
+        "restart_vs_repeat_distance_ratio": 0.9532453481260335
+      },
+      {
+        "elements": 355336192,
+        "reference_norm_sq": 0.0004439668587490407,
+        "restart_difference_sq": 9.246011821570166e-12,
+        "repeat_difference_sq": 1.574101143456291e-11,
+        "restart_max_abs": 1.554872142150998e-08,
+        "repeat_max_abs": 2.2038875613361597e-08,
+        "tensors": 612,
+        "role": "critic_optimizer",
+        "category": "lora_A",
+        "restart_nL2": 0.00014431183404778875,
+        "repeat_nL2": 0.00018829597694195615,
+        "restart_vs_repeat_distance_ratio": 0.7664095451825511
+      },
+      {
+        "elements": 357859328,
+        "reference_norm_sq": 0.240090747233273,
+        "restart_difference_sq": 1.8664647960358404e-07,
+        "repeat_difference_sq": 2.0539915177122992e-07,
+        "restart_max_abs": 1.1372612789273262e-05,
+        "repeat_max_abs": 1.3361568562686443e-05,
+        "tensors": 612,
+        "role": "critic_optimizer",
+        "category": "lora_B",
+        "restart_nL2": 0.0008817027388569265,
+        "repeat_nL2": 0.0009249358467383688,
+        "restart_vs_repeat_distance_ratio": 0.9532582632256101
+      },
+      {
+        "elements": 358973440,
+        "reference_norm_sq": 2729.183083188483,
+        "restart_difference_sq": 1.886206915806605e-09,
+        "repeat_difference_sq": 1.9470837104992747e-09,
+        "restart_max_abs": 5.054336440935003e-06,
+        "repeat_max_abs": 4.865878111104394e-06,
+        "tensors": 618,
+        "role": "ema",
+        "category": "all",
+        "restart_nL2": 8.313393376521089e-07,
+        "repeat_nL2": 8.446484246490053e-07,
+        "restart_vs_repeat_distance_ratio": 0.9842430452617882
+      },
+      {
+        "elements": 358973440,
+        "reference_norm_sq": 2729.183083188483,
+        "restart_difference_sq": 1.886206915806605e-09,
+        "repeat_difference_sq": 1.9470837104992747e-09,
+        "restart_max_abs": 5.054336440935003e-06,
+        "repeat_max_abs": 4.865878111104394e-06,
+        "tensors": 618,
+        "role": "ema",
+        "category": "other",
+        "restart_nL2": 8.313393376521089e-07,
+        "repeat_nL2": 8.446484246490053e-07,
+        "restart_vs_repeat_distance_ratio": 0.9842430452617882
+      }
+    ],
+    "inference": "Restart distances are within observed same-start repeat noise for this pair; not strict equivalence or long-trajectory proof."
+  },
+  "evidence": {
+    "restart-comparison.json": {
+      "sha256": "a787f3ea72c607f7146344256868b5c9daeaf550fa4a976b037b863cb7fa42e4",
+      "remote_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/reports/restart-comparison.json"
+    },
+    "restart-noise-floor.json": {
+      "sha256": "cf478d12ce763effefdb4208b5794ff5607cba3a9666cb657699f9b16fd5f732",
+      "remote_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/reports/restart-noise-floor.json"
+    },
+    "resumed-noise-strict-comparison.json": {
+      "sha256": "13b38dcc0b744b4588de85ad273d7931e4b8f750f11b07832152efeca3948e71",
+      "remote_path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r7_wan_stream_native_history/reports/resumed-noise-strict-comparison.json"
+    }
+  },
+  "not_established": [
+    "real-media quality",
+    "100-cycle stability",
+    "strict numerical equivalence",
+    "matched speedup",
+    "native current-G generation/export",
+    "FSDP amplified-history collective alignment",
+    "arbitrary later unseen Graph signatures"
+  ]
+}

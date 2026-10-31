@@ -1,0 +1,33 @@
+{
+  "trainer": {
+    "export": {
+      "schema_version": "distillschedule.h3_grid_native_output_request.v1",
+      "seed": 20260817,
+      "geometry": {
+        "height": 768,
+        "width": 1344,
+        "frames": 124,
+        "text_tokens": 256
+      },
+      "source_terms": {
+        "origin": "https://github.com/ModelTC/LightX2V",
+        "license": "Apache-2.0",
+        "accepted": true
+      },
+      "snapshot_budget": {
+        "max_parameters": 40000000000,
+        "max_export_bytes": 68719476736,
+        "max_table_bytes": 268435456,
+        "host_reserve_bytes": 8589934592,
+        "device_reserve_bytes": 1073741824
+      },
+      "inference_budget": {
+        "max_parameters": 40000000000,
+        "max_loaded_bytes": 549755813888,
+        "max_attention_elements": 100000000000,
+        "max_input_elements": 64000000,
+        "host_reserve_bytes": 8589934592
+      }
+    }
+  }
+}

@@ -256,7 +256,10 @@ def test_native_inconsistent_checkpoint_rejected_before_restore_or_output_mutati
         next(model.state['student'].parameters()).fill_(-.75)
     before = pack_state(model.state)
     if entrypoint == 'output':
-        monkeypatch.setattr(lifecycle, 'construct', lambda _: (model, dataset, algorithm, identity))
+        def output_construct(actual_config, *, include_validation):
+            assert actual_config is config and include_validation is False
+            return model, dataset, algorithm, identity
+        monkeypatch.setattr(lifecycle, 'construct', output_construct)
     with pytest.raises(ValueError, match='complete-cycle|scheduler clock|logical.*version'):
         if entrypoint == 'restore':
             restore_checkpoint(path, model.state, identity=identity)
@@ -266,13 +269,15 @@ def test_native_inconsistent_checkpoint_rejected_before_restore_or_output_mutati
     assert not torch.cuda.is_initialized()
 
 
-def test_native_unapplicable_controls_and_incomplete_checkpoint_fail_closed(assets, tmp_path):
+def test_native_unapplicable_controls_and_incomplete_checkpoint_fail_closed(assets, tmp_path, monkeypatch):
     from distillschedule.training.ltx import build_model
     from distillschedule.training.checkpoint import read_manifest
     config = load_training_config(assets['config'])
     parameters = dict(config.model['parameters'], device='cuda')
-    with pytest.raises(ValueError, match='CPU-only'):
-        build_model(parameters)
+    with monkeypatch.context() as patch:
+        patch.setattr(torch.cuda, 'is_available', lambda: False)
+        with pytest.raises(ValueError, match='CUDA device is unavailable'):
+            build_model(parameters)
     model, dataset, algorithm, identity = construct(config)
     with pytest.raises(ValueError, match='not complete'):
         read_manifest(tmp_path / 'incomplete', identity=identity)

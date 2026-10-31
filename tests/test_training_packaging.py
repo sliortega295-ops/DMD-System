@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -9,6 +10,7 @@ import venv
 import zipfile
 from email.parser import BytesParser
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 import pytest
 
@@ -16,16 +18,86 @@ ROOT = Path(__file__).resolve().parents[1]
 LICENSE_SHA256 = {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "NOTICE": "bc15142557d3efcc5a4bc60eef15e8d58a718953e36f231110ac87ac0631bad4",
-    "THIRD_PARTY.md": "a3f3d359b4fda88614805efc9ca7ceb1ad84fa89220ed208d88fa574aaee9209",
-    "third_party/helios_compat/NOTICE": "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9",
+    "THIRD_PARTY.md": "95595d8f994a10d713f7f7e47a1cde7103a3a9a45f44267a6367003ca1746ca7",
+    "third_party/helios_compat/NOTICE": "731209f5f2fc28cc824102244eb2a2962e5d37d4befd7de802f82f3b0bf732f1",
     "third_party/helios_compat/LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/licenses/H3-DMD-for-A100-LICENSE": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
     "licenses/diffsynth-h3-cached/LICENSE.Apache-2.0": "d43b96112d60d83595395649e61c6bc215f568052a979320489556c6c1262eb1",
     "licenses/diffsynth-h3-cached/ORIGIN_AND_CHANGES.md": "ebdee8bac7e36ed9b18d5d323c12c7b98bad5ab5de3dede4b2679cba688cf4c1",
     "licenses/livewan-wan21-reference/Wan2.1-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "licenses/livewan-wan21-reference/LiveWan-LICENSE.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "42c0d756c6a6ce60c498b91a0e558f6e20e2062a0ff723e0776aa8f0ae9c2631",
+    "licenses/livewan-wan21-reference/ORIGIN_AND_CHANGES.md": "e63d33cbe36c4dcc34faa1446bb66d02c09316c41163b3c8737b25320cbd2724",
 }
+
+
+def test_helios_notice_keeps_original_notices_and_identifies_modified_source():
+    current = (ROOT / "third_party/helios_compat/NOTICE").read_bytes()
+    original, changes = current.split(b"\n2026-10-30:", 1)
+    assert hashlib.sha256(original).hexdigest() == "463dd51a8fc29fcc19861287194922f076b5ff53aa2da26085830ebd3a38b4b9"
+    assert b"source/helios/utils/utils_helios_post.py" in changes
+    assert b"source_manifest.json" in changes
+
+
+def test_public_guide_dependencies_have_installed_data_file_destinations():
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10: pytest's TOML dependency.
+        import tomli as tomllib
+
+    data_files = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["setuptools"]["data-files"]
+    installed = {destination: {path for pattern in patterns for path in ROOT.glob(pattern)}
+                 for destination, patterns in data_files.items()}
+    guides = {path for paths in installed.values() for path in paths
+              if path.suffix == ".md" and (path.relative_to(ROOT).parts[0] == "recipes"
+                  or path.relative_to(ROOT).parts[:2] == ("docs", "guides"))}
+    assert guides, "public recipes and guides must be declared as package data"
+    dependencies = set()
+    for guide in sorted(guides):
+        for href in re.findall(r"\]\(([^)\s]+)\)", guide.read_text()):
+            link = urlsplit(href)
+            if link.scheme or link.netloc or not link.path:
+                continue
+            target = (guide.parent / unquote(link.path)).resolve()
+            if not target.is_relative_to(ROOT):
+                continue
+            source = target.relative_to(ROOT)
+            assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
+            dependencies.add(source)
+    # Independent regression: the packaged H3 continuation recipe needs this policy.
+    assert Path("docs/contracts/original_h3_ar_record_epochs_v1.md") in dependencies
+    missing = [str(source) for source in sorted(dependencies)
+               if ROOT / source not in installed.get(
+                   (Path("share/distillschedule") / source.parent).as_posix(), set())]
+    assert not missing, f"public guide dependencies lack their installed data-file destination: {missing}"
+
+
+def test_public_source_checkout_references_keep_real_paths_without_payload_links():
+    guides = sorted((ROOT / "docs/guides").glob("*.md")) + sorted((ROOT / "recipes").rglob("*.md"))
+    references = []
+    for guide in guides:
+        for value in re.findall(r"source checkout: `([^`]+)`", guide.read_text()):
+            source = value.split("#", 1)[0]
+            target = (ROOT / source).resolve()
+            assert target.is_relative_to(ROOT), (guide, source)
+            assert target.is_file(), (guide, source)
+            assert not target.suffix in {".pt", ".pth", ".safetensors", ".nsys-rep", ".sqlite"}
+            references.append(source)
+    assert references, "source-only references must not look like broken installed links"
+    assert ".github/workflows/h3-grid-native-cpu.yml" in references
+    assert "src/distillschedule/runtime/livewan_crossscale_worker.py" in references
+    installation = (ROOT / "docs/guides/installation.md").read_text()
+    assert "https://github.com/sliortega295-ops/DMD-System" in installation
+    assert "unpublished" in installation and "matching" in installation
+
+
+def test_livewan_wan21_source_license_copies_match_manifest():
+    package = ROOT / "src/distillschedule/reference/livewan_wan21"
+    manifest = json.loads((package / "source_manifest.json").read_text())
+    for row in manifest["licenses"]:
+        maintained = (package / row["path"]).read_bytes()
+        published = (ROOT / "licenses/livewan-wan21-reference" / Path(row["path"]).name).read_bytes()
+        assert hashlib.sha256(maintained).hexdigest() == row["sha256"]
+        assert published == maintained, row["path"]
 
 
 @pytest.fixture(scope="module")
@@ -207,15 +279,18 @@ def test_native_extras_keep_their_independent_dependency_floor(wheel_metadata):
 
 def test_original_helios_cpu_helpers_have_an_explicit_test_environment(wheel_metadata):
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
-    for package in ("diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1", "ftfy==6.3.1", "kernels==0.9.0"):
+    for package in ("diffusers==0.34.0", "transformers==4.51.3", "peft==0.17.1",
+                    "einops==0.8.1", "ftfy==6.3.1", "kernels==0.9.0"):
         assert f'{package};extra=="test-helios"' in requirements
     from packaging.requirements import Requirement
     triton = [Requirement(value) for value in wheel_metadata.get_all("Requires-Dist")
               if Requirement(value).name == "triton"]
-    assert len(triton) == 1 and str(triton[0].specifier) == "==3.6.0"
-    assert triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Linux", "platform_machine": "x86_64"})
-    assert not triton[0].marker.evaluate({"extra": "train", "platform_system": "Linux", "platform_machine": "x86_64"})
-    assert not triton[0].marker.evaluate({"extra": "test-helios", "platform_system": "Darwin", "platform_machine": "arm64"})
+    assert len(triton) == 2 and all(str(item.specifier) == "==3.6.0" for item in triton)
+    for extra in ("test-helios", "test-helios-native-history"):
+        assert sum(item.marker.evaluate({"extra": extra, "platform_system": "Linux", "platform_machine": "x86_64"}) for item in triton) == 1
+        assert not any(item.marker.evaluate({"extra": extra, "platform_system": "Darwin", "platform_machine": "arm64"}) for item in triton)
+    for extra in ("train", "helios-reference", "test-helios-model"):
+        assert not any(item.marker.evaluate({"extra": extra, "platform_system": "Linux", "platform_machine": "x86_64"}) for item in triton)
     import yaml
     workflow = yaml.safe_load((ROOT / ".github/workflows/framework-cpu.yml").read_text())
     commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["lifecycle"]["steps"])
@@ -234,7 +309,8 @@ def test_original_helios_ci_requires_actual_public_admission_and_restart():
 def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_metadata):
     import yaml
     requirements = {value.replace(" ", "") for value in wheel_metadata.get_all("Requires-Dist")}
-    for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"):
+    for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4",
+                    "diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1"):
         assert f'{package};extra=="test-h3"' in requirements
     workflow = yaml.safe_load((ROOT / ".github/workflows/h3-grid-native-cpu.yml").read_text())
     job = workflow["jobs"]["original-source-state"]
@@ -243,8 +319,11 @@ def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_met
     sources = [step["with"] for step in job["steps"]
                if step.get("with", {}).get("repository") == "huggingface/diffusers"]
     assert len(sources) == 1 and sources[0]["ref"] == "9284607295a09f759aadd65ed08f48b35feea6d9"
-    assert ".[train,test,test-helios,test-h3]" in commands
-    assert "get('skipped', '0')" in commands
+    assert ".[train,test,test-h3]" in commands
+    assert "test-helios" not in commands, "H3 and Helios qualify separate PEFT versions"
+    assert not any('peft==0.17.1' in value and 'extra=="test-h3"' in value for value in requirements)
+    assert "python scripts/check_cpu_receipt.py h3-grid-cpu.xml" in commands
+    assert "--require 'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation'" in commands
 
 
 @pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])

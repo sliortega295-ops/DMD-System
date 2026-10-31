@@ -1,0 +1,56 @@
+{
+  "schema_version": "distillschedule.framework_gpu_acceptance.v1",
+  "status": "PASS_ACTUAL_RANDOM_TINY_CUDA_LIFECYCLE",
+  "production_source_head": "d526101e11316d4ed9926bacaa93b9a2e5a6b181",
+  "training_source_changed": false,
+  "test_source_sha256": {
+    "tests/gpu/cuda_test_policy.py": "84ad1d7bbc6f49d4903b3f46959fad854ca34652818940270969597502ae85e7",
+    "tests/gpu/test_training_dmd2_lifecycle.py": "961d144cd2c62a1892d37caba8c0ba069d878b7fd9ac51c5217381e7cf2d6949",
+    "tests/gpu/test_training_self_forcing_lifecycle.py": "0b94492852cc6e6d33c92a20a4edb87ab247faf4f06e55358f08f5a9131dc27e"
+  },
+  "hardware": {
+    "model": "A100-SXM4-40GB",
+    "devices_used_per_test": 1,
+    "distributed": false
+  },
+  "runtime": {
+    "python": "3.10.20",
+    "torch": "2.10.0+cu128",
+    "diffusers": "0.37.1",
+    "transformers": "4.51.3",
+    "peft": "0.17.1"
+  },
+  "test_policy": {
+    "deterministic_algorithms": true,
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "production_defaults_changed": false
+  },
+  "junit": {
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "time_seconds": 346.097,
+    "sha256": "a326abbda1725c16ef4d5869f51163148dbb684657673556a91b4ce6ec506e1a",
+    "cases": [
+      "test_actual_cuda_native_oracle_restore_rng_and_preallocation_refusals[sd15]",
+      "test_actual_cuda_native_oracle_restore_rng_and_preallocation_refusals[sdxl]",
+      "test_actual_cuda_fresh_process_restart_and_portable_current_generator_export[sd15]",
+      "test_actual_cuda_fresh_process_restart_and_portable_current_generator_export[sdxl]",
+      "test_actual_cuda_native_oracle_program_and_host_checkpoint_sequentially",
+      "test_actual_cuda_fresh_process_restart_current_g_export_and_cpu_relocation",
+      "test_actual_cuda_math_attention_varlen_local_bottom_right_and_cache_backward"
+    ]
+  },
+  "evidence_root": "research_artifacts/DMD-System/framework_maturation_20261023/r6_a100_gpu_closure",
+  "pretrained_quality": "NOT_RUN",
+  "production_capacity": "NOT_RUN",
+  "performance": "NOT_RUN",
+  "distributed_official_owners": "UNSUPPORTED",
+  "cuda_auto_plan_owner_snapshot": "UNSUPPORTED",
+  "preserved_failures": [
+    "r1 pytest temporary-parent missing before any model update",
+    "r2 exact state comparison failed under default nondeterministic CUDA"
+  ],
+  "separate_diagnostic": "default same-owner repeat also differs; deterministic oracle, gradients, optimizer, RNG and repeat exactly equal"
+}

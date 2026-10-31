@@ -1,0 +1,34 @@
+{
+  "schema_version": "distillschedule.wan_native_output_request.v1",
+  "seed": 721,
+  "prompt_shape": [1, 512, 4096],
+  "fps": 16,
+  "evidence_kind": "LOCAL_PRETRAINED_NATIVE_FEATURES_UNVERIFIED_QUALITY",
+  "budget": {
+    "max_parameters": 4000000000,
+    "max_loaded_bytes": 68719476736,
+    "max_export_bytes_per_rank": 17179869184,
+    "max_export_bytes_all_ranks": 274877906944,
+    "max_activation_elements": 2000000000,
+    "max_attention_elements": 2000000000
+  },
+  "codec": {
+    "config": {
+      "path": "/REPLACE_WITH_LOCAL_WAN21_VAE/config.json",
+      "bytes": 0,
+      "sha256": "REPLACE_WITH_EXACT_CONFIG_SHA256"
+    },
+    "weights": [
+      {
+        "path": "/REPLACE_WITH_LOCAL_WAN21_VAE/diffusion_pytorch_model.safetensors",
+        "bytes": 0,
+        "sha256": "REPLACE_WITH_EXACT_WEIGHT_SHA256"
+      }
+    ],
+    "provenance": {
+      "status": "USER_SUPPLIED_NOT_QUALITY_VERIFIED",
+      "origin": "REPLACE_WITH_ACTUAL_PUBLIC_MODEL_AND_REVISION",
+      "license": "REPLACE_WITH_ACTUAL_WEIGHT_LICENSE"
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": "distillschedule.original_h3_av_encoder.v1",
+  "precision": "CPU_FP32_ORIGINAL_H3_ENCODE",
+  "storage_dtype": "float32",
+  "evidence_kind": "LOCAL_ORIGINAL_H3_CODEC_UNVERIFIED_QUALITY",
+  "source": {
+    "root": "/REPLACE_WITH_EXISTING_ORIGINAL_H3_SOURCE",
+    "files": {
+      "diffsynth/core/attention/attention.py": "1126b2e19184299cbfc611dcf66e46d0fd1a7bfa1d616f2ed38bc60ba19679ae",
+      "diffsynth/models/minimax_h3_video_vae.py": "3dd4da5c90135c904fa5f1d4f70dd43e2571e394ce437bb168a5110f71076bf4",
+      "diffsynth/models/minimax_h3_audio_vae.py": "ce6dc03b73a0596df22a6aa89e6db9183017bd5d0e2e99b547a6bfee53a7ef2c"
+    },
+    "provenance": {
+      "origin": "REPLACE_WITH_ACTUAL_SOURCE_ORIGIN_AND_REVISION",
+      "license": "REPLACE_WITH_APPLICABLE_SOURCE_TERMS",
+      "terms_accepted": false
+    }
+  },
+  "video_encoder": {
+    "in_channels": 3,
+    "out_ch": 3,
+    "ch": 128,
+    "embed_dim": 24,
+    "z_channels": 24,
+    "num_res_blocks": 2,
+    "ch_mult": [
+      1,
+      2,
+      2,
+      4,
+      4,
+      8
+    ],
+    "space_down": [
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+    ],
+    "time_down": [
+      1,
+      2,
+      2,
+      1,
+      1,
+      1
+    ],
+    "padding_mode": "reflect",
+    "use_t_isolated_gn": true,
+    "causal_encoder": true,
+    "clip_length": 17,
+    "token_drop": 3,
+    "tile_size": 256,
+    "tile_overlap_min": 64
+  },
+  "audio_encoder": {
+    "encoder_dim": 64,
+    "encoder_rates": [
+      2,
+      4,
+      4,
+      5,
+      5
+    ],
+    "decoder_dim": 1024,
+    "decoder_rates": [
+      5,
+      5,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "sample_rate": 32000,
+    "vae_latent_channels": 32,
+    "attn_proj": true,
+    "decoder_type": "bigvgan"
+  },
+  "weights": {
+    "video": [
+      {
+        "path": "/REPLACE_WITH_EXISTING_VIDEO_FULL_OR_ENCODER_ONLY.safetensors",
+        "bytes": 0,
+        "sha256": "REPLACE_WITH_EXACT_WEIGHT_SHA256"
+      }
+    ],
+    "audio": [
+      {
+        "path": "/REPLACE_WITH_EXISTING_AUDIO_FULL_OR_ENCODER_ONLY.safetensors",
+        "bytes": 0,
+        "sha256": "REPLACE_WITH_EXACT_WEIGHT_SHA256"
+      }
+    ]
+  },
+  "budget": {
+    "max_parameters": 1000000000,
+    "max_loaded_bytes": 34359738368,
+    "max_input_elements": 100000000,
+    "max_activation_elements": 2000000000,
+    "max_attention_elements": 100000000,
+    "host_reserve_bytes": 4294967296
+  }
+}

@@ -2,6 +2,11 @@
 
 **Original protocol:** Helios hierarchical AR; No-GAN; G1/C5/EMA5.
 
+For output-only export of a complete **native fresh-stream** checkpoint and
+independent NEW-prompt Wan2.1 VAE decoding, see [Native output](NATIVE_OUTPUT.md).
+This is separate from the existing CPU-reference latent diagnostic; pretrained
+native GPU output remains unqualified until its own target acceptance.
+
 Original Wan adapter with compute-qualified retention. Fresh measured costs are required; r34 hand-written EMA packets are not promoted.
 
 ## Inspect the actual adapter (no GPU execution)
@@ -16,9 +21,9 @@ Continue through the existing [native runbook](../../docs/runbooks/wan_compute_s
 
 ## Code ownership
 
-- [`src/distillschedule/strategies/wan_cli.py`](../../src/distillschedule/strategies/wan_cli.py)
-- [`src/distillschedule/strategies/wan_worker.py`](../../src/distillschedule/strategies/wan_worker.py)
-- [`src/distillschedule/strategies/wan_planning.py`](../../src/distillschedule/strategies/wan_planning.py)
+- source checkout: `src/distillschedule/strategies/wan_cli.py`
+- source checkout: `src/distillschedule/strategies/wan_worker.py`
+- source checkout: `src/distillschedule/strategies/wan_planning.py`
 
 The compatibility profile `wan13b_nogan_resident_best` is preserved but is not silently substituted for this guide's explicit cohort.
 
@@ -26,20 +31,34 @@ Shared integration origin: `ea29129342741b54e59c4773e07454f541fadcc7`. Subsequen
 
 ## Hardware/evidence
 
-A100 manual/saved-plan evidence: [source-bound record](../../artifacts/publications/20261019/evidence/planner/six_workload_native_match.json), status `MATCHED_DIAGNOSTIC_TARGET_MET`. Its fixed training source is `ea29129342741b54e59c4773e07454f541fadcc7`.
+A100 manual/saved-plan evidence: source-bound record (source checkout: `artifacts/publications/20261019/evidence/planner/six_workload_native_match.json`), status `MATCHED_DIAGNOSTIC_TARGET_MET`. Its fixed training source is `ea29129342741b54e59c4773e07454f541fadcc7`.
 
-H100 measured source: `sliortega295-ops/DMD-System@7a668bcb12ad37d831dced3aca1be4ec7be0a2fe`. Published source: `97b8ecc9cf7747d93619acad1a6083f98faae084`. This is a separately pinned implementation, not automatic proof of this checkout's H100 runtime. The archived [measurement index](../../artifacts/publications/20261019/h100/measured_results.csv) defines the actual denominator and numerical status.
+H100 measured source: `sliortega295-ops/DMD-System@7a668bcb12ad37d831dced3aca1be4ec7be0a2fe`. Published source: `97b8ecc9cf7747d93619acad1a6083f98faae084`. This is a separately pinned implementation, not automatic proof of this checkout's H100 runtime. The archived measurement index (source checkout: `artifacts/publications/20261019/h100/measured_results.csv`) defines the actual denominator and numerical status.
 
-Read the [six-workload correction](../../docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before interpreting any number. No new GPU or quality result is created by this recipe.
+Read the six-workload correction (source checkout: `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`) before interpreting any number. No new GPU or quality result is created by this recipe.
 
 To inspect the optimized compute/retention cohort, append `--include-incumbent-bundle --include-critic-retention` in the qualified native environment. This requires compatible Triton and intentionally rejects an unqualified environment; it does not install a backend.
 
 ## Public training configuration
 
-Use [`training.json`](training.json) with your explicit qualified native inputs
-and saved selected plan. Read the [native training guide](../../docs/guides/native_workloads.md)
-for actual cycle limits, CPU admission, launch ownership and unsupported lifecycle
-operations. This binding does not replace the original protocol or certify GPU execution.
+[`training.json`](training.json) selects `wan_ar.incumbent21a.v1` with explicit
+`mode: manual` and `execution.preset`; supply your qualified original assets
+and output directory, **not a historical saved plan**. The existing typed
+implementation is bound against the current source/assets and enters the same
+native runner and gates. This is exactly two fixed-contract cycles with no
+checkpoint/resume, not continuous training. REVIEW; exact fixed trace and G2/C10/EMA10 bootstrap, no retain4.
+
+Read the [direct preset guide](../../docs/guides/native_presets.md) for the
+complete source/mechanism/runtime mapping and the
+[native training guide](../../docs/guides/native_workloads.md) for separate
+reference/fresh-input and saved-plan paths. CPU admission does not certify
+GPU execution, numerical parity, quality or speedup.
+
+An additional explicit [incumbent finite-stream v2](INCUMBENT_STREAM.md) uses
+the full original Graph/cast/epilogue/norm bundle over 2..100 fresh cohorts and
+complete native restart checkpoints. It remains source/CPU-qualified research
+only, with first-process-cycle capture and later-novel-signature rejection.
+The v1 preset above and its defaults are unchanged.
 
 The separately versioned [original CPU reference](CPU_REFERENCE.md) instead
 uses Program/common checkpoints with the actual full original model, native

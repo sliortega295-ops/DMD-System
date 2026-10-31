@@ -1,0 +1,5 @@
+{
+  "schema_version": "distillschedule.wan22_t2v_inputs.v1", "family": "wan22-ti2v5b-t2v",
+  "assets": "/ABSOLUTE/local-wan22/assets.json", "mode": "preencoded",
+  "records": [{"id": "native-0001", "features": {"path": "/ABSOLUTE/genuine-native-features.pt", "sha256": "REPLACE_WITH_EXACT_SHA256"}}]
+}

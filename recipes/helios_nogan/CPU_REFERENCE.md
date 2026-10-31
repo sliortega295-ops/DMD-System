@@ -19,7 +19,7 @@ The existing native FSDP2 and saved-plan recipes remain unchanged.
 - Physical execution is **CPU1, source rank0, B1 per-sample**. All sixteen
   source-rank controls are admitted; the other fifteen samples and distributed
   gradient reduction are **not executed** by this diagnostic adapter.
-- Inputs are a finite stream of 2–64 fresh original cohorts. Reusing bytes with
+- Inputs are a finite stream of 2–100 fresh original cohorts. Reusing bytes with
   new names, task steps or seeds is not accepted as fresh data. No history,
   missing weight, conditioning or latent-resolution fallback is synthesized.
 

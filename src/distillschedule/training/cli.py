@@ -4,9 +4,12 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import os
 import platform
 import sys
 from pathlib import Path
+
+from distillschedule._cli_streams import redirect_diagnostics
 
 from .config import TrainingConfig, load_training_config
 
@@ -14,13 +17,21 @@ from .config import TrainingConfig, load_training_config
 def doctor(config=None):
     packages = {}
     for name in ("distillschedule", "torch", "numpy", "Pillow", "omegaconf", "diffusers", "deepspeed",
-                 "transformers", "peft", "sentencepiece", "torchaudio", "safetensors"):
+                 "transformers", "peft", "sentencepiece", "torchaudio", "safetensors",
+                 "tensorflow", "tensorflow-cpu"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             packages[name] = None
+    controls = {name: os.environ.get(name) for name in ("USE_TF", "USE_FLAX")}
+    warnings = []
+    if any(packages[name] is not None for name in ("tensorflow", "tensorflow-cpu")) and controls["USE_TF"] != "0":
+        warnings.append({"code": "OPTIONAL_TENSORFLOW_IMPORTS", "message":
+            "For PyTorch-only recipes, set USE_TF=0 and USE_FLAX=0 before preparing assets and launching workers. "
+            "Unused TensorFlow/Keras/OpenCV imports can change library paths during model setup."})
     result = {"status": "INSPECTED", "python": platform.python_version(),
               "executable": sys.executable, "packages": packages,
+              "environment_controls": controls, "import_warnings": warnings,
               "model_imported": False, "cuda_initialized": False, "gpu_execution": "NOT_RUN"}
     if config is not None:
         if config.execution.get("adapter", "program") == "native":
@@ -78,6 +89,9 @@ def main(argv=None):
     config_parser = sub.add_parser("config", help="validate or render a training configuration")
     config_parser.add_argument("action", choices=("validate", "show"))
     config_parser.add_argument("config", type=Path)
+    initialize = sub.add_parser('import-weights', help='initialize Generator weights and export; never resume/train')
+    initialize.add_argument('request', type=Path)
+    initialize.add_argument('--output', type=Path, required=True)
     for name in ("train", "evaluate", "export", "generate"):
         p = sub.add_parser(name)
         p.add_argument("config", type=Path)
@@ -99,10 +113,17 @@ def main(argv=None):
         if name == 'evaluate':
             p.add_argument('--prepared', type=Path, help='explicit physical evaluation inputs')
             p.add_argument('--stream', help='physical training input stream (default generator when present)')
+    decoder = sub.add_parser("decode", help="decode prepared latents with an explicit native codec")
+    decoder.add_argument("config", type=Path)
+    decoder.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        config = load_training_config(args.config) if getattr(args, "config", None) else None
-        if args.command in ('models', 'algorithms'):
+        config = (load_training_config(args.config) if getattr(args, "config", None) and args.command != "decode" else None)
+        if args.command == "decode":
+            with redirect_diagnostics():
+                from .decoding import decode_prepared
+                result = decode_prepared(args.config, args.output)
+        elif args.command in ('models', 'algorithms'):
             from .catalog import describe, resolve
             if args.action == 'show':
                 if not args.name:
@@ -123,6 +144,18 @@ def main(argv=None):
         elif args.command == "config":
             result = {"status": "VALID_CONFIG", "identity": config.identity,
                       "resolved": config.to_dict(), "gpu_execution": "NOT_RUN"}
+        elif args.command == 'import-weights':
+            with redirect_diagnostics():
+                from . import wan_generator_import
+                request = wan_generator_import.read_request(args.request)
+                schema = request.get('schema_version') if isinstance(request, dict) else None
+                if schema == wan_generator_import.SCHEMA:
+                    initialize = wan_generator_import.import_generator_weights
+                elif schema == 'distillschedule.livewan_generator_weights_initialization.v1':
+                    from .livewan_generator_import import import_generator_weights as initialize
+                else:
+                    raise ValueError('unsupported weights initialization schema')
+                result = initialize(args.request, args.output)
         elif args.command == "train":
             raw = config.to_dict()
             for key, value in (("output_dir", args.output), ("resume_from", args.resume), ("cycles", args.cycles)):
@@ -136,25 +169,34 @@ def main(argv=None):
                 result = doctor(config)
                 result["training_execution"] = "NOT_RUN_DRY_RUN"
             else:
-                from .session import train
-                result = train(config)
+                # Trusted adapters and their dependencies may log on import as
+                # well as during execution. Only the final receipt owns stdout.
+                with redirect_diagnostics():
+                    from .session import train
+                    result = train(config)
         else:
             if not args.output:
                 raise ValueError("generation/export requires --output")
             if config.execution.get("adapter", "program") == "native":
-                raise ValueError("use the native recipe's documented checkpoint/generation/export capability")
-            from .session import evaluate, export, generate_from_export
-            if args.command == "generate":
-                result = generate_from_export(config, args.weights, args.output,
-                                              prepared=args.prepared, sample_index=args.sample_index,
-                                              parameters=_generation_parameters_file(args.parameters),
-                                              output_kind=args.output_kind)
-            elif args.command == "evaluate":
-                result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
-                                  parameters=_generation_parameters_file(args.parameters),
-                                  prepared=args.prepared, stream=args.stream)
+                if args.command != "export":
+                    raise ValueError("native outputs require export first, then the standalone Program inference config")
+                with redirect_diagnostics():
+                    from .native import export_native
+                    result = export_native(config, args.checkpoint, args.output)
             else:
-                result = export(config, args.checkpoint, args.output)
+                with redirect_diagnostics():
+                    from .session import evaluate, export, generate_from_export
+                    if args.command == "generate":
+                        result = generate_from_export(config, args.weights, args.output,
+                                                      prepared=args.prepared, sample_index=args.sample_index,
+                                                      parameters=_generation_parameters_file(args.parameters),
+                                                      output_kind=args.output_kind)
+                    elif args.command == "evaluate":
+                        result = evaluate(config, args.checkpoint, args.output, sample_index=args.sample_index,
+                                          parameters=_generation_parameters_file(args.parameters),
+                                          prepared=args.prepared, stream=args.stream)
+                    else:
+                        result = export(config, args.checkpoint, args.output)
         if type(result) is int:
             # Native front doors already emit their own original receipts.
             return result

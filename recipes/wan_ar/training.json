@@ -4,18 +4,17 @@
     "workload": "W1"
   },
   "data": {
-    "input_kind": "original_wan_cohort_stream.v1",
-    "prepared": "REPLACE_WITH_ORIGINAL_WAN_COHORT_STREAM.json"
+    "replay_fixed_trace": true
   },
   "algorithm": {
     "name": "original_wan_ar_dmd"
   },
   "execution": {
     "adapter": "native",
-    "mode": "plan",
+    "mode": "manual",
     "task": "../../configs/distillschedule/original_wan/full5_reference.json",
     "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
-    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json"
+    "preset": "wan_ar.incumbent21a.v1"
   },
   "trainer": {
     "cycles": 2,

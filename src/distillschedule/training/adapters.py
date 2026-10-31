@@ -7,6 +7,7 @@ A model factory accepts a parameter mapping and returns ModelComponents.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -26,6 +27,27 @@ class ModelComponents:
     inference_projection: Callable | None = None
     prediction: Any = None
     capabilities: tuple[str, ...] = ()
+    # Optional, read-only export input capability. Called only after strict
+    # inference restoration: (state, record, {mode, source_dir, model_metadata})
+    # -> {features: tensor tree, metadata: cohort-wide JSON, sources: identities}.
+    # The model owns record/geometry/codec validation; no asset reload is implied.
+    encode_input: Callable | None = None
+    # Dispose ephemeral providers/hooks after a whole training invocation,
+    # never between cycles or while a checkpoint is being serialized.
+    close: Callable | None = None
+    # Actual observations, not checkpoint/source identity (allocator state varies).
+    construction_receipt: Mapping[str, Any] = field(default_factory=dict)
+    # Ephemeral, construction-owned frozen-root handoff. Never serialized as
+    # training state or treated as permission to adopt arbitrary DTensors.
+    sharded_construction: Any = None
+
+    @contextmanager
+    def managed(self):
+        try:
+            yield self
+        finally:
+            if self.close is not None:
+                self.close()
 
     def validate(self):
         from .prediction import PredictionSpec
@@ -56,10 +78,14 @@ class ModelComponents:
                 if any(p.requires_grad for p in module.parameters()):
                     raise ValueError(f"immutable subtree has trainable parameters: {path}")
         for name in ("generate", "decode", "export", "load_export", "validate_batch", "admit_training", "collect_metrics",
-                     "inference_projection"):
+                     "inference_projection", "encode_input", "close"):
             value = getattr(self, name)
             if value is not None and not callable(value):
                 raise ValueError(f"model {name} must be callable")
+        if self.sharded_construction is not None:
+            if not all(callable(getattr(self.sharded_construction, name, None))
+                       for name in ('bind_workload', 'close')):
+                raise ValueError("sharded construction must bind workloads and own its lifetime")
         return self
 
 

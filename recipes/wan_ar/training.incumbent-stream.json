@@ -1,0 +1,21 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"workload": "W1"},
+  "algorithm": {"name": "original_wan_ar_dmd"},
+  "data": {
+    "input_kind": "original_wan_cohort_stream.v1",
+    "prepared": "REPLACE_WITH_FRESH_NATIVE_STREAM.json"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "task": "REPLACE_WITH_QUALIFIED_ORIGINAL_TASK.json",
+    "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
+    "preset": "wan_ar.incumbent21a_stream.v2"
+  },
+  "trainer": {
+    "cycles": 3,
+    "checkpoint_every": 1,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

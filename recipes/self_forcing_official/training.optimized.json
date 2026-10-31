@@ -1,0 +1,71 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "name": "self-forcing-wan",
+    "parameters": {
+      "source_root": "/REPLACE_WITH/pinned-official-self-forcing-source",
+      "assets": "/REPLACE_WITH/local-native-bundle/assets.json",
+      "settings": {
+        "image_or_video_shape": [
+          1,
+          21,
+          16,
+          46,
+          80
+        ],
+        "mixed_precision": true,
+        "gradient_checkpointing": true,
+        "dfake_gen_update_ratio": 5,
+        "ema_weight": 0
+      },
+      "optimization_profile": "self-forcing-wan-fsdp2-r6-v1"
+    }
+  },
+  "algorithm": {
+    "name": "self-forcing"
+  },
+  "data": {
+    "streams": {
+      "generator": {
+        "prepared": "/REPLACE_WITH/generator/manifest.json",
+        "samples_per_cycle": 1,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      },
+      "critic": {
+        "prepared": "/REPLACE_WITH/critic/manifest.json",
+        "samples_per_cycle": 5,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      }
+    },
+    "sharding": "rank_strided"
+  },
+  "execution": {
+    "adapter": "program",
+    "mode": "manual",
+    "implementation": {
+      "backend": "torch-callable-native-owner-v1",
+      "local": {
+        "backend": "torch-callable-resident-v1",
+        "share_immutable": false,
+        "checkpoint_bindings": []
+      }
+    }
+  },
+  "trainer": {
+    "cycles": 3,
+    "seed": 17,
+    "device": "cuda",
+    "checkpoint_every": 1,
+    "output_dir": "/ABSOLUTE/PROJECT/OFFICIAL_SELF_FORCING_OPTIMIZED",
+    "distributed": {
+      "backend": "nccl",
+      "timeout_seconds": 900
+    }
+  }
+}

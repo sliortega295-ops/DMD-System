@@ -103,7 +103,9 @@ def _build_model_fair(
             raise ValueError("incumbent bundle is admitted only by task-bound OriginalWanSession")
         bundle.validate_task(native_task)
         from distillschedule.search.wan_candidate_bundle import ASSETS
-        if bootstrap.manifest_hash != ASSETS["bootstrap_hash"] or bootstrap.manifest["model_identity_sha256"] != ASSETS["model_identity_sha256"]:
+        if bundle.continuous:
+            bundle.validate_bootstrap(bootstrap, native_task)
+        elif bootstrap.manifest_hash != ASSETS["bootstrap_hash"] or bootstrap.manifest["model_identity_sha256"] != ASSETS["model_identity_sha256"]:
             raise ValueError("incumbent bundle bootstrap identity changed")
     requested_rank = 256 if native_task is None else native_task.lora_rank
     seed = int(bootstrap.component(role)["seed"])

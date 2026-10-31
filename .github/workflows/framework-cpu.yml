@@ -4,13 +4,17 @@ on:
     paths:
       - 'src/distillschedule/**'
       - 'tests/test_training_*.py'
+      - 'tests/test_open_workload_*.py'
       - 'tests/test_data_*.py'
       - 'examples/framework/**'
       - 'recipes/**'
       - 'scripts/check_framework_install.py'
       - 'scripts/run_framework_cpu_tests.py'
       - 'tests/test_framework_*.py'
+      - 'tests/test_runtime_*.py'
       - 'tests/test_cpu_receipt_gate.py'
+      - 'tests/test_evidence_livewan_c51_phases.py'
+      - 'tests/test_refactor_h3_attention_capture_entrypoint.py'
       - 'pyproject.toml'
       - '.github/workflows/framework-cpu.yml'
   push:
@@ -20,7 +24,9 @@ permissions:
 jobs:
   lifecycle:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    # The complete common inventory exceeded 30 minutes on both CPU runners;
+    # keep every common proof and allow its observed full lifecycle cost.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -51,8 +57,15 @@ jobs:
                      'test_actual_original_helpers_three_cycles_checkpoint_resume_equal']
           startup = [case for case in cases if case.get('name', '').startswith(
                      'test_public_to_original_p0_collectively_admits_before_model[')]
+          phase = [case for case in cases if case.get('name') ==
+                   'test_actual_hsdp_peft_unequal_prefix_original_adam_and_rng']
+          gan_history = [case for case in cases if case.get('name') ==
+                         'test_target_original_gan_zero_history_capture_exact_rng_crops_and_r1']
           assert len(restart) == 1 and len(startup) == 13
+          assert len(phase) == 1 and len(gan_history) == 1
           assert all(case.find('skipped') is None for case in restart + startup)
+          assert all(case.find(kind) is None for case in phase + gan_history
+                     for kind in ('skipped', 'failure', 'error'))
           PY
       - name: Installed wheel outside the checkout
         run: python scripts/check_framework_install.py --output installed-framework.json

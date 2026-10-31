@@ -59,11 +59,16 @@ class OriginalWanSession:
         self.clean=strategy.placement=='resident'
         self.runtime_cache={} if self.clean else None
         self.finite=[]
+        if strategy.candidate_bundle.continuous:
+            from distillschedule.runtime.wan_bundle_lifecycle import WanBundleLifecycle
+            self.bundle_lifecycle = WanBundleLifecycle(self)
 
     def versions(self):
         return dict(generator=int(self.g.global_steps),critic=int(self.c.global_steps),ema=int(self.ema.optimization_step))
 
     def prepare(self, *, operation_scope=None, operation_order=None):
+        require(not self.strategy.candidate_bundle.continuous or self.bundle_lifecycle.active is not None,
+                'stream bundle requires a bound fresh cohort before prepare', path='wan.session')
         if operation_order is not None:
             self.strategy.candidate_bundle.validate_order(operation_order)
         return prepare_parameterized_wan_cycle(p0=self.fair.base.p0,

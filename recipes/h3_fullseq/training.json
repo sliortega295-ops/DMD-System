@@ -9,10 +9,10 @@
   },
   "execution": {
     "adapter": "native",
-    "mode": "plan",
+    "mode": "manual",
     "task": "task.json",
     "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
-    "plan": "REPLACE_WITH_SELECTED_SOURCE_BOUND_NATIVE_PLAN.json"
+    "preset": "h3_fullseq.cpu_staged_trim.v1"
   },
   "trainer": {
     "cycles": 2,

@@ -1,0 +1,155 @@
+{
+  "schema_version": "distillschedule.framework_acceptance.v1",
+  "status": "PASS_ACTUAL_NATIVE_TINY_WORLD16_REFERENCE_AND_MANUAL",
+  "evidence_kind": "SYNTHETIC_TEST_ONLY",
+  "base_source_head": "8b4f90e0c98c2a90356f12e87979c62dad44b194",
+  "source_manifest_sha256": "3b678d32d318019cffcc48a3f84ced26e68934489fc35a4e1c4c0736a9fb190f",
+  "full_receipt_sha256": "3f1aafee502193382a9a765fd4088a49f0fecde5a413d2b8d52a22e3b96fa376",
+  "full_receipt_remote": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/reports/world16-r4-acceptance.json",
+  "run_id": "r12-native-flow-world16-r4",
+  "hardware": "2x8 A100-SXM4-40GB",
+  "backend": "NCCL post-backward replicated; FP32 local B1/global16; reference and manual immutable sharing",
+  "rows": [
+    {
+      "family": "flux2-klein-base",
+      "actual_classes": {
+        "fake": "Flux2Transformer2DModel",
+        "student": "Flux2Transformer2DModel",
+        "teacher": "Flux2Transformer2DModel"
+      },
+      "independent_b1_gradient_mean": true,
+      "gradient_reduction_before_clip_adam": true,
+      "later_generator_gradient_nonzero": true,
+      "distinct_sample_ids": 48,
+      "updates_per_process": {
+        "student": 3,
+        "fake": 15
+      },
+      "reference_manual_exact": true,
+      "modes": {
+        "reference": {
+          "ranks": 16,
+          "cycles": 3,
+          "all_rank_model_optimizer_hashes": [
+            "9b1c8682aae945d6ac50acc996946a3fbd9a5b43d45f5c18471806965182f5dd",
+            "3e63c47d5866bd4845f22ce0447ad0a86fb3c76561dac6c0a765310fce0aaf40",
+            "2cc4517ef8389270505c0e5630479ac6eedf2f752bd533a700b9dc5020ab7621"
+          ],
+          "exact_new_process_continuation": true,
+          "all_rank_state_rng_cursor_versions": true,
+          "shared_frozen_aliases": 0,
+          "current_student_image": [
+            8,
+            8,
+            3
+          ],
+          "export_manifest_sha256": "05c125c817bf8d3fbe11188779849f6fee7cb4ef6dd6cb51353771c36688923c",
+          "new_prompt_identity": "031cc60218f91717f99895db9e1915b9688445c958ba84c456a73b37ae487e28"
+        },
+        "manual": {
+          "ranks": 16,
+          "cycles": 3,
+          "all_rank_model_optimizer_hashes": [
+            "9b1c8682aae945d6ac50acc996946a3fbd9a5b43d45f5c18471806965182f5dd",
+            "3e63c47d5866bd4845f22ce0447ad0a86fb3c76561dac6c0a765310fce0aaf40",
+            "2cc4517ef8389270505c0e5630479ac6eedf2f752bd533a700b9dc5020ab7621"
+          ],
+          "exact_new_process_continuation": true,
+          "all_rank_state_rng_cursor_versions": true,
+          "shared_frozen_aliases": 165,
+          "current_student_image": [
+            8,
+            8,
+            3
+          ],
+          "export_manifest_sha256": "c765c7686347087709b12290dd29c0e6a8d33961a00854c2748e0defcf520f77",
+          "new_prompt_identity": "db0ceaa63fc1d1b4e4c483d14a452cdd164f563329311896a147e9a1312421a3"
+        }
+      }
+    },
+    {
+      "family": "qwen-image",
+      "actual_classes": {
+        "fake": "QwenImageTransformer2DModel",
+        "student": "QwenImageTransformer2DModel",
+        "teacher": "QwenImageTransformer2DModel"
+      },
+      "independent_b1_gradient_mean": true,
+      "gradient_reduction_before_clip_adam": true,
+      "later_generator_gradient_nonzero": true,
+      "distinct_sample_ids": 48,
+      "updates_per_process": {
+        "student": 3,
+        "fake": 15
+      },
+      "reference_manual_exact": true,
+      "modes": {
+        "reference": {
+          "ranks": 16,
+          "cycles": 3,
+          "all_rank_model_optimizer_hashes": [
+            "c342ca836cae2f8bbf9b946859bfe5f5ad9e2791f7be257b4eaf48c40d757b8b",
+            "353cc9d30873aa53cf035ebf60511372a0d17d8a990544a6e5da35427f8ad5e3",
+            "a4fdf9fdc25d9085e7b1d91191eb0d59703f48a7dab7fe5e881e713fad4f6dc4"
+          ],
+          "exact_new_process_continuation": true,
+          "all_rank_state_rng_cursor_versions": true,
+          "shared_frozen_aliases": 0,
+          "current_student_image": [
+            8,
+            8,
+            3
+          ],
+          "export_manifest_sha256": "c6db993d4ce8da1ffe54a020b076251c5c85e802d5a6b1e237355a6ceedb9e18",
+          "new_prompt_identity": "e11dc77ce4a464bf28048201baddf5ca183b334debb5cfc3fb20eba5079a6601"
+        },
+        "manual": {
+          "ranks": 16,
+          "cycles": 3,
+          "all_rank_model_optimizer_hashes": [
+            "c342ca836cae2f8bbf9b946859bfe5f5ad9e2791f7be257b4eaf48c40d757b8b",
+            "353cc9d30873aa53cf035ebf60511372a0d17d8a990544a6e5da35427f8ad5e3",
+            "a4fdf9fdc25d9085e7b1d91191eb0d59703f48a7dab7fe5e881e713fad4f6dc4"
+          ],
+          "exact_new_process_continuation": true,
+          "all_rank_state_rng_cursor_versions": true,
+          "shared_frozen_aliases": 41,
+          "current_student_image": [
+            8,
+            8,
+            3
+          ],
+          "export_manifest_sha256": "27328a4112d75e6db3f0f3cf95af28753369513bb2a43f86853d95f0f57ea5e9",
+          "new_prompt_identity": "16eddfb7654d804897be433477c6ea29749357ea56fb5c04a7d1d3c92e6fe568"
+        }
+      }
+    }
+  ],
+  "cleanup_pass": true,
+  "cgroup_deltas": [
+    {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    },
+    {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    }
+  ],
+  "generation_collector_device": "CPU",
+  "pretrained_capacity": "NOT_RUN",
+  "quality": "NOT_RUN",
+  "performance": "NOT_RUN",
+  "amp_fsdp_hsdp_cuda_search": "NOT_RUN",
+  "failures_preserved": [
+    "world16-r1 shared directory visibility",
+    "world16-r3 shared manifest durability"
+  ],
+  "publication_repairs": "bounded metadata visibility + flush/fsync before atomic rename; strict hashes unchanged"
+}

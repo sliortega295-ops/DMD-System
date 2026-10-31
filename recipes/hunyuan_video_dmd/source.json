@@ -1,0 +1,18 @@
+{
+  "repository": "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v",
+  "revision": "286be7ce72277246578a3e3cc2487e95ddae5bcf",
+  "model_asset_license": "Tencent Hunyuan Community License; repository tag other; not Apache-2.0",
+  "implementation": "Actual Diffusers 0.37.1 and Transformers 5.14.1 imports; separate Apache-2.0 dependency licenses",
+  "source_only_audit": {
+    "model_index.json": "e6573b14a5b008a680f5ff1606003bf8715f82adaf89674917950939578403bb",
+    "transformer/config.json": "0124be9f1c90d44c591a3b15e92b7a90d13fb3f4775315df4af25db616571af1",
+    "vae/config.json": "e80c0186b8b41b135d4b3937df727ad314e08719d1f36af06577439259b74243"
+  },
+  "stale_upstream_example": {"repository": "hunyuanvideo-community/HunyuanVideo-1.5-480p_t2v", "status": "401_UNAUTHORIZED_SOURCE_ONLY_AUDIT_NOT_RETRIED"},
+  "task": "T2V_ONLY_NOT_I2V_MEANFLOW_OR_DISTILLED",
+  "native_classes": ["HunyuanVideo15Transformer3DModel", "AutoencoderKLHunyuanVideo15", "Qwen2_5_VLTextModel", "T5EncoderModel", "Qwen2TokenizerFast", "ByT5Tokenizer", "HunyuanVideo15Pipeline"],
+  "abi": "[z,zeros_like(z),zero_mask]; sigma*1000; zero native image semantic tokens Bx729xD; native Qwen crop108 hidden-3 max1000 and ByT5 extracted quoted glyph max256 or true zero/allfalse sentinel; temporal4 VAE mode/scaling_factor",
+  "configs": "Full external model configs are not vendored; random tiny constructor choices are explicit SYNTHETIC_TEST_ONLY fixtures with source provenance.",
+  "weights_downloaded": false,
+  "pretrained_gpu_capacity_and_quality_validation": "NOT_RUN"
+}

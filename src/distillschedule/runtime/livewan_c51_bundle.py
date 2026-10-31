@@ -161,3 +161,47 @@ def runtime_receipt_errors(row, *, rank, cycles):
     errors += gate(row.get("generator_gate", {}), rank=rank, cycles=cycles, output_layout="row_major")
     errors += score_rms(row.get("score_rmsnorm_kernel", {}), rank=rank)
     return errors
+
+
+def continuation_receipt_errors(row, *, rank, inputs, pairs):
+    """Separate fresh-stream evidence; never widen frozen two-cycle gates.
+
+    Existing full-bundle operator/source validators are mandatory. Additionally
+    bind the observed per-rollout calls to the actual fresh controls, rather
+    than requiring one trace's load vector/call census in every cycle.
+    """
+    from distillschedule.training.livewan_c51_training import SCHEMA, input_marker
+    from distillschedule.training.livewan_c51_state import physical_versions
+    marker = row.get("continuation", {})
+    start, end = marker.get("start_cycle"), marker.get("completed_cycles")
+    expected_inputs = input_marker(inputs)
+    if (type(start) is not int or type(end) is not int or not 0 <= start < end <= inputs.cycles
+            or marker.get("requested_stop_cycle") != end or marker.get("target_cycles") != inputs.cycles
+            or marker.get("schema_version") != SCHEMA or marker.get("input_sha256") != inputs.input_sha256
+            or any(type(marker.get(k)) is not type(v) or marker.get(k) != v for k, v in expected_inputs.items())
+            or any(k in marker and k not in expected_inputs for k in ("input_policy", "input_policy_sha256"))
+            or marker.get("numerical_status") != "REVIEW"
+            or marker.get("executed_cycles") != end-start
+            or marker.get("physical_final_versions") != physical_versions(rank, end)):
+        return ["C51 continuation source/input/physical progress marker differs"]
+    errors = runtime_receipt_errors(row, rank=rank, cycles=end-start)
+    slots = pairs[rank % 8]
+    rows = [inputs.row(5*c+s, slot) for c in range(start, end) for s in range(5) for slot in slots]
+    inventory = row.get("physical_call_inventory", {})
+    if rank < 8:
+        for name, factor, tail in (("generator_rms_epilogue", 90, 30), ("generator_modulation", 61, 0),
+                                   ("generator_gate", 60, 0)):
+            expected = [(1+5*r.new_blocks)*factor+tail for r in rows]
+            if row.get(name, {}).get("scope_forward_calls") != expected:
+                errors.append("C51 fresh row-derived scope census differs: " + name)
+        if (inventory.get("student/nograd/plain") != sum(1+5*r.new_blocks for r in rows)
+                or inventory.get("student/grad/checkpoint") != 6*(end-start)):
+            errors.append("C51 fresh Generator actual no-grad/recompute call inventory differs")
+        outputs = row.get("output_fingerprints", [])
+        if ([o.get("operation_key") for o in outputs] != [r.operation_key for r in rows]
+                or any(o.get("finite") is not True for o in outputs)):
+            errors.append("C51 fresh actual rollout output evidence missing/nonfinite/replayed")
+    elif (inventory.get("critic/grad/checkpoint") != 5*(end-start)
+          or inventory.get("teacher/nograd/plain") != 2*(end-start)):
+        errors.append("C51 fresh Score physical B2/Teacher call census differs")
+    return errors

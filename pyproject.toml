@@ -33,7 +33,7 @@ test = ["pytest>=7", "omegaconf>=2.3", "setuptools>=77.0.0", "wheel"]
 # CPU qualification of licensed original Helios input/rollout helpers. This is
 # not the CUDA training environment and does not replace native-wan's pins.
 test-helios = [
-    "diffusers==0.34.0", "transformers==4.51.3", "accelerate>=1.1,<2",
+    "diffusers==0.34.0", "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
     "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "kernels==0.9.0",
     # The licensed original SDPA receipt imports JIT definitions, but these
     # Linux/x86 CPU tests never compile or launch them. Not a public train dep.
@@ -53,9 +53,30 @@ test-helios-model = [
     "transformers==4.51.3", "peft==0.17.1", "accelerate>=1.1,<2",
     "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "httpx==0.28.1", "safetensors>=0.4",
 ]
-test-h3 = ["loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4"]
+# The original native topology probe also imports offline kernel/JIT definitions.
+# They are test-only imports, not additions to the public full-model runtime.
+test-helios-native-history = [
+    "kernels==0.9.0",
+    "triton==3.6.0; platform_system == 'Linux' and platform_machine == 'x86_64'",
+]
+# Independent original H3 CPU helper lane; its PEFT 0.15 source contract is
+# intentionally not combined with the Helios PEFT 0.17 qualification stack.
+test-h3 = [
+    "diffusers==0.34.0", "transformers==4.51.3", "peft==0.15.2", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "regex>=2024.1", "loguru==0.7.3", "imageio==2.37.4",
+]
 # Maintained cached-only source reference, independent of full-SFT/native H3.
 h3-cached-reference = ["torch>=2.10", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1"]
+# Installed serialization method qualification, not a native ZeRO/CUDA engine.
+test-h3-consolidation = ["deepspeed==0.18.4"]
+# The Grid output job installs its hash-pinned Diffusers source separately;
+# neither the 0.34 helper lane nor its PEFT 0.15 contract is repinned.
+test-h3-output = [
+    "transformers==5.14.1", "peft==0.18.1", "accelerate>=1.1,<2",
+    "einops==0.8.1", "ftfy==6.3.1", "loguru==0.7.3", "imageio==2.37.4",
+]
+# Decode-only external H3 codec source; does not install a training/backend stack.
+h3-av-codec = ["torch==2.10.0", "torchvision==0.25.0", "numpy>=1.24", "safetensors>=0.4", "einops==0.8.1", "Pillow>=10"]
 # Full original Wan2.1/LiveWan source, explicit all-FP32 CPU numerical reference.
 # Separate from native-wan and the unrelated Helios-backed Wan provider.
 livewan-wan21-reference = ["torch>=2.10", "diffusers==0.35.2", "einops==0.8.1"]
@@ -80,6 +101,13 @@ ltx25 = [
     "safetensors==0.8.0", "scipy==1.16.3", "colour-science==0.4.7",
     "einops==0.8.1", "numpy==2.5.3", "Pillow>=10", "httpx==0.28.1",
 ]
+# Isolated CPU-reference lane for the new native image/video flow adapters. Do not
+# upgrade/combine the Transformers4 / PEFT0.17 DMD2, Self-Forcing or Helios lanes.
+modern-flow = [
+    "torch==2.10.0", "diffusers==0.37.1", "transformers==5.14.1", "peft==0.18.1",
+    "tokenizers==0.22.2", "huggingface-hub==1.7.1", "safetensors==0.8.0",
+    "accelerate==1.14.0", "numpy>=1.24", "Pillow>=10", "ftfy==6.3.1", "sentencepiece==0.2.2",
+]
 media = ["numpy>=1.24", "Pillow>=10"]
 train = ["torch>=2.10", "numpy>=1.24", "Pillow>=10", "safetensors>=0.4"]
 native = ["torch>=2.5", "safetensors>=0.4", "numpy>=1.24"]
@@ -96,6 +124,52 @@ where = ["src", "."]
 include = ["distillschedule*", "runtime*"]
 
 [tool.setuptools.package-data]
+"distillschedule.training" = ["dmd2_fsdp_source.json"]
+"distillschedule.training.official_optimizations" = ["source_lock.json"]
 "distillschedule.workloads" = ["catalog.json"]
 "distillschedule.reference.diffsynth_h3_cached" = ["source_manifest.json"]
 "distillschedule.reference.livewan_wan21" = ["source_manifest.json", "licenses/*.txt", "licenses/*.md"]
+
+# Curated documentation/configuration and source-only helper assets. No weights,
+# checkpoints, profiler output or private environment bundles are distributable.
+[tool.setuptools.data-files]
+"share/distillschedule/recipes" = ["recipes/*.md"]
+"share/distillschedule/recipes/dmd2_sd15" = ["recipes/dmd2_sd15/*.md", "recipes/dmd2_sd15/*.json", "recipes/dmd2_sd15/*.py"]
+"share/distillschedule/recipes/dmd2_sdxl" = ["recipes/dmd2_sdxl/*.md", "recipes/dmd2_sdxl/*.json"]
+"share/distillschedule/recipes/flow_image" = ["recipes/flow_image/*.md", "recipes/flow_image/*.json", "recipes/flow_image/*.py"]
+"share/distillschedule/recipes/flux_dmd" = ["recipes/flux_dmd/*.md", "recipes/flux_dmd/*.json"]
+"share/distillschedule/recipes/h3_ar" = ["recipes/h3_ar/*.md", "recipes/h3_ar/*.json"]
+"share/distillschedule/recipes/h3_fullseq" = ["recipes/h3_fullseq/*.md", "recipes/h3_fullseq/*.json"]
+"share/distillschedule/recipes/helios_gan" = ["recipes/helios_gan/*.md", "recipes/helios_gan/*.json"]
+"share/distillschedule/recipes/helios_nogan" = ["recipes/helios_nogan/*.md", "recipes/helios_nogan/*.json", "recipes/helios_nogan/*.yaml", "recipes/helios_nogan/*.py"]
+"share/distillschedule/recipes/hunyuan_video_dmd" = ["recipes/hunyuan_video_dmd/*.md", "recipes/hunyuan_video_dmd/*.json", "recipes/hunyuan_video_dmd/*.py"]
+"share/distillschedule/recipes/ltx25" = ["recipes/ltx25/*.md", "recipes/ltx25/*.json", "recipes/ltx25/*.py"]
+"share/distillschedule/recipes/qwen_image_dmd" = ["recipes/qwen_image_dmd/*.md", "recipes/qwen_image_dmd/*.json"]
+"share/distillschedule/recipes/self_forcing" = ["recipes/self_forcing/*.md", "recipes/self_forcing/*.json", "recipes/self_forcing/*.py"]
+"share/distillschedule/recipes/self_forcing_official" = ["recipes/self_forcing_official/*.md", "recipes/self_forcing_official/*.json", "recipes/self_forcing_official/*.py"]
+"share/distillschedule/recipes/wan22_dmd" = ["recipes/wan22_dmd/*.md", "recipes/wan22_dmd/*.json", "recipes/wan22_dmd/*.py"]
+"share/distillschedule/recipes/wan_ar" = ["recipes/wan_ar/*.md", "recipes/wan_ar/*.json"]
+"share/distillschedule/docs/guides" = ["docs/guides/*.md"]
+"share/distillschedule/docs/contracts" = ["docs/contracts/*.md"]
+"share/distillschedule/docs/runbooks" = ["docs/runbooks/*.md"]
+"share/distillschedule/docs/architecture" = ["docs/architecture/*.md"]
+"share/distillschedule/docs/status" = [
+    "docs/status/official_optimized_framework.md",
+    "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",
+    "docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md",
+]
+"share/distillschedule/artifacts/framework/20261030" = [
+    "artifacts/framework/20261030/livewan_native_recovery_scope.json",
+]
+"share/distillschedule/artifacts/framework/20261029" = [
+    "artifacts/framework/20261029/wan_portable_output_acceptance.json",
+]
+"share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
+
+# Public guide dependencies; repository-only CI/source/evidence remain outside this set.
+"share/distillschedule" = ["THIRD_PARTY.md"]
+"share/distillschedule/docs/workloads" = [
+    "docs/workloads/open_role_pools.md",
+    "docs/workloads/open_workload_program.md",
+    "docs/workloads/original_wan_fresh_training.md",
+]

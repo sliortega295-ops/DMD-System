@@ -3,8 +3,10 @@
 **Implemented boundary:** real upstream tiny native architectures, exact local
 FP32 state dictionaries, raw/preencoded AV and real Gemma4 text, full or
 unmerged trainable LoRA, G1/F5 training, common complete-cycle checkpoint/resume,
-and current-Student native AV generation/export. **Not a pretrained 22B quality,
-GPU, distributed, performance or official LTX distillation reproduction claim.**
+and current-Student native AV generation/export. A bounded single-device CUDA
+FP32 reference path is also implemented; its separate GPU acceptance is recorded
+below. **Not a pretrained 22B, distributed, performance or official LTX
+distillation reproduction claim.**
 
 ## Source and environment
 
@@ -21,6 +23,37 @@ The CPU acceptance environment is pinned in `environment.json`. Source imports
 use `PinnedSource(python_roots=('packages/ltx-core/src',),
 import_roots=('ltx_core',))`; no global `sys.path` installation or CUDA context is
 needed. Both native transformer attention paths are explicitly MATH SDPA.
+Text connectors retain the upstream CPU/Ampere SDPA priority order. In the
+adapter's private pinned-source namespace, the default provider resolves
+directly to that native factory, instead of probing CUDA0 while constructing
+CPU/meta codecs. The normal `ltx_core` namespace and Torch's device APIs are
+not modified. This constructor policy is source-bound; prepare features again
+after changing adapter source rather than reusing a stale condition binding.
+
+### Single-device CUDA reference
+
+Set `trainer.device` to an explicit visible device such as `cuda:0`, keeping
+`execution.mode: reference`. Use the same pinned package versions with matching
+CUDA builds of Torch, TorchAudio and TorchVision, in an isolated Python >=3.11
+environment. Do not upgrade a historical SD/Self-Forcing environment in place.
+The model, native codecs, constants, trainables, optimizer slots and EMA belong
+to that one device. CUDA uses native capturable AdamW so its step tensors remain
+on the owned device; CPU optimizer execution is unchanged. Model construction
+and offline preparation still load and validate source assets on CPU first.
+
+The common Program, flow objective, cycle clocks, checkpoint publication and
+current-Student export are unchanged. Restoration validates all EMA state before
+copying into the existing resident shadows. Exports may be reloaded on CPU or
+CUDA; this does not promise CPU/CUDA bitwise equivalence. Existing architecture
+and source/shape/precision limits remain in force.
+
+AMP, multi-rank ownership, other manual policies and CUDA auto/saved-plan trials are rejected.
+The latter require a capacity-bounded snapshot owner, not whole-model CUDA
+copies. CPU measured planning remains separately supported. New CUDA acceptance
+tests use actual random-tiny upstream AV classes, full/LoRA updates, a direct
+flow-DMD oracle and fresh-process restore/export; **unexecuted or skipped tests
+are not acceptance**. See the current hardware acceptance record (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`)
+for executed scope. Pretrained capacity and generation quality remain unverified.
 
 ```sh
 # PY is the Python executable in that isolated environment.
@@ -75,6 +108,10 @@ shapes, precision and finite values against the original configurator's internal
 meta layout, and refuses an incomplete/uninitialized/meta return. Metadata
 defaults must not invent missing production geometry. The exact native weights
 are compared again after builder loading; source and file hashes are rechecked.
+Before any optimizer is created, safetensors-backed views are copied into
+independently owned Torch storage without replacing Parameter objects or
+changing their values. This avoids different CPU GEMV reductions caused solely
+by file-offset alignment when reconstructing an exported current Generator.
 Inference LoRA fusion is disabled and the native registry has no model/weight
 cache. Both real native attention paths are then explicitly pinned to MATH SDPA.
 
@@ -149,6 +186,49 @@ named native Linear targets, zero initial B, frozen unmerged base. Teacher and
 codecs remain frozen. No PEFT dependency, inference `builder.loras`, or weight
 merging is used. Unknown/non-Linear targets fail before training.
 
+## Direct and measured execution use the same native model
+
+The reference remains the default. To enable the existing exact immutable
+sharing implementation, use this `execution` object:
+
+```json
+{"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
+```
+
+This exact direct policy also admits the single-CUDA FP32 LoRA owner without
+trial cloning. It does not reduce construction peak: all roles initially load.
+See the [common capacity and evidence boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
+Full-parameter reference remains independent of this LoRA-specific policy.
+
+The adapter declares frozen Teacher/media and each Student/Fake LoRA **base**.
+Only equal frozen tensors may alias; A/B, gradients and optimizer owners stay
+independent. No weights are merged and no forward/update is removed. Different
+checkpoint weights do not become shareable just because their shapes match.
+
+For `create_cpu_fixture.py`'s explicitly random actual-class LoRA configuration,
+the existing common planner also supports:
+
+```json
+{"mode":"auto","memory_limit_bytes":100000000,"max_candidates":4,"samples":1,"max_program_runs":5}
+```
+
+This performs actual bounded CPU calibration and paired reference checks,
+selects among measured candidates and writes `planning/selected-plan.json`.
+Use `{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}` to execute the
+saved policy. Complete-cycle resume preserves the policy without recalibration.
+Three fresh-cycle and new-process tests compare real gradients, role state,
+Adam/schedulers/EMA, RNG, AV inputs and update clocks to reference execution.
+Each saved plan binds the source/runtime, actual parameters, geometry, dtype,
+algorithm, hardware and cache state; mismatches fail before a formal update.
+
+Only the original `RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED` fixture
+label admits whole-role trial copies, with CPU1 FP32 tensors. Other local
+weights may use the separately admitted non-clone reference/manual route, but
+**not** auto/saved-plan clone trials. A label is provenance, not proof of model
+size or source authenticity. The 100 MB test limit is selected tracked storage,
+not total CPU RSS or simultaneous construction/copy capacity. GPU, pretrained
+and performance acceptance remain NOT_RUN; the planner does not promise a gain.
+
 ## Data preparation
 
 `inputs.raw.template.json`, `inputs.prompts.template.json`, and
@@ -193,6 +273,50 @@ on a new complete prepared native input with `--output-kind audio_video`.
 The original training weights/inputs/checkpoints are not required to load it;
 the pinned external source and isolated runtime remain required.
 
+### Prepare new inputs from the export alone
+
+After exporting, the common input preparer can use the exported Gemma, tokenizer,
+connectors and AV codecs directly. It does not reopen `assets.json`, the Teacher,
+or the original prepared dataset. For the **tiny fixture geometry**:
+
+```json
+{
+  "schema_version": "distillschedule.export_inputs.v1",
+  "weights": "export",
+  "mode": "prompts",
+  "records": [{
+    "id": "new-prompt",
+    "prompt": "a dog rests",
+    "geometry": {
+      "fps": 8.0,
+      "video_shape": [1, 128, 2, 2, 2],
+      "audio_shape": [1, 8, 11, 16],
+      "conditioning": {
+        "video_prefix_latent_frames": 0,
+        "audio_prefix_latent_frames": 0
+      }
+    }
+  }]
+}
+```
+
+```sh
+distillctl data prepare new-inputs.json --output new-prepared \
+  --preparer distillschedule.data.export_inputs:prepare_inputs
+distillctl generate inference.json --weights export \
+  --prepared new-prepared/manifest.json --output new-av --output-kind audio_video
+```
+
+Use the export's factory/parameters for `inference.json` as above. Preparation
+is CPU-only and preserves RNG; the resulting native features can be consumed
+by the admitted CPU or CUDA inference owner. Replace the example geometry with
+your explicitly supported native geometry, not a guessed image/video resize.
+For `mode: raw`, use the same `image`/`video`/`audio`/`text`/`metadata.geometry`
+records as the raw input manifest. Media paths resolve relative to the new
+manifest and are hashed; omitted media must have explicit latent shapes and
+cannot provide invented clean history. Preencoded data does not use this raw
+export-only preparer. Missing or stale conditions fail before publication.
+
 Decoded video comes from actual `decode_video` FHWC `[0,1]` chunks, then explicit
 uint8 conversion. Audio comes from actual `decode_audio` + Vocoder, exported as
 native-rate PCM WAV. The outputs are a frame directory + WAV + safe tensor
@@ -204,7 +328,8 @@ diagnostics use `--output-kind latents`; no latent reshape is called a decoder.
 ```sh
 LTX_SOURCE_ROOT="$LTX_SOURCE_ROOT" "$PY" -m pytest -q \
   tests/test_training_dmd_flow.py tests/test_training_ltx_source.py \
-  tests/test_training_ltx_original_checkpoint.py tests/test_training_ltx_cpu.py
+  tests/test_training_ltx_original_checkpoint.py tests/test_training_ltx_cpu.py \
+  tests/test_training_ltx_planning.py
 ```
 
 Tests exercise actual native raw codecs and text, AV forwards/backwards, loss

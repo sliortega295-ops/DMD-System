@@ -1,0 +1,18 @@
+{
+  "repository": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+  "revision": "b8fff7315c768468a5333511427288870b2e9635",
+  "license": "Apache-2.0",
+  "source_only_audit": {
+    "model_index.json": "6a72faeb564b0e894aea8fc4ef27241106eb739e8584e869b61589a65473add7",
+    "transformer/config.json": "dc00d9866e72cf77db6b531aaa33be4dc7148fef9338442bd0ae9181f7075e9b",
+    "vae/config.json": "d996c340fe9a7df5d7371f76a7d8d6956f6c98256080074d8434fa5eeac11360"
+  },
+  "task": "T2V_ONLY",
+  "pipeline": {"expand_timesteps": true, "transformer_2": null, "boundary_ratio": null},
+  "native_classes": ["WanTransformer3DModel", "AutoencoderKLWan", "UMT5EncoderModel", "T5TokenizerFast", "WanPipeline"],
+  "legacy_serialization": "Original VAE clip_output:false is a validated historical no-op; raw config bytes/hash are retained. true and unknown fields reject.",
+  "algorithm": "COMMON_RECTIFIED_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING",
+  "codec": "Residual patch2 internal; z_dim48 in pretrained config; spatial16 temporal4; mode + native mean/std. No double patching.",
+  "weights_downloaded": false,
+  "pretrained_gpu_or_quality_validation": "NOT_RUN"
+}

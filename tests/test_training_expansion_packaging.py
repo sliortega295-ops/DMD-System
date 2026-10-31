@@ -1,6 +1,12 @@
 """Public optional stacks and mandatory real-upstream CPU qualification lanes."""
 import json
+import os
 from pathlib import Path
+import shlex
+import tarfile
+import subprocess
+import sys
+import zipfile
 
 from test_training_packaging import framework_wheel, wheel_metadata
 
@@ -9,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_model_extras_are_separate_and_keep_native_environment_pins(wheel_metadata):
     extras = set(wheel_metadata.get_all('Provides-Extra'))
-    assert {'dmd2', 'self-forcing-official', 'ltx25'} <= extras
+    assert {'dmd2', 'self-forcing-official', 'ltx25', 'modern-flow'} <= extras
     requirements = {v.replace(' ', '') for v in wheel_metadata.get_all('Requires-Dist')}
     for extra, pins in {
         'test': ['setuptools>=77.0.0', 'wheel'],
@@ -21,6 +27,8 @@ def test_model_extras_are_separate_and_keep_native_environment_pins(wheel_metada
         'ltx25': ['torch==2.10.0', 'torchaudio==2.10.0', 'transformers==5.14.1',
                   'tokenizers==0.22.2', 'scipy==1.16.3', 'colour-science==0.4.7'],
         'livewan-wan21-reference': ['diffusers==0.35.2', 'einops==0.8.1'],
+        'modern-flow': ['torch==2.10.0', 'diffusers==0.37.1', 'transformers==5.14.1',
+                        'peft==0.18.1', 'tokenizers==0.22.2', 'accelerate==1.14.0'],
     }.items():
         for pin in pins:
             assert f'{pin};extra=="{extra}"' in requirements
@@ -38,6 +46,10 @@ def test_dedicated_provider_lanes_fetch_source_only_and_forbid_acceptance_skips(
     assert 'test_fresh_process_exact_resume_and_current_generator_av_export[lora_config]' in workflow
     assert 'test_source_trainer_oracle_loss_gradient_adam_ema_cache_rng_and_native_clocks' in workflow
     assert 'test_cli_actual_original_optional_video_parameter_and_no_fallback' in workflow
+    assert 'tests/gpu/test_training_dmd2_lifecycle.py --junitxml=optional-cuda.xml' in workflow
+    assert 'tests/gpu/test_training_self_forcing_lifecycle.py --junitxml=optional-cuda.xml' in workflow
+    assert 'scripts/check_cpu_receipt.py optional-cuda.xml' not in workflow
+    assert '--deselect' not in workflow, 'optional GPU files are outside the mandatory root globs'
     generic = (ROOT/'.github/workflows/framework-cpu.yml').read_text()
     # W4 full-class .35 tests run in their own job, not a conflicting .34 lane.
     assert 'python scripts/run_framework_cpu_tests.py --junitxml=framework-cpu.xml' in generic
@@ -56,3 +68,173 @@ def test_official_self_forcing_static_config_uses_registered_native_workflow():
     for mode in ('prompts', 'preencoded'):
         value = json.loads((ROOT/f'recipes/self_forcing_official/inputs.{mode}.template.json').read_text())
         assert value['mode'] == mode and value['schema_version'] == 'distillschedule.official_self_forcing_inputs.v1'
+        if mode == 'prompts':
+            assert value['encoder']['precision'] == {'weights': 'bfloat16', 'output': 'float32'}
+            assert value['encoder']['config']['dim'] == 4096
+            assert value['encoder']['config']['num_layers'] == 24
+            assert value['encoder']['text_len'] == 512
+
+
+def test_public_resident_provider_ci_requires_real_lifecycle_not_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())
+    job = workflow['jobs']['public-resident-lifecycle']
+    assert job['strategy']['matrix']['include'] == [
+        dict(family='dmd2', extra='train,test,dmd2', selection='not self_forcing'),
+        dict(family='official-self-forcing', extra='train,test,self-forcing-official',
+             selection='not sd15 and not sdxl')]
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    for value in ('torch==2.10.0', '.[${{ matrix.extra }}]',
+                  'recipes/dmd2_sd15/fetch_source.py',
+                  'recipes/self_forcing_official/fetch_source.py',
+                  'tests/test_training_resident_lifecycle.py',
+                  'tests/test_training_resident_metadata.py',
+                  'scripts/check_cpu_receipt.py resident-public-cpu.xml'):
+        assert value in commands
+    for family in ('sd15', 'sdxl', 'self_forcing'):
+        for mode in ('manual', 'auto'):
+            assert f'test_real_native_public_budget_policy_three_inputs[{family}-{mode}]' in commands
+        for proof in ('test_native_public_manual_fresh_process_checkpoint_resume',
+                      'test_native_manual_publication_failure_is_not_a_commit'):
+            assert f'{proof}[{family}]' in commands
+    assert 'test_public_auto_saved_plan_and_resume_never_search_again' in commands
+    assert '--deselect' not in commands and 'tests/gpu' not in commands
+
+
+def test_public_resident_ci_required_cases_are_actually_collected():
+    import yaml
+    job = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())['jobs']['public-resident-lifecycle']
+    command = next(step['run'] for step in job['steps']
+                   if step.get('name') == 'Public direct, automatic and saved-plan native lifecycle')
+    paths = [str(ROOT/'src'), str(ROOT), str(ROOT/'tests')]
+    if inherited := os.environ.get('PYTHONPATH'):
+        paths.append(inherited)
+    for row in job['strategy']['matrix']['include']:
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES='', PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
+                   PYTHONDONTWRITEBYTECODE='1', PYTHONPATH=os.pathsep.join(paths))
+        result = subprocess.run([sys.executable, '-m', 'pytest', '--collect-only', '-q', '-p', 'no:cacheprovider',
+                                 'tests/test_training_resident_metadata.py', 'tests/test_training_resident_lifecycle.py',
+                                 '-k', row['selection']], cwd=ROOT, env=env, text=True,
+                                capture_output=True, timeout=60)
+        assert result.returncode == 0, result.stdout + result.stderr
+        names = {line.split('::', 1)[1] for line in result.stdout.splitlines() if line.startswith('tests/')}
+        branch = command.split(row['family'] + ')', 1)[1].split(';;', 1)[0]
+        words = shlex.split(branch)
+        required = {words[i + 1] for i, word in enumerate(words) if word == '--require'}
+        assert required and required <= names, required - names
+        wrong = ('self_forcing',) if row['family'] == 'dmd2' else ('[sd15', '[sdxl')
+        assert not any(any(other in name for other in wrong) for name in names)
+
+
+def test_modern_flow_ci_is_isolated_mandatory_and_runs_the_real_installed_path():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/modern-flow-cpu.yml').read_text())
+    job = workflow['jobs']['native-media-lifecycle']
+    assert job['env']['DMD_MODERN_FLOW_CPU'] == '1'
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    for value in ('torch==2.10.0', '.[test,modern-flow]', 'ffmpeg', 'ffprobe',
+                  'tests/test_training_flow_image_device.py',
+                  'tests/test_training_flow_video_device.py',
+                  'tests/test_training_flow_images_cpu.py', 'tests/test_training_wan22_cpu.py',
+                  'tests/test_training_hunyuan_video_cpu.py', 'tests/test_training_modern_flow_planning_cpu.py',
+                  'tests/test_training_native_text_assets_cpu.py',
+                  'tests/test_training_flow_streaming_load.py',
+                  "--require 'test_native_loading_releases_each_shard_before_reading_the_next[float32]'",
+                  "--require 'test_native_loading_releases_each_shard_before_reading_the_next[bfloat16]'",
+                  '--require test_streaming_native_constructor_keeps_success_rng_and_rejects_nonfinite_without_consuming_rng',
+                  'tests/test_data_export_inputs_native_cpu.py', 'scripts/check_cpu_receipt.py modern-flow-cpu.xml',
+                  'test_actual_lossless_video_file_and_raw_rgba_refusal',
+                  'test_public_auto_saved_plan_and_new_process_resume[wan22-ti2v-5b]',
+                  "--require 'test_legacy_native_effective_config_forward_gradient_raw_restore_and_safe_reload[flux]'",
+                  "--require 'test_alias_shard_index_remains_exact_and_header_failures_precede_payload[wrong-shard]'",
+                  'scripts/check_framework_install.py --modern-flow'):
+        assert value in commands, value
+    assert '--deselect' not in commands and '-k ' not in commands
+    assert ('tests/gpu/test_training_flow_image_lifecycle.py tests/gpu/test_training_flow_video_lifecycle.py '
+            '--junitxml=optional-modern-cuda.xml') in commands
+    assert 'scripts/check_cpu_receipt.py optional-modern-cuda.xml' not in commands
+    assert '--require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners' in commands
+    assert '--require test_ema_restoration_validates_every_tensor_before_mutation' in commands
+    for family in ('wan22-ti2v5b-t2v-wan22', 'hunyuan15-t2v-hunyuan_video'):
+        for name in ('test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual',
+                     'test_prepared_feature_device_contract_and_owned_native_tensors'):
+            assert f"--require '{name}[{family}]'" in commands
+
+
+def test_w2_safe_stream_is_mandatory_in_original_tf4_lane_not_modern():
+    original = (ROOT/'.github/workflows/helios-reference-model-cpu.yml').read_text()
+    modern = (ROOT/'.github/workflows/modern-flow-cpu.yml').read_text()
+    assert 'tests/test_training_helios_optimized_stream.py' in original
+    for name in ('test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two',
+                 'test_two_rank_gloo_local_native_state_resume_and_failure_boundaries'):
+        assert name in original
+    assert 'test_training_helios_optimized_stream.py' not in modern
+
+
+def test_native_replica_ci_requires_both_image_and_video_proofs_without_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/modern-flow-cpu.yml').read_text())
+    job = workflow['jobs']['native-replicated-lifecycle']
+    matrix = job['strategy']['matrix']['include']
+    assert job['strategy']['fail-fast'] is False
+    assert matrix == [
+        dict(kind='image', proof='test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli',
+             first='flux2-klein-base', second='qwen-image'),
+        dict(kind='video', proof='test_actual_native_video_gloo2_independent_oracle_and_fresh_cli',
+             first='wan22', second='hunyuan_video')]
+    assert job['env']['DMD_NATIVE_FLOW_REPLICATED'] == job['env']['DMD_MODERN_FLOW_CPU'] == '1'
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    assert 'tests/test_training_flow_${{ matrix.kind }}_replicated.py' in commands
+    assert 'tests/test_training_checkpoint_storage_visibility.py' in commands
+    for name in ('first', 'second'):
+        assert "--require '${{ matrix.proof }}[${{ matrix." + name + " }}]'" in commands
+    assert '-k ' not in commands and '--deselect' not in commands
+
+
+def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework_wheel, tmp_path):
+    expected = {str(path.relative_to(ROOT)): path for path in (ROOT/'recipes').rglob('*')
+                if path.is_file() and path.suffix in ('.py', '.json', '.md', '.yaml', '.yml')}
+    assert {'recipes/wan_ar/training.incumbent-stream.json', 'recipes/wan_ar/INCUMBENT_STREAM.md'} <= expected.keys()
+    assert 'recipes/h3_fullseq/training.original-reference.json' in expected
+    with zipfile.ZipFile(framework_wheel) as wheel:
+        prefix = next(name.split('.data/', 1)[0] + '.data/data/share/distillschedule/'
+                      for name in wheel.namelist() if '.data/data/share/distillschedule/recipes/' in name)
+        for relative, path in expected.items():
+            assert wheel.read(prefix + relative) == path.read_bytes(), relative
+            if path.suffix in ('.json', '.yaml', '.yml'):
+                for private in (b'/home/', b'/tmp/lyy-', b'/share/project/', b'api_key', b'password'):
+                    assert private not in wheel.read(prefix + relative), (relative, private)
+        assert not any(name.endswith(('.pt', '.pth', '.safetensors', '.nsys-rep', '.sqlite', '.env'))
+                       for name in wheel.namelist())
+    result = subprocess.run([sys.executable, '-B', '-c',
+        'import sys; from setuptools.build_meta import build_sdist; build_sdist(sys.argv[1])', str(tmp_path)],
+        cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    with tarfile.open(next(tmp_path.glob('distillschedule-*.tar.gz'))) as archive:
+        prefix = archive.getnames()[0] + '/'
+        for relative, path in expected.items():
+            assert archive.extractfile(prefix + relative).read() == path.read_bytes(), relative
+        assert not any('/docs/plans/' in name or name.endswith(('.pt', '.safetensors', '.nsys-rep', '.sqlite', '.env'))
+                       for name in archive.getnames())
+
+
+def test_official_installed_ci_requires_actual_native_proof_without_skips():
+    import yaml
+    workflow = yaml.safe_load((ROOT/'.github/workflows/official-models-cpu.yml').read_text())
+    job = workflow['jobs']['installed-official-lifecycle']
+    assert job['env']['DMD_OFFICIAL_INSTALLED_CPU'] == '1'
+    assert job['env']['CUDA_VISIBLE_DEVICES'] == ''
+    assert job['env']['HF_HUB_OFFLINE'] == job['env']['TRANSFORMERS_OFFLINE'] == '1'
+    commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    proof = 'test_actual_installed_official_sd15_sdxl_self_forcing_resume_export_new_inputs'
+    for value in ('torch==2.10.0', '.[train,test,dmd2,self-forcing-official]',
+                  'recipes/dmd2_sd15/fetch_source.py',
+                  'recipes/self_forcing_official/fetch_source.py',
+                  'tests/test_framework_official_install.py::' + proof,
+                  'scripts/check_cpu_receipt.py installed-official-cpu.xml',
+                  '--require ' + proof):
+        assert value in commands
+    assert '--deselect' not in commands and '-k ' not in commands

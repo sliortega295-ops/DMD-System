@@ -1,0 +1,27 @@
+--- a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
++++ b/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
+@@ -1,5 +1,6 @@
+ """DMD distillation for MiniMax-H3 text-to-audio-video generation."""
+ 
++import os
+ import torch
+ from loguru import logger
+ 
+@@ -199,7 +200,16 @@
+     def forward_loss(self, latent_shape, conditions, stage, current_iter=None, initial_noise=None):
+         del current_iter
+         condition, _ = conditions
+-        end_step_idx = self._sample_synced_int(0, self.num_inference_steps)
++        raw_end_step = os.environ.get("LIGHTX2V_BENCHMARK_END_STEP_IDX")
++        if raw_end_step is None:
++            end_step_idx = self._sample_synced_int(0, self.num_inference_steps)
++        else:
++            end_step_idx = int(raw_end_step)
++            if not 0 <= end_step_idx < self.num_inference_steps:
++                raise ValueError(
++                    "LIGHTX2V_BENCHMARK_END_STEP_IDX must be in "
++                    f"[0, {self.num_inference_steps - 1}], got {end_step_idx}"
++                )
+         generated = self.run_back_simulation(
+             condition,
+             latent_shape,

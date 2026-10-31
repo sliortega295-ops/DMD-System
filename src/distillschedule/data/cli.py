@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import sys
 
+from distillschedule._cli_streams import redirect_diagnostics
+
 from .dataset import PreparedDataset, inspect_prepared
 from .preparation import import_preencoded, prepare
 
@@ -26,6 +28,19 @@ def main(argv=None):
     helios.add_argument("--sources", type=Path, required=True)
     helios.add_argument("--training-config", type=Path, required=True)
     helios.add_argument("--output", type=Path, required=True)
+    from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
+    helios.add_argument("--history-policy", choices=(NATIVE_HISTORY_POLICY,),
+                        help="opt in to original rank-local amplified history; requires its new W2 stream kind")
+    gan = sub.add_parser("prepare-helios-gan-stream", help="prepare fresh original W3 world16 GAN cohorts on CPU")
+    gan.add_argument("--sources", type=Path, required=True)
+    gan.add_argument("--training-config", type=Path, required=True)
+    gan.add_argument("--output", type=Path, required=True)
+    gan.add_argument("--history-policy", choices=(NATIVE_HISTORY_POLICY,),
+                     help="opt in to independent W3 native-history stream; retains original full GAN bundle")
+    from .helios_epoch_inputs import EPOCH_POLICY as HELIOS_EPOCH_POLICY
+    for command in (helios, gan):
+        command.add_argument("--input-policy", choices=(HELIOS_EPOCH_POLICY,),
+                             help="opt in to a finite native feature pool; default v1 forbids reuse")
     reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
     reference.add_argument("--sources", type=Path, required=True)
     reference.add_argument("--output", type=Path, required=True)
@@ -38,6 +53,14 @@ def main(argv=None):
     cached = sub.add_parser("prepare-h3-cached-reference", help="prepare original W6 cached AV CPU reference; no decoding/download")
     cached.add_argument("--sources", type=Path, required=True)
     cached.add_argument("--output", type=Path, required=True)
+    h3_stream = sub.add_parser("prepare-h3-ar-stream", help="admit fresh original W6 previous/current AV records on CPU")
+    h3_stream.add_argument("--sources", type=Path, required=True)
+    h3_stream.add_argument("--assets", type=Path, required=True)
+    h3_stream.add_argument("--cycles", type=int, required=True)
+    h3_stream.add_argument("--seed", type=int, required=True)
+    h3_stream.add_argument("--output", type=Path, required=True)
+    h3_stream.add_argument("--input-policy", choices=("distillschedule.h3_ar_record_epochs.v1",),
+                           help="explicit rank-local cached AV epochs; default v1 forbids source reuse")
     grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
     grid.add_argument("--native-config", type=Path, required=True)
     grid.add_argument("--output", type=Path, required=True)
@@ -50,52 +73,76 @@ def main(argv=None):
     livewan.add_argument("--output", type=Path, required=True)
     livewan.add_argument("--evidence-kind", default="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY",
                          choices=("NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"))
+    c51 = sub.add_parser("prepare-livewan-c51-inputs", parents=[livewan], add_help=False,
+                        help="explicit C51 finite teacher stream (up to 100 cycles); no downloads")
+    from .livewan_inputs import EPOCH_POLICY
+    c51.add_argument("--input-policy", choices=(EPOCH_POLICY,),
+                     help="opt in to finite teacher-pool epochs; default v1 forbids record reuse")
     args = parser.parse_args(argv)
     try:
-        if args.command == "prepare-helios-stream":
-            from distillschedule.search.helios_request import OriginalHeliosRequest
-            from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
-            values = json.loads(args.sources.read_text())
-            if not isinstance(values, list):
-                raise ValueError("explicit source cohort list required")
-            result = prepare_stream(OriginalHeliosRequest(), [HeliosCohortSources.from_dict(s) for s in values],
-                                    args.training_config, args.output)
-        elif args.command == "prepare-helios-gan-reference":
-            from .helios_native_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-wan-reference":
-            from .wan_reference_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-helios-nogan-reference":
-            from .helios_nogan_reference_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-h3-grid":
-            from distillschedule.training.h3_grid_inputs import prepare_inputs
-            result = prepare_inputs(args.native_config, args.output)
-        elif args.command == "prepare-h3-cached-reference":
-            from .h3_cached_inputs import prepare_inputs
-            result = inspect_prepared(prepare_inputs(args.sources, args.output))
-        elif args.command == "prepare-livewan-inputs":
-            from .livewan_inputs import prepare_inputs
-            result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
-                                    cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind)
-        elif args.command == "prepare":
-            if args.preparer:
-                from distillschedule.training.plugins import load_callable, resolve_reference
-                reference = resolve_reference(args.preparer, args.manifest.resolve().parent)
-                factory, source = load_callable(reference)
-                manifest = Path(factory(args.manifest, args.output)).resolve()
-                if not manifest.is_relative_to(args.output.resolve()):
-                    raise ValueError('native preparer must return its manifest below the requested output')
-                result = {**inspect_prepared(manifest), 'preparer_source': source}
+        # Preparation/import can load trusted encoders and noisy dependencies.
+        # Restore stdout even on failure, before emitting the JSON receipt.
+        with redirect_diagnostics():
+            if args.command == "prepare-helios-stream":
+                from distillschedule.search.helios_request import OriginalHeliosRequest
+                from distillschedule.training.helios_inputs import HeliosCohortSources, prepare_stream
+                values = json.loads(args.sources.read_text())
+                if args.input_policy is None and not isinstance(values, list):
+                    raise ValueError("explicit source cohort list required")
+                sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
+                result = prepare_stream(OriginalHeliosRequest(), sources, args.training_config, args.output,
+                                        input_policy=args.input_policy,
+                                        **({"native_policy":args.history_policy} if args.history_policy is not None else {}))
+            elif args.command == "prepare-helios-gan-stream":
+                from distillschedule.training.helios_gan_inputs import HeliosCohortSources, prepare_stream
+                values = json.loads(args.sources.read_text())
+                if args.input_policy is None and not isinstance(values, list):
+                    raise ValueError("explicit source cohort list required")
+                sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
+                result = prepare_stream(sources, args.training_config, args.output, input_policy=args.input_policy,
+                                        **({"native_policy": args.history_policy} if args.history_policy is not None else {}))
+            elif args.command == "prepare-helios-gan-reference":
+                from .helios_native_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-wan-reference":
+                from .wan_reference_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-helios-nogan-reference":
+                from .helios_nogan_reference_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-h3-grid":
+                from distillschedule.training.h3_grid_inputs import prepare_inputs
+                result = prepare_inputs(args.native_config, args.output)
+            elif args.command == "prepare-h3-cached-reference":
+                from .h3_cached_inputs import prepare_inputs
+                result = inspect_prepared(prepare_inputs(args.sources, args.output))
+            elif args.command == "prepare-h3-ar-stream":
+                from .h3_ar_stream import prepare_inputs
+                policy = {"input_policy": args.input_policy} if args.input_policy is not None else {}
+                result = prepare_inputs(args.sources, args.output, assets_path=args.assets, cycles=args.cycles, seed=args.seed, **policy)
+            elif args.command in ("prepare-livewan-inputs", "prepare-livewan-c51-inputs"):
+                from .livewan_inputs import prepare_inputs, prepare_c51_inputs
+                prepare_inputs = prepare_c51_inputs if args.command == "prepare-livewan-c51-inputs" else prepare_inputs
+                policy = {"input_policy": args.input_policy} if args.command == "prepare-livewan-c51-inputs" else {}
+                result = prepare_inputs(args.data_root, args.prompts, args.output, source_root=args.source_root,
+                                        cycles=args.cycles, seed=args.seed, evidence_kind=args.evidence_kind, **policy)
+            elif args.command == "prepare":
+                if args.preparer:
+                    from distillschedule.training.plugins import load_callable, resolve_reference
+                    reference = resolve_reference(args.preparer, args.manifest.resolve().parent)
+                    factory, source = load_callable(reference)
+                    manifest = Path(factory(args.manifest, args.output)).resolve()
+                    if not manifest.is_relative_to(args.output.resolve()):
+                        raise ValueError('native preparer must return its manifest below the requested output')
+                    result = {**inspect_prepared(manifest), 'preparer_source': source}
+                else:
+                    result = inspect_prepared(prepare(args.manifest, args.output))
+            elif args.command == "import":
+                result = inspect_prepared(import_preencoded(args.manifest, args.output))
+            elif args.command == "validate":
+                result = PreparedDataset(args.manifest).validate(sources=args.sources)
             else:
-                result = inspect_prepared(prepare(args.manifest, args.output))
-        elif args.command == "import":
-            result = inspect_prepared(import_preencoded(args.manifest, args.output))
-        elif args.command == "validate":
-            result = PreparedDataset(args.manifest).validate(sources=args.sources)
-        else:
-            result = inspect_prepared(args.manifest)
+                result = inspect_prepared(args.manifest)
         print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
         return 0
     except (ValueError, TypeError, KeyError, OSError, RuntimeError, ImportError) as exc:

@@ -1,0 +1,980 @@
+"""Shared local asset, payload and lifecycle plumbing, not a model-name trainer.
+
+Family modules own native forward, text/codec ABI and packing. This module never
+changes common DMD math, planner choices, or controller scheduling. Production
+loaders require every actual config/safetensor file; random initialization is
+allowed only in explicitly labeled fixture creators outside this module.
+"""
+from contextlib import nullcontext
+from copy import deepcopy
+from dataclasses import replace
+import importlib.metadata
+import inspect
+import json
+from pathlib import Path
+
+import torch
+from torch import nn
+
+from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
+from .adapters import InferenceProjection, ModelComponents
+from .dmd import FlowDMDMethods
+from .low_rank import TrainableLowRankLinear, trainable_scope
+from .prediction import PredictionSpec
+from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
+from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches,
+    FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
+
+ASSET_SCHEMA = 'distillschedule.flow_image_assets.v1'
+INPUT_SCHEMA = 'distillschedule.flow_image_inputs.v1'
+CUDA_TRIAL_LIMIT = ('CUDA native image trial cloning requires a capacity-bounded snapshot/restore; '
+                    'only reference or exact persistent manual immutable sharing is admitted; '
+                    'auto/plan/calibration and CUDA owner cloning remain unsupported')
+
+
+class _FrozenTeacherConstruction:
+    """Model-owned provider for exactly one CPU native frozen Teacher child."""
+    def __init__(self, parameters, request, factory, builder):
+        from distillschedule.open_workload.sharded import _FrozenRootHandoff, frozen_construction_mesh
+        self.parameters, self.factory, self.builder = deepcopy(parameters), factory, builder
+        self.option = deepcopy(request.execution['implementation'])
+        self.handoff = _FrozenRootHandoff(frozen_construction_mesh(), self.option)
+        self.started = self.attached = self.closed = False
+
+    @staticmethod
+    def local(function, label):
+        from distillschedule.open_workload.replicated import checked
+        return checked(function, label)
+
+    def construct(self, factory, parameters):
+        self.local(lambda: require(not self.started and not self.closed and factory is self.factory
+            and parameters == self.parameters,
+            'construction provider is single-use and bound to effective parameters'), 'construction provider ownership')
+        self.started = True
+        try:
+            return self.builder(parameters, construction=self)
+        except BaseException:
+            self.close()
+            raise
+
+    def load_teacher(self, cls, base, spec, *, config_transform=None):
+        return self.handoff.load(cls, base, spec, config_transform=config_transform)
+
+    def wrap_teacher(self, role_class, **kwargs):
+        def construct_root():
+            require(inspect.isclass(role_class) and issubclass(role_class, nn.Module)
+                    and role_class.__new__ is object.__new__,
+                    'construction requires an ordinary new outer role class, not a caller root/callback')
+            root = role_class(self.handoff.native, **kwargs).eval()
+            require(type(root) is role_class, 'outer role constructor returned a foreign root')
+            self.handoff.bind(root, key='teacher', child_path='native', method='dmd_forward')
+            return root
+        return self.local(construct_root, 'frozen Teacher outer-root construction')
+
+    def attach(self, components):
+        def admit():
+            require(self.started and not self.closed and not self.attached
+                    and components.sharded_construction is self
+                    and components.state.get('teacher') is self.handoff.root
+                    and self.handoff.status == 'bound' and 'teacher' in components.immutable_modules,
+                    'factory returned a foreign/expired frozen Teacher construction')
+            from .tensor_state import ParameterShadows
+            if 'student_ema' in components.state:
+                require(type(components.state['student_ema']) is dict,
+                        'construction expects the existing dense full-parameter Student EMA')
+                components.state['student_ema'] = ParameterShadows('student', components.state['student_ema'])
+            components.metadata = {**components.metadata, 'precision': 'FP32_NATIVE_CPU_1D_FSDP2',
+                'replication': 'EXPLICIT_EQUAL_RANK_LOCAL_B1_NATIVE_FSDP_MEAN', 'construction': dict(
+                schema_version=FROZEN_TEACHER_CONSTRUCTION, frozen_root='teacher', child='native',
+                trainable_initialization='DENSE_STUDENT_FAKE_CONSTRUCTOR_AND_LORA_ORDER_UNCHANGED',
+                teacher_constructor_rng='NOT_DENSE_CONSTRUCTOR_STREAM_EQUIVALENCE',
+                caller_training_rng='PRESERVED_BY_CONSTRUCTION_SCOPE',
+                scope='CPU_GLOO_1D_MANUAL_ONLY_NOT_ALL_ROLE_MEMORY_SOLVED')}
+            self.components = components
+            self.attached = True
+        self.local(admit, 'frozen Teacher construction attachment')
+
+    def bind_workload(self, components, workload):
+        """Reuse the existing registered-method/frozen/shadow contracts."""
+        require(self.attached and not self.closed and self.components is components
+                and workload.state.get('teacher') is self.handoff.root,
+                'frozen Teacher construction lifetime/root changed')
+        require(workload.replica_semantics is not None, 'construction requires the existing distributed flow Program')
+        semantics = replace(workload.replica_semantics, forward_interface='registered_methods',
+            forward_methods={binding: 'dmd_forward' for binding in
+                             ('student_forward', 'fake_forward', 'teacher_forward')},
+            frozen_module_bindings={'teacher_forward': 'teacher'},
+            parameter_shadows={'student_ema': 'student'} if 'student_ema' in workload.state else {},
+            shard_boundaries={'teacher': ('native',)})
+        self.handoff.validate(workload.state, semantics, self.option, session=self.handoff.session)
+        workload.replica_semantics = semantics
+        return workload
+
+    def close(self):
+        self.handoff.close()
+        self.closed = True
+
+
+def admit_frozen_teacher_construction(*, parameters, request, budget, factory, builder):
+    """Preconstruction opt-in; default construction stays byte/order compatible."""
+    from .distributed import checked, gather, rank_world
+    choice = parameters.get('construction')
+    choices = gather(choice)
+    require(all(value == choices[0] for value in choices), 'ranks selected different construction providers')
+    if choice is None:
+        return None
+    def admit():
+        require(choice == FROZEN_TEACHER_CONSTRUCTION and budget is None
+                and parameters.get('device', 'cpu') == request.trainer.get('device', 'cpu') == 'cpu'
+                and rank_world()[1] >= 2 and torch.distributed.get_backend() == 'gloo'
+                and request.trainer.get('distributed', {}).get('backend') == 'gloo'
+                and set(request.execution) <= {'adapter', 'mode', 'implementation'}
+                and execution_policy_matches(request.execution, FLOW_FROZEN_TEACHER_EXECUTION),
+                'frozen Teacher construction requires explicit CPU/Gloo 1D manual fsdp2_reshard; '
+                'automatic, saved plans, CUDA, HSDP and trials are unsupported')
+    checked(admit, 'frozen Teacher construction request')
+    return _FrozenTeacherConstruction(parameters, request, factory, builder)
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError('native flow image: ' + message)
+
+
+def json_object(path):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result, 'duplicate JSON field: ' + key)
+            result[key] = value
+        return result
+    try:
+        result = json.loads(Path(path).read_text(), object_pairs_hook=unique,
+                            parse_constant=lambda x: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
+    except (OSError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError('invalid local native JSON: ' + str(path)) from exc
+    require(isinstance(result, dict), 'explicit JSON object required')
+    return result
+
+
+def cpu1():
+    from .distributed import rank_world
+    require(rank_world()[1] == 1, 'only CPU1 admitted; distributed execution NOT_RUN')
+    require(not torch.is_autocast_enabled('cpu') and not torch.is_autocast_enabled('cuda'),
+            'FP32 only; AMP/autocast is not admitted')
+
+
+def runtime_identity(api):
+    versions = {k: importlib.metadata.version(k) for k in ('torch', 'diffusers', 'transformers', 'peft', 'safetensors')}
+    require(versions['torch'].split('+')[0] == '2.10.0' and versions['diffusers'] == '0.37.1'
+            and versions['transformers'] == '5.14.1' and versions['peft'] == '0.18.1',
+            'use the isolated modern-flow pinned lane, not the Transformers4/PEFT0.17 lane')
+    classes = api.classes()
+    config_classes = set()
+    def configs(cls):
+        config_classes.add(cls)
+        for child in getattr(cls, 'sub_configs', {}).values():
+            configs(child)
+    for cls in classes:
+        if hasattr(cls, 'config_class'):
+            configs(cls.config_class)
+    files = {cls.__module__ + '.' + cls.__name__: file_sha256(Path(inspect.getfile(cls))) for cls in (*classes, *config_classes)}
+    from transformers import configuration_utils, conversion_mapping, core_model_loading, modeling_rope_utils, modeling_utils
+    from . import flow_text_config
+    files.update({module.__name__: file_sha256(Path(module.__file__)) for module in
+                  (configuration_utils, conversion_mapping, core_model_loading, modeling_rope_utils, modeling_utils, flow_text_config)})
+    files.update({name: file_sha256(path) for name,path in {
+        'adapter': Path(api.__file__), 'shared_native_plumbing': Path(__file__),
+        'feature_encoder': Path(__file__).parent.parent/'data/flow_image_inputs.py',
+        'unmerged_lora': Path(__file__).parent/'low_rank.py',
+        'device_ownership': Path(__file__).parent/'single_device.py'}.items()})
+    import platform
+    return dict(python=platform.python_version(), versions=versions, source_files=files)
+
+
+def asset_files(base, spec):
+    require(isinstance(spec, dict) and {'path', 'files', 'max_parameters'} <= set(spec) and set(spec) <= {'path', 'files', 'max_parameters', 'dtype_policy'}
+            and isinstance(spec['path'], str) and spec['path'] and type(spec['max_parameters']) is int and spec['max_parameters'] > 0,
+            'each local component needs path, exact SHA256 inventory and CPU max_parameters')
+    require(spec.get('dtype_policy', 'strict_fp32') in ('strict_fp32', 'bf16_or_fp32_to_fp32'), 'explicit supported storage dtype policy required')
+    root = (Path(base) / spec['path']).resolve(strict=True)
+    require(root.is_dir() and root.is_relative_to(Path(base).resolve()), 'component path escapes local bundle')
+    require(isinstance(spec['files'], dict) and spec['files'], 'empty native component inventory')
+    actual = {str(p.relative_to(root)): p for p in root.rglob('*') if p.is_file()}
+    require(set(actual) == set(spec['files']), 'local native file inventory changed or missing shards')
+    for name, path in actual.items():
+        require(not path.is_symlink() and path.resolve().is_relative_to(root)
+                and isinstance(spec['files'][name], str) and file_sha256(path) == spec['files'][name],
+                'native asset SHA256/path mismatch: ' + name)
+    return root, list(actual.values())
+
+
+def _text_config(config_class, config):
+    from .flow_text_config import text_config
+    return text_config(config_class, config)
+
+
+def architecture(cls, config):
+    """Use exact native classes, never AutoModel remote code or ignored config keys."""
+    if hasattr(cls, 'config_class'):
+        require(config.get('model_type') == cls.config_class.model_type, 'wrong actual text model class/config')
+        return _text_config(cls.config_class, config)
+    fields = set(inspect.signature(cls.__init__).parameters) - {'self'}
+    metadata = {'_class_name', '_diffusers_version', '_name_or_path', '_use_default_values'}
+    require(config.get('_class_name') == cls.__name__ and set(config) <= fields | metadata,
+            'wrong actual native class or unknown constructor/config field')
+    return {k: deepcopy(v) for k, v in config.items() if k in fields}
+
+
+def shell(cls, config):
+    native_config = architecture(cls, config)
+    # A meta sizing witness only; no randomly initialized model can escape.
+    with torch.device('meta'):
+        value = cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)
+    return value
+
+
+def _parameter_alias_groups(model, layout):
+    # Only identical actual Parameter slots are a proof of a missing alias.
+    # Equal shapes, values, storage pointers (meta!), or native key hints are not.
+    slots = {}
+    for name, parameter in model.named_parameters(remove_duplicate=False):
+        if name in layout:
+            slots.setdefault(id(parameter), set()).add(name)
+    groups = list(slots.values())
+    covered = set().union(*groups) if groups else set()
+    return groups + [{key} for key in layout.keys() - covered]
+
+
+def _native_weight_header(header, expected, dtype_policy, key):
+    permitted_float = ('F32',) if dtype_policy == 'strict_fp32' else ('F32', 'BF16')
+    allowed_dtype = permitted_float if expected.dtype == torch.float32 else {
+        torch.int64: ('I64',), torch.bool: ('BOOL',)}.get(expected.dtype, ())
+    require(tuple(header.get_shape()) == tuple(expected.shape) and header.get_dtype() in allowed_dtype,
+            'native safetensor shape/dtype mismatch; FP32-only qualification: ' + key)
+
+
+def _native_weight_value(tensor, shape, dtype, dtype_policy, key):
+    if tensor.is_floating_point():
+        require(tensor.dtype in ((torch.float32,) if dtype_policy == 'strict_fp32' else (torch.float32, torch.bfloat16))
+                and bool(torch.isfinite(tensor).all()), 'nonfinite or incorrectly typed native weight: ' + key)
+        # Exact storage conversion only; never a runtime/GPU precision claim.
+        tensor = tensor.float()
+    require(tensor.dtype == dtype and tuple(tensor.shape) == tuple(shape),
+            'native weight shape/dtype differs from FP32 compute layout: ' + key)
+    return tensor
+
+
+def _admit_native_weights(cls, root, max_parameters, *, dtype_policy, config_transform):
+    """One config/key/header/index/alias admission for both physical copy paths."""
+    import safetensors
+    require(dtype_policy in ('strict_fp32', 'bf16_or_fp32_to_fp32'), 'unknown storage dtype policy')
+    config = json_object(root / 'config.json')
+    # Trusted family-owned normalization of audited historical serialization
+    # fields only. Preserve/return raw config bytes and their asset identity;
+    # ordinary callers retain the exact fail-closed constructor-field contract.
+    effective_config = config if config_transform is None else config_transform(deepcopy(config))
+    model = shell(cls, effective_config).float()
+    require(0 < sum(p.numel() for p in model.parameters()) <= max_parameters,
+            'native model exceeds explicit CPU parameter budget')
+    layout = model.state_dict()
+    alias_groups = _parameter_alias_groups(model, layout)
+    def complete(keys):
+        return keys <= layout.keys() and all(keys & group for group in alias_groups)
+    rename = lambda name: name
+    if hasattr(cls, 'config_class'):
+        # Transformers5's actual Qwen2.5-VL save format uses original checkpoint
+        # names. Use the pinned native key operations, never a guessed prefix map.
+        from transformers.conversion_mapping import get_model_conversion_mapping
+        from transformers.core_model_loading import WeightRenaming, rename_source_key
+        operations = get_model_conversion_mapping(model)
+        require(all(isinstance(op, WeightRenaming) for op in operations),
+                'non-renaming native text conversions need an independent audit')
+        rename = lambda name: rename_source_key(name, operations, [],
+            base_model_prefix=model.base_model_prefix, meta_state_dict=layout)[0]
+    indices = list(root.glob('*.safetensors.index.json'))
+    weights = sorted(root.glob('*.safetensors'))
+    require(weights and len(indices) <= 1 and not list(root.glob('*.bin')),
+            'real local safetensors required; no pickle/random fallback')
+    weight_map = None
+    if indices:
+        index = json_object(indices[0]); weight_map = index.get('weight_map')
+        require(set(index) <= {'metadata', 'weight_map'} and isinstance(weight_map, dict)
+                and len({rename(k) for k in weight_map}) == len(weight_map) and complete({rename(k) for k in weight_map})
+                and all(isinstance(value, str) for value in weight_map.values())
+                and set(weight_map.values()) == {p.name for p in weights}, 'incomplete safe weight shard index')
+    else:
+        require(len(weights) == 1, 'multiple safe shards need an explicit complete index')
+    headers = {}
+    for path in weights:
+        with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
+            for raw_key in handle.keys():
+                key = rename(raw_key)
+                require(key in layout and key not in headers and (weight_map is None or weight_map.get(raw_key) == path.name),
+                        'unexpected/duplicate/wrong-shard native safe weight: ' + key)
+                header = handle.get_slice(raw_key)
+                _native_weight_header(header, layout[key], dtype_policy, key)
+                # Admit every shard before constructing a concrete model.
+                headers[key] = path
+    require(complete(set(headers)) and (weight_map is None or set(headers) == {rename(k) for k in weight_map}),
+            'incomplete native weights; random fallback forbidden')
+    return model, config, effective_config, layout, alias_groups, rename, weights, headers
+
+
+def load_native(cls, root, max_parameters, *, dtype_policy='strict_fp32', config_transform=None):
+    from safetensors.torch import load_file
+    model, config, effective_config, layout, alias_groups, rename, weights, headers = _admit_native_weights(
+        cls, root, max_parameters, dtype_policy=dtype_policy, config_transform=config_transform)
+
+    def copy_shard(path):
+        # This scope owns all tensor payload references: after return, the next
+        # read cannot retain the previous shard (including BF16 cast temporaries).
+        payload = {rename(key): tensor for key, tensor in load_file(path, device='cpu').items()}
+        require(set(payload) == {key for key, shard in headers.items() if shard == path},
+                'native safe weight keys changed after header admission')
+        for key, tensor in payload.items():
+            payload[key] = _native_weight_value(tensor, layout[key].shape, layout[key].dtype, dtype_policy, key)
+        for group in alias_groups:
+            supplied = sorted(group & payload.keys())
+            if not supplied:
+                continue
+            value = payload[supplied[0]]
+            require(all(torch.equal(value, payload[key]) for key in supplied)
+                    and (not group & loaded_keys or torch.equal(value, live_state[supplied[0]])),
+                    'contradictory native tied weight aliases')
+            for key in group:
+                payload[key] = value
+        result = model.load_state_dict(payload, strict=False, assign=False)
+        require(not result.unexpected_keys and set(result.missing_keys) == layout.keys() - payload.keys(),
+                'native partial shard load changed the admitted state layout')
+        loaded_keys.update(payload)
+
+    # Native nonpersistent RoPE caches must be initialized by the actual CPU
+    # constructor. Copy one shard at a time instead of keeping a second complete
+    # checkpoint alive alongside it. Failure must not consume caller RNG just
+    # because the concrete constructor now precedes payload validation.
+    rng = torch.get_rng_state()
+    try:
+        native_config = architecture(cls, effective_config)
+        with torch.device('cpu'):
+            model = (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
+        live_state = model.state_dict()
+        require({frozenset(group) for group in _parameter_alias_groups(model, live_state)}
+                == {frozenset(group) for group in alias_groups}, 'native constructor parameter aliases changed')
+        loaded_keys = set()
+        for path in weights:
+            copy_shard(path)
+        require(loaded_keys == layout.keys(), 'incomplete native weights; random fallback forbidden')
+        require(all(not p.is_meta for p in (*model.parameters(), *model.buffers())), 'uninitialized meta native state')
+    except BaseException:
+        torch.set_rng_state(rng)
+        raise
+    model.eval()
+    return model, config
+
+
+def _native_shard_constants(model):
+    """Preserve only concrete native constants; meta caches need a family adapter.
+
+    to_empty destroys even nonpersistent buffers. Plain tensor attributes are
+    not visited by it at all. Neither kind may silently become empty/meta state.
+    Class/MRO tensor state is not instance-owned and is rejected even on CPU.
+    Inspect raw dictionaries only: never evaluate a property or descriptor.
+    """
+    from torch.utils._pytree import tree_leaves
+
+    def class_tensor(value, seen):
+        bases = type.__getattribute__(type(value), '__mro__')
+        if any(base is torch.Tensor for base in bases):
+            return True
+        container = next((base for base in (dict, list, tuple, set, frozenset)
+                          if any(base is parent for parent in bases)), None)
+        if container is None or id(value) in seen:
+            return False
+        seen.add(id(value))
+        # Built-in accessors bypass container-subclass overrides and do not
+        # inspect arbitrary objects, properties, descriptors or pytree hooks.
+        entries = (item for pair in dict.items(value) for item in pair) if container is dict \
+            else container.__iter__(value)
+        return any(class_tensor(item, seen) for item in entries)
+
+    constants = []
+    for module_name, child in model.named_modules():
+        for owner in type.__getattribute__(type(child), '__mro__'):
+            for name, value in type.__getattribute__(owner, '__dict__').items():
+                require(not class_tensor(value, set()),
+                        'class-owned native tensor needs a family materializer: ' + module_name + '.' + name)
+        values = [(name, value, True) for name, value in child._buffers.items() if value is not None]
+        for name, value in vars(child).items():
+            if name in ('_parameters', '_buffers', '_modules'):
+                continue
+            if isinstance(value, torch.Tensor):
+                values.append((name, value, False))
+            elif isinstance(value, (dict, list, tuple)):
+                require(not any(isinstance(item, torch.Tensor) for item in tree_leaves(value)),
+                        'native tensor container needs a constant materializer: ' + module_name + '.' + name)
+        for name, value, buffer in values:
+            require(type(value) is torch.Tensor and value.device.type == 'cpu' and not value.requires_grad
+                    and bool(torch.isfinite(value).all()),
+                    'uninitialized native constant needs a family materializer: ' + module_name + '.' + name)
+            constants.append((child, name, buffer, value.detach().clone()))
+    return constants
+
+
+def _unpublished_native_shard_forward(module, inputs):
+    require(module._native_shard_load_status == 'ready', 'frozen shard construction not published; discard owner')
+
+
+def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
+    """Internal CPU/Gloo construction-owned frozen native FSDP loading seam.
+
+    The only target is constructed here: no caller module, optimizer, EMA,
+    trainable adapter or previously published/forwarded root is accepted. It
+    remains unreachable to the caller until every rank validates every local
+    slice and the original hash-bound file inventory. Failures poison/discard
+    this construction, not an existing training owner. Caller RNG is preserved,
+    NOT made equivalent to a dense constructor's subsequent LoRA RNG stream.
+
+    Supported layout is an ordered full-world 1D CPU mesh with native Shard(0)
+    Parameters. Other meshes, placements, persistent buffers and meta constants
+    fail closed. This does not admit a factory, GPU role or ShardedLifecycle.
+    All participating ranks must call it on the existing live Gloo group.
+    """
+    import hashlib
+    import safetensors
+    import torch.distributed as dist
+    from torch.distributed.device_mesh import DeviceMesh
+    from torch.distributed.fsdp import FSDPModule, fully_shard
+    from torch.distributed.tensor import DTensor, Shard
+    from torch.distributed.tensor._utils import compute_local_shape_and_global_offset
+    from distillschedule.open_workload.replicated import checked, gather
+    from .checkpoint import rng_state, restore_rng
+
+    require(dist.is_initialized() and dist.get_world_size() >= 2 and dist.get_backend() == 'gloo',
+            'frozen native shard construction requires an existing CPU/Gloo world')
+    rng, model = rng_state(device='cpu'), None
+    try:
+        # Bind even the manifest object itself against caller mutation during
+        # reads, with malformed rank-local manifests rejected collectively.
+        spec = checked(lambda: deepcopy(spec), 'native frozen shard manifest binding')
+        def admit():
+            require(isinstance(mesh, DeviceMesh) and mesh.device_type == 'cpu' and mesh.ndim == 1
+                    and mesh.mesh.tolist() == list(range(dist.get_world_size())),
+                    'frozen native shards require an ordered complete 1D CPU mesh')
+            require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
+                    and not torch.is_autocast_enabled('cuda'), 'frozen native shards require FP32 without autocast')
+            root, _ = asset_files(base, spec)
+            return root, _admit_native_weights(cls, root, spec['max_parameters'],
+                dtype_policy=spec.get('dtype_policy', 'strict_fp32'), config_transform=config_transform)
+
+        root, source = checked(admit, 'native frozen shard source admission')
+        model, config, effective_config, layout, alias_groups, rename, weights, headers = source
+        dtype_policy = spec.get('dtype_policy', 'strict_fp32')
+        identity = dict(cls=cls.__module__ + '.' + cls.__qualname__, config=config,
+            effective_config=effective_config, files=spec['files'],
+            budget=spec['max_parameters'], dtype_policy=dtype_policy,
+            layout={key: (list(value.shape), str(value.dtype)) for key, value in layout.items()},
+            aliases=sorted(sorted(group) for group in alias_groups))
+        identities = gather(checked(lambda: fingerprint(identity), 'native frozen shard identity'))
+        require(all(value == identities[0] for value in identities), 'ranks differ in native frozen shard source/layout')
+
+        def construct():
+            parameters = dict(model.named_parameters(remove_duplicate=False))
+            require(parameters.keys() == layout.keys() and all(p.is_meta and p.ndim > 0 for p in parameters.values()),
+                    'frozen shard target requires meta Parameters only; persistent buffers/scalars unsupported')
+            constants = _native_shard_constants(model)
+            model.eval().requires_grad_(False)
+            model._native_shard_load_status = 'constructing'
+            fully_shard(model, mesh=mesh, reshard_after_forward=True)
+            require(isinstance(model, FSDPModule), 'native FSDP root required')
+            # Native FSDP prepends its own hook. Prepend AFTER installation so
+            # a poisoned forward cannot reach even the first tensor collective.
+            model.register_forward_pre_hook(_unpublished_native_shard_forward, prepend=True)
+            model.to_empty(device='cpu')
+            with torch.no_grad():
+                for child, name, buffer, value in constants:
+                    target = child._buffers[name] if buffer else getattr(child, name)
+                    require(target.shape == value.shape and target.dtype == value.dtype and target.device.type == 'cpu',
+                            'native constant materialization changed layout')
+                    target.copy_(value)
+            slots = dict(model.named_parameters(remove_duplicate=False))
+            require(slots.keys() == layout.keys() and
+                    {frozenset(group) for group in _parameter_alias_groups(model, slots)} ==
+                    {frozenset(group) for group in alias_groups}, 'native shard Parameter aliases changed')
+            local, offsets, rows = {}, {}, {}
+            for key, p in slots.items():
+                require(isinstance(p, DTensor) and not p.is_meta and not p.requires_grad and p.grad is None
+                        and p.device_mesh is mesh and len(p.placements) == 1
+                        and type(p.placements[0]) is Shard and p.placements[0].dim == 0
+                        and p.shape == layout[key].shape and p.dtype == layout[key].dtype == torch.float32,
+                        'unsupported actual native shard mesh/placement/global layout: ' + key)
+                shape, offset = compute_local_shape_and_global_offset(p.shape, p.device_mesh, p.placements)
+                value = p.to_local()
+                require(value.device.type == 'cpu' and value.dtype == p.dtype and value.is_contiguous()
+                        and tuple(value.shape) == tuple(shape), 'unsupported actual native local slice: ' + key)
+                local[key], offsets[key] = value, tuple(offset)
+                rows[key] = (tuple(shape), tuple(offset))
+            return constants, slots, local, offsets, rows
+
+        constants, slots, local, offsets, rows = checked(construct, 'native frozen shard target construction')
+        coverage = gather(rows)
+
+        def validate_coverage():
+            for key, expected in layout.items():
+                cursor = 0
+                ranges = sorted((row[key][1][0], row[key][0][0]) for row in coverage)
+                for start, count in ranges:
+                    require(count >= 0 and 0 <= start <= expected.shape[0]
+                            and (count == 0 or start == cursor), 'incomplete/overlapping native shard coverage: ' + key)
+                    if count:
+                        cursor += count
+                require(cursor == expected.shape[0] and all(
+                    tuple(row[key][0][1:]) == tuple(expected.shape[1:]) and not any(row[key][1][1:])
+                    for row in coverage), 'incomplete native global tensor coverage: ' + key)
+            # Only bounded concrete constants are hashed; no target Parameter
+            # is gathered, densified or hashed through a global tensor API.
+            return [hashlib.sha256(value.contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()
+                    for _, _, _, value in constants]
+
+        constant_hashes = checked(validate_coverage, 'native frozen shard coverage')
+        hashes = gather(constant_hashes)
+        require(all(value == hashes[0] for value in hashes), 'ranks differ in native frozen constants')
+        binding = {key: (p, local[key].untyped_storage().data_ptr()) for key, p in slots.items()}
+        groups = {key: group for group in alias_groups for key in group}
+
+        def copy_slices():
+            loaded = set()
+            with torch.no_grad():
+                for path in weights:
+                    with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
+                        require({rename(key) for key in handle.keys()} ==
+                                {key for key, shard in headers.items() if shard == path},
+                                'native safe weight keys changed after header admission')
+                        for raw_key in handle.keys():
+                            key = rename(raw_key)
+                            header = handle.get_slice(raw_key)
+                            _native_weight_header(header, layout[key], dtype_policy, key)
+                            slices = tuple(slice(offset, offset + size)
+                                for offset, size in zip(offsets[key], local[key].shape))
+                            value = _native_weight_value(header[slices], local[key].shape, local[key].dtype, dtype_policy, key)
+                            require(not groups[key] & loaded or torch.equal(value, local[key]),
+                                    'contradictory native tied weight aliases')
+                            # All aliases name the exact same actual Parameter.
+                            # No assignment/rebinding, dense payload, or gather.
+                            local[key].copy_(value)
+                            loaded.update(groups[key])
+                            del value
+            require(loaded == layout.keys(), 'incomplete native weights; random fallback forbidden')
+
+        checked(copy_slices, 'native frozen shard local payload')
+
+        def finish():
+            require(asset_files(base, spec)[0] == root, 'native asset root changed during local loading')
+            actual = dict(model.named_parameters(remove_duplicate=False))
+            require(actual.keys() == binding.keys() and all(actual[key] is p
+                    and p.to_local().untyped_storage().data_ptr() == pointer and not p.requires_grad and p.grad is None
+                    for key, (p, pointer) in binding.items()), 'native shard Parameter/storage ownership changed')
+            require(all(torch.equal(child._buffers[name] if buffer else getattr(child, name), value)
+                        for child, name, buffer, value in constants), 'native constants changed during loading')
+
+        checked(finish, 'native frozen shard publication admission')
+        model._native_shard_load_status = 'ready'
+        return model, config
+    except BaseException:
+        if model is not None:
+            model._native_shard_load_status = 'poisoned'
+        raise
+    finally:
+        restore_rng(rng)
+
+
+def tokenizer_state(tokenizer):
+    options = {key: getattr(tokenizer, key) for key in ('model_max_length', 'padding_side', 'truncation_side',
+        'pad_token', 'bos_token', 'eos_token', 'unk_token', 'chat_template')}
+    return {'json': tokenizer.backend_tokenizer.to_str(), 'options': options}
+
+
+def restore_tokenizer(spec):
+    from tokenizers import Tokenizer
+    from transformers import Qwen2TokenizerFast
+    require(isinstance(spec, dict) and set(spec) == {'json', 'options'}, 'actual serialized native tokenizer required')
+    return Qwen2TokenizerFast(tokenizer_object=Tokenizer.from_str(spec['json']), **spec['options'])
+
+
+class ImageMedia(nn.Module):
+    def __init__(self, vae, text_encoder, tokenizer, *, config, binding):
+        super().__init__()
+        self.vae = vae.eval().requires_grad_(False)
+        self.text_encoder = text_encoder.eval().requires_grad_(False)
+        self.tokenizer = tokenizer
+        self.architecture = deepcopy(config)
+        self.binding = binding
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
+
+    def image(self, pixels):
+        require(type(pixels) is torch.Tensor and pixels.dtype == torch.float32 and pixels.device.type == 'cpu'
+                and pixels.ndim == 4 and pixels.shape[:2] == (1, 3) and min(pixels.shape) > 0
+                and not pixels.requires_grad and bool(torch.isfinite(pixels).all()) and bool((pixels.abs() <= 1).all()),
+                'native codec needs explicit normalized [-1,1] FP32 BCHW RGB; no implicit resize')
+        return pixels.to(self.device)
+
+    def decode(self, generated, parameters):
+        require(isinstance(parameters, dict) and set(parameters) <= {'rollout_sigmas'}, 'unsupported native decoding option')
+        with torch.no_grad():
+            pixels = self.decode_tokens(generated)
+        require(pixels.ndim == 4 and pixels.shape[:2] == (1, 3) and bool(torch.isfinite(pixels).all()),
+                'actual native decoder must return finite batch-one RGB')
+        return {'image': ((pixels[0].permute(1, 2, 0).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)}
+
+
+class QualifiedNativeFlowTrials:
+    """Qualification refusal, not a parameter-count or host-capacity estimator.
+
+    Whole-role paired clones are currently tested only with explicitly labeled
+    synthetic CPU fixtures. A manifest label is trusted provenance, not a
+    verified model size/origin or a bound on simultaneous clones and CPU RSS.
+    Reference/manual persistent execution does not enter this copy boundary.
+    """
+    def __deepcopy__(self, memo):
+        require(getattr(self, '_trial_evidence_kind', None) == 'SYNTHETIC_TEST_ONLY',
+                'pretrained or unqualified native flow clone trials are not admitted; '
+                'SYNTHETIC_TEST_ONLY CPU fixtures only; selected plan bytes are not a clone/RSS budget')
+        cpu1()
+        require(all(t.device.type == 'cpu' and (not t.is_floating_point() or t.dtype == torch.float32)
+                    for t in (*self.parameters(), *self.buffers())),
+                'native flow clone trials require CPU1 FP32 tensors')
+        result = type(self).__new__(type(self))
+        memo[id(self)] = result
+        # Preserve native Module getstate/setstate behavior (including compiled
+        # state handling) and the shared Parameter/optimizer graph's copy memo.
+        result.__setstate__(deepcopy(self.__getstate__(), memo))
+        return result
+
+
+def qualify_trial_roles(state, evidence_kind):
+    for name in ('student', 'fake', 'teacher'):
+        if name in state:
+            state[name]._trial_evidence_kind = evidence_kind
+
+
+class ImageRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
+    def __init__(self, native, *, api, config, media_config, binding, empty, trainable, schedule):
+        super().__init__()
+        self.native = native
+        self.api_entry = api.ENTRY  # deepcopy-safe immutable import identity
+        self.architecture = deepcopy(config)
+        self.media_config = deepcopy(media_config)
+        self.binding = binding
+        self.trainable_config = deepcopy(trainable)
+        self.generation_sigmas = tuple(schedule)
+        self.register_buffer('empty_context', empty[0].detach().clone())
+        self.register_buffer('empty_context_mask', empty[1].detach().clone())
+
+    @property
+    def device(self):
+        return next(self.native.parameters()).device
+
+    def __deepcopy__(self, memo):
+        require(self.device.type != 'cuda', CUDA_TRIAL_LIMIT)
+        return super().__deepcopy__(memo)
+
+    @property
+    def api(self):
+        import importlib
+        return importlib.import_module(self.api_entry)
+
+    def validate_feeds(self, feeds):
+        from distillschedule.data.flow_image_inputs import validate_row
+        return validate_row(feeds, api=self.api, config=self.architecture, media_config=self.media_config,
+                            binding=self.binding, empty=(self.empty_context, self.empty_context_mask), device=self.device)
+
+    def sample_template(self, feeds):
+        return feeds['latents']
+
+    def loss_masks(self, feeds, sample):
+        return {'image': torch.ones_like(sample['image'], dtype=torch.bool)}
+
+    def apply_conditioning(self, sample, feeds):
+        require(isinstance(sample, dict) and set(sample) == {'image'} and sample['image'].shape == feeds['latents']['image'].shape,
+                'only the admitted T2I image payload is supported; edit/causal conditioning rejected')
+        return sample
+
+    def check_denoise(self, sample, sigma, feeds):
+        admit_fp32({'device': str(self.device)}, require=require, allow_replicated=True)
+        self.apply_conditioning(sample, feeds)
+        value = sample['image']
+        require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.device == self.device
+                and bool(torch.isfinite(value).all()), 'native flow sample must be finite FP32 on the owned device')
+        require(type(sigma) is torch.Tensor and sigma.dtype == torch.float32 and sigma.device == self.device
+                and sigma.shape == (sample['image'].shape[0],) and bool(torch.isfinite(sigma).all())
+                and bool(((sigma >= 0) & (sigma <= 1)).all()), 'normalized per-batch sigma must be FP32 in [0,1]')
+
+    def rollout(self, feeds, rollout_sigmas, gradient_policy):
+        from .dmd import sigmas
+        self.validate_feeds(feeds)
+        schedule = sigmas(rollout_sigmas)
+        require(gradient_policy in ('all_steps', 'last_step'), 'explicit Euler gradient policy required')
+        value = {'image': torch.randn_like(feeds['latents']['image'])}
+        for index, (sigma, following) in enumerate(zip(schedule, schedule[1:])):
+            context = torch.no_grad() if gradient_policy == 'last_step' and index < len(schedule) - 2 else nullcontext()
+            with context:
+                prediction = self.denoise(value, value['image'].new_full((value['image'].shape[0],), sigma), feeds, conditional=True)
+                value = {'image': value['image'] + (following - sigma) * prediction['image']}
+        return value
+
+
+def _metadata(api, descriptor, *, replicated=False):
+    return dict(schema_version='distillschedule.native_flow_image.v1', family=api.FAMILY,
+        source=dict(model_id=api.MODEL_ID, revision=api.REVISION, license='Apache-2.0'),
+        **deepcopy(descriptor),
+        **(dict(precision='FP32_NATIVE_RANK_LOCAL_REPLICATED', replication='EXPLICIT_EQUAL_RANK_LOCAL_B1_POST_BACKWARD_MEAN')
+           if replicated else dict(precision='FP32_NATIVE_SINGLE_DEVICE')),
+        gpu_execution='NOT_RUN', quality_validation='NOT_RUN',
+        prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
+        algorithm='EXPLICIT_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',
+        generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA')
+
+
+def _components(api, state, descriptor, *, training, construction=None):
+    from distillschedule.data.flow_image_inputs import encode_export_input
+    from .distributed import rank_world
+    qualify_trial_roles(state, descriptor['evidence_kind'])
+    immutable = ['teacher', 'media'] if training else ['media']
+    if training:
+        # Reuse the existing exact immutable alias mechanism, including actual
+        # frozen native Linear bases in LoRA roles; never merge their weights.
+        for role in ('student', 'fake'):
+            for name, module in state[role].named_modules():
+                if isinstance(module, TrainableLowRankLinear):
+                    immutable.append(role + '.' + name + '.base')
+    # Single-device/inference capability identities remain unchanged. Only the
+    # explicitly launched training owner opts in to private-call replication.
+    replica_caps = ('dmd_flow_private_replicated_b1_v1',) if training and rank_world()[1] > 1 else ()
+    return ModelComponents(state=state, immutable_modules=tuple(immutable),
+        metadata=_metadata(api, descriptor, replicated=bool(replica_caps)),
+        prediction=PredictionSpec('flow'), capabilities=('image', 'flow', 'lora', 'dmd_flow_v1', *replica_caps),
+        generate=api.generate, decode=state['media'].decode,
+        encode_input=None if training else encode_export_input,
+        inference_projection=api.project_current_generator if training else None,
+        admit_training=api.admit_training if training else None,
+        sharded_construction=construction).validate()
+
+
+def load_media_bundle(assets, api, *, device=None):
+    from transformers import Qwen2TokenizerFast
+    if device is None:
+        cpu1()
+    else:
+        admit_fp32({'device': str(device)}, require=require, allow_replicated=True)
+    runtime = runtime_identity(api)
+    path = Path(assets).expanduser().resolve(strict=True)
+    manifest = json_object(path)
+    require(set(manifest) == {'schema_version', 'family', 'source', 'evidence_kind', 'roles', 'media', 'text_max_length'}
+            and manifest['schema_version'] == ASSET_SCHEMA and manifest['family'] == api.FAMILY
+            and manifest['source'] == {'model_id': api.MODEL_ID, 'revision': api.REVISION}
+            and manifest['evidence_kind'] in ('SYNTHETIC_TEST_ONLY', 'LOCAL_PRETRAINED_UNVERIFIED'),
+            'exact family/version/source asset contract required; family variants cannot be substituted')
+    require(isinstance(manifest['roles'], dict) and isinstance(manifest['media'], dict)
+            and set(manifest['roles']) == {'student', 'fake', 'teacher'} and set(manifest['media']) == {'vae', 'text_encoder', 'tokenizer'},
+            'all actual role, VAE, text encoder and tokenizer components required')
+    native_cls, vae_cls, text_cls, _ = api.classes()
+    documents = [path]; roots = {}
+    for name, spec in {**manifest['roles'], **manifest['media']}.items():
+        roots[name], files = asset_files(path.parent, spec); documents.extend(files)
+    # Config/capability admission precedes loading any role, text or VAE weights.
+    preview = dict(vae=json_object(roots['vae']/'config.json'),
+        text_encoder=json_object(roots['text_encoder']/'config.json'), text_max_length=manifest['text_max_length'])
+    architecture(vae_cls, preview['vae']); architecture(text_cls, preview['text_encoder'])
+    role_configs = [json_object(roots[name]/'config.json') for name in ('student', 'fake', 'teacher')]
+    require(all(config == role_configs[0] for config in role_configs), 'same-family role architectures must match before loading')
+    for config in role_configs:
+        api.validate_architecture(config, preview)
+    # Refuse every role/media parameter budget before any concrete constructor
+    # or safetensor payload load. This is meta parameter sizing, NOT host RSS or
+    # a bound on checkpoint staging or paired calibration clones.
+    transform = getattr(api, 'transformer_config', None)
+    for name, cls in [('student', native_cls), ('fake', native_cls), ('teacher', native_cls),
+                      ('vae', vae_cls), ('text_encoder', text_cls)]:
+        config = json_object(roots[name]/'config.json')
+        if name in manifest['roles'] and transform is not None:
+            config = transform(deepcopy(config))
+        witness = shell(cls, config)
+        count = sum(p.numel() for p in witness.parameters())
+        spec = (manifest['roles'] if name in manifest['roles'] else manifest['media'])[name]
+        require(0 < count <= spec['max_parameters'], 'native model exceeds explicit CPU parameter budget: ' + name)
+        del witness
+    binding = fingerprint(dict(family=api.FAMILY, source=manifest['source'], media=manifest['media'],
+        text_max_length=manifest['text_max_length'], runtime=runtime, dtype='FP32', codec_policy=api.CODEC_POLICY,
+        transformer_config_sha256=file_sha256(roots['student']/'config.json')))
+    with torch.device('cpu'), torch.random.fork_rng(devices=[]):
+        torch.random.default_generator.manual_seed(0)
+        vae, vae_config = load_native(vae_cls, roots['vae'], manifest['media']['vae']['max_parameters'],
+            dtype_policy=manifest['media']['vae'].get('dtype_policy', 'strict_fp32'))
+        text, text_config = load_native(text_cls, roots['text_encoder'], manifest['media']['text_encoder']['max_parameters'],
+            dtype_policy=manifest['media']['text_encoder'].get('dtype_policy', 'strict_fp32'))
+        tokenizer = Qwen2TokenizerFast.from_pretrained(roots['tokenizer'], local_files_only=True)
+        media_config = dict(vae=vae_config, text_encoder=text_config, tokenizer=tokenizer_state(tokenizer),
+                            text_max_length=manifest['text_max_length'])
+        media = api.Media(vae, text, tokenizer, config=media_config, binding=binding).eval().requires_grad_(False)
+        with torch.no_grad():
+            empty = media.encode_text([''])
+        media_config['empty_context_shape'] = list(empty[0].shape)
+        media.architecture = deepcopy(media_config)
+    return media, manifest, roots, runtime, binding, media_config, empty, documents
+
+
+def build_family(parameters, api, *, construction=None):
+    from .dmd import sigmas, training_state
+    local = construction.local if construction is not None else lambda function, label: function()
+    def preflight():
+        allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
+        effective = parameters if construction is None else {key: value for key, value in parameters.items() if key != 'construction'}
+        require(isinstance(effective, dict) and set(effective) <= allowed
+                and allowed - {'device', 'seed'} <= effective.keys(), 'complete explicit native image model parameters required; unknown options rejected')
+        if construction is not None:
+            require(type(construction) is _FrozenTeacherConstruction
+                    and parameters.get('construction') == FROZEN_TEACHER_CONSTRUCTION,
+                    'frozen Teacher requires the admitted construction provider')
+        device = admit_fp32(effective, require=require, allow_replicated=True)
+        require(type(effective.get('seed', 0)) is int, 'integer construction seed required')
+        require(isinstance(effective['trainable'], dict) and effective['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
+        return device, sigmas(effective['generation_sigmas'])
+    device, schedule = local(preflight, 'native image construction parameters')
+    media, manifest, roots, runtime, binding, media_config, empty, documents = local(
+        lambda: load_media_bundle(parameters['assets'], api, device=device), 'native image media construction')
+    native_cls = api.classes()[0]
+    with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
+        # Offline preparation owns the exact CPU null-prompt encoding. Move it,
+        # rather than substituting nearly-equal CUDA text arithmetic on resume.
+        empty = tuple(tensor.to(device) for tensor in empty)
+        place_module(media, device, require=require)
+        roles = {}; config = None
+        for role in ('student', 'fake', 'teacher'):
+            if role == 'teacher' and construction is not None:
+                # Teacher is LAST: Student/Fake dense constructor and LoRA
+                # random draws remain in their original exact order.
+                native, current = construction.load_teacher(native_cls,
+                    Path(parameters['assets']).resolve().parent, manifest['roles'][role],
+                    config_transform=getattr(api, 'transformer_config', None))
+            else:
+                native, current = local(lambda: load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
+                    dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'),
+                    config_transform=getattr(api, 'transformer_config', None)), 'native image dense role loading')
+            def prepare_role():
+                api.validate_architecture(current, media_config)
+                require(config is None or current == config, 'first recipe requires exact same-family role architectures')
+                if role == 'teacher':
+                    native.eval().requires_grad_(False)
+                else:
+                    trainable_scope(native, parameters['trainable'])
+                    native.train()
+                if role != 'teacher' or construction is None:
+                    place_module(native, device, require=require)
+                return dict(api=api, config=current, media_config=media_config,
+                    binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule)
+            kwargs = local(prepare_role, 'native image role preparation')
+            roles[role] = (construction.wrap_teacher(api.Role, **kwargs) if role == 'teacher' and construction is not None
+                else local(lambda: api.Role(native, **kwargs), 'native image role ownership'))
+            config = current if config is None else config
+            if role == 'teacher':
+                roles[role].eval()
+        with torch.device(device):
+            state = local(lambda: training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
+                fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay']),
+                'native image optimizer/EMA construction')
+        resident_flow_state(state, device)
+    state['media'] = media
+    descriptor = dict(architecture=config, media_config=media_config, binding=binding, runtime=runtime,
+        trainable=deepcopy(parameters['trainable']), generation_sigmas=list(schedule), evidence_kind=manifest['evidence_kind'],
+        asset_identity=dict(manifest_sha256=file_sha256(Path(parameters['assets'])),roles=deepcopy(manifest['roles']),media=deepcopy(manifest['media'])))
+    # Recheck all immutable files after materialization; no silent cache reuse.
+    def finish():
+        for name, spec in {**manifest['roles'], **manifest['media']}.items():
+            asset_files(Path(parameters['assets']).resolve().parent, spec)
+        require(json_object(parameters['assets']) == manifest, 'asset manifest changed during load')
+        return _components(api, state, descriptor, training=True, construction=construction)
+    return local(finish, 'native image construction publication')
+
+
+def admit_training(api, *, state, request, prepared_identity, prepared_manifest):
+    from .distributed import rank_world
+    device = admit_fp32({'device': request.trainer.get('device', 'cpu')}, require=require, allow_replicated=True)
+    replicated = rank_world()[1] > 1
+    require(all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
+            'matching rank-local FP32 device ownership required')
+    if replicated:
+        require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
+                and request.data.get('sharding') == 'rank_strided',
+                'explicit distributed backend and rank_strided data required')
+        from distillschedule.open_workload.sharded import _CONSTRUCTION_HANDOFFS
+        owner = _CONSTRUCTION_HANDOFFS.get(state['teacher'])
+        construction = (owner is not None and owner.status == 'bound' and device.type == 'cpu'
+                        and request.execution.get('implementation') == owner.option
+                        and execution_policy_matches(request.execution, FLOW_FROZEN_TEACHER_EXECUTION))
+        require(construction or execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+                'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
+    else:
+        require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')
+        require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
+    require(request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm'
+            and request.execution.get('adapter', 'program') == 'program', 'use existing common flow DMD Program, not DMD2/Self-Forcing')
+    require('streams' not in request.data and prepared_manifest.get('metadata', {}).get('schema_version') == INPUT_SCHEMA
+            and prepared_manifest['metadata'].get('family') == api.FAMILY
+            and prepared_manifest['metadata'].get('binding') == state['student'].binding,
+            'wrong family/source/codec feature manifest; same shape is insufficient')
+    p = request.algorithm.get('parameters', {})
+    require(p.get('teacher_cfg') == 1 and p.get('fake_cfg') == 1,
+            'first image recipe admits teacher_cfg=fake_cfg=1; native Qwen norm-rescaled CFG is not linear CFG')
+    require(p.get('fake_updates') == 5 and p.get('rollout_sigmas') == list(state['student'].generation_sigmas)
+            and len(state['student'].generation_sigmas) == 5, 'initial recipe requires G1/F5 and four explicit Euler steps')
+
+
+def generate(api, state, feeds, parameters):
+    from .dmd import generation_rollout
+    tokens = generation_rollout(state['student'], feeds, parameters)['image']
+    latent = api.unpack(tokens, feeds['latent_shape'].tolist())
+    return {'image_latents': latent, 'latent_schema': {'image_latents': {
+        'layout': 'BCHW', 'shape': list(latent.shape), 'dtype': str(latent.dtype)}}}
+
+
+def project_current_generator(api, components, effective_training_parameters):
+    descriptor = {key: deepcopy(components.metadata[key]) for key in ('architecture', 'media_config', 'binding',
+        'runtime', 'trainable', 'generation_sigmas', 'evidence_kind')}
+    state = {name: components.state[name] for name in ('student', 'media')}
+    return InferenceProjection(components=_components(api, state, descriptor, training=False),
+        factory=api.ENTRY + ':build_inference_model', parameters=descriptor)
+
+
+def build_inference_family(parameters, api):
+    from .dmd import sigmas
+    keys = {'architecture', 'media_config', 'binding', 'runtime', 'trainable', 'generation_sigmas', 'evidence_kind'}
+    require(isinstance(parameters, dict) and keys <= parameters.keys() and set(parameters) <= keys | {'device', 'seed'},
+            'export reconstructs only CURRENT Student and codecs, not training/base paths')
+    device = admit_fp32(parameters, require=require)
+    descriptor = {k: deepcopy(parameters[k]) for k in keys}
+    require(descriptor['runtime'] == runtime_identity(api), 'export native source/runtime changed')
+    config = descriptor['architecture']; media_config = descriptor['media_config']; api.validate_architecture(config, media_config)
+    native_cls, vae_cls, text_cls, _ = api.classes()
+    def layout(cls, cfg):
+        # Empty concrete layouts only. Common restore_modules strictly replaces
+        # EVERY named tensor before inference. This is never an asset fallback.
+        native_config = architecture(cls, cfg)
+        with torch.device('cpu'):
+            return (cls(native_config) if hasattr(cls, 'config_class') else cls(**native_config)).float()
+    with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
+        transform = getattr(api, 'transformer_config', None)
+        native = layout(native_cls, config if transform is None else transform(config))
+        trainable_scope(native, descriptor['trainable'])
+        place_module(native, device, require=require)
+        media = api.Media(layout(vae_cls, media_config['vae']), layout(text_cls, media_config['text_encoder']),
+            restore_tokenizer(media_config['tokenizer']), config=media_config, binding=descriptor['binding'])
+        place_module(media, device, require=require)
+        empty_shape = api.empty_shape(media_config)
+        empty = (torch.empty(empty_shape, dtype=torch.float32, device=device),
+                 torch.empty(empty_shape[:2], dtype=torch.bool, device=device))
+        role = api.Role(native, api=api, config=config, media_config=media_config, binding=descriptor['binding'], empty=empty,
+            trainable=descriptor['trainable'], schedule=sigmas(descriptor['generation_sigmas']))
+    return _components(api, {'student': role, 'media': media}, descriptor, training=False)

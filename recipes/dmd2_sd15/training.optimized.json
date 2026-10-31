@@ -1,0 +1,87 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "name": "sd15",
+    "parameters": {
+      "source_root": "/ABSOLUTE/LOCAL/EXTERNAL_DMD2_SOURCE",
+      "model_id": "/ABSOLUTE/LOCAL/SD15_BUNDLE",
+      "settings": {
+        "dfake_gen_update_ratio": 10,
+        "generator_lr": 5e-07,
+        "guidance_lr": 5e-07,
+        "resolution": 512,
+        "latent_resolution": 64,
+        "conditioning_timestep": 999,
+        "warmup_step": 500,
+        "train_iters": 1000000,
+        "cls_on_clean_image": true,
+        "gen_cls_loss": true,
+        "gen_cls_loss_weight": 0.001,
+        "guidance_cls_loss_weight": 0.01,
+        "dm_loss_weight": 1.0,
+        "gan_alone": false,
+        "diffusion_gan": true,
+        "diffusion_gan_max_timestep": 1000,
+        "use_fp16": true,
+        "gradient_checkpointing": true,
+        "real_guidance_scale": 1.75
+      },
+      "optimization_profile": "dmd2-sd15-resident-tree-v1"
+    }
+  },
+  "algorithm": {
+    "name": "dmd2"
+  },
+  "data": {
+    "streams": {
+      "generator": {
+        "prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json",
+        "samples_per_cycle": 1,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      },
+      "guidance": {
+        "prepared": "/ABSOLUTE/LOCAL/PROMPTS/prepared/manifest.json",
+        "samples_per_cycle": 9,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      },
+      "real": {
+        "prepared": "/ABSOLUTE/LOCAL/REAL_RGB_OR_PINNED_LATENTS/prepared/manifest.json",
+        "samples_per_cycle": 10,
+        "sampling": {
+          "kind": "epochs",
+          "shuffle": true
+        }
+      }
+    },
+    "sharding": "rank_strided"
+  },
+  "execution": {
+    "adapter": "program",
+    "mode": "manual",
+    "implementation": {
+      "backend": "torch-callable-native-owner-v1",
+      "local": {
+        "backend": "torch-callable-resident-v1",
+        "share_immutable": false,
+        "checkpoint_bindings": []
+      }
+    }
+  },
+  "trainer": {
+    "cycles": 2,
+    "seed": 17,
+    "device": "cuda",
+    "output_dir": "/ABSOLUTE/PROJECT/DMD2_SD15_OPTIMIZED",
+    "checkpoint_every": 1,
+    "distributed": {
+      "backend": "nccl",
+      "timeout_seconds": 900
+    }
+  }
+}

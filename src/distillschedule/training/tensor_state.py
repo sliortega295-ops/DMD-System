@@ -8,6 +8,104 @@ from __future__ import annotations
 _MARKER = "distillschedule.dtensor_local.v1"
 
 
+class ParameterShadows(dict):
+    """An explicitly bound parameter map, opted in before session construction.
+
+    The algorithm still owns every update and decay. This envelope binds the
+    checkpoint to the same root and complete tensor layout, unlike an ordinary
+    value dictionary. Dense/default EMA serialization is deliberately unchanged.
+    """
+    SCHEMA = "distillschedule.parameter_shadows.v1"
+
+    def __init__(self, owner, parameters):
+        if not isinstance(owner, str) or not owner:
+            raise ValueError('parameter shadows require an explicit model root')
+        super().__init__(parameters)
+        self.owner = owner
+
+    def runtime_tensors(self):
+        yield from self.values()
+
+    def state_dict(self):
+        return dict(schema_version=self.SCHEMA, owner=self.owner, parameters=dict(sorted(self.items())))
+
+    def validate_state_dict(self, value):
+        from .checkpoint import _validate_layout
+        if (not isinstance(value, dict) or set(value) != {'schema_version', 'owner', 'parameters'}
+                or value['schema_version'] != self.SCHEMA or value['owner'] != self.owner):
+            raise ValueError('checkpoint parameter shadow owner/schema changed')
+        _validate_layout(dict(self), value['parameters'], 'parameter shadows ' + self.owner)
+        _validate_shadow_values(value['parameters'])
+
+    def validate_checkpoint_boundary(self):
+        self.validate_state_dict(self.state_dict())
+
+    def load_state_dict(self, value):
+        import torch
+        from distillschedule.open_workload.torch_backend import physical_tensor
+        self.validate_state_dict(value)
+        with torch.no_grad():
+            for name, live in self.items():
+                physical_tensor(live).copy_(physical_tensor(value['parameters'][name]))
+
+
+def _validate_shadow_values(values):
+    """Local checks only, including on a rank with an empty physical shard."""
+    import torch
+    from torch.distributed.tensor import DTensor
+    from distillschedule.open_workload.torch_backend import physical_tensor
+    for value in values.values():
+        if (type(value) not in (torch.Tensor, DTensor) or value.is_meta
+                or value.layout != torch.strided or value.requires_grad or value.grad_fn is not None
+                or not bool(torch.isfinite(physical_tensor(value)).all())):
+            raise ValueError('parameter shadows require finite detached strided tensors')
+
+
+def validate_parameter_shadows(state, bindings, roots, *, feeds=()):
+    """Exact named-parameter ownership, without invoking tensor collectives."""
+    from collections.abc import Mapping
+    if (not isinstance(bindings, Mapping) or not all(isinstance(k, str) and k
+            and isinstance(v, str) and v for k, v in bindings.items())
+            or not set(bindings) <= set(state) or not set(bindings.values()) <= set(roots)):
+        raise ValueError('parameter shadow bindings require state keys and registered model roots')
+    if not bindings:
+        return
+    import torch
+    from .checkpoint import _validate_layout
+    from distillschedule.open_workload.torch_backend import tensors, storage_key, unwrap_module
+    # No shadow may alias a parameter, optimizer slot, feed, another logical
+    # state, or another shadow. Empty local shards do not own any storage.
+    occupied = {storage_key(t) for t in tensors(({k:v for k,v in state.items() if k not in bindings}, feeds))
+                if storage_key(t)[2]}
+    for key, root in bindings.items():
+        value = state[key]
+        if type(value) is not ParameterShadows:
+            raise ValueError('parameter shadows require an explicit ParameterShadows owner before session construction')
+        if value.owner != root:
+            raise ValueError('parameter shadow owner differs from its binding')
+        model = unwrap_module(state[root])
+        if not isinstance(model, torch.nn.Module):
+            raise ValueError('parameter shadow owner must be a model root')
+        parameters = dict(model.named_parameters())
+        named = list(model.named_parameters(remove_duplicate=False))
+        stores = [storage_key(p) for _, p in named if storage_key(p)[2]]
+        if len(named) != len(parameters) or len(stores) != len(set(stores)):
+            raise ValueError('parameter shadow owner cannot contain parameter aliases')
+        if not parameters or value.keys() != parameters.keys():
+            raise ValueError('parameter shadows must cover every named parameter, including frozen parameters')
+        _validate_shadow_values(value)
+        for name, parameter in parameters.items():
+            shadow = value[name]
+            _validate_layout(parameter, shadow, f'parameter shadow {key}.{name}')
+            if shadow.device != parameter.device or shadow.stride() != parameter.stride():
+                raise ValueError('parameter shadow device/stride differs from owner')
+            storage = storage_key(shadow)
+            if storage[2]:
+                if storage in occupied:
+                    raise ValueError('parameter shadow storage aliases another owned tensor')
+                occupied.add(storage)
+
+
 def layout(tensor):
     from torch.distributed.tensor import Replicate, Shard
     placements = []

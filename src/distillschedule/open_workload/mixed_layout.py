@@ -13,13 +13,15 @@ from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
 from .replicated import ReplicaLifecycle, checked, gather, identity, ddp_order_admitted, BACKEND
 from .replica_contract import execution_graph
-from .sharded import rejection, shard_roots, MODES, HSDP_MODES
+from .sharded import rejection, shard_roots, MODES, HSDP_MODES, ParameterShadowOwnership
 from .torch_backend import signature, unwrap_module
 
 MODE = 'per_module'
 
 
 def domains(workload, topology=None):
+    if workload.replica_semantics.shard_boundaries:
+        return {}
     result = {}
     order = tuple(c.id for c in workload.program.calls) + ('__open_finish__',)
     for key in sorted(set(workload.replica_semantics.module_bindings.values())):
@@ -66,6 +68,8 @@ def option(local, assignment, topology):
 
 
 def graph(workload, implementation):
+    require(not workload.replica_semantics.shard_boundaries,
+            'shard boundaries require a uniform FSDP layout', path='open.mixed')
     context = {key for key, value in implementation['module_layouts'].items() if value != 'post_backward'}
     return execution_graph(workload.program, workload.replica_semantics, 'ddp_overlap', context)
 
@@ -77,6 +81,8 @@ class MixedLifecycle(ReplicaLifecycle):
         from .topology import discover
         topology = discover()
         def validate():
+            require(not self.workload.replica_semantics.shard_boundaries,
+                    'shard boundaries require a uniform FSDP layout', path='open.mixed')
             mapping = self.option.get('module_layouts')
             require(isinstance(mapping, dict), 'per-module layout mapping required', path='open.mixed')
             admitted = domains(self.workload, topology)
@@ -93,6 +99,7 @@ class MixedLifecycle(ReplicaLifecycle):
                     'mixed HSDP topology changed', path='open.mixed')
         checked(validate, 'mixed layout admission'); identity(self.workload)
         self.mapping = dict(self.option['module_layouts'])
+        self.parameter_shadows = dict(self.workload.replica_semantics.parameter_shadows)
         self.module_keys = tuple(sorted(self.mapping))
         session.graph = checked(lambda:graph(self.workload,self.option), 'mixed native completion edges')
         self.reference = ReplicaLifecycle(self.workload, {'reduction':'post_backward'})
@@ -120,8 +127,10 @@ class MixedLifecycle(ReplicaLifecycle):
                                     mesh_dim_names=('replicate','shard')) if kind=='hsdp' else
                                     init_device_mesh(session.device.type,(self.world,)))
                 size, number, moments = shard_roots(session, (key,), meshes[kind],
-                                                    reshard_after_forward=mode.endswith('_reshard'))
+                    reshard_after_forward=mode.endswith('_reshard'),
+                    parameter_shadows=self.parameter_shadows)
                 self.full_parameter_bytes += size; count += number; migrated += moments
+        self.shadow_ownership = ParameterShadowOwnership(session, self.parameter_shadows)
         session.effects.update(reduction=MODE,module_layouts=self.mapping,
             fsdp_sharded_parameters=count, optimizer_moments_migrated=migrated,
             world_size=self.world, allocated_topology=topology, cross_role_pipeline=False)
@@ -130,6 +139,13 @@ class MixedLifecycle(ReplicaLifecycle):
         orders = gather(tuple(order))
         require(all(x == orders[0] for x in orders), 'rank execution orders differ', path='open.mixed')
         context = {key for key,value in self.mapping.items() if value != 'post_backward'}
+        def validate_shadows():
+            from distillschedule.training.tensor_state import validate_parameter_shadows
+            require(self.workload.replica_semantics.parameter_shadows == self.parameter_shadows,
+                    'installed parameter shadow bindings changed between cycles', path='open.mixed')
+            self.shadow_ownership.validate(session)
+            validate_parameter_shadows(session.state, self.parameter_shadows, self.module_keys, feeds=session.feeds)
+        checked(validate_shadows, 'mixed parameter shadow admission')
         require(ddp_order_admitted(self.workload,order,context),
                 'selected order overwrites a native reducer context', path='open.mixed')
         dist.barrier()

@@ -24,6 +24,9 @@ from distillschedule.workloads.livewan_crossscale import LIVEWAN_COMMIT
 
 KIND = "original_livewan_teacher_cohorts.v1"
 SCHEMA = "distillschedule." + KIND
+C51_KIND = "original_livewan_c51_teacher_stream.v1"
+C51_SCHEMA = "distillschedule." + C51_KIND
+EPOCH_POLICY = "distillschedule.livewan_teacher_epochs.v1"
 STREAMS = ("rollout", "generator_dmd_t", "generator_dmd_noise",
            "generator_grad_blocks", "critic_t", "critic_noise")
 SOURCE_FILES = ("wanstreamer/data.py", "scripts/gen_teacher.py", "scripts/encode_prompts.py", "LICENSE")
@@ -124,11 +127,32 @@ def _derived_seed(seed, operation_key, stream):
     return int.from_bytes(hashlib.sha256(f"{seed}/{operation_key}/{stream}".encode()).digest()[:8], "big") & ((1 << 63) - 1)
 
 
-def _rows(records, cycles, seed):
+def _epoch_policy(records, cycles, seed):
+    """An explicit finite schedule, not a second sampler or captured rollout.
+
+    Repeating the existing fixed seeded permutation drops no records. Any 80
+    consecutive draws are distinct for a pool of at least 80, including across
+    epoch boundaries. Only operation-keyed rollout/noise/control RNG is fresh;
+    reusing an archive never purports to create a new teacher record.
+    """
+    require(len(records) >= 80, "epoch input policy requires at least 80 distinct teacher records")
+    order = list(range(len(records)))
+    random.Random(seed).shuffle(order)
+    return dict(schema_version=EPOCH_POLICY, ordering="fixed_seeded_permutation_repeat_no_drop",
+                record_order=[records[i]["record_id"] for i in order], record_count=len(records),
+                draw_count=80*cycles, epoch_count=(80*cycles+len(records)-1)//len(records))
+
+
+def _rows(records, cycles, seed, *, input_policy=None):
+    require(input_policy in (None, EPOCH_POLICY), "unsupported native input policy")
+    if input_policy is not None:
+        require(len(records) >= 80, "epoch input policy requires at least 80 distinct teacher records")
     order = list(range(len(records)))
     random.Random(seed).shuffle(order)
     rows = []
-    for ordinal, index in enumerate(order):
+    draws = 80*cycles if input_policy is not None else len(order)
+    for ordinal in range(draws):
+        index = order[ordinal % len(order)]
         step, slot = divmod(ordinal, 16)
         cycle, cycle_step = divmod(step, 5)
         key = (f"step={step}/slot={slot}" if cycles == 1 else
@@ -144,11 +168,25 @@ def _rows(records, cycles, seed):
                      "world_frames": world_frames, "rope_gap": rope_gap,
                      "seeds": {name: _derived_seed(seed, key, name) for name in STREAMS},
                      "generator_update": cycle_step == 0, "critic_update": True})
+        if input_policy is not None:
+            draw = dict(draw_index=ordinal, epoch_index=ordinal//len(records), epoch_offset=ordinal % len(records))
+            rows[-1].update(draw, draw_id="teacher-draw:" + fingerprint(dict(
+                policy=input_policy, seed=seed, operation_key=key, record_id=record["record_id"], **draw)),
+                cohort_id="teacher-cohort:" + fingerprint(dict(policy=input_policy, seed=seed, cycle_index=cycle)))
+    if input_policy is not None:
+        require(all(len({r["record_id"] for r in rows[80*c:80*(c+1)]}) == 80 for c in range(cycles)),
+                "epoch policy requires 80 distinct teacher records within each complete cycle")
     return rows
 
 
-def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_kind):
-    require(type(cycles) is int and 1 <= cycles <= 64, "finite complete cohort count must be 1..64")
+def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_kind, input_kind=KIND,
+               input_policy=None):
+    require(input_kind in (KIND, C51_KIND), "unsupported native input contract")
+    require(input_policy is None or input_kind == C51_KIND and input_policy == EPOCH_POLICY,
+            "epoch input policy requires explicit C51 admission; unsupported native input policy")
+    maximum = 100 if input_kind == C51_KIND else 64
+    require(type(cycles) is int and 1 <= cycles <= maximum,
+            f"finite complete cohort count must be 1..{maximum}")
     require(type(seed) is int and 0 <= seed < 2**63, "explicit 63-bit operation seed required")
     require(evidence_kind in {"NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", "CPU_NATIVE_SHAPE_FIXTURE_NOT_PRETRAINED"},
             "explicit native archive or CPU fixture evidence kind required")
@@ -156,8 +194,12 @@ def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_k
     root, prompts_path = Path(data_root).expanduser().resolve(), Path(prompts_path).expanduser().resolve()
     require(root.is_dir() and prompts_path.is_file(), "missing teacher record directory or prompt bundle")
     files = sorted(root.glob("*.pt"))
-    require(len(files) == 80 * cycles and all(p.is_file() for p in files),
-            "exactly 80 distinct teacher records per complete G1/C5/globalB16 cohort required; no padding/replay")
+    if input_policy is None:
+        require(len(files) == 80 * cycles and all(p.is_file() for p in files),
+                "exactly 80 distinct teacher records per complete G1/C5/globalB16 cohort required; no padding/replay")
+    else:
+        require(len(files) >= 80 and all(p.is_file() for p in files),
+                "epoch input policy requires at least 80 distinct teacher records; no padding/replay within a cycle")
     require(len({p.resolve() for p in files}) == len(files), "duplicate teacher record sources")
     prompt_sha = file_sha256(prompts_path)
     prompts = _prompts(prompts_path)
@@ -180,13 +222,18 @@ def _inventory(data_root, prompts_path, *, source_root, cycles, seed, evidence_k
             "duplicate/copied/replayed teacher record payloads are not fresh inputs")
     require(file_sha256(prompts_path) == prompt_sha and _source_identity(source_root) == source,
             "original source or prompt hash changed during admission")
-    value = {"schema_version": SCHEMA, "status": "ADMITTED_FINITE_NATIVE_INPUTS", "source": source,
+    value = {"schema_version": "distillschedule." + input_kind, "status": "ADMITTED_FINITE_NATIVE_INPUTS", "source": source,
              "data_root": str(root), "prompts": {"path": str(prompts_path), "sha256": prompt_sha},
              "cycles": cycles, "seed": seed, "evidence_kind": evidence_kind, "contract": deepcopy(CONTRACT),
-             "records": records, "rows": _rows(records, cycles, seed),
+             "records": records, "rows": _rows(records, cycles, seed, input_policy=input_policy),
              "claim_boundary": {"training_lifecycle": "NOT_IMPLEMENTED", "gpu_execution": "NOT_RUN",
                                 "rng": "independent_operation_streams_NOT_upstream_sequential_RNG_continuation",
                                 "quality": "supplied teacher-format archives; generation/quality not attested"}}
+    if input_kind == C51_KIND:
+        value["claim_boundary"]["training_lifecycle"] = "EXPLICIT_C51_STREAM_SOURCE_CPU_ONLY_NATIVE_GPU_NOT_RUN"
+    if input_policy is not None:
+        value["input_policy"] = _epoch_policy(records, cycles, seed)
+        value["claim_boundary"]["data"] = "FINITE_REAL_RECORD_POOL_REUSED_ACROSS_EXPLICIT_EPOCHS_NOT_FRESH_TEACHER_RECORDS"
     return {**value, "input_sha256": fingerprint(value)}
 
 
@@ -218,7 +265,8 @@ def _publish_manifest(path, value):
 
 
 def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed,
-                   evidence_kind="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY"):
+                   evidence_kind="NATIVE_TEACHER_ARCHIVES_UNVERIFIED_QUALITY", input_kind=KIND,
+                   input_policy=None):
     """Admit supplied original archives; publish only a complete immutable file.
 
     Preparation imports the actual dataset only after every restricted archive
@@ -226,7 +274,7 @@ def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed
     not the public C51 training command (whose lifecycle still rejects this).
     """
     value = _inventory(data_root, prompts_path, source_root=source_root, cycles=cycles, seed=seed,
-                       evidence_kind=evidence_kind)
+                       evidence_kind=evidence_kind, input_kind=input_kind, input_policy=input_policy)
     _, dataset = _original_dataset(value["source"], value["data_root"], value["prompts"]["path"])
     require([str(Path(p).resolve()) for p in dataset.files] == [r["path"] for r in value["records"]],
             "actual original dataset record inventory changed")
@@ -234,3 +282,13 @@ def prepare_inputs(data_root, prompts_path, output, *, source_root, cycles, seed
     return value
 
 
+def prepare_c51_inputs(*args, **kwargs):
+    """Explicit finite C51 stream, optionally using versioned finite epochs.
+
+    All existing archive/source/geometry/content gates remain mandatory.
+    Default v1 still requires 80*cycles distinct records. EPOCH_POLICY must be
+    selected explicitly to reuse a finite pool across logical operations.
+    Neither policy attests Teacher quality or sequential-upstream RNG claims.
+    Legacy preparation remains capped at 64 and byte-identical.
+    """
+    return prepare_inputs(*args, **kwargs, input_kind=C51_KIND)

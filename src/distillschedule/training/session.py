@@ -11,6 +11,7 @@ import os
 import random
 import time
 from dataclasses import replace
+from contextlib import ExitStack
 from pathlib import Path
 
 from distillschedule.workloads.best_known.registry import file_sha256
@@ -18,6 +19,7 @@ from distillschedule.workloads.best_known.registry import file_sha256
 from . import distributed
 from .adapters import InferenceProjection, ModelComponents
 from .checkpoint import (
+    _read_collective_checkpoint,
     cpu_tree,
     read_checkpoint,
     read_manifest,
@@ -44,10 +46,18 @@ def _append_json(path, value):
         stream.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
 
 
-def _seed(seed):
+def _seed(seed, *, device=None):
     import torch
     random.seed(seed)
-    torch.manual_seed(seed)
+    if device is None:
+        torch.manual_seed(seed)
+    else:
+        # Explicit placement must not seed every visible CUDA generator.
+        torch.random.default_generator.manual_seed(seed)
+        owned = torch.device(device)
+        if owned.type == "cuda":
+            with torch.cuda.device(owned):
+                torch.cuda.manual_seed(seed)
     try:
         import numpy as np
         np.random.seed(seed % 2**32)
@@ -83,10 +93,46 @@ def _construct_model(config, *, source=None):
                               or not _same_factory(model_source["reference"], source["reference"])):
         raise ValueError("export model factory source changed")
     parameters = _model_parameters(config)
-    components = factory(parameters)
-    if not isinstance(components, ModelComponents):
-        raise ValueError("model factory must return ModelComponents")
-    components.validate()
+    admission = None
+    budget = None
+    hook = getattr(factory, 'admit_construction', None)
+    if 'resident_budget' in config.execution:
+        from .resident import ResidentTrainingBudget
+        budget = ResidentTrainingBudget.parse(config.execution['resident_budget'], device=parameters['device'])
+        if not callable(hook):
+            raise ValueError('model factory has no resident preconstruction provider')
+    if callable(hook):
+        admission = hook(parameters=parameters, request=config, budget=budget)
+    if budget is not None and admission is None:
+        raise ValueError('model factory declined resident preconstruction admission')
+    components = None
+    try:
+        construct_owned = getattr(admission, 'construct', None)
+        components = construct_owned(factory, parameters) if callable(construct_owned) else factory(parameters)
+        if not isinstance(components, ModelComponents):
+            raise ValueError("model factory must return ModelComponents")
+        components.validate()
+        if admission is not None:
+            admission.attach(components)
+    except BaseException:
+        # A returned provider is already ours, even if its contract is invalid.
+        # Do not let an invalid close field mask its original validation error.
+        try:
+            if isinstance(components, ModelComponents) and callable(components.close):
+                components.close()
+        finally:
+            if admission is not None:
+                admission.close()
+        raise
+    if admission is not None:
+        original_close = components.close
+        def close():
+            try:
+                if original_close is not None:
+                    original_close()
+            finally:
+                admission.close()
+        components.close = close
     return components, model_source
 
 
@@ -101,22 +147,30 @@ def _same_factory(current, original):
 
 
 def construct(config, *, include_validation=False):
+    from .catalog import validate_compatibility
+    validate_compatibility(config.model, config.algorithm, config.trainer, config.execution)
     dataset = training_data(config, world_size=distributed.rank_world()[1])
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config)
-    algorithm, algorithm_source = load_callable(config.algorithm["factory"])
-    if components.admit_training is not None:
-        components.admit_training(state=components.state, request=config,
-                                  prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
-    validation = Validation.prepare(config, components)
-    identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
-                "algorithm": algorithm_source, "framework": _source(),
-                "model_metadata": dict(components.metadata)}
-    if validation is not None:
-        identity["validation"] = validation.identity
-    if config.execution.get("mode") == "plan":
-        identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
-    result = (components, dataset, algorithm, identity)
+    try:
+        algorithm, algorithm_source = load_callable(config.algorithm["factory"])
+        if components.admit_training is not None:
+            components.admit_training(state=components.state, request=config,
+                                      prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
+        validation = Validation.prepare(config, components)
+        identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
+                    "algorithm": algorithm_source, "framework": _source(),
+                    "model_metadata": dict(components.metadata)}
+        if validation is not None:
+            identity["validation"] = validation.identity
+        if config.execution.get("mode") == "plan":
+            identity["input_plan_sha256"] = hashlib.sha256(Path(config.execution["plan"]).read_bytes()).hexdigest()
+        result = (components, dataset, algorithm, identity)
+    except BaseException:
+        # Successful construction transfers lifetime to the public invocation.
+        if components.close is not None:
+            components.close()
+        raise
     return (*result, validation) if include_validation else result
 
 
@@ -186,13 +240,37 @@ def train(config: TrainingConfig):
         return _train(config)
 
 
+def _checked_construct(config, label, *, include_validation=False):
+    local = None
+
+    def acquire():
+        nonlocal local
+        local = construct(config, include_validation=include_validation)
+        return local
+
+    try:
+        return distributed.checked(acquire, label)
+    except BaseException:
+        # A peer can reject construction after our local provider was returned,
+        # but before the invocation can transfer it to its managed scope.
+        if local is not None:
+            with local[0].managed():
+                raise
+        raise
+
+
 def _train(config: TrainingConfig):
     # Reject unsupported collective validation before constructing any model,
     # installing a wrapper, updating state or creating output.
     distributed.checked(lambda: admit_scope(config), "validation scope admission")
     distributed.admit_run_controls(config)
-    components, dataset, algorithm, identity, validation = distributed.checked(
-        lambda: construct(config, include_validation=True), "training construction")
+    components, dataset, algorithm, identity, validation = _checked_construct(
+        config, "training construction", include_validation=True)
+    with components.managed():
+        return _train_owned(config, components, dataset, algorithm, identity, validation)
+
+
+def _train_owned(config, components, dataset, algorithm, identity, validation):
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
@@ -227,6 +305,9 @@ def _train(config: TrainingConfig):
     distributed.primary(lambda: root.mkdir(parents=True, exist_ok=False), "training output creation")
     distributed.primary(lambda: _json(root / "resolved-config.json", config.to_dict()), "config publication")
     distributed.primary(lambda: _json(root / "identity.json", identity), "identity publication")
+    if components.construction_receipt:
+        distributed.primary(lambda: _json(root / "construction-admission.json", components.construction_receipt),
+                            "construction admission publication")
     rank_root = root if world == 1 else root / "ranks" / f"rank-{rank:05d}"
     if world > 1:
         distributed.checked(lambda: rank_root.mkdir(parents=True, exist_ok=False), "rank output creation")
@@ -305,7 +386,15 @@ def _train(config: TrainingConfig):
 
 
 def _load_for_output(config, checkpoint):
-    components, dataset, algorithm, identity = distributed.checked(lambda: construct(config), "output construction")
+    components, dataset, algorithm, identity = _checked_construct(config, "output construction")
+    try:
+        return _restore_for_output(config, checkpoint, components, dataset, algorithm, identity)
+    except BaseException:
+        with components.managed():
+            raise
+
+
+def _restore_for_output(config, checkpoint, components, dataset, algorithm, identity):
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on checkpoint output configuration, source or dataset")
     rank, world = distributed.rank_world()
@@ -328,7 +417,10 @@ def _load_for_output(config, checkpoint):
     # The saved DDP/FSDP/HSDP owner must exist BEFORE decoding local shards.
     # Reuse the persistent Program lifecycle, without executing a train update.
     session = policy.prepare_resume(workload)
-    payload = distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission")
+    # Reuse restart's complete collective proof before loading local shards;
+    # do not rehash every model-sized peer file independently on every rank.
+    payload = (_read_collective_checkpoint(checkpoint, identity=identity) if world > 1 else
+               distributed.checked(lambda: read_checkpoint(checkpoint, identity=identity), "output checkpoint files admission"))
     distributed.checked(lambda: sampling.validate_progress(payload["cycle"], payload["cursor"]),
                         "output shard sampling progress admission")
     unpack_state(payload["state"], session.state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
@@ -359,7 +451,7 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
                      if isinstance(value, torch.Tensor) else value, feeds)
     # This runtime noise seed is independent of factory initialization/defaults
     # and of RNG consumed while assembling the checkpoint's training workload.
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     with torch.no_grad():
         generated = components.generate(components.state, feeds, dict(parameters or {}))
         decoded = (components.decode(generated, dict(parameters or {}))
@@ -376,7 +468,7 @@ def _generate_values(config, components, feeds, parameters, *, video_required=Fa
 
 
 def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, prepared=None, stream=None):
-    with distributed.context(config):
+    with distributed.context(config), ExitStack() as lifetime:
         from .inference import write_generation
         root = Path(output).expanduser().resolve()
         def admit_request():
@@ -387,6 +479,7 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, pre
         if any(row != request for row in distributed.gather(request)):
             raise ValueError("ranks disagree on shared evaluation request")
         components, dataset, payload, identity, _session = _load_for_output(config, checkpoint)
+        lifetime.enter_context(components.managed())
         rank, world = distributed.rank_world()
         def admit():
             from .data_streams import InputStreams
@@ -439,9 +532,10 @@ def evaluate(config, checkpoint, output, *, sample_index=0, parameters=None, pre
 
 
 def export(config, checkpoint, output):
-    with distributed.context(config):
+    with distributed.context(config), ExitStack() as lifetime:
         from .inference import publish_export
         components, _, payload, identity, _session = _load_for_output(config, checkpoint)
+        lifetime.enter_context(components.managed())
         parameters = {key: value for key, value in _model_parameters(config).items() if key != "device"}
         factory, source = config.model["factory"], identity["model"]
         if components.inference_projection is not None:
@@ -449,6 +543,11 @@ def export(config, checkpoint, output):
                 value = components.inference_projection(components, dict(parameters))
                 if not isinstance(value, InferenceProjection):
                     raise ValueError("inference_projection must return InferenceProjection")
+                # A returned provider is ours before local or peer admission.
+                # Invalid close fields must retain their validation error.
+                if (isinstance(value.components, ModelComponents) and value.components is not components
+                        and (value.components.close is None or callable(value.components.close))):
+                    lifetime.enter_context(value.components.managed())
                 return value.validate()
             projection = distributed.checked(project, "inference projection admission")
             _, source = distributed.checked(lambda: load_callable(projection.factory), "inference factory source admission")
@@ -483,25 +582,26 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     if type(sample_index) is not int or not 0 <= sample_index < len(dataset):
         raise ValueError("generation sample index out of range")
     feeds, sample_id = dataset.sample(sample_index), dataset.sample_id(sample_index)
-    _seed(config.trainer.get("seed", 0))
+    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
     components, model_source = _construct_model(config, source=model["source"])
-    if digest(dict(components.metadata)) != digest(model["metadata"]):
-        raise ValueError("export model metadata changed")
-    restore_modules(components, root, manifest)
-    values = cpu_tree(_generate_values(config, components, feeds, parameters,
-                                      video_required=output_kind == "video", latents_required=output_kind == "latents",
-                                      output_kind=None if output_kind == 'latents' else output_kind))
-    _, current = read_export(root)
-    if digest(current) != digest(manifest):
-        raise ValueError("export manifest changed during generation")
-    output = Path(output).expanduser().resolve()
-    output.mkdir(parents=True, exist_ok=False)
-    result = write_generation(output, values, metadata={
-        "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
-        "sample_id": sample_id, "input_identity": dataset.identity,
-        "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
-        "loaded_factory": model_source,
-        "export_manifest_sha256": file_sha256(root / "export.json"),
-        "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
-    (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
-    return result
+    with components.managed():
+        if digest(dict(components.metadata)) != digest(model["metadata"]):
+            raise ValueError("export model metadata changed")
+        restore_modules(components, root, manifest)
+        values = cpu_tree(_generate_values(config, components, feeds, parameters,
+                                          video_required=output_kind == "video", latents_required=output_kind == "latents",
+                                          output_kind=None if output_kind == 'latents' else output_kind))
+        _, current = read_export(root)
+        if digest(current) != digest(manifest):
+            raise ValueError("export manifest changed during generation")
+        output = Path(output).expanduser().resolve()
+        output.mkdir(parents=True, exist_ok=False)
+        result = write_generation(output, values, metadata={
+            "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
+            "sample_id": sample_id, "input_identity": dataset.identity,
+            "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
+            "loaded_factory": model_source,
+            "export_manifest_sha256": file_sha256(root / "export.json"),
+            "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
+        (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
+        return result

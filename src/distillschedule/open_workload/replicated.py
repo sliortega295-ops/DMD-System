@@ -52,6 +52,33 @@ def broadcast(value):
     return box[0]
 
 
+def metadata_timeout_seconds():
+    """Actual control-group timeout, including externally owned groups.
+
+    PyTorch exposes this on the backend options, not the configured trainer.
+    Read the metadata group's backend so an NCCL data timeout cannot mask a
+    shorter Gloo control timeout. No group or device is created here.
+    """
+    group = _CONTROL_GROUP.get()
+    if group is None:
+        group = dist.group.WORLD
+    require(dist.is_initialized() and group is not None,
+            'initialized metadata group required', path='open.replicated')
+    backend = str(dist.get_backend(group))
+    require(backend in ('gloo', 'nccl'), 'unsupported metadata backend', path='open.replicated')
+    device = torch.device('cpu' if backend == 'gloo' else 'cuda')
+    native = group._get_backend(device)
+    if dist.is_gloo_available():
+        # DETAIL wraps the backend on Torch 2.10; only the underlying real
+        # backend exposes its configured options. Do not guess a timeout.
+        from torch.distributed.distributed_c10d import _ProcessGroupWrapper
+        while isinstance(native, _ProcessGroupWrapper):
+            native = native.wrapped_pg
+    seconds = native.options._timeout.total_seconds()
+    require(0 < seconds < float('inf'), 'invalid metadata-group timeout', path='open.replicated')
+    return seconds
+
+
 def checked(fn: Callable, label: str):
     """Make preflight/validation failures visible to every rank before collectives."""
     value = None
@@ -93,6 +120,12 @@ def ddp_order_admitted(workload, order, context_modules=None):
     Generic post-backward reduction remains available for valid programs outside
     this DDP execution family; do not weaken the mathematical Program contract.
     """
+    if workload.replica_semantics.forward_interface != 'module_forward': return False
+    return forward_order_admitted(workload, order, context_modules)
+
+
+def forward_order_admitted(workload, order, context_modules=None):
+    """Shared native forward/backward lifetime check, not DDP interface admission."""
     calls = {c.id:c for c in workload.program.calls}
     ancestors = {}
     for c in workload.program.calls:
@@ -100,10 +133,11 @@ def ddp_order_admitted(workload, order, context_modules=None):
         ancestors[c.id] = set(parents)
         for p in parents: ancestors[c.id].update(ancestors[p])
     active = {}
+    forwards = workload.replica_semantics.forward_module_bindings
     for key in order:
         if key == '__open_finish__': continue
         c = calls[key]
-        module = workload.replica_semantics.module_bindings.get(c.binding)
+        module = forwards.get(c.binding)
         if context_modules is not None and module not in context_modules: module = None
         if module is not None:
             if module in active: return False
@@ -120,10 +154,12 @@ def inventory(workload, *, limit=16, topology=None):
     local = local_candidates(workload, limit=limit)
     original = tuple(c.id for c in workload.program.calls) + ('__open_finish__',)
     modes = [('post_backward', 0)]
-    if ddp_order_admitted(workload, original): modes += [('ddp_overlap', 1), ('ddp_overlap', 128)]
+    ddp_admitted = ddp_order_admitted(workload, original)
+    if ddp_admitted: modes += [('ddp_overlap', 1), ('ddp_overlap', 128)]
     from .sharded import rejection as sharding_rejection, MODES as sharded_modes, HSDP_MODES
     reason = sharding_rejection(workload)
-    admit_sharding = reason is None and len(modes) > 1
+    admit_sharding = reason is None and (ddp_admitted or
+        workload.replica_semantics.forward_interface == 'registered_methods' and forward_order_admitted(workload, original))
     hybrid_modes = HSDP_MODES if topology and topology['hsdp_admitted'] else ()
     from .mixed_layout import domains, enumerate_assignments, assignment_count, option as mixed_option
     domain = domains(workload, topology)
@@ -150,7 +186,7 @@ def inventory(workload, *, limit=16, topology=None):
     total = local['total_candidates'] * len(modes) + unshared_count * (mixed_count +
                 (len(sharded_modes)+len(hybrid_modes) if admit_sharding else 0))
     return {'candidates':result, 'total_candidates':total, 'exhaustive':len(result)==total,
-            'capabilities':local['capabilities']+['post_backward_mean','ddp_async_mean']+
+            'capabilities':local['capabilities']+['post_backward_mean']+(['ddp_async_mean'] if len(modes) > 1 else [])+
                            (list(sharded_modes)+list(hybrid_modes) if admit_sharding else [])+(['per_module'] if mixed_count else []),
             'layout':'data_parallel_replicated_or_sharded', 'cross_call_overlap':False,
             'reused_hook':'distillschedule.runtime.wan13b_fair.ddp_sum_then_divide_hook',
@@ -255,14 +291,26 @@ class ReplicaLifecycle:
 
 def make_session(workload, implementation, *, copy_state=True, persistent=False):
     checked(lambda: workload.validate(), 'session preflight')
+    options = gather(implementation)
+    require(all(option == options[0] for option in options),
+            'ranks selected different implementations', path='open.replicated')
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
+    from .sharded import ShardedLifecycle, MODES, HSDP_MODES
+    checked(lambda: require(workload.replica_semantics is not None and
+        (workload.replica_semantics.forward_interface == 'module_forward'
+         or implementation.get('reduction') == 'post_backward'
+         or (workload.replica_semantics.forward_interface == 'registered_methods'
+             and implementation.get('reduction') in (*MODES, *HSDP_MODES))),
+        'private methods require post_backward reduction, not forward wrappers', path='open.replicated'), 'forward interface')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
     from .mixed_layout import MixedLifecycle, MODE as MIXED
     if implementation.get('reduction') == MIXED:
         return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation),
                        copy_state=copy_state,persistent=persistent)
-    from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
+    if lifecycle is ShardedLifecycle:
+        from .sharded import construction_handoffs
+        construction_handoffs(workload, implementation, copy_state=copy_state)
     return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation),
                    copy_state=copy_state,persistent=persistent)

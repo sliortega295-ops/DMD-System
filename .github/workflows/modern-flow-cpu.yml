@@ -1,0 +1,221 @@
+name: modern-flow-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/**'
+      - 'tests/test_training_*.py'
+      - 'tests/test_open_workload_*.py'
+      - 'tests/native_flow_replicated.py'
+      - 'tests/flow_replica_oracle.py'
+      - 'tests/gpu/native_flow_oracle.py'
+      - 'tests/gpu/test_training_flow_image_lifecycle.py'
+      - 'tests/gpu/test_training_flow_video_lifecycle.py'
+      - 'tests/test_data_export_inputs_native_cpu.py'
+      - 'tests/test_framework_*.py'
+      - 'recipes/**'
+      - 'scripts/check_framework_install.py'
+      - 'scripts/check_cpu_receipt.py'
+      - 'pyproject.toml'
+      - '.github/workflows/modern-flow-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  native-replicated-lifecycle:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: image
+            proof: test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli
+            first: flux2-klein-base
+            second: qwen-image
+          - kind: video
+            proof: test_actual_native_video_gloo2_independent_oracle_and_fresh_cli
+            first: wan22
+            second: hunyuan_video
+    env:
+      PYTHONPATH: 'src:.:tests'
+      DMD_MODERN_FLOW_CPU: '1'
+      DMD_NATIVE_FLOW_REPLICATED: '1'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+      USE_TF: '0'
+      USE_FLAX: '0'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Isolated pinned CPU stack
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[test,modern-flow]'
+      - name: Actual native Gloo2 gradient oracle and new-process lifecycle
+        run: |
+          python -m pytest -q tests/test_training_flow_${{ matrix.kind }}_replicated.py tests/test_training_checkpoint_storage_visibility.py --junitxml=native-${{ matrix.kind }}-replicated.xml
+          python scripts/check_cpu_receipt.py native-${{ matrix.kind }}-replicated.xml \
+            --require '${{ matrix.proof }}[${{ matrix.first }}]' \
+            --require '${{ matrix.proof }}[${{ matrix.second }}]'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-${{ matrix.kind }}-replicated-cpu
+          path: native-${{ matrix.kind }}-replicated.xml
+          if-no-files-found: error
+  native-media-lifecycle:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    env:
+      PYTHONPATH: 'src:.:tests'
+      DMD_MODERN_FLOW_CPU: '1'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Isolated modern stack, never combine with the original TF4 providers
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[test,modern-flow]'
+      - name: Real video-container decoding is mandatory
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          command -v ffmpeg
+          command -v ffprobe
+      - name: Actual upstream models, raw media, all-state restart and measured plans
+        run: |
+          python -m pytest -q tests/test_training_flow_image_device.py tests/test_training_flow_video_device.py tests/test_training_flow_images_cpu.py tests/test_training_wan22_cpu.py tests/test_training_hunyuan_video_cpu.py tests/test_training_modern_flow_planning_cpu.py tests/test_training_native_text_assets_cpu.py tests/test_training_flow_streaming_load.py tests/test_data_export_inputs_native_cpu.py tests/test_framework_install_environment.py tests/test_training_expansion_packaging.py --junitxml=modern-flow-cpu.xml
+          python scripts/check_cpu_receipt.py modern-flow-cpu.xml \
+            --require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners \
+            --require test_ema_restoration_validates_every_tensor_before_mutation \
+            --require 'test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual[wan22-ti2v5b-t2v-wan22]' \
+            --require 'test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual[hunyuan15-t2v-hunyuan_video]' \
+            --require 'test_prepared_feature_device_contract_and_owned_native_tensors[wan22-ti2v5b-t2v-wan22]' \
+            --require 'test_prepared_feature_device_contract_and_owned_native_tensors[hunyuan15-t2v-hunyuan_video]' \
+            --require 'test_fresh_process_cli_resume_current_student_export_and_new_prompt[flux2-klein-base]' \
+            --require 'test_fresh_process_cli_resume_current_student_export_and_new_prompt[qwen-image]' \
+            --require test_fresh_process_restart_export_new_input_without_training_assets \
+            --require test_fresh_process_complete_recovery_and_portable_current_g_video \
+            --require test_actual_lossless_video_file_and_raw_rgba_refusal \
+            --require 'test_public_auto_saved_plan_and_new_process_resume[flux2-klein-base]' \
+            --require 'test_public_auto_saved_plan_and_new_process_resume[qwen-image]' \
+            --require 'test_public_auto_saved_plan_and_new_process_resume[wan22-ti2v-5b]' \
+            --require 'test_public_auto_saved_plan_and_new_process_resume[hunyuan-video-1.5]' \
+            --require 'test_legacy_native_effective_config_forward_gradient_raw_restore_and_safe_reload[flux]' \
+            --require 'test_alias_shard_index_remains_exact_and_header_failures_precede_payload[wrong-shard]' \
+            --require 'test_native_loading_releases_each_shard_before_reading_the_next[float32]' \
+            --require 'test_native_loading_releases_each_shard_before_reading_the_next[bfloat16]' \
+            --require test_streaming_native_constructor_keeps_success_rng_and_rejects_nonfinite_without_consuming_rng \
+            --require test_installed_modern_wheel_actual_image_video_restart_and_export_only_inputs
+      - name: Actual FLUX model-owned flow boundary
+        run: |
+          python -m pytest -q \
+            'tests/test_training_flow_model_methods.py::test_native_direct_entry_current_owner_no_copy_and_exact_census[flux2-klein-base]' \
+            'tests/test_training_flow_model_methods.py::test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-reuse_student-all_steps-False-False]' \
+            'tests/test_training_flow_model_methods.py::test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-reuse_student-last_step-True-True]' \
+            'tests/test_training_flow_model_methods.py::test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-fresh_student-all_steps-True-False]' \
+            'tests/test_training_flow_model_methods.py::test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-fresh_student-last_step-False-False]' \
+            'tests/test_training_flow_model_methods.py::test_native_rank_namespaces_and_local_gradients_match_existing_b1_oracle[flux2-klein-base]' \
+            'tests/test_training_flow_model_methods.py::test_native_clock_refusal_precedes_outer_and_native_forward[flux2-klein-base]' \
+            'tests/test_training_flow_model_methods.py::test_native_complete_cycle_new_process_resume_is_exact[flux2-klein-base]' \
+            --junitxml=flux-flow-methods-cpu.xml
+          python scripts/check_cpu_receipt.py flux-flow-methods-cpu.xml \
+            --require 'test_native_direct_entry_current_owner_no_copy_and_exact_census[flux2-klein-base]' \
+            --require 'test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-reuse_student-all_steps-False-False]' \
+            --require 'test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-reuse_student-last_step-True-True]' \
+            --require 'test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-fresh_student-all_steps-True-False]' \
+            --require 'test_native_exact_sequential_trace_at_new_entry[flux2-klein-base-fresh_student-last_step-False-False]' \
+            --require 'test_native_rank_namespaces_and_local_gradients_match_existing_b1_oracle[flux2-klein-base]' \
+            --require 'test_native_clock_refusal_precedes_outer_and_native_forward[flux2-klein-base]' \
+            --require 'test_native_complete_cycle_new_process_resume_is_exact[flux2-klein-base]'
+      - name: Actual FLUX CPU FSDP flow ownership
+        run: |
+          python -m pytest -q \
+            'tests/test_open_workload_parameter_shadows.py::test_native_full_shadow_oracle_and_fresh_process_checkpoint[flux2-klein-base-fsdp2_reshard]' \
+            'tests/test_open_workload_parameter_shadows.py::test_native_full_shadow_oracle_and_fresh_process_checkpoint[flux2-klein-base-fsdp2_keep_forward]' \
+            'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[flux2-klein-base-fsdp2_reshard]' \
+            'tests/test_open_workload_frozen_roots.py::test_private_native_flow_frozen_teacher_G1_F5[flux2-klein-base-fsdp2_keep_forward]' \
+            'tests/test_training_flow_owned_generation.py::test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_reshard]' \
+            'tests/test_training_flow_owned_generation.py::test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_keep_forward]' \
+            --junitxml=flux-flow-sharding-cpu.xml
+          python scripts/check_cpu_receipt.py flux-flow-sharding-cpu.xml \
+            --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[flux2-klein-base-fsdp2_reshard]' \
+            --require 'test_native_full_shadow_oracle_and_fresh_process_checkpoint[flux2-klein-base-fsdp2_keep_forward]' \
+            --require 'test_private_native_flow_frozen_teacher_G1_F5[flux2-klein-base-fsdp2_reshard]' \
+            --require 'test_private_native_flow_frozen_teacher_G1_F5[flux2-klein-base-fsdp2_keep_forward]' \
+            --require 'test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_reshard]' \
+            --require 'test_native_owned_generation_restored_current_student_and_closed_groups[flux2-klein-base-fsdp2_keep_forward]'
+      - name: Actual frozen native local-shard construction
+        run: |
+          python -m pytest -q \
+            'tests/test_training_flow_sharded_weight_loading.py::test_actual_native_frozen_shard_loader_cpu2[flux2-float32]' \
+            'tests/test_training_flow_sharded_weight_loading.py::test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2' \
+            --junitxml=native-shard-loading-cpu.xml
+          python scripts/check_cpu_receipt.py native-shard-loading-cpu.xml \
+            --require 'test_actual_native_frozen_shard_loader_cpu2[flux2-float32]' \
+            --require test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2
+      - name: Actual FLUX2 construction-provider lifecycle and fresh-process restore
+        run: |
+          python -m pytest -q \
+            'tests/test_training_sharded_construction.py::test_caller_pre_sharded_actual_native_root_still_rejected[flux2]' \
+            'tests/test_training_sharded_construction.py::test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]' \
+            'tests/test_training_sharded_construction.py::test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]' \
+            'tests/test_training_sharded_construction.py::test_actual_flux2_public_factory_train_and_new_process_resume' \
+            'tests/test_training_sharded_construction.py::test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]' \
+            'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
+            'tests/test_training_sharded_construction.py::test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
+            'tests/test_training_sharded_construction.py::test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]' \
+            'tests/test_training_sharded_construction.py::test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]' \
+            'tests/test_training_sharded_construction.py::test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]' \
+            --junitxml=flux2-construction-handoff-cpu.xml
+          python scripts/check_cpu_receipt.py flux2-construction-handoff-cpu.xml \
+            --require 'test_caller_pre_sharded_actual_native_root_still_rejected[flux2]' \
+            --require 'test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]' \
+            --require 'test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]' \
+            --require test_actual_flux2_public_factory_train_and_new_process_resume \
+            --require 'test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]' \
+            --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]' \
+            --require 'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]' \
+            --require 'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]' \
+            --require 'test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]' \
+            --require 'test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]'
+      - name: Installed wheel user path, no checkout imports or model downloads
+        run: python scripts/check_framework_install.py --modern-flow --work-dir "${{ runner.temp }}/installed-modern" --output installed-modern.json
+      - name: Separate optional native-image and native-video CUDA lifecycle receipt
+        run: |
+          # CPU-hosted CI records explicit skips, never CUDA acceptance.
+          DMD_CUDA_IMMUTABLE_SHARING=1 python -m pytest -q tests/gpu/test_training_flow_image_lifecycle.py tests/gpu/test_training_flow_video_lifecycle.py --junitxml=optional-modern-cuda.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modern-flow-cpu
+          path: |
+            modern-flow-cpu.xml
+            flux-flow-methods-cpu.xml
+            flux-flow-sharding-cpu.xml
+            native-shard-loading-cpu.xml
+            flux2-construction-handoff-cpu.xml
+            optional-modern-cuda.xml
+            installed-modern.json
+          if-no-files-found: error

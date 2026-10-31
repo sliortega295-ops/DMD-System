@@ -24,7 +24,7 @@ from .native_state import TrainableWeights, EngineClocks, engine_state, _named
 _SCHEMA = "distillschedule.original_helios_gan_critic_state.v1"
 _SOURCE = {
     "reference/train_helios.py": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
-    "source/helios/utils/utils_helios_post.py": "e3ff9e5f8bf025ee740e436bc0c209c972f1e56eb0236b968fe6bd8284107004",
+    "source/helios/utils/utils_helios_post.py": "3bb57f4aaa65c59cf2f928765be67e601d8bec69bd3aeb384cbe4e8982724488",
     "source/helios/modules/transformer_helios.py": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
 }
 

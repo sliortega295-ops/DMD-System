@@ -68,14 +68,11 @@ def _rank(rank, root, native_path, public_raw, inputs_path, source_path, scenari
                 shutil.rmtree(root / "run")
             dist.barrier()
             restore_rng(initial_rng)
-            trainer, partial = tiny_original_trainer(root, native, inputs, public)
-            original = partial.after_cycle
-            def stop(trainer, cycle):
-                original(trainer, cycle)
-                raise InterruptedError("published all-rank complete boundary")
-            partial.after_cycle = stop
-            with pytest.raises(InterruptedError):
-                trainer.train()
+            stopped = public.to_dict(); stopped["trainer"]["stop_after_cycle"] = 1
+            stopped = TrainingConfig.from_dict(stopped, source=root / "public.json")
+            trainer, partial = tiny_original_trainer(root, native, inputs, stopped)
+            trainer.train()
+            assert partial.completed == 1 and partial.cursor.cursor == 6 and trainer.max_train_iters == 3
             checkpoint = root / "run/checkpoints/cycle-000001"
             manifest = json.loads((checkpoint / "manifest.json").read_text())
             assert set(manifest["files"]) == {"rank-00000.pt", "rank-00001.pt"}

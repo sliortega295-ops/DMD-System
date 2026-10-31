@@ -5,6 +5,7 @@ FlashAttention or BF16 fallback. The original full model imports flash_attention
 that name is only this explicitly admitted bridge in this private namespace.
 """
 from contextlib import contextmanager
+from contextvars import ContextVar
 import math
 from numbers import Real
 import os
@@ -18,6 +19,7 @@ from . import sdpa_original
 
 MAX_ATTENTION_ELEMENTS = 16_777_216
 MAX_INPUT_ELEMENTS = 8_388_608
+_INFERENCE_CAPACITY = ContextVar('livewan_cpu_portable_inference_capacity', default=None)
 _SDPA = F.scaled_dot_product_attention
 _SDPA_KERNEL = sdpa_kernel
 _MATH = SDPBackend.MATH
@@ -44,6 +46,25 @@ def math_sdpa_context():
         yield
 
 
+@contextmanager
+def portable_inference_capacity(*, max_input_elements, max_attention_elements):
+    """Explicit bounded output-only context; reference/training limits remain.
+
+    The portable owner must admit its model/KV/MATH-workspace host capacity
+    before entering this context. No tensor values or attention math change.
+    """
+    _validate_backend()
+    _require(not torch.is_grad_enabled(), 'portable capacity is inference-only')
+    _require(type(max_input_elements) is int and 0 < max_input_elements <= 64_000_000
+             and type(max_attention_elements) is int and 0 < max_attention_elements <= 20_000_000_000,
+             'bounded explicit portable inference capacity required')
+    token = _INFERENCE_CAPACITY.set((max_input_elements, max_attention_elements))
+    try:
+        yield
+    finally:
+        _INFERENCE_CAPACITY.reset(token)
+
+
 def _lengths(value, batch, length, name):
     if value is None:
         return
@@ -64,6 +85,10 @@ def flash_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0.,
                     dtype=torch.float32, version=None):
     """Exact original SDPA mask/GQA/scales math under explicit FP32 CPU policy."""
     _validate_backend()
+    limits = _INFERENCE_CAPACITY.get()
+    if limits is not None:
+        _require(not torch.is_grad_enabled(), 'portable capacity is inference-only')
+    input_limit, attention_limit = limits or (MAX_INPUT_ELEMENTS, MAX_ATTENTION_ELEMENTS)
     _require(dtype is torch.float32, "dtype must be torch.float32 (no BF16 default)")
     _require(isinstance(dropout_p, Real) and not isinstance(dropout_p, bool) and dropout_p == 0,
              "nonzero/invalid dropout is not admitted")
@@ -78,7 +103,7 @@ def flash_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0.,
         _require(isinstance(value, torch.Tensor) and value.device.type == "cpu"
                  and value.layout == torch.strided and value.dtype is torch.float32
                  and value.ndim == 4, name + " must be a dense CPU float32 [B,L,N,C] tensor")
-        _require(all(size > 0 for size in value.shape) and value.numel() <= MAX_INPUT_ELEMENTS,
+        _require(all(size > 0 for size in value.shape) and value.numel() <= input_limit,
                  name + " empty or above CPU input-element budget")
         _require(bool(torch.isfinite(value).all()), name + " must be finite")
     b, lq, nq, c = q.shape
@@ -86,7 +111,7 @@ def flash_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0.,
     bv, lv, nv, cv = v.shape
     _require(b == bk == bv and lk == lv and nk == nv and c == ck and c <= 256 and cv <= 256
              and nq % nk == 0, "incompatible batch/sequence/head/value geometry")
-    _require(b * nq * lq * lk <= MAX_ATTENTION_ELEMENTS, "CPU attention-element budget exceeded")
+    _require(b * nq * lq * lk <= attention_limit, "CPU attention-element budget exceeded")
     _lengths(q_lens, b, lq, "q_lens")
     _lengths(k_lens, b, lk, "k_lens")
     return sdpa_original.sdpa_attention(q, k, v, q_lens=q_lens, k_lens=k_lens,

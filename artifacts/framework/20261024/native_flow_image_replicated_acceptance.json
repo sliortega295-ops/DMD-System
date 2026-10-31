@@ -1,0 +1,126 @@
+{
+  "schema_version": "distillschedule.framework_acceptance.v1",
+  "status": "PASS_ACTUAL_NATIVE_TINY_NCCL2_REFERENCE_AND_MANUAL",
+  "scope": "Actual random-tiny upstream FLUX/Qwen FP32 replicated reference/manual; not pretrained capacity or quality",
+  "evidence_kind": "SYNTHETIC_TEST_ONLY",
+  "source": {
+    "source_id": "R12_BASE_8b4f90e0_PLUS_FROZEN_PATCH_R4",
+    "base_head": "8b4f90e0c98c2a90356f12e87979c62dad44b194",
+    "files": {
+      "recipes/flow_image/create_cpu_fixture.py": "35bd8808f2b1b9e93a9ebfee9599bef89677d16bf3ec7fc767013c15353f7197",
+      "src/distillschedule/open_workload/replica_contract.py": "78bae049d7343d088052c143c39db741161d5279a3fe8386e4ff7b1facf67284",
+      "src/distillschedule/open_workload/replicated.py": "ea719b7433acc392ca6747053ce1f8c8db4f6681b86dc5d6fbdf0e9be133db82",
+      "src/distillschedule/open_workload/sharded.py": "b6070f16328ec1ef52a353bf0d67a8d6ea5dee04d071801a9bf177cf321292f4",
+      "src/distillschedule/open_workload/torch_backend.py": "8bb2b1acf21a08be44314de7c904bb12be19b70b887ae4fe63d1db9b8e43a23b",
+      "src/distillschedule/training/catalog.py": "e9325c2cbbdc21b3de64c909957786ed631555382839adcf9733f2ec128665c3",
+      "src/distillschedule/training/dmd.py": "33a092a030377095eb080438bb3f060b91dd6a724592d22c3e46f9cd1bc57bf4",
+      "src/distillschedule/training/flow_image.py": "82ea0118c190789c7d32fa89c69eb4965362240c087c9967209a5c78a135d8fe",
+      "src/distillschedule/training/single_device.py": "4a6245064a0a33101b44251613f06f5188e336b76b624acd3aed11d983f8ac02",
+      "tests/flow_replica_oracle.py": "61df1157d8220b0287325dc71ed356a6aa6f7d96ee86d1ca269fdf5109f7f602",
+      "tests/gpu/test_training_flow_image_replica_gpu.py": "3d79b49e668d707ce6810b9c018741d127cfb375621b3f9a2f302361b2aa1b8b",
+      "tests/native_flow_replicated.py": "b9eca6a21231d683c0ab3aee51ec4416060dfed60ac102b1746c48ecf69bb0ea",
+      "tests/test_open_workload_replica_contract.py": "79075ef6bd8730c44f85a534af76d081f524ab6c6b7fb47d04956fabc568580c",
+      "tests/test_training_dmd_flow.py": "b161f0c799b5adede1754aaa320f87d8ab24ed3637dfada03aa87759278d4d9c",
+      "tests/test_training_flow_image_device.py": "5cf04da81b3a7b626e008f516d324505b4dfc3725c515c749e4263154ea17dbb",
+      "tests/test_training_flow_image_replicated.py": "d2808b713d0166b45f176371c15d180f92599437c92f486f166a0d72ee72fc6f",
+      "tests/test_training_model_algorithm_compatibility.py": "8f30e269e744678380b52ad70edda660126d1090be66fa6dc9e25b1e019cfaa0"
+    },
+    "new_files": [
+      "tests/flow_replica_oracle.py",
+      "tests/gpu/test_training_flow_image_replica_gpu.py",
+      "tests/native_flow_replicated.py",
+      "tests/test_training_flow_image_replicated.py"
+    ],
+    "tracked_diff_sha256": "b2a6704be16fd68c863757cc44909edcaf2118d5f79c73af1e113b64f803189b",
+    "patch_sha256": "4f90b9af2a4a6dd7c273a69c7ec02c60f23225d39590ce0fe1e07320038cb076",
+    "created_utc": "2026-10-24T22:35:35.418392+00:00",
+    "changes_from_r3": [
+      "tests/test_training_model_algorithm_compatibility.py"
+    ],
+    "reason": "test-only update of old all-distribution rejection to admit explicit image reference contract while retaining video/wrapper/trial/cache refusals",
+    "evidence": "SOURCE_ONLY_GPU_NOT_RUN",
+    "native_r3_reuse": "all 16 source-r3 files, including actual native oracle/CLI tests and production, remain byte-identical"
+  },
+  "cuda": {
+    "tests": 2,
+    "ranks": 2,
+    "failures": 0,
+    "skips": 0,
+    "suite_wall_seconds": 1072.908,
+    "source_manifest_sha256": "e2174e716a02c2667e21afea2d0ab910124b7135645bd51b1a9abd900e83491c",
+    "proofs": [
+      {
+        "family": "flux2-klein-base",
+        "cycles": 3,
+        "student_updates": 3,
+        "fake_updates": 15,
+        "independent_b1_gradient_mean": true,
+        "mean_before_clip_adam": true,
+        "reference_manual_exact": true,
+        "fresh_process_all_rank_restart": true,
+        "current_student_new_prompt": true,
+        "missing_shard_refused": true
+      },
+      {
+        "family": "qwen-image",
+        "cycles": 3,
+        "student_updates": 3,
+        "fake_updates": 15,
+        "independent_b1_gradient_mean": true,
+        "mean_before_clip_adam": true,
+        "reference_manual_exact": true,
+        "fresh_process_all_rank_restart": true,
+        "current_student_new_prompt": true,
+        "missing_shard_refused": true
+      }
+    ]
+  },
+  "cpu": {
+    "fresh_target_r4_passes": 204,
+    "fresh_skips": 0,
+    "native_gloo2_reused_exact_r3_source": 2,
+    "original_target_refactor_passes": 2152,
+    "original_target_refactor_optional_skips": 86,
+    "cuda_initialized": false
+  },
+  "cleanup": {
+    "pass": true,
+    "cgroup_delta": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    },
+    "max_sampled_driver_memory_MiB": 1236,
+    "memory_scope": "whole-suite sampling; not per-stage allocated/reserved"
+  },
+  "failures_preserved": [
+    "R1 CPU pytree metadata assertion",
+    "R2 CPU alias-deduplicated frozen snapshot",
+    "R3 stale static compatibility expectation",
+    "cuda2-r1 pre-GPU Git abbreviated index formatting"
+  ],
+  "bound_receipts": {
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/configs/cuda2-r2-launch.json": "fa199fd61d5a1951d3686be823be9e3e6980aaa4a010534c2dd82a52a38c6072",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/lifecycle/node0/lifecycle.json": "315fc5ce4dfd1a6301749441620aea18869be0caecd8cade029e9e4768dd0fad",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/resources/node0.json": "b49ad08a90d441151f796e6de48aca35a7023e47d9634c319d82d9dde9ca5ef3",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/reports/cuda2-r2.xml": "f3f8beba43b33fb99125ffc4ef79f3dcfa95f715b3b4b2327ef493246e4c0cb4",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/reports/cuda2-r2-owner.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/pytest/test_actual_native_flow_nccl2_0/oracle/proof.json": "f8986b2fccebd8ad401f728cdf996f99697100545629b47fe5c48ae831b2f5d9",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/pytest/test_actual_native_flow_nccl2_0/lifecycle/proof.json": "2936a3a2903d3124c9d1b5123d7f700db0d5cc2bb52ddf4e61914e03fd07a841",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/pytest/test_actual_native_flow_nccl2_1/oracle/proof.json": "7bab2cfc76402b82c7ba0fe1c4db97e2be40a4acb20b9ebf3b5f7e8bcc94c354",
+    "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated/artifacts/cuda2-r2/pytest/test_actual_native_flow_nccl2_1/lifecycle/proof.json": "50d1d356f5fbee77feb68faa42bcf81db9049c710c17892d2f5d86fd7ef86d6a"
+  },
+  "review_receipt": "ce-code-review/20261024-151128-949d03ee/review.json",
+  "review_final_scope": "ce-code-review/20261024-151128-949d03ee/final-scope-audit/review.json",
+  "evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/framework_maturation_20261023/r12_flow_image_replicated",
+  "remote_raw_only": true,
+  "world16": "RUNNING_NOT_YET_ACCEPTED",
+  "quality": "NOT_RUN",
+  "pretrained_capacity": "NOT_RUN",
+  "performance": "NOT_RUN",
+  "cuda_planning": "NOT_RUN",
+  "hosted_CI": "NOT_RUN",
+  "whole_plan_complete": false
+}

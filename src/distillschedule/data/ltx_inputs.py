@@ -35,11 +35,11 @@ def native_positions(source, video_shape, audio_shape, fps, media_architecture):
     return {'video': video_position, 'audio': audio_position.float()}
 
 
-def _mask(mask, batch, length):
+def _mask(mask, batch, length, *, device):
     import torch
     from distillschedule.training.ltx_source import require
-    require(isinstance(mask, torch.Tensor) and mask.device.type == 'cpu' and not mask.requires_grad,
-            'text context mask must be an explicit detached CPU tensor')
+    require(isinstance(mask, torch.Tensor) and mask.device == device and not mask.requires_grad,
+            'text context mask must be an explicit detached tensor on the owned device')
     if mask.dtype in (torch.bool, torch.int64):
         require(mask.shape == (batch, length) and bool(((mask == 0) | (mask == 1)).all())
                 and bool(mask.any(dim=1).all()), 'binary text mask must be BL, 1=valid, with a valid token')
@@ -49,23 +49,30 @@ def _mask(mask, batch, length):
                 and bool((mask == 0).any(dim=-1).all()), 'floating text mask must be native additive B11L, 0/-finfo.max')
 
 
-def validate_row(row, *, source, media_architecture, binding, context_dimensions=None, null_context=None):
+def validate_row(row, *, source, media_architecture, binding, context_dimensions=None, null_context=None, device='cpu'):
     import torch
     from distillschedule.training.ltx_source import require
+    from torch.utils._pytree import tree_leaves
+    device = torch.device(device)
+    require(device.type in ('cpu', 'cuda'), 'native AV inputs require a CPU or CUDA device')
     keys = {'latents', 'conditioning', 'conditioning_mask', 'positions', 'contexts', 'context_mask',
             'null_contexts', 'null_context_mask', 'video_shape', 'audio_shape', 'fps', 'encoder_identity'}
     require(isinstance(row, dict) and row.keys() == keys, 'complete explicit native AV/conditioning/geometry fields required')
+    # Reject mixed-device metadata, masks and coordinates before scalar reads or
+    # native work. Offline data preparation still defaults to CPU, unchanged.
+    require(all(type(value) is torch.Tensor and value.device == device for value in tree_leaves(row)),
+            'every native AV input tensor must be on the owned device')
     for name, length in (('video_shape', 5), ('audio_shape', 4)):
         shape = row[name]
         require(type(shape) is torch.Tensor and shape.dtype == torch.int64 and shape.shape == (length,)
-                and shape.device.type == 'cpu' and bool((shape > 0).all()), 'explicit positive native latent shape required: ' + name)
+                and shape.device == device and bool((shape > 0).all()), 'explicit positive native latent shape required: ' + name)
     vs, au = row['video_shape'].tolist(), row['audio_shape'].tolist()
     require(vs[0] == au[0] and vs[1] == 128 and au[1] == media_architecture['audio_encoder']['z_channels']
             and au[3] == media_architecture['audio_encoder']['mel_bins']
                 // (2 ** (len(media_architecture['audio_encoder']['ch_mult']) - 1))
             and au[1] * au[3] == 128, 'native patch geometry must produce actual video/audio width128 tokens')
     fps = row['fps']
-    require(type(fps) is torch.Tensor and fps.dtype == torch.float32 and fps.shape == () and fps.device.type == 'cpu'
+    require(type(fps) is torch.Tensor and fps.dtype == torch.float32 and fps.shape == () and fps.device == device
             and bool(torch.isfinite(fps)) and float(fps) > 0, 'explicit native FPS scalar required')
     expected = {'video': (vs[0], vs[2] * vs[3] * vs[4], 128), 'audio': (au[0], au[2], 128)}
     for field in ('latents', 'conditioning', 'conditioning_mask', 'positions', 'contexts', 'null_contexts'):
@@ -74,28 +81,29 @@ def validate_row(row, *, source, media_architecture, binding, context_dimensions
         for name, shape in expected.items():
             value = row[field][name]
             require(type(value) is torch.Tensor and value.dtype == torch.float32 and tuple(value.shape) == shape
-                    and value.device.type == 'cpu' and value.layout == torch.strided and not value.requires_grad
+                    and value.device == device and value.layout == torch.strided and not value.requires_grad
                     and bool(torch.isfinite(value).all()), 'finite detached exact native FP32 BNC payload required: ' + field + '/' + name)
     for name, shape in expected.items():
         mask = row['conditioning_mask'][name]
         require(type(mask) is torch.Tensor and mask.dtype == torch.bool and tuple(mask.shape) == shape[:2]
-                and mask.device.type == 'cpu', 'clean conditioning mask must be actual native per-token BN boolean')
+                and mask.device == device, 'clean conditioning mask must be actual native per-token BN boolean')
     require(any(not bool(mask.all()) for mask in row['conditioning_mask'].values()), 'all tokens are clean conditioning; no DMD loss remains')
     positions = native_positions(source, vs, au, float(fps), media_architecture)
     for name, value in positions.items():
         require(type(row['positions'][name]) is torch.Tensor and row['positions'][name].dtype == torch.float32
-                and torch.equal(row['positions'][name], value), 'stale/non-native coordinates or FPS: ' + name)
+                and torch.equal(row['positions'][name], value.to(device)), 'stale/non-native coordinates or FPS: ' + name)
     length = None
     for field in ('contexts', 'null_contexts'):
         for name, value in row[field].items():
             require(type(value) is torch.Tensor and value.dtype == torch.float32 and value.ndim == 3
                     and value.shape[0] == vs[0] and value.shape[1] > 0 and value.shape[2] > 0
-                    and value.device.type == 'cpu' and not value.requires_grad and bool(torch.isfinite(value).all()),
+                    and value.device == device and not value.requires_grad and bool(torch.isfinite(value).all()),
                     'actual native projected Gemma contexts required: ' + field + '/' + name)
             length = value.shape[1] if length is None else length
             require(value.shape[1] == length and (context_dimensions is None or value.shape[2] == context_dimensions[name]),
                     'native Gemma/context dimensions disagree with the actual transformer')
-    _mask(row['context_mask'], vs[0], length); _mask(row['null_context_mask'], vs[0], length)
+    _mask(row['context_mask'], vs[0], length, device=device)
+    _mask(row['null_context_mask'], vs[0], length, device=device)
     identity = row['encoder_identity']
     require(type(identity) is torch.Tensor and identity.dtype == torch.uint8 and identity.shape == (32,)
             and bytes(identity.tolist()).hex() == binding, 'native source/codec binding changed; stale cache refused')
@@ -113,15 +121,25 @@ def validate_row(row, *, source, media_architecture, binding, context_dimensions
 
 def encode_record(record, parameters, *, media=None):
     """Common raw-encoder plugin, or direct use by the specialized preparation."""
-    import torch
     from distillschedule.training.ltx_media import load_media, media_binding
-    from distillschedule.training.ltx_source import original, require
+    from distillschedule.training.ltx_source import original
     api = original(parameters['source_root'])
     if media is None:
         media, manifest, _ = load_media(api.source, parameters['assets'])
     else:
         manifest = parameters['asset_manifest']
     binding = media_binding(manifest, api.source)
+    return _encode_loaded(record, parameters, api=api, media=media, binding=binding)
+
+
+def _encode_loaded(record, parameters, *, api, media, binding):
+    """One native encoding path for prepared training and portable inference.
+
+    Callers own source/weight admission. This function never opens a training
+    bundle: an exported Student already owns the identical frozen codecs.
+    """
+    import torch
+    from distillschedule.training.ltx_source import require
     mode = parameters.get('mode', 'raw')
     if mode == 'preencoded':
         from distillschedule.training.ltx_media import asset_file
@@ -190,6 +208,52 @@ def encode_record(record, parameters, *, media=None):
         null_context={'video': empty['video_context'], 'audio': empty['audio_context'], 'mask': empty['context_mask']})
 
 
+def _input_metadata(mode):
+    return dict(schema_version=SCHEMA, mode=mode,
+        prediction='flow_epsilon_minus_x0', layout='NATIVE_BNC_AV_WIDTH128',
+        text='REAL_LOCAL_GEMMA4_FEATURE_EXTRACTOR_V2_DUAL_CONNECTORS', quality_validation='NOT_RUN')
+
+
+def encode_export_input(state, record, parameters):
+    """Encode NEW text/media from restored codecs, without the training assets.
+
+    Uses the common CPU export-input preparer. No preencoded fallback, guessed
+    geometry, new weight loading, device migration, or change to DMD execution.
+    """
+    from .decoding import decode_record
+    from .manifest import validate_source
+    from distillschedule.training.ltx_media import encoding_sources
+    from distillschedule.training.ltx_source import original, require
+    require(isinstance(parameters, dict) and set(parameters) == {'mode', 'source_dir', 'model_metadata'},
+            'explicit export mode/source/model metadata required')
+    mode = parameters['mode']
+    require(mode in ('raw', 'prompts'), 'export native input mode must be raw or prompts')
+    require(isinstance(record, dict) and isinstance(record.get('id'), str) and bool(record['id']),
+            'explicit native export record id required')
+    student, media = state['student'], state['media']
+    require(student.device.type == 'cpu' and all(t.device.type == 'cpu'
+            for t in (*media.parameters(), *media.buffers())), 'export preparation requires CPU-owned native codecs')
+    require(parameters['model_metadata'].get('media_binding') == student.binding,
+            'export native media binding changed')
+    require(parameters['model_metadata'].get('encoding_sources') == encoding_sources(),
+            'export native encoding helper source changed')
+    if mode == 'prompts':
+        require(set(record) == {'id', 'prompt', 'geometry'} and isinstance(record['prompt'], str),
+                'prompt-only export record requires text and explicit native geometry')
+        raw = dict(id=record['id'], text={'value': record['prompt']}, metadata={'geometry': record['geometry']})
+    else:
+        require(set(record) <= {'id', 'image', 'video', 'audio', 'text', 'metadata'}
+                and {'text', 'metadata'} <= record.keys(), 'raw native export record requires explicit text/media/geometry')
+        raw = record
+    resolved, identities = raw_record(raw, Path(parameters['source_dir']))
+    api = original(student.source.root)
+    row = _encode_loaded(decode_record(resolved), parameters, api=api, media=media, binding=student.binding)
+    student.validate_feeds(row)
+    for identity in identities['media'].values():
+        validate_source(identity)
+    return dict(features=row, metadata=_input_metadata(mode), sources=identities['media'])
+
+
 def prepare_inputs(source_manifest, output_dir):
     from .decoding import decode_record
     from .manifest import validate_source
@@ -236,9 +300,7 @@ def prepare_inputs(source_manifest, output_dir):
         return tensor_tree(encode_record(decoded, parameters, media=media))
     preencoded = value['mode'] == 'preencoded'
     result = _publish(output_dir, rows=rows, provenance=dict(mode='preencoded' if preencoded else 'raw', documents=documents,
-        sources=sources, encoder=None if preencoded else encoder), metadata=dict(schema_version=SCHEMA, mode=value['mode'],
-        prediction='flow_epsilon_minus_x0', layout='NATIVE_BNC_AV_WIDTH128',
-        text='REAL_LOCAL_GEMMA4_FEATURE_EXTRACTOR_V2_DUAL_CONNECTORS', quality_validation='NOT_RUN'), produce=produce)
+        sources=sources, encoder=None if preencoded else encoder), metadata=_input_metadata(value['mode']), produce=produce)
     for identity in documents:
         validate_source(identity)
     return result

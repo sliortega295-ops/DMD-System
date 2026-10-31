@@ -48,6 +48,11 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
     root = Path(output)
     raw = config(root).to_dict()
     raw["data"]["prepared"] = stream_path
+    if case in {"stop_disagreement", "stop_invalid_cadence"}:
+        raw["trainer"]["stop_after_cycle"] = 1
+        if rank == 1:
+            if case == "stop_disagreement": raw["trainer"]["stop_after_cycle"] = 2
+            else: raw["trainer"]["checkpoint_every"] = 0
     conf = type(config(root)).from_dict(raw, source=root / "training.json")
     admitted = {"assets": deepcopy(assets), "stream": worker.load_stream(stream_path, cycles=3),
                 "selected": {"scope": "SYNTHETIC_CPU_REFERENCE_METADATA"}, "argv": []}
@@ -137,6 +142,12 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
             assert worker.run_reference(resumed, admitted, source) == 23
             assert bindings[-1]["identity"] == binding["identity"]
             assert bindings[-1]["checkpoint_policy"] == binding["checkpoint_policy"]
+            expired = resumed.to_dict(); expired["trainer"]["stop_after_cycle"] = 1
+            expired = type(conf).from_dict(expired, source=conf.source)
+            _launcher_metadata(rank)
+            with pytest.raises(ValueError, match="stop_after_cycle.*resume"):
+                worker.run_reference(expired, admitted, source)
+            assert len(reached) == 2, "expired stop crossed the pre-model checkpoint gate"
             # Rehashing a foreign immutable identity cannot bypass admission.
             if rank == 0:
                 manifest = saved / "manifest.json"
@@ -153,14 +164,16 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
             messages = {"missing_payload": "tensors.pt", "bad_frozen": "shard hash mismatch",
                         "identity": "rank source/stream/reference differs", "policy": "physical policy changed",
                         "off_flag": "unbound optimization", "environment": "attention/allocator environment differs",
-                        "old_receipt": "old rank receipt is preserved"}
+                        "old_receipt": "old rank receipt is preserved",
+                        "stop_disagreement": "ranks disagree on Helios stop_after_cycle",
+                        "stop_invalid_cadence": "training run/restart controls"}
             assert all(row["error"] and messages[case] in row["error"] and row["model_boundaries"] == 0
                        and row["metadata_group_created"] == (case != "old_receipt") for row in reports), reports
             if case == "old_receipt":
                 assert all(row["original_entries"] == 0 for row in reports), reports
                 assert (Path(conf.trainer["output_dir"]) / "ranks/rank_01.json").read_text() == "preserved"
             assert reports[0]["error"] == reports[1]["error"], reports
-            if case != "identity":
+            if case not in {"identity", "stop_disagreement", "stop_invalid_cadence"}:
                 assert "rank failures [None," in error, "healthy rank did not finish its local gate"
         caller_value = torch.tensor(rank + 1)
         dist.all_reduce(caller_value)
@@ -175,7 +188,7 @@ def _metadata_worker(rank, rendezvous, stream_path, assets, case, output):
 
 
 @pytest.mark.parametrize("case", ["missing_payload", "bad_frozen", "identity", "policy", "off_flag",
-                                  "environment", "old_receipt", "success"])
+                                  "environment", "old_receipt", "success", "stop_disagreement", "stop_invalid_cadence"])
 def test_rank_admission_is_collective_before_synthetic_model_boundary(fresh_stream, frozen_assets, tmp_path, case):
     root, _ = fresh_stream
     mp.spawn(_metadata_worker, args=(str(tmp_path / "rendezvous"), str(root / "prepared/stream.json"),

@@ -7,7 +7,13 @@ on:
       - 'tests/test_data_h3_cached_inputs.py'
       - 'tests/test_training_h3_cached_public_cpu.py'
       - 'tests/test_training_h3_cached_inference_cpu.py'
+      - 'tests/test_training_h3_native_consolidation.py'
       - 'tests/test_training_cpu_workflows.py'
+      - 'tests/test_h3_av_codec.py'
+      - 'tests/test_h3_raw_encoding.py'
+      - 'tests/test_framework_codec_ci.py'
+      - 'tests/test_framework_cpu_collection.py'
+      - 'scripts/check_cpu_receipt.py'
       - 'recipes/h3_ar/**'
       - 'licenses/diffsynth-h3-cached/**'
       - 'pyproject.toml'
@@ -32,6 +38,8 @@ jobs:
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       PYTHONDONTWRITEBYTECODE: '1'
+      DS_BUILD_OPS: '0'
+      DS_ACCELERATOR: cpu
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,9 +81,68 @@ jobs:
           }
           assert required <= names, f'missing original cached-AV proofs: {sorted(required - names)}'
           PY
+      - name: Install the separate original serialization method closure
+        run: python -m pip install -e '.[test-h3-consolidation]'
+      - name: Actual installed DeepSpeed Student consolidation on CPU
+        run: |
+          python -m pytest -q tests/test_training_h3_native_consolidation.py --junitxml=h3-native-consolidation-cpu.xml
+          python scripts/check_cpu_receipt.py h3-native-consolidation-cpu.xml \
+            --require test_current_unmerged_student_uses_real_installed_method_and_keeps_owner \
+            --require 'test_invalid_owner_or_capacity_fails_before_native_gather[method]' \
+            --require test_nonprimary_returns_no_cpu_snapshot \
+            --require test_backend_failure_restores_rng_and_preserves_error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: h3-cached-reference-cpu-py${{ matrix.python }}
-          path: h3-cached-reference-cpu.xml
+          path: |
+            h3-cached-reference-cpu.xml
+            h3-native-consolidation-cpu.xml
+          if-no-files-found: error
+  original-codec-contracts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    env:
+      PYTHONPATH: 'src:.:tests'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Existing CPU dependencies, no model or external codec source
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[train,test,h3-cached-reference]'
+      - name: Public codec contracts, no private source or weight fixtures
+        run: >-
+          python -m pytest -q tests/test_h3_av_codec.py tests/test_framework_codec_ci.py
+          tests/test_h3_raw_encoding.py::test_encoder_contract_is_available_without_importing_original_or_cuda
+          tests/test_h3_raw_encoding.py::test_encoder_invalid_manifest_fails_before_source_import
+          tests/test_h3_raw_encoding.py::test_encoder_discovery_imports_no_model_or_torch
+          --junitxml=h3-codec-contracts.xml
+      - name: Require source-free proofs without failures or skips
+        run: >-
+          python scripts/check_cpu_receipt.py h3-codec-contracts.xml
+          --require test_encoder_contract_is_available_without_importing_original_or_cuda
+          --require 'test_encoder_invalid_manifest_fails_before_source_import[nested_bool]'
+          --require test_encoder_discovery_imports_no_model_or_torch
+          --require test_explicit_bf16_storage_loads_only_selected_decoder_keys_exactly
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h3-codec-contracts-py${{ matrix.python }}
+          path: h3-codec-contracts.xml
           if-no-files-found: error

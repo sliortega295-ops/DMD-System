@@ -2,6 +2,7 @@
 from __future__ import annotations
 from distillschedule.core.contracts import require
 from distillschedule.search.wan_candidate_bundle import CAPABILITIES
+from distillschedule.strategies.wan_stream import MAX_COHORTS
 
 
 def validate_bundle_build(bundle, build, *, executed=False, cycles=0):
@@ -11,7 +12,7 @@ def validate_bundle_build(bundle, build, *, executed=False, cycles=0):
             require(all(not metadata.get(name, {}).get('enabled', False) for name in CAPABILITIES),
                     'unrequested incumbent capability executed', path='wan.bundle.actual')
         return {'candidate_bundle': bundle.to_dict(), 'actual_compute_observed': executed}
-    require(type(cycles) is int and (not executed or cycles == 2),
+    require(type(cycles) is int and (not executed or (1 <= cycles <= MAX_COHORTS if bundle.continuous else cycles == 2)),
             'incumbent census supports exactly two original fixed-trace cycles', path='wan.bundle.actual')
     for role, metadata in roles.items():
         require(metadata.get('candidate_bundle') == bundle.to_dict()
@@ -34,6 +35,13 @@ def validate_bundle_build(bundle, build, *, executed=False, cycles=0):
     grad = validate_grad_epilogue_receipts(build, requested=True)
     norm = validate_norm(build, enabled=True)
     cast = validate_cast(build, enabled=True)
+    if bundle.continuous:
+        from .wan_bundle_lifecycle import validate_stream_receipts
+        lifecycle = validate_stream_receipts(build, cycles=cycles)
+        return {'candidate_bundle': bundle.to_dict(), 'bundle_sources': bundle.source_identity(),
+                'actual_compute_observed': True, 'grad_epilogue': grad, 'norm': norm, 'cast': cast,
+                'lifecycle': lifecycle, 'precision': 'CURRENT_GENERATED_POLICY_REQUIRES_MATCHED_CURRENT_CONTROL',
+                'historical_time_used_as_cost': False, 'numerical_status': 'REVIEW'}
     rollout = validate_graph(build, enabled=True, cycles=cycles, diagnostic_reference=False)
     critic = roles['critic']['critic_grad_cuda_graph']
     expected = dict(replay_calls=5*cycles, backward_replay_calls=5*cycles,

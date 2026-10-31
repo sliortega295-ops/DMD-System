@@ -327,7 +327,7 @@ def test_pinned_original_recipe_defaults_distinguish_both_shifts(fixture_assets)
 
 
 @pytest.mark.parametrize('setting,value', [('num_training_frames', 24), ('independent_first_frame', True),
-    ('gradient_checkpointing', True), ('i2v', True), ('mixed_precision', True), ('num_frame_per_block', 4),
+    ('gradient_checkpointing', 1), ('i2v', True), ('mixed_precision', True), ('num_frame_per_block', 4),
     ('denoising_loss_type', 'noise'), ('image_or_video_shape', [1, 3, 16, 4, 4]), ('denoising_step_list', [1000, 0])])
 def test_unsupported_native_scope_rejects_before_model_or_training(fixture_assets, setting, value):
     from distillschedule.training.self_forcing import _arguments

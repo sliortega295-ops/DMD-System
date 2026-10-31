@@ -142,9 +142,18 @@ def test_scope_surrounds_only_native_nograd_rollout():
     from distillschedule.runtime.livewan_crossscale_worker import prepare_rollout, generator_backward_for_sample
     source = inspect.getsource(prepare_rollout)
     tree = ast.parse(source)
-    scopes = [n for n in ast.walk(tree) if isinstance(n, ast.With)]
+    scopes = [n for n in ast.walk(tree) if isinstance(n, ast.With) and any(
+        ast.unparse(item.context_expr) == 'model_rollout_cast_cache_scope(torch, student)'
+        for item in n.items)]
     assert len(scopes) == 1
     assert ast.unparse(scopes[0].items[0].context_expr) == 'torch.no_grad()'
     assert ast.unparse(scopes[0].items[1].context_expr) == 'model_rollout_cast_cache_scope(torch, student)'
+    lifetimes = [n for n in ast.walk(tree) if isinstance(n, ast.With) and any(
+        ast.unparse(item.context_expr) == 'generator_text_kv_payload_lifetime(torch, streamer)'
+        for item in n.items)]
+    assert len(lifetimes) == 1 and scopes[0] in lifetimes[0].body
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
+             and ast.unparse(n.func) in ('student.text_embedding', 'streamer.rollout_record')]
+    assert len(calls) == 2 and all(call in list(ast.walk(scopes[0])) for call in calls)
     assert 'cast_cache_scope' not in inspect.getsource(generator_backward_for_sample)
     assert '.step(' not in source

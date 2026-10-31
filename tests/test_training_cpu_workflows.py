@@ -11,15 +11,17 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def job(name):
+def job(name, job_id=None):
     workflow = yaml.safe_load((ROOT / '.github/workflows' / name).read_text())
     assert workflow['permissions'] == {'contents': 'read'}
+    if job_id is not None:
+        return workflow['jobs'][job_id]
     assert len(workflow['jobs']) == 1
     return next(iter(workflow['jobs'].values()))
 
 
 def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
-    value = job('h3-cached-reference-cpu.yml')
+    value = job('h3-cached-reference-cpu.yml', 'original-cached-av')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,h3-cached-reference]'" in commands
     assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
@@ -35,7 +37,7 @@ def test_cached_h3_ci_uses_its_actual_small_source_and_public_lifecycle():
 
 
 def test_cached_h3_ci_requires_current_student_export_and_fresh_AV_inference():
-    value = job('h3-cached-reference-cpu.yml')
+    value = job('h3-cached-reference-cpu.yml', 'original-cached-av')
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert 'tests/test_training_h3_cached_inference_cpu.py' in commands
     assert all(name in commands for name in (
@@ -57,7 +59,23 @@ def test_full_original_helios_ci_requires_public_training_and_portable_current_g
         'tests/test_training_helios_public_inference_cpu.py',
         'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
         'test_public_fresh_os_process_four_vs_three_resume_exact[False]',
-        'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt'))
+        'test_full_chain_fresh_process_uses_only_export_source_runtime_and_NEW_prompt',
+        'tests/test_training_helios_native_safe_stream.py',
+        'test_real_native_stream_producer_consumer_lowering_and_separate_checkpoint_identity',
+        'test_actual_checkpoint_publication_and_old_policy_refusal_for_new_identity',
+        'test_planner_consumer_cannot_treat_full_safe_action_as_old_reference_phase',
+        'test_native_safe_recipe_cold_discovery_avoids_torch_cuda_and_model_assets',
+        'tests/test_training_helios_checkpoint_inputs_cpu.py',
+        'test_native_shape_contract_is_exact_three_original_stages_and_partitioned_node_bound',
+        'test_native_receipt_refuses_wrong_source_version_shape_dtype_or_lifetime[version]',
+        'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[direct-True]',
+        'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[detached_alias_after_gc-True]',
+        'recipes/helios_nogan/verify_checkpoint_inputs_target_cpu.py'))
+    text = (ROOT / '.github/workflows/helios-reference-model-cpu.yml').read_text()
+    assert "- 'tests/test_training_helios_native_safe_stream.py'" in text
+    assert "- 'recipes/helios_nogan/training.native-history-safe.json'" in text
+    assert "- 'tests/test_training_helios_checkpoint_inputs_cpu.py'" in text
+    assert "- 'recipes/helios_nogan/**'" in text
     assert 'native-wan' not in commands
     assert "('skipped', 'failures', 'errors')" in commands
 
@@ -67,6 +85,40 @@ def test_original_helper_ci_is_not_silently_repinned_to_full_model_extra():
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert "'.[train,test,test-helios]'" in commands
     assert 'test-helios-model' not in commands and 'native-wan' not in commands
+
+
+def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradients():
+    value = job('helios-reference-model-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert 'tests/test_helios_rollout_liveness_cpu.py' in commands
+    assert 'DMD_TEST_REARRANGE_PROVIDER' not in value['env']
+    assert '-k ' not in commands and '--deselect' not in commands
+    for name in (
+        'test_liveness_fixture_restores_rng_threads_and_import_namespaces',
+        'test_candidate_changes_only_two_stored_aliases',
+        'test_default_checkpoint_cpp_storage_lifetime_without_saved_tensor_hooks[exits0]',
+    ):
+        assert repr(name) in commands
+    for hooks in (False, True):
+        for sections, frames in ((2, 4), (3, 4), (3, 6)):
+            name = ('test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state'
+                    f'[{hooks}-{sections}-{frames}]')
+            assert repr(name) in commands
+
+
+def test_livewan_native_ci_requires_payload_lifetime_and_public_binding_proofs():
+    value = job('livewan-native-inputs-cpu.yml')
+    commands = '\n'.join(step.get('run', '') for step in value['steps'])
+    assert 'tests/test_training_livewan_text_kv_retirement.py' in commands
+    assert 'tests/test_training_livewan_c51_diagnostics.py' in commands
+    assert value['env']['DMD_LIVEWAN_TEST_UPSTREAM'].endswith('/third_party/livewan')
+    for name in (
+        'test_real_nonreentrant_checkpoint_output_all_grads_adam_rng_and_counters_equal',
+        'test_actual_prepare_rollout_runahead_and_fresh_resume_prime_retire_same_payload',
+        'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream.v1]',
+        'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream_retire_textkv.v1]',
+    ):
+        assert repr(name) in commands
 
 
 def test_original_wan_ci_requires_mixed_precision_update_restart_and_current_g():

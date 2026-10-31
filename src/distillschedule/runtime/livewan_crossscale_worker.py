@@ -2112,10 +2112,12 @@ class InputLoader:
         self.inputs = None
         self.input_kind = input_kind
         if input_kind is not None or prepared is not None:
-            from distillschedule.training.livewan_inputs import KIND, NativeTeacherInputs
-            _require(trace is None and input_kind == KIND and prepared is not None,
+            from distillschedule.training.livewan_inputs import KIND, C51_KIND, NativeTeacherInputs
+            _require(trace is None and input_kind in (KIND, C51_KIND) and prepared is not None,
                      "fresh inputs require their explicit input_kind/prepared path, not a FormalTrace")
             self.inputs = NativeTeacherInputs(prepared)
+            _require(self.inputs._document["schema_version"] == "distillschedule." + input_kind,
+                     "fresh InputLoader kind differs from prepared contract")
             self.trace = self.inputs
             self.prompts = self.inputs.prompts
             self.context_from_trace = self.inputs.context
@@ -2210,6 +2212,7 @@ def prepare_rollout(
     from distillschedule.runtime.livewan_generator_rms_epilogue import model_runtime_scope as generator_rms_scope
     from distillschedule.runtime.livewan_generator_modulation import model_runtime_scope as generator_modulation_scope
     from distillschedule.runtime.livewan_generator_gate import model_runtime_scope as generator_gate_scope
+    from distillschedule.runtime.livewan_cross_kv_cache import generator_text_kv_payload_lifetime
 
     reference_context = _cpu_reference_context(torch, reference_context)
     if reference_context is not None:
@@ -2228,13 +2231,14 @@ def prepare_rollout(
         if elide_full_context_lens
         else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
     )
-    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
-        student_context = student.text_embedding(raw_context)
-        streamer.set_text(student_context, context_lens)
-        streamer.rope_gap = row.rope_gap
-        streamer.set_world(z_teacher[:, :, : row.world_frames])
-        generator = torch.Generator(device=device).manual_seed(row.seeds["rollout"])
-        blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
+    with generator_text_kv_payload_lifetime(torch, streamer):
+        with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
+            student_context = student.text_embedding(raw_context)
+            streamer.set_text(student_context, context_lens)
+            streamer.rope_gap = row.rope_gap
+            streamer.set_world(z_teacher[:, :, : row.world_frames])
+            generator = torch.Generator(device=device).manual_seed(row.seeds["rollout"])
+            blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
     new = torch.cat([value.detach() for value in blocks], dim=2)
     x0 = torch.cat([z_teacher[:, :, : row.world_frames], new], dim=2)
     expected_shape = latent_shape() if reference_context is None else reference_context.latent_shape
@@ -3317,7 +3321,7 @@ def _record_optimizer_diagnostics(
     clip_norm: Any,
     gradient_before_clip: Mapping[str, float | int] | None,
 ) -> None:
-    trajectory_mode = run_kind == "trajectory"
+    trajectory_mode = run_kind in {"trajectory", "continuation"}
     # Keep the historical correctness-only branch explicit.  Trajectory is an
     # additional low-volume diagnostic consumer; all other legacy run kinds
     # return at the same point as before.
@@ -4126,9 +4130,19 @@ def run_worker(
     mode: str,
     run_kind: str,
     repo_root: str | Path,
+    continuation: Any | None = None,
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    if continuation is not None:
+        from distillschedule.training.livewan_c51_training import Continuation
+        _require(type(continuation) is Continuation and mode == "pipeline" and run_kind == "continuation",
+                 "full C51 continuation requires its explicit typed native owner")
+        continuation.validate_text_kv_plan(plan)
+    else:
+        _require(run_kind != "continuation", "continuation cannot reuse historical trace/bootstrap execution")
+        _require("text_kv_payload_retirement" not in plan.get("evidence", {}),
+                 "text K/V retirement is public C51 continuation-only, not a benchmark/reference option")
     # Immutable, exact-plan installation BEFORE any model/Torch/CUDA setup.
     request = request_from_plan(plan)
     install_geometry(request, plan_sha256=_effective_plan_sha256(plan))
@@ -4177,20 +4191,23 @@ def run_worker(
         if continuous_contract is not None
         else 1
     )
+    if continuation is not None:
+        continuous_cycles = continuation.cycles_executed
     trace_cycles = (
         trajectory_cycles
         if run_kind == "trajectory"
         else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
     )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
-    trace = FormalTrace.load(
+    trace = continuation.inputs if continuation is not None else FormalTrace.load(
         plan["evidence"]["operation_trace"],
         expected_cycles=trace_cycles,
         expected_global_batch=registered_batch,
         request=request,
     )
-    _validate_trace_balanced_pairing(plan, trace)
-    bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
+    if continuation is None:
+        _validate_trace_balanced_pairing(plan, trace)
+    bootstrap = continuation.bootstrap if continuation is not None else Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
     if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
         _require(
@@ -4212,7 +4229,8 @@ def run_worker(
             "bootstrap contract differs from the requested cycle count",
         )
     root = Path(repo_root).expanduser().resolve()
-    source_receipt = validate_source_receipt(bootstrap, repo_root=root)
+    source_receipt = (continuation.configure_sources() if continuation is not None
+                      else validate_source_receipt(bootstrap, repo_root=root))
     two_cycle_gate = None
     two_cycle_profile_gate = None
     if two_cycle_timing:
@@ -4237,7 +4255,8 @@ def run_worker(
             pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
             arm_id=two_cycle_arm_id, seed=two_cycle_seed, trace=trace,
             bootstrap=bootstrap, source_receipt=source_receipt)
-    configure_python_sources(repo_root=root, source_receipt=source_receipt)
+    if continuation is None:
+        configure_python_sources(repo_root=root, source_receipt=source_receipt)
     output_dir = Path(plan["evidence"]["output_dir"]).expanduser().resolve()
     if run_kind == "validate":
         result = _validate_only(
@@ -4250,7 +4269,7 @@ def run_worker(
         return result
     _require(
         run_kind in {"capacity", "correctness", "timing", "profile"}
-        or run_kind in {"trajectory", "two-cycle-timing"},
+        or run_kind in {"trajectory", "two-cycle-timing", "continuation"},
         "invalid run kind",
     )
 
@@ -4262,6 +4281,8 @@ def run_worker(
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     _require(world_size == WORLD_SIZE, "runtime is not world16")
+    if continuation is not None:
+        continuation.configure_phase_diagnostics(rank=rank)
     if not dist.is_initialized():
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
@@ -4550,10 +4571,18 @@ def run_worker(
         }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
+    if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="construction_entry",
+            cycle=continuation.start_cycle, versions=bootstrap.versions)
     build_started = time.perf_counter()
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="construction_exit",
+            cycle=continuation.start_cycle, versions=bootstrap.versions)
+        from distillschedule.training import distributed as training_distributed
+        training_distributed.checked(continuation.validate_constructed, "C51 original assets/imports/runtime unchanged after construction")
     bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (
@@ -4621,7 +4650,14 @@ def run_worker(
         generator_gate = install_g_gate(torch, bundle.student,
             output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native")
 
-    loader = InputLoader(torch=torch, trace=trace)
+    if continuation is not None and continuation.native_output is not None:
+        # Restore BOTH physical roles before any streamer/KV allocation,
+        # text-context projection, transport, shadow submission or training row.
+        versions = bootstrap.versions
+        continuation.bind(torch=torch, rank=rank, bundle=bundle, versions=versions,
+                          pairs=_pipeline_8x8_slot_pairs(plan))
+        return {"inference_export": continuation.export_current(bundle=bundle, rank=rank)}
+    loader = continuation.loader if continuation is not None else InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
     if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
         from distillschedule.runtime.livewan_context_staging import install as install_context_staging
@@ -4640,6 +4676,9 @@ def run_worker(
         generator_streamers = _build_streamers(
             torch, student=bundle.student, count=streamer_count, device=device,
         )
+    if continuation is not None:
+        continuation.configure_text_kv_retirement(torch=torch, rank=rank, student=bundle.student,
+            streamers=generator_streamers, cache_receipt=generator_cross_kv_cache, plan=plan)
     score_context = (
         build_score_context(torch, bundle=bundle, loader=loader, device=device)
         if bundle.critic is not None or bundle.critic_shadow is not None else None
@@ -4658,7 +4697,8 @@ def run_worker(
             bundle.runahead_host_group is not None,
             "C19 Gloo process group is missing",
         )
-        runahead_host_transport = PinnedHostRunaheadTransport(
+        transport_factory = continuation.transport if continuation is not None else PinnedHostRunaheadTransport
+        runahead_host_transport = transport_factory(
             torch=torch,
             dist=dist,
             group=bundle.runahead_host_group,
@@ -4668,8 +4708,8 @@ def run_worker(
             is_generator=rank < 8,
             shape=latent_shape(),
             dtype=torch.float32,
-            cycles=continuous_cycles,
-            cross_cycle_lookahead=continuous_cycles > 1,
+            cycles=continuation.end_cycle if continuation is not None else continuous_cycles,
+            cross_cycle_lookahead=True if continuation is not None else continuous_cycles > 1,
             waves_per_step=int(
                 plan["metadata"]["generator_runahead_transport"]["waves_per_step"]
             ),
@@ -4714,6 +4754,9 @@ def run_worker(
         )
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)
+    if continuation is not None:
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="setup_ready",
+            cycle=continuation.start_cycle, versions=bootstrap.versions, memory=setup_memory)
     if run_kind == "capacity":
         torch.cuda.synchronize(device)
         dist.barrier()
@@ -4766,6 +4809,12 @@ def run_worker(
         dist.destroy_process_group()
         return receipt
     versions = bootstrap.versions
+    if continuation is not None:
+        loader = continuation.bind(torch=torch, rank=rank, bundle=bundle, versions=versions,
+                                   pairs=_pipeline_8x8_slot_pairs(plan))
+        continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="public_bind_exit",
+            cycle=continuation.start_cycle, versions=versions)
+    receipt_initial_versions = dict(versions)
     evidence = RunEvidence()
     critic_checkpoint_proxy = None
     critic_checkpoint_enabled = _critic_checkpoint_rng_elision_enabled(
@@ -4836,6 +4885,31 @@ def run_worker(
         )
         if model is not None
     }
+    if continuation is not None:
+        # Same actual observers as the terminal C51 receipt, now also required
+        # before any complete-cycle checkpoint may become visible.
+        def continuation_mechanisms():
+            value = dict(workload_request=request.to_dict(), actual_latent_shapes=[list(s) for s in sorted(_observed_latent_shapes)],
+                installed_plan_sha256=geometry().plan_sha256, physical_call_inventory=dict(inventory.counts),
+                planner_c51_bundle=dict(receipt_contract(), execution_status="PASS"),
+                score_residual_gate=score_residual_gate, score_layernorm=score_layernorm,
+                score_attention_backend=score_attention_backend, generator_attention_backend=generator_attention_backend,
+                critic_attention_checkpoint=(critic_attention_proxy.receipt(expected_calls=
+                    int(inventory.counts.get("critic/grad/checkpoint", 0))*len(bundle.critic.blocks))
+                    if critic_attention_proxy is not None else critic_attention_receipt),
+                generator_rms_epilogue=(generator_rms_epilogue.receipt() if generator_rms_epilogue is not None
+                                       else dict(execution_status="NOT_APPLICABLE")),
+                generator_rollout_cast_cache=(rollout_cast_cache.receipt() if rollout_cast_cache is not None
+                                             else dict(execution_status="NOT_APPLICABLE")),
+                generator_modulation=(generator_modulation.receipt() if generator_modulation is not None
+                                      else dict(execution_status="NOT_APPLICABLE")),
+                generator_gate=(generator_gate.receipt() if generator_gate is not None else dict(execution_status="NOT_APPLICABLE")),
+                score_rmsnorm_kernel=score_rmsnorm_kernel)
+            if continuation.text_kv_retirement_policy is not None:
+                value["generator_text_kv_payload_retirement"] = continuation.text_kv_retirement_snapshot(rank=rank)
+            return value
+        from distillschedule.runtime.livewan_c51_bundle import receipt_contract
+        continuation.mechanism_receipt = continuation_mechanisms
     is_profile = run_kind == "profile"
     cycle_endpoint_records: list[dict[str, Any]] = []
     dist.barrier()
@@ -4979,6 +5053,7 @@ def run_worker(
                     cycle_endpoint_records=(
                         cycle_endpoint_records if two_cycle_timing else None
                     ),
+                    continuation=continuation,
                 )
             elif (
                 plan.get("metadata", {}).get("pool_policy")
@@ -5334,7 +5409,7 @@ def run_worker(
             slot_routing["critic_slot"] = int(
                 slot_pairs[lane][1] if rank < 8 else slot_pairs[lane][0]
             )
-    workload_cycles = int(trace.cycles)
+    workload_cycles = continuation.cycles_executed if continuation is not None else int(trace.cycles)
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -5344,19 +5419,21 @@ def run_worker(
         "workload_request": request.to_dict(),
         "actual_latent_shapes": [list(s) for s in sorted(_observed_latent_shapes)],
         "installed_plan_sha256": geometry().plan_sha256,
-        "trace_sha256": trace.sha256,
+        "trace_sha256": trace.input_sha256 if continuation is not None else trace.sha256,
         "bootstrap_sha256": bootstrap.sha256,
         "source_receipt_sha256": source_receipt["source_receipt_sha256"],
         "effective_plan_sha256": effective_plan_sha256,
         "logical_generator_updates": GENERATOR_UPDATES * workload_cycles,
         "logical_critic_updates": CRITIC_UPDATES * workload_cycles,
         "physical_generator_commits": (
-            GENERATOR_UPDATES * workload_cycles if bundle.student is not None else 0
+            (local_final_versions["generator"]-receipt_initial_versions["generator"] if continuation is not None
+             else GENERATOR_UPDATES * workload_cycles) if bundle.student is not None else 0
         ),
         "physical_critic_commits": (
-            CRITIC_UPDATES * workload_cycles if bundle.critic is not None else 0
+            (local_final_versions["critic"]-receipt_initial_versions["critic"] if continuation is not None
+             else CRITIC_UPDATES * workload_cycles) if bundle.critic is not None else 0
         ),
-        "initial_versions": bootstrap.versions,
+        "initial_versions": receipt_initial_versions if continuation is not None else bootstrap.versions,
         "final_versions": versions,
         "call_inventory": inventory.counts,
         "physical_call_inventory": inventory.counts,
@@ -5434,6 +5511,25 @@ def run_worker(
         receipt["planner_c51_bundle"] = dict(receipt_contract(), execution_status="PASS")
         _require(not c51_errors(receipt, rank=rank, cycles=workload_cycles),
                  "C51 full-bundle actual per-rank source/operator/census failed")
+    if continuation is not None:
+        from distillschedule.runtime.livewan_c51_bundle import continuation_receipt_errors
+        from distillschedule.training.livewan_c51_training import input_marker
+        if continuation.phase_diagnostics is not None:
+            receipt["phase_diagnostics"] = continuation.phase_diagnostics.descriptor()
+            receipt["formal_timing_eligible"] = False
+        receipt["continuation"] = dict(schema_version=continuation.identity["schema_version"],
+            identity=continuation.identity, start_cycle=continuation.start_cycle,
+            completed_cycles=continuation.loader.cycle, executed_cycles=continuation.cycles_executed,
+            requested_stop_cycle=continuation.end_cycle, target_cycles=trace.cycles,
+            physical_final_versions=local_final_versions, metrics=continuation.metrics,
+            runtime=continuation.runtime, native_parameter_layout_sha256=continuation.native_layouts,
+            physical_device_binding=continuation.device_binding,
+            input_sha256=trace.input_sha256, **input_marker(trace),
+            training_quality="SUPPLIED_TEACHER_ARCHIVES_NOT_ATTESTED", numerical_status="REVIEW",
+            status="COMPLETED" if continuation.end_cycle == trace.cycles else "STOPPED_COMPLETE_CHECKPOINT",
+            numerical_cross_reference="NOT_RUN", claimable_speedup=False)
+        _require(not continuation_receipt_errors(receipt, rank=rank, inputs=trace,
+                    pairs=_pipeline_8x8_slot_pairs(plan)), "C51 fresh row-derived mechanism/output census failed")
     if run_kind == "trajectory":
         receipt["trajectory"] = {
             "schema": "trajectory_coarse_v1",
@@ -5460,13 +5556,15 @@ def run_worker(
     # objects in unprofiled runs.  This is deliberately after the Full5 timer,
     # evidence generation, and final world barrier, so it changes lifecycle
     # cleanup only and cannot alter the measured workload.
-    dist.destroy_process_group()
+    if continuation is None:
+        dist.destroy_process_group()
     return receipt
 
 
 def _record_output(torch: Any, evidence: RunEvidence, *, row: OperationTraceRow, x0: Any, run_kind: str) -> None:
-    if run_kind == "correctness":
+    if run_kind in {"correctness", "continuation"}:
         evidence.output_fingerprints.append({"operation_key": row.operation_key, **_tensor_fingerprint(torch, x0)})
+    if run_kind == "correctness":
         evidence.output_tensors[row.operation_key] = x0.detach().to("cpu", torch.float32).contiguous()
 
 
@@ -6360,7 +6458,7 @@ def _run_pipeline_8x8(
                     losses1 = generator_backward_for_sample(
                         torch, prepared=second, dmd_gradient=grad1, sample_weight=0.5,
                     )
-                if run_kind in {"correctness", "trajectory"}:
+                if run_kind in {"correctness", "trajectory", "continuation"}:
                     for row, losses in zip(rows, (losses0, losses1)):
                         evidence.loss_fingerprints.extend(
                             {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
@@ -6704,7 +6802,7 @@ def _run_pipeline_8x8(
                         ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
-            if run_kind == "trajectory":
+            if run_kind in {"trajectory", "continuation"}:
                 # Count completed physical backward invocations from the
                 # branch that actually ran.  Do not infer this from logical
                 # sample inventory: B2 contributes two logical calls but one
@@ -6726,7 +6824,7 @@ def _run_pipeline_8x8(
                 # work is complete; deleting it earlier would make the
                 # transport lifetime implementation-dependent.
                 del grad1_send
-            if run_kind in {"correctness", "trajectory"}:
+            if run_kind in {"correctness", "trajectory", "continuation"}:
                 for row, loss in zip(rows, (loss0, loss1)):
                     evidence.loss_fingerprints.append(
                         {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, loss)}
@@ -7265,6 +7363,7 @@ def _run_pipeline_8x8_continuous(
     trajectory_arm_id: str | None = None,
     trajectory_output_dir: Path | None = None,
     cycle_endpoint_records: list[dict[str, Any]] | None = None,
+    continuation: Any | None = None,
 ) -> None:
     """Run exact C24 cycles with one next-cycle rollout wave in flight."""
 
@@ -7288,7 +7387,7 @@ def _run_pipeline_8x8_continuous(
             and cycle_endpoint_records is not None,
             "C24 two-cycle timing trace/endpoint recorder is incomplete",
         )
-    else:
+    elif continuation is None:
         from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
         _require(trace.cycles == (2 if profile_two_enabled(run_kind) else 3),
                  "continuous diagnostic trace cycle count changed")
@@ -7316,10 +7415,19 @@ def _run_pipeline_8x8_continuous(
     reference_call_census: dict[str, int] | None = None
     pending_application_calls: dict[str, int] = {}
     pending_logical_score_calls: dict[str, int] = {}
+    start_cycle = continuation.start_cycle if continuation is not None else 0
+    if continuation is not None and start_cycle:
+        precomputed_first = continuation.prime(torch=torch, rank=rank, trace=trace, bundle=bundle,
+            streamers=streamers, loader=loader, device=device, transport=runahead_host_transport,
+            shadow=critic_shadow_hot_sync, evidence=evidence, elision=full_context_lens_elision)
 
-    for cycle in range(trace.cycles):
+    end_cycle = continuation.end_cycle if continuation is not None else trace.cycles
+    for cycle in range(start_cycle, end_cycle):
         if _operation_calibrator is not None:
             _operation_calibrator.cycle = cycle + 1
+        if continuation is not None and getattr(continuation, "phase_diagnostics", None) is not None:
+            continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="full5_entry",
+                cycle=cycle+1, versions=versions)
         cycle_started = time.perf_counter()
         if trajectory_mode:
             incoming_application_calls = pending_application_calls
@@ -7392,6 +7500,13 @@ def _run_pipeline_8x8_continuous(
                     finalize_host_transport=False,
                 )
         role_returned = time.perf_counter()
+        if continuation is not None:
+            if getattr(continuation, "phase_diagnostics", None) is not None:
+                continuation.phase_receipt(torch=torch, rank=rank, device=device, phase="full5_exit",
+                    cycle=cycle+1, versions=versions)
+            continuation.cycle_complete(torch=torch, rank=rank, cycle=cycle+1, versions=versions,
+                bundle=bundle, transport=runahead_host_transport, shadow=critic_shadow_hot_sync,
+                evidence=evidence, inventory=inventory, streamers=streamers, device=device)
         if two_cycle_timing:
             # The endpoint is immediately after this rank's terminal work for
             # the logical cycle.  For cycle 1 it is intentionally before the
@@ -7433,7 +7548,7 @@ def _run_pipeline_8x8_continuous(
             "critic_version": int(versions["critic"]),
         }
         precomputed_first = None
-        if cycle + 1 < trace.cycles:
+        if cycle + 1 < end_cycle:
             next_global_step = (cycle + 1) * FULL5_STEPS
             if is_generator:
                 # The final current-cycle run-ahead value in streamer0 must have
@@ -7663,6 +7778,12 @@ def _run_pipeline_8x8_continuous(
     if run_kind == "profile" and os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
         evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
         evidence.continuous_pipeline["training_quality_claimable"] = False
+    if continuation is not None:
+        from distillschedule.training.livewan_c51_training import input_marker
+        evidence.continuous_pipeline.update(name=continuation.identity["schema_version"],
+            cycles=continuation.cycles_executed, target_cycles=trace.cycles,
+            start_cycle=start_cycle, end_cycle=end_cycle, training_quality_claimable=False,
+            **input_marker(trace), formal_timing_eligible=False)
 
 
 def _run_pipeline_phase_expanded_critic16(

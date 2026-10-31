@@ -140,10 +140,21 @@ def require(condition, message):
 def original(source_root):
     source = PinnedSource(source_root, SOURCE_FILES, import_roots=("ltx_core",),
                           python_roots=("packages/ltx-core/src",))
+    attention = source.import_module("ltx_core.model.transformer.attention")
+    # Native text connectors and the original checkpoint configurator do not
+    # expose AttentionOps. Their AUTOMATIC constructor otherwise probes CUDA0
+    # even while creating CPU/meta modules. This private, hash-locked namespace
+    # is our explicit reference integration, not the user's normal ltx_core.
+    # Reuse the EXACT native CPU/Ampere SDPA priority factory; do not hide CUDA,
+    # patch Torch, rewrite an attention forward, or change its backend order.
+    # The actual Transformer has a separate explicit MATH pin at its boundary.
+    attention.automatic_attention = attention._sdpa_full_priority
+    attention.automatic_masked_attention = attention._sdpa_full_priority
     return SimpleNamespace(source=source,
-        identity=dict(repository=REPOSITORY, revision=REVISION, license=LICENSE, **source.identity),
+        identity=dict(repository=REPOSITORY, revision=REVISION, license=LICENSE,
+            default_attention="NATIVE_SDPA_FULL_PRIORITY_WITHOUT_DEVICE_PROBE", **source.identity),
         model=source.import_module("ltx_core.model.transformer.model"),
-        attention=source.import_module("ltx_core.model.transformer.attention"),
+        attention=attention,
         modality=source.import_module("ltx_core.model.transformer.modality"),
         patchifiers=source.import_module("ltx_core.components.patchifiers"),
         types=source.import_module("ltx_core.types"))

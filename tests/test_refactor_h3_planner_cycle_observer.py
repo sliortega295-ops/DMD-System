@@ -120,6 +120,7 @@ def test_resume_cannot_enter_two_cycle_timing(current_iter, resume):
 def _native_loop_class(torch, calls):
     """Execute the real mixin AST, without importing GPU/LightX2V dependencies."""
     import contextlib
+    from distillschedule.backends.training.minimax_h3.matched_contract import sample_identity
     node = next(n for n in ast.parse(LOOP.read_text()).body
                 if isinstance(n, ast.ClassDef) and n.name == "H3A100LoopMixin")
     namespace = dict(
@@ -132,6 +133,7 @@ def _native_loop_class(torch, calls):
         set_parallel_gradient_sync=lambda *a: None,
         STUDENT_ADAPTER="student", FAKE_ADAPTER="fake",
         STUDENT_ROLE="student", FAKE_ROLE="fake",
+        sample_identity=sample_identity,
     )
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(LOOP), "exec",
                  flags=__future__.annotations.compiler_flag), namespace)

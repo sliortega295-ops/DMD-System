@@ -9,7 +9,8 @@ a benchmark trace or implement another loss/update algorithm.
 checkpoint mechanics only. Pretrained CUDA/FSDP capacity and cross-reference
 numerical qualification remain **NOT_RUN**. The known optimized W5 sampled
 backward numerical **FAIL remains FAIL**. This route cannot select, time,
-calibrate, export, or bless that candidate. Generation/export are unsupported.
+calibrate, export, or bless that candidate. This **reference** owner supports
+[current-Student export, original four-step generation and AV decoding](../docs/guides/h3_grid_inference.md).
 
 ## Explicit inputs and original config
 
@@ -98,6 +99,10 @@ must match. This reference does not inherit an incumbent profile's environment.
 
 ## Public request and execution
 
+Start with [training.original-reference.json](h3_fullseq/training.original-reference.json)
+and fill the input inventory, original request, asset and output paths. It is
+separate from the frozen optimized `training.json`. Its fields correspond to:
+
 ```json
 {
   "schema_version": "distillschedule.training.v1",
@@ -151,13 +156,33 @@ Set `trainer.resume_from` to a complete checkpoint and keep the **same** origina
 config, target/horizon, cadence, output, inputs, source, dependencies, assets,
 environment and topology. Every shard/progress field is admitted before state
 mutation; incompatible Adam/scheduler/role/clock state is rejected collectively.
-Do not lower the target to manufacture an interruption: checkpoint and stop an
-incomplete run, then continue toward its original fixed target.
+Do not lower the target to manufacture an interruption. To stop durably at
+cycle 25 of a 50-cycle run, keep public `cycles: 50`, native
+`max_train_iters: 50`, and the full 50-cycle input inventory unchanged; set
+public `checkpoint_every: 25` and native `save_every_iters: 25`, then add public
+`stop_after_cycle: 25`. This execution-only control never enters the original
+native config or changes its scheduler horizon. All ranks must agree on the
+stop before construction. The original loop returns only after the complete
+G1/F5/EMA0 checkpoint and per-rank progress receipts are published.
+
+An explicit stop requires positive checkpoint cadence and must be either a
+cadence boundary or the unchanged terminal horizon (which forces its final
+checkpoint even off cadence). Without the optional control, the original
+training length and checkpoint cadence are unchanged. For continuation, remove
+`stop_after_cycle` or move it to a later valid boundary, set `resume_from` to
+the saved directory, and retain the same original config and full horizon.
+A stop at or behind the restored cycle is rejected before model construction.
+`STOPPED_AT_CHECKPOINT` is partial training, not a completed horizon or a
+numerical qualification; the rank receipt records the full horizon and actual
+segment separately. Output-only export discards this training stop control.
 
 Historical `h3-a100-shared-backbone-v1`, cursorless `trainer_state.pt`, partial
 directories, benchmark receipts and completed-target checkpoints are not exact
-resume inputs. Changing target/horizon, resharding, generation and inference
-export require separate future contracts. AdaLN/attention/layout caches and
+resume inputs. Changing target/horizon or resharding still requires a separate
+contract. For inference export, restore a complete reference checkpoint through
+the [output-only owner](../docs/guides/h3_grid_inference.md#export-an-original-reference-native-checkpoint);
+a terminal checkpoint is legal for export, not for training beyond its horizon.
+AdaLN/attention/layout caches and
 diagnostic counters are rebuildable runtime state, not optimizer checkpoints.
 
 CPU tests may explicitly use `DMD_H3_TEST_UPSTREAM` to locate the real pinned

@@ -1,0 +1,62 @@
+name: helios-native-topology-cpu
+on:
+  pull_request:
+    paths:
+      - 'src/distillschedule/**'
+      - 'runtime/**'
+      - 'third_party/helios_compat/**'
+      - 'tests/test_helios_native_topology_cpu.py'
+      - 'tests/test_training_helios_native_history.py'
+      - 'tests/test_framework_cpu_collection.py'
+      - 'scripts/check_cpu_receipt.py'
+      - 'pyproject.toml'
+      - '.github/workflows/helios-native-topology-cpu.yml'
+  push:
+    branches: [main, codex/open-source-framework-20261021]
+permissions:
+  contents: read
+jobs:
+  original-native-topology:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    env:
+      PYTHONPATH: 'src:.:tests'
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Independent original native import closure, no CUDA execution
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[train,test,test-helios-model,test-helios-native-history]'
+          python -m pip check
+      - name: Actual original native topology in a separate namespace process
+        run: |
+          python -m pytest -q tests/test_helios_native_topology_cpu.py tests/test_training_helios_native_history.py::test_cpu_topology_import_probe_calls_original_and_preserves_success tests/test_training_helios_native_history.py::test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda --junitxml=helios-native-topology-cpu.xml
+          python scripts/check_cpu_receipt.py helios-native-topology-cpu.xml \
+            --require test_target_actual_helios_block_class_checkpoint_and_cpu_fsdp_ownership \
+            --require test_cpu_topology_import_probe_calls_original_and_preserves_success \
+            --require 'test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda[None-error0-True]' \
+            --require 'test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda[12.8-error1-False]' \
+            --require 'test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda[None-error2-False]' \
+            --require 'test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda[None-error3-False]' \
+            --require 'test_cpu_topology_import_probe_only_normalizes_missing_cpu_cuda[None-error4-False]'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: helios-native-topology-cpu-py${{ matrix.python }}
+          path: helios-native-topology-cpu.xml
+          if-no-files-found: error

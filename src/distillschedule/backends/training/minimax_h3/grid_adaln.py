@@ -504,6 +504,7 @@ def install_grid_trainer_patch() -> None:
             storage=self.fa3_replay_cache_storage,
             max_d2h_inflight=self.fa3_replay_cache_max_d2h_inflight,
             trim_before_backward=self.fa3_replay_cache_trim_before_backward,
+            tuple_capture=getattr(self, "attention_tuple_capture", None),
         )
         self.grid_replay_registration = install_grid_checkpoint_replay_scope(
             self.shared_model.denoiser_module(), controller, expected_block_count=50

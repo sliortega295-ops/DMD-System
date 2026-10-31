@@ -8,6 +8,7 @@ on:
       - 'src/distillschedule/data/**'
       - 'src/distillschedule/training/**'
       - 'src/distillschedule/runtime/livewan_crossscale_worker.py'
+      - 'src/distillschedule/runtime/livewan_cross_kv_cache.py'
       - 'src/distillschedule/runtime/livewan_context_staging.py'
       - 'src/distillschedule/search/livewan_request.py'
       - 'src/distillschedule/workloads/livewan_crossscale.py'
@@ -15,9 +16,13 @@ on:
       - 'tests/test_data_cli.py'
       - 'tests/test_refactor_livewan_context_staging.py'
       - 'tests/test_training_livewan_inputs.py'
+      - 'tests/test_training_livewan_epoch_inputs.py'
       - 'tests/test_training_livewan_state.py'
       - 'tests/test_training_livewan_reference.py'
       - 'tests/test_training_livewan_reference_distributed.py'
+      - 'tests/test_training_livewan_text_kv_retirement.py'
+      - 'tests/test_training_livewan_c51_diagnostics.py'
+      - 'tests/test_training_cpu_workflows.py'
       - 'tests/test_training_native_state.py'
       - 'tests/test_training_environment.py'
       - 'pyproject.toml'
@@ -54,7 +59,7 @@ jobs:
       - name: Install CPU data, checkpoint and original meta-constructor dependencies
         run: python -m pip install -e '.[train,test,native-wan]'
       - name: Actual input, resident/reference state and Gloo owners
-        run: python -m pytest -q tests/test_training_livewan_inputs.py tests/test_training_livewan_state.py tests/test_training_livewan_reference.py tests/test_training_livewan_reference_distributed.py tests/test_training_native_state.py tests/test_training_environment.py tests/test_refactor_livewan_context_staging.py --junitxml=livewan-inputs-cpu.xml
+        run: python -m pytest -q tests/test_training_livewan_inputs.py tests/test_training_livewan_epoch_inputs.py tests/test_training_livewan_state.py tests/test_training_livewan_reference.py tests/test_training_livewan_reference_distributed.py tests/test_training_native_state.py tests/test_training_environment.py tests/test_refactor_livewan_context_staging.py tests/test_training_livewan_text_kv_retirement.py tests/test_training_livewan_c51_diagnostics.py --junitxml=livewan-inputs-cpu.xml
       - name: Require actual-source execution, not a skipped qualification
         run: |
           python - <<'PY'
@@ -64,6 +69,9 @@ jobs:
           assert all(case.find('failure') is None and case.find('error') is None for case in cases)
           names = {case.get('name') for case in cases}
           assert {'test_actual_original_and_real_input_loader_roundtrip',
+                  'test_all_100_cycles_have_80_distinct_records_and_fresh_operation_rng',
+                  'test_horizon100_real_epoch_cursor_checkpoint50_new_process_restore',
+                  'test_epoch_policy_reaches_actual_public_dispatch_and_continuous_worker_lowering',
                   'test_complete_cohorts_rank_cursor_checkpoint_seek_and_rng',
                   'test_public_original_teacher_preparation_reaches_real_native_loader',
                   'test_native_original_read_uses_admitted_path_after_symlink_retarget',
@@ -85,7 +93,11 @@ jobs:
                   'test_saved_cursor_rank_and_versions_cross_state_admission_is_premutation',
                   'test_actual_loader_cursor_consumes_once_and_only_after_success',
                   'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[False]',
-                  'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[True]'} <= names
+                  'test_dispatch_only_outer_lifecycle_reuses_actual_baseline_and_real_loads[True]',
+                  'test_real_nonreentrant_checkpoint_output_all_grads_adam_rng_and_counters_equal',
+                  'test_actual_prepare_rollout_runahead_and_fresh_resume_prime_retire_same_payload',
+                  'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream.v1]',
+                  'test_typed_public_config_native_runner_reaches_actual_diagnostic_setup[self_forcing.c51_stream_retire_textkv.v1]'} <= names
           assert sum(name.startswith('test_public_rank_local_preflight_failure_never_hangs_peer_or_constructs_model[')
                      for name in names) == 8
           assert sum(name.startswith('test_malicious_archive_refused_before_original_unsafe_loading[')

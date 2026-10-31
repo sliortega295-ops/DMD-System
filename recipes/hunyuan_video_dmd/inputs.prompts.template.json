@@ -1,0 +1,5 @@
+{
+  "schema_version": "distillschedule.hunyuan15_t2v_inputs.v1", "family": "hunyuan15-t2v",
+  "assets": "/ABSOLUTE/local-hunyuan15/assets.json", "mode": "prompts",
+  "records": [{"id": "new-video-0001", "prompt": "A sign says \"hello\" beside a lake.", "latent_shape": [1, 32, 2, 2, 2]}]
+}

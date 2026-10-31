@@ -11,7 +11,8 @@ from pathlib import Path
 from types import MappingProxyType
 
 from distillschedule.data.livewan_inputs import (
-    KIND, SCHEMA, _inventory, _original_dataset, _prompts, _sample, _source_identity, require,
+    KIND, SCHEMA, C51_KIND, C51_SCHEMA, EPOCH_POLICY,
+    _inventory, _original_dataset, _prompts, _sample, _source_identity, require,
 )
 from distillschedule.runtime.livewan_crossscale_worker import OperationTraceRow
 from distillschedule.search.livewan_request import LiveWanRequest
@@ -26,6 +27,15 @@ class NativeTeacherRow(OperationTraceRow):
     prompt_idx: int = -1
 
 
+@dataclass(frozen=True)
+class EpochTeacherRow(NativeTeacherRow):
+    draw_index: int = -1
+    epoch_index: int = -1
+    epoch_offset: int = -1
+    draw_id: str = ""
+    cohort_id: str = ""
+
+
 class NativeTeacherInputs:
     """Source-qualified original dataset, consumed by the real worker loader."""
     def __init__(self, path):
@@ -34,10 +44,15 @@ class NativeTeacherInputs:
         manifest_sha = file_sha256(self.path)
         value = _object(self.path)
         unsigned = {k: v for k, v in value.items() if k != "input_sha256"}
-        require(value.get("schema_version") == SCHEMA and value.get("input_sha256") == fingerprint(unsigned),
+        require(value.get("schema_version") in (SCHEMA, C51_SCHEMA) and value.get("input_sha256") == fingerprint(unsigned),
                 "manifest identity/hash changed or unsupported input schema")
+        policy = value.get("input_policy")
+        require("input_policy" not in value or type(policy) is dict and policy.get("schema_version") == EPOCH_POLICY,
+                "unsupported native epoch input policy")
         expected = _inventory(value["data_root"], value["prompts"]["path"], source_root=value["source"]["root"],
-                              cycles=value["cycles"], seed=value["seed"], evidence_kind=value["evidence_kind"])
+                              cycles=value["cycles"], seed=value["seed"], evidence_kind=value["evidence_kind"],
+                              input_kind=C51_KIND if value["schema_version"] == C51_SCHEMA else KIND,
+                              input_policy=policy["schema_version"] if policy is not None else None)
         require(value == expected, "source/prompt/record/operation identity changed from prepared manifest")
         require(file_sha256(self.path) == manifest_sha, "manifest hash changed during native admission")
         self._document, self._manifest_sha256 = value, manifest_sha
@@ -53,17 +68,28 @@ class NativeTeacherInputs:
         # The original owner must reopen the same canonical files we restricted-load.
         # Its constructor otherwise retains a mutable symlink spelling.
         self.dataset.files = tuple(record["path"] for record in value["records"])
+        self._row_type = EpochTeacherRow if policy is not None else NativeTeacherRow
         rows = []
         for row in value["rows"]:
             original = OperationTraceRow.from_mapping(row, total_steps=self.steps)
             fields = {**original.__dict__, "seeds": MappingProxyType(dict(original.seeds))}
-            rows.append(NativeTeacherRow(**fields, record_id=row["record_id"], prompt_idx=row["prompt_idx"]))
+            if policy is not None:
+                fields.update({key: row[key] for key in ("draw_index", "epoch_index", "epoch_offset", "draw_id", "cohort_id")})
+            rows.append(self._row_type(**fields, record_id=row["record_id"], prompt_idx=row["prompt_idx"]))
         self.rows = tuple(rows)
         self._unchanged()
 
     @property
     def records(self):
         return deepcopy(self._document["records"])
+
+    @property
+    def input_policy(self):
+        return deepcopy(self._document.get("input_policy"))
+
+    @property
+    def source_reuse_across_cycles(self):
+        return self.input_policy is not None and len(self._document["records"]) < len(self.rows)
 
     def row(self, logical_step, logical_slot):
         """Exact native operation address, never cycling or consuming a record."""
@@ -82,7 +108,7 @@ class NativeTeacherInputs:
                 "original source identity changed")
 
     def _record(self, row):
-        require(type(row) is NativeTeacherRow and type(row.logical_step) is int and type(row.logical_slot) is int
+        require(type(row) is self._row_type and type(row.logical_step) is int and type(row.logical_slot) is int
                 and 0 <= row.logical_step < self.steps and 0 <= row.logical_slot < 16
                 and row == self.rows[row.logical_step * 16 + row.logical_slot], "native input row identity changed")
         self._unchanged()

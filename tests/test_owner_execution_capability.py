@@ -83,6 +83,21 @@ class MalformedOwner(NativeOwner):
         return value
 
 
+class ImpureOwner(NativeOwner):
+    def execution_options(self):
+        value = super().execution_options()
+        if self.fault == 'data':
+            version = self.weight._version
+            self.weight.data.add_(1)
+            assert self.weight._version == version
+        elif self.fault == 'state':
+            self.clock += 1
+        elif self.fault == 'python_rng':
+            import random
+            random.random()
+        return value
+
+
 class ChangedMathOwner(NativeOwner):
     def run(self, x):
         return super().run(x) + (1 if self.enabled else 0)
@@ -183,6 +198,22 @@ def test_malformed_descriptor_fails_before_native_execution(fault):
     assert signature(workload.state) == before and torch.equal(torch.random.get_rng_state(), rng)
 
 
+@pytest.mark.parametrize('fault', ['data', 'state', 'python_rng'])
+@pytest.mark.parametrize('consumer', ['validate', 'identity', 'structure', 'candidates', 'session'])
+def test_local_descriptor_purity_remains_required_by_every_consumer(fault, consumer):
+    import random
+    owner = ImpureOwner(); owner.fault = fault; workload = build(owner)
+    py, rng = random.getstate(), torch.random.get_rng_state()
+    actions = dict(validate=workload.validate, identity=lambda: workload.identity,
+                   structure=lambda: cycle_structure(workload), candidates=lambda: candidates(workload),
+                   session=lambda: Session(workload, dict(backend='torch-callable-resident-v1',
+                       share_immutable=False, checkpoint_bindings=[]), copy_state=False))
+    with pytest.raises(ValueError, match='pure and stable'):
+        actions[consumer]()
+    assert random.getstate() == py and torch.equal(rng, torch.random.get_rng_state())
+    assert not owner.adam.state and owner.weight.grad is None
+
+
 def test_owner_numerical_failure_does_not_adopt_or_commit(tmp_path):
     workload = build(ChangedMathOwner()); before = signature(workload.state)
     policy = CyclePolicy({'mode': 'manual', 'implementation': optimized()})
@@ -278,3 +309,17 @@ def test_baseline_only_provider_preserves_default_and_rejects_override():
     with pytest.raises(ValueError, match='owner'):
         Session(workload, implementation, copy_state=False)
     assert signature(workload.state) == before
+
+
+@pytest.mark.parametrize('copy_state', [False, True])
+def test_local_session_cannot_acquire_partial_native_protocol_before_run(copy_state):
+    workload = build(); original = workload.state['owner']
+    session = Session(workload, dict(backend='torch-callable-resident-v1',
+        share_immutable=False, checkpoint_bindings=[]), copy_state=copy_state, persistent=True)
+    owner = session.state['owner']
+    assert (owner is not original) == copy_state
+    owner.collective_execution_spec = owner.execution_options
+    with pytest.raises(ValueError, match='native collective'):
+        session.run()
+    assert owner.clock == 0 and not owner.adam.state and not session._ran
+    assert original.clock == 0 and not original.adam.state

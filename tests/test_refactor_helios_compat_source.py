@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -67,6 +68,39 @@ class HeliosSourceRecoveryTests(unittest.TestCase):
         path.write_text(json.dumps(data))
         with self.assertRaisesRegex(ValueError, "must not be relaxed"):
             VERIFY.verify_source(self.repo)
+
+    def test_reviewed_rollout_alias_patch_retains_the_complete_original_receipt(self):
+        manifest = json.loads((self.snapshot / "source_manifest.json").read_text())
+        target = "source/helios/utils/utils_helios_post.py"
+        row = next(row for row in manifest["files"] if row["path"] == target)
+        overlay, = [row for row in manifest["reviewed_overlays"] if row["path"] == target]
+        current = (self.snapshot / target).read_bytes()
+        original = current
+        for after, before in (
+            (b"start_point_list = [noisy_model_input.detach()]", b"start_point_list = [noisy_model_input]"),
+            (b"start_point_list.append(noisy_model_input.detach())", b"start_point_list.append(noisy_model_input)"),
+        ):
+            self.assertEqual(original.count(after), 1)
+            original = original.replace(after, before)
+        receipt = overlay["origin"]["original_manifest_row"]
+        self.assertEqual(receipt, {
+            "path": target,
+            "source_path": "helios/utils/utils_helios_post.py",
+            "source_git_blob": "706f6d9608e692bdd19f0c8d2d3dc4257f1074d4",
+            "sha256": "e3ff9e5f8bf025ee740e436bc0c209c972f1e56eb0236b968fe6bd8284107004",
+            "bytes": 184631,
+            "usage": "integration_source",
+        })
+        for payload, identity in ((original, receipt), (current, row)):
+            self.assertEqual(hashlib.sha256(payload).hexdigest(), identity["sha256"])
+            self.assertEqual(len(payload), identity["bytes"])
+            self.assertEqual(hashlib.sha1(b"blob " + str(len(payload)).encode() + b"\0" + payload).hexdigest(),
+                             identity["source_git_blob"])
+        self.assertEqual(overlay["current_sha256"], row["sha256"])
+        self.assertEqual(overlay["current_git_blob"], row["source_git_blob"])
+        self.assertEqual(overlay["origin"]["reviewed_live_git_blob"], row["source_git_blob"])
+        self.assertEqual(overlay["origin"]["original_manifest_sha256"],
+                         "a3d98faab5787f4f9f4e1155eb577235a885f14babc677004affb42877118bd1")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import pickle
+import re
 import subprocess
 
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, SHA256_RE
@@ -80,7 +81,7 @@ def environment_snapshot(environment):
     prefixes = ("LIVEWAN_", "DISTILLSCHEDULE_", "DMD_", "NCCL_", "TORCH_", "PYTORCH_",
                 "CUDA_", "CUBLAS_", "CUDNN_", "NSYS_", "NCU_")
     names = {"LOCAL_KERNELS", "PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD", "OMP_NUM_THREADS",
-             "MKL_NUM_THREADS", "MALLOC_ARENA_MAX", "TRITON_CACHE_DIR"}
+             "MKL_NUM_THREADS", "MALLOC_ARENA_MAX", "TRITON_CACHE_DIR", "USE_TF", "USE_FLAX"}
     # Test intake is never a production launch override.
     return nonsecret_environment_snapshot(environment, prefixes=prefixes, names=names,
         exclude={"DMD_LIVEWAN_TEST_UPSTREAM", "DMD_WAN21_TEST_UPSTREAM"})
@@ -94,6 +95,27 @@ def _environment(value):
             and not any(value.get(k) for k in ("LOCAL_KERNELS", "LD_PRELOAD", "PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF")),
             "reference cannot inherit benchmark/optimization/profiling/allocator overrides")
     require(not any(credential_key(k) for k in value), "credentials must not be embedded in reference environment")
+
+
+def _c51_phase_environment(value):
+    """C51-only paired scalar diagnostics; never filter the captured identity.
+
+    Public reference admission still calls the original _environment exactly.
+    No arbitrary key allowlist or caller-selected policy is exposed.
+    """
+    require(type(value) is dict and all(type(k) is str and type(v) is str for k, v in value.items()),
+            "explicit effective runtime environment required")
+    flag, run = "DISTILLSCHEDULE_LIVEWAN_C51_PHASE_RECEIPTS", "DISTILLSCHEDULE_RUN_ID"
+    if flag not in value and run not in value:
+        return _environment(value)
+    require(value.get(flag) == "v1" and type(value.get(run)) is str
+            and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", value[run]) is not None and value[run].strip("."),
+            "C51 diagnostics require paired explicit phase=v1 and stable valid run ID")
+    forbidden = ("LIVEWAN_", "DISTILLSCHEDULE_", "DMD_", "NSYS_", "NCU_", "TORCH_COMPILE", "TORCH_LOGS")
+    require(not any(k.startswith(forbidden) and k not in {flag, run} for k in value)
+            and not any(value.get(k) for k in ("LOCAL_KERNELS", "LD_PRELOAD", "PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF")),
+            "C51 phase diagnostics cannot admit benchmark/optimization/profiling/allocator overrides")
+    require(not any(credential_key(k) for k in value), "credentials must not be embedded in C51 environment")
 
 
 def _payload_files(root):
@@ -139,7 +161,12 @@ def _model(row, *, size, verify_payloads):
         # Lazy metadata validation reads only configuration and index bytes.
         if verify_payloads or path.suffix == ".json":
             require(file_sha256(path) == pin["sha256"], "frozen file hash changed: " + str(path))
-    cfg = document(root / "config.json")
+    # Original WanModel.ignore_for_config omits these constructor defaults
+    # from save_pretrained configs. The source is pinned by source_identity;
+    # only these ignored fields inherit defaults, never the core geometry.
+    # Explicit values still take precedence and must pass the same checks.
+    cfg = {"patch_size": [1, 2, 2], "window_size": [-1, -1],
+           "qk_norm": True, "cross_attn_norm": True, **document(root / "config.json")}
     dims = ((1536, 8960, 12, 30) if size == "1.3B" else (5120, 13824, 40, 40))
     require(all(cfg.get(k) == v for k, v in zip(("dim", "ffn_dim", "num_heads", "num_layers"), dims))
             and cfg.get("freq_dim") == 256 and cfg.get("in_dim") == cfg.get("out_dim") == 16
@@ -150,6 +177,15 @@ def _model(row, *, size, verify_payloads):
 
 
 def asset_config(value, *, verify_payloads=False):
+    """Public v1 is always the complete original pip-FA2 contract."""
+    return _asset_config(value, verify_payloads=verify_payloads, dependencies=DEPENDENCIES)
+
+
+def _asset_config(value, *, verify_payloads, dependencies, c51_phase_diagnostics=False):
+    """Shared checks; only the separately versioned C51 provider owns substitution.
+
+    No public reference flag can omit a dependency or admit a provider.
+    """
     require(type(value) is dict and set(value) == {"schema_version", "sources", "models", "initial_student",
             "critic_lora_seed", "initial_versions", "optimizer_steps", "runtime"} and value["schema_version"] == SCHEMA,
             "explicit versioned original-reference assets required; no benchmark bootstrap")
@@ -182,9 +218,13 @@ def asset_config(value, *, verify_payloads=False):
     require(type(runtime) is dict and set(runtime) == {"dependency_versions", "environment", "backend"}
             and runtime["backend"] == BACKEND, "fixed original reference backend/precision policy required")
     versions = runtime["dependency_versions"]
-    require(type(versions) is dict and set(versions) == DEPENDENCIES
+    require(type(versions) is dict and set(versions) == dependencies
             and all(type(v) is str and v for v in versions.values()), "explicit complete original dependency versions required")
-    _environment(runtime["environment"])
+    require(type(c51_phase_diagnostics) is bool, "explicit C51 phase metadata policy required")
+    if c51_phase_diagnostics:
+        _c51_phase_environment(runtime["environment"])
+    else:
+        _environment(runtime["environment"])
     return deepcopy(value)
 
 

@@ -1,0 +1,44 @@
+{
+  "schema_version": "distillschedule.original_h3_raw_av_inputs.v1",
+  "encoder": {
+    "manifest": {
+      "path": "/PROJECT/h3/encoder.json",
+      "bytes": 1234,
+      "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+    }
+  },
+  "records": [
+    {
+      "id": "your-first-av-pair",
+      "current": {
+        "video": {
+          "path": "current/frames",
+          "sha256": "REPLACE_WITH_ACTUAL_FRAME_INVENTORY_SHA256"
+        },
+        "audio": {
+          "path": "/PROJECT/h3/current/audio.wav",
+          "bytes": 1234,
+          "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+        },
+        "fps": 24
+      },
+      "previous": {
+        "video": {
+          "path": "previous/frames",
+          "sha256": "REPLACE_WITH_ACTUAL_FRAME_INVENTORY_SHA256"
+        },
+        "audio": {
+          "path": "/PROJECT/h3/previous/audio.wav",
+          "bytes": 1234,
+          "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+        },
+        "fps": 24
+      },
+      "prompt": {
+        "path": "/PROJECT/h3/prompt.safetensors",
+        "bytes": 1234,
+        "sha256": "REPLACE_WITH_ACTUAL_SHA256"
+      }
+    }
+  ]
+}

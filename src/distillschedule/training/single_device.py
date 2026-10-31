@@ -1,0 +1,219 @@
+"""Small FP32 placement scopes and explicit replica admission; no offload."""
+from contextlib import contextmanager, nullcontext
+
+
+FLOW_CUDA_EXECUTION = {
+    'modes': ['reference', 'manual'],
+    'forbidden_fields': ['order', 'plan'],
+    'manual_implementation': {'backend': 'torch-callable-resident-v1',
+                              'share_immutable': True, 'checkpoint_bindings': []},
+}
+
+FLOW_REPLICATED_EXECUTION = {
+    'modes': ['reference', 'manual'],
+    'forbidden_fields': ['order', 'plan'],
+    'reference_fields': ['adapter', 'mode'],
+    'manual_implementation': {'backend': 'torch-callable-replicated-v1',
+        'reduction': 'post_backward', 'bucket_cap_mb': 0,
+        'local': FLOW_CUDA_EXECUTION['manual_implementation']},
+}
+
+# Explicit CPU-only construction recipe, NOT an additional automatic candidate.
+FROZEN_TEACHER_CONSTRUCTION = 'cpu-fsdp2-frozen-teacher-v1'
+FLOW_FROZEN_TEACHER_EXECUTION = {
+    'modes': ['manual'], 'forbidden_fields': ['order', 'plan', 'resident_budget'],
+    'manual_implementation': {'backend': 'torch-callable-replicated-v1',
+        'reduction': 'fsdp2_reshard', 'bucket_cap_mb': 0,
+        'local': {'backend': 'torch-callable-resident-v1',
+                  'share_immutable': False, 'checkpoint_bindings': []}},
+}
+
+
+def _exact_value(actual, expected):
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return actual.keys() == expected.keys() and all(_exact_value(actual[key], value) for key, value in expected.items())
+    return actual == expected
+
+
+def execution_policy_matches(execution, constraints):
+    """Lazy metadata admission shared by discovery and native role owners.
+
+    The only CUDA optimization here is persistent immutable aliasing. It never
+    copies a training owner; construction still materializes all native roles.
+    Actual immutable inventory and optimizer ownership are checked by the
+    existing Session and common DMD builder, not inferred from this declaration.
+    """
+    mode = execution.get('mode', 'reference')
+    if mode not in constraints['modes'] or set(execution) & set(constraints.get('forbidden_fields', [])):
+        return False
+    if 'manual_implementation' not in constraints:
+        return True
+    if mode == 'reference':
+        return 'implementation' not in execution and ('reference_fields' not in constraints or
+            (set(execution) <= set(constraints['reference_fields']) and execution.get('adapter', 'program') == 'program'))
+    expected = constraints['manual_implementation']
+    actual = execution.get('implementation')
+    return (mode == 'manual' and set(execution) <= {'adapter', 'mode', 'implementation'}
+            and execution.get('adapter', 'program') == 'program'
+            and _exact_value(actual, expected))
+
+
+def _require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def admit_fp32(parameters, *, require=_require, allow_replicated=False):
+    """Reject unsupported process/precision ownership before loading assets."""
+    import os
+    import torch
+    dist = torch.distributed
+    replicated = allow_replicated and (dist.is_initialized() or os.environ.get('WORLD_SIZE', '1') != '1')
+    if replicated:
+        require(dist.is_initialized() and dist.get_world_size() > 1,
+                'replicated ownership requires an initialized torchrun group')
+        keys = ('WORLD_SIZE', 'RANK', 'LOCAL_WORLD_SIZE', 'LOCAL_RANK', 'GROUP_RANK')
+        require(all(os.environ.get(key, '').isascii() and os.environ.get(key, '').isdecimal() for key in keys),
+                'explicit torchrun process/rank ownership required')
+        world, rank, local_world, local_rank, node = (int(os.environ[key]) for key in keys)
+        require(world == dist.get_world_size() and rank == dist.get_rank()
+                and 0 < local_world <= world and world % local_world == 0 and 0 <= local_rank < local_world
+                and rank == node * local_world + local_rank,
+                'torchrun rank/local ownership differs from initialized group')
+    else:
+        require(not dist.is_initialized(), 'distributed ownership is not admitted')
+        require(all(os.environ.get(key, default) == default for key, default in
+                    (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
+                'one actual process/rank required')
+    require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
+            and not torch.is_autocast_enabled('cuda'), 'explicit FP32 with no autocast required')
+    device = execution_device(parameters.get('device', 'cpu'), require=require)
+    if replicated:
+        require((device.type == 'cpu' and dist.get_backend() == 'gloo') or
+                (device.type == 'cuda' and dist.get_backend() == 'nccl'),
+                'replicated ownership requires CPU/Gloo or CUDA/NCCL')
+        if device.type == 'cuda':
+            require(device.index == local_rank == torch.cuda.current_device(),
+                    'CUDA device must equal actual torchrun LOCAL_RANK/current device')
+    return device
+
+
+def place_module(module, device, *, require=_require):
+    """Own native plain tensors, then move devices without a dtype conversion.
+
+    Registration follows strict native asset loading. In particular Qwen's
+    complex RoPE must NOT pass through ``Module.to(dtype=...)`` or ``float()``
+    after registration: those would discard its imaginary component.
+    """
+    import torch
+    from torch.utils._pytree import tree_leaves
+    for child in module.modules():
+        for name, value in tuple(vars(child).items()):
+            if name in ('_parameters', '_buffers', '_modules'):
+                continue
+            if type(value) is torch.Tensor:
+                require(not value.requires_grad, 'unregistered native trainable tensor: ' + name)
+                delattr(child, name)
+                child.register_buffer(name, value)
+            elif isinstance(value, (dict, list, tuple)):
+                require(not any(isinstance(item, torch.Tensor) for item in tree_leaves(value)),
+                        'unowned native tensor container requires an explicit placement adapter: ' + name)
+    module.to(device)
+    validate_placement(module, torch.device(device), require=require)
+    return module
+
+
+def validate_placement(module, device, *, require=_require):
+    import torch
+    from torch.utils._pytree import tree_leaves
+    require(all(value.device == device and not value.is_meta
+                and (not value.is_floating_point() or value.dtype == torch.float32)
+                for value in (*module.parameters(), *module.buffers())),
+            'native parameters, buffers and owned plain tensors require one FP32 device')
+    require(not any(isinstance(item, torch.Tensor)
+                    for child in module.modules() for name, value in vars(child).items()
+                    if name not in ('_parameters', '_buffers', '_modules')
+                    for item in tree_leaves(value)),
+            'unowned native plain tensor requires an explicit placement adapter')
+
+
+class ResidentEMA(dict):
+    """Mapping-only serialization; common DMD still owns EMA math and clocks."""
+    _require = staticmethod(_require)
+
+    def state_dict(self):
+        return dict(self)
+
+    def runtime_tensors(self):
+        yield from self.values()
+
+    def validate_state_dict(self, value):
+        import torch
+        from .checkpoint import _validate_layout
+        _validate_layout(dict(self), value, 'resident flow EMA')
+        self._require(all(type(tensor) is torch.Tensor and not tensor.is_meta
+                          and tensor.layout == torch.strided and not tensor.requires_grad
+                          and bool(torch.isfinite(tensor).all()) for tensor in value.values()),
+                      'resident flow EMA requires finite detached dense tensors')
+
+    def load_state_dict(self, value):
+        import torch
+        self.validate_state_dict(value)
+        with torch.no_grad():
+            for name, live in self.items():
+                live.copy_(value[name])
+
+
+def resident_flow_state(state, device, *, ema_class=ResidentEMA):
+    """Keep native Adam step and common EMA on the already-owned CUDA device.
+
+    CPU reference behavior is unchanged. This configures native AdamW, never
+    reimplements updates or moves Parameters after optimizer construction.
+    """
+    if device.type == 'cuda':
+        if 'student_ema' in state:
+            state['student_ema'] = ema_class(state['student_ema'])
+        for role in ('student', 'fake'):
+            optimizer = state[role + '_optimizer']
+            optimizer.defaults['capturable'] = True
+            for group in optimizer.param_groups:
+                group['capturable'] = True
+    return state
+
+
+def execution_device(value, *, require):
+    import torch
+    require(isinstance(value, str), 'device must be cpu or a single CUDA device')
+    try:
+        device = torch.device(value)
+    except (RuntimeError, ValueError):
+        require(False, 'invalid device')
+    require(device.type in ('cpu', 'cuda') and (device.type != 'cpu' or device.index is None),
+            'device must be cpu or a single CUDA device')
+    if device.type == 'cuda':
+        require(torch.cuda.is_available(), 'requested CUDA device is unavailable')
+        index = device.index if device.index is not None else torch.cuda.current_device()
+        require(0 <= index < torch.cuda.device_count(), 'requested CUDA device index is unavailable')
+        device = torch.device('cuda', index)
+    return device
+
+
+def device_scope(device):
+    import torch
+    return torch.cuda.device(device) if device.type == 'cuda' else nullcontext()
+
+
+@contextmanager
+def construction_rng(device, seed):
+    """Initialize only owned generators, restoring the caller even on failure."""
+    from .checkpoint import rng_state, restore_rng
+    from .session import _seed
+    with device_scope(device):
+        outer = rng_state(device=device)
+        try:
+            _seed(seed, device=device)
+            yield
+        finally:
+            restore_rng(outer)

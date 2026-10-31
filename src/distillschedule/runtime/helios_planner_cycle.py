@@ -6,7 +6,7 @@ are metadata only; tensor reads and correctness sketches are outside timers.
 """
 from __future__ import annotations
 
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import replace
 import math
 import platform
@@ -143,12 +143,14 @@ class _ObservedTrace:
 
     def load_generator_entry(self, **kwargs):
         value = self._trace.load_generator_entry(**kwargs)
-        self._observer.entry(value, generator=True, rank=kwargs["rank"])
+        self._observer.entry(value, generator=True, rank=kwargs["rank"],
+                             native_task=getattr(self._trace, "task", None))
         return value
 
     def load_critic_entry(self, **kwargs):
         value = self._trace.load_critic_entry(**kwargs)
-        self._observer.entry(value, generator=False, rank=kwargs["rank"])
+        self._observer.entry(value, generator=False, rank=kwargs["rank"],
+                             native_task=getattr(self._trace, "task", None))
         return value
 
 
@@ -191,7 +193,7 @@ class _Observer:
     def versions(self):
         return self.version_snapshot()[0]
 
-    def entry(self, value, *, generator, rank):
+    def entry(self, value, *, generator, rank, native_task=None):
         require(self.current is not None, "trace load outside native action")
         member = value if generator else value.pool_entry
         actual_rank = member.source_id if generator else member.source_trace_rank
@@ -211,6 +213,17 @@ class _Observer:
                          "stage_schedule": control["pyramid_stage_call_sequence"],
                          "stage_schedule_policy": self.impl.request.stage_schedule_policy,
                          "all_history_zero": control.get("all_history_zero", False)})
+        if getattr(native_task, "native_policy", None) is not None:
+            if self.impl.variant == "gan":
+                from .helios_gan_native_history import SEMANTICS, require_task
+                require_task(native_task)
+            else:
+                from .helios_native_history import SEMANTICS
+            require(self.impl.request is None and self.impl.variant == native_task.request.variant,
+                    "native history cannot use a generated benchmark request")
+            item.update(native_history_policy=native_task.native_policy, native_history_semantics=SEMANTICS,
+                        native_task_sha256=native_task.digest, stage_schedule=control["pyramid_stage_call_sequence"],
+                        all_history_zero=control["all_history_zero"])
         self.current["trace_entries"].append(item)
         self.current_entry = item
         self.last_entries[step] = item
@@ -271,7 +284,8 @@ class _Observer:
                                 gan_mode=bool(kwargs.get("gan_mode", False)),
                                 versions=self.versions(), trace=dict(self.current_entry),
                                 inputs=_tensor_metadata(kwargs if kwargs else args, self.torch))
-                    if application and role == "generator" and self.impl.request is not None:
+                    if application and role == "generator" and (self.impl.request is not None
+                            or self.current_entry.get("native_history_policy") is not None):
                         timestep = kwargs.get("timestep")
                         require(self.torch.is_tensor(timestep) and timestep.numel() == 1,
                                 "Helios request requires an observed B1 model timestep")
@@ -365,6 +379,14 @@ class _Observer:
 
 
 def _validate_action(row, impl):
+    if impl.variant == "gan":
+        from .helios_gan_native_history import validate_action as validate_native_history_action
+    elif impl.candidate_bundle.enabled and any(entry.get("native_history_policy") is not None
+                                               for entry in row["trace_entries"]):
+        from .helios_native_safe_history import validate_action as validate_native_history_action
+    else:
+        from .helios_native_history import validate_action as validate_native_history_action
+    validate_native_history_action(row)
     name, counts = row["action_id"], row["counts"]
     expected = {key: 0 for key in _COUNTS}
     if name == "g":
@@ -465,7 +487,7 @@ def _validate_action(row, impl):
         calls = [x for x in row["forwards"] if x["application_forward"] and x["root_module"] == "generator"
                  and x["trace"]["rollout_operation"] == entry["rollout_operation"]]
         require(len(calls) == record["call_count"], "actual root forwards differ from helper rollout records")
-        if impl.request is not None:
+        if impl.request is not None or entry.get("native_history_policy") is not None:
             schedule = entry.get("stage_schedule", [])
             expected_calls = [(item["latent_shape"], timestep)
                               for item in schedule for timestep in item["timestep"]]
@@ -502,27 +524,62 @@ def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, d
     observed_trace = _ObservedTrace(trace, observer)
     common = dict(rank=observer.rank, device=observer.device, trace=observed_trace,
                   collect_diagnostics=(not args.timing_mode) and args.profile_diagnostics, diagnostics=diagnostics)
+    def generator_scope(*, with_grad, action_id):
+        task = getattr(trace, "task", None)
+        if getattr(task, "native_policy", None) is None:
+            return nullcontext((observer.generator, None))
+        if observer.impl.variant == "gan":
+            from .helios_gan_native_history import generator_phase, require_task
+            from distillschedule.training.helios_gan_training import implementation
+            require_task(task)
+            require(observer.impl == implementation() and policy.rollout_batch_size == 1
+                    and policy.generator_nograd_persistent_unshard is True,
+                    "native GAN history requires unchanged full world16/window5 bundle")
+            if not with_grad:
+                require(action_id == "r_all", "native GAN history requires original detached window5 owner")
+                return nullcontext((observer.generator, None))
+            return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
+        from distillschedule.training.helios_native_safe_stream import implementation as native_safe_implementation
+        if observer.impl == native_safe_implementation():
+            from .helios_native_safe_history import generator_phase
+            require(policy.mesh_policy == "node-hsdp" and policy.rollout_batch_size == 1
+                    and not policy.generator_nograd_persistent_unshard,
+                    "native SafeBundle requires node-HSDP/window5/original p0 dispatch")
+            return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
+        from .helios_native_history import generator_phase
+        require(observer.impl.variant == "no-gan" and observer.impl.request is None
+                and not observer.impl.candidate_bundle.enabled and observer.impl.mesh == "world16-fsdp"
+                and observer.impl.rollout_window == policy.rollout_batch_size == 1
+                and not policy.generator_nograd_persistent_unshard,
+                "native history phase requires its original reference dispatch")
+        return generator_phase(observer.generator, task=task, with_grad=with_grad, action_id=action_id)
     def gupdate(ctx):
         with observer.action(ctx.operation, source_steps=(steps[0],)) as row:
-            if observer.impl.variant == "gan":
-                result = p0.base._run_gan_generator_update(**common, args=args, generator_engine=observer.generator,
-                    critic_engine=observer.critic, cfg=cfg, negative=negative,
-                    generator_free_memory_receipt=generator_free_memory,
-                    elide_official_generator_free_memory=bool(policy.elide_official_generator_free_memory
-                                                              and (args.timing_mode or args.profile_mode)))
-            else:
-                result = p0._run_nogan_generator_update_p0(**common, generator_engine=observer.generator,
-                    critic_engine=observer.critic, negative=negative, policy=policy,
-                    score_pack_parity_check=(not args.timing_mode) and (not args.profile_mode))
+            with generator_scope(with_grad=True, action_id=ctx.operation.operation_id) as (engine, phase):
+                if phase is not None:
+                    row["native_history_phase"] = phase
+                if observer.impl.variant == "gan":
+                    result = p0.base._run_gan_generator_update(**common, args=args, generator_engine=engine,
+                        critic_engine=observer.critic, cfg=cfg, negative=negative,
+                        generator_free_memory_receipt=generator_free_memory,
+                        elide_official_generator_free_memory=bool(policy.elide_official_generator_free_memory
+                                                                  and (args.timing_mode or args.profile_mode)))
+                else:
+                    result = p0._run_nogan_generator_update_p0(**common, generator_engine=engine,
+                        critic_engine=observer.critic, negative=negative, policy=policy,
+                        score_pack_parity_check=(not args.timing_mode) and (not args.profile_mode))
             row["helper_record"] = result
         _include_helper_peaks(row["memory_after"], result)
         return result
     def rollout(ctx):
         selected = steps if ctx.operation.operation_id == "r_all" else (ctx.operation.logical_step,)
         with observer.action(ctx.operation, source_steps=selected) as row:
-            outputs, records, persistence = p0._precompute_critic_rollouts(**common, steps=selected,
-                generator_engine=observer.generator, policy=policy,
-                rollout_parity_check=(not args.timing_mode) and (not args.profile_mode))
+            with generator_scope(with_grad=False, action_id=ctx.operation.operation_id) as (engine, phase):
+                if phase is not None:
+                    row["native_history_phase"] = phase
+                outputs, records, persistence = p0._precompute_critic_rollouts(**common, steps=selected,
+                    generator_engine=engine, policy=policy,
+                    rollout_parity_check=(not args.timing_mode) and (not args.profile_mode))
             require(set(outputs) == set(selected) and len(records) == len(selected), "native B1 rollout inventory changed")
             require(persistence.get("enabled") is observer.impl.persistent_unshard and persistence.get("restored") is True,
                     "native persistence scope did not restore its original policy")

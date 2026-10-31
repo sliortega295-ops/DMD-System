@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"workload": "W6"},
+  "data": {
+    "input_kind": "original_h3_ar_fresh_stream.v1",
+    "prepared": "REPLACE_WITH_PREPARED_FINITE_STREAM.json"
+  },
+  "algorithm": {"name": "original_diffsynth_h3_ar"},
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "preset": "h3_ar.zero3_ap_stream.v1",
+    "task": "../../configs/distillschedule/original_h3_ar/w6_reference.json",
+    "assets": "REPLACE_WITH_EXPLICIT_NATIVE_ASSETS.json",
+    "capacity_policy": "REPLACE_WITH_EXPLICIT_NATIVE_CAPACITY.json"
+  },
+  "trainer": {
+    "cycles": 100,
+    "seed": 42,
+    "checkpoint_every": 50,
+    "stop_after_cycle": 50,
+    "output_dir": "REPLACE_WITH_PROJECT_FIRST_SEGMENT_OUTPUT"
+  }
+}

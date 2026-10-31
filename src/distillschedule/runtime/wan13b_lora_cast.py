@@ -334,6 +334,12 @@ def install_generator_nograd_lora_cast_cache(
         "wan13b_generator_nograd_lora_cast_cache", default=None
     )
 
+    def validate_checkpoint_boundary():
+        if active_cache.get() is not None:
+            raise ValueError('checkpoint during active Generator cast cache')
+
+    object.__setattr__(model, '_distillschedule_cast_cache_quiescence', validate_checkpoint_boundary)
+
     for child in linears:
         original_cast = child._cast_input_dtype
 

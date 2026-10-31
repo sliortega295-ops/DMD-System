@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager, nullcontext
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import hashlib
 import inspect
 import itertools
@@ -78,26 +78,35 @@ def storage_bytes(value):
     return sum({storage_key(t): physical_tensor(t).untyped_storage().nbytes() for t in tensors(value)}.values())
 
 
-def tensor_signature(t):
+def tensor_signature(t, *, _local_shards=False):
+    if _local_shards:
+        from torch.distributed.tensor import DTensor
+        if isinstance(t, DTensor):
+            from distillschedule.training.tensor_state import layout
+            # Native admission compares before/after on every real rank and
+            # binds those rank hashes in order. No logical tensor gather is
+            # necessary: retain exact local bytes AND the full shard layout.
+            return fingerprint({'local_shard_layout': layout(t),
+                                'local_tensor': tensor_signature(t.to_local())})
     t=full_tensor(t)
     v=t.detach().contiguous().cpu()
     return fingerprint({'shape':list(t.shape),'stride':list(t.stride()),'dtype':str(t.dtype),
         'bytes':hashlib.sha256(v.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()})
 
 
-def signature(value, *, _metadata=False):
-    if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value)}
+def signature(value, *, _metadata=False, _local_shards=False):
+    if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value, _local_shards=_local_shards)}
     if isinstance(value, nn.Module):
         return {'class':type(value).__module__+'.'+type(value).__qualname__,
                 'training':[ (n,m.training) for n,m in value.named_modules()],
-                'tensors':{k:signature(v) for k,v in value.state_dict().items()},
-                'requires_grad':{k:p.requires_grad for k,p in value.named_parameters()}}
-    if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict())}
+                'tensors':{k:signature(v, _local_shards=_local_shards) for k,v in value.state_dict().items()},
+                'requires_grad':{k:p.requires_grad for k,p in value.named_parameters(remove_duplicate=False)}}
+    if isinstance(value, torch.optim.Optimizer): return {'optimizer':type(value).__qualname__, 'state':signature(value.state_dict(), _local_shards=_local_shards)}
     if _stateful(value):
         return {'stateful':type(value).__module__+'.'+type(value).__qualname__,
-                'state':signature(value.state_dict(), _metadata=True)}
-    if isinstance(value, Mapping): return {str(k):signature(v, _metadata=_metadata) for k,v in value.items()}
-    if isinstance(value,(tuple,list)): return [signature(v, _metadata=_metadata) for v in value]
+                'state':signature(value.state_dict(), _metadata=True, _local_shards=_local_shards)}
+    if isinstance(value, Mapping): return {str(k):signature(v, _metadata=_metadata, _local_shards=_local_shards) for k,v in value.items()}
+    if isinstance(value,(tuple,list)): return [signature(v, _metadata=_metadata, _local_shards=_local_shards) for v in value]
     # E.g. ReduceLROnPlateau deliberately starts with best=+/-inf. Bind
     # those scheduler sentinels explicitly without admitting nonfinite inputs.
     if _metadata and type(value) is float and math.isinf(value):
@@ -166,8 +175,8 @@ class Workload:
             from .replica_contract import ReplicaSemantics
             require(isinstance(self.replica_semantics, ReplicaSemantics), 'typed replica semantics required', path='open.workload')
             self.replica_semantics.validate(self)
-        from .owner_execution import inventory
-        inventory(self.state)
+        from .owner_execution import workload_inventory
+        workload_inventory(self)
         return self
 
     @property
@@ -178,12 +187,20 @@ class Workload:
     def identity(self):
         self.validate()
         classes={type(m) for obj in self.state.values() if isinstance(obj,nn.Module) for m in obj.modules()}
-        from .owner_execution import inventory
-        owners = inventory(self.state)
-        return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state)),
-                'feeds':fingerprint(signature(self.feeds)), 'seed':self.seed,
+        from torch.distributed.fsdp import FSDPModule
+        if any(issubclass(cls, FSDPModule) for cls in classes):
+            from .sharded import construction_model_code
+            model_code = construction_model_code(self, classes)
+        else:
+            model_code = {k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes}
+        from .owner_execution import workload_inventory
+        owners = workload_inventory(self)
+        from .collective_owner import present
+        native_shards = present(self)
+        return {'program':self.program.digest,'initial_state':fingerprint(signature(self.state, _local_shards=native_shards)),
+                'feeds':fingerprint(signature(self.feeds, _local_shards=native_shards)), 'seed':self.seed,
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
-                'model_code':{k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes},
+                'model_code':model_code,
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),
                 'torch':torch.__version__,'device':str(self.device),
                 **({'owner_execution': owners} if owners else {}),
@@ -204,9 +221,13 @@ def resolve_module(state,path):
 
 
 def sharing_inventory(workload, *, include_existing=False):
+    # Inspect every named immutable slot, even when two slots already alias.
+    # Parameter ownership/optimizers still use unique Parameter objects. Without
+    # slot-complete snapshots, equal DiT norm/bias aliases erase verification
+    # keys and can make a valid immutable share look like a value mutation.
     seen={}; pairs=[]
     for path in workload.immutable_modules:
-        for name,p in resolve_module(workload.state,path).named_parameters():
+        for name,p in resolve_module(workload.state,path).named_parameters(remove_duplicate=False):
             require(p.is_contiguous() and p.layout==torch.strided,'shared parameter must be contiguous strided storage',path='open.state')
             key=tensor_signature(p)
             item=(path,name,p)
@@ -218,6 +239,9 @@ def sharing_inventory(workload, *, include_existing=False):
 
 def candidates(workload, *, limit=16):
     """Global capabilities: match facts, never branch on workload/model names."""
+    from .collective_owner import declaration
+    require(declaration(workload) is None, 'native owner requires its native execution backend',
+            path='open.capabilities')
     workload.validate()
     require(type(limit) is int and limit>=1,'candidate budget required',path='open.capabilities')
     groups=sorted({c.binding for c in workload.program.calls if c.replay_safe})
@@ -262,8 +286,13 @@ def candidates(workload, *, limit=16):
 
 
 @contextmanager
-def random_scope(seed,key,device):
-    derived=int(fingerprint({'seed':seed,'logical_call':key})[:16],16)%(2**63)
+def random_scope(seed,key,device, *, namespace=None):
+    # Namespace is pure hash input, not another RNG draw. Omitting it preserves
+    # every historical logical-call seed byte. All ranks share the semantic
+    # namespace schema; only execution injects the actual owned rank/world.
+    binding = {'seed':seed,'logical_call':key}
+    if namespace is not None: binding['namespace'] = namespace
+    derived=int(fingerprint(binding)[:16],16)%(2**63)
     py=random.getstate()
     devices=[device.index if device.index is not None else torch.cuda.current_device()] if device.type=='cuda' else []
     try:
@@ -285,9 +314,12 @@ class Context:
 class Session:
     def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False):
         workload.validate()
+        from .collective_owner import validate_session
+        validate_session(self, workload, implementation, lifecycle,
+                         copy_state=copy_state, persistent=persistent)
         from .checkpoint_policy import POLICIES, operations
-        from .owner_execution import admit, inventory
-        self.owner_inventory = inventory(workload.state)
+        from .owner_execution import admit, workload_inventory
+        self.owner_inventory = workload_inventory(workload)
         self.owner_options = admit(implementation, self.owner_inventory)
         policy=implementation.get('checkpoint_policy','recompute')
         require(set(implementation) - {'owner_execution'} in ({'share_immutable','checkpoint_bindings','backend'},
@@ -312,7 +344,7 @@ class Session:
                                if copy_state else (dict(workload.state),dict(workload.feeds)))
         self.device=workload.device; self.graph=workload.program.compile()
         self.profile={}; self.effects={'shared_parameter_aliases':0,'checkpoint_calls':0,'recompute_calls':0}
-        self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}
+        self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}
                          for path in workload.immutable_modules}
         if implementation['share_immutable']:
             for first,second,_ in sharing_inventory(workload):
@@ -340,12 +372,15 @@ class Session:
         """
         require(self.persistent, 'trial sessions are one-shot', path='open.runtime')
         workload.validate()
-        from .owner_execution import inventory
-        require(inventory(workload.state) == self.owner_inventory,
+        from .owner_execution import workload_inventory
+        require(workload_inventory(workload) == self.owner_inventory,
                 'owner execution descriptor or source changed', path='open.runtime')
         require(set(workload.state) == set(self.state) and all(
             workload.state[key] is self.state[key] for key in self.state),
             'cycle must retain the owned state objects', path='open.runtime')
+        from .collective_owner import validate_session
+        validate_session(self, workload, self.implementation, self.lifecycle,
+                         copy_state=False, persistent=self.persistent)
         if self._ran:
             require(workload.program.initial_versions == self.receipt['dispatcher']['final_versions'],
                     'cycle must continue the last committed versions', path='open.runtime')
@@ -361,8 +396,19 @@ class Session:
         if self.device.type=='cuda': torch.cuda.synchronize(self.device)
 
     def run(self, order=None, *, measure=False):
+        from .collective_owner import validate_session
+        validate_session(self, self.workload, self.implementation, self.lifecycle,
+                         copy_state=False, persistent=self.persistent)
+        # Generic trials may dispatch a clone, not the original logical owner.
+        validate_session(self, replace(self.workload, state=self.state), self.implementation,
+                         self.lifecycle, copy_state=False, persistent=self.persistent)
         require(not self._ran,'sessions are one-shot; clone original initial state for each trial',path='open.runtime')
         self._ran=True
+        resident = None
+        if measure and self.device.type == 'cuda':
+            from .resident_trial import cuda_trial_active
+            resident = next((owner._resident_trial_active for owner in self.state.values()
+                             if cuda_trial_active(owner)), None)
         by_id={c.id:c for c in self.workload.program.calls}
         def dispatch(ctx):
             c=by_id[ctx.operation.operation_id]
@@ -377,7 +423,14 @@ class Session:
                 if invocations>1: self.effects['recompute_calls']+=1
                 trace_context = (torch.profiler.record_function('distillschedule.call.'+c.id)
                                  if getattr(self,'deep_trace_labels',False) else nullcontext())
-                with trace_context, random_scope(self.workload.seed,c.id,self.device):
+                namespace = None
+                semantics = self.workload.replica_semantics
+                if semantics is not None and semantics.random_streams == 'rank_independent_v1':
+                    import torch.distributed as dist
+                    require(dist.is_initialized() and dist.get_world_size() > 1,
+                            'rank-independent streams require an actual replica group', path='open.runtime')
+                    namespace = dict(schema=semantics.random_streams, rank=dist.get_rank(), world_size=dist.get_world_size())
+                with trace_context, random_scope(self.workload.seed,c.id,self.device,namespace=namespace):
                     return self.workload.bindings[c.binding](Context(dict(zip(input_keys,values)),states,c.attributes))
             saved={}; excluded={storage_key(t) for t in tensors((self.state,self.feeds))}
             def pack(t):
@@ -387,7 +440,11 @@ class Session:
             if measure:
                 self.synchronize()
             if measure and self.device.type=='cuda':
-                before=torch.cuda.memory_allocated(self.device); torch.cuda.reset_peak_memory_stats(self.device)
+                before=torch.cuda.memory_allocated(self.device)
+                # ResidentTrial owns device-global counters across the complete
+                # atomic native phase, including setup and comparison. Never
+                # erase its high-water evidence at a nested call boundary.
+                if resident is None: torch.cuda.reset_peak_memory_stats(self.device)
             start_event = end_event = None
             if measure and self.device.type == 'cuda':
                 # GPU device time is a diagnostic; conservative scheduling cost
@@ -426,7 +483,9 @@ class Session:
             if measure and self.device.type=='cuda':
                 after=torch.cuda.memory_allocated(self.device)
                 retained=max(retained,after-before,0)
-                workspace=max(0,torch.cuda.max_memory_allocated(self.device)-before-retained)
+                peak=torch.cuda.max_memory_allocated(self.device)
+                workspace=(max(0,peak-before-retained) if resident is None else
+                           max(0,peak-resident._phase_start['allocated_bytes']))
             self.static_bytes=max(self.static_bytes,storage_bytes((self.state,self.feeds)))
             self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace,
                 'timing_method':('synchronized_component_host_wall' if measure
@@ -434,6 +493,10 @@ class Session:
             if gpu_event_ns is not None:
                 self.profile[c.id].update(cuda_event_ns=gpu_event_ns,
                     timing_method='synchronized_cuda_event_and_host_wall',
+                    capacity_measurement=('isolated_operation_allocator_peak' if resident is None
+                                          else 'resident_phase_high_water_bound'),
+                    allocator_peak_counter_reset=resident is None,
+                    peak_allocated_bytes=peak,
                     # Host wall time, which includes NCCL completion at this
                     # call boundary, is the optimization objective.
                     scheduling_time_source='host_wall_ns')
@@ -464,7 +527,7 @@ class Session:
                     and row.get('effect') == self.owner_inventory[key]['descriptor']['effect'],
                     'owner changed admitted execution effect predicates', path='open.runtime')
         for path,values in self._immutable.items():
-            require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}==values,
+            require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}==values,
                     'declared immutable parameters changed',path='open.runtime')
         self.receipt={'status':'EXECUTED_OPEN_PROGRAM','program':self.workload.program.digest,
             'dispatcher':prepared.receipt(),'effects':deepcopy(self.effects),'wall_ns':time.perf_counter_ns()-started,
@@ -481,7 +544,7 @@ class Session:
             if isinstance(v,Mapping): return {str(k):clone(x) for k,x in v.items()}
             if isinstance(v,(list,tuple)): return [clone(x) for x in v]
             return v
-        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in unwrap_module(v).named_parameters()}
+        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in unwrap_module(v).named_parameters(remove_duplicate=False)}
                      for k,v in self.state.items() if isinstance(v,nn.Module)}})
 
 

@@ -8,8 +8,21 @@ on:
       - 'tests/test_helios_step_owner_cpu.py'
       - 'tests/test_training_helios_public_cpu.py'
       - 'tests/test_training_helios_public_inference_cpu.py'
+      - 'tests/test_training_helios_optimized_stream.py'
+      - 'tests/test_training_helios_native_safe_stream.py'
+      - 'tests/test_training_helios_checkpoint_inputs_cpu.py'
+      - 'recipes/helios_nogan/**'
+      - 'recipes/helios_nogan/training.native-history-safe.json'
+      - 'docs/contracts/helios_nogan_native_history_safe_v1.md'
+      - 'tests/helios_rollout_liveness_fixtures.py'
+      - 'tests/test_helios_rollout_liveness_cpu.py'
+      - 'tests/test_refactor_helios_compat_source.py'
       - 'tests/test_training_wan_public_cpu.py'
       - 'tests/test_training_wan_inference_cpu.py'
+      - 'tests/test_training_wan_generator_import_upstream_cpu.py'
+      - 'tests/test_training_wan_native_outputs.py'
+      - 'tests/test_framework_cpu_collection.py'
+      - 'scripts/check_cpu_receipt.py'
       - 'runtime/gst_pool_helios.py'
       - 'runtime/static_fsdp2_p0_helios.py'
       - 'scripts/distillschedule/probe_static_fsdp2_p0_world16.py'
@@ -51,8 +64,29 @@ jobs:
         run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
       - name: Separate full-model dependencies; leave 0.34 helper and 0.35 Wan pins alone
         run: python -m pip install -e '.[train,test,test-helios-model]'
+      - name: Original Wan Generator import, export and fresh-process inference
+        env:
+          R217_REQUIRE_UPSTREAM: '1'
+        run: |
+          python -m pytest -q tests/test_training_wan_generator_import_upstream_cpu.py --junitxml=wan-generator-import-upstream-cpu.xml
+          python scripts/check_cpu_receipt.py wan-generator-import-upstream-cpu.xml \
+            --require 'test_actual_upstream_import_cli_export_and_new_process_new_prompt[False-False]' \
+            --require 'test_actual_upstream_import_cli_export_and_new_process_new_prompt[True-False]' \
+            --require 'test_actual_upstream_import_cli_export_and_new_process_new_prompt[True-True]' \
+            --require 'test_actual_upstream_low_export_budget_refuses_before_publication[max_export_bytes_per_rank]' \
+            --require 'test_actual_upstream_low_export_budget_refuses_before_publication[max_export_bytes_all_ranks]' \
+            --require test_actual_from_config_retains_rope_metadata_without_changing_constructor_state_or_dense_output \
+            --require 'test_actual_upstream_nonconstructor_config_projection_and_public_import_are_exact[rope_max_seq_len]' \
+            --require 'test_actual_upstream_nonconstructor_config_projection_and_public_import_are_exact[unknown_native_config_field]' \
+            --require test_actual_upstream_compacted_peft_targets_project_import_and_strict_reload_are_exact \
+            --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[missing_adapter]' \
+            --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[extra_adapter]' \
+            --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[wrong_default]' \
+            --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[merged]'
       - name: Full original class and original G/C/EMA owners with fresh-process continuation
-        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py --junitxml=helios-reference-model-cpu.xml
+        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py tests/test_training_helios_optimized_stream.py tests/test_training_helios_native_safe_stream.py tests/test_training_helios_checkpoint_inputs_cpu.py tests/test_helios_rollout_liveness_cpu.py tests/test_refactor_helios_compat_source.py --junitxml=helios-reference-model-cpu.xml
+      - name: Exact checkpoint-input copies through the original 40-block class
+        run: python recipes/helios_nogan/verify_checkpoint_inputs_target_cpu.py
       - name: Require the full-source proofs without skips
         run: |
           python - <<'PY'
@@ -65,6 +99,28 @@ jobs:
           assert cases and all(case.find('skipped') is None for case in cases)
           names = {case.get('name') for case in cases}
           required = {
+              'test_real_native_stream_producer_consumer_lowering_and_separate_checkpoint_identity',
+              'test_actual_checkpoint_publication_and_old_policy_refusal_for_new_identity',
+              'test_actual_planner_retains_window5_and_complete_block_phase_with_full_bundle[False]',
+              'test_actual_planner_retains_window5_and_complete_block_phase_with_full_bundle[True]',
+              'test_planner_consumer_cannot_treat_full_safe_action_as_old_reference_phase',
+              'test_native_safe_recipe_cold_discovery_avoids_torch_cuda_and_model_assets',
+              'test_native_shape_contract_is_exact_three_original_stages_and_partitioned_node_bound',
+              'test_native_receipt_refuses_wrong_source_version_shape_dtype_or_lifetime[version]',
+              'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[direct-True]',
+              'test_shared_checkpoint_input_mutation_still_refuses_without_a_cpu_copy[detached_alias_after_gc-True]',
+              'test_liveness_fixture_restores_rng_threads_and_import_namespaces',
+              'test_candidate_changes_only_two_stored_aliases',
+              'test_reviewed_rollout_alias_patch_retains_the_complete_original_receipt',
+              'test_default_checkpoint_cpp_storage_lifetime_without_saved_tensor_hooks[exits0]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[False-2-4]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[False-3-4]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[False-3-6]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[True-2-4]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[True-3-4]',
+              'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[True-3-6]',
+              'test_actual_producer_worker_and_original_helpers_four_cycles_resume_at_two[4]',
+              'test_two_rank_gloo_local_native_state_resume_and_failure_boundaries',
               'test_reference_model_source_discovery_needs_no_torch_or_model_import',
               'test_original_history19_native_producer_mapping_and_tensor_only_delivery',
               'test_public_fresh_os_process_four_vs_three_resume_exact[True]',
@@ -97,5 +153,7 @@ jobs:
         if: always()
         with:
           name: helios-reference-model-cpu-py${{ matrix.python }}
-          path: helios-reference-model-cpu.xml
+          path: |
+            helios-reference-model-cpu.xml
+            wan-generator-import-upstream-cpu.xml
           if-no-files-found: error

@@ -183,7 +183,7 @@ def test_byte_identical_relocated_assets_are_accepted_for_actual_native_update(b
     assert result['generator_updates'] == 1 and result['guidance_updates'] == owner.ratio
 
 
-def test_external_evaluation_and_export_generation_enforce_binding_without_old_assets(binding_assets, tmp_path):
+def test_external_evaluation_and_export_generation_enforce_binding_without_old_assets(binding_assets, tmp_path, monkeypatch):
     from distillschedule.training.session import train, evaluate, export, generate_from_export
     config = load_training_config(binding_assets['config'])
     trained = train(config)
@@ -213,7 +213,21 @@ def test_external_evaluation_and_export_generation_enforce_binding_without_old_a
             shutil.copytree(original, tokenizer_only / folder)
     fresh_source = _source(binding_assets, tmp_path / 'fresh-source', assets=tokenizer_only)
     fresh = prepare_inputs(fresh_source, tmp_path / 'fresh-before-removal')
-    expected = evaluate(config, trained['checkpoint'], tmp_path / 'expected', prepared=fresh)
+    # Compare both inference paths with owned CPU allocations, as in the
+    # installed-workflow verifier. File-view alignment can select a different
+    # SIMD reduction even for identical weights; tensor equality stays exact.
+    from distillschedule.training import session
+    from test_framework_official_install import witness
+    original_load = session._load_for_output
+    def aligned_reference(*args, **kwargs):
+        result = original_load(*args, **kwargs)
+        model = result[0].state['native_cycle'].model
+        witness().materialize_cpu_reference_storage(
+            model.feedforward_model, model.text_encoder, model.vae)
+        return result
+    with monkeypatch.context() as local:
+        local.setattr(session, '_load_for_output', aligned_reference)
+        expected = evaluate(config, trained['checkpoint'], tmp_path / 'expected', prepared=fresh)
     expected_values = torch.load(expected['artifact'], weights_only=True)
     shutil.rmtree(binding_assets['assets'])
     shutil.rmtree(Path(binding_assets['prepared']).parent)

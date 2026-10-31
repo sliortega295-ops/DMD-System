@@ -137,6 +137,14 @@ def context(config):
             metadata_group = dist.new_group(backend="gloo", timeout=timedelta(
                 seconds=requested.get("timeout_seconds", 180) if requested else 180))
         with ExitStack() as stack:
+            # Single-process indexed CUDA owns the same current-device scope
+            # as a launched rank, including checkpoint RNG and output work.
+            if actual_world == 1:
+                device = torch.device(config.trainer.get("device", "cpu"))
+                if device.type == "cuda":
+                    if not torch.cuda.is_available():
+                        raise ValueError("requested single-process CUDA device is unavailable")
+                    stack.enter_context(torch.cuda.device(device))
             if metadata_group is not None:
                 from distillschedule.open_workload.replicated import control_plane
                 stack.enter_context(control_plane(metadata_group))

@@ -1,7 +1,8 @@
 """Public training requests lowered to the *existing* original-model runtimes.
 
-This is deliberately not a model-name -> best-profile dispatcher. A plan-mode
-request must supply the selected, source-bound native plan. The original
+This is deliberately not a model-name -> best-profile dispatcher. Explicit
+versioned manual presets bind current assets through the same native lowerers;
+plan-mode requests still supply their selected, source-bound native plan. The original
 worker still owns physical assets, rank/trace tensors, capacity, optimizer and
 numerical gates. CPU admission never claims those GPU gates passed.
 """
@@ -13,6 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from .config import TrainingConfig
+from .native_presets import describe_preset, preset_implementation, HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM, HELIOS_GAN_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM, LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM, H3_AR_STREAM
+from distillschedule.strategies.wan_stream import MAX_COHORTS as WAN_MAX_COHORTS
+from .helios_inputs import MAX_COHORTS as HELIOS_MAX_COHORTS
 
 
 _FAMILIES = {
@@ -53,10 +57,10 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
         source=dict(catalog_index=catalog["source_index"],
                     native_code=row["code"], selected_plan_is_authoritative=True),
         launch=("enter on each world16 torchrun rank; this API does not reserve or start nodes"
-                if worker else "existing two-node dispatcher; explicit saved-plan asset/transport owners"),
+                if worker else "existing two-node dispatcher; explicit native asset/transport owners"),
         capabilities=dict(
-            modes=["reference", "manual", "plan"] if worker else ["plan"],
-            cycles=(dict(min=2, max=64, fresh_inputs="original_wan_cohort_stream.v1",
+            modes=["reference", "manual", "plan"] if worker else ["manual", "plan"],
+            cycles=(dict(min=2, max=WAN_MAX_COHORTS, fresh_inputs="original_wan_cohort_stream.v1",
                          reference_manual_fixed_trace=2, incumbent_bundle=2)
                     if workload == "W1" else dict(exact=2, arbitrary_training=False)),
             checkpoint=dict(supported=workload == "W1", scope=(
@@ -73,24 +77,113 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                 if workload == "W1" else dict(supported=False,
                     reason="native sampled/fingerprint receipts are not tensor checkpoints"))),
         historical_note=row["note"], gpu_execution="NOT_RUN", claimable_speedup=False)
+    if "preset" in config.execution:
+        result["preset"] = describe_preset(workload, config.execution["preset"])
+        if workload == "W1":
+            result["native_api"] = result["preset"]["runtime"]
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(
+            cycles=dict(exact=2, arbitrary_training=False, scope="explicit bounded optimized preset"),
+            checkpoint=dict(supported=False, reason="not exposed by this bounded optimized preset"),
+            resume=dict(supported=False, reason="not exposed by this bounded optimized preset"))
+    if not worker:
+        result["capabilities"]["manual_requires_preset"] = True
+    if _wan_incumbent_stream(config, workload):
+        result['capabilities'].update(
+            cycles=dict(min=2, max=WAN_MAX_COHORTS, fresh_inputs='original_wan_cohort_stream.v1',
+                        arbitrary_training=False, later_novel_graph_signatures='REJECTED'),
+            checkpoint=dict(supported=True, scope='complete/drained native cohort; named Adam, scheduler, EMA, rank RNG',
+                            verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'),
+            resume=dict(supported=True, scope='same source/assets/stream/topology; recapture transient graphs',
+                        verification='CPU_SOURCE_AND_LIFECYCLE_ONLY'))
+    if workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1':
+        result['capabilities']['stop'] = dict(supported=True, control='trainer.stop_after_cycle',
+            checkpoint_required=True, immutable_horizon=True,
+            scope='complete all-rank checkpoint boundary; resume the same full stream in a fresh output directory',
+            verification='CPU_SOURCE_AND_LIFECYCLE_ONLY')
+        result['capabilities']['export'] = dict(supported=True,
+            api='distillctl export <native-training-with-output-policy> --checkpoint <complete-native-checkpoint> --output <portable>',
+            scope='same-topology native CURRENT full unmerged G + pinned Wan2.1 VAE; terminal checkpoints allowed; explicit capacity/codec policy',
+            standalone_generation='Program single-process native sampler + actual Wan2.1 VAE on NEW preencoded prompts',
+            verification='SOURCE_AND_CPU_ONLY; NATIVE_PRETRAINED_GPU_OUTPUT_NOT_RUN')
+        result['capabilities']['generate'] = dict(supported=False,
+            reason='export first, then distillctl generate with the emitted standalone Program inference config')
     if helios_stream:
         result.update(native_api="distillschedule.training.helios_worker:run_reference",
                       launch="enter on each existing world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
         result["capabilities"].update(modes=["reference"],
+            export=dict(supported=True, scope="native CURRENT unmerged G and actual Wan2.1 VAE; output-only complete restore",
+                        standalone_generation="independent Program new-prompt decoded video",
+                        verification="SOURCE_AND_CPU_ONLY; native pretrained GPU output pending"),
             bootstrap=dict(global_step=10, versions=dict(generator=2, critic=10, ema=10),
                 cold_start_supported=False,
                 asset_contract="distillschedule.helios_reference_assets.v1 or unchanged legacy native assets"),
-            cycles=dict(min=2, max=64, fresh_inputs="original_helios_cohort_stream.v1",
+            cycles=dict(min=2, max=HELIOS_MAX_COHORTS, fresh_inputs="original_helios_cohort_stream.v1",
                         scope="five actual step-qualified per-rank source features per cohort"),
             checkpoint=dict(supported=True, scope="original G/C trainables, Adam, scheduler, EMA, clocks and per-rank RNG",
                             verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"),
             resume=dict(supported=True, scope="complete native cohort boundary; same source/stream/assets/topology/reference",
                         verification="CPU_ORIGINAL_HELPERS_AND_STATE_ONLY"))
+        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1":
+            if config.execution.get("preset") in (HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM):
+                from .helios_worker import _safe_policy
+                descriptor = _safe_policy(config).history_descriptor
+            else:
+                from distillschedule.runtime.helios_native_history import descriptor
+            result["capabilities"]["native_history"] = descriptor()
+            result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
+        if _helios_safe_stream(config, workload):
+            result["native_api"] = "distillschedule.training.helios_worker:run_safe_stream"
+            result["capabilities"]["modes"] = ["manual"]
+            result["capabilities"]["resume"]["scope"] = "complete native cohort; same source/assets/stream/node-HSDP/SafeBundle"
+            result["capabilities"]["bootstrap"]["asset_contract"] = "distillschedule.helios_reference_assets.v1; explicit local assets only"
+            result["capabilities"]["physical_policy"] = "node-HSDP/C512/p0/window5/full SafeBundle/stride0; local pinned FA2 required"
+    if config.execution.get("preset") == HELIOS_CHECKPOINT_CPU_STREAM:
+        from .helios_checkpoint_cpu import checkpoint_input_preservation
+        result["capabilities"]["checkpoint_input_cpu"] = checkpoint_input_preservation()
+    if _helios_gan_stream(config, workload):
+        result.update(native_api="distillschedule.training.helios_gan_training:run_training",
+                      launch="enter on each existing world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"]["export"] = dict(supported=True,
+            scope="native CURRENT unmerged G and Wan2.1 VAE after complete GAN/head/Adam/EMA restore; N70 off",
+            standalone_generation="independent Program new-prompt decoded video",
+            verification="SOURCE_AND_CPU_ONLY; native pretrained GPU output pending")
+        result["capabilities"].update(modes=["manual"],
+            cycles=dict(min=2, fresh_inputs="original_helios_gan_cohort_stream.v1", finite_prepared_stream=True,
+                        scheduler="original native constant; no invented finite horizon"),
+            bootstrap=dict(physical_versions=dict(generator=2, critic=10, ema=800),
+                curriculum_versions=dict(generator=200, critic=1000, ema=800),
+                classification="systems_only_NOT_official_checkpoint1000", cold_start_supported=False),
+            checkpoint=dict(supported=True, scope="actual G/C plus five GAN heads, Adam/scheduler/EMA, rank RNG and stream cursor",
+                            verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="drained complete G1/C5/EMA1 boundary; same source/assets/stream/world16/full bundle",
+                        verification="SOURCE_AND_CPU_ONLY; NATIVE_GPU_NOT_RUN"))
+        if config.data.get("input_kind") == "original_helios_gan_native_history_cohort_stream.v1":
+            from distillschedule.runtime.helios_gan_native_history import descriptor
+            result["capabilities"]["native_history"] = descriptor()
+            result["capabilities"]["cycles"]["fresh_inputs"] = config.data["input_kind"]
+        if config.execution.get("preset") == HELIOS_GAN_CHECKPOINT_CPU_STREAM:
+            from .helios_gan_checkpoint_cpu import checkpoint_input_preservation
+            result["capabilities"]["checkpoint_input_cpu"] = checkpoint_input_preservation()
+    if helios_stream or _helios_gan_stream(config, workload):
+        result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
+            checkpoint_required=True, immutable_horizon=True,
+            scope="complete all-rank checkpoint boundary; resume the unchanged full stream in a fresh output directory",
+            verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
     if _h3_grid_training(config, workload):
         result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
+            checkpoint_required=True, immutable_horizon=True,
+            scope="complete all-rank original G1/F5/EMA0 checkpoint; unchanged native config/input/scheduler horizon",
+            verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
+        result['capabilities']['export'] = dict(supported=True,
+            scope='complete original-reference checkpoint restore; current unmerged Grid Student and four frozen rollout entries',
+            standalone_generation='original four-step CPU packed AV; optional original codec exact patch/stereo ABI',
+            verification='SOURCE_AND_CPU_ONLY; native GPU output pending')
         result["capabilities"].update(modes=["reference"],
             cycles=dict(min=2, max=64, fresh_inputs="original_h3_grid_latent_dataset.v1",
                         scope="finite original latent_dataset; 96 distinct cached records per complete G1/F5 cycle"),
@@ -98,6 +191,20 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
             resume=dict(supported=True, scope="versioned complete-cycle checkpoint; exact same source/input/config/horizon/topology",
                         verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"))
+    if _livewan_c51_stream(config, workload):
+        result.update(native_api="distillschedule.training.livewan_c51_training:run_training",
+                      launch="enter on every existing two-node world16 torchrun rank; no node reservation/launch")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result['capabilities']['export'] = dict(supported=True,
+            scope='complete native C51 restore; actual current full Student on primary Generator rank; no Score weight copy',
+            standalone_generation='original four-step LiveWan streamer CPU FP32; embedded original Wan VAE',
+            verification='SOURCE_AND_CPU_ONLY; native CUDA/world16 output pending')
+        result["capabilities"].update(modes=["manual"],
+            cycles=dict(min=2, max=100, fresh_inputs="original_livewan_c51_teacher_stream.v1"),
+            checkpoint=dict(supported=True, scope="drained complete native dual-wave 8G+8Score G1/C5/EMA0; actual named role Adam and rank RNG",
+                            verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="exact source/assets/input/policy/topology; frozen Teacher and transient caches reconstructed",
+                        verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"))
     if _livewan_reference(config, workload):
         result.update(native_api="distillschedule.training.livewan_training:run_reference",
                       algorithm="original_self_forcing_reference.v1",
@@ -114,11 +221,48 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
                             verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; CUDA_NATIVE_TRAINING_NOT_RUN"),
             resume=dict(supported=True, scope="versioned incomplete-target complete-cycle reference boundary; exact source/assets/input/horizon/precision/optimizer/topology",
                         verification="CPU_SOURCE_AND_OWNER_CONTRACT_ONLY; NOT_C51_PIPELINE_RESTART"))
+    if _h3_ar_stream(config, workload):
+        result.update(native_api="distillschedule.training.h3_ar_training:run_training",
+                      launch="enter on each already-launched world16 torchrun rank; no node/GPU reservation")
+        result["source"]["selected_plan_is_authoritative"] = False
+        result["capabilities"].update(modes=["reference", "manual"],
+            cycles=dict(min=2, max=100, fresh_inputs="original_h3_ar_fresh_stream.v1",
+                        epoch_inputs="original_h3_ar_epoch_stream.v1", immutable_horizon=True),
+            checkpoint=dict(supported=True, scope="both native LoRAs/inactive head/native ZeRO3 FP32 master Adam/clocks/rank RNG/cursor",
+                            verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
+            resume=dict(supported=True, scope="complete drained native cycle; same source/assets/input/horizon/layout/world16/capacity",
+                        verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_NOT_RUN"),
+            export=dict(supported=True,scope="same native owner complete restoration; frozen base plus current unmerged Student in exact native storage dtype; terminal allowed",
+                standalone_generation="independent CPU original eight-step previous/current AV latents; separate distillctl decode",
+                verification="SOURCE_AND_CPU_PROTOCOL_ONLY; NATIVE_GPU_OUTPUT_NOT_RUN"))
     return result
 
 
+def _wan_incumbent_stream(config, workload):
+    from .native_presets import WAN_INCUMBENT_STREAM
+    return workload == 'W1' and config.execution.get('preset') == WAN_INCUMBENT_STREAM
+
+
+def _livewan_c51_stream(config, workload):
+    return workload == "W4" and config.execution.get("preset") in (LIVEWAN_C51_STREAM, LIVEWAN_C51_RETIRE_TEXTKV_STREAM)
+
+
+def _h3_ar_stream(config, workload):
+    return workload == "W6" and (config.data.get("input_kind") in ("original_h3_ar_fresh_stream.v1", "original_h3_ar_epoch_stream.v1")
+                                or config.execution.get("preset") == H3_AR_STREAM)
+
+
 def _helios_stream(config, workload):
-    return workload == "W2" and config.data.get("input_kind") == "original_helios_cohort_stream.v1"
+    return workload == "W2" and config.data.get("input_kind") in (
+        "original_helios_cohort_stream.v1", "original_helios_native_history_cohort_stream.v1")
+
+
+def _helios_safe_stream(config, workload):
+    return workload == "W2" and config.execution.get("preset") in (HELIOS_SAFE_STREAM, HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM)
+
+
+def _helios_gan_stream(config, workload):
+    return workload == "W3" and config.execution.get("preset") in (HELIOS_GAN_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM)
 
 
 def _h3_grid_training(config, workload):
@@ -166,21 +310,105 @@ def _options(config, workload):
     """Do not accept a public knob that the native call would silently ignore."""
     for section, allowed in (
         ("model", {"workload"}), ("algorithm", {"name"}),
-        ("execution", {"adapter", "mode", "task", "assets", "plan", "implementation",
+        ("execution", {"adapter", "mode", "task", "assets", "plan", "implementation", "preset",
                        "capacity_policy", "transport", "expected_head"}),
         ("data", {"prepared", "input_kind", "replay_fixed_trace"}),
-        ("trainer", {"cycles", "output_dir", "checkpoint_every", "resume_from", "seed", "generate", "export"}),
+        ("trainer", {"cycles", "output_dir", "checkpoint_every", "resume_from", "seed", "generate", "export", "stop_after_cycle"}),
     ):
         _require(not set(getattr(config, section)) - allowed,
                  f"unsupported {section} fields: {sorted(set(getattr(config, section)) - allowed)}; "
                  "original shape/math belong in execution.task")
+    if "preset" in config.execution:
+        describe_preset(workload, config.execution["preset"])
+        _require(config.execution.get("mode") == "manual", "execution.preset requires explicit manual mode")
+        _require(not any(key in config.execution for key in ("plan", "implementation", "transport")),
+                 "execution.preset cannot override or ignore plan/implementation/transport; select one explicit policy")
+        _require(_helios_safe_stream(config, workload) or _helios_gan_stream(config, workload) or _wan_incumbent_stream(config, workload)
+                 or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
+                 or config.trainer["cycles"] == 2 and not config.trainer.get("checkpoint_every", 0)
+                 and not config.trainer.get("resume_from"),
+                 "optimized native presets support exactly 2 cycles and no checkpoint/resume; not continuous training")
+        if _wan_incumbent_stream(config, workload):
+            _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
+                     and config.data.get('prepared') and not config.data.get('replay_fixed_trace')
+                     and 2 <= config.trainer['cycles'] <= WAN_MAX_COHORTS,
+                     f'W1 stream preset requires 2..{WAN_MAX_COHORTS} explicit fresh cohorts')
+        elif workload == "W1":
+            _require(set(config.data) == {"replay_fixed_trace"} and config.data["replay_fixed_trace"] is True,
+                     "W1 literal graph preset requires explicit fixed-trace replay, not a fresh input stream")
     _require(not config.algorithm.get("name") or config.algorithm["name"] == (
         "original_self_forcing_reference.v1" if _livewan_reference(config, workload) else _FAMILIES[workload][0]),
              "algorithm.name does not match the original workload")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
-    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload) or "seed" not in config.trainer,
+    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload)
+             or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
+    fresh_wan = (workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
+                 and bool(config.data.get('prepared')) and not config.data.get('replay_fixed_trace'))
+    fresh_helios = _helios_stream(config, workload) or _helios_gan_stream(config, workload)
+    _require(fresh_wan or fresh_helios or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
+             or _h3_grid_training(config, workload)
+             or "stop_after_cycle" not in config.trainer,
+             "trainer.stop_after_cycle requires an explicit W1, W2, W3, C51, W5 reference or W6 fresh stream")
+    if fresh_helios:
+        from .helios_lifecycle import stop_cycle
+        stop_cycle(config)
+    if fresh_wan and 'stop_after_cycle' in config.trainer:
+        stop, every = config.trainer['stop_after_cycle'], config.trainer.get('checkpoint_every', 0)
+        _require(type(stop) is int and 1 <= stop <= config.trainer['cycles'] and every > 0
+                 and (stop == config.trainer['cycles'] or stop % every == 0),
+                 'W1 trainer.stop_after_cycle must be a complete checkpoint boundary within the unchanged horizon')
+    if _h3_ar_stream(config, workload):
+        mode = config.execution.get("mode")
+        _require(set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
+                 and config.data["input_kind"] in ("original_h3_ar_fresh_stream.v1", "original_h3_ar_epoch_stream.v1")
+                 and bool(config.execution.get("capacity_policy"))
+                 and type(config.trainer["cycles"]) is int and 2 <= config.trainer["cycles"] <= 100
+                 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
+                 "fresh W6 requires explicit finite 2..100 cycles, seed, checkpoint cadence, inputs and capacity policy")
+        _require(not any(k in config.execution for k in ("plan", "transport"))
+                 and (mode == "manual" and config.execution.get("preset") == H3_AR_STREAM
+                      and "implementation" not in config.execution
+                      or mode == "reference" and config.execution.get("implementation") == "zero3-native"
+                      and "preset" not in config.execution),
+                 "fresh W6 requires its versioned full preset or explicit native reference; no historical script/plan/fallback")
+        stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
+        _require(type(stop) is int and 1 <= stop <= config.trainer["cycles"]
+                 and (stop == config.trainer["cycles"] or config.trainer["checkpoint_every"] > 0
+                      and stop % config.trainer["checkpoint_every"] == 0),
+                 "fresh W6 stop must be a complete checkpoint boundary inside its immutable horizon")
+        return mode
+    if _helios_gan_stream(config, workload):
+        checkpoint_cpu = config.execution.get("preset") == HELIOS_GAN_CHECKPOINT_CPU_STREAM
+        if checkpoint_cpu:
+            from .helios_gan_checkpoint_cpu import validate_config
+            validate_config(config)
+        _require(config.execution.get("mode") == "manual" and (checkpoint_cpu or "capacity_policy" not in config.execution)
+                 and set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
+                 and config.data["input_kind"] in ("original_helios_gan_cohort_stream.v1",
+                                                   "original_helios_gan_native_history_cohort_stream.v1")
+                 and config.trainer["cycles"] >= 2,
+                 "W3 full bundle stream requires explicit fresh native GAN cohorts; no replay/plan/policy fallback")
+        return "manual"
+    _require(config.data.get("input_kind") not in ("original_helios_gan_cohort_stream.v1",
+                                                  "original_helios_gan_native_history_cohort_stream.v1"),
+             "W3 fresh GAN stream requires its explicit full bundle stream preset")
+    if _livewan_c51_stream(config, workload):
+        _require(config.data.get("input_kind") == "original_livewan_c51_teacher_stream.v1"
+                 and set(config.data) == {"input_kind", "prepared"} and config.data.get("prepared")
+                 and bool(config.execution.get("capacity_policy"))
+                 and type(config.trainer["cycles"]) is int and 2 <= config.trainer["cycles"] <= 100
+                 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
+                 "C51 stream requires explicit finite 2..100 fresh cycles, seed, checkpoint cadence and capacity policy")
+        stop = config.trainer.get("stop_after_cycle", config.trainer["cycles"])
+        _require(type(stop) is int and 1 <= stop <= config.trainer["cycles"]
+                 and (stop == config.trainer["cycles"] or config.trainer["checkpoint_every"] > 0
+                      and stop % config.trainer["checkpoint_every"] == 0),
+                 "C51 stop must be an explicit complete-cycle checkpoint boundary inside the fixed input horizon")
+        return "manual"
+    _require(config.data.get("input_kind") != "original_livewan_c51_teacher_stream.v1",
+             "fresh C51 inputs require their explicit full-bundle stream preset; no reference fallback")
     if _livewan_reference(config, workload):
         _require(config.execution.get("mode") == "reference"
                  and not any(k in config.execution for k in ("plan", "implementation", "transport")),
@@ -201,24 +429,46 @@ def _options(config, workload):
         _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer
                  and "checkpoint_every" in config.trainer,
                  "W5 original training requires cycles 2..64 and explicit matching native seed/checkpoint_every")
+        from .h3_grid_training import stop_cycle
+        stop_cycle(config)
         return "reference"
     if _helios_stream(config, workload):
+        combined = config.execution.get("preset") in (HELIOS_NATIVE_SAFE_STREAM, HELIOS_CHECKPOINT_CPU_STREAM)
+        if combined:
+            from .helios_worker import _safe_policy
+            _safe_policy(config).validate_config(config)
+        if config.data.get("input_kind") == "original_helios_native_history_cohort_stream.v1" and not combined:
+            _require(config.execution.get("mode", "reference") == "reference"
+                     and not any(key in config.execution for key in
+                                 ("preset", "plan", "implementation", "transport", "capacity_policy")),
+                     "native W2 history currently requires explicit reference; no benchmark/saved-plan fallback")
+        if _helios_safe_stream(config, workload):
+            _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared"))
+                     and 2 <= config.trainer["cycles"] <= HELIOS_MAX_COHORTS,
+                     f"W2 safe stream requires 2..{HELIOS_MAX_COHORTS} explicit fresh cohorts; replay is not substituted")
+            _require(config.execution.get("preset") == HELIOS_CHECKPOINT_CPU_STREAM or "capacity_policy" not in config.execution, "W2 safe stream does not accept an unbound capacity policy")
+            return "manual"
         _require(config.execution.get("mode", "reference") == "reference"
                  and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
                  "W2 fresh stream currently supports explicit reference only; manual/selected plans are not ignored")
         _require(set(config.data) == {"input_kind", "prepared"} and bool(config.data.get("prepared")),
                  "W2 fresh stream requires explicit prepared data; fixed replay is not substituted")
-        _require(2 <= config.trainer["cycles"] <= 64, "W2 fresh stream cycles must be 2..64")
+        _require(2 <= config.trainer["cycles"] <= HELIOS_MAX_COHORTS, f"W2 fresh stream cycles must be 2..{HELIOS_MAX_COHORTS}")
         return "reference"
+    _require(not _helios_safe_stream(config, workload), "W2 safe stream preset requires its explicit fresh input stream")
     _require(not (config.trainer.get("checkpoint_every", 0) or config.trainer.get("resume_from"))
              or workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
                 and bool(config.data.get("prepared")),
              "native checkpoint_every must be 0; final evidence is not a restart checkpoint")
     cycles = config.trainer["cycles"]
-    _require((workload == "W1" and 2 <= cycles <= 64) or (workload != "W1" and cycles == 2),
-             f"{workload} cycles must be {'2..64' if workload == 'W1' else 'exactly 2'}; requested count is never ignored")
+    fresh_wan = (workload == "W1" and config.data.get("input_kind") == "original_wan_cohort_stream.v1"
+                 and bool(config.data.get("prepared")))
+    limit = WAN_MAX_COHORTS if fresh_wan else 64
+    _require((workload == "W1" and 2 <= cycles <= limit) or (workload != "W1" and cycles == 2),
+             f"{workload} cycles must be {f'2..{limit}' if workload == 'W1' else 'exactly 2'}; requested count is never ignored")
     mode = config.execution.get("mode", "reference")
-    _require(mode in (("reference", "manual", "plan") if workload in ("W1", "W6") else ("plan",)),
+    _require(mode in (("reference", "manual", "plan") if workload in ("W1", "W6") else
+                     ("manual", "plan") if "preset" in config.execution else ("plan",)),
              f"{workload} supports {describe_native(config)['capabilities']['modes']}; no implicit best/auto recipe")
     _require(mode != "plan" or not config.execution.get("implementation"),
              "plan mode uses the selected plan, not an implementation override")
@@ -277,7 +527,8 @@ def _wan(config, mode, task_value, assets_value, paths):
         _require(config.trainer["cycles"] == 2 or config.data.get("prepared"),
                  "Wan reference/manual supports exactly 2 cycles without a fresh native stream")
         plan = None
-        strategy = WanStrategy.from_dict(_object(paths["implementation"], "execution.implementation"))
+        strategy = (preset_implementation("W1", config.execution["preset"]) if "preset" in config.execution
+                    else WanStrategy.from_dict(_object(paths["implementation"], "execution.implementation")))
         strategy.validate_for(task)
         _require(mode != "reference" or strategy == WanStrategy("fsdp", 512, False),
                  "reference mode requires the explicit original FSDP strategy, not an optimized bundle")
@@ -310,8 +561,18 @@ def _wan(config, mode, task_value, assets_value, paths):
         _require(config.data.get("replay_fixed_trace") is True and not config.data.get("input_kind"),
                  "fixed trace is replay, not fresh training: set data.replay_fixed_trace=true or provide an explicit native cohort stream")
         command = "run" if mode == "plan" else "benchmark-manual"
-    _require(not strategy.candidate_bundle.enabled or (config.trainer["cycles"] == 2 and prepared is None),
+    _require(not strategy.candidate_bundle.continuous or (mode == 'manual' and prepared is not None),
+             'Wan stream bundle requires explicit manual strategy and fresh cohorts, not old plans/replay')
+    _require(not strategy.candidate_bundle.enabled or strategy.candidate_bundle.continuous
+             or (config.trainer["cycles"] == 2 and prepared is None),
              "Wan incumbent literal bundle only supports 2 fixed-trace cycles")
+    if "preset" in config.execution:
+        # The existing CLI requires a strategy *file*. Enter its same typed
+        # worker instead; do not create a new launcher or a hidden saved plan.
+        return dict(task=task.to_dict(), selected=strategy.to_dict(), plan=None, assets=deepcopy(assets_value),
+                    **({'stream': str(prepared)} if prepared else {}),
+                    native_worker="distillschedule.strategies.wan_worker:run_worker",
+                    validation_scope="CPU_TASK_BOOTSTRAP_IDENTITIES; ORIGINAL_IMMUTABLE_MODEL_TRACE_GRAPH_AND_CAPACITY_GATES_DEFERRED_TO_WORKER")
     args = [command, "--task", str(paths["task"]), "--assets", str(paths["assets"]),
             "--output", str(paths["output"]), "--execute"]
     if mode == "plan":
@@ -321,6 +582,8 @@ def _wan(config, mode, task_value, assets_value, paths):
     args += ["--stream", str(prepared)] if prepared else ["--cycles", str(config.trainer["cycles"])]
     if config.trainer.get("checkpoint_every", 0):
         args += ["--checkpoint-every", str(config.trainer["checkpoint_every"])]
+    if 'stop_after_cycle' in config.trainer:
+        args += ['--stop-after-cycle', str(config.trainer['stop_after_cycle'])]
     if config.trainer.get("resume_from"):
         resume = _path(config, "trainer", "resume_from")
         _require((resume / "manifest.json").is_file() and (resume / "_SUCCESS").is_file(),
@@ -346,7 +609,8 @@ def _h3_ar(config, mode, task_value, assets_value, paths):
         impl = H3ARImplementation.from_dict(plan["selected"]["implementation"])
     else:
         plan = None
-        impl = H3ARImplementation(config.execution.get("implementation"))
+        impl = (preset_implementation("W6", config.execution["preset"]) if "preset" in config.execution
+                else H3ARImplementation(config.execution.get("implementation")))
         _require(mode != "reference" or impl.id == "zero3-native", "W6 reference requires zero3-native")
     args = ["run" if mode == "plan" else "benchmark-manual", "--task", str(paths["task"]),
             "--assets", str(paths["assets"]), "--capacity-policy", str(paths["capacity_policy"]),
@@ -365,7 +629,16 @@ def _search(config, workload, task_value, assets_value, paths):
     # An immutable LiveWan lowering intentionally includes the unresolved
     # source template beside fully resolved node plans. Its ${ENV:...}
     # expressions are compiler inputs, not unfilled user asset placeholders.
-    plan = _object(paths["plan"], "execution.plan", placeholders=False)
+    if "preset" in config.execution:
+        from distillschedule.search.execution import resolve_candidate
+        impl = preset_implementation(workload, config.execution["preset"])
+        # A new asset/source binding, not a copied experiment plan or cost.
+        # Output ownership/non-overwrite remains with the original dispatcher.
+        run_id = "native-preset-" + fingerprint(dict(config=config.identity, output=str(paths["output"])))[:24]
+        plan = resolve_candidate(_FAMILIES[workload][1], impl.id, root=root,
+                                 assets_path=paths["assets"], run_id=run_id, mode="correctness")
+    else:
+        plan = _object(paths["plan"], "execution.plan", placeholders=False)
     _require(plan.get("profile_id") == _FAMILIES[workload][1], "saved plan belongs to another workload")
     _require(plan.get("integration_head") == git_head(root), "saved plan belongs to another source HEAD")
     transport = _object(paths["transport"], "execution.transport") if paths.get("transport") else None
@@ -421,9 +694,11 @@ def _admit(config):
     mode = _options(config, workload)
     source = _source(config)
     paths = {key: _path(config, "execution", key, required=(key in ("task", "assets")
-               or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload))))
+               or key == "plan" and mode == "plan" or key == "capacity_policy" and (workload == "W6" or _livewan_reference(config, workload)
+                                                                                or _livewan_c51_stream(config, workload)
+                                                                                or config.execution.get("preset") in (HELIOS_CHECKPOINT_CPU_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM))))
              for key in ("task", "assets", "plan", "capacity_policy", "transport")}
-    if workload == "W1" and mode != "plan":
+    if workload == "W1" and mode != "plan" and "preset" not in config.execution:
         paths["implementation"] = _path(config, "execution", "implementation")
     paths["output"] = _path(config, "trainer", "output_dir")
     from distillschedule.workloads.best_known.registry import repository_root
@@ -435,15 +710,32 @@ def _admit(config):
     assets_value = _object(paths["assets"], "execution.assets")
     if workload == "W1":
         admitted = _wan(config, mode, task_value, assets_value, paths)
+    elif _livewan_c51_stream(config, workload):
+        from .livewan_c51_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
+    elif _helios_gan_stream(config, workload):
+        from .helios_gan_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
     elif _helios_stream(config, workload):
-        from .helios_worker import admit_reference
-        admitted = admit_reference(config, task_value, assets_value, paths)
+        from .helios_worker import admit_reference, admit_safe_stream, admit_native_safe_stream, admit_checkpoint_cpu_stream
+        if config.execution.get("preset") == HELIOS_CHECKPOINT_CPU_STREAM:
+            admit = admit_checkpoint_cpu_stream
+        elif config.execution.get("preset") == HELIOS_NATIVE_SAFE_STREAM:
+            admit = admit_native_safe_stream
+        elif _helios_safe_stream(config, workload):
+            admit = admit_safe_stream
+        else:
+            admit = admit_reference
+        admitted = admit(config, task_value, assets_value, paths)
     elif _h3_grid_training(config, workload):
         from .h3_grid_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
     elif _livewan_reference(config, workload):
         from .livewan_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
+    elif _h3_ar_stream(config, workload):
+        from .h3_ar_training import admit_training
+        admitted = admit_training(config, task_value, assets_value, paths)
     elif workload == "W6":
         admitted = _h3_ar(config, mode, task_value, assets_value, paths)
     else:
@@ -463,15 +755,23 @@ def _report(config, workload, source, paths, admitted):
                   validation_scope=admitted["validation_scope"], output_dir=str(paths["output"]),
                   native_physical_admission="REQUIRED_ON_ORIGINAL_WORKER_BEFORE_MODEL_CONSTRUCTION",
                   native_completion="NOT_RUN; process success alone is not numerical parity")
+    if "checkpoint_input_capacity" in admitted:
+        result["checkpoint_input_capacity"] = admitted["checkpoint_input_capacity"]
     if _livewan_reference(config, workload):
         result["hardware"] = admitted["hardware"]
+    elif "native_worker" in admitted:
+        result["native_worker"] = admitted["native_worker"]
+        result["hardware"] = dict(world_size=16, nodes=2, gpus_per_node=8,
+                                  current_runtime="NOT_PROBED_BY_CPU_DOCTOR")
     elif "argv" in admitted:
         result["native_argv"] = admitted["argv"]
         result["hardware"] = dict(world_size=16, nodes=2, gpus_per_node=8,
                                   current_runtime="NOT_PROBED_BY_CPU_DOCTOR")
     else:
         result.update(hardware=admitted["hardware"], native_run_id=admitted["plan"]["run_id"],
-                      native_mode=admitted["plan"]["mode"], selected_plan=str(paths["plan"]))
+                      native_mode=admitted["plan"]["mode"])
+        if "preset" not in config.execution:
+            result["selected_plan"] = str(paths["plan"])
     if "capacity_policy" in admitted:
         result["capacity_policy"] = admitted["capacity_policy"]
     if "lifecycle" in admitted:
@@ -485,16 +785,85 @@ def validate_native(config: TrainingConfig) -> dict[str, Any]:
     return _report(config, workload, source, paths, admitted)
 
 
+def export_native(config: TrainingConfig, checkpoint, output):
+    """Same native owner/complete restore, output-only; never a training cycle.
+
+    Output policy is an explicit export-command supplement to the training
+    config. Ordinary native training continues to reject trainer.export, so
+    no output knob is silently ignored by a training invocation.
+    """
+    workload = _workload(config)
+    if workload in {"W2", "W3"} and "stop_after_cycle" in config.trainer:
+        # The explicit checkpoint, not a previous training segment's stop,
+        # owns output-only restoration. Preserve the caller's training config.
+        raw = config.to_dict()
+        raw["trainer"].pop("stop_after_cycle")
+        config = TrainingConfig.from_dict(raw, source=config.source)
+    if workload == 'W4':
+        from .livewan_native_export import export_native as export_c51
+        return export_c51(config, checkpoint, output)
+    if workload == 'W5':
+        from .h3_grid_export import export_native as export_grid
+        return export_grid(config, checkpoint, output)
+    if workload == 'W6':
+        from .h3_ar_export import export_native as export_h3
+        return export_h3(config, checkpoint, output)
+    if workload == 'W3':
+        from .helios_gan_native_inference import export_native as export_gan
+        return export_gan(config, checkpoint, output)
+    if workload == 'W2':
+        from .helios_native_inference import export_native as export_helios
+        return export_helios(config, checkpoint, output)
+    _require(workload == 'W1', 'portable native output supports W1/W2/W3 and fresh-stream W5/W6')
+    _require(config.data.get('input_kind') == 'original_wan_cohort_stream.v1',
+             'native W1 export requires its complete fresh-stream checkpoint binding')
+    raw = config.to_dict()
+    request = raw['trainer'].pop('export', None)
+    _require(isinstance(request, dict), 'trainer.export must supply the explicit native output/codec policy')
+    # Checkpoint CLI argument owns restoration; do not re-open an unrelated
+    # historical trainer.resume_from or write into the old training run.
+    raw['trainer'].pop('resume_from', None)
+    raw['trainer'].pop('stop_after_cycle', None)
+    raw['trainer']['checkpoint_every'] = 0
+    destination = Path(output).expanduser().resolve()
+    raw['trainer']['output_dir'] = str(destination.with_name(destination.name+'.native-owner'))
+    training = TrainingConfig.from_dict(raw, source=config.source)
+    workload, source, paths, admitted = _admit(training)
+    _require(not source['identity']['dirty'], 'execution requires a clean committed source checkout')
+    from distillschedule.strategies.wan_task import OriginalWanTask
+    from distillschedule.strategies.wan_strategy import WanStrategy
+    from distillschedule.strategies.wan_worker import OriginalWanAssets, run_worker
+    from .wan_native_inference import NativeOutputRequest
+    callback = NativeOutputRequest(request, destination)
+    result = run_worker(OriginalWanTask.from_dict(admitted['task']),
+        OriginalWanAssets.from_dict(admitted.get('assets') or _object(paths['assets'],'execution.assets')),
+        output=paths['output'], mode='export',
+        strategy=None if paths['plan'] else WanStrategy.from_dict(admitted['selected']),plan_path=paths['plan'],
+        cycles=training.trainer['cycles'], stream_path=_path(training,'data','prepared'),
+        checkpoint_every=0, resume_from=Path(checkpoint).expanduser().resolve(), native_output=callback)
+    return result['inference_export']
+
+
 def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, Any] | int:
     """Invoke the real native runtime, without rewriting/reselecting its plan."""
+    if _h3_ar_stream(config, _workload(config)) and not dry_run:
+        from .h3_ar_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
+    if _livewan_c51_stream(config, _workload(config)) and not dry_run:
+        from .livewan_c51_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
     if _livewan_reference(config, _workload(config)) and not dry_run:
         from .livewan_training import run_reference
         return run_reference(config, admit=lambda: _admit(config))
+    if _helios_gan_stream(config, _workload(config)) and not dry_run:
+        from .helios_gan_training import run_training
+        return run_training(config, admit=lambda: _admit(config))
     if _helios_stream(config, _workload(config)) and not dry_run:
         # All rank-local source/asset/stream metadata belongs under the fresh
         # training wrapper's owned Gloo plane, before entering original P0.
-        from .helios_worker import run_reference
-        return run_reference(config, admit=lambda: _admit(config))
+        from .helios_worker import run_reference, run_safe_stream
+        run = run_safe_stream if _helios_safe_stream(config, _workload(config)) else run_reference
+        return run(config, admit=lambda: _admit(config))
     if _h3_grid_training(config, _workload(config)) and not dry_run:
         # This lifecycle enters a metadata plane before rank-local admission or
         # model imports. A bad source/input on one rank must fail its peers too.
@@ -507,6 +876,18 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
         return result
     _require(not source["identity"]["dirty"], "execution requires a clean committed source checkout")
     if workload == "W1":
+        if "native_worker" in admitted:
+            from distillschedule.strategies.wan_task import OriginalWanTask
+            from distillschedule.strategies.wan_strategy import WanStrategy
+            from distillschedule.strategies.wan_worker import OriginalWanAssets, run_worker
+            return run_worker(OriginalWanTask.from_dict(admitted["task"]),
+                OriginalWanAssets.from_dict(admitted["assets"]),
+                output=paths["output"], mode="train" if 'stream' in admitted else "manual",
+                strategy=WanStrategy.from_dict(admitted["selected"]), cycles=config.trainer["cycles"],
+                **(dict(stream_path=admitted['stream'], checkpoint_every=config.trainer.get('checkpoint_every', 0),
+                        resume_from=_path(config, 'trainer', 'resume_from', required=False),
+                        **(dict(stop_after_cycle=config.trainer['stop_after_cycle'])
+                           if 'stop_after_cycle' in config.trainer else {})) if 'stream' in admitted else {}))
         from distillschedule.strategies.wan_cli import main
         return main(admitted["argv"])
     if workload == "W6":

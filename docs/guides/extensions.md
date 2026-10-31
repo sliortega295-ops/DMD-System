@@ -144,6 +144,132 @@ Use the existing [open Program interface](../workloads/open_workload_program.md)
 planning service but admit different physical capabilities. A new local model
 does not automatically gain FSDP2, cross-pool overlap or a CUDA Graph backend.
 
+### Explicit model-owned forward methods
+
+Ordinary `ReplicaSemantics` still means calling `module(...)`. Arbitrary
+`forward_interface="private_methods"` bindings remain post-backward-only;
+they cannot acquire FSDP hooks by adding a method name to metadata.
+
+For a **direct, public model-owned method**, use the existing Context ABI with
+an explicit binding:
+
+```python
+from distillschedule.open_workload.replica_contract import (
+    ReplicaSemantics, module_method_binding,
+)
+
+bindings["predict"] = module_method_binding("student", "rollout")
+semantics = ReplicaSemantics(
+    module_bindings={"predict": "student"},
+    backward_calls=("student_backward",),
+    local_batch_size=2,
+    forward_interface="registered_methods",
+    forward_methods={"predict": "rollout"},
+)
+```
+
+For the corresponding Program `Call`, `inputs` become positional method
+arguments **in the declared input order**, and `attributes` become keyword
+arguments. The binding resolves `ctx.state["student"].rollout` on every
+invocation; it does not capture the original module or replace the algorithm.
+Declare all trainable roots and separate backward/update calls as usual.
+Root/name mismatches, missing or noncallable methods, private names, inherited
+module-management APIs and arbitrary wrapper functions reject.
+
+Only **one outer entry method per root** is admitted. Several bindings may use
+that same method; FSDP registers it once. If `rollout` calls `denoise` internally,
+only `rollout` is registered, so the inner method cannot reshard the root early.
+Do not re-enter the same root through `module(...)` inside that registered
+method. Calls still obey the existing forward/backward completion constraints.
+Persistent cycles retain the installed entry method and optimizer ownership.
+
+The uniform FSDP2/HSDP2 installer uses the official Torch 2.10
+[`register_fsdp_forward_method`](https://docs.pytorch.org/docs/2.10/distributed.fsdp.fully_shard.html#torch.distributed.fsdp.register_fsdp_forward_method)
+after `fully_shard`. This does **not** make the method a DDP `module.__call__`:
+DDP-overlap and per-module mixed layouts remain excluded for this interface.
+Existing post-backward reference execution remains available. CPU2/Gloo tests
+exercise real method forward/backward, Adam migration, persistent updates and
+fresh-process local-shard checkpoint restore; CUDA/HSDP qualification is
+separate. This backend prerequisite does not admit the existing flow-model
+factories, LTX-22B, full-size construction, or a new precision/algorithm policy.
+
+### Generating from an owned flow model
+
+FLUX-family and LTX generation call the current Student's registered
+`dmd_forward` entry, retaining its native Euler rollout, inputs and RNG. On
+success, native FSDP child groups and the root return to shards, including
+keep-forward plans. Other role owners are untouched. This also applies to
+checkpoint evaluation after its saved physical layout has been restored.
+
+Torch 2.10's custom-forward wrapper does not guarantee post-forward cleanup
+when model code raises. A failed generation therefore ends that owner's
+lifetime: cleanup uses public `reshard` where possible, while subsequent
+forward, generation and checkpoint attempts reject until the owner is rebuilt.
+It does not promise all exceptional-path buffers were freed or allow continuing
+that failed owner. Input and schedule rejection before forward leave a healthy
+owner unchanged. Existing distributed/precision admission is unchanged.
+
+### Explicit parameter-shadow layout ownership
+
+An EMA or other full named-parameter shadow must opt in **before** its state is
+shared with a workload or session. Keep the algorithm's existing values and
+math; declare only which registered root owns their layout:
+
+```python
+from dataclasses import replace
+from distillschedule.training.tensor_state import ParameterShadows
+
+state["ema"] = ParameterShadows("student", existing_ema)
+semantics = replace(semantics, parameter_shadows={"ema": "student"})
+```
+
+The map must contain every named parameter, including frozen parameters, with
+matching shape, dtype, device and stride; values must be finite, detached and
+storage-disjoint from parameters, optimizer slots, feeds and other shadows.
+Plain dictionaries are not implicitly converted. Native whole-root FSDP
+installation redistributes the declared map **in place** to each parameter's
+mesh/placements, preserving the map shared by the component, workload and
+persistent session. Undeclared maps do not acquire a layout by name. Partial
+subroot migration and parameter aliases are rejected. No decay, update clock,
+clipping, optimizer, scheduler or frozen-parameter coverage is changed.
+Native cycle admission also retains the installed map and every owner Parameter
+identity in both session and workload views, including frozen parameters and
+mixed layouts. Same-layout object replacements reject before execution; copied
+trials and in-place checkpoint copies remain supported.
+
+The existing checkpoint publisher and local-shard codec store the explicit
+`distillschedule.parameter_shadows.v1` owner envelope. Same-topology restore
+validates owner, state kind, full keys, shape/dtype, placement and finite local
+shards before any rank mutates live state. Default dense EMA/ResidentEMA
+classes and serialization remain unchanged; an empty declaration is omitted
+from replica identities. This is a bounded backend prerequisite, **not** public
+flow/LTX FSDP admission: frozen Teacher placement, full-size construction and
+CUDA/HSDP validation remain separate.
+
+### Explicit frozen forward-root ownership
+
+Add `frozen_module_bindings={"teacher_forward": "teacher"}` to registered-method
+semantics and include that binding in `forward_methods`. The Teacher must be a
+nonempty all-frozen root declared in `immutable_modules`; its calls use the same
+direct `module_method_binding` as trainable roles. No direct call may write the
+root or bypass its declared entry. The existing trainable binding map and exact
+optimizer ownership stay trainable-only. No Teacher optimizer or EMA is created.
+
+Uniform FSDP2/HSDP2 installation includes this explicit root in forward context
+ordering, parameter bytes and the final reshard boundary. Each gradient-bearing
+entry needs a reachable declared backward completion, even when only the input
+has a gradient. Input VJPs retain their local scaling. A no-grad Teacher call
+stays no-grad; freezing parameters never selects the call's autograd mode.
+Undeclared frozen roots stay resident, including post-backward reference
+execution. DDP and mixed per-root layout admission are unchanged.
+
+The CPU/Gloo2 fixture covers separate frozen roots, input-only VJPs, common
+G1/F5 no-grad Teacher calls and same-topology local-shard checkpoint continuation.
+Full model construction, block-level materialization, bounded integrity/export,
+and native generation through a registered outer entry still require their own
+integration before public flow-model FSDP admission. CUDA and HSDP topology
+validation remain separate from this CPU proof.
+
 ## Minimal extension acceptance
 
 Entrypoint files, installed framework code, and the actually resolved shipped
@@ -181,6 +307,12 @@ strictly restores the **entire** exported state before forward. Missing keys
 must not fall back to initialized/base/Hub weights. Do not bind metadata to live
 random initial parameter values or old payload locations. Native nonpersistent
 buffers must still be initialized by the model's actual constructor.
+
+An optional read-only `encode_input` capability permits the
+[common export-only preparer](export_inputs.md#adapter-extension-contract) to
+encode new prompts/raw media from those restored codecs. The model owns its
+record, shape, conditioning and source contracts. Missing capability refuses;
+no training-bundle fallback or generic family-name branch is introduced.
 
 `generate --output-kind latents` is an explicit opt-in when no real decoder
 exists. Return named nonempty finite floating tensors and `latent_schema`

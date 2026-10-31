@@ -96,20 +96,24 @@ def validate_prepared_binding(manifest, expected):
              'preencoded VAE compatibility assertion missing from preprocessing provenance')
 
 
-def validate_row(row, *, sdxl, binding, model=None, images=False):
+def validate_row(row, *, sdxl, binding, model=None, images=False, device=None):
     import torch
     keys = {'text_input_ids_one', 'text_input_ids_two'} if sdxl else {'text_input_ids_one'}
     required = keys | {'preprocessing_binding', 'latent_origin'}
     _require(isinstance(row, dict) and required <= set(row) <= required | {'images'},
              'native token/preprocessing binding fields changed')
+    expected_device = torch.device(device if device is not None else
+                                   model.accelerator.device if model is not None else 'cpu')
+    _require(all(isinstance(value, torch.Tensor) and value.device == expected_device for value in row.values()),
+             'native input tensor device placement differs from model')
     origin, digest = row['latent_origin'], row['preprocessing_binding']
     _require(type(origin) is torch.Tensor and origin.dtype == torch.uint8 and origin.shape == ()
-             and origin.device.type == 'cpu' and int(origin) in (0, 1, 2)
+             and int(origin) in (0, 1, 2)
              and (int(origin) != PROMPT_ONLY) == ('images' in row), 'invalid preprocessing latent origin binding')
-    _require(type(digest) is torch.Tensor and digest.dtype == torch.uint8 and digest.shape == (32,)
-             and digest.device.type == 'cpu', 'missing/malformed preprocessing binding tensor')
+    _require(type(digest) is torch.Tensor and digest.dtype == torch.uint8 and digest.shape == (32,),
+             'missing/malformed preprocessing binding tensor')
     validate_preprocessing_assets(binding, variant='sdxl' if sdxl else 'sd15')
-    _require(bytes(digest.tolist()).hex() == _row_binding(binding, int(origin)),
+    _require(bytes(digest.detach().cpu().tolist()).hex() == _row_binding(binding, int(origin)),
              'tokenizer/VAE preprocessing binding differs from actual model bundle')
     batch = None
     for name in sorted(keys):

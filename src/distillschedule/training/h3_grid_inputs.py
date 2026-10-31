@@ -149,11 +149,12 @@ class NativeLatentCursor:
     reconstruction/seek is isolated, including workers=0's iterator seed draw.
     v1 consumes a single epoch of unique data; it never enters replay/padding.
     """
-    def __init__(self, loader, inventory, *, cycle, resume):
+    def __init__(self, loader, inventory, *, cycle, resume, output_only=False):
         from torch.utils.data import DistributedSampler, default_collate
         from lightx2v_train.data.video_dataset import LatentDataset
         from .checkpoint import rng_state, restore_rng
-        require(type(cycle) is int and 0 <= cycle < inventory["cycles"], "invalid native data cursor cycle")
+        require(type(output_only) is bool and type(cycle) is int and 0 <= cycle <= inventory["cycles"]
+                and (output_only or cycle < inventory["cycles"]), "invalid native data cursor cycle")
         sampler = loader.sampler
         dataset = loader.dataset
         require(type(dataset) is LatentDataset and type(sampler) is DistributedSampler
@@ -177,6 +178,13 @@ class NativeLatentCursor:
         self.order = list(sampler)
         require(len(self.order) >= self.limit and len(set(self.order)) == len(self.order),
                 "not enough unique rank-local native samples")
+        self.output_only = output_only
+        if output_only:
+            # A restored inference owner validates its saved boundary without
+            # creating an iterator, seeking old samples, or drawing loader RNG.
+            require(resume and cycle > 0, "output cursor requires a restored complete boundary")
+            self.cursor, self.iterator = 6 * cycle, None
+            return
         saved = rng_state() if resume else None
         try:
             self.iterator = iter(loader)
@@ -192,12 +200,14 @@ class NativeLatentCursor:
         return self
 
     def __next__(self):
+        require(not self.output_only, "output cursor is read-only")
         if self.cursor >= self.limit:
             raise StopIteration
         from . import distributed
         return distributed.checked(self._next_local, "H3 original native next-sample consumption")
 
     def _next_local(self):
+        require(not self.output_only, "output cursor is read-only")
         expected = self.inventory["rows"][self.order[self.cursor]]
         require(file_sha256(Path(expected["condition_path"])) == expected["sha256"],
                 "cached condition changed before native next-sample consumption")

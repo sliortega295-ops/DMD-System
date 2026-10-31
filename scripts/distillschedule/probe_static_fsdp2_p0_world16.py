@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import gc
 import hashlib
+import importlib
 import importlib.util
 import os
 import socket
@@ -50,6 +51,24 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _pinned_local_fa2_identity(local_kernels: str) -> tuple[Path, str]:
+    """Validate the local FA2 mapping before importing its dispatch module."""
+
+    prefix = "kernels-community/flash-attn2="
+    if not local_kernels.startswith(prefix):
+        raise AssertionError("local-fa2 requires the pinned LOCAL_KERNELS mapping")
+    kernel_root = Path(local_kernels[len(prefix) :])
+    extension = kernel_root / "_flash_attn2_cuda_a511a4c.abi3.so"
+    if not extension.is_file():
+        raise AssertionError(f"local FlashAttention extension is missing: {extension}")
+    extension_sha256 = _file_sha256(extension)
+    if extension_sha256 != PINNED_FLASH_ATTN2_EXTENSION_SHA256:
+        raise AssertionError(
+            f"local FlashAttention extension identity changed: {extension_sha256}"
+        )
+    return extension, extension_sha256
+
+
 def _attention_backend_receipt(expected: str) -> dict[str, Any]:
     """Fail closed on the attention implementation imported by this worker."""
 
@@ -79,19 +98,7 @@ def _attention_backend_receipt(expected: str) -> dict[str, Any]:
 
     if expected != "local-fa2":
         raise AssertionError(f"unsupported attention backend: {expected}")
-    prefix = "kernels-community/flash-attn2="
-    if not local_kernels.startswith(prefix):
-        raise AssertionError("local-fa2 requires the pinned LOCAL_KERNELS mapping")
-    kernel_root = Path(local_kernels[len(prefix) :])
-    extension = kernel_root / "_flash_attn2_cuda_a511a4c.abi3.so"
-    if not extension.is_file():
-        raise AssertionError(f"local FlashAttention extension is missing: {extension}")
-    extension_sha256 = _file_sha256(extension)
-    if extension_sha256 != PINNED_FLASH_ATTN2_EXTENSION_SHA256:
-        raise AssertionError(
-            "local FlashAttention extension identity changed: "
-            f"{extension_sha256}"
-        )
+    extension, extension_sha256 = _pinned_local_fa2_identity(local_kernels)
     if not callable(function) or "flash_attn2" not in str(function_module):
         raise AssertionError(
             "local-fa2 did not import the expected FlashAttention-2 callable"
@@ -102,6 +109,36 @@ def _attention_backend_receipt(expected: str) -> dict[str, Any]:
         extension_sha256=extension_sha256,
     )
     return receipt
+
+
+def _attention_backend_admission(
+    expected: str,
+    configure_offline: Any | None,
+) -> dict[str, Any]:
+    """Load a pinned local FA2 dispatch before sealing remote kernel lookup.
+
+    ``configure_offline_helios`` replaces ``kernels.get_kernel`` with a
+    fail-closed ImportError stub. The Helios dispatch module catches that
+    ImportError during module import and permanently binds its FA2 callable to
+    ``None``. For local-fa2 only, validate the exact local extension and import
+    its dispatch under offline hub settings before installing that stub.
+    """
+
+    if configure_offline is not None and expected == "local-fa2":
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+        if (
+            os.environ.get("HF_HUB_OFFLINE") != "1"
+            or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
+        ):
+            raise RuntimeError(
+                "pinned local-fa2 admission requires explicit offline hub settings"
+            )
+        _pinned_local_fa2_identity(os.environ.get("LOCAL_KERNELS", ""))
+        importlib.import_module("helios.modules.helios_kernels.attention_dispatch")
+    if configure_offline is not None:
+        configure_offline()
+    return _attention_backend_receipt(expected)
 
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
 from distillschedule.profiling.fsdp2_operation_source import (
@@ -303,8 +340,14 @@ def _build_static_model(
     # applying the existing bottom-up block policy directly to the CPU model
     # therefore materializes at most one block before immediately sharding it.
     # This is construction-only and does not add parameter offload or change
-    # the persistent HSDP execution graph.
+    # the persistent execution graph. The public native-history lifecycle can
+    # admit the same CPU-first order on its unchanged CUDA world16 mesh, only
+    # after original source/input/policy admission. Legacy world16 and normal
+    # public streams retain their existing eager whole-role transfer.
     fsdp_first_construction = policy.mesh_policy == "node-hsdp"
+    if not fsdp_first_construction:
+        from distillschedule.training.helios_lifecycle import native_history_cpu_first_construction
+        fsdp_first_construction = native_history_cpu_first_construction(policy=policy)
     if not fsdp_first_construction:
         model.to(device)
     sharding = apply_blockwise_fsdp2_policy(
@@ -1156,6 +1199,11 @@ def main() -> int:
     from distillschedule.search.helios_implementation import current_implementation
     from distillschedule.search.helios_gan_bundle import HeliosGANBundle
     planner_impl = current_implementation()
+    from distillschedule.training.helios_lifecycle import current_training
+    training_binding = current_training()
+    if training_binding is not None and training_binding.get("gan_stream") is True:
+        from distillschedule.training.helios_gan_training import implementation as gan_stream_implementation
+        planner_impl = gan_stream_implementation()
     args._planner_gan_manual_bundle = (
         planner_impl is not None and type(planner_impl.candidate_bundle) is HeliosGANBundle)
     from distillschedule.runtime.fsdp2_p0 import validate_nogan_b_gemm_request
@@ -1417,10 +1465,13 @@ def main() -> int:
         )
         result["generator_free_memory"] = generator_free_memory
         def attention_admission():
+            configure_offline = None
             if training_startup is not None:
                 from runtime.critic_pool_helios import configure_offline_helios
-                configure_offline_helios()
-            return _attention_backend_receipt(args.attention_backend)
+                configure_offline = configure_offline_helios
+            return _attention_backend_admission(
+                args.attention_backend, configure_offline,
+            )
 
         result["attention_backend"] = checked_original_runtime(
             attention_admission, "Helios original attention/dependency admission",
@@ -1557,7 +1608,8 @@ def main() -> int:
                 p0=sys.modules[__name__], args=args, policy=policy, result=result,
                 output=output, rank=rank, device=device, logical=logical,
                 generator_engine=generator_engine, critic_engine=critic_engine,
-                ema=ema, diagnostics=diagnostics, negative=negative,
+                ema=ema, diagnostics=diagnostics, negative=negative, cfg=cfg,
+                generator_free_memory=generator_free_memory,
             )
             base._atomic_json(output, result)
             dist.barrier()

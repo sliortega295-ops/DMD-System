@@ -1,0 +1,18 @@
+{
+  "schema": "distillschedule.public_native_recovery_scope.v1",
+  "workload": "W4",
+  "scope": "NATIVE_TRAINING_CHECKPOINT_COMPONENT_NOT_ORIGINAL_OWNER_ACCEPTANCE",
+  "native_status": "PASS_ORIGINAL_NATIVE_C2_RECEIPTS_AND_DURABLE_CHECKPOINT_ONLY",
+  "whole_job_acceptance": "FAIL_PRESERVED",
+  "original_owner_status": "FAIL_FD_CLOSED_DURING_SCAN_PRESERVED",
+  "source_head": "98cc370615f84f4b7c231acddbcf9c6dc88ab73c",
+  "start_cycle": 1,
+  "completed_cycles": 2,
+  "rank_count": 16,
+  "rank_cycle_count": 16,
+  "checkpoint_success_marker": "WRITTEN_BY_ORIGINAL_NATIVE_WORKER_NOT_REPAIRED",
+  "source_receipt_sha256": "f63de7f9f36d349d3e7f12d9b2acf013f14f669d633024ad154b9a122e6cacb7",
+  "source_receipt": "framework_maturation_20261023/r343_w4_fd_close_attribution/reports/native-boundary.json",
+  "new_run": false,
+  "full_size_new_prompt_output": "PENDING"
+}

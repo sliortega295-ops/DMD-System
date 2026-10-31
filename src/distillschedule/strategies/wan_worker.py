@@ -18,11 +18,12 @@ import time
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, repository_root
-from .wan_task import OriginalWanTask
+from .wan_task import OriginalWanTask, NATIVE_HISTORY_POLICY
 from .wan_strategy import WanStrategy, strategy_environment
 from .wan_bridge import load_original_backend, OriginalWanSession
 from .wan_calibration import OriginalWanCalibrator, trace_work
 from .wan_planning import source_fingerprint, validate_plan
+from .wan_stream import MAX_COHORTS
 
 
 @dataclass(frozen=True)
@@ -70,7 +71,8 @@ def gather_metadata(distributed, value, metadata_group):
     return rows
 
 
-def admit_run_controls(distributed, metadata_group, *, mode, cycles, checkpoint_every, resume_from):
+def admit_run_controls(distributed, metadata_group, *, mode, cycles, checkpoint_every, resume_from,
+                       stop_after_cycle=None):
     """Agree on optional collective branches before any rank enters them.
 
     Checkpoint paths may be mount aliases. Compare the completed manifest's
@@ -85,6 +87,7 @@ def admit_run_controls(distributed, metadata_group, *, mode, cycles, checkpoint_
             require((root / '_SUCCESS').read_text().strip() == manifest_sha,
                     'checkpoint is not complete', path='wan.worker')
         local = {'controls': {'mode': mode, 'cycles': cycles,
+                             'stop_after_cycle': cycles if stop_after_cycle is None else stop_after_cycle,
                              'checkpoint_every': checkpoint_every,
                              'resume_manifest_sha256': manifest_sha}, 'error': None}
     except (OSError, ValueError) as exc:
@@ -110,7 +113,7 @@ def load_assets(task, spec, *, rank):
     """Validate source assets before constructing the large model."""
     from distillschedule.runtime.wan13b_upper_bound import Wan13BBootstrap
     from runtime.gst_pool_contract import NegativePromptAsset
-    from .wan_trace import load_original_trace
+    from .wan_trace import load_original_trace, validate_loaded_history
     bootstrap = Wan13BBootstrap.load(spec.bootstrap, expected_hash=spec.expected_bootstrap_hash,
                                     expected_lora_rank=task.lora_rank, verify_payloads=True)
     require(Path(bootstrap.manifest['model_root']).resolve() == Path(spec.model_root).resolve(),
@@ -122,6 +125,8 @@ def load_assets(task, spec, *, rank):
     model_files = [model_dir / 'config.json', *weights, *sorted(model_dir.glob('*.index.json'))]
     model_identity = {p.name: file_sha256(p) for p in model_files}
     trace = load_original_trace(task, spec.trace_bundle, expected_hash=spec.expected_trace_hash)
+    if task.stage_schedule_policy == NATIVE_HISTORY_POLICY:
+        validate_loaded_history(task, trace._load(rank))
     negative = NegativePromptAsset.load(spec.negative_prompt)
     identity = {'model_files': model_identity, 'bootstrap_hash': bootstrap.manifest_hash,
                 'trace_bundle_hash': trace.bundle_hash, 'trace_binding_hash': trace.binding_hash,
@@ -139,16 +144,22 @@ def _json(path, payload):
 
 def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
                    operation_order=None, progress=None, validate_result=None, before_cycle=None, clock=time.perf_counter_ns,
-                   start_cycle=0, after_cycle=None):
+                   start_cycle=0, after_cycle=None, stop_after_cycle=None):
     """Shared tested orchestration; original handlers perform all model math."""
-    require(type(cycles) is int and 2 <= cycles <= 64, 'bounded two-or-more cycle run required', path='wan.worker')
+    limit = MAX_COHORTS if before_cycle is not None and mode == 'run' else 64
+    require(type(cycles) is int and 2 <= cycles <= limit, 'bounded two-or-more cycle run required', path='wan.worker')
     require(mode in {'calibrate', 'run'} and (mode == 'calibrate') == (observer is not None),
             'calibration observer/mode mismatch', path='wan.worker')
     require(type(start_cycle) is int and 0 <= start_cycle < cycles
             and (not start_cycle or mode == 'run' and before_cycle is not None),
             'resume requires an admitted advancing native input stream', path='wan.worker')
+    end_cycle = cycles if stop_after_cycle is None else stop_after_cycle
+    require(type(end_cycle) is int and start_cycle < end_cycle <= cycles
+            and (stop_after_cycle is None or mode == 'run' and before_cycle is not None and after_cycle is not None),
+            'stop_after_cycle requires a fresh complete checkpoint boundary after resume within the unchanged horizon',
+            path='wan.worker')
     initial = session.versions(); warm = None; records = []
-    for cycle in range(start_cycle + 1, cycles + 1):
+    for cycle in range(start_cycle + 1, end_cycle + 1):
         before = session.versions()
         cohort = None; current_order = operation_order
         wall_start = clock() if before_cycle is not None else None
@@ -190,12 +201,19 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
         if cohort is not None:
             record['cohort'] = dict(cohort['receipt'])
             record['input_and_execution_wall_ns'] = clock() - wall_start
+        del prepared, result
+        lifecycle = getattr(session, 'bundle_lifecycle', None)
+        if lifecycle is not None:
+            lifecycle.finish(record)
+            record['input_and_execution_wall_ns'] = clock() - wall_start
         records.append(record)
         if progress is not None:
             progress(records, expected)
         if after_cycle is not None:
-            after_cycle(cycle, session, record)
-        del prepared, result
+            checkpoint = after_cycle(cycle, session, record)
+            if stop_after_cycle is not None and cycle == end_cycle:
+                require(checkpoint is not None, 'stop_after_cycle requires a published complete checkpoint boundary',
+                        path='wan.worker')
     return {'cycles': records, 'initial_versions': initial, 'warm_initial_versions': warm,
             'final_versions': session.versions(), 'finite': True}
 
@@ -251,11 +269,20 @@ def save_final_state(session, output):
 
 
 def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None,
-               record_memory_highwater=False, checkpoint_every=0, resume_from=None):
+               record_memory_highwater=False, checkpoint_every=0, resume_from=None, native_output=None,
+               stop_after_cycle=None):
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
-    require(mode in {'calibrate', 'run', 'manual', 'train'}, 'invalid worker mode', path='wan.worker')
+    require(mode in {'calibrate', 'run', 'manual', 'train', 'export'}, 'invalid worker mode', path='wan.worker')
+    require((mode == 'export') == (native_output is not None),
+            'output-only mode requires its explicit native output callback', path='wan.worker')
+    require(mode != 'export' or resume_from is not None and not checkpoint_every and not record_memory_highwater,
+            'output-only mode requires a complete checkpoint and no training/capture/memory work', path='wan.worker')
+    require(type(cycles) is int and 2 <= cycles <= (MAX_COHORTS if stream_path is not None else 64),
+            'only fresh streams support 2..100 cycles; fixed-trace diagnostics remain bounded to 64', path='wan.worker')
+    require(stop_after_cycle is None or mode in {'train', 'run'} and stream_path is not None,
+            'stop_after_cycle requires fresh stream training, never fixed replay or output-only work', path='wan.worker')
     rank, local_rank = topology(os.environ)
     document = None
     if mode == 'calibrate':
@@ -266,7 +293,12 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 and stream_path is None,
                 'manual reference requires explicit strategy, exactly two fixed-trace cycles and no plan/stream',
                 path='wan.worker')
-    elif mode == 'train':
+    elif mode == 'export' and plan_path is not None:
+        require(strategy is None and stream_path is not None,
+                'planned output requires the same selected plan and stream', path='wan.worker')
+        document = validate_plan(task, plan_path)
+        strategy = WanStrategy.from_dict(document['selected']['strategy'])
+    elif mode in {'train', 'export'}:
         require(plan_path is None and isinstance(strategy, WanStrategy) and stream_path is not None,
                 'explicit native training requires a strategy and fresh input stream', path='wan.worker')
     else:
@@ -278,16 +310,22 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             or strategy.retention_execution == 'planner-retain4.v1',
             'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
             path='wan.worker')
-    require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
+    require(not strategy.candidate_bundle.continuous or (mode in {'train', 'export'} and stream_path is not None),
+            'stream bundle requires explicit fresh native training; no fixed replay/calibration/old plan', path='wan.worker')
+    require(not strategy.candidate_bundle.enabled or strategy.candidate_bundle.continuous or (cycles == 2 and stream_path is None),
             'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
     if stream_path is not None:
-        require(mode in {'run', 'train'}, 'cohort training requires a selected or explicit strategy', path='wan.worker')
+        require(mode in {'run', 'train', 'export'}, 'cohort training requires a selected or explicit strategy', path='wan.worker')
         from .wan_stream import load_stream
         stream = load_stream(task, stream_path)
         require(cycles == len(stream['cohorts']), 'training cycles must match the complete fresh input sequence', path='wan.worker')
     require(type(checkpoint_every) is int and checkpoint_every >= 0,
             'checkpoint interval must be nonnegative', path='wan.worker')
+    end_cycle = cycles if stop_after_cycle is None else stop_after_cycle
+    require(stop_after_cycle is None or type(end_cycle) is int and 1 <= end_cycle <= cycles
+            and checkpoint_every > 0 and (end_cycle == cycles or end_cycle % checkpoint_every == 0),
+            'stop_after_cycle must be a complete checkpoint boundary within the unchanged horizon', path='wan.worker')
     require(not (checkpoint_every or resume_from) or stream is not None,
             'restart checkpoints require a fresh native cohort stream, never fixed-trace replay', path='wan.worker')
     if checkpoint_every or resume_from:
@@ -326,6 +364,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 strategy.candidate_bundle.validate_model_files(bootstrap.manifest, asset_identity["model_files"])
                 strategy.candidate_bundle.validate_assets({**asset_identity,
                     'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
+                if strategy.candidate_bundle.continuous:
+                    strategy.candidate_bundle.validate_bootstrap(bootstrap, task)
+                    require(trace.bundle_hash == stream['cohorts'][0]['trace_hash'],
+                            'initial asset trace differs from fresh stream cohort zero', path='wan.worker')
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
             verify_execution_precision(torch)
@@ -359,7 +401,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 'stream_sha256': None if stream is None else stream['stream_sha256']}, metadata_group)
             require(all(row == seen[0] for row in seen), 'rank task/strategy/asset mismatch', path='wan.worker')
             admit_run_controls(dist, metadata_group, mode=mode, cycles=cycles,
-                               checkpoint_every=checkpoint_every, resume_from=resume_from)
+                               checkpoint_every=checkpoint_every, resume_from=resume_from, stop_after_cycle=stop_after_cycle)
             checkpoint_identity = checkpoint_policy = None
             checkpoint_state = None
             start_cycle = 0
@@ -380,8 +422,14 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                                                 'native restart header')
                     require(resume_header['policy'] == checkpoint_policy
                             and type(resume_header['cycle']) is int
-                            and 0 < resume_header['cycle'] == resume_header['cursor'] < cycles,
+                            and 0 < resume_header['cycle'] == resume_header['cursor']
+                            and (resume_header['cycle'] <= cycles if mode == 'export' else resume_header['cycle'] < cycles),
                             'native restart policy/progress differs from the supplied stream', path='wan.worker')
+                    require(mode == 'export' or resume_header['cycle'] < end_cycle,
+                            'stop_after_cycle must be after the completed resume boundary', path='wan.worker')
+            if native_output is not None:
+                with control_plane(metadata_group):
+                    native_output.admit()
             negative_tensor = negative.embedding.to(device=device, dtype=torch.bfloat16)
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
             session = OriginalWanSession(task=task, strategy=strategy, fair=fair, bootstrap=bootstrap,
@@ -402,7 +450,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     require(session.versions() == restored['versions'],
                             'native restored engine/EMA clocks differ from manifest', path='wan.worker')
                     start_cycle = restored['cycle']
-                    restore_stream_cursor(session, task, stream, completed_cycles=start_cycle)
+                    if native_output is None:
+                        restore_stream_cursor(session, task, stream, completed_cycles=start_cycle)
                     del restored
                 receipt['training_restart'] = {'schema_version': 'distillschedule.wan_native_training_restart.v1',
                     'resume_from': str(Path(resume_from).resolve()) if resume_from else None,
@@ -411,6 +460,18 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     'latest_checkpoint': str(Path(resume_from).resolve()) if resume_from else None}
             receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build, backend_effects=effects)
             _json(path, receipt)
+            if native_output is not None:
+                # A terminal complete checkpoint is valid for export, not for
+                # another training cycle. Never bind/consume the next cohort,
+                # prepare a graph, run loss handlers or advance native clocks.
+                with control_plane(metadata_group):
+                    exported = native_output.publish(session,manifest=resume_header,identity=checkpoint_identity)
+                receipt.update(status='COMPLETED_ORIGINAL_WAN_EXPORT',inference_export=exported,
+                    final_versions=session.versions(),checkpoint_cycle=start_cycle,
+                    generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA',training_cycles_executed=0,
+                    gpu_execution='NATIVE_CUDA_CHECKPOINT_RESTORE_AND_EXPORT_NO_TRAINING',quality_validation='NOT_RUN')
+                _json(path,receipt)
+                return receipt
             if mode == 'calibrate':
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
                     work=trace_work(task, trace), torch=torch, distributed=dist, device=device,
@@ -455,19 +516,29 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     started = time.perf_counter_ns()
                     destination = root/'checkpoints'/f'cycle-{cycle:06d}'
                     with control_plane(metadata_group):
+                        if strategy.candidate_bundle.continuous:
+                            checked(current.bundle_lifecycle.validate_checkpoint_boundary,
+                                    'incumbent stream checkpoint quiescence')
                         save_checkpoint(destination, checkpoint_state, identity=checkpoint_identity,
                             cycle=cycle, cursor=cycle, versions=current.versions(), policy=checkpoint_policy)
                     record['checkpoint_outside_compute_ns'] = time.perf_counter_ns() - started
                     receipt['training_restart']['latest_checkpoint'] = str(destination)
                     _json(path, receipt)
+                    # The publisher returns only after every rank sees the
+                    # durable manifest, success marker and required shards.
+                    return destination
             if mode == 'train':
                 mode = 'run'  # The same original handlers/timer; no calibration claim.
             result = execute_cycles(session, cycles=cycles, mode='run' if mode == 'manual' else mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
                 before_cycle=before_cycle, progress=progress,
-                validate_result=lambda raw: validate_cycle(session.task, session.trace, raw),
-                start_cycle=start_cycle, after_cycle=after_cycle)
+                validate_result=lambda raw: validate_cycle(session.task, session.trace, raw, rank=rank),
+                start_cycle=start_cycle, after_cycle=after_cycle, stop_after_cycle=stop_after_cycle)
             receipt.update(result)
+            if stream is not None:
+                receipt['training_segment'] = dict(horizon_cycles=cycles, start_cycle=start_cycle,
+                    requested_stop_cycle=end_cycle, completed_cycle=end_cycle, executed_cycles=end_cycle-start_cycle,
+                    complete_horizon=end_cycle == cycles)
             # Host metadata after both native timers, before CPU state export.
             # Native helpers may reset counters; only the opt-in recorder spans them.
             free, total = torch.cuda.mem_get_info(device)
@@ -480,14 +551,15 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             if highwater is not None:
                 receipt['gpu_memory'].update(highwater.close())
             if start_cycle:
-                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles-start_cycle)
+                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=end_cycle-start_cycle)
             else:
-                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
+                receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=end_cycle)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
             receipt['state_evidence'] = save_final_state(session, root)
             dist.barrier()
-            receipt.update(status='COMPLETED_ORIGINAL_WAN_WORK', gpu_execution='NATIVE_CUDA_RUN',
+            receipt.update(status=('STOPPED_ORIGINAL_WAN_AT_CHECKPOINT' if end_cycle < cycles
+                                   else 'COMPLETED_ORIGINAL_WAN_WORK'), gpu_execution='NATIVE_CUDA_RUN',
                 plan_sha256=None if document is None else document['plan_sha256'],
                 numerical_comparison='REQUIRES_MATCHED_REFERENCE', quality_validation='NOT_RUN',
                 measurement_scope=('FRESH_COHORT_SEQUENCE_PERSISTENT_OPTIMIZERS' if stream is not None else

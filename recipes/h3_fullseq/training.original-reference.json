@@ -1,0 +1,21 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"workload": "W5"},
+  "algorithm": {"name": "original_h3_fullseq_grid1000"},
+  "data": {
+    "input_kind": "original_h3_grid_latent_dataset.v1",
+    "prepared": "REPLACE_WITH_GRID_INPUTS.json"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "reference",
+    "task": "REPLACE_WITH_H3_REQUEST.json",
+    "assets": "REPLACE_WITH_GRID_ASSETS.json"
+  },
+  "trainer": {
+    "cycles": 3,
+    "seed": 20260817,
+    "checkpoint_every": 1,
+    "output_dir": "REPLACE_WITH_PROJECT_OUTPUT_DIRECTORY"
+  }
+}

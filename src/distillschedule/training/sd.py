@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from .adapters import ModelComponents
 from .prediction import PredictionSpec
 from .upstream import PinnedSource
+from .single_device import execution_device, device_scope as _device_scope, construction_rng as _construction_rng
 from distillschedule.workloads.best_known.registry import file_sha256
 
 REVISION = '8d8fa55633d47cfb81bbc7a892e7248f9518763f'
@@ -78,20 +79,63 @@ class _LocalAccelerator:
 
     @staticmethod
     def unwrap_model(model):
-        return model
+        from .native_roles import unwrap_role
+        return unwrap_role(model)
+
+
+def _execution_device(value):
+    return execution_device(value, require=require)
+
+
+def _place_native_tensors(model, device):
+    """Module.to does not place the upstream scheduler or plain conditions."""
+    import torch
+    model.to(device)
+    for owner in (model, model.noise_scheduler):
+        for name, value in vars(owner).copy().items():
+            if isinstance(value, torch.Tensor):
+                setattr(owner, name, value.to(device))
+    # All three are the same original schedule, not independently mutable copies.
+    model.alphas_cumprod = model.noise_scheduler.alphas_cumprod = model.guidance_model.alphas_cumprod
 
 
 def _arguments(parameters, *, sdxl):
     import torch
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
     require(isinstance(parameters, dict) and set(parameters) <= {
-        'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device'},
+        'source_root', 'model_id', 'settings', 'generator_checkpoint', 'seed', 'device',
+        'native_checkpoint_policy', 'native_role_backend', 'optimization_profile'},
         'unknown model parameters')
+    optimized = 'optimization_profile' in parameters
+    fsdp = parameters.get('native_role_backend') == FSDP2_BACKEND
+    if fsdp:
+        from .dmd2_fsdp import admit
+        admit(parameters, sdxl=sdxl)
+    if optimized:
+        from .official_optimizations.dmd2 import admit
+        require(not sdxl, 'optimized profile is SD1.5 only')
+        admit(parameters)
+    role_backend = parameters.get('native_role_backend', 'single-device-v1')
+    require(type(role_backend) is str and role_backend in ('single-device-v1', 'ddp-fp32-v1', FSDP2_BACKEND),
+            'unsupported native role backend')
+    checkpoint_policy = parameters.get('native_checkpoint_policy', 'coupled-v1')
+    require(type(checkpoint_policy) is str and checkpoint_policy in ('coupled-v1', 'component-v1'),
+            'unsupported native checkpoint policy')
     require(isinstance(parameters.get('source_root'), str)
             and isinstance(parameters.get('model_id'), str), 'source_root and local model_id required')
-    # The current generic atomic-stateful owner is deliberately CPU1/FP32.
-    # GPU, AMP and distributed execution need a separately validated placement ABI.
-    require(parameters.get('device', 'cpu') == 'cpu', 'this validated owner requires CPU1/FP32')
-    require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
+    if optimized:
+        require(role_backend == 'single-device-v1' and 'native_role_backend' not in parameters
+                and checkpoint_policy == 'coupled-v1',
+                'optimized profile owns its role backend; no conflicting backend/checkpoint overrides')
+    elif role_backend == 'ddp-fp32-v1':
+        require(torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1,
+                'native role backend requires an initialized multi-rank group')
+        from .single_device import admit_fp32
+        admit_fp32(parameters, require=require, allow_replicated=True)
+        require(checkpoint_policy == 'coupled-v1', 'native role backend does not admit singleton owner overrides')
+    elif not fsdp:
+        _execution_device(parameters.get('device', 'cpu'))
+        require(not torch.distributed.is_initialized(), 'distributed ownership is not admitted')
     require(type(parameters.get('seed', 0)) is int and 0 <= parameters.get('seed', 0) < 2**63,
             'invalid model RNG seed')
     defaults = dict(initialie_generator=True, use_fp16=False, gradient_checkpointing=False,
@@ -109,7 +153,11 @@ def _arguments(parameters, *, sdxl):
     settings = parameters.get('settings', {})
     require(isinstance(settings, dict) and set(settings) <= set(defaults), 'unknown DMD2 settings')
     defaults.update(settings)
-    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is False
+    require(role_backend != 'ddp-fp32-v1' or defaults['cls_on_clean_image'] is False,
+            'native FP32 role DDP GAN ownership is not yet qualified')
+    require(checkpoint_policy != 'component-v1' or defaults['gradient_checkpointing'] is True,
+            'component checkpoint policy requires the original checkpoint-enabled reference')
+    require(defaults['sdxl'] is sdxl and defaults['use_fp16'] is (optimized or fsdp)
             and defaults['tiny_vae'] is False and defaults['initialie_generator'] is True
             and defaults['revision'] is None, 'unsupported model initialization/precision override')
     for key in ('backward_simulation', 'cls_on_clean_image', 'denoising', 'gradient_checkpointing',
@@ -149,22 +197,38 @@ def _arguments(parameters, *, sdxl):
         require(bool(parameters.get('generator_checkpoint')), 'SDXL 1-step requires an explicit actual generator checkpoint')
     require(defaults['num_denoising_step'] in (1, 2, 4, 5, 10, 20, 25, 50),
             'denoising steps must exactly divide the original 1000-step schedule')
+    if optimized:
+        from .official_optimizations.dmd2 import validate_settings
+        validate_settings(SimpleNamespace(**defaults))
+    if fsdp:
+        from .dmd2_fsdp import validate_settings
+        validate_settings(SimpleNamespace(**defaults))
     defaults['model_id'] = str(Path(parameters['model_id']).expanduser().resolve(strict=True))
     return SimpleNamespace(**defaults)
 
 
 def _build(parameters, *, sdxl):
     import torch
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
+    args = _arguments(parameters, sdxl=sdxl)
+    device = _execution_device(parameters.get('device', 'cpu'))
+    seed = parameters.get('seed', 0)
+    if parameters.get('native_role_backend') in ('ddp-fp32-v1', FSDP2_BACKEND) or 'optimization_profile' in parameters:
+        seed += torch.distributed.get_rank()  # original native Trainer set_seed(seed + process_index)
+    with _construction_rng(device, seed):
+        return _build_placed(parameters, args, device, sdxl=sdxl)
+
+
+def _build_placed(parameters, args, device, *, sdxl):
+    import torch
     from transformers import CLIPTokenizer
     from distillschedule.data.sd_inputs import preprocessing_assets
     from .dmd2_owner import DMD2Owner
-    args = _arguments(parameters, sdxl=sdxl)
-    from .session import _seed
-    _seed(parameters.get('seed', 0))
     api = original(parameters['source_root'])
     bundle = local_bundle_identity(args.model_id, sdxl=sdxl)
-    accelerator = _LocalAccelerator(torch.device('cpu'))
-    model = api.unified.SDUniModel(args, accelerator).to(accelerator.device)
+    accelerator = _LocalAccelerator(device)
+    model = api.unified.SDUniModel(args, accelerator)
+    _place_native_tensors(model, device)
     require(model.guidance_model.scheduler.config.prediction_type == 'epsilon'
             and model.guidance_model.scheduler.config.num_train_timesteps == 1000,
             'local scheduler must use the original 1000-step epsilon convention')
@@ -187,20 +251,63 @@ def _build(parameters, *, sdxl):
         ids = tokenizer([''], max_length=tokenizer.model_max_length, return_tensors='pt',
                         padding='max_length', truncation=True).input_ids
         with torch.no_grad():
-            uncond = model.text_encoder(ids)[0].detach()
+            uncond = model.text_encoder(ids.to(device))[0].detach()
     metadata = dict(schema_version='distillschedule.official_dmd2_sd.v1', variant='sdxl' if sdxl else 'sd15',
         upstream=dict(repository=REPOSITORY, revision=REVISION, license='CC-BY-NC-SA-4.0', **api.source.identity),
         bundle=bundle, preprocessing_assets=preprocessing_assets(bundle['files'],
             variant='sdxl' if sdxl else 'sd15', images=True),
         generator_checkpoint=checkpoint_identity, settings=deepcopy(vars(args)),
-        runtime=runtime_identity(), precision='FP32_CPU1', ema='NONE', quality_validation='NOT_RUN',
+        runtime=runtime_identity(), precision='FP32_CPU1' if device.type == 'cpu' else 'FP32_CUDA1',
+        placement=dict(device=str(device), layout='SINGLE_DEVICE_RESIDENT', distributed=False, amp=False),
+        ema='NONE', quality_validation='NOT_RUN',
         cpu_execution='CPU_IMPLEMENTATION_TESTED_ON_RANDOM_TINY_ASSETS_ONLY', gpu_execution='NOT_RUN',
-        placement_limit='CPU1_ONLY_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA_CUDA_NOT_VALIDATED')
-    owner = DMD2Owner(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
+        placement_limit='SINGLE_DEVICE_FP32_RUNTIME_TENSORS_EXCLUDES_HOST_RNG_AND_ADAM_STEP_METADATA',
+        cuda_trial_snapshot='UNAVAILABLE_AUTO_PLAN_AND_OWNER_EXECUTION_REJECTED_BEFORE_TRIAL')
+    if parameters.get('native_checkpoint_policy', 'coupled-v1') == 'component-v1':
+        metadata['native_checkpoint_policy'] = 'component-v1'
+    owner_type = DMD2Owner
+    if parameters.get('native_role_backend') == 'ddp-fp32-v1' or 'optimization_profile' in parameters:
+        from .dmd2_collective import DMD2CollectiveOwner
+        owner_type = DMD2CollectiveOwner
+        metadata.update(precision='FP32_NATIVE_COLLECTIVE',
+            placement=dict(device=device.type, layout='NATIVE_ROLE_DDP', distributed=True, amp=False),
+            native_collective=dict(backend='ddp-fp32-v1', world_size=torch.distributed.get_world_size(),
+                seed=parameters.get('seed', 0), native_rng='SEED_PLUS_RANK', scheduler='NATIVE_ITERATION_TIMES_WORLD',
+                initial_sync='NATIVE_DDP_RANK0_ROLE_WEIGHTS_AND_BUFFERS',
+                broadcast_buffers=True, find_unused_parameters=False, gradient_as_bucket_view=True, bucket_cap_mb=128),
+            placement_limit='EXPLICIT_SAME_TOPOLOGY_FP32_ROLE_REPLICAS_NO_GAN_NO_LOCAL_OVERRIDES',
+            cuda_trial_snapshot='UNAVAILABLE_NATIVE_COLLECTIVE_CLONE_OR_CALIBRATION')
+    if 'optimization_profile' in parameters:
+        from .official_optimizations.dmd2 import DMD2OptimizedOwner, PROFILE
+        from .official_profiles import resolve, verify_sources
+        owner_type = DMD2OptimizedOwner
+        metadata.update(optimization_profile=resolve(PROFILE), optimization_sources=verify_sources(PROFILE),
+            precision='NATIVE_MIXED_EXCEPTIONS_FP32_MASTER',
+            placement_limit='SOURCE_BOUND_A100_WORLD16_NATIVE_MIXED_ROLE_REPLICAS_NO_OWNER_OVERRIDES')
+        metadata['native_collective']['backend'] = 'ddp-native-mixed-v1'
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
+    if parameters.get('native_role_backend') == FSDP2_BACKEND:
+        from .dmd2_fsdp import DMD2FSDP2Owner, source_identity
+        owner_type = DMD2FSDP2Owner
+        metadata.update(precision='NATIVE_MIXED_EXCEPTIONS_FP32_MASTER_REDUCE',
+            placement=dict(device=device.type, layout='NATIVE_FSDP2_FULL16', distributed=True, amp=False),
+            native_collective=dict(backend=FSDP2_BACKEND, world_size=torch.distributed.get_world_size(),
+                seed=parameters.get('seed', 0), native_rng='SEED_PLUS_RANK', scheduler='NATIVE_ITERATION_TIMES_WORLD',
+                initial_sync='NATIVE_DDP_RANK0_ROLE_WEIGHTS_AND_BUFFERS', reshard_after_forward=True,
+                cpu_offload=False), fsdp_source=source_identity(),
+            placement_limit='SOURCE_BOUND_A100_WORLD16_NATIVE_FSDP2_NO_OWNER_OVERRIDES',
+            cuda_trial_snapshot='UNAVAILABLE_NATIVE_FSDP2_CLONE_OR_CALIBRATION')
+    try:
+        owner = owner_type(model, args, api.source, uncond, identity=metadata, seed=parameters.get('seed', 0))
+    except BaseException:
+        scope = getattr(model, '_dmd2_classifier_call_scope', None)
+        if scope is not None:
+            scope.close()
+        raise
     return ModelComponents(state={'native_cycle': owner}, metadata=metadata,
         prediction=PredictionSpec('epsilon'), capabilities=('image', 'epsilon', 'gan', *(('lora',) if sdxl else ())),
         generate=generate, decode=_decoder(model.vae), inference_projection=project_current_generator,
-        admit_training=admit_training, collect_metrics=collect_metrics).validate()
+        admit_training=admit_training, collect_metrics=collect_metrics, close=getattr(owner, 'close', None)).validate()
 
 
 def build_sd15(parameters):
@@ -209,6 +316,92 @@ def build_sd15(parameters):
 
 def build_sdxl(parameters):
     return _build(parameters, sdxl=True)
+
+
+def _admit_resident_construction(*, parameters, request, budget, sdxl):
+    """Metadata-only admission for the independently qualified tiny UNets.
+
+    The full pretrained/FSDP profiles are separate owners. A budget does not
+    enable those profiles or turn their allocation into a qualified trial.
+    """
+    if budget is None:
+        if str(parameters.get('device', 'cpu')).startswith('cuda'):
+            from .dmd2_owner import CUDA_TRIAL_LIMIT
+            require(request.execution.get('mode', 'reference') in ('reference', 'manual')
+                    and 'owner_execution' not in request.execution.get('implementation', {}), CUDA_TRIAL_LIMIT)
+        return None
+    import json
+    import math
+    from safetensors import safe_open
+    from .single_device import admit_fp32
+    from .resident import ResidentAdmission
+    args = _arguments(parameters, sdxl=sdxl)
+    require(not set(parameters) & {'native_role_backend', 'optimization_profile', 'generator_checkpoint'},
+            'resident planning constructor is not a collective/pretrained initialization profile')
+    device = admit_fp32(parameters, require=require)
+    require(device == _execution_device(request.trainer.get('device', 'cpu'))
+            and 'distributed' not in request.trainer, 'resident construction placement mismatch')
+    runtime = runtime_identity()
+    expected = dict(torch='2.10.0', diffusers='0.37.1', transformers='4.51.3', peft='0.17.1')
+    require(all(runtime[key].split('+')[0] == value for key, value in expected.items()),
+            'resident native construction requires qualified numerical dependencies')
+    require(args.batch_size == 1 and args.resolution == 16 and args.latent_resolution == 8
+            and args.dfake_gen_update_ratio == 2 and not args.generator_lora and not args.cls_on_clean_image,
+            'resident planning requires the qualified tiny native DMD2 geometry')
+    api = original(parameters['source_root'])
+    bundle = local_bundle_identity(args.model_id, sdxl=sdxl)
+    root = Path(args.model_id)
+    def config(folder):
+        path = root / folder / 'config.json'
+        require(path.stat().st_size <= 1 << 20, 'bounded native configuration required')
+        return json.loads(path.read_text())
+    unet, vae = config('unet'), config('vae')
+    require(all(unet.get(key) == value for key, value in dict(sample_size=8, in_channels=4, out_channels=4,
+            layers_per_block=1, block_out_channels=[8, 16], cross_attention_dim=16 if sdxl else 8,
+            attention_head_dim=2, norm_num_groups=4,
+            down_block_types=['DownBlock2D', 'CrossAttnDownBlock2D'],
+            up_block_types=['CrossAttnUpBlock2D', 'UpBlock2D']).items()), 'unqualified tiny UNet configuration')
+    require(all(vae.get(key) == value for key, value in dict(sample_size=16, in_channels=3,
+            out_channels=3, latent_channels=4, block_out_channels=[8, 16], layers_per_block=1,
+            norm_num_groups=4).items()), 'unqualified tiny VAE configuration')
+    text_folders = ['text_encoder', *(['text_encoder_2'] if sdxl else [])]
+    for folder in text_folders:
+        require(all(config(folder).get(key) == value for key, value in dict(hidden_size=8,
+            intermediate_size=16, num_hidden_layers=2, num_attention_heads=2,
+            max_position_embeddings=8, projection_dim=8).items()), 'unqualified tiny text encoder')
+    sizes = {}
+    for folder in ['unet', 'vae', *text_folders]:
+        weights = sorted((root / folder).glob('*.safetensors'))
+        require(len(weights) == 1 and not list((root / folder).glob('*.bin')),
+                'resident tiny construction requires one explicit safetensors file per component')
+        with safe_open(weights[0], framework='pt', device='cpu') as handle:
+            total = 0
+            for key in handle.keys():
+                header = handle.get_slice(key)
+                require(header.get_dtype() == 'F32', 'native resident weights must be FP32')
+                total += math.prod(header.get_shape()) * 4
+            sizes[folder] = total
+    # Native SDUniModel has independent Student, Teacher and Fake UNets. Include
+    # codec/text and plain scheduler/conditioning buffers, without allocating.
+    resident = 3 * sizes['unet'] + sum(value for key, value in sizes.items() if key != 'unet') + (1 << 20)
+    files = {str(root / name): sha for name, sha in bundle['files'].items()}
+    files.update({str(api.source.root / name): sha for name, sha in api.source.files.items()})
+    return ResidentAdmission(budget=budget, device=device, resident_bytes=resident,
+        staging_bytes=2 * resident + max(sizes.values()),
+        identity=dict(provider='official-dmd2-tiny-fp32', variant='sdxl' if sdxl else 'sd15',
+                      source=api.source.identity, assets=bundle, runtime=runtime), files=files)
+
+
+def _admit_sd15_construction(**kwargs):
+    return _admit_resident_construction(**kwargs, sdxl=False)
+
+
+def _admit_sdxl_construction(**kwargs):
+    return _admit_resident_construction(**kwargs, sdxl=True)
+
+
+build_sd15.admit_construction = _admit_sd15_construction
+build_sdxl.admit_construction = _admit_sdxl_construction
 
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
@@ -226,15 +419,28 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
             and set(prepared_manifest['streams']) == set(counts), 'prepared preprocessing streams binding required')
     for manifest in prepared_manifest['streams'].values():
         validate_prepared_binding(manifest, owner.identity['preprocessing_assets'])
-    require(request.trainer.get('device', 'cpu') == 'cpu' and 'distributed' not in request.trainer,
-            'current owner admits CPU1 only')
+    require(_execution_device(request.trainer.get('device', 'cpu')) == owner.device,
+            'trainer/model placement must match')
+    if 'native_collective' in owner.identity:
+        require('distributed' in request.trainer and request.data.get('sharding') == 'rank_strided'
+                and not set(request.execution) & {'order', 'plan'},
+                'native role replicas require explicit distributed trainer, rank-strided inputs and original order')
+    else:
+        require('distributed' not in request.trainer,
+                'single-device trainer/model placement must match; distributed ownership is not admitted')
+    owner.admit_execution(request.execution.get('mode', 'reference'), request.execution.get('implementation', {}))
     require(request.trainer['cycles'] * owner.ratio <= owner.args.train_iters, 'native train_iters budget exceeded')
 
 
 def collect_metrics(outputs):
     rows = outputs['dmd2.native_cycle']['iterations']
-    return {f'native_{index}/{name}': value for index, row in enumerate(rows)
-            for name, value in row['losses'].items()}
+    result = {f'native_{index}/{name}': value for index, row in enumerate(rows)
+              for name, value in row['losses'].items()}
+    for index, row in enumerate(rows):
+        for name in ('generator_grad_norm', 'guidance_grad_norm'):
+            if name in row:
+                result[f'native_{index}/{name}'] = row[name]
+    return result
 
 
 def _generation_row(feeds):
@@ -249,7 +455,7 @@ def generate(state, feeds, parameters):
     owner = state['native_cycle']; model = owner.model
     owner._validate_live()
     validate_row(_generation_row(feeds), sdxl=owner.args.sdxl,
-                 binding=owner.identity['preprocessing_assets'])
+                 binding=owner.identity['preprocessing_assets'], model=model)
     model.eval()
     return _generate_inference(dict(generator=model.feedforward_model, text_encoder=model.text_encoder,
                                    vae=model.vae), feeds, parameters, _inference_parameters(owner))
@@ -258,9 +464,11 @@ def generate(state, feeds, parameters):
 def _decoder(vae):
     def decode(generated, parameters):
         import torch
-        image = vae.decode(generated['latents'] / vae.config.scaling_factor).sample.float()
+        latent = generated['latents'].to(dtype=next(vae.parameters()).dtype)
+        image = vae.decode(latent / vae.config.scaling_factor).sample.float()
         require(image.ndim == 4 and image.shape[0] == 1 and image.shape[1] == 3,
                 'public image output requires one native BCHW RGB sample')
+        require(bool(torch.isfinite(image).all()), 'nonfinite decoded image')
         return {'image': ((image[0].clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).permute(1, 2, 0).contiguous()}
     return decode
 
@@ -279,6 +487,7 @@ def _plain(value):
 
 
 def _inference_parameters(owner):
+    from .dmd2_fsdp import BACKEND as FSDP2_BACKEND
     model, args = owner.model, owner.args
     text = model.text_encoder
     architecture = dict(unet=_plain(dict(model.feedforward_model.config)), vae=_plain(dict(model.vae.config)),
@@ -293,18 +502,32 @@ def _inference_parameters(owner):
             architecture[key]['_name_or_path'] = ''
     lora = {name: _plain(config.to_dict()) for name, config in
             getattr(model.feedforward_model, 'peft_config', {}).items()}
-    return dict(source_root=str(owner.source.root), upstream=deepcopy(owner.source.identity),
+    result = dict(source_root=str(owner.source.root), upstream=deepcopy(owner.source.identity),
         variant='sdxl' if args.sdxl else 'sd15', architecture=architecture, lora=lora, runtime=runtime_identity(),
         preprocessing_assets=deepcopy(owner.identity['preprocessing_assets']),
         geometry=dict(resolution=args.resolution, latent_resolution=args.latent_resolution, latent_channel=4),
         steps=args.num_denoising_step if args.sdxl else 1,
         conditioning_timestep=args.conditioning_timestep, seed=0)
+    if (owner.identity.get('optimization_profile') is not None
+            or owner.identity.get('native_collective', {}).get('backend') == FSDP2_BACKEND):
+        result['precision'] = dict(generator='float32', text_encoder='float32', vae='float16')
+    return result
+
+
+def _inference_precision(parameters):
+    precision = parameters.get('precision', dict(generator='float32', text_encoder='float32', vae='float32'))
+    require(precision in (dict(generator='float32', text_encoder='float32', vae='float32'),
+                          dict(generator='float32', text_encoder='float32', vae='float16')),
+            'unsupported inference precision policy')
+    return precision
 
 
 def _inference_components(state, parameters):
     metadata = dict(schema_version='distillschedule.official_sd_inference.v2',
         parameters=deepcopy({key: value for key, value in parameters.items() if key != 'device'}),
-        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN', precision='FP32_CPU1',
+        selection='CURRENT_NOT_EMA', quality_validation='NOT_RUN',
+        precision=('FP32_SINGLE_DEVICE' if _inference_precision(parameters)['vae'] == 'float32'
+                   else 'FP32_GENERATOR_CLIP_FP16_VAE'),
         dependencies='EXTERNAL_PINNED_SOURCE_ONLY_NO_BASE_MODEL_WEIGHTS')
 
     def generate_current(state, feeds, generation_parameters):
@@ -323,7 +546,8 @@ def project_current_generator(components, effective_training_parameters):
     owner = components.state['native_cycle']
     owner._validate_live()
     parameters = _inference_parameters(owner)
-    state = dict(generator=owner.model.feedforward_model, text_encoder=owner.model.text_encoder, vae=owner.model.vae)
+    state = dict(generator=owner.model.accelerator.unwrap_model(owner.model.feedforward_model),
+                 text_encoder=owner.model.text_encoder, vae=owner.model.vae)
     return InferenceProjection(_inference_components(state, parameters),
         'distillschedule.training.sd:build_inference_model', parameters).validate()
 
@@ -336,9 +560,10 @@ def build_inference_model(parameters):
     from peft import LoraConfig
     from distillschedule.data.sd_inputs import validate_preprocessing_assets
     require(set(parameters) <= {'source_root', 'upstream', 'variant', 'architecture', 'lora', 'runtime',
-            'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device'}
-            and parameters.get('device', 'cpu') == 'cpu' and parameters['variant'] in ('sd15', 'sdxl'),
+            'preprocessing_assets', 'geometry', 'steps', 'conditioning_timestep', 'seed', 'device', 'precision'}
+            and parameters['variant'] in ('sd15', 'sdxl'),
             'invalid inference-only construction parameters')
+    device = _execution_device(parameters.get('device', 'cpu'))
     validate_preprocessing_assets(parameters.get('preprocessing_assets'), variant=parameters['variant'], images=True)
     api = original(parameters['source_root'])
     require(parameters['upstream'] == api.source.identity, 'inference upstream source lock changed')
@@ -360,10 +585,13 @@ def build_inference_model(parameters):
         torch.nn.Module.__init__(text)
         text.text_encoder_one = CLIPTextModel(clip_config('clip_one'))
         text.text_encoder_two = CLIPTextModelWithProjection(clip_config('clip_two'))
-        text.accelerator = _LocalAccelerator(torch.device('cpu'))
+        text.accelerator = _LocalAccelerator(device)
     else:
         text = CLIPTextModel(clip_config('clip_one'))
     text.requires_grad_(False); vae.requires_grad_(False)
+    precision = _inference_precision(parameters)
+    for name, module in (('generator', generator), ('text_encoder', text), ('vae', vae)):
+        module.to(device=device, dtype=getattr(torch, precision[name]))
     return _inference_components(dict(generator=generator, text_encoder=text, vae=vae), parameters)
 
 
@@ -372,26 +600,36 @@ def _generate_inference(state, feeds, parameters, settings):
     from distillschedule.data.sd_inputs import validate_row
     require(set(parameters) <= {'steps'}, 'unknown inference settings')
     row = _generation_row(feeds); sdxl = settings['variant'] == 'sdxl'
-    validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'])
     generator, text = state['generator'], state['text_encoder']
+    device = next(generator.parameters()).device
+    require(not torch.is_autocast_enabled(device.type), 'inference does not admit outer AMP')
+    precision = _inference_precision(settings)
+    require(all(t.device == device and (not t.is_floating_point() or t.dtype == getattr(torch, precision[name]))
+                for name, module in state.items() for t in (*module.parameters(), *module.buffers())),
+            'inference module device/precision placement changed')
+    validate_row(row, sdxl=sdxl, binding=settings['preprocessing_assets'], device=device)
     steps = parameters.get('steps', settings['steps'])
     require(type(steps) is int and steps > 0 and 1000 % steps == 0 and (sdxl or steps == 1),
             'invalid inference denoising schedule')
     if sdxl:
         embedding, pooled = text(row)
         resolution = settings['geometry']['resolution']
-        time_ids = torch.tensor([[resolution, resolution, 0, 0, resolution, resolution]], dtype=torch.float32)
+        time_ids = torch.tensor([[resolution, resolution, 0, 0, resolution, resolution]],
+                                dtype=torch.float32, device=device)
         conditions = {'time_ids': time_ids.repeat(len(embedding), 1), 'text_embeds': pooled}
     else:
         embedding = text(row['text_input_ids_one'].squeeze(1))[0].float(); conditions = None
     geometry = settings['geometry']
-    sample = torch.randn(len(embedding), 4, geometry['latent_resolution'], geometry['latent_resolution'])
+    sample = torch.randn(len(embedding), 4, geometry['latent_resolution'], geometry['latent_resolution'], device=device)
     from diffusers import DDIMScheduler
     scheduler = DDIMScheduler.from_config(settings['architecture']['scheduler'])
+    for name, value in vars(scheduler).copy().items():
+        if isinstance(value, torch.Tensor):
+            setattr(scheduler, name, value.to(device))
     get_x0 = original(settings['source_root']).utils.get_x0_from_noise
     schedule = [settings['conditioning_timestep']] if steps == 1 else list(range(999, 0, -(1000 // steps)))
     for index, timestep in enumerate(schedule):
-        times = torch.full((len(embedding),), timestep, dtype=torch.long)
+        times = torch.full((len(embedding),), timestep, dtype=torch.long, device=device)
         noise = generator(sample, times, embedding, added_cond_kwargs=conditions).sample
         image = get_x0(sample.double(), noise.double(), scheduler.alphas_cumprod.double(), times).float()
         if index + 1 < len(schedule):

@@ -38,6 +38,18 @@ requires its separate saved-plan contract and remains bounded to two cycles.
 The following API builds the **real** asset document from your own files and
 the already validated execution environment; it does not create dummy hashes:
 
+This is a PyTorch training path. Set the following controls before preparing
+assets and keep them in every worker's launch environment:
+
+```bash
+export USE_TF=0
+export USE_FLAX=0
+```
+
+They are recorded by `environment_snapshot`, alongside the library paths.
+This avoids unused optional TensorFlow/Keras/OpenCV imports changing those
+paths during FSDP setup.
+
 ```python
 import importlib.metadata
 import json
@@ -148,5 +160,9 @@ weights of a different historical experiment.
 Receipts retain actual losses/norms, five successful input operations, actual
 G/C/EMA versions, RNG identity, source/runtime origins and capacity observations.
 They are not a formal performance or cross-reference numerical qualification.
-Fresh C51 physical drain/shadow/two-slot recovery and unified native VAE output
-remain separate unimplemented adapters, not silently supplied by this route.
+The separate [full C51 continuation](C51_CONTINUATION.md) implements its
+physical drain, shadow and two-slot recovery. Its
+[native output bridge](../../docs/guides/livewan_native_output.md) exports the
+current Student and generates on new inputs. These are explicit adapters,
+not optimizations silently enabled by this reference route; their native GPU
+qualification is recorded separately.

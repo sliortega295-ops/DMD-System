@@ -370,24 +370,48 @@ def test_real_original_grid_loop_three_cycles_exact_interrupted_continuation(
     import shutil
     shutil.rmtree(tmp_path / "run")
     restore_rng(initial_rng)
-    interrupted, partial = tiny_original_trainer(tmp_path, native, inventory, public)
-    original_after = partial.after_cycle
-    def stop_after_checkpoint(trainer, cycle):
-        original_after(trainer, cycle)
-        if cycle == 1:
-            raise InterruptedError("test stop after complete native boundary")
-    monkeypatch.setattr(partial, "after_cycle", stop_after_checkpoint)
-    with pytest.raises(InterruptedError, match="test stop"):
-        interrupted.train()
+    stopped = training(tmp_path, stop_after_cycle=1)
+    interrupted, partial = tiny_original_trainer(tmp_path, native, inventory, stopped)
+    interrupted.train()
+    assert partial.completed == 1 and partial.cursor.cursor == 6
+    assert interrupted.max_train_iters == control.max_train_iters == 3
     checkpoint = tmp_path / "run/checkpoints/cycle-000001"
-    resumed, continuation = tiny_original_trainer(tmp_path, native, inventory, public, resume=checkpoint)
-    parameter_ids = [id(p) for p in resumed.model.denoiser_module().parameters()]
-    resumed.train()
-    assert parameter_ids == [id(p) for p in resumed.model.denoiser_module().parameters()]
-    assert continuation.completed == 3 and continuation.cursor.cursor == 18
-    assert continuation.cursor.order[:18] == expected_order
-    assert equal(expected, pack_state(continuation.state))
-    assert equal(expected_rng, rng_state())
+    stale, _ = tiny_original_trainer(tmp_path, native, inventory, stopped, resume=checkpoint)
+    monkeypatch.setattr(stale, "setup", lambda **kw: pytest.fail("stale stop reached setup"))
+    with pytest.raises(ValueError, match="stop_after_cycle.*resume"):
+        stale.train()
+    # The new process must keep the original immutable target and scheduler,
+    # restore complete native state, and neither repeat nor drop a sample.
+    import subprocess
+    import sys
+    (tmp_path / "resume-public.json").write_text(json.dumps(public.to_dict()))
+    script = r'''
+import json, pathlib, sys, torch
+root, source, tests = map(pathlib.Path, sys.argv[1:])
+sys.path.insert(0, str(source / 'lightx2v_train'))
+sys.path.insert(0, str(tests))
+from test_training_h3_grid import tiny_original_trainer
+from distillschedule.training.config import load_training_config
+from distillschedule.training.checkpoint import pack_state, rng_state
+native = json.loads((root / 'native.json').read_text())
+inputs = json.loads((root / 'tiny-inputs.json').read_text())
+public = load_training_config(root / 'resume-public.json')
+owner, life = tiny_original_trainer(root, native, inputs, public,
+    resume=root / 'run/checkpoints/cycle-000001')
+parameter_ids = [id(p) for p in owner.model.denoiser_module().parameters()]
+owner.train()
+assert parameter_ids == [id(p) for p in owner.model.denoiser_module().parameters()]
+assert life.completed == 3 and life.cursor.cursor == 18 and owner.max_train_iters == 3
+assert not torch.cuda.is_initialized()
+torch.save(dict(state=pack_state(life.state), rng=rng_state(), order=life.cursor.order[:18]), root / 'resumed.pt')
+'''
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path), str(original_source),
+        str(Path(__file__).parent.resolve())], text=True, capture_output=True, timeout=90)
+    assert result.returncode == 0, result.stdout + result.stderr
+    continued = torch.load(tmp_path / "resumed.pt", weights_only=True)
+    assert continued["order"] == expected_order
+    assert equal(expected, continued["state"])
+    assert equal(expected_rng, continued["rng"])
     assert torch.cuda.is_initialized() is False
 
 

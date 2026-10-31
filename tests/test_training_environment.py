@@ -75,6 +75,15 @@ def test_livewan_forbidden_controls_remain_visible_and_rejected(key):
         _environment(value)
 
 
+@pytest.mark.parametrize("key", ["USE_TF", "USE_FLAX"])
+def test_livewan_optional_framework_import_controls_are_bound(key):
+    from distillschedule.training.livewan_reference_assets import environment_snapshot, _environment
+    value = environment_snapshot({key: "0", "HF_TOKEN": "SYNTHETIC_CREDENTIAL_NOT_REAL"})
+    assert value == {key: "0"}
+    _environment(value)
+    assert environment_snapshot({key: "1"}) != value
+
+
 @pytest.mark.parametrize("key", ["H3_PLANNER_TWO_CYCLE", "DISTILLSCHEDULE_PLAN", "LOCAL_KERNELS"])
 def test_h3_forbidden_controls_remain_visible_and_rejected(key):
     from distillschedule.training import h3_grid_training as owner

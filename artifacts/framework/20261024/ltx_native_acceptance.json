@@ -1,0 +1,150 @@
+{
+  "schema_version": "distillschedule.ltx25_functional_acceptance.v1",
+  "evidence_status": "PASS_NATIVE_TINY_CUDA_REFERENCE_NOT_PRETRAINED_NOT_PERFORMANCE",
+  "run_id": "ltx-native-gpu-r2",
+  "base_head": "3d7bb03982890e1b5bd46f8510243009902a3d47",
+  "integration_commit": "6618f63a",
+  "patch_sha256": "fb5a8652f988902a261680f8ceee92d6abf09c169d6e8277c27f92734705d86d",
+  "source_files": {
+    "src/distillschedule/data/ltx_inputs.py": "4150866de24c8e9cafea9507153bc9633e8a00f275911277257c7d8ce3b55f39",
+    "src/distillschedule/training/catalog.py": "c440d24ddee66909cdfe773c06e664bf5e9efba9ca4fe79f236edff3feacbf7d",
+    "src/distillschedule/training/config.py": "7f1e11779309ee152e7cd8c3a2b6dcba5d599a5a374e0da489e00820283277f4",
+    "src/distillschedule/training/ltx.py": "8e2a93a00e32c1d67e4879860d4837543f755c06eb8f03598f206e4070265d96",
+    "src/distillschedule/training/ltx_media.py": "07ab6a5b237c379704f0409d418db226170d61bb2583be332b0fdd89c7d2a3df",
+    "src/distillschedule/training/session.py": "e6387a27e0253ea5c9c40c17a132afd5f7a4e1b7a6d84524edc8b87b6c02013d",
+    "tests/gpu/test_training_ltx_lifecycle.py": "5d5b05d967d81f0b277ffeba5ee59be8820d642c9ea6bb0d59c1777abcc642d4",
+    "tests/test_training_ltx_cpu.py": "85814dc2b64009cf0201f5a821059d0f1265bb7372610b3a0a178758e6abaadb",
+    "tests/test_training_ltx_device.py": "cf2e709bdbd082dfec51853979a6dcff2008b236c48b69f9d435972e23d5ca97",
+    "tests/test_training_ltx_original_checkpoint.py": "7518c3a74bccee2a77760040a4d922ed756958d74d9da19a10ee2d98c2817d9f",
+    "src/distillschedule/training/ltx_source.py": "7200a39dc19ba81217ee20be29064169b383ecad7d27c99916c4cad0ffb581ea",
+    "tests/test_training_ltx_constructor.py": "ca97291beab911a28572736e9966adf9b5c2e4a7e3cdb734c9097730bda3dea8"
+  },
+  "hardware": "one A100-SXM4-40GB on the second authorized node, not distributed",
+  "runtime": {
+    "python": "3.13.11",
+    "torch": "2.10.0+cu128",
+    "transformers": "5.14.1",
+    "torchaudio": "2.10.0+cu128",
+    "torchvision": "0.25.0+cu128"
+  },
+  "test_policy": "explicit deterministic CUDA algorithms and CUBLAS_WORKSPACE_CONFIG=:4096:8; same policy in oracle and fresh CLI processes; production defaults unchanged",
+  "summary": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "4",
+    "time": "503.241",
+    "timestamp": "2026-10-24T17:55:33.831745+00:00",
+    "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0"
+  },
+  "testcases": [
+    {
+      "classname": "tests.gpu.test_training_ltx_lifecycle",
+      "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[config]",
+      "time": "62.825"
+    },
+    {
+      "classname": "tests.gpu.test_training_ltx_lifecycle",
+      "name": "test_actual_cuda_native_flow_oracle_and_complete_resident_state[lora_config]",
+      "time": "7.523"
+    },
+    {
+      "classname": "tests.gpu.test_training_ltx_lifecycle",
+      "name": "test_actual_cuda_new_process_resume_export_and_new_input_av[config]",
+      "time": "221.883"
+    },
+    {
+      "classname": "tests.gpu.test_training_ltx_lifecycle",
+      "name": "test_actual_cuda_new_process_resume_export_and_new_input_av[lora_config]",
+      "time": "205.928"
+    }
+  ],
+  "verified": [
+    "actual pinned tiny native Transformer/Gemma4/AV codecs",
+    "full-parameter and unmerged LoRA updates",
+    "direct flow-DMD oracle loss/gradients/Adam/EMA/scheduler/RNG",
+    "all resident device ownership and malformed-state rejection",
+    "fresh-process C1->C3 exact complete state against uninterrupted C3",
+    "current trained G plus native media export; new prepared prompt; CUDA AV decode and CPU inference relocation"
+  ],
+  "not_verified": [
+    "pretrained capacity or generation quality",
+    "distributed LTX ownership",
+    "CUDA auto/manual/saved-plan trial snapshots",
+    "full native 22B pipeline",
+    "performance or speedup",
+    "export-only raw input preparation, qualified in a separate follow-up"
+  ],
+  "failures_retained": [
+    {
+      "run_id": "ltx-native-gpu-r1",
+      "status": "FAILED_BEFORE_TRAINING",
+      "reason": "CPU native connector construction probed CUDA0; fixed by explicit native provider selection"
+    },
+    {
+      "run_id": "ltx-native-gpu-r2 node0 preflight",
+      "status": "NO_GPU_LAUNCH",
+      "reason": "existing unidentified GPU owners; no kill or lock bypass; rerouted same single-GPU acceptance to freshly admitted node1"
+    }
+  ],
+  "actual_gpu_attempts": 2,
+  "cleanup": {
+    "compute_processes_after": "",
+    "cgroup_before": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_after": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "oom_deltas": {
+      "oom": 0,
+      "oom_kill": 0
+    },
+    "lock_available_after": true
+  },
+  "raw_evidence": "framework_maturation_20261023/r8_framework_acceptance, remote persistent artifacts only",
+  "receipt_hashes": {
+    "reports/ltx-native-gpu-r2.xml": "02fce2e95c46cf96e109e3ebc0b686333c9248a4e4271512845ff8186370935d",
+    "reports/ltx-native-gpu-r2-start.json": "397d440cf6f85baa85ec8ed797b1ca6da6002246c79c5125f7c7d0eab59ddc95",
+    "reports/ltx-native-cpu-r4.xml": "344a0d9fad6e7d7e23bbe1c6c02eb0040845c32bfaff53385e296e795e87903c",
+    "reports/ltx-native-cpu-r4.json": "95861acf05e6becbd37421d8509db0a6dc4b2e261aa1fab1179b6bbb7f6aaf92"
+  },
+  "export_only_cpu_followup": {
+    "source": "3d7bb039+ltx-reference-r6-export-source-binding",
+    "patch_sha256": "0eeb45be5f78f11144535675b2dc06e331403a9305e586cdbdd993624b7bcb31",
+    "evidence_status": "PASS_ACTUAL_NATIVE_TINY_CPU_NOT_PRETRAINED_NOT_GPU",
+    "returncode": 0,
+    "cuda_initialized": false,
+    "suite": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "67",
+      "time": "748.982",
+      "timestamp": "2026-10-24T18:28:56.552460+00:00",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0"
+    },
+    "verified": [
+      "full-parameter and LoRA trained Student exports",
+      "training model/data/checkpoint assets retired before new-input preparation",
+      "new PNG image, frame sequence, stereo WAV and text-by-path encoded by native codecs",
+      "current trained G generation from both new prompt and raw AV prepared inputs",
+      "same-process RNG preserved on actual export preparation",
+      "each encoding helper drift rejected before codec execution and publication"
+    ],
+    "receipt_hashes": {
+      "reports/ltx-export-cpu-r2.json": "6c20291f6a0d03a21f09af9ec11fdde4b9048caf92d95107a5b9ab3d573fc1e8",
+      "reports/ltx-export-cpu-r2.xml": "ea48c8a7e446bfe7741bb24acf185a99cc63ede9bfd51ea2e2567167b852f9ab"
+    }
+  }
+}

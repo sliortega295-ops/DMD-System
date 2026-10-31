@@ -14,6 +14,7 @@ from .checkpoint import cpu_tree, rng_state, restore_rng, validate_rng, _validat
 from .helios_public_assets import checked_pin, local_file, read_json, read_args, require
 from .helios_step_owner import _SparseEMAView, _content, _plain
 from .native_state import engine_state, TrainableWeights
+from .helios_inputs import MAX_COHORTS
 from . import helios_nogan_bootstrap as bootstrap
 from distillschedule.data.helios_nogan_reference_inputs import (SCHEMA as INPUTS, SCOPE, PRECISION,
     HeliosCohortTask, decode, descriptor, conditioning_fingerprint, topology, layout_identity, source_fingerprint)
@@ -100,7 +101,7 @@ def admit_assets(parameters):
                 == [2e-6,4e-7,0.,.999,1e-8,1e-3]
             and c.max_grad_norm == c.max_grad_norm_critic == 1. and c.lr_scheduler == 'constant'
             and c.ema_decay == .99 and c.ema_start_step == 750
-            and type(c.max_train_steps) is int and 20 <= c.max_train_steps <= 330 and c.max_train_steps % 5 == 0,
+            and type(c.max_train_steps) is int and 20 <= c.max_train_steps <= 10+5*MAX_COHORTS and c.max_train_steps % 5 == 0,
             'W2 original optimizer/precision/batch/EMA/horizon controls changed')
     disabled = ('restrict_self_attn','restrict_lora','is_train_restrict_lora','is_amplify_history',
         'is_use_reward_model','is_use_ode_regression','is_only_ode_regression','is_multi_pyramid_stage_backward_simulated',
@@ -428,7 +429,7 @@ def admit_training(*,state,request,prepared_identity,prepared_manifest):
     for pin in prepared_manifest['provenance']['documents']:
         validate_source(pin)
     records = prepared_manifest['records']
-    require(2 <= len(records) <= min(64,owner.capacity) and request.trainer['cycles'] <= len(records), 'finite W2 cohort inventory exhausted')
+    require(2 <= len(records) <= min(MAX_COHORTS,owner.capacity) and request.trainer['cycles'] <= len(records), 'finite W2 cohort inventory exhausted')
     hashes,contents,sources = set(),set(),set()
     for i,record in enumerate(records):
         row = record['metadata']['trace']; content = conditioning_fingerprint(row['content'])
@@ -456,7 +457,7 @@ def native_cycle(ctx):
 def build_algorithm(components,feeds,parameters,cycle,seed):
     from distillschedule.open_workload.torch_backend import Workload
     from distillschedule.workloads.program import Program,Call
-    require(not parameters and type(cycle) is int and 0 <= cycle < 64 and set(components.state) == {'native_cycle'},
+    require(not parameters and type(cycle) is int and 0 <= cycle < MAX_COHORTS and set(components.state) == {'native_cycle'},
             'independent original W2 atomic owner required')
     owner = components.state['native_cycle']; require(type(owner) is HeliosNoGANCycleOwner, 'foreign W1/W3 owner')
     owner._validate_live(); require(owner.cycle == cycle, 'W2 cycle reordered')

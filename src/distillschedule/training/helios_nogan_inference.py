@@ -66,7 +66,7 @@ def _admit(parameters):
     """Fail closed on independent W2 identity before any real model allocation."""
     import torch
     from distillschedule.adapters.helios.reference_model import load_reference_model_class
-    from distillschedule.training.helios_inputs import HeliosCohortTask
+    from distillschedule.training.helios_inputs import HeliosCohortTask, MAX_COHORTS
     from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
     keys = {'schema_version','scope','precision','source','runtime','task','boundary','architecture',
             'peft','native','geometry','budget','evidence_kind','seed'}
@@ -83,7 +83,7 @@ def _admit(parameters):
             'invalid W2 inference seed/evidence')
     boundary = p['boundary']
     require(isinstance(boundary,dict) and set(boundary) == {'cycle','versions','warm_kind'}
-            and type(boundary['cycle']) is int and 1 <= boundary['cycle'] <= 64
+            and type(boundary['cycle']) is int and 1 <= boundary['cycle'] <= MAX_COHORTS
             and boundary['versions'] == dict(generator=2+boundary['cycle'],critic=10+5*boundary['cycle'],ema=10+5*boundary['cycle'])
             and all(type(v) is int for v in boundary['versions'].values())
             and boundary['warm_kind'] in ('OPERATOR_SUPPLIED_ORIGINAL_W2_STEP10',

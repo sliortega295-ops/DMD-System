@@ -11,6 +11,51 @@ from distillschedule.training.config import load_training_config
 from distillschedule.training.session import export, train
 
 
+@pytest.mark.parametrize("bad_pixel", [float("nan"), float("inf"), -float("inf")])
+def test_sd_decoder_rejects_nonfinite_pixels_before_uint8_conversion(bad_pixel):
+    from types import SimpleNamespace
+    from distillschedule.training.sd import _decoder
+
+    class VAE(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.anchor = torch.nn.Parameter(torch.zeros(()), requires_grad=False)
+            self.config = SimpleNamespace(scaling_factor=0.5)
+
+        def decode(self, latent):
+            image = torch.zeros(1, 3, 2, 2)
+            image[0, 0, 0, 0] = bad_pixel
+            return SimpleNamespace(sample=image)
+
+    with pytest.raises(ValueError, match="nonfinite decoded image"):
+        _decoder(VAE())({"latents": torch.zeros(1, 4, 2, 2)}, {})
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+def test_sd_decoder_preserves_native_cast_scaling_and_finite_pixels(dtype):
+    from types import SimpleNamespace
+    from distillschedule.training.sd import _decoder
+
+    image = torch.tensor([-2, -1, -0.5, 0, 0.25, 0.5, 0.9, 1, 2, 0.1, 0.2, 0.3], dtype=dtype).reshape(1, 3, 2, 2)
+    latents = torch.arange(16, dtype=torch.float32).reshape(1, 4, 2, 2)
+
+    class VAE(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.anchor = torch.nn.Parameter(torch.zeros((), dtype=dtype), requires_grad=False)
+            self.config = SimpleNamespace(scaling_factor=0.5)
+
+        def decode(self, latent):
+            assert latent.dtype == dtype
+            assert torch.equal(latent, latents.to(dtype) / self.config.scaling_factor)
+            return SimpleNamespace(sample=image)
+
+    result = _decoder(VAE())({"latents": latents}, {})["image"]
+    expected = ((image.float()[0].clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).permute(1, 2, 0).contiguous()
+    assert torch.equal(result, expected)
+    assert result.shape == (2, 2, 3) and result.dtype == torch.uint8
+
+
 def test_export_generation_uses_new_inputs_without_training_data(tmp_path):
     from distillschedule.training.session import generate_from_export
     old, new = tmp_path / "training-media", tmp_path / "new-inputs"
@@ -149,7 +194,8 @@ def test_export_admission_rejects_before_model_import(tmp_path, monkeypatch, fau
     assert not (tmp_path / "bad").exists()
 
 
-def test_export_binds_parameters_metadata_and_module_layout(tmp_path, monkeypatch):
+@pytest.mark.parametrize("fault", ["metadata", "layout"])
+def test_export_binds_parameters_metadata_and_module_layout(tmp_path, monkeypatch, fault):
     from distillschedule.training import session
     from distillschedule.training.config import TrainingConfig
     from distillschedule.training.session import generate_from_export
@@ -164,22 +210,26 @@ def test_export_binds_parameters_metadata_and_module_layout(tmp_path, monkeypatc
         generate_from_export(TrainingConfig.from_dict(raw, source=config.source), output,
                              tmp_path / "bad-parameters", prepared=root / "prepared/manifest.json")
     original = session.load_callable
-    for fault in ("metadata", "layout"):
-        def load(reference, fault=fault):
-            factory, source = original(reference)
-            def build(parameters):
-                components = factory(parameters)
-                if fault == "metadata":
-                    components.metadata = {**components.metadata, "pretrained": True}
-                else:
-                    components.state["student"] = torch.nn.Linear(1, 1)
-                return components
-            return build, source
-        monkeypatch.setattr(session, "load_callable", load)
-        with pytest.raises(ValueError, match=fault):
-            generate_from_export(config, output, tmp_path / ("bad-" + fault),
-                                 prepared=root / "prepared/manifest.json")
-        assert not (tmp_path / ("bad-" + fault)).exists()
+    constructed, closed = [], []
+    def load(reference):
+        factory, source = original(reference)
+        def build(parameters):
+            components = factory(parameters)
+            constructed.append(components)
+            components.close = lambda: closed.append(components)
+            if fault == "metadata":
+                components.metadata = {**components.metadata, "pretrained": True}
+            else:
+                components.state["student"] = torch.nn.Linear(1, 1)
+            return components
+        return build, source
+    monkeypatch.setattr(session, "load_callable", load)
+    with pytest.raises(ValueError, match=fault):
+        generate_from_export(config, output, tmp_path / ("bad-" + fault),
+                             prepared=root / "prepared/manifest.json")
+    assert len(constructed) == 1
+    assert closed == constructed
+    assert not (tmp_path / ("bad-" + fault)).exists()
 
 
 def test_changed_factory_source_rejects_before_factory_execution(tmp_path):
@@ -209,29 +259,100 @@ def test_inference_calls_only_model_factory_and_uses_eval_decoder(tmp_path, monk
     root, config, output = _export_fixture(tmp_path)
     original = session.load_callable
     decoded = []
+    constructed, closed = [], []
+    destination = tmp_path / "output"
     def load(reference):
         assert reference == config.model["factory"], "inference must not load the algorithm"
         factory, source = original(reference)
         def build(parameters):
             components = factory(parameters)
+            constructed.append(components)
             generate, decode = components.generate, components.decode
             def inference(state, feeds, parameters):
+                assert not closed
                 assert not torch.is_grad_enabled()
                 assert all(not value.training for value in state.values() if isinstance(value, torch.nn.Module))
                 return generate(state, feeds, parameters)
             def render(value, parameters):
+                assert not closed
                 assert not torch.is_grad_enabled()
                 decoded.append(True)
                 return decode(value, parameters)
+            def close():
+                assert not closed
+                assert decoded == [True]
+                assert (destination / "_SUCCESS").is_file()
+                closed.append(components)
             components.generate, components.decode = inference, render
+            components.close = close
             return components
         return build, source
     monkeypatch.setattr(session, "load_callable", load)
-    result = generate_from_export(config, output, tmp_path / "output", prepared=root / "prepared/manifest.json")
+    result = generate_from_export(config, output, destination, prepared=root / "prepared/manifest.json")
+    assert len(constructed) == 1
+    assert closed == constructed
     assert decoded == [True]
     assert result["video"]["layout"] == "THWC"
     assert result["generation_parameters"] == {}
     assert result["inference_seed"] == config.trainer["seed"]
+
+
+@pytest.mark.parametrize("fault", ["generate", "decode", "write", "completion-marker"])
+def test_export_generation_failure_closes_returned_model_once(tmp_path, monkeypatch, fault):
+    from distillschedule.training import session
+    root, config, output = _export_fixture(tmp_path)
+    destination = tmp_path / "failed-generation"
+    original = session.load_callable
+    constructed, closed, reached = [], [], []
+    error = (OSError if fault in ("write", "completion-marker") else RuntimeError)("injected " + fault + " failure")
+    def fail(*args, **kwargs):
+        assert not closed
+        reached.append(fault)
+        raise error
+    def load(reference):
+        factory, source = original(reference)
+        def build(parameters):
+            components = factory(parameters)
+            constructed.append(components)
+            components.close = lambda: closed.append(components)
+            generate, decode = components.generate, components.decode
+            def inference(state, feeds, parameters):
+                assert not closed
+                value = generate(state, feeds, parameters)
+                if fault == "generate":
+                    fail()
+                return value
+            def render(value, parameters):
+                assert not closed
+                value = decode(value, parameters)
+                if fault == "decode":
+                    fail()
+                return value
+            components.generate, components.decode = inference, render
+            return components
+        return build, source
+    monkeypatch.setattr(session, "load_callable", load)
+    if fault == "write":
+        monkeypatch.setattr(torch, "save", fail)
+    elif fault == "completion-marker":
+        write_text = Path.write_text
+        def publish(path, *args, **kwargs):
+            if path == destination / "_SUCCESS":
+                fail()
+            return write_text(path, *args, **kwargs)
+        monkeypatch.setattr(Path, "write_text", publish)
+    with pytest.raises(type(error), match="injected " + fault + " failure") as rejected:
+        session.generate_from_export(config, output, destination, prepared=root / "prepared/manifest.json")
+    assert rejected.value is error
+    assert reached == [fault]
+    assert len(constructed) == 1
+    assert closed == constructed
+    assert not (destination / "_SUCCESS").exists()
+    if fault in ("generate", "decode"):
+        assert not destination.exists()
+    elif fault == "completion-marker":
+        assert (destination / "generation.pt").is_file()
+        assert (destination / "generation.json").is_file()
 
 
 @pytest.mark.parametrize("fault", ["role", "shape", "dtype"])
@@ -337,27 +458,37 @@ def build_model(parameters):
     assert not (tmp_path / "wrong-symbol").exists()
 
 
-def test_export_integrity_rechecked_before_output_publication(tmp_path, monkeypatch):
+@pytest.mark.parametrize("fault", ["weights", "manifest"])
+def test_export_integrity_rechecked_before_output_publication(tmp_path, monkeypatch, fault):
     from distillschedule.training import session
     from distillschedule.training.session import generate_from_export
     root, config, output = _export_fixture(tmp_path)
     original = session.load_callable
+    constructed, closed = [], []
     def load(reference):
         factory, source = original(reference)
         def build(parameters):
             components = factory(parameters)
+            constructed.append(components)
+            components.close = lambda: closed.append(components)
             generate = components.generate
             def corrupt_after_loading(state, feeds, parameters):
+                assert not closed
                 value = generate(state, feeds, parameters)
-                with (output / "weights.pt").open("ab") as handle:
-                    handle.write(b"changed while generating")
+                if fault == "weights":
+                    with (output / "weights.pt").open("ab") as handle:
+                        handle.write(b"changed while generating")
+                else:
+                    _rewrite_manifest(output, lambda value: value.update(checkpoint_cycle=value["checkpoint_cycle"] + 1))
                 return value
             components.generate = corrupt_after_loading
             return components
         return build, source
     monkeypatch.setattr(session, "load_callable", load)
-    with pytest.raises(ValueError, match="hash"):
+    with pytest.raises(ValueError, match="hash|manifest changed during generation"):
         generate_from_export(config, output, tmp_path / "bad", prepared=root / "prepared/manifest.json")
+    assert len(constructed) == 1
+    assert closed == constructed
     assert not (tmp_path / "bad").exists()
 
 

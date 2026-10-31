@@ -19,6 +19,10 @@
       "sha256": "REPLACE_WITH_FILE_SHA256"
     },
     "tokenizer": "encoder-bundle/tokenizer",
+    "precision": {
+      "weights": "bfloat16",
+      "output": "float32"
+    },
     "text_len": 512,
     "tokenizer_use_fast": true
   },

@@ -1,0 +1,25 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {
+    "workload": "W3"
+  },
+  "algorithm": {
+    "name": "original_helios_gan"
+  },
+  "data": {
+    "input_kind": "original_helios_gan_cohort_stream.v1",
+    "prepared": "REPLACE_WITH_PREPARED_STREAM.json"
+  },
+  "execution": {
+    "adapter": "native",
+    "mode": "manual",
+    "preset": "helios_gan.fa3_down40_nomerge_stream.v1",
+    "task": "task.json",
+    "assets": "REPLACE_WITH_EXPLICIT_LOCAL_STREAM_ASSETS.json"
+  },
+  "trainer": {
+    "cycles": 100,
+    "checkpoint_every": 50,
+    "output_dir": "REPLACE_WITH_NEW_PROJECT_RUN_DIRECTORY"
+  }
+}

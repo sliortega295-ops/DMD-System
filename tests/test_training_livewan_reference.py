@@ -73,7 +73,8 @@ def test_public_reference_recipe_preserves_selected_c51_and_explicit_contract():
                                          source=root / "training.reference.json")
     selected = TrainingConfig.from_dict(json.loads((root / "training.json").read_text()),
                                         source=root / "training.json")
-    assert _options(reference, "W4") == "reference" and _options(selected, "W4") == "plan"
+    assert _options(reference, "W4") == "reference" and _options(selected, "W4") == "manual"
+    assert selected.execution["preset"] == "self_forcing.c51.v1" and "plan" not in selected.execution
     assert reference.trainer["cycles"] == 2
     assert reference.trainer["checkpoint_every"] == 1 and reference.trainer["seed"] == 20260830
     assert describe_native(reference)["capabilities"]["checkpoint"]["supported"] is True
@@ -1135,3 +1136,51 @@ def test_reference_failure_receipt_preserves_late_unowned_and_prior_owned_progre
     assert value["last_complete_progress"]["completed_cycles"] == 2
     assert value["last_complete_progress"]["physical_device_binding"] == binding
     assert value["error"] == "native boundary failed"
+
+
+@pytest.mark.parametrize('size,role', [('1.3B','student'), ('14B','teacher')])
+def test_original_saved_config_preserves_ignored_constructor_defaults(tmp_path, size, role):
+    """Tiny safetensors; actual original serialized config omission, not real weights."""
+    from distillschedule.training.livewan_reference_assets import frozen_inventory, _model
+    row = asset_document(tmp_path, {})['models'][role]
+    path = Path(row['root'])/'config.json'
+    value = json.loads(path.read_text())
+    for key in ('patch_size','window_size','qk_norm','cross_attn_norm'): value.pop(key)
+    path.write_text(json.dumps(value))
+    _model(frozen_inventory(row['root']), size=size, verify_payloads=False)
+
+
+@pytest.mark.parametrize('key,bad', [('patch_size',[1,4,4]), ('window_size',[2,2]),
+                                    ('qk_norm',False), ('cross_attn_norm',False)])
+def test_original_saved_config_rejects_explicit_changed_ignored_values(tmp_path, key, bad):
+    from distillschedule.training.livewan_reference_assets import frozen_inventory, _model
+    row = asset_document(tmp_path, {})['models']['student']
+    path = Path(row['root'])/'config.json'
+    value = json.loads(path.read_text()); value[key] = bad; path.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='geometry/config changed'):
+        _model(frozen_inventory(row['root']), size='1.3B', verify_payloads=False)
+
+
+@pytest.mark.parametrize('key', ['dim','ffn_dim','num_layers','text_len'])
+def test_original_saved_config_still_requires_serialized_core_geometry(tmp_path, key):
+    from distillschedule.training.livewan_reference_assets import frozen_inventory, _model
+    row = asset_document(tmp_path, {})['models']['student']
+    path = Path(row['root'])/'config.json'
+    value = json.loads(path.read_text()); value.pop(key); path.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='geometry/config changed'):
+        _model(frozen_inventory(row['root']), size='1.3B', verify_payloads=False)
+
+
+def test_original_saved_config_defaults_equal_pinned_constructor_without_import():
+    import ast, hashlib
+    from distillschedule.workloads.best_known.registry import repository_root
+    source = repository_root()/'src/distillschedule/reference/livewan_wan21/wan/modules/model.py'
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == 'c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a'
+    cls = next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.ClassDef) and n.name=='WanModel')
+    fn = next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
+    defaults = {n.arg: ast.literal_eval(v) for n,v in zip(fn.args.args[-len(fn.args.defaults):],fn.args.defaults)}
+    ignored = next(ast.literal_eval(n.value) for n in cls.body if isinstance(n,ast.Assign)
+                   and any(isinstance(t,ast.Name) and t.id=='ignore_for_config' for t in n.targets))
+    expected = dict(patch_size=(1,2,2),window_size=(-1,-1),qk_norm=True,cross_attn_norm=True)
+    assert set(expected) <= set(ignored)
+    assert {name:defaults[name] for name in expected} == expected

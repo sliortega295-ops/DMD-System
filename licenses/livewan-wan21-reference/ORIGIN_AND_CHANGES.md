@@ -38,3 +38,10 @@ validation must precede any later dataset read. No model/download is done by loa
 Qualification is tiny deterministic non-pretrained CPU fixture forward/backward
 only, not native368x640/81-frame or pretrained1.3B/14B, BF16/FlashAttention/GPU,
 world16, Program/optimizer/checkpoint restart, C51, VAE decode or quality evidence.
+
+The maintained CPU attention bridge additionally exposes an explicit,
+context-local `portable_inference_capacity` for current-Student output. Its
+caller must separately admit full model/KV/MATH-workspace host capacity. It is
+bounded, no-grad-only and restores the original limits when it exits; default
+reference/training limits and original SDPA numerical definitions are unchanged.
+This is an output capability, not new pretrained/native GPU qualification.

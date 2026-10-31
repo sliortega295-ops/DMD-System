@@ -6,18 +6,18 @@
     "scripts/distillschedule/probe_wan13b_fair_world16.py": {
       "target": "scripts/distillschedule/probe_wan13b_fair_world16.py",
       "original_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
-      "reviewed_source_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+      "source_commit": "d8fdbb5d6c80bed4a5dbf087136c0727e81774e4",
+      "integrated_sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+      "change": "explicit_v2_fresh_stream_cold_bootstrap_validation_legacy_v1_hash_guard_unchanged; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:3a89cbf1c9cc7e552c18c7014181efd7f4d3b110f2755220ccf22b6d84829475; original_import_receipt_preserved; CPU_source_lifecycle_not_native_GPU_validation"
     },
     "src/distillschedule/runtime/wan13b_lora_cast.py": {
       "target": "src/distillschedule/runtime/wan13b_lora_cast.py",
       "original_integrated_sha256": "82f43c793b34c3b532ff37f434b08a8581aa1b447d5156e0c259c6429bde26ba",
-      "reviewed_source_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
-      "source_commit": "ea29129342741b54e59c4773e07454f541fadcc7",
-      "integrated_sha256": "63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578",
-      "change": "current_branch_integration_or_cli_discovery"
+      "reviewed_source_sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+      "source_commit": "d8fdbb5d6c80bed4a5dbf087136c0727e81774e4",
+      "integrated_sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+      "change": "expose_existing_cast_ContextVar_quiescence_for_native_checkpoint_no_cast_math_change; previous_overlay=ea29129342741b54e59c4773e07454f541fadcc7:63a2e815b5db5678e760a6623db4f9d4c25bdea4d4301eea5a434cb765039578; original_import_receipt_preserved; CPU_source_lifecycle_not_native_GPU_validation"
     },
     "runtime/gst_pool_helios.py": {
       "target": "runtime/gst_pool_helios.py",
@@ -475,5 +475,183 @@
       "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
       "change": "opt_in_original_W5_complete_cycle_data_cursor_and_canonical_state_hooks_legacy_observer_unchanged; canonical_math_and_original_benchmark_path_unchanged"
     }
-  }
+  },
+  "integration_overlays": [
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "08f44a79194d046c5f30b0e88be2dd046602ac8034e3fe4a850e25ba00c3f294",
+      "integrated_sha256": "ab55dc07e95ed53f6cd800d023bbef514889d05c5d1666da3ec59408be09a0e5",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R31 explicit full C51 finite fresh continuation: shared setup/native math, bounded staging, dual-pool checkpoint lifecycle; source_commit is the exact integration base; original source/import receipts and math helpers preserved; CPU protocol only, native GPU NOT_RUN"
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "782ba8b173070a8842b517c9a89c5d25ede944f5fd877f633ef5b59e7289e759",
+      "integrated_sha256": "1f24a82c66cac25604bbb706473fdf1baeda7223bec6eaf1a6a53076d75d0c2b",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R30 reviewed native GAN fresh-stream lifecycle bridge in commit90cb5d3; exact committed file, no new training-code change in R31 integration."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
+      "previous_sha256": "0f86e95ca945e2b120259ee36c811ce20fcd4e847ee66913faf68de8e0055ed5",
+      "integrated_sha256": "62b75513dbb4d5f30a5629fa12f9a1ddb11499bd9d32d4ef86343fd182db27bf",
+      "source_commit": "90cb5d3b888ab128049fd5397420356c448aff2c",
+      "change": "R30 reviewed native GAN fresh-stream lifecycle bridge in commit90cb5d3; exact committed file, no new training-code change in R31 integration."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "bf975df918d5d922b78193b04ae3caccf545084a5b930730846700d002fbdf56",
+      "integrated_sha256": "d9cfe9874becf6e7ed676c0f994b568a08648405b80e23577d09f9b4009b5af9",
+      "source_commit": "c14dbd7a2d0843205d7530a33f237b615b683717",
+      "change": "R40 explicit prepared-latent decode CLI registration; source_commit is the exact integration base, with original import receipt preserved. No native training or historical command math changed."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+      "previous_sha256": "2e3011cdf3d662c7b712f39231acce6005e775c2e81680ccc6495852b772bf0d",
+      "integrated_sha256": "f93e2ac41cc9d00d1f1a4bca31f2b6d365d59e1e554db82ac66ee5e728308e04",
+      "source_commit": "2a7708f5064fbb6df91810145d90fd3f3b3e33b4",
+      "change": "R45 opt-in restored original-reference Grid output-only seam; normal update-loop AST and source import receipts unchanged. source_commit is exact integration base; native GPU qualification remains pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
+      "integrated_sha256": "fd154506fbc2d52ea8085e0f7ae97fd48bb90847c44b97e94af68c4487042af1",
+      "source_commit": "2a7708f5064fbb6df91810145d90fd3f3b3e33b4",
+      "change": "R45 opt-in restored original-reference Grid output-only seam; normal update-loop AST and source import receipts unchanged. source_commit is exact integration base; native GPU qualification remains pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "ab55dc07e95ed53f6cd800d023bbef514889d05c5d1666da3ec59408be09a0e5",
+      "integrated_sha256": "f8027442c43cb631287464a9e279ce1858e06f3cc8a94d0474b63e88bb5338fd",
+      "source_commit": "422e5582be57c5b060738aea8be01004c8468f83",
+      "change": "R46 opt-in complete C51 checkpoint current-Student output before streamer/context/transport construction; default update loops unchanged. Exact integration base; native CUDA qualification pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "fd154506fbc2d52ea8085e0f7ae97fd48bb90847c44b97e94af68c4487042af1",
+      "integrated_sha256": "0551a314280cb71a33e1e5a366f058cda598f91b249b7bc2e803e253445bc5ca",
+      "source_commit": "d6d8da9f792e751bc51d26c0dadcb376bb9a7d01",
+      "change": "R71 opt-in original W5 durable complete-cycle stop: only break after lifecycle checkpoint/progress publication. Exact integration base; model/loss/update/scheduler/input/observer AST and original source receipts preserved; CPU control evidence only, native GPU and numerical qualification pending."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_two_cycle_timing.py",
+      "previous_sha256": "d3dcfdeaa54d1a7cb1b0bf2589f586ef1d6274fc857da3e88cf67d8a506b5f6d",
+      "integrated_sha256": "a85057c901e2c513d63368a621a70b85932c0b2970921ca687d048c2526dbc5e",
+      "source_commit": "087779ad926cea001e191cf0c2bb03445843bb10",
+      "change": "R66 test-only native C2 timing/census and resumed-segment regression repair; record the already committed test source without rewriting its historical import receipt. No training/runtime math change."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "f8027442c43cb631287464a9e279ce1858e06f3cc8a94d0474b63e88bb5338fd",
+      "integrated_sha256": "0d59ba0ab29e8d1a85c69a25bd4d11d5f3145d81ce1fe90c06822fb63869c7c1",
+      "source_commit": "56ba6b7bcfb5639c9e3eeed56f1c1f610ff67a15",
+      "change": "R83 reviewed opt-in finite LiveWan Teacher epochs: recognize the versioned prepared-input marker and preserve its declared epoch policy in continuation evidence. Exact committed worker bytes; legacy no-replay paths, native model math and prior import/overlay receipts remain unchanged."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "d9cfe9874becf6e7ed676c0f994b568a08648405b80e23577d09f9b4009b5af9",
+      "integrated_sha256": "fa1a12ae87a5131e1ef107ae37d171776d161b544f140db4c211f2ea993fe700",
+      "source_commit": "6a4a8cabf05c75dc5540f862ccd843cc9d1d828c",
+      "change": "Public import-weights help and dispatch for existing trained-Generator initialization/export, exact committed CLI bytes from 6a4a8cab. Native training/model/loss/update/backend code is unchanged; original source import and prior overlays are preserved. Source-scoped CPU and output receipts exist; no formal-review or new native GPU claim."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "0d59ba0ab29e8d1a85c69a25bd4d11d5f3145d81ce1fe90c06822fb63869c7c1",
+      "integrated_sha256": "5406cd09fef5c7b5b0485ab7597c095d9cc8ab1d9056f18412991480fa43ecf2",
+      "source_commit": "2c94ca49464323f674ae5a229e276bc53c6b65fa",
+      "change": "Explicit default-OFF C51 host-phase scalar receipt seams, exact committed2c94 worker bytes. Original model/loss/optimizer/backend/communication/timer execution and external512MiB reserve unchanged; enabled diagnostics are nonperformance partial history. Reviewed five-path implementation with actual target Torch2.10 CPU37 cases per node; native GPU diagnosis remains NOT_RUN. Prior source import and overlay receipts preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+      "previous_sha256": "701298c250a6db3d615126b06fefb7fcc68dc60bd1da1523442619cb740d2ce2",
+      "integrated_sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_adaln.py",
+      "previous_sha256": "e9506e32e261049e3ae4ede4b5baca52e62ea0ca3dcdd8b7907e3076787c318c",
+      "integrated_sha256": "e80755094038d10908f6a7e4325d0831faab9e38af2f6a42e731cc6a0669d325",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
+      "previous_sha256": "7560c4f89a133f984bc712eecf30d8a17c568930bfab16d38da323fd12735202",
+      "integrated_sha256": "b5e0c1cf78309f68d6250bad31c0fa294b23e058f4e6cb184d2191921d393b8e",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "0551a314280cb71a33e1e5a366f058cda598f91b249b7bc2e803e253445bc5ca",
+      "integrated_sha256": "022e9fcbcb766f736209de25000e06018ec47f920a004796f40532908818c8e9",
+      "source_commit": "6225b6df51eb2c0a5c18516614ffaf6636328f65",
+      "change": "R265 default-OFF native W5 raw-backward tuple capture for correctness diagnosis only, exact committed6225b6df bytes. Native raw22 expressions and gradient return preserved; original import/overlay receipts unchanged. Root and target Torch2.10 CPU231 each pass; actual GPU tuple and W5 numerical diagnosis NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "1f24a82c66cac25604bbb706473fdf1baeda7223bec6eaf1a6a53076d75d0c2b",
+      "integrated_sha256": "5f31d0354f13bf2b38cee44a25aae106981d0a7e2ab03f26f5f549137e1eceb7",
+      "source_commit": "26490858d6e333447c9822d29b6029d9484bb337",
+      "change": "R268 exact committed26490858 source/input-admitted native-history CPU-first construction on unchanged CUDA world16 FSDP2 mesh; same bottom-up block/root policy and model/optimizer ordering. Legacy world16 and existing HSDP paths retained. Source and actual targetTorch2.10 CPU proof only; full-size CUDA construction/capacity NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_cross_kv_cache.py",
+      "previous_sha256": "f9bf1e4cb841a80648105c2b327b3d5a3322b9a209a35b9300d64093fdb0812a",
+      "integrated_sha256": "578d83354dc1e91026cf772b6a13bfc247191baca6d5956dfbb44047c72f0d12",
+      "source_commit": "497e3aef5d44bda5ed80fdb4b3a5fd5f2639edae",
+      "change": "R292 default-OFF explicit self_forcing.c51_stream_retire_textkv.v1 public-continuation-only dead Generator text cross-K/V payload retirement after the original no-grad prepare_rollout scope; empty grad-bypass marker, original next-set_text invalidation/builds, native self-KV/prefix/raw context/model/RNG/optimizer/call/shape/reserve contracts preserved. Source commit is the exact integration base; original import and prior overlays unchanged. CPU/source lifecycle evidence only; native CUDA numerics, allocator/driver-free recovery, reserve acceptance and performance NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "previous_sha256": "5406cd09fef5c7b5b0485ab7597c095d9cc8ab1d9056f18412991480fa43ecf2",
+      "integrated_sha256": "aa3764c247826bb5c0dcb758e7e70c8dbdc29e530b16753b657f27d4c1fd1a30",
+      "source_commit": "497e3aef5d44bda5ed80fdb4b3a5fd5f2639edae",
+      "change": "R292 default-OFF explicit self_forcing.c51_stream_retire_textkv.v1 public-continuation-only dead Generator text cross-K/V payload retirement after the original no-grad prepare_rollout scope; empty grad-bypass marker, original next-set_text invalidation/builds, native self-KV/prefix/raw context/model/RNG/optimizer/call/shape/reserve contracts preserved. Source commit is the exact integration base; original import and prior overlays unchanged. CPU/source lifecycle evidence only; native CUDA numerics, allocator/driver-free recovery, reserve acceptance and performance NOT_RUN."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "previous_sha256": "5f31d0354f13bf2b38cee44a25aae106981d0a7e2ab03f26f5f549137e1eceb7",
+      "integrated_sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20",
+      "source_commit": "112adf5fb165b59a4d975c110c00cb41ed38a1bc",
+      "change": "Import the SHA-pinned local FA2 dispatch under explicit offline hub settings before sealing kernel lookup. Exact committed112adf5f worker bytes; SDPA order and original model, input, update and execution policies preserved. Three focused CPU cases and both existing Torch2.10 target import-order diagnostics passed; repaired native execution remains separately qualified."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_generator_rms_epilogue.py",
+      "previous_sha256": "351f35d44bbe8d3ee1a83cdb431139f9dd184d991f05d527e988092097d1ecdd",
+      "integrated_sha256": "2f9ab9c7c80e052f74bb095c1e2e24d2496a4f770020102782c5a37679555b05",
+      "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
+      "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_livewan_rollout_cast_cache.py",
+      "previous_sha256": "fc3b6a4dcbc2f9678b37cdf42fbd6dcd184819ac999e2062c65365fe4db721c7",
+      "integrated_sha256": "c1d2de5b4d2d1e9e63fd82f66fb5f40c5cb24fd13ede16513bd04f2792a57404",
+      "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
+      "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
+    }
+  ]
 }

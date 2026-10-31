@@ -1,0 +1,402 @@
+{
+  "schema_version": "distillschedule.framework_native_flow_cuda_immutable_sharing.v1",
+  "scope": "ACTUAL_TINY_UPSTREAM_CLASS_FP32_CUDA_FUNCTIONAL_NOT_PRETRAINED_NOT_PERFORMANCE",
+  "actual_cuda_source": {
+    "base_head": "2dcc112862548895972aae6567068192a07f7bbf",
+    "patch_sha256": "964a8fd4f675bc7ace5e1220f252856281dc4af761907e843272de148b79ecc5",
+    "files": {
+      "src/distillschedule/training/catalog.py": "83c311d35db8159b913eb5286409ee5e55e937c386ffb6cd5aad5a25c5adf18a",
+      "src/distillschedule/training/flow_image.py": "fc69da9a9e3b2a7a4ce9d31e785aaf3906888d59311997bdf30b4b0cfc95320c",
+      "src/distillschedule/training/hunyuan_video.py": "b2f79a2a98162b6f9b478dd2f0e2b8367aec236132c3fcc8d784680e881d66dd",
+      "src/distillschedule/training/ltx.py": "95463bec50a6e910e192bcade3b9d2e9df78c2a063d200b489cc115dba5c1b56",
+      "src/distillschedule/training/single_device.py": "5a5683f9010cdce0ebc999a31436e1be8b7128bfbba0b6a332c5cf640ae166cf",
+      "src/distillschedule/training/wan22.py": "801f20e46585548bb353ab3c7d21954557bf9583f28dc626349fc7b0e38e01ce",
+      "tests/gpu/cuda_test_policy.py": "46f610fad6ac30985607a028921e03154d59e81bb7c538ff8d69f43b1c6a4e2b",
+      "tests/gpu/native_flow_oracle.py": "970b81adefef15c3fd04bd7cee62c809dfe20455801ff70f95ebfbab8407da36",
+      "tests/gpu/test_training_flow_image_lifecycle.py": "5797c050d8a775fd6480e5d7a627adb64b7dd13637c03fa749bf4a3fa9782984",
+      "tests/gpu/test_training_flow_video_lifecycle.py": "c8fe674041600fcbdaee6f5b73bef73cfc22fc4cf79cfa1293e198ee92bba031",
+      "tests/gpu/test_training_ltx_lifecycle.py": "6b8cb535f21c7f526c4d209ea0dcd0e73588166e0be47575a7fc271492e381ea",
+      "tests/test_training_flow_image_device.py": "ed71fb11660fc1ca3986e49e533f3a55449b14e1a3e349e9b493f59c5962448a",
+      "tests/test_training_flow_video_device.py": "a8c598f39829cbcde73e8eb32c706ca2c4e7f6e1b5125603b0ff0e58726efc9e",
+      "tests/test_training_ltx_device.py": "f65baa4f7955867411f3c5f1cd6d8c17dac579d27b3f749f5ccb9ddb61beb2d0",
+      ".github/workflows/modern-flow-cpu.yml": "e70d54274d2f05d4f2cd054a5b6f88daf35e6af124f190095093e989e1c7418e",
+      ".github/workflows/official-models-cpu.yml": "5596ba4bb8b50d6098920569f1a0e9cad4df05562303219b3bf0cefcbb453a83",
+      "tests/test_training_expansion_packaging.py": "bd77dfeb03d1a7ef5a9c0e021b84f5a11b35fe12edddc4c0a5e89dba758da359"
+    }
+  },
+  "integrated_followup_source": {
+    "base_head": "2dcc112862548895972aae6567068192a07f7bbf",
+    "patch_sha256": "6d9ce79fc3c5fbaec54ca85fc9a658bf7f81e2144e7dc2d843235921302d25b4",
+    "files": {
+      "src/distillschedule/training/catalog.py": "83c311d35db8159b913eb5286409ee5e55e937c386ffb6cd5aad5a25c5adf18a",
+      "src/distillschedule/training/flow_image.py": "fc69da9a9e3b2a7a4ce9d31e785aaf3906888d59311997bdf30b4b0cfc95320c",
+      "src/distillschedule/training/hunyuan_video.py": "b2f79a2a98162b6f9b478dd2f0e2b8367aec236132c3fcc8d784680e881d66dd",
+      "src/distillschedule/training/ltx.py": "95463bec50a6e910e192bcade3b9d2e9df78c2a063d200b489cc115dba5c1b56",
+      "src/distillschedule/training/single_device.py": "5a5683f9010cdce0ebc999a31436e1be8b7128bfbba0b6a332c5cf640ae166cf",
+      "src/distillschedule/training/wan22.py": "801f20e46585548bb353ab3c7d21954557bf9583f28dc626349fc7b0e38e01ce",
+      "tests/gpu/cuda_test_policy.py": "46f610fad6ac30985607a028921e03154d59e81bb7c538ff8d69f43b1c6a4e2b",
+      "tests/gpu/native_flow_oracle.py": "970b81adefef15c3fd04bd7cee62c809dfe20455801ff70f95ebfbab8407da36",
+      "tests/gpu/test_training_flow_image_lifecycle.py": "5797c050d8a775fd6480e5d7a627adb64b7dd13637c03fa749bf4a3fa9782984",
+      "tests/gpu/test_training_flow_video_lifecycle.py": "bf2199906614fb7fd32ae25c22819d00b9c788416587be8692706c5f08f43ec2",
+      "tests/gpu/test_training_ltx_lifecycle.py": "6b8cb535f21c7f526c4d209ea0dcd0e73588166e0be47575a7fc271492e381ea",
+      "tests/test_training_flow_image_device.py": "ed71fb11660fc1ca3986e49e533f3a55449b14e1a3e349e9b493f59c5962448a",
+      "tests/test_training_flow_video_device.py": "807406517824108a0f39554c39e05e2a57dd3ad8eb2237d3ebcd111c5bb924d9",
+      "tests/test_training_ltx_device.py": "f65baa4f7955867411f3c5f1cd6d8c17dac579d27b3f749f5ccb9ddb61beb2d0",
+      ".github/workflows/modern-flow-cpu.yml": "e70d54274d2f05d4f2cd054a5b6f88daf35e6af124f190095093e989e1c7418e",
+      ".github/workflows/official-models-cpu.yml": "5596ba4bb8b50d6098920569f1a0e9cad4df05562303219b3bf0cefcbb453a83",
+      "tests/test_training_expansion_packaging.py": "bd77dfeb03d1a7ef5a9c0e021b84f5a11b35fe12edddc4c0a5e89dba758da359"
+    },
+    "production_unchanged_from_cuda_source": true,
+    "scope": "CPU-tested receipt field correction only; not a new GPU snapshot"
+  },
+  "gpu_suite": {
+    "status": "PASS",
+    "counts": {
+      "tests": 10,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "suites": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "10",
+        "time": "1535.000",
+        "timestamp": "2026-10-24T20:50:06.393415+00:00",
+        "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0"
+      }
+    ],
+    "cases": [
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_manual_sharing_matches_reference[flux2-klein-base]",
+        "time": "53.615"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_fresh_process_resume_export_and_new_prompt[flux2-klein-base-manual]",
+        "time": "234.970"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_manual_sharing_matches_reference[qwen-image]",
+        "time": "28.705"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_image_lifecycle",
+        "name": "test_native_cuda_fresh_process_resume_export_and_new_prompt[qwen-image-manual]",
+        "time": "233.440"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_manual_sharing_matches_reference[wan22]",
+        "time": "28.032"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation[wan22-manual]",
+        "time": "306.908"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_manual_sharing_matches_reference[hunyuan_video]",
+        "time": "31.899"
+      },
+      {
+        "classname": "tests.gpu.test_training_flow_video_lifecycle",
+        "name": "test_native_cuda_video_new_process_resume_export_new_inputs_and_cpu_relocation[hunyuan_video-manual]",
+        "time": "317.606"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_manual_lora_sharing_matches_reference",
+        "time": "46.146"
+      },
+      {
+        "classname": "tests.gpu.test_training_ltx_lifecycle",
+        "name": "test_actual_cuda_new_process_resume_export_and_new_input_av[lora_config-manual]",
+        "time": "248.117"
+      }
+    ]
+  },
+  "cpu_source_r1": {
+    "status": "PASS",
+    "counts": {
+      "tests": 313,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "cuda_initialized": false
+  },
+  "cpu_source_r2": {
+    "status": "PASS",
+    "tests": 315,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "cuda_initialized": false
+  },
+  "hardware": {
+    "accelerator": "A100-SXM4-40GB",
+    "used_devices": 1,
+    "logical_device": "cuda:1",
+    "visible_devices": "0,1",
+    "world_size": 1
+  },
+  "policy": {
+    "mode": "manual",
+    "implementation": {
+      "backend": "torch-callable-resident-v1",
+      "share_immutable": true,
+      "checkpoint_bindings": []
+    }
+  },
+  "evidence_kind": "SYNTHETIC_TEST_ONLY",
+  "actual_sharing_proofs": [
+    {
+      "evidence_kind": "SYNTHETIC_TEST_ONLY",
+      "execution": {
+        "mode": "manual",
+        "implementation": {
+          "backend": "torch-callable-resident-v1",
+          "share_immutable": true,
+          "checkpoint_bindings": []
+        }
+      },
+      "cycles": 3,
+      "exact_state_gradients_rng_versions_outputs": true,
+      "alias_counts": [
+        22,
+        22,
+        22
+      ],
+      "reference_tracked_storage_bytes": 27990775,
+      "manual_tracked_storage_bytes": 27988663,
+      "capacity_scope": "tracked resident tensors only; construction still materializes all roles",
+      "pretrained_capacity": "NOT_RUN",
+      "quality_validation": "NOT_RUN",
+      "claimable_speedup": false,
+      "model_reference": {
+        "name": "ltx25"
+      },
+      "raw_report": "artifacts/native-sharing-gpu-r1/test_actual_cuda_manual_lora_s0/manual-sharing-proof.json",
+      "sha256": "34a77cd4e0b3a18f4d24ef17fe05c21a1bf00291f76d2bb32bc6d2a46d3ca1b6"
+    },
+    {
+      "evidence_kind": "SYNTHETIC_TEST_ONLY",
+      "execution": {
+        "mode": "manual",
+        "implementation": {
+          "backend": "torch-callable-resident-v1",
+          "share_immutable": true,
+          "checkpoint_bindings": []
+        }
+      },
+      "cycles": 3,
+      "exact_state_gradients_rng_versions_outputs": true,
+      "alias_counts": [
+        165,
+        165,
+        165
+      ],
+      "reference_tracked_storage_bytes": 1275148,
+      "manual_tracked_storage_bytes": 1265868,
+      "capacity_scope": "tracked resident tensors only; construction still materializes all roles",
+      "pretrained_capacity": "NOT_RUN",
+      "quality_validation": "NOT_RUN",
+      "claimable_speedup": false,
+      "model_reference": {
+        "name": "flux2-klein-base"
+      },
+      "raw_report": "artifacts/native-sharing-gpu-r1/test_native_cuda_manual_sharin0/manual-sharing-proof.json",
+      "sha256": "5258751c45c3a8c38defc88c1d1d4b40fa307d5bdb30a42a74a2dde4a2c47084"
+    },
+    {
+      "evidence_kind": "SYNTHETIC_TEST_ONLY",
+      "execution": {
+        "mode": "manual",
+        "implementation": {
+          "backend": "torch-callable-resident-v1",
+          "share_immutable": true,
+          "checkpoint_bindings": []
+        }
+      },
+      "cycles": 3,
+      "exact_state_gradients_rng_versions_outputs": true,
+      "alias_counts": [
+        41,
+        41,
+        41
+      ],
+      "reference_tracked_storage_bytes": 2653092,
+      "manual_tracked_storage_bytes": 2649204,
+      "capacity_scope": "tracked resident tensors only; construction still materializes all roles",
+      "pretrained_capacity": "NOT_RUN",
+      "quality_validation": "NOT_RUN",
+      "claimable_speedup": false,
+      "model_reference": {
+        "name": "qwen-image"
+      },
+      "raw_report": "artifacts/native-sharing-gpu-r1/test_native_cuda_manual_sharin1/manual-sharing-proof.json",
+      "sha256": "979a5b36d4e056799def2b74e937acc2e8541ad0dcd55d866fb28171725e4b84"
+    },
+    {
+      "evidence_kind": "SYNTHETIC_TEST_ONLY",
+      "execution": {
+        "mode": "manual",
+        "implementation": {
+          "backend": "torch-callable-resident-v1",
+          "share_immutable": true,
+          "checkpoint_bindings": []
+        }
+      },
+      "cycles": 3,
+      "exact_state_gradients_rng_versions_outputs": true,
+      "alias_counts": [
+        42,
+        42,
+        42
+      ],
+      "reference_tracked_storage_bytes": 718602,
+      "manual_tracked_storage_bytes": 714826,
+      "capacity_scope": "tracked resident tensors only; construction still materializes all roles",
+      "pretrained_capacity": "NOT_RUN",
+      "quality_validation": "NOT_RUN",
+      "claimable_speedup": false,
+      "model_reference": {
+        "name": "wan22-ti2v5b-t2v"
+      },
+      "raw_report": "artifacts/native-sharing-gpu-r1/test_native_cuda_video_manual_0/manual-sharing-proof.json",
+      "sha256": "63e7962bfb5647508c640f4d85f8b5922d0b5d539894e893f596c253d61fcfdb"
+    },
+    {
+      "evidence_kind": "SYNTHETIC_TEST_ONLY",
+      "execution": {
+        "mode": "manual",
+        "implementation": {
+          "backend": "torch-callable-resident-v1",
+          "share_immutable": true,
+          "checkpoint_bindings": []
+        }
+      },
+      "cycles": 3,
+      "exact_state_gradients_rng_versions_outputs": true,
+      "alias_counts": [
+        61,
+        61,
+        61
+      ],
+      "reference_tracked_storage_bytes": 75116212,
+      "manual_tracked_storage_bytes": 75109844,
+      "capacity_scope": "tracked resident tensors only; construction still materializes all roles",
+      "pretrained_capacity": "NOT_RUN",
+      "quality_validation": "NOT_RUN",
+      "claimable_speedup": false,
+      "model_reference": {
+        "name": "hunyuan15-t2v"
+      },
+      "raw_report": "artifacts/native-sharing-gpu-r1/test_native_cuda_video_manual_1/manual-sharing-proof.json",
+      "sha256": "8de68daacafeba783710acc0a30101907da542d556e3551648afe1395d397eb2"
+    }
+  ],
+  "cleanup": {
+    "checked_at_utc": "2026-10-24T21:16:23.608278+00:00",
+    "processes_after": "",
+    "lock_available": true,
+    "cgroup_before": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_after": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 3
+    },
+    "cgroup_deltas": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0
+    }
+  },
+  "sampled_driver_memory_peak_MiB": {
+    "0": 3,
+    "1": 1634,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0
+  },
+  "metadata_limitation": "R1 video CLI acceptance execution_mode was incorrectly raw due to a test loop variable. Actual execution and manual effects were asserted in the passing R1 suite. R2 fixes only the test writer, with CPU proof; no second CUDA run. R1 raw artifacts are preserved.",
+  "metadata_regression": {
+    "red": "2 expected failures: raw != reference/manual",
+    "green": "114 local CPU device tests, then 315 target Torch2.10 CPU tests",
+    "raw_r1_receipts_preserved": true,
+    "rerun_gpu_for_test_json_field": false
+  },
+  "review": {
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "actionable": 1,
+    "applied": 1,
+    "remaining": 0,
+    "artifact_sha256": "7c1d603762cf53fbd949af1f9466c791d85a5935f45d50f3b5dcb59225d710ba"
+  },
+  "raw_evidence": {
+    "root": "/home/lyy/Helios/research_artifacts/DMD-System/framework_maturation_20261023/r11_cuda_immutable_sharing",
+    "remote_large_artifacts_retained": true,
+    "acceptance_json_sha256": "7fd20c162b3200d1a6c09ac2915482f9901746ffcb7c0ea32606b3c8a0585316",
+    "cuda_junit_sha256": "b86080a7f75e88d5f299b2e07648e938f6a281ea8b68ee2d5b759c5976733b7a",
+    "cpu_r2_junit_sha256": "42418167c1c9d0ac347681c1c527486f6f0a83c3541e640468c2f38eb19c3bb2",
+    "derived_report_text_erratum": {
+      "kind": "DERIVED_COLLECTOR_TEXT_ERRATUM",
+      "applies_to": "reports/native-sharing-acceptance.json:known_metadata_limitation",
+      "original_raw_artifact_unchanged": true,
+      "correction": "The collector text prematurely described two R2 native video CLI cases as qualified. They were only prepared and NOT_RUN. R2 is CPU-only writer correction; actual R1 CUDA suite is 10 PASS. No second GPU suite was launched.",
+      "gpu_r2": "NOT_RUN",
+      "gpu_r1": "10_PASS",
+      "cpu_r2": "315_PASS"
+    }
+  },
+  "numerical_status": "NOT_RUN_FOR_USER_WORKLOAD",
+  "claimable_speedup": false,
+  "not_verified": [
+    "pretrained model capacity or quality",
+    "construction-memory reduction",
+    "multi-rank/DDP/FSDP/HSDP",
+    "AMP/BF16",
+    "CUDA auto/calibration/saved-plan trials",
+    "sustained training",
+    "performance"
+  ],
+  "full_refactor_regression": {
+    "status": "PASS_WITH_EXPLICIT_SKIPS",
+    "passed": 2152,
+    "skips": 86,
+    "subtests_passed": 20,
+    "seconds": 1171.82,
+    "cuda_initialized": false,
+    "source_id": "source-sharing-r2",
+    "torch": "2.10.0+cu128",
+    "python_lane": "original validated Python3.10 with existing pytest overlay and native lib path",
+    "junit_sha256": "15820b78c987994d9a3ebf20f4025075f137d1b9b3817d057310226fbe28a2e5",
+    "skips_are_not_gpu_acceptance": true,
+    "preflight_failures_preserved": [
+      "local omegaconf missing",
+      "target pytest overlay absent",
+      "target library path missing: CXXABI_1.3.15"
+    ]
+  }
+}

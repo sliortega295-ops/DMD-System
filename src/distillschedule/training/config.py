@@ -57,7 +57,7 @@ class TrainingConfig:
                 "model": {"name", "factory", "parameters"}, "data": {"prepared", "streams", "sharding", "validation_prepared", "sampling"},
                 "algorithm": {"name", "factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
-                              "max_candidates", "samples", "max_program_runs", "max_states"},
+                              "max_candidates", "samples", "max_program_runs", "max_states", "resident_budget"},
                 "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed", "validation"},
             }
             for key, names in allowed.items():
@@ -70,6 +70,11 @@ class TrainingConfig:
                 raise ValueError("execution.plan requires saved-plan mode")
             if mode == "manual" and not isinstance(execution.get("implementation"), dict):
                 raise ValueError("manual mode requires an explicit implementation object")
+            if 'resident_budget' in execution:
+                from .resident import ResidentTrainingBudget
+                ResidentTrainingBudget.parse(execution['resident_budget'], device=trainer.get('device', 'cpu'))
+                if 'distributed' in trainer:
+                    raise ValueError('resident budget does not admit a distributed trainer')
             for key in ("model", "algorithm"):
                 if 'name' in parts[key]:
                     from .catalog import resolve
@@ -82,6 +87,8 @@ class TrainingConfig:
                 parts[key]["factory"] = resolve_reference(parts[key]["factory"], source.parent)
                 if not isinstance(parts[key].get("parameters", {}), dict):
                     raise ValueError(f"{key}.parameters must be an object")
+            from .catalog import validate_compatibility
+            validate_compatibility(parts['model'], parts['algorithm'], trainer, execution)
             if bool(parts['data'].get('prepared')) == bool(parts['data'].get('streams')):
                 raise ValueError('exactly one of data.prepared or data.streams is required')
             if 'streams' in parts['data']:

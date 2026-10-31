@@ -23,13 +23,31 @@ MEDIA_KEYS = {'video_encoder', 'video_decoder', 'audio_encoder', 'audio_decoder'
               'text_encoder', 'text_processor'}
 
 
+def place_module(module, device):
+    """Keep the native LTX public alias and error prefix for shared ownership."""
+    from .single_device import place_module as place
+    return place(module, device, require=require)
+
+
+def validate_placement(module, device):
+    from .single_device import validate_placement as validate
+    return validate(module, device, require=require)
+
+
+def encoding_sources():
+    """Shared helper identity for prepared features and portable exports."""
+    paths = (Path(__file__), Path(__file__).with_name('ltx_source.py'),
+             Path(__file__).with_name('single_device.py'),
+             Path(__file__).parents[1] / 'data' / 'ltx_inputs.py')
+    return {path.name: file_sha256(path) for path in paths}
+
+
 def media_binding(manifest, source):
     from distillschedule.workloads.best_known.registry import fingerprint
     # A prepared encoding must not survive a numerical change in our intake
     # helpers merely because the external source/weights stayed unchanged.
-    paths = (Path(__file__), Path(__file__).parents[1] / 'data' / 'ltx_inputs.py')
     return fingerprint({'native_source': source.identity, 'media': manifest['media'],
-                        'adapter_sources': {path.name: file_sha256(path) for path in paths}})
+                        'adapter_sources': encoding_sources()})
 
 
 def file_sha256(path):
@@ -227,6 +245,7 @@ class NativeMedia(nn.Module):
         require((video.shape[0] - 1) % scales.time == 0 and video.shape[1] % scales.height == 0
                 and video.shape[2] % scales.width == 0, 'raw video dimensions violate actual native VAE scale/causal geometry')
         with torch.no_grad():
+            video = video.to(next(self.video_encoder.parameters()).device)
             return self.video_encoder(video.permute(3, 0, 1, 2).unsqueeze(0).float() / 127.5 - 1.)
 
     def encode_audio(self, audio):
@@ -241,6 +260,7 @@ class NativeMedia(nn.Module):
                 and bool(torch.isfinite(samples).all()) and bool((samples.abs() <= 1).all()),
                 'raw audio must be finite normalized TC FP32 with native channels')
         with torch.no_grad():
+            samples = samples.to(next(self.audio_encoder.parameters()).device)
             return api.encode_audio(types.Audio(waveform=samples.T.unsqueeze(0), sampling_rate=audio['sample_rate']),
                                     self.audio_encoder)
 
@@ -248,6 +268,11 @@ class NativeMedia(nn.Module):
         require(not parameters or set(parameters) <= {'rollout_sigmas'}, 'unsupported native generation parameters')
         self.source.validate()
         video, audio = generated['video_latents'], generated['audio_latents']
+        device = next(self.parameters()).device
+        validate_placement(self, device)
+        require(video.device == audio.device == device, 'native decode inputs must match the owned codec device')
+        require(not torch.is_autocast_enabled('cpu') and not torch.is_autocast_enabled('cuda'),
+                'explicit FP32 decoding with no autocast required')
         require(video.shape[0] == audio.shape[0] == 1, 'media artifact output currently requires batch one')
         frames = torch.cat(list(self.video_decoder.decode_video(video)), dim=0)
         api = self.source.import_module('ltx_core.model.audio_vae.audio_vae')

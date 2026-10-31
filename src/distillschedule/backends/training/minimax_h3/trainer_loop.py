@@ -22,7 +22,7 @@ from lightx2v_train.runtime.distributed import (
 from lightx2v_train.runtime.parallel import set_parallel_gradient_sync
 from lightx2v_train.runtime.sequence_parallel import sync_sequence_parallel_gradients
 
-from .matched_contract import FAKE_ROLE, STUDENT_ROLE, validate_global_snapshots
+from .matched_contract import FAKE_ROLE, STUDENT_ROLE, sample_identity, validate_global_snapshots
 from .model import FAKE_ADAPTER, STUDENT_ADAPTER
 from .fused_block_pointwise import validate_cycle as validate_fused_pointwise_cycle
 from .fused_qk_rmsnorm_rotary import validate_cycle as validate_fused_qk_cycle
@@ -58,6 +58,8 @@ class H3A100LoopMixin:
 
         grad_accum_iters = max(1, int(self.gradient_accumulation_iters))
         samples = self._iter_train_samples() if lifecycle is None else lifecycle.after_setup(self)
+        if lifecycle is not None and lifecycle.native_output is not None:
+            return  # Complete native restoration/export; never enter an update.
         logger.info(
             "[h3-a100] train start iter={}/{} world={} grad_accum={} fake_ratio={} reorder={}",
             current_iter,
@@ -158,7 +160,8 @@ class H3A100LoopMixin:
                 self._log_cuda_memory(f"iter_{current_iter}")
 
             if lifecycle is not None:
-                lifecycle.after_cycle(self, current_iter)
+                if lifecycle.after_cycle(self, current_iter):
+                    break
             elif self.save_every_iters and current_iter % self.save_every_iters == 0:
                 self.save_checkpoint_a100(current_iter)
 
@@ -254,18 +257,25 @@ class H3A100LoopMixin:
             conditions = self._encode_conditions(sample)
             latent_shape = self._latent_shape(sample)
             group.append(self.prepare_fake_update(latent_shape, conditions))
+            tuple_capture = getattr(self, "attention_tuple_capture", None)
+            if tuple_capture is not None:
+                tuple_capture.record_prepared(self, group[-1], sample_identity=sample_identity(sample),
+                                              fake_index=fake_index, micro_index=len(group)-1)
             self._log_residency(f"after_fake_{fake_index}_rollout_prepare")
         return group
 
     def _apply_one_fake_group(self, group: list[PreparedFakeUpdate]) -> list[torch.Tensor]:
         self.fake_optimizer.zero_grad(set_to_none=True)
+        tuple_capture = getattr(self, "attention_tuple_capture", None)
         fake_loss_metrics: list[torch.Tensor] = []
         for micro_idx, item in enumerate(group):
             self._set_shared_gradient_sync(micro_idx == len(group) - 1)
             # Keep the Fake adapter physically active from its grad forward
             # through checkpoint replay.  Nested role scopes remain intact but
             # become idempotent through the physical-state cache above.
-            with self.shared_model.role_scope(FAKE_ADAPTER):
+            with self.shared_model.role_scope(FAKE_ADAPTER), (
+                tuple_capture.fake_scope(self, item) if tuple_capture is not None else contextlib.nullcontext()
+            ):
                 with self._activation_offload_scope(f"fake_{micro_idx}") as offload:
                     self._log_residency(f"before_fake_{micro_idx}_grad_forward")
                     loss_fake = self.fake_loss(item)

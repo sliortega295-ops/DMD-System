@@ -1,0 +1,5 @@
+{
+  "schema_version": "distillschedule.wan22_t2v_inputs.v1", "family": "wan22-ti2v5b-t2v",
+  "assets": "/ABSOLUTE/local-wan22/assets.json", "mode": "prompts",
+  "records": [{"id": "new-video-0001", "prompt": "A bird flies over a lake.", "latent_shape": [1, 48, 2, 2, 2]}]
+}

@@ -60,6 +60,23 @@ class NativeDownSAC:
             and tuple((key.cycle,key.index,key.logical_step,key.version))==c['scope']
             and key.graph==c['graph']and int(self.critic.global_steps)==key.version,'CAPTURED_ACTIVE_C_SCOPE_VERSION')
 
+    def scope_key(self,*args):
+        return ScopeKey(*args).validate()
+
+    def validate_native_scope(self,generator,critic,ema):
+        require((int(generator.global_steps),int(critic.global_steps),int(ema.optimization_step))==(2,10,800),'EXACT_NATIVE_INITIAL_VERSIONS')
+        require(set(self.rows)=={(s,g)for s in range(1000,1005)for g in GRAPHS}and all(type(x)is int and x>0 for x in self.rows.values()),'ALL5_SOURCE_ATTESTED_ROW_TABLE')
+
+    def validate_sources(self,fsdp,checkpoint):
+        require(sha(fsdp.__file__)==FSDP_SHA and sha(checkpoint.__file__)==CHECKPOINT_SHA,'EXACT_NATIVE_PUBLIC_SAC_SOURCE')
+
+    def next_critic_scope(self,kwargs):
+        call_index=self.calls;require(call_index<10,'EXACT10_NATIVE_C_UPDATES')
+        cycle,index=1+call_index//5,call_index%5;step=1000+index;version=10+call_index
+        require(kwargs.get('step')==step and kwargs.get('rank')==self.rank and int(self.critic.global_steps)==version
+            and int(self.generator.global_steps)==2+cycle and int(self.ema.optimization_step)==800+cycle-1+(index>0),'SEQUENTIAL_NATIVE_CYCLE_SOURCE_VERSION_HISTORY')
+        return cycle,index,step,version
+
     def contexts(self,key,old_policy):
         self.check_key(key);cp=self.checkpoint
         require(key not in self.stores,'FRESH_STORE_PER_COMPLETE_KEY')
@@ -146,10 +163,10 @@ class NativeDownSAC:
 
     def bind(self,stack,*,p0,native,fsdp,checkpoint,generator,critic,ema):
         if not self.enabled:return
-        require(not self.bound and sha(fsdp.__file__)==FSDP_SHA and sha(checkpoint.__file__)==CHECKPOINT_SHA,'EXACT_NATIVE_PUBLIC_SAC_SOURCE')
+        require(not self.bound,'NATIVE_PUBLIC_SAC_ALREADY_BOUND')
+        self.validate_sources(fsdp,checkpoint)
         require(self.torch.__version__=='2.10.0+cu128'and fsdp.SELECTIVE_FLASH_ATTN_OP==FA3,'PINNED_TORCH_STABLE_RAW_FA3')
-        require((int(generator.global_steps),int(critic.global_steps),int(ema.optimization_step))==(2,10,800),'EXACT_NATIVE_INITIAL_VERSIONS')
-        require(set(self.rows)=={(s,g)for s in range(1000,1005)for g in GRAPHS}and all(type(x)is int and x>0 for x in self.rows.values()),'ALL5_SOURCE_ATTESTED_ROW_TABLE')
+        self.validate_native_scope(generator,critic,ema)
         from helios.utils.utils_helios_post import _critic_loss
         body=inspect.getsource(_critic_loss).encode()
         require(hashlib.sha256(body).hexdigest()==CRITIC_BODY_SHA,'EXACT_ORIGINAL_CRITIC_BODY')
@@ -190,7 +207,7 @@ class NativeDownSAC:
             def call(module,*args,**kwargs):
                 if self.current is None or id(module)not in self.block_ids:return original(module,*args,**kwargs)
                 c=self.current;cycle,index,step,version=c['scope']
-                key=ScopeKey(self.rank,cycle,index,step,version,c['graph'],self.block_ids[id(module)]).validate();self.check_key(key)
+                key=self.scope_key(self.rank,cycle,index,step,version,c['graph'],self.block_ids[id(module)]);self.check_key(key)
                 require(not kwargs.get('operation_source',False)and 'context_fn'not in kwargs,'UNCHANGED_NATIVE_CHECKPOINT_DOMAIN')
                 selected=kwargs.get('selective_flash_receipt')
                 require((selected is not None)==(key.block%2==0),'ORIGINAL_EVEN20_SELECTION')
@@ -240,10 +257,7 @@ class NativeDownSAC:
             @functools.wraps(original)
             def call(*args,**kwargs):
                 require(not args and kwargs.get('critic_engine')is critic and self.current is None and not self.stores,'EXACT_C_HELPER_OWNED_ENGINE_ONCE')
-                call_index=self.calls;require(call_index<10,'EXACT10_NATIVE_C_UPDATES')
-                cycle,index=1+call_index//5,call_index%5;step=1000+index;version=10+call_index
-                require(kwargs.get('step')==step and kwargs.get('rank')==self.rank and int(critic.global_steps)==version
-                    and int(generator.global_steps)==2+cycle and int(ema.optimization_step)==800+cycle-1+(index>0),'SEQUENTIAL_NATIVE_CYCLE_SOURCE_VERSION_HISTORY')
+                cycle,index,step,version=self.next_critic_scope(kwargs)
                 c=dict(scope=(cycle,index,step,version),graph=None,forwards=0,backwards=0,commits=0,closed=False)
                 self.current=c;primary=None
                 try:

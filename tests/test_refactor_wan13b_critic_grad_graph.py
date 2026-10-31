@@ -1,3 +1,4 @@
+import ast
 from types import SimpleNamespace
 import pytest
 from distillschedule.runtime.wan13b_critic_grad_graph import (
@@ -68,6 +69,53 @@ def test_cpu_dispatch_update_backward_and_rng_contract(monkeypatch):
         model(hidden_states=torch.zeros(3, 4), return_dict=False)
 
 
+def _assert_native_worker_segment_validation(source):
+    function = next(node for node in ast.parse(source).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "run_worker")
+    calls = [node for node in ast.walk(function) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name)]
+    executions = [node for node in calls if node.func.id == "execute_cycles"]
+    assert len(executions) == 1
+    keywords = {keyword.arg: keyword.value for keyword in executions[0].keywords}
+    for name in ("cycles", "start_cycle", "stop_after_cycle"):
+        assert isinstance(keywords[name], ast.Name) and keywords[name].id == name
+
+    validations = [node for node in calls if node.func.id == "validate_build"
+                   and any(keyword.arg == "executed" for keyword in node.keywords)]
+    assert len(validations) == 2
+    branches = [node for node in ast.walk(function) if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name) and node.test.id == "start_cycle"
+                and all(call in list(ast.walk(node)) for call in validations)]
+    assert len(branches) == 1
+    branch = branches[0]
+    assert executions[0].lineno < branch.lineno
+    assert len(branch.body) == len(branch.orelse) == 1
+    bounds = [node for node in function.body if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "end_cycle"
+                      for target in node.targets)]
+    assert len(bounds) == 1
+    code = compile(ast.Module(body=[bounds[0], branch], type_ignores=[]), "<native-build-validation>", "exec")
+    for cycles, start_cycle, stop_after_cycle, expected in (
+        (2, 0, None, 2),
+        (8, 0, 4, 4),
+        (8, 2, 4, 2),
+        (8, 4, None, 4),
+    ):
+        observed = []
+        strategy, build, result = object(), object(), object()
+
+        def validate_build(*args, **kwargs):
+            observed.append((args, kwargs))
+            return result
+
+        scope = dict(cycles=cycles, start_cycle=start_cycle, stop_after_cycle=stop_after_cycle,
+                     strategy=strategy, session=SimpleNamespace(build=build), receipt={},
+                     validate_build=validate_build)
+        exec(code, scope)
+        assert observed == [((strategy, build), {"executed": True, "cycles": expected})]
+        assert scope["receipt"]["backend_effects"] is result
+
+
 def test_default_off_and_capture_boundaries_source():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
@@ -80,5 +128,22 @@ def test_default_off_and_capture_boundaries_source():
     assert "optimizer.step" not in source
     worker = (root/"src/distillschedule/strategies/wan_worker.py").read_text()
     evidence = (root/"src/distillschedule/runtime/wan_incumbent_evidence.py").read_text()
-    assert "validate_build(strategy, session.build, executed=True, cycles=cycles)" in worker
+    _assert_native_worker_segment_validation(worker)
     assert "backward_replay_calls=5*cycles" in evidence
+
+
+@pytest.mark.parametrize("old,new", [
+    ("cycles=end_cycle-start_cycle", "cycles=end_cycle"),
+    ("cycles=end_cycle)", "cycles=cycles)"),
+    ("executed=True", "executed=False"),
+    ("start_cycle=start_cycle", "start_cycle=0"),
+    ("stop_after_cycle=stop_after_cycle", "stop_after_cycle=None"),
+    ("end_cycle = cycles if stop_after_cycle is None else stop_after_cycle", "end_cycle = cycles"),
+])
+def test_native_worker_segment_validation_rejects_unbound_census(old, new):
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "src/distillschedule/strategies/wan_worker.py").read_text()
+    assert old in source
+    with pytest.raises(AssertionError):
+        _assert_native_worker_segment_validation(source.replace(old, new))

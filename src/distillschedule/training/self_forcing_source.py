@@ -1,8 +1,8 @@
-"""Explicit CPU import/placement ports of hash-locked official Self-Forcing.
+"""Explicit single-device ports of hash-locked official Self-Forcing.
 
 Numerical model, loss, scheduler, rollout and cache-write bodies remain upstream
 definitions. Only constructors, attention provider, cache allocations and six
-training-boundary ``.cuda()`` calls need a single-process CPU compatibility port.
+training-boundary ``.cuda()`` calls need an explicit single-device port.
 No aliases are installed in the user's ``wan``, ``model`` or ``pipeline`` modules.
 """
 from __future__ import annotations
@@ -49,7 +49,7 @@ def require(condition, message):
 
 
 class SingletonBroadcast:
-    """Local CPU rank0 only; a real group always retains its real broadcast."""
+    """Local rank0 only; a real group always retains its real broadcast."""
     @staticmethod
     def is_initialized():
         import torch.distributed as dist
@@ -66,14 +66,15 @@ class SingletonBroadcast:
         import torch.distributed as dist
         if dist.is_initialized():
             return dist.broadcast(tensor, src=src)
-        require(src == 0 and tensor.device.type == 'cpu'
+        require(src == 0 and tensor.device.type in ('cpu', 'cuda')
                 and all(int(os.environ.get(key, default)) == int(default)
-                        for key, default in (('WORLD_SIZE', '1'), ('RANK', '0'), ('LOCAL_RANK', '0'))),
-                'uninitialized broadcast is only valid for a true CPU singleton')
+                        for key, default in (('WORLD_SIZE', '1'), ('LOCAL_WORLD_SIZE', '1'),
+                                             ('RANK', '0'), ('LOCAL_RANK', '0'))),
+                'uninitialized broadcast is only valid for a true single-device singleton')
         return None
 
 
-def cpu_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale=None,
+def fp32_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale=None,
                   q_scale=None, causal=False, window_size=(-1, -1), deterministic=False,
                   dtype=None, version=None, fa_version=None):
     """FP32 SDPA reference to native varlen attention, including real masks.
@@ -84,8 +85,9 @@ def cpu_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale
     """
     import torch
     from torch.nn.attention import SDPBackend, sdpa_kernel
-    require(all(t.device.type == 'cpu' and t.dtype == torch.float32 and t.layout == torch.strided
-                for t in (q, k, v)) and dropout_p == 0., 'CPU attention requires FP32/no-dropout')
+    require(q.device.type in ('cpu', 'cuda') and all(t.device == q.device and t.dtype == torch.float32
+                and t.layout == torch.strided for t in (q, k, v)) and dropout_p == 0.,
+            'single-device attention requires FP32/no-dropout')
     require(q.ndim == k.ndim == v.ndim == 4 and q.shape[0] == k.shape[0] == v.shape[0]
             and k.shape[:3] == v.shape[:3] and q.shape[2] == k.shape[2], 'unsupported attention layout')
     outputs = []
@@ -100,9 +102,9 @@ def cpu_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale
             query = query * q_scale
         mask = None
         if causal or tuple(window_size) != (-1, -1):
-            qp = torch.arange(nq)[:, None] + nk - nq  # FA bottom-right alignment
-            kp = torch.arange(nk)[None, :]
-            mask = torch.ones(nq, nk, dtype=torch.bool)
+            qp = torch.arange(nq, device=q.device)[:, None] + nk - nq  # FA bottom-right alignment
+            kp = torch.arange(nk, device=q.device)[None, :]
+            mask = torch.ones(nq, nk, dtype=torch.bool, device=q.device)
             if causal:
                 mask &= kp <= qp
             if window_size[0] >= 0:
@@ -117,8 +119,11 @@ def cpu_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale
     return torch.cat(outputs)
 
 
+cpu_attention = fp32_attention  # Retain the original CPU reference import.
+
+
 def _uncached_not_admitted(*args, **kwargs):
-    raise ValueError('official Self-Forcing: uncached causal/flex path is not admitted by the CPU cached owner')
+    raise ValueError('official Self-Forcing: uncached causal/flex path is not admitted by the cached owner')
 
 
 def _definitions(path, *, exclude=()):
@@ -220,9 +225,9 @@ def _original(root):
                   List=List, Optional=Optional, Tuple=Tuple)
     scopes = {name: dict(common) for name in definitions}
     scopes['wan.modules.model'].update(ConfigMixin=ConfigMixin, register_to_config=register_to_config,
-        ModelMixin=ModelMixin, repeat=repeat, flash_attention=cpu_attention)
+        ModelMixin=ModelMixin, repeat=repeat, flash_attention=fp32_attention)
     scopes['wan.modules.causal_model'].update(ConfigMixin=ConfigMixin, register_to_config=register_to_config,
-        ModelMixin=ModelMixin, attention=cpu_attention, create_block_mask=_uncached_not_admitted,
+        ModelMixin=ModelMixin, attention=fp32_attention, create_block_mask=_uncached_not_admitted,
         flex_attention=_uncached_not_admitted, BlockMask=object, dist=SingletonBroadcast)
     scopes['model.base'].update(rearrange=rearrange, dist=SingletonBroadcast)
     scopes['pipeline.self_forcing_training']['dist'] = SingletonBroadcast

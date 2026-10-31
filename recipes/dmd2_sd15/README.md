@@ -93,7 +93,7 @@ generator/guidance classifier weights. These example weights are declared
 choices, not a claim to reproduce a paper configuration. Prepare the `real`
 stream from `images.template.json` or pinned latents, and replace all paths.
 The separate 1280-channel GAN-head forward/backward test is **not** full-GAN
-training acceptance; full-GAN/pretrained quality and GPU execution are NOT_RUN.
+training acceptance; full-GAN/pretrained quality remain NOT_RUN.
 
 ## CPU starter and evidence boundary
 
@@ -108,11 +108,38 @@ The helper constructs local **random tiny real Diffusers UNet/CLIP/VAE** assets
 and tokenizers. It does not download a pretrained model and does not establish
 image quality, training convergence, throughput, or production parity.
 
-CPU1 FP32 is the validated integration boundary. CUDA/AMP, distributed/FSDP and
-GPU scheduling are NOT_RUN. The common backend consumes the owner's live
+CPU1 FP32 and the separately tested random-tiny single-device CUDA FP32
+reference are validated within their documented scope. Explicitly select
+`trainer.device: "cuda:0"` (or the owned CUDA index) and `execution.mode:
+"reference"`. It places all native modules, scheduler/conditioning tensors,
+inputs and restored Adam moments on that device; RNG and noncapturable Adam
+step metadata stay on the host. Current-G generation and portable inference
+reload use their explicitly selected CPU/CUDA placement. The A100 acceptance
+passed native-oracle and fresh-process continuation checks under an explicit
+deterministic test policy; production defaults were not changed. This is
+**not full pretrained CUDA validation**: production capacity, pretrained
+quality and performance remain NOT_RUN; AMP and FSDP ownership remain rejected.
+A separate opt-in [FP32 native role DDP reference](../../docs/guides/native_owner_backends.md#persistent-native-dmd2-role-ddp)
+has actual CPU2 training and fresh-process continuation evidence; it does not
+qualify GAN or the measured mixed-precision GPU portfolio. See
+acceptance scope (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
+The common backend consumes the owner's live
 `runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
-including native plain conditioning/scheduler tensors. That wiring is not
-CUDA validation: the adapter still rejects CUDA/AMP/distributed placement.
+including native plain conditioning/scheduler tensors.
+
+For source-qualified tiny native profiles, an explicit
+[`execution.resident_budget`](../../docs/guides/resident_owner_training.md)
+connects direct checkpoint policy, measured `auto`, saved-plan execution and
+fresh-process continuation to the common lifecycle. Trials retain the native
+owner and snapshot/restore within declared construction, host and device
+budgets. Without this admission, CUDA auto/plan/`owner_execution` remain
+rejected before model allocation; whole-owner CUDA copies remain forbidden.
+Optional
+`tests/gpu/test_training_dmd2_lifecycle.py` uses the existing random tiny actual
+fixtures for native-source parity, host-checkpoint restore, new-process resume
+and current-G export/reload. It skips on CPU-only Torch and is not pretrained
+or full-GAN GPU evidence.
+
 Before update or checkpoint save, live mathematical settings, initially
 frozen Teacher/CLIP/VAE/base-LoRA tensors and native conditioning/scheduler
 tables must match their initial fingerprints. Upstream's post-first-guidance
@@ -188,6 +215,17 @@ files, which may be copied to a different directory independently of the old
 base weights. Tokenizer-only input preparation does not load or require a VAE.
 New raw/preencoded image inputs additionally bind the matching VAE bytes.
 
+For this SD1.5 recipe and [SDXL](../dmd2_sdxl/README.md), follow the
+[common inference-request builder and generation steps](../../docs/guides/training.md#generate-and-export)
+after export and native preparation of new prompts. Supply your original
+training request, the completed export and the new prepared manifest to create
+`inference.json`, then generate with `--output-kind image`. Do not reuse the
+training request's `sd15`/`sdxl` name or training factory: use only the exact
+inference factory and parameters from the verified export, preserving the
+explicit external source root. Keep an independent inference seed in the
+trainer section. The common export-only **input preparer** is not admitted for
+SD; continue to use this recipe's native SD input preparation.
+
 ### Official generator-weight mapping
 
 The common export's `weights.pt` is a named mapping: `generator` contains the
@@ -215,3 +253,27 @@ with real updated SD1.5, SDXL and SDXL-LoRA exports and new native owners.
 It imports **weights only**, starts new optimizer/scheduler/native clocks and
 does not resume Fake Score, RNG or data positions. Only a complete framework
 checkpoint supplied to `train --resume` restores the training trajectory.
+
+## Additional explicit owner profiles
+
+The [component checkpoint template](training.component-checkpoint.json) keeps
+Generator checkpointing and retains Fake epsilon activations, with independent
+real execution counters. The [FP32 role-DDP template](training.ddp-fp32.json)
+uses actual persistent native role wrappers and the common per-rank full-state
+checkpoint lifecycle. They are independent opt-ins, not interchangeable flags
+or the full measured GPU optimization portfolio. Read the
+[scope, restart clocks and refusals](../../docs/guides/native_owner_backends.md)
+before selecting either.
+
+## Optimized distributed configuration
+
+Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.
+
+### FSDP2 reference
+
+`training.fsdp2.json` uses the original SD1.5 GAN workload with world16 FSDP2
+role ownership, native mixed-precision exceptions and the common checkpoint
+lifecycle. It does not enable the Resident optimization bundle. See
+[the FSDP2 guide](../../docs/guides/dmd2_fsdp2_reference.md) for launch, same-topology
+resume and collective export. The source integration is opt-in; public GPU
+lifecycle qualification is tracked separately from the historical measurement.

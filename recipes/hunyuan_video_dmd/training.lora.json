@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.training.v1",
+  "model": {"name": "hunyuan15-t2v", "parameters": {
+    "assets": "/ABSOLUTE/local-hunyuan15/assets.json",
+    "trainable": {"mode": "lora", "rank": 2, "alpha": 2.0, "targets": ["proj_out"]},
+    "student_lr": 0.003, "fake_lr": 0.004, "scheduler_gamma": 0.95, "ema_decay": 0.9,
+    "generation_sigmas": [1.0, 0.75, 0.5, 0.25, 0.0]
+  }},
+  "algorithm": {"name": "dmd", "parameters": {
+    "fake_updates": 5, "fake_sample_policy": "reuse_student", "rollout_sigmas": [1.0, 0.75, 0.5, 0.25, 0.0],
+    "gradient_policy": "all_steps", "sigma_min": 0.1, "sigma_max": 0.9, "teacher_cfg": 1.0, "fake_cfg": 1.0,
+    "student_loss": "flow_x0_surrogate", "fake_loss": "flow_velocity_mse", "normalizer": "per_modality_mean_abs",
+    "normalizer_epsilon": 0.00001, "modality_weights": {"video": 1.0}, "max_grad_norm": 1.0
+  }},
+  "data": {"prepared": "/ABSOLUTE/prepared/manifest.json"},
+  "execution": {"mode": "reference"},
+  "trainer": {"cycles": 3, "seed": 101, "device": "cpu", "checkpoint_every": 1, "output_dir": "./hunyuan15-training"}
+}

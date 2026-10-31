@@ -50,6 +50,8 @@ def main(argv=None):
                     p.add_argument('--stream', type=Path, required=True)
                     p.add_argument('--checkpoint-every', type=int, default=0)
                     p.add_argument('--resume-from', type=Path)
+                    p.add_argument('--stop-after-cycle', type=int,
+                                   help='stop after publishing a complete checkpoint; keep the full stream horizon')
         if name in ('capture-inputs', 'prepare-task', 'auto-run'):
             p.add_argument('--sources', type=Path, required=True)
             p.add_argument('--training-config', type=Path, required=True)
@@ -117,6 +119,8 @@ def main(argv=None):
             options = {}
             if args.checkpoint_every or args.resume_from:
                 options.update(checkpoint_every=args.checkpoint_every, resume_from=args.resume_from)
+            if args.stop_after_cycle is not None:
+                options['stop_after_cycle'] = args.stop_after_cycle
             result = run_worker(task, assets, output=args.output, mode='run' if args.plan else 'train',
                                 plan_path=args.plan, **({'strategy': strategy} if strategy else {}),
                                 cycles=len(stream['cohorts']), stream_path=args.stream, **options)
