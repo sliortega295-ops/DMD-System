@@ -191,7 +191,9 @@ def _project(view, codec, request, *, schema=SCHEMA, variant='no-gan', source_fa
         peft=dict(r=peft.r, lora_alpha=peft.lora_alpha, lora_dropout=peft.lora_dropout,
                   init_lora_weights=peft.init_lora_weights, target_modules=sorted(peft.target_modules),
                   exclude_modules=sorted(peft.exclude_modules)), task=task.to_dict(),
-        native=dict(args={k: getattr(view.args.training_config, k) for k in SHIFT_KEYS},
+        # The native P0 parser is flat and has no sampler Args. Its original
+        # rollout helpers construct these fixed dynamic-shift controls locally.
+        native=dict(args={k: video.NATIVE['args'][k] for k in SHIFT_KEYS},
                     scheduler=deepcopy(video.NATIVE['scheduler']), rollout=video._rollout(task)),
         noise_protocol=video.noise_protocol(), geometry=dict(noise_shape=list(task.latent_shape),
             prompt_shape=request['prompt_shape'], video_shape=[task.video_frames, task.video_height, task.video_width, 3],

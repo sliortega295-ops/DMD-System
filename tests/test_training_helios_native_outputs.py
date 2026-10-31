@@ -75,6 +75,43 @@ def _marker_engines(current=False):
     return g, c, ema
 
 
+def _native_parser_args(root, *, variant='no-gan'):
+    """The real native parser is flat; its rollout constructs fixed shift Args."""
+    import argparse
+    from distillschedule.training import helios_worker as worker
+    from distillschedule.training.helios_reference_assets import SCHEMA as ASSETS
+    roles = ('generator_model', 'generator_precast', 'score_model', 'score_precast',
+             'logical_checkpoint', 'negative_prompt')
+    assets = dict(schema_version=ASSETS, assets={role: dict(path=str(root / role)) for role in roles})
+    argv = worker.reference_argv(assets, root / 'SYNTHETIC_TEST_ONLY_PARSER',
+        stream=dict(cohorts=[dict(trace_bundle=str(root / 'trace'), trace_hash='2' * 64)]),
+        logical_hash='1' * 64)
+    argv[argv.index('--variant') + 1] = variant
+    args = worker._backend().impl._parser().parse_args(argv)
+    assert type(args) is argparse.Namespace and args.variant == variant
+    assert not hasattr(args, 'training_config')
+    assert not any(hasattr(args, key) for key in ('base_seq_len', 'max_seq_len', 'base_shift', 'max_shift'))
+    return args
+
+
+def test_native_flat_parser_has_no_sampler_config_and_fixed_rollout_controls_match():
+    import ast
+    from distillschedule.training import helios_native_inference as output
+    from distillschedule.training.helios_inference import SHIFT_KEYS
+    from distillschedule.workloads.best_known.registry import repository_root
+    root = repository_root()
+    _native_parser_args(root)
+    for relative in ('runtime/gst_pool_helios.py', 'runtime/static_fsdp2_p0_helios.py',
+                     'runtime/critic_pool_helios.py'):
+        tree = ast.parse((root / relative).read_text())
+        controls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name) and node.func.id == 'SimpleNamespace'
+                    and {kw.arg for kw in node.keywords} >= set(SHIFT_KEYS)]
+        assert len(controls) == 1
+        actual = {kw.arg: ast.literal_eval(kw.value) for kw in controls[0].keywords if kw.arg in SHIFT_KEYS}
+        assert actual == output.video.NATIVE['args']
+
+
 def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request, callback_type, task=None):
     """Actual public/worker/lifecycle/native-state chain; CUDA/asset intake injected.
 
@@ -129,6 +166,7 @@ def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request,
     monkeypatch.setattr(worker, 'reference_process_group', transport)
     monkeypatch.setattr(safe, 'validate_environment', lambda **kw: None)
     monkeypatch.setenv('RANK', '0')
+    args = _native_parser_args(tmp_path)
     observed = []
     def main():
         binding = lifecycle.current_training()
@@ -140,7 +178,6 @@ def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request,
             binding['effective_configuration'] = dict(scope='SYNTHETIC_INSTALLATION_ONLY')
         a, b, shadow = engines_factory(current=False)
         ids = [[id(p) for p in e.module.parameters()] for e in (a, b)]
-        args = NS(training_config=NS(base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15))
         result = {}
         lifecycle.execute_cycles(p0=NS(), args=args, policy=NS(), generator=a, critic=b, ema=shadow,
             diagnostics=None, negative=None, rank=0, device='cpu', binding=binding, result=result)

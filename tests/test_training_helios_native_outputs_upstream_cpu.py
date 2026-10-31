@@ -51,6 +51,7 @@ def test_public_native_w2_export_restores_current_g_then_new_process_decodes_new
     assert manifest['checkpoint_cycle'] == 100
     assert manifest['model']['factory'] == output.FACTORY
     p = manifest['model']['parameters']
+    assert p['native']['args'] == dict(base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15)
     assert p['task']['model_family'] == 'helios14b' and p['task']['variant'] == 'no-gan'
     assert p['task']['video_height'] == 384 and p['task']['video_width'] == 640 and p['task']['video_frames'] == 33
     assert p['geometry']['noise_shape'] == [1, 16, 9, 48, 80]

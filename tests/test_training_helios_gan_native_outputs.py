@@ -116,6 +116,8 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
     monkeypatch.setattr(gan.distributed, 'world16_reference_process_group', transport)
     monkeypatch.setattr(gan, 'validate_environment', lambda: None)
     monkeypatch.setenv('RANK', '0')
+    from test_training_helios_native_outputs import _native_parser_args
+    args = _native_parser_args(root, variant='gan')
     observed = []
     class NoCycle:
         def __getattr__(self, name):
@@ -128,7 +130,6 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
         ids = [[id(p) for p in e.module.parameters()] for e in (a, b)]
         modes = [[(n, m.training) for n, m in e.module.named_modules()] for e in (a, b)]
         flags = [[p.requires_grad for p in e.module.parameters()] for e in (a, b)]
-        args = NS(training_config=NS(base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15))
         result = {}
         gan.execute_cycles(p0=NS(), args=args, policy=NS(), result=result, rank=0, device='cpu',
             generator=a, critic=b, ema=shadow, diagnostics=None, negative=None, cfg=None,
