@@ -63,6 +63,38 @@ Import it with `distillctl data import`; the generic preencoded format preserves
 the complete tensors and source identity. No training trace, negative prompt,
 fabricated history, resizing or implicit prefix crop is used.
 
+If the clean opening is RGB rather than already-normalized latents, use the
+explicit `distillschedule.livewan_native_new_inputs.v1` request and preparer:
+
+```sh
+CUDA_VISIBLE_DEVICES='' distillctl data prepare /PROJECT/new-opening.json \
+  --preparer distillschedule.data.livewan_native_inputs:prepare_inputs \
+  --output /PROJECT/prepared-new
+```
+
+The request has exactly `schema_version`, `evidence_kind`, `geometry`, `budget`,
+`codec`, `positive` and `opening`. Use the native evidence kind and unchanged
+geometry/budget/codec from the export request. `positive` contains a complete
+`manifest` file pin (`path`, `bytes`, `sha256`) and one explicit `sample_id` from
+an already-prepared **new raw positive prompt**. Its sole `prompt_embeds` tensor
+must already be exact FP32 `[1,512,4096]`; this step neither reruns T5 nor pads,
+casts or substitutes a training prompt. `opening` contains `world_frames`
+(`3`, `6` or `9`) and a `frames` list with exactly `(world_frames-1)*4+1`
+distinct, complete RGB PNG file pins. Every supplied image must already be
+368×640; this list is the explicit clean history, not an implicit crop of a
+latent training trajectory. Supplying the first nine images of an existing
+video is legal only when those nine files are explicitly chosen and pinned;
+their origin is retained and is not relabeled as this Student's output.
+
+Only the pinned original VAE is loaded, on CPU FP32. All supplied frames are
+encoded deterministically using posterior **mode**, then normalized as
+`(z-latents_mean)/latents_std`. No Student is loaded during preparation and no
+training RNG is consumed. The published dataset is create-only and records the
+exact prompt feature, opening images, codec files and request/source identities.
+
+Choose **one** preparation route; the following import is only for an already
+normalized preencoded record. Both routes use the same independent generator:
+
 ```sh
 distillctl data import /PROJECT/new-inputs.json --output /PROJECT/prepared-new
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 distillctl generate /PROJECT/outputs/current-student.inference.json \
@@ -96,3 +128,29 @@ streamer, original VAE, a fresh-process generation path and real Gloo role
 partitioning. Tiny fixture geometry is explicitly 32×32 and cannot be selected
 by the native production export. Production world16 CUDA output and pretrained
 quality remain later acceptance gates.
+
+## Collecting an independent output
+
+The generic generation `_SUCCESS` binds `generation.json`, not each separate
+PNG. A read-only native output collector checks the actual public export and
+prepared dataset, finite FP32 latent output and unchanged clean prefix, exact
+81-frame RGB geometry, and pixel equality between every PNG and the actual
+decoded tensor. It publishes a fresh separate hash inventory, without repairing
+or rewriting the original output or marker:
+
+```sh
+CUDA_VISIBLE_DEVICES='' python -m distillschedule.evidence.livewan_native_output \
+  --weights /PROJECT/outputs/current-student \
+  --prepared /PROJECT/prepared-new/manifest.json \
+  --generated /PROJECT/generated \
+  --receipt /PROJECT/reports/current-student-output.json
+```
+
+Use a new generation directory and receipt for every attempt. A failed or
+occupied attempt is never reused. The collector's PASS is an **output component
+only**: it does not accept a failed native owner, rerun numerical validation,
+establish generation quality or claim a speedup. Weights-initialization exports
+retain their original cycle/source and numerical result at current cycle zero;
+an assembled C100 Student output must not be called a C2 checkpoint Student
+output. Separately validated C1/fresh-C2 checkpoint components do not repair an
+original owner/finalization failure either.

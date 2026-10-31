@@ -44,8 +44,9 @@ def inference_config(root, manifest, prepared):
 
 
 def _process(script, root):
+    env=dict(os.environ);env.pop('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',None)
     result = subprocess.run([sys.executable, '-c', script, str(root)], cwd=repository_root(),
-                            env=dict(os.environ), text=True, capture_output=True, timeout=240)
+                            env=env, text=True, capture_output=True, timeout=240)
     assert result.returncode == 0, result.stdout + result.stderr
     return result
 
@@ -55,13 +56,18 @@ def portable(tmp_path_factory):
     root = tmp_path_factory.mktemp('portable-original-current-g')
     old = root / 'training-payloads'
     config = prepared_config(old, capacity=10, cycles=1)
-    trained = session.train(config)
+    raw=config.to_dict();raw['model']['parameters']['inference_noise_policy']='fresh_projection_v1'
+    config=TrainingConfig.from_dict(raw,source=config.source)
+    # Training-only fixture policy; the portable output has its own bound v2 ABI.
+    with pytest.MonkeyPatch.context() as scope:
+        scope.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE','1')
+        trained = session.train(config)
     raw = config.to_dict()
     raw['trainer'].update(cycles=2, resume_from=trained['checkpoint'], output_dir=str(old / 'resumed'))
     write_json(root / 'resume.json', raw)
     prepared = new_inputs(root / 'NEW-inputs')
     script = r'''
-import hashlib,json,sys
+import hashlib,json,os,sys
 from pathlib import Path
 import torch
 from distillschedule.training import session
@@ -70,13 +76,19 @@ from distillschedule.training.inference import read_export,restore_modules
 from distillschedule.training.plugins import load_callable
 from test_training_helios_public_inference_cpu import inference_config
 root=Path(sys.argv[1]);config=load_training_config(root/'resume.json')
-resumed=session.train(config)
+try:
+ os.environ['DISTILLSCHEDULE_STABLE_BLOCK_NOISE']='1'
+ resumed=session.train(config)
+finally:os.environ.pop('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',None)
 assert resumed['resume_cycle']==1 and resumed['completed_cycles']==2
 original=session._load_for_output; captured=[]
 def load(*args,**kwargs):
     result=original(*args,**kwargs);captured.append(result[0]);return result
 session._load_for_output=load
 manifest=session.export(config,resumed['checkpoint'],root/'export')
+assert manifest['model']['parameters']['schema_version'].endswith('.v2')
+assert manifest['model']['parameters']['noise_protocol']['policy']=='fresh_projection_v1'
+assert 'DISTILLSCHEDULE_STABLE_BLOCK_NOISE' not in os.environ
 components=captured[0];g=components.state['native_step'].generator.module
 weights=torch.load(root/'export/weights.pt',weights_only=True)
 assert set(weights)=={'generator'}

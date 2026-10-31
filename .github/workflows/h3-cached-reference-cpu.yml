@@ -140,6 +140,9 @@ jobs:
           --require 'test_encoder_invalid_manifest_fails_before_source_import[nested_bool]'
           --require test_encoder_discovery_imports_no_model_or_torch
           --require test_explicit_bf16_storage_loads_only_selected_decoder_keys_exactly
+          --require test_fl2va_factory_is_explicit_and_lazy
+          --require test_fl2va_wrapper_never_changes_canonical_v1_acceptance
+          --require test_fl2va_header_relabels_preserve_tensors_and_only_official_exclusion
       - uses: actions/upload-artifact@v4
         if: always()
         with:

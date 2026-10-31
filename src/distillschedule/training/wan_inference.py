@@ -14,6 +14,7 @@ from .helios_public_assets import require, EVIDENCE_KINDS
 from .helios_inference import content_identity, content_runtime, _json, _environment, SHIFT_KEYS, refuse_training
 
 SCHEMA = 'distillschedule.wan_current_generator_inference.v1'
+PROJECTION_SCHEMA = 'distillschedule.wan_current_generator_inference.v2'
 FACTORY = 'distillschedule.training.wan_inference:build_inference_model'
 PRECISION = 'WAN_NATIVE_MIXED_BF16'
 SCOPE = 'CPU1_BF16_FP32_CURRENT_W1_NATIVE_LATENT_DIAGNOSTIC_NOT_WORLD16'
@@ -30,7 +31,7 @@ def inference_source():
 
 
 def _metadata(p):
-    return dict(schema_version=SCHEMA,scope=SCOPE,precision=PRECISION,parameters=deepcopy(p),
+    return dict(schema_version=p['schema_version'],scope=SCOPE,precision=PRECISION,parameters=deepcopy(p),
         generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA',evidence_kind=p['evidence_kind'],
         quality_validation='NOT_RUN',claimable_speedup=False,
         # Original NEW-input (uncaptured) block-noise path returns FP32. Model
@@ -45,11 +46,17 @@ def _admit(parameters):
     from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
     from distillschedule.data.wan_reference_inputs import topology
     require(isinstance(parameters,dict) and set(parameters) <= {'schema_version','precision','source','runtime',
-        'architecture','peft','native','geometry','budget','evidence_kind','seed','device','task'}, 'unsupported W1 inference parameters')
+        'architecture','peft','native','geometry','budget','evidence_kind','seed','device','task','noise_protocol'}, 'unsupported W1 inference parameters')
     p = _json({k:v for k,v in parameters.items() if k != 'device'})
-    require(set(p) == {'schema_version','precision','source','runtime','architecture','peft','native','geometry',
-                      'budget','evidence_kind','seed','task'} and p['schema_version'] == SCHEMA and p['precision'] == PRECISION
+    fields = {'schema_version','precision','source','runtime','architecture','peft','native','geometry',
+              'budget','evidence_kind','seed','task'}
+    projection = p.get('schema_version') == PROJECTION_SCHEMA
+    require(set(p) == fields | ({'noise_protocol'} if projection else set())
+            and p.get('schema_version') in (SCHEMA,PROJECTION_SCHEMA) and p['precision'] == PRECISION
             and parameters.get('device','cpu') == 'cpu', 'explicit W1 mixed-precision inference ABI required')
+    if projection:
+        from .reference_inference_noise import protocol
+        require(p['noise_protocol'] == protocol('torch.bfloat16'), 'inference noise protocol/source changed')
     topology(); _environment()
     require(p['source'] == inference_source() and p['runtime'] == content_runtime(), 'W1 inference source/runtime changed')
     require(type(p['seed']) is int and 0 <= p['seed'] < 2**63 and p['evidence_kind'] in EVIDENCE_KINDS, 'invalid W1 seed/evidence')
@@ -115,6 +122,9 @@ def project_current_generator(components,effective_training_parameters):
         task=owner.task.to_dict(),geometry=deepcopy(components.metadata['assets']['geometry']),
         budget=deepcopy(components.metadata['assets']['budget']),evidence_kind=components.metadata['evidence_kind'],
         seed=effective_training_parameters['seed']))
+    from .reference_inference_noise import enabled, protocol
+    if enabled(effective_training_parameters):
+        parameters.update(schema_version=PROJECTION_SCHEMA,noise_protocol=protocol('torch.bfloat16'))
     _admit(parameters)
     # Pure live view: do not eval/freeze/merge/change adapters or RNG here.
     view = ModelComponents(state={'generator':g},metadata=_metadata(parameters)).validate()
@@ -153,10 +163,20 @@ def generate(state,feeds,parameters):
             and bool(prompt.isfinite().all()), 'W1 inference prompt layout/precision/finiteness changed')
     require(not g.training and not g.gradient_checkpointing and all(not v.requires_grad for v in g.parameters()), 'separate frozen inference G required')
     native = native_primitives(source_only=True)
+    inputs = None
+    kwargs = {}
+    noise = torch.zeros(p['geometry']['noise_shape'],dtype=torch.bfloat16)
+    if p['schema_version'] == PROJECTION_SCHEMA:
+        from .reference_inference_noise import prepare
+        inputs = prepare(p,torch.bfloat16)
+        noise = inputs.shape_noise
+        kwargs = dict(operation_trace=inputs,trace_prefix=p['noise_protocol']['operation_prefix'])
     result = native.post.run_generator(args=SimpleNamespace(training_config=SimpleNamespace(**p['native']['args'])),
         accelerator=SimpleNamespace(device=torch.device('cpu'),is_main_process=True),transformer=g,
-        scheduler=native.scheduler(**p['native']['scheduler']),noise=torch.zeros(p['geometry']['noise_shape'],dtype=torch.bfloat16),
-        prompt_embeds=prompt,**p['native']['rollout'])
+        scheduler=native.scheduler(**p['native']['scheduler']),noise=noise,
+        prompt_embeds=prompt,**kwargs,**p['native']['rollout'])
+    if inputs is not None:
+        inputs.finish()
     latents = result[0]
     require(isinstance(latents,torch.Tensor) and list(latents.shape) == p['geometry']['noise_shape']
             and latents.dtype == torch.float32 and not latents.requires_grad and bool(latents.isfinite().all()), 'invalid original W1 latent diagnostic')

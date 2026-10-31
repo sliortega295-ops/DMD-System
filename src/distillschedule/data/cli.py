@@ -39,6 +39,8 @@ def main(argv=None):
                      help="opt in to independent W3 native-history stream; retains original full GAN bundle")
     from .helios_epoch_inputs import EPOCH_POLICY as HELIOS_EPOCH_POLICY
     for command in (helios, gan):
+        command.add_argument("--stage-schedule-policy", choices=("source_normal_only", "benchmark_v4_strict_global"),
+                             default="source_normal_only", help="explicit normal or historical synchronized rollout scope")
         command.add_argument("--input-policy", choices=(HELIOS_EPOCH_POLICY,),
                              help="opt in to a finite native feature pool; default v1 forbids reuse")
     reference = sub.add_parser("prepare-helios-gan-reference", help="prepare original GAN CPU reference inputs, not W2 traces")
@@ -90,16 +92,19 @@ def main(argv=None):
                 if args.input_policy is None and not isinstance(values, list):
                     raise ValueError("explicit source cohort list required")
                 sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
-                result = prepare_stream(OriginalHeliosRequest(), sources, args.training_config, args.output,
+                result = prepare_stream(OriginalHeliosRequest(stage_schedule_policy=args.stage_schedule_policy), sources, args.training_config, args.output,
                                         input_policy=args.input_policy,
                                         **({"native_policy":args.history_policy} if args.history_policy is not None else {}))
             elif args.command == "prepare-helios-gan-stream":
                 from distillschedule.training.helios_gan_inputs import HeliosCohortSources, prepare_stream
+                from distillschedule.search.helios_request import OriginalHeliosRequest
                 values = json.loads(args.sources.read_text())
                 if args.input_policy is None and not isinstance(values, list):
                     raise ValueError("explicit source cohort list required")
                 sources = values if args.input_policy else [HeliosCohortSources.from_dict(s) for s in values]
                 result = prepare_stream(sources, args.training_config, args.output, input_policy=args.input_policy,
+                                        **({"request":OriginalHeliosRequest(variant="gan",stage_schedule_policy=args.stage_schedule_policy)}
+                                           if args.stage_schedule_policy != "source_normal_only" else {}),
                                         **({"native_policy": args.history_policy} if args.history_policy is not None else {}))
             elif args.command == "prepare-helios-gan-reference":
                 from .helios_native_inputs import prepare_inputs

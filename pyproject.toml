@@ -173,3 +173,13 @@ include = ["distillschedule*", "runtime*"]
     "docs/workloads/open_workload_program.md",
     "docs/workloads/original_wan_fresh_training.md",
 ]
+
+# Keep installed optimizer-guide links and stdlib helpers self-contained.
+"share/distillschedule/tools" = ["tools/install_optimizer_skill.py"]
+"share/distillschedule/skills/dmd-system-optimizer" = ["skills/dmd-system-optimizer/SKILL.md", "skills/dmd-system-optimizer/LICENSE"]
+"share/distillschedule/skills/dmd-system-optimizer/agents" = ["skills/dmd-system-optimizer/agents/*.yaml"]
+"share/distillschedule/skills/dmd-system-optimizer/assets" = ["skills/dmd-system-optimizer/assets/*.json", "skills/dmd-system-optimizer/assets/*.md"]
+"share/distillschedule/skills/dmd-system-optimizer/examples" = ["skills/dmd-system-optimizer/examples/*.json"]
+"share/distillschedule/skills/dmd-system-optimizer/references" = ["skills/dmd-system-optimizer/references/*.md"]
+"share/distillschedule/skills/dmd-system-optimizer/references/knowledge" = ["skills/dmd-system-optimizer/references/knowledge/*.md"]
+"share/distillschedule/skills/dmd-system-optimizer/scripts" = ["skills/dmd-system-optimizer/scripts/*.py"]

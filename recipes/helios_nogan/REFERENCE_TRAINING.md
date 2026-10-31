@@ -36,6 +36,11 @@ pretrained-model or numerical correctness certificate.
 
 ## Prepare explicit fresh inputs on CPU
 
+For the measured synchronized rollout scope, pass
+`--stage-schedule-policy benchmark_v4_strict_global` to the preparation command
+and use that same field in the task JSON. The [aligned lifecycle guide](../../docs/contracts/helios_aligned_public_lifecycle_v1.md)
+describes complete-cycle save, fresh-process resume and current-Student export.
+
 Use [`sources.reference.template.json`](sources.reference.template.json) as an
 inventory template. Each cohort has an explicit seed and five lists of sixteen
 **distinct actual pre-encoded feature files** (one per source step/rank). There

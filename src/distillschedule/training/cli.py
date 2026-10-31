@@ -92,6 +92,10 @@ def main(argv=None):
     initialize = sub.add_parser('import-weights', help='initialize Generator weights and export; never resume/train')
     initialize.add_argument('request', type=Path)
     initialize.add_argument('--output', type=Path, required=True)
+    native_output = sub.add_parser('native-output', help='inspect or explicitly reproduce R375 C50 through its original node owner')
+    native_output.add_argument('request', type=Path)
+    native_output.add_argument('--node', type=int, choices=(0, 1))
+    native_output.add_argument('--execute', action='store_true', help='exec the bound ORIGINAL owner; never a direct rank launch')
     for name in ("train", "evaluate", "export", "generate"):
         p = sub.add_parser(name)
         p.add_argument("config", type=Path)
@@ -119,7 +123,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         config = (load_training_config(args.config) if getattr(args, "config", None) and args.command != "decode" else None)
-        if args.command == "decode":
+        if args.command == 'native-output':
+            from .h3_native_output_reproduction import dispatch
+            result = dispatch(args.request, execute=args.execute, node=args.node)
+        elif args.command == "decode":
             with redirect_diagnostics():
                 from .decoding import decode_prepared
                 result = decode_prepared(args.config, args.output)

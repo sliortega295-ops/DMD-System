@@ -24,6 +24,11 @@ final clocks are G102/C510/EMA900 and curriculum clocks G300/C1500/EMA900.
 
 ## Prepare explicit local assets and inputs
 
+The [aligned lifecycle guide](../../docs/contracts/helios_aligned_public_lifecycle_v1.md)
+uses `--stage-schedule-policy benchmark_v4_strict_global` for the synchronized
+rollout scope. Use the same policy in the task JSON. Its public training,
+checkpoint, fresh-process resume and current-Student export use this full bundle.
+
 1. Fill `assets.stream.template.json` with your local model, precast, logical
    bootstrap, sparse EMA800, negative prompt, native GAN config and FA3 package.
    No private run ID or maintainer directory is required. The existing

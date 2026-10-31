@@ -35,6 +35,7 @@ def test_native_gan_current_student_and_real_vae_generate_without_training_paylo
     root, manifest = read_export(tmp_path / 'portable')
     assert manifest['checkpoint_cycle'] == 100 and manifest['model']['factory'] == output.FACTORY
     p = manifest['model']['parameters']
+    assert p['native']['args'] == dict(base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15)
     assert p['schema_version'] == output.SCHEMA and p['task']['variant'] == 'gan'
     assert p['task']['model_family'] == 'helios14b' and p['task']['stage2_inference_steps'] == [2, 2, 2]
     assert manifest['identity']['training_provenance']['schema_version'] == 'distillschedule.helios_gan_training_identity.v1'

@@ -1,6 +1,8 @@
 """Dependency-separated CI must actually execute the native CPU proofs."""
+from copy import deepcopy
 from pathlib import Path
 import os
+import shlex
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -87,12 +89,45 @@ def test_original_helper_ci_is_not_silently_repinned_to_full_model_extra():
     assert 'test-helios-model' not in commands and 'native-wan' not in commands
 
 
-def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradients():
-    value = job('helios-reference-model-cpu.yml')
+_PSD_STEP_NAME = 'Original default sampler and explicit PSD-policy contracts'
+_PSD_CONTRACT_COMMAND = """python -m pytest -q tests/test_training_wan_native_outputs.py -k 'native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd or explicit_stable_block_noise_policy or stable_block_noise_policy_rejects or default_block_noise_still_uses_original_distribution' --junitxml=helios-block-noise-policy-cpu.xml
+python scripts/check_cpu_receipt.py helios-block-noise-policy-cpu.xml \\
+  --require test_native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd \\
+  --require test_explicit_stable_block_noise_policy_matches_primitive_and_rng \\
+  --require 'test_stable_block_noise_policy_rejects_other_gamma_before_rng[0.25]' \\
+  --require 'test_default_block_noise_still_uses_original_distribution[unset]'
+"""
+_LIVENESS_STEP_NAME = 'Explicit outputs and native contracts without inherited sampler override'
+_LIVENESS_TEST_FILES = (
+    'tests/test_training_helios_public_inference_cpu.py',
+    'tests/test_training_wan_inference_cpu.py',
+    'tests/test_training_helios_optimized_stream.py',
+    'tests/test_training_helios_native_safe_stream.py',
+    'tests/test_training_helios_checkpoint_inputs_cpu.py',
+    'tests/test_helios_rollout_liveness_cpu.py',
+    'tests/test_refactor_helios_compat_source.py',
+)
+
+
+def _assert_original_helios_liveness_job(value):
     commands = '\n'.join(step.get('run', '') for step in value['steps'])
     assert 'tests/test_helios_rollout_liveness_cpu.py' in commands
     assert 'DMD_TEST_REARRANGE_PROVIDER' not in value['env']
-    assert '-k ' not in commands and '--deselect' not in commands
+    psd = [step for step in value['steps'] if step.get('name') == _PSD_STEP_NAME]
+    assert len(psd) == 1, 'exactly one explicit PSD-contract step required'
+    assert set(psd[0]) == {'name', 'run'}, 'PSD-contract step must not skip or inherit sampler controls'
+    # This is the sole existing, exact contract-only selector. It is not an
+    # exception for any liveness/full-model test, alternate selector or receipt.
+    assert psd[0]['run'].strip() == _PSD_CONTRACT_COMMAND.strip(), 'exact PSD selector and receipt required'
+    for step in value['steps']:
+        if step.get('name') != _PSD_STEP_NAME:
+            run = step.get('run', '')
+            assert '-k ' not in run and '-k=' not in run and '--deselect' not in run
+    liveness = [step for step in value['steps'] if step.get('name') == _LIVENESS_STEP_NAME]
+    assert len(liveness) == 1
+    assert shlex.split(liveness[0]['run']) == [
+        'python', '-m', 'pytest', '-q', *_LIVENESS_TEST_FILES,
+        '--junitxml=helios-native-policy-cpu.xml']
     for name in (
         'test_liveness_fixture_restores_rng_threads_and_import_namespaces',
         'test_candidate_changes_only_two_stored_aliases',
@@ -104,6 +139,62 @@ def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradi
             name = ('test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state'
                     f'[{hooks}-{sections}-{frames}]')
             assert repr(name) in commands
+
+
+def test_original_helios_ci_requires_checkpoint_liveness_and_cross_section_gradients():
+    _assert_original_helios_liveness_job(job('helios-reference-model-cpu.yml'))
+
+
+@pytest.mark.parametrize('mutation', [
+    'full-k', 'full-k-equals', 'full-deselect', 'full-missing-file', 'full-missing-step',
+    'other-step-k', 'psd-selector', 'psd-file', 'psd-xml', 'psd-receipt',
+    'psd-required-proof', 'psd-extra-command', 'psd-env', 'psd-continue-on-error',
+    'psd-duplicate', 'psd-rename', 'missing-cross-section-proof',
+])
+def test_only_exact_existing_psd_contract_step_can_select_tests_not_full_liveness(mutation):
+    value = job('helios-reference-model-cpu.yml')
+    _assert_original_helios_liveness_job(value)  # Reject the mutation, not an already-invalid base.
+    value = deepcopy(value)
+    psd = next(step for step in value['steps'] if step.get('name') == _PSD_STEP_NAME)
+    full = next(step for step in value['steps'] if step.get('name') == _LIVENESS_STEP_NAME)
+    if mutation in ('full-k', 'full-k-equals', 'full-deselect'):
+        full['run'] += {'full-k': ' -k liveness', 'full-k-equals': ' -k=liveness',
+                        'full-deselect': ' --deselect=tests/test_helios_rollout_liveness_cpu.py'}[mutation]
+    elif mutation == 'full-missing-file':
+        full['run'] = full['run'].replace('tests/test_helios_rollout_liveness_cpu.py ', '', 1)
+    elif mutation == 'full-missing-step':
+        value['steps'].remove(full)
+    elif mutation == 'other-step-k':
+        value['steps'].append(dict(name='Unreviewed filter', run='python -m pytest -k liveness'))
+    elif mutation == 'psd-selector':
+        psd['run'] = psd['run'].replace('native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd or ', '', 1)
+    elif mutation == 'psd-file':
+        psd['run'] = psd['run'].replace('tests/test_training_wan_native_outputs.py', _LIVENESS_TEST_FILES[-2], 1)
+    elif mutation == 'psd-xml':
+        psd['run'] = psd['run'].replace('helios-block-noise-policy-cpu.xml', 'different.xml', 1)
+    elif mutation == 'psd-receipt':
+        psd['run'] = psd['run'].replace('scripts/check_cpu_receipt.py', 'different-receipt.py', 1)
+    elif mutation == 'psd-required-proof':
+        psd['run'] = psd['run'].replace('  --require test_native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd \\\n', '', 1)
+    elif mutation == 'psd-extra-command':
+        psd['run'] += '\ntrue\n'
+    elif mutation == 'psd-env':
+        psd['env'] = {'DISTILLSCHEDULE_STABLE_BLOCK_NOISE': '1'}
+    elif mutation == 'psd-continue-on-error':
+        psd['continue-on-error'] = True
+    elif mutation == 'psd-duplicate':
+        value['steps'].append(deepcopy(psd))
+    elif mutation == 'psd-rename':
+        psd['name'] = 'Unreviewed selector'
+    elif mutation == 'missing-cross-section-proof':
+        gate = next(step for step in value['steps'] if step.get('name') == 'Require the full-source proofs without skips')
+        gate['run'] = gate['run'].replace(
+            "'test_cross_section_generated_history_keeps_required_grads_and_only_frees_dead_state[True-3-6]'", '', 1)
+    else:
+        raise AssertionError(mutation)
+    assert value != job('helios-reference-model-cpu.yml'), 'mutation did not hit the actual workflow'
+    with pytest.raises(AssertionError):
+        _assert_original_helios_liveness_job(value)
 
 
 def test_livewan_native_ci_requires_payload_lifetime_and_public_binding_proofs():
@@ -142,7 +233,7 @@ def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output()
     assert value['env']['CUDA_VISIBLE_DEVICES'] == ''
     assert value['strategy']['matrix']['python'] == ['3.10', '3.12']
     assert 'tests' in value['env']['PYTHONPATH'].split(':')
-    assert 'runner.temp' in value['env']['HELIOS_NOGAN_PUBLIC_FIXTURE']
+    assert 'HELIOS_NOGAN_PUBLIC_FIXTURE' not in value['env']
     assert "'.[train,test,helios-reference]'" in commands
     assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
     assert all(name in commands for name in (
@@ -157,6 +248,20 @@ def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output()
         'test_fresh_process_new_prompt_without_old_paths_owners_or_optimizer'))
     assert "('skipped', 'failures', 'errors')" in commands
     assert 'native-wan' not in commands and 'test-helios]' not in commands
+
+
+@pytest.mark.parametrize('step_name', [
+    'Original warm updates and exact restart',
+    'Independent current-G output without old training payloads',
+])
+def test_nogan_fixture_path_uses_runner_context_only_at_step_scope(step_name):
+    value = job('helios-nogan-reference-cpu.yml')
+    # GitHub rejects runner.* in job.env before it can create either matrix job.
+    assert 'HELIOS_NOGAN_PUBLIC_FIXTURE' not in value['env']
+    step = next(step for step in value['steps'] if step.get('name') == step_name)
+    assert 'python -m pytest' in step['run']
+    assert step['env']['HELIOS_NOGAN_PUBLIC_FIXTURE'] == \
+        '${{ runner.temp }}/helios-nogan-reference'
 
 
 def test_nogan_ci_releases_its_large_training_fixture_before_independent_output():

@@ -655,6 +655,22 @@
     },
     {
       "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "fa1a12ae87a5131e1ef107ae37d171776d161b544f140db4c211f2ea993fe700",
+      "integrated_sha256": "3be973d6e2798486c94c1f3f4b82ed9be0c5c65c39fd3377117c0f8a3ef80ab3",
+      "source_commit": "3a8326ba329f907521a97696e11e1f9b8d6b3df8",
+      "change": "Reviewed explicit native-output owner-level reproduction discovery/dispatch; existing commands and original native training math unchanged; source-pinned process boundary, no rank direct execution"
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/workloads/best_known/registry.py",
+      "previous_sha256": "1f2775ea28ddf98c8009921ad26f2d41acd2ed386894af0295f3b8dc03348a72",
+      "integrated_sha256": "953b3af9ecf7b1b3f729a25168200b63a8fa20a7c84eae973bb8744250b82f5a",
+      "source_commit": "eeb0083ddb8f0f92caf3032a5249cd5ad3bbf368",
+      "change": "Reviewed complete-JSON create-only publication: same-directory exclusive temporary, file and directory fsync, atomic no-replace hardlink, owned-temp cleanup and preserved final-path EEXIST ABI. Exact committed eeb0083d registry bytes; all other registry AST nodes except errno/uuid imports, training math, defaults, umask and training RNG remain unchanged. Original import receipt and prior overlays preserved. Local CPU publication/source contracts only; not shared-filesystem coherence or native execution qualification."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
       "target": "src/distillschedule/adapters/__init__.py",
       "previous_sha256": "5ba99905fd6afac962634d5c11949a050f64e07fe8aefe403f47a25464b58ab6",
       "integrated_sha256": "ab79e89eee9369830670b0f350d34ff2e551448df43153ee655976b3ada6b000",

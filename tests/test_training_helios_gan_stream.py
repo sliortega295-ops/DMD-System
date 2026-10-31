@@ -52,6 +52,19 @@ def test_fresh_gan_clocks_keep_physical_and_curriculum_namespaces():
     assert logical_versions(100) == {"generator": 300, "critic": 1500, "ema": 900}
 
 
+def test_aligned_gan_task_for_stream_preserves_request_and_rejects_native_mix():
+    from distillschedule.training.helios_gan_inputs import GANCohortTask, task_for_stream
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
+    request = OriginalHeliosRequest(variant="gan", stage_schedule_policy="benchmark_v4_strict_global")
+    task = GANCohortTask(1,request)
+    assert GANCohortTask.from_dict(task.to_dict()) == task
+    stream = {"identity":{"request":request.to_dict()}}
+    assert task_for_stream(stream,1) == task
+    with pytest.raises(ValueError, match="cannot combine"):
+        GANCohortTask(1,request,NATIVE_HISTORY_POLICY)
+
+
 def test_original_gan_generator_helper_uses_actual_new_entry_step(monkeypatch):
     """Argument characterization of the original helper, not a fake loss proof."""
     from contextlib import nullcontext
@@ -88,7 +101,7 @@ def test_original_gan_generator_helper_uses_actual_new_entry_step(monkeypatch):
     assert result["logical_step"] == 1005
 
 
-def metadata_cohort(root, index, *, sources=None, config_sha="c" * 64, source_sha="d" * 64):
+def metadata_cohort(root, index, *, sources=None, config_sha="c" * 64, source_sha="d" * 64, request=None):
     """Metadata-only fixture: workers MUST reject its missing tensor payloads.
 
     Unlike a capture fixture this must not be called actual native input data.
@@ -97,7 +110,7 @@ def metadata_cohort(root, index, *, sources=None, config_sha="c" * 64, source_sh
     from distillschedule.training import helios_gan_inputs as inputs
     from runtime.operation_trace import _manifest_hash, write_operation_trace_bundle_manifest
     from distillschedule.workloads.best_known.registry import fingerprint
-    task = inputs.GANCohortTask(index)
+    task = inputs.GANCohortTask(index, request=request or inputs.REQUEST)
     directory = Path(root) / f"cohort-{index:04d}"
     rows = [{"rank": rank, "step": step, "path": str(Path(root) / f"feature-{index}-{step}-{rank}.pt"),
              "sha256": fingerprint([index, step, rank]), "latent_shape": [1], "text_shape": [2,4096]}
@@ -145,9 +158,11 @@ def metadata_cohort(root, index, *, sources=None, config_sha="c" * 64, source_sh
                     tensor(key, shape, dtype)
                 schedule = [{"stage":s, "call_count":1, "denoising_exit":0, "denoising_step_budget":2,
                     "latent_shape":[1,16,9,*hw], "timestep":[float(900-s*300)]} for s,hw in enumerate(task.stage_spatial_shapes)]
+                scope = ({"stage_schedule_policy":task.stage_schedule_policy,"all_history_zero":False}
+                         if task.stage_schedule_policy == "benchmark_v4_strict_global" else {})
                 operation(prefix + "/rollout", {"pyramid_stage_call_sequence":schedule,
                     "initial_synchronized_pyramid_stage_exit":[0,0,0], "call_count":3,
-                    "stage_schedule_scope":"global_rank0_broadcast_equivalent"})
+                    "stage_schedule_scope":"global_rank0_broadcast_equivalent",**scope})
                 operation(prefix + ("/dmd" if phase == "generator" else "/train"), {"global_step":step})
                 operation(prefix + ("/gan_g" if phase == "generator" else "/gan_d"), {"global_step":step})
         manifest["trace_hash"] = _manifest_hash(manifest)
@@ -157,14 +172,15 @@ def metadata_cohort(root, index, *, sources=None, config_sha="c" * 64, source_sh
     return {"index":index, "task":task.to_dict(), "trace_bundle":str(directory), "trace_hash":bundle["bundle_hash"]}, rows, sources
 
 
-def metadata_stream(root, cycles=3, *, config_sha="c" * 64):
+def metadata_stream(root, cycles=3, *, config_sha="c" * 64, request=None):
     from distillschedule.training import helios_gan_inputs as inputs
     from distillschedule.workloads.best_known.registry import fingerprint
     source_sha = inputs.source_fingerprint()
-    values = [metadata_cohort(root, i, source_sha=source_sha, config_sha=config_sha) for i in range(cycles)]
+    request = request or inputs.REQUEST
+    values = [metadata_cohort(root, i, source_sha=source_sha, config_sha=config_sha,request=request) for i in range(cycles)]
     result = {"schema_version":inputs.SCHEMA, "status":"READY_FRESH_COHORT_STREAM",
         "identity":{"source_fingerprint":source_sha, "training_config_sha256":config_sha,
-            "request":inputs.REQUEST.to_dict(), "inventory":[r[1] for r in values], "sources":[r[2] for r in values]},
+            "request":request.to_dict(), "inventory":[r[1] for r in values], "sources":[r[2] for r in values]},
         "cohorts":[r[0] for r in values], "gpu_execution":"NOT_RUN", "claimable_speedup":False}
     result["stream_sha256"] = fingerprint(result)
     (Path(root) / "stream.json").write_text(json.dumps(result))
@@ -324,11 +340,14 @@ def gan_assets(tmp_path, frozen, logical):
     return document
 
 
+@pytest.mark.parametrize("aligned", [False, True], ids=["normal", "explicit-aligned"])
 def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_paths(
-        tmp_path, frozen_assets, original_logical, monkeypatch):
+        tmp_path, frozen_assets, original_logical, monkeypatch, aligned):
     from distillschedule.training import helios_gan_training as training, helios_gan_inputs as inputs
     from distillschedule.training import helios_gan_assets as assets_io, native
     from distillschedule.training.config import TrainingConfig
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    request = OriginalHeliosRequest(variant="gan",stage_schedule_policy="benchmark_v4_strict_global") if aligned else inputs.REQUEST
     assets = gan_assets(tmp_path, frozen_assets, original_logical)
     logical, identity = assets_io.load_bootstrap(assets)
     assert identity["payload_hashes_verified"] and identity["physical_initial"] == training.expected_versions(0)
@@ -337,9 +356,9 @@ def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_p
     # cannot masquerade as an admitted local FA3 binary package.
     with pytest.raises(FileNotFoundError): assets_io.immutable_assets(assets)
     stream_root = tmp_path / "inputs"; stream_root.mkdir()
-    doc = metadata_stream(stream_root, config_sha=assets["assets"]["gan_config"]["sha256"])
+    doc = metadata_stream(stream_root, config_sha=assets["assets"]["gan_config"]["sha256"],request=request)
     assets_path = tmp_path / "assets.json"; assets_path.write_text(json.dumps(assets))
-    task_path = tmp_path / "task.json"; task_path.write_text(json.dumps(inputs.REQUEST.to_dict()))
+    task_path = tmp_path / "task.json"; task_path.write_text(json.dumps(request.to_dict()))
     raw = {"schema_version":"distillschedule.training.v1", "model":{"workload":"W3"}, "algorithm":{},
         "data":{"input_kind":inputs.KIND,"prepared":str(stream_root/"stream.json")},
         "execution":{"adapter":"native","mode":"manual","preset":training.PRESET_ID,
@@ -353,7 +372,7 @@ def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_p
     assert result["capabilities"]["bootstrap"]["physical_versions"] == training.expected_versions(0)
     assert native.run_native(config,dry_run=True)["status"] == "DRY_RUN_NATIVE_BINDING_NOT_EXECUTED"
     assert not (tmp_path/"run").exists()
-    admitted = training.admit_training(config,inputs.REQUEST.to_dict(),assets,
+    admitted = training.admit_training(config,request.to_dict(),assets,
         {"assets":assets_path,"output":tmp_path/"run"})
     assert admitted["stream"] == doc
     args = admitted["argv"]
@@ -379,6 +398,7 @@ def test_actual_public_admission_uses_explicit_local_gan_assets_not_historical_p
         assert binding["gan_stream"] is True and binding["implementation"] == training.implementation()
         assert binding["config"].trainer["stop_after_cycle"] == 1
         assert len(binding["stream"]["cohorts"]) == 3 and binding["stream"]["stream_sha256"] == doc["stream_sha256"]
+        assert binding["stream"]["identity"]["request"] == request.to_dict()
         assert lifecycle.admit_stop_control(binding["config"]) == 1
         seen.append("SYNTHETIC_TEST_ONLY_MODEL_BOUNDARY")
         return 23
@@ -579,12 +599,15 @@ def test_fresh_process_env_keeps_admitted_dependency_overlay(tmp_path, monkeypat
     assert child.stdout.strip() == "external-overlay-only"
 
 
-def test_new_cycle_runner_real_program_state_checkpoint_and_fresh_process_resume(tmp_path):
+@pytest.mark.parametrize("aligned", [False, True], ids=["normal", "explicit-aligned"])
+def test_new_cycle_runner_real_program_state_checkpoint_and_fresh_process_resume(tmp_path, aligned):
     import subprocess
     import sys
     import torch
     from test_training_end_to_end import equal
-    root=tmp_path/"inputs"; root.mkdir(); metadata_stream(root,cycles=4)
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    request = OriginalHeliosRequest(variant="gan",stage_schedule_policy="benchmark_v4_strict_global") if aligned else None
+    root=tmp_path/"inputs"; root.mkdir(); metadata_stream(root,cycles=4,request=request)
     full=_cpu_lifecycle_run(root,tmp_path/"full")
     stopped=_cpu_lifecycle_run(root,tmp_path/"first",stop=2)
     assert stopped["receipt"]["status"] == "STOPPED_ORIGINAL_HELIOS_GAN_AT_CHECKPOINT"

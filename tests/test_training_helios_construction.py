@@ -65,7 +65,8 @@ def _startup(tmp_path, monkeypatch, *, gan=False, native=True):
              "negative_prompt", "logical_checkpoint", *(["gan_config"] if gan else [])]
     assets = {"assets": {role: {"path": str(tmp_path / role)} for role in roles}}
     stream = dict(schema_version="distillschedule." + kind, stream_sha256="s" * 64,
-        identity=dict(source_fingerprint="f" * 64, **({"native_history_policy": native_policy} if native else {})),
+        identity=dict(source_fingerprint="f" * 64, request=task.request.to_dict(),
+                      **({"native_history_policy": native_policy} if native else {})),
         cohorts=[dict(task=task.to_dict(), trace_bundle=str(tmp_path / "trace"), trace_hash="t" * 64)])
     schema = ("distillschedule.helios_gan_native_history_training_identity.v1" if gan else
               "distillschedule.helios_native_history_training_identity.v1") if native else (
@@ -124,6 +125,20 @@ def _startup(tmp_path, monkeypatch, *, gan=False, native=True):
     def admit():
         lifecycle.admit_original_rank(torch=torch, dist=dist, rank=0, args=args, policy=policy, seed_runtime=False)
     return NS(binding=binding, args=args, policy=policy, admit=admit, events=events)
+
+
+@pytest.mark.parametrize("native", [False, True])
+def test_synthetic_w3_startup_carries_actual_producer_request_without_default_inference(tmp_path, monkeypatch, native):
+    from distillschedule.training.helios_gan_inputs import GANCohortTask, task_for_stream
+    startup = _startup(tmp_path, monkeypatch, gan=True, native=native)
+    stream = startup.binding["stream"]
+    task = GANCohortTask.from_dict(stream["cohorts"][0]["task"])
+    assert stream["identity"]["request"] == task.request.to_dict()
+    assert task_for_stream(stream, task.index) == task
+    missing = {**stream, "identity": {k: v for k, v in stream["identity"].items() if k != "request"}}
+    with pytest.raises(KeyError, match="request"):
+        task_for_stream(missing, task.index)
+    assert stream["identity"]["request"] == task.request.to_dict()
 
 
 def _constructor(tmp_path, *, args, policy, role="critic", failure=None):

@@ -80,7 +80,7 @@ def with_gan_head(factory, *, current):
     return g, c, ema
 
 
-def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_type):
+def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_type, task=None):
     """Actual public/GAN owner/complete state restore; outer CUDA intake injected."""
     from contextlib import contextmanager
     from distillschedule.training import native, helios_worker as worker, helios_lifecycle as lifecycle
@@ -89,7 +89,7 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
     from distillschedule.training.native_state import engine_state
     from distillschedule.training.checkpoint import save_checkpoint, pack_state, rng_state
     from test_training_end_to_end import equal
-    task = inputs.REQUEST
+    task = task or inputs.REQUEST
     stream = dict(stream_sha256='1' * 64, identity=dict(source_fingerprint='SYNTHETIC_INTAKE', request=task.to_dict()),
                   cohorts=[{} for _ in range(100)])
     assets = dict(assets={'scope': 'SYNTHETIC_BOOTSTRAP_NOT_GAN_OR_GPU_QUALIFICATION'})
@@ -116,6 +116,8 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
     monkeypatch.setattr(gan.distributed, 'world16_reference_process_group', transport)
     monkeypatch.setattr(gan, 'validate_environment', lambda: None)
     monkeypatch.setenv('RANK', '0')
+    from test_training_helios_native_outputs import _native_parser_args
+    args = _native_parser_args(root, variant='gan')
     observed = []
     class NoCycle:
         def __getattr__(self, name):
@@ -128,7 +130,6 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
         ids = [[id(p) for p in e.module.parameters()] for e in (a, b)]
         modes = [[(n, m.training) for n, m in e.module.named_modules()] for e in (a, b)]
         flags = [[p.requires_grad for p in e.module.parameters()] for e in (a, b)]
-        args = NS(training_config=NS(base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15))
         result = {}
         gan.execute_cycles(p0=NS(), args=args, policy=NS(), result=result, rank=0, device='cpu',
             generator=a, critic=b, ema=shadow, diagnostics=None, negative=None, cfg=None,
@@ -152,8 +153,11 @@ def _owned_gan_export(root, monkeypatch, *, engines_factory, request, callback_t
     return result, observed[0], old
 
 
-def test_full_native_gan_state_and_heads_restored_without_training(tmp_path, monkeypatch):
+@pytest.mark.parametrize('aligned', [False, True], ids=['normal','explicit-aligned'])
+def test_full_native_gan_state_and_heads_restored_without_training(tmp_path, monkeypatch, aligned):
     from test_training_helios_native_outputs import _marker_engines
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    task = OriginalHeliosRequest(variant='gan',stage_schedule_policy='benchmark_v4_strict_global') if aligned else None
     calls = []
     class Output:
         def __init__(self, value, output):
@@ -162,6 +166,8 @@ def test_full_native_gan_state_and_heads_restored_without_training(tmp_path, mon
             calls.append('admit')
         def publish(self, view, *, manifest, identity):
             assert view.request['variant'] == 'gan'
+            if aligned:
+                assert view.request == task.to_dict()
             assert view.generator.global_steps == 102 and manifest['versions']['ema'] == 900
             assert calls == ['admit']
             calls.append('publish')
@@ -169,7 +175,7 @@ def test_full_native_gan_state_and_heads_restored_without_training(tmp_path, mon
             return self.result
     factory = lambda **kw: with_gan_head(_marker_engines, **kw)
     result, receipt, _ = _owned_gan_export(tmp_path, monkeypatch, engines_factory=factory,
-                                         request={}, callback_type=Output)
+                                         request={}, callback_type=Output,task=task)
     assert result['status'] == 'EXPORTED' and calls == ['admit', 'publish']
     assert receipt['completed_cycles'] == 0 and receipt['resume_cycle'] == 100
 

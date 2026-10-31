@@ -180,18 +180,26 @@ def generate(state, feeds, options):
 
 
 def _project(view, codec, request, *, schema=SCHEMA, variant='no-gan', source_factory=None, factory=FACTORY):
+    from peft.tuners.tuners_utils import BaseTunerLayer
     from distillschedule.open_workload.torch_backend import unwrap_module
     from .helios_inference import SHIFT_KEYS
     g = unwrap_module(view.generator.module)
     require(set(g.peft_config) == {'default'} and all(not getattr(m, 'merged', False) for m in g.modules()),
             'CURRENT unmerged default G required; no merged shadow or EMA substitution')
     peft, task = g.peft_config['default'], OriginalHeliosRequest.from_dict(view.request)
+    # As in the W1 exporter, PEFT config may contain compressed suffixes. Only
+    # installed default A/B adapters prove the complete full-name inventory.
+    targets = sorted(name for name, layer in g.named_modules()
+        if isinstance(layer, BaseTunerLayer) and 'default' in getattr(layer, 'lora_A', {})
+        and 'default' in getattr(layer, 'lora_B', {}))
     p = video.plain(dict(schema_version=schema, precision=PRECISION, source=(source_factory or inference_source)(),
         runtime=video.runtime_identity(), architecture={k: v for k, v in dict(g.config).items() if not k.startswith('_')},
         peft=dict(r=peft.r, lora_alpha=peft.lora_alpha, lora_dropout=peft.lora_dropout,
-                  init_lora_weights=peft.init_lora_weights, target_modules=sorted(peft.target_modules),
+                  init_lora_weights=peft.init_lora_weights, target_modules=targets,
                   exclude_modules=sorted(peft.exclude_modules)), task=task.to_dict(),
-        native=dict(args={k: getattr(view.args.training_config, k) for k in SHIFT_KEYS},
+        # The native P0 parser is flat and has no sampler Args. Its original
+        # rollout helpers construct these fixed dynamic-shift controls locally.
+        native=dict(args={k: video.NATIVE['args'][k] for k in SHIFT_KEYS},
                     scheduler=deepcopy(video.NATIVE['scheduler']), rollout=video._rollout(task)),
         noise_protocol=video.noise_protocol(), geometry=dict(noise_shape=list(task.latent_shape),
             prompt_shape=request['prompt_shape'], video_shape=[task.video_frames, task.video_height, task.video_width, 3],

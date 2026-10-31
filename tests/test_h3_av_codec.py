@@ -93,3 +93,100 @@ def test_explicit_bf16_storage_loads_only_selected_decoder_keys_exactly(tmp_path
     assert all(torch.equal(t, values[k].float()) and t.dtype == torch.float32
                and t.device.type == "cpu" for k, t in model.state_dict().items())
     assert not model.training and all(not p.requires_grad for p in model.parameters())
+
+
+def test_fl2va_factory_is_explicit_and_lazy():
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run([sys.executable, '-B', '-S', '-c', '''
+import sys
+from distillschedule.training import h3_av_codec as codec
+assert callable(codec.build_fl2va_decoder)
+assert 'distillschedule.training.h3_av_weight_import' not in sys.modules
+assert 'torch' not in sys.modules and 'diffsynth' not in sys.modules
+'''], env={**os.environ, 'PYTHONPATH':str(root/'src')}, text=True, capture_output=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def import_manifest(root):
+    from distillschedule.training import h3_av_weight_import as native
+    return dict(schema_version=native.SCHEMA, weight_format=native.FORMAT,
+        codec_manifest=dict(path=str(root/'codec.json'),bytes=16,sha256='a'*64),
+        converter_source=dict(root=str(root),files=deepcopy(native.CONVERTER_FILES),
+            provenance=dict(origin='operator-supplied exact original source',
+                license='operator-supplied source terms',terms_accepted=True)))
+
+
+@pytest.mark.parametrize('fault',['schema','format','unknown','pin','source','terms','origin'])
+def test_fl2va_invalid_import_fails_before_source_or_model_import(tmp_path,monkeypatch,fault):
+    from distillschedule.training import h3_av_weight_import as native
+    value=import_manifest(tmp_path)
+    if fault=='schema':value['schema_version']='unknown'
+    elif fault=='format':value['weight_format']='AUTO'
+    elif fault=='unknown':value['ignore_missing']=True
+    elif fault=='pin':value['codec_manifest']['sha256']='bad'
+    elif fault=='source':value['converter_source']['files'][next(iter(native.CONVERTER_FILES))]='0'*64
+    elif fault=='terms':value['converter_source']['provenance']['terms_accepted']=False
+    else:value['converter_source']['provenance']['origin']=''
+    monkeypatch.setattr(native,'converter_api',lambda *a:pytest.fail('invalid import executed external source'))
+    with pytest.raises(ValueError):native.validate_manifest(value)
+
+
+def test_fl2va_wrapper_never_changes_canonical_v1_acceptance(tmp_path):
+    from distillschedule.training import h3_av_codec as codec,h3_av_weight_import as native
+    p=manifest(tmp_path);p['weight_import']=import_manifest(tmp_path)
+    with pytest.raises(ValueError):codec.validate_manifest(p)
+    with pytest.raises(ValueError):codec.validate_manifest(import_manifest(tmp_path))
+    p=manifest(tmp_path)
+    assert codec.validate_manifest(p)==p
+    assert native.validate_manifest(import_manifest(tmp_path))['weight_format']==native.FORMAT
+
+
+def synthetic_converters():
+    """Private header planner test only; not the public pinned-source admission."""
+    from types import SimpleNamespace
+    aliases={'decoder.register_tokens':'decoder.register_tokens.weight',
+             'decoder.transformer_blocks.0.scale1':'decoder.transformer_blocks.0.scale1.weight'}
+    def convert(values):
+        return {aliases.get(k,k):v for k,v in values.items() if k!='decoder.mask_token'}
+    return SimpleNamespace(lock=SimpleNamespace(validate=lambda:None),functions={'video':convert})
+
+
+def synthetic_header_layout():
+    import torch
+    layout={'decoder.register_tokens.weight':((1,4,16),torch.float32),
+            'decoder.transformer_blocks.0.scale1.weight':((16,),torch.float32),
+            'post_quant_conv.bias':((24,),torch.float32)}
+    headers={'decoder.register_tokens':dict(shape=[1,4,16],dtype='F32'),
+             'decoder.transformer_blocks.0.scale1':dict(shape=[16],dtype='F32'),
+             'post_quant_conv.bias':dict(shape=[24],dtype='F32'),
+             'decoder.mask_token':dict(shape=[1,1,16],dtype='F32')}
+    return layout,headers
+
+
+def test_fl2va_header_relabels_preserve_tensors_and_only_official_exclusion():
+    from distillschedule.training import h3_av_weight_import as native
+    layout,headers=synthetic_header_layout()
+    result=native._plan_headers('video',headers,layout,layout,'float32',synthetic_converters())
+    assert result['mapping']['decoder.register_tokens.weight']=='decoder.register_tokens'
+    assert result['summary']['raw_keys']==4 and result['summary']['converted_keys']==3
+    assert result['summary']['excluded']==['decoder.mask_token']
+    assert result['summary']['converter_arithmetic']=='NONE'
+
+
+@pytest.mark.parametrize('fault',['missing','mask_missing','extra','shape','dtype','converted','collision','mask_shape'])
+def test_fl2va_header_rejects_missing_wrong_shape_extra_and_mixed_names(fault):
+    from distillschedule.training import h3_av_weight_import as native
+    layout,headers=synthetic_header_layout();key='decoder.register_tokens'
+    if fault=='missing':del headers[key]
+    elif fault=='mask_missing':del headers['decoder.mask_token']
+    elif fault=='extra':headers['unrecognized']=dict(shape=[1],dtype='F32')
+    elif fault=='shape':headers[key]['shape'][-1]+=1
+    elif fault=='dtype':headers[key]['dtype']='F16'
+    elif fault=='converted':headers[key+'.weight']=headers.pop(key)
+    elif fault=='collision':headers[key+'.weight']=deepcopy(headers[key])
+    else:headers['decoder.mask_token']['shape'][1]=2
+    with pytest.raises(ValueError):native._plan_headers('video',headers,layout,layout,'float32',synthetic_converters())

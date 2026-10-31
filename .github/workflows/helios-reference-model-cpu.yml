@@ -21,6 +21,7 @@ on:
       - 'tests/test_training_wan_inference_cpu.py'
       - 'tests/test_training_wan_generator_import_upstream_cpu.py'
       - 'tests/test_training_wan_native_outputs.py'
+      - 'tests/test_helios_reference_inference_noise_cpu.py'
       - 'tests/test_framework_cpu_collection.py'
       - 'scripts/check_cpu_receipt.py'
       - 'runtime/gst_pool_helios.py'
@@ -87,19 +88,58 @@ jobs:
             --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[extra_adapter]' \
             --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[wrong_default]' \
             --require 'test_actual_upstream_compacted_peft_projection_still_refuses_invalid_adapter_inventory[merged]'
+      - name: Original default sampler and explicit PSD-policy contracts
+        run: |
+          python -m pytest -q tests/test_training_wan_native_outputs.py -k 'native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd or explicit_stable_block_noise_policy or stable_block_noise_policy_rejects or default_block_noise_still_uses_original_distribution' --junitxml=helios-block-noise-policy-cpu.xml
+          python scripts/check_cpu_receipt.py helios-block-noise-policy-cpu.xml \
+            --require test_native_gamma_one_third_noise_is_singular_psd_not_cholesky_pd \
+            --require test_explicit_stable_block_noise_policy_matches_primitive_and_rng \
+            --require 'test_stable_block_noise_policy_rejects_other_gamma_before_rng[0.25]' \
+            --require 'test_default_block_noise_still_uses_original_distribution[unset]'
+      - name: Explicit v2 output protocol and exact restart without inherited environment
+        run: |
+          python -m pytest -q tests/test_helios_reference_inference_noise_cpu.py --junitxml=helios-reference-output-v2-cpu.xml
+          python scripts/check_cpu_receipt.py helios-reference-output-v2-cpu.xml \
+            --require test_explicit_reference_noise_policy_is_admitted_without_changing_default \
+            --require 'test_private_projection_inputs_match_existing_primitive_and_do_not_consume_rng[dtype0]' \
+            --require 'test_private_projection_inputs_match_existing_primitive_and_do_not_consume_rng[dtype1]' \
+            --require 'test_fresh_process_v2_export_and_generate_uses_real_operation_inputs_without_env[helios]' \
+            --require 'test_fresh_process_v2_export_and_generate_uses_real_operation_inputs_without_env[wan]' \
+            --require 'test_resume_identity_binds_explicit_output_policy[helios]' \
+            --require 'test_resume_identity_binds_explicit_output_policy[wan]' \
+            --require 'test_v2_inference_rejects_wrong_protocol_version_and_source[helios-source]' \
+            --require 'test_v2_inference_rejects_wrong_protocol_version_and_source[wan-source]' \
+            --require 'test_unselected_v1_keeps_original_call_and_environment_rejection[helios]' \
+            --require 'test_unselected_v1_keeps_original_call_and_environment_rejection[wan]' \
+            --require 'test_runtime_inference_seed_not_export_seed_controls_private_noise[dtype0]' \
+            --require 'test_runtime_inference_seed_not_export_seed_controls_private_noise[dtype1]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype0-primitive]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype0-stream]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype0-wrapper-globals]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype1-primitive]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype1-stream]' \
+            --require 'test_live_noise_helpers_reject_rebinding_before_any_draw[dtype1-wrapper-globals]'
       - name: Full original class and original G/C/EMA owners with fresh-process continuation
-        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_public_cpu.py tests/test_training_wan_inference_cpu.py tests/test_training_helios_optimized_stream.py tests/test_training_helios_native_safe_stream.py tests/test_training_helios_checkpoint_inputs_cpu.py tests/test_helios_rollout_liveness_cpu.py tests/test_refactor_helios_compat_source.py --junitxml=helios-reference-model-cpu.xml
+        env:
+          # Existing explicit training-fixture policy, never inherited by output
+          # or source/policy tests. Default sampler has an independent canary.
+          DISTILLSCHEDULE_STABLE_BLOCK_NOISE: '1'
+        run: python -m pytest -q tests/test_helios_reference_model_cpu.py tests/test_helios_step_owner_cpu.py tests/test_training_helios_public_cpu.py tests/test_data_helios_native_inputs.py tests/test_training_wan_public_cpu.py --junitxml=helios-reference-model-cpu.xml
+      - name: Explicit outputs and native contracts without inherited sampler override
+        run: python -m pytest -q tests/test_training_helios_public_inference_cpu.py tests/test_training_wan_inference_cpu.py tests/test_training_helios_optimized_stream.py tests/test_training_helios_native_safe_stream.py tests/test_training_helios_checkpoint_inputs_cpu.py tests/test_helios_rollout_liveness_cpu.py tests/test_refactor_helios_compat_source.py --junitxml=helios-native-policy-cpu.xml
       - name: Exact checkpoint-input copies through the original 40-block class
         run: python recipes/helios_nogan/verify_checkpoint_inputs_target_cpu.py
       - name: Require the full-source proofs without skips
         run: |
           python - <<'PY'
           import xml.etree.ElementTree as ET
-          root = ET.parse('helios-reference-model-cpu.xml').getroot()
-          suites = list(root.iter('testsuite'))
+          roots = [ET.parse(path).getroot() for path in (
+              'helios-reference-model-cpu.xml', 'helios-native-policy-cpu.xml')]
+          assert all(list(root.iter('testcase')) for root in roots), 'missing proof suite'
+          suites = [suite for root in roots for suite in root.iter('testsuite')]
           assert suites and all(int(s.get(field, '0')) == 0 for s in suites
                                 for field in ('skipped', 'failures', 'errors'))
-          cases = list(root.iter('testcase'))
+          cases = [case for root in roots for case in root.iter('testcase')]
           assert cases and all(case.find('skipped') is None for case in cases)
           names = {case.get('name') for case in cases}
           required = {
@@ -159,5 +199,8 @@ jobs:
           name: helios-reference-model-cpu-py${{ matrix.python }}
           path: |
             helios-reference-model-cpu.xml
+            helios-native-policy-cpu.xml
+            helios-block-noise-policy-cpu.xml
+            helios-reference-output-v2-cpu.xml
             wan-generator-import-upstream-cpu.xml
           if-no-files-found: error

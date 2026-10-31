@@ -39,6 +39,27 @@ def test_inference_rejects_non_fp32_default_before_model_construction():
     assert not torch.cuda.is_initialized()
 
 
+def test_foreign_w2_output_noise_policy_rejects_before_asset_reads():
+    from distillschedule.training.helios_nogan_public import admit_assets
+    with pytest.raises(ValueError,match='inference noise policy'):
+        admit_assets(dict(asset_manifest='/SYNTHETIC_TEST_ONLY/must-not-read.json',
+                          inference_noise_policy='foreign-output-policy'))
+
+
+def test_public_w2_recipe_selects_explicit_output_noise_policy():
+    recipe = json.loads((repository_root()/'recipes/helios_nogan/training.cpu-reference.json').read_text())
+    assert recipe['model']['parameters']['inference_noise_policy'] == 'fresh_projection_v1'
+
+
+def test_w2_output_policy_is_explicit_in_checkpoint_identity():
+    raw = json.loads((repository_root()/'recipes/helios_nogan/training.cpu-reference.json').read_text())
+    raw['model']['parameters']['inference_noise_policy'] = 'fresh_projection_v1'
+    selected = TrainingConfig.from_dict(raw,source=repository_root()/'recipes/helios_nogan/training.cpu-reference.json')
+    raw['model']['parameters'].pop('inference_noise_policy')
+    default = TrainingConfig.from_dict(raw,source=selected.source)
+    assert selected.identity != default.identity
+
+
 def _constructor_admission_parameters():
     """Admission-only config, not a warm execution receipt or training owner."""
     import inspect
@@ -67,6 +88,69 @@ def _constructor_admission_parameters():
             scheduler=dict(shift=1.,stages=3,stage_range=[0,1/3,2/3,1],gamma=1/3),rollout=inference._rollout(task)),
         geometry=dict(noise_shape=list(task.latent_shape),prompt_shape=[1,512,4096]),
         budget=dict(max_parameters=20000000,max_loaded_bytes=400000000),evidence_kind=FIXTURE,seed=773)
+
+
+def test_explicit_w2_v2_admits_existing_bf16_exact_psd_protocol():
+    from distillschedule.training import helios_nogan_inference as inference
+    from distillschedule.training.reference_inference_noise import protocol
+    p = _constructor_admission_parameters()
+    p.update(schema_version=inference.PROJECTION_SCHEMA,noise_protocol=protocol('torch.bfloat16'))
+    admitted,_ = inference._admit(p)
+    assert admitted == p and inference._metadata(p)['schema_version'] == inference.PROJECTION_SCHEMA
+    assert p['noise_protocol']['gamma'] == 1/3 and p['noise_protocol']['iid_dtype'] == 'torch.bfloat16'
+
+
+@pytest.mark.parametrize('fault',['old-schema','foreign-schema','missing-protocol','gamma','dtype','source'])
+def test_w2_v2_protocol_version_dtype_and_source_refuse_before_constructor(fault):
+    from distillschedule.training import helios_nogan_inference as inference
+    from distillschedule.training.reference_inference_noise import protocol
+    from distillschedule.adapters.helios.reference_model import load_reference_model_class
+    p = _constructor_admission_parameters()
+    p.update(schema_version=inference.PROJECTION_SCHEMA,noise_protocol=protocol('torch.bfloat16'))
+    if fault == 'old-schema':p['schema_version'] = inference.SCHEMA
+    elif fault == 'foreign-schema':p['schema_version'] = 'foreign.v2'
+    elif fault == 'missing-protocol':p.pop('noise_protocol')
+    elif fault == 'gamma':p['noise_protocol']['gamma'] = .25
+    elif fault == 'dtype':p['noise_protocol']['iid_dtype'] = 'torch.float32'
+    else:p['noise_protocol']['source']['primitive'] = '0'*64
+    cls = load_reference_model_class(backend='torch-sdpa');constructed = []
+    constructor = cls.__init__.__code__
+    def profile(frame,event,value):
+        if event == 'call' and frame.f_code is constructor:constructed.append(True)
+    try:
+        sys.setprofile(profile)
+        with pytest.raises(ValueError):inference.build_inference_model(p)
+    finally:sys.setprofile(None)
+    assert not constructed and not torch.cuda.is_initialized()
+
+
+def test_unselected_w2_v1_keeps_original_untraced_call_and_environment_refusal(monkeypatch):
+    """Actual v1 boundary; do not require a platform to accept singular Cholesky."""
+    from types import SimpleNamespace
+    from distillschedule.training import helios_nogan_inference as inference
+    from distillschedule.strategies.wan_capture import native_primitives
+    # No prediction is executed: only the original generate->run_generator ABI.
+    g = SimpleNamespace(training=False,gradient_checkpointing=False,parameters=lambda:(),modules=lambda:(),blocks=[])
+    p = dict(schema_version=inference.SCHEMA,geometry=dict(noise_shape=[1,16,9,48,80],prompt_shape=[1,512,4096]),
+             native=dict(args={},scheduler={},rollout={}))
+    state = dict(generator=g,inference=p)
+    feeds = dict(prompt_embeds=torch.zeros(1,512,4096,dtype=torch.bfloat16))
+    native = native_primitives(source_only=True);calls = []
+    class OriginalBoundaryReached(RuntimeError):pass
+    def profile(frame,event,value):
+        if event == 'call' and frame.f_code is native.post.run_generator.__code__:
+            calls.append(dict(operation_trace=frame.f_locals['operation_trace'],trace_prefix=frame.f_locals['trace_prefix'],
+                              noise=frame.f_locals['noise'].clone()))
+            raise OriginalBoundaryReached
+    monkeypatch.delenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE',raising=False)
+    try:
+        sys.setprofile(profile)
+        with pytest.raises(OriginalBoundaryReached):inference.generate(state,feeds,{})
+    finally:sys.setprofile(None)
+    assert len(calls) == 1 and calls[0]['operation_trace'] is calls[0]['trace_prefix'] is None
+    assert calls[0]['noise'].dtype == torch.bfloat16 and torch.count_nonzero(calls[0]['noise']) == 0
+    monkeypatch.setenv('DISTILLSCHEDULE_STABLE_BLOCK_NOISE','1')
+    with pytest.raises(ValueError,match='environment.selected compatibility'):inference.generate(state,feeds,{})
 
 
 @pytest.mark.parametrize('theta',[10000,10000.0])
@@ -161,6 +245,7 @@ from test_training_helios_nogan_inference_cpu import byte_equal,snapshot,inferen
 root=Path(sys.argv[1]);config=load_training_config(root/'resume.json')
 resumed=session.train(config)
 assert resumed['resume_cycle']==1 and resumed['cursor']==2
+assert config.model['parameters']['inference_noise_policy']=='fresh_projection_v1'
 # The real output loader constructs warm owners, then strictly restores ALL
 # owners. Capture its genuine warm G and restored current owner, not a stand-in.
 construct,load=session.construct,session._load_for_output
@@ -174,11 +259,17 @@ def capture_load(*args,**kw):
 session.construct=capture_construct;session._load_for_output=capture_load
 try:manifest=session.export(config,resumed['checkpoint'],root/'export')
 finally:session.construct=construct;session._load_for_output=load
+p=manifest['model']['parameters']
+assert p['schema_version']=='distillschedule.helios_nogan_current_generator_inference.v2'
+assert p['noise_protocol']['policy']=='fresh_projection_v1' and p['noise_protocol']['iid_dtype']=='torch.bfloat16'
+assert manifest['model']['metadata']['schema_version']==p['schema_version']
 components,dataset,payload,identity,prepared_session=captured[0]
 owner=components.state['native_cycle'];g=owner.generator.module
 assert owner.versions==dict(generator=4,critic=20,ema=20) and owner.cycle==2
 assert byte_equal(before[0],snapshot(owner)), 'standard export mutated native/outer RNG, full G/C, EMA, flags, adapters, gradients or ownership'
 projection=components.inference_projection(components,dict(seed=config.trainer['seed']))
+assert projection.parameters['schema_version']=='distillschedule.helios_nogan_current_generator_inference.v1'
+assert 'noise_protocol' not in projection.parameters
 assert projection.components.state=={'generator':g} and projection.components.state['generator'] is g
 assert projection.components.generate is projection.components.export is projection.components.load_export is None
 assert projection.factory=='distillschedule.training.helios_nogan_inference:build_inference_model'
@@ -207,7 +298,8 @@ safe=owner.state_dict();outer=cpu_tree(rng_state())
 trace=decode(dataset.sample(2),HeliosCohortTask(2));row=descriptor(trace.reference_document)
 a=owner.run(trace,row);state_a=snapshot(owner)
 owner.load_state_dict(safe);restore_rng(outer)
-projection=components.inference_projection(components,dict(seed=config.trainer['seed']))
+projection=components.inference_projection(components,dict(seed=config.trainer['seed'],inference_noise_policy='fresh_projection_v1'))
+assert projection.parameters['schema_version']=='distillschedule.helios_nogan_current_generator_inference.v2'
 assert byte_equal(before[0],snapshot(owner))
 b=owner.run(trace,row);state_b=snapshot(owner)
 assert byte_equal(a,b) and byte_equal(state_a,state_b), 'projection changed EXACT next original G1/C5/EMA5 update'
@@ -232,6 +324,7 @@ assert not torch.cuda.is_initialized()
  current_generator_changed_from_genuine_warm=True,ema_selection_proof='CURRENT_G_OBJECT_AND_NONALIASING_NOT_NUMERICAL_DIFFERENCE',
  ema_values_equal_current_g=True,ema_decay=owner.ema.cur_decay_value,
  resume_cycle=resumed['resume_cycle'],cursor=resumed['cursor'],versions=owner.versions,
+ output_noise_schema=p['schema_version'],output_noise_policy=p['noise_protocol']['policy'],
  quality_validation='NOT_RUN',distributed_execution='NOT_RUN',claimable_speedup=False,cuda_initialized=False,
  source=manifest['model']['parameters']['source'],runtime=manifest['model']['parameters']['runtime'])))
 print('W2_FRESH_PROCESS_RESTORED_CURRENT_FULL_UNMERGED_G_EXPORT_AND_EXACT_NEXT_UPDATE_PASS')
@@ -245,8 +338,15 @@ def portable(tmp_path_factory):
     old = root/'training-payloads'
     # OWN fixture only. Never delete, relocate, repin or change the L1a fixture.
     files = fixture_files(old/'local')
-    trained = session.train(config_for(files,old/'partial',1))
-    write_json(root/'resume.json',config_for(files,old/'resumed',2,resume=trained['checkpoint']).to_dict())
+    first = config_for(files,old/'partial',1).to_dict()
+    first['model']['parameters']['inference_noise_policy'] = 'fresh_projection_v1'
+    from distillschedule.training.helios_nogan_public import admit_assets
+    default = dict(first['model']['parameters']);default.pop('inference_noise_policy')
+    assert admit_assets(first['model']['parameters']) == admit_assets(default)
+    trained = session.train(TrainingConfig.from_dict(first,source=root/'first.json'))
+    resumed = config_for(files,old/'resumed',2,resume=trained['checkpoint']).to_dict()
+    resumed['model']['parameters']['inference_noise_policy'] = 'fresh_projection_v1'
+    write_json(root/'resume.json',resumed)
     prepared = new_inputs(root/'NEW-inputs')
     stdout = process(EXPORT_PROCESS,root)
     proof = (root/'export-proof.json').read_text()
@@ -275,7 +375,7 @@ def test_actual_restored_full_current_generator_projection_and_export(portable):
 
 
 INFERENCE_PROCESS = r'''
-import json,sys,inspect,os,torch
+import json,sys,inspect,os,torch,random
 from pathlib import Path
 from distillschedule.training import session
 from distillschedule.training.config import load_training_config
@@ -298,8 +398,11 @@ def no_optimizer(*args,**kwargs):raise AssertionError('Adam constructed during i
 torch.optim.Adam.__init__=torch.optim.AdamW.__init__=no_optimizer
 from distillschedule.adapters.helios.reference_model import load_reference_model_class
 from distillschedule.strategies.wan_capture import native_primitives
+from distillschedule.training.reference_inference_noise import prepare
 cls=load_reference_model_class(backend='torch-sdpa');native=native_primitives(source_only=True)
 constructor=inspect.unwrap(cls.__init__).__code__;models=[];calls=[];forwards=[];native_results=[]
+noise_inputs=[];prepare_rng=[];cholesky=[]
+assert 'DISTILLSCHEDULE_STABLE_BLOCK_NOISE' not in os.environ
 def profile(frame,event,arg):
  if frame.f_code is constructor and event=='return':
   assert not frame.f_locals['is_use_gan'] and not frame.f_locals['is_use_gan_final']
@@ -307,24 +410,46 @@ def profile(frame,event,arg):
  if frame.f_code is cls.forward.__code__ and event=='call':forwards.append(True)
  if frame.f_code is native.post.run_generator.__code__ and event=='return':
   calls.append(True);native_results.append(arg[0].detach().clone())
+ if event=='call' and frame.f_code is native.post.sample_block_noise.__code__:cholesky.append(True)
+ if frame.f_code is prepare.__code__:
+  if event=='call':prepare_rng.append((torch.get_rng_state().clone(),random.getstate()))
+  elif event=='return':
+   assert torch.equal(prepare_rng[-1][0],torch.get_rng_state()) and prepare_rng[-1][1]==random.getstate()
+   noise_inputs.append((arg,torch.initial_seed(),str(frame.f_locals['dtype'])))
 config=load_training_config(root/'inference.json')
 try:
  sys.setprofile(profile)
  a=session.generate_from_export(config,root/'export',root/'actual-a',prepared=config.data['prepared'],output_kind='latents')
  b=session.generate_from_export(config,root/'export',root/'actual-b',prepared=config.data['prepared'],output_kind='latents')
+ assert len(calls)==2 and len(forwards)==12, (calls,len(forwards))
+ raw=config.to_dict();raw['trainer']['seed']=774
+ from distillschedule.training.config import TrainingConfig
+ changed=TrainingConfig.from_dict(raw,source=root/'new-runtime-seed.json')
+ c=session.generate_from_export(changed,root/'export',root/'actual-c',prepared=changed.data['prepared'],output_kind='latents')
 finally:sys.setprofile(None)
 active=False
-assert models==['meta','cpu','meta','cpu'], 'one admitted meta probe plus ONE actual full G per run; never C'
-assert len(calls)==2 and len(forwards)==12, (calls,len(forwards))
+assert models==['meta','cpu']*3, 'one admitted meta probe plus ONE actual full G per run; never C'
+assert len(calls)==3 and len(forwards)==18, (calls,len(forwards))
+assert not cholesky and len(noise_inputs)==3
+assert [v[1] for v in noise_inputs]==[773,773,774] and all(v[2]=='torch.bfloat16' for v in noise_inputs)
+for inputs,_,_ in noise_inputs:inputs.finish()
+assert all(torch.equal(noise_inputs[0][0]._values[k],noise_inputs[1][0]._values[k]) for k in noise_inputs[0][0]._values)
+assert all(not torch.equal(noise_inputs[0][0]._values[k],noise_inputs[2][0]._values[k]) for k in noise_inputs[0][0]._values)
 read=lambda name:torch.load(root/name/'generation.pt',weights_only=True)['generated']['latents']
 x,y,z=read('expected'),read('actual-a'),read('actual-b')
 assert list(z.shape)==[1,16,9,48,80] and z.dtype==torch.float32 and torch.equal(x,y) and torch.equal(y,z) and bool(z.isfinite().all())
 assert torch.equal(y,native_results[0]) and torch.equal(z,native_results[1]), 'adapter changed original native result'
+changed_latents=read('actual-c')
+assert changed_latents.dtype==torch.float32 and not torch.equal(y,changed_latents)
+assert torch.equal(changed_latents,native_results[2]) and bool(changed_latents.isfinite().all())
 assert not torch.cuda.is_initialized()
 assert not (root/'training-payloads').exists()
 (root/'generation-proof.json').write_text(json.dumps(dict(status='PASS_ONLY_EXPORT_SOURCE_RUNTIME_NEW_PROMPT',
  original_full_generator_forwards=len(forwards),original_native_run_generator_calls=len(calls),constructor_devices=models,
  latents_shape=list(z.shape),latents_dtype=str(z.dtype),finite=True,exact_repeat=True,native_result_exact=True,
+ output_noise_schema=config.model['parameters']['schema_version'],runtime_seeds=[773,773,774],
+ exact_input_census_completed=3,old_cholesky_calls=len(cholesky),prepare_caller_rng_preserved=True,
+ new_runtime_seed_changes_all_four_noise_tensors_and_output=True,
  cuda_initialized=False,old_payload_trees_deleted=True,old_path_reads_blocked=True,training_owner_imports_blocked=True,
  adam_construction_blocked=True,quality_validation='NOT_RUN',claimable_speedup=False)))
 print('W2_ONLY_EXPORT_SOURCE_RUNTIME_NEW_PROMPT_ORIGINAL_FULL_MODEL_NATIVE_RUN_GENERATOR_EXACT_REPEAT_PASS')

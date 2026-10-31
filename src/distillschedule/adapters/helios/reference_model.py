@@ -8,12 +8,14 @@ or an admission of any native optimized/CUDA attention backend.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from functools import wraps
 import hashlib
 import importlib
 import importlib.util
 from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 import json
+import inspect
 from pathlib import Path
 import sys
 from threading import RLock
@@ -36,6 +38,67 @@ _loaded_objects = None
 
 def _require(condition, message):
     require(condition, message, path="helios.reference_model")
+
+
+def _own_cpu_pretrained_gan_linear(model, *, default_loader):
+    """Own only the 132-byte CPU FP32 final head affected by mmap alignment.
+
+    Diffusers' default safetensors loader can leave this 32-to-1 Linear's
+    parameters at byte offsets 20/16 modulo 64. On some AVX2 implementations
+    that selects a different FP32 reduction from the constructor/custom-copy
+    path. Do not change arithmetic, other heads, other dtypes or GPU storage.
+    """
+    if not default_loader:
+        return model
+    module = sys.modules.get(_MODEL_MODULE)
+    if type(model) is not getattr(module, "HeliosTransformer3DModel", None):
+        return model
+    import torch
+
+    if not (getattr(model, "is_use_gan", False)
+            and getattr(model, "is_use_gan_final", False)
+            and getattr(model.config, "gan_cond_map_dim", None) == 32):
+        return model
+    parameters = tuple(model.parameters())
+    if not all(p.device.type == "cpu" and p.dtype == torch.float32 for p in parameters):
+        return model
+    head = model.gan_final_head.head3d
+    final = head[-1]
+    _require(type(head) is torch.nn.Sequential and len(head) == 21
+             and type(final) is torch.nn.Linear and final.in_features == 32 and final.out_features == 1,
+             "final GAN Linear layout changed")
+    selected = ((final.weight, (1, 32), (32, 1)), (final.bias, (1,), (1,)))
+    for parameter, shape, stride in selected:
+        _require(isinstance(parameter, torch.nn.Parameter)
+                 and tuple(parameter.shape) == shape and tuple(parameter.stride()) == stride,
+                 "final GAN Linear layout changed")
+    # Validate and allocate both before mutating either. Rebind data, not the
+    # Parameter or set_(): optimizer references, existing gradients and the
+    # original version counters must survive this setup-only storage policy.
+    replacements = [(parameter, parameter.detach().clone())
+                    for parameter, _, _ in selected if parameter.data_ptr() % 64]
+    _require(all(owned.data_ptr() % 64 == 0 for _, owned in replacements),
+             "final GAN Linear owned storage is not 64-byte aligned")
+    for parameter, owned in replacements:
+        parameter.data = owned
+    return model
+
+
+def _pretrained_storage_loader(cls):
+    native = cls.from_pretrained.__func__
+    signature = inspect.signature(native)
+    policy = _own_cpu_pretrained_gan_linear
+
+    # Keep the wrapper's actual provider module visible; __wrapped__ explicitly
+    # records the unchanged source-admitted original loader it delegates to.
+    @wraps(native, assigned=("__name__", "__qualname__", "__doc__", "__annotations__"))
+    def from_pretrained(owner, *args, **kwargs):
+        arguments = signature.bind(owner, *args, **kwargs)
+        model = native(owner, *args, **kwargs)
+        return policy(model, default_loader=arguments.arguments.get("use_default_loader", False))
+
+    cls.from_pretrained = classmethod(from_pretrained)
+    return from_pretrained, native, policy, signature
 
 
 def _source_identity():
@@ -152,6 +215,22 @@ def _validate_modules(modules, objects, source):
              and getattr(model, "create_navit_attention_masks", None) is objects["navit"]
              and getattr(backend, "create_navit_attention_masks", None) is objects["navit"],
              "Helios reference model/backend binding changed")
+    loader = objects["pretrained_loader"]
+    bindings = {}
+    if loader.__code__ is objects["pretrained_loader_code"] and loader.__globals__ is globals():
+        try:
+            bindings = dict(zip(loader.__code__.co_freevars,
+                                (cell.cell_contents for cell in loader.__closure__ or ()), strict=True))
+        except ValueError:  # Missing/empty cells are not an admitted delegate.
+            pass
+    _require(getattr(objects["class"].from_pretrained, "__func__", None) is loader
+             and loader.__wrapped__ is objects["native_pretrained_loader"]
+             and _own_cpu_pretrained_gan_linear is objects["cpu_pretrained_policy"]
+             and set(bindings) == {"native", "policy", "signature"}
+             and bindings["native"] is objects["native_pretrained_loader"]
+             and bindings["policy"] is objects["cpu_pretrained_policy"]
+             and bindings["signature"] is objects["pretrained_signature"],
+             "Helios reference pretrained storage policy binding changed")
 
 
 def _admit(backend):
@@ -167,6 +246,12 @@ def _admit(backend):
             "scope": "FULL_ORIGINAL_SOURCE_EXPLICIT_DENSE_SDPA_NOT_NATIVE_W3_LIFECYCLE",
             "namespace": _NAMESPACE, "model_module": _MODEL_MODULE,
             "class_name": "HeliosTransformer3DModel", "source": source,
+            "pretrained_storage_policy": {
+                "name": "cpu-fp32-final-gan-linear-owned64-v1",
+                "scope": "DEFAULT_LOADER_FINAL_GAN_LINEAR_32_TO_1_ONLY",
+                "device": "cpu", "dtype": "torch.float32", "alignment_bytes": 64,
+                "max_parameter_bytes": 132, "module": __name__,
+                "sha256": file_sha256(Path(__file__).resolve())},
             "backend": {"name": "torch-sdpa", "module": _BACKEND_MODULE,
                         "path": str(_BACKEND_PATH), "sha256": _BACKEND_SHA256, "varlen": False}}
 
@@ -195,8 +280,9 @@ def _discard_failed_import():
 def load_reference_model_class(*, backend: str) -> type:
     """Return the actual original class, with explicit opt-in to dense SDPA.
 
-    Constructor, PEFT, GAN head and save_pretrained/from_pretrained remain owned
-    by the original class. No model, weights or optimizer are created here.
+    Constructor, forward, PEFT, GAN head and save_pretrained remain original.
+    The original from_pretrained is delegated to with an explicitly identified
+    CPU FP32 final-head storage policy; no model or optimizer is created here.
     Unsupported NaViT/varlen execution raises, never substitutes another route.
     """
     global _loaded_modules, _loaded_objects
@@ -212,6 +298,10 @@ def load_reference_model_class(*, backend: str) -> type:
                                "forward": model.HeliosTransformer3DModel.forward,
                                "attention": backend_module.attn_varlen_func,
                                "navit": backend_module.create_navit_attention_masks}
+                    loader, native_loader, policy, signature = _pretrained_storage_loader(objects["class"])
+                    objects.update(pretrained_loader=loader, native_pretrained_loader=native_loader,
+                                   cpu_pretrained_policy=policy, pretrained_signature=signature,
+                                   pretrained_loader_code=loader.__code__)
                     source = _source_identity()
                     _require(source == identity["source"] and file_sha256(_BACKEND_PATH) == _BACKEND_SHA256,
                              "Helios reference source/backend identity changed during import")

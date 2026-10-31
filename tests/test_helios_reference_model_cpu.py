@@ -4,6 +4,9 @@ Deliberately outside test_training_*.py's original Diffusers 0.34 helper group.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -222,6 +225,216 @@ def _inputs(batch=1):
                 encoder_hidden_states=torch.randn(batch, 3, 8), return_dict=False)
 
 
+def _loader_execution_metadata(model):
+    """Observe CPU layout/backend differences without normalizing either side."""
+    import torch
+    def layout(value):
+        return dict(dtype=str(value.dtype), shape=list(value.shape), stride=list(value.stride()),
+                    storage_offset=value.storage_offset(), alignment_mod64=value.data_ptr() % 64)
+    return dict(
+        python=sys.version, torch=str(torch.__version__),
+        cpu_capability=torch.backends.cpu.get_cpu_capability(),
+        num_threads=torch.get_num_threads(), num_interop_threads=torch.get_num_interop_threads(),
+        default_dtype=str(torch.get_default_dtype()),
+        matmul_precision=torch.get_float32_matmul_precision(),
+        mkldnn_enabled=torch.backends.mkldnn.enabled,
+        deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+        parameters={name: layout(value) for name, value in model.named_parameters()},
+        buffers={name: dict(layout(value), sha256=hashlib.sha256(
+            value.detach().contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest())
+            for name, value in model.named_buffers()},
+    )
+
+
+def _install_loader_gan_observer(model):
+    """Observe the original call once; hooks retain references, never compute."""
+    records, handles = [], []
+    for name, layer in model.gan_final_head.head3d.named_children():
+        def observe(module, args, output, name=name):
+            records.append((name, module, args, output))
+        handles.append(layer.register_forward_hook(observe))
+    return records, handles
+
+
+def _loader_tensor_summary(value):
+    """Post-forward CPU evidence, not a replacement input or reference."""
+    import torch
+    assert isinstance(value, torch.Tensor) and value.device.type == 'cpu'
+    flat = value.detach().contiguous().reshape(-1)
+    result = dict(dtype=str(value.dtype), shape=list(value.shape), stride=list(value.stride()),
+        storage_offset=value.storage_offset(), alignment_mod64=value.data_ptr() % 64,
+        sha256=hashlib.sha256(flat.view(torch.uint8).numpy().tobytes()).hexdigest())
+    if value.numel() <= 128:
+        def finite_json(item):
+            if isinstance(item, list):
+                return [finite_json(child) for child in item]
+            if isinstance(item, float) and not math.isfinite(item):
+                return str(item)
+            return item
+        result['small_values'] = finite_json(value.detach().tolist())
+    return result
+
+
+def _loader_gan_trace(records):
+    # All hashing/copies happen after the original forward and hook removal.
+    return [dict(name=name, type=type(layer).__module__ + '.' + type(layer).__qualname__,
+                 inputs=[_loader_tensor_summary(value) for value in args],
+                 parameters={key: _loader_tensor_summary(value)
+                             for key, value in layer.named_parameters(recurse=False)},
+                 output=_loader_tensor_summary(output))
+            for name, layer, args, output in records]
+
+
+def _loader_gan_comparison(actual, reference):
+    def values(value):
+        return {key: value[key] for key in ('dtype', 'shape', 'sha256')}
+    def layout(value):
+        return {key: value[key] for key in ('stride', 'storage_offset', 'alignment_mod64')}
+    def flat(value):
+        return [child for row in value for child in flat(row)] if isinstance(value, list) else [value]
+    census_equal = [(r['name'], r['type']) for r in actual] == [(r['name'], r['type']) for r in reference]
+    result = dict(census_equal=census_equal, actual_census=[r['name'] for r in actual],
+                  reference_census=[r['name'] for r in reference], layers=[], first_divergence=None)
+    if not census_equal:
+        result['first_divergence'] = dict(name=None, kind='census_difference')
+    for current, expected in zip(actual, reference):
+        inputs_equal = [values(v) for v in current['inputs']] == [values(v) for v in expected['inputs']]
+        parameters_equal = ({k: values(v) for k, v in current['parameters'].items()} ==
+                            {k: values(v) for k, v in expected['parameters'].items()})
+        output_equal = values(current['output']) == values(expected['output'])
+        row = dict(name=current['name'], type=current['type'], input_values_equal=inputs_equal,
+                   parameter_values_equal=parameters_equal, output_values_equal=output_equal,
+                   input_layouts_equal=([layout(v) for v in current['inputs']] ==
+                                        [layout(v) for v in expected['inputs']]),
+                   parameter_layout_differences=[k for k, v in current['parameters'].items()
+                       if k not in expected['parameters'] or layout(v) != layout(expected['parameters'][k])],
+                   output_layouts_equal=layout(current['output']) == layout(expected['output']))
+        if 'small_values' in current['output'] and 'small_values' in expected['output']:
+            a, b = flat(current['output']['small_values']), flat(expected['output']['small_values'])
+            if len(a) == len(b):
+                finite = [(x, y) for x, y in zip(a, b) if isinstance(x, (int, float)) and isinstance(y, (int, float))]
+                row['output_difference'] = dict(unequal=sum(x != y for x, y in zip(a, b)),
+                    max_abs=max((abs(x - y) for x, y in finite), default=None))
+        result['layers'].append(row)
+        if result['first_divergence'] is None and not (inputs_equal and parameters_equal and output_equal):
+            kind = ('input_value_difference' if not inputs_equal else
+                    'parameter_value_difference' if not parameters_equal else 'operator_output_difference')
+            result['first_divergence'] = dict(row, kind=kind)
+    return result
+
+
+def _loader_gan_counterfactual(model, records, reference_trace, fixture, checkpoint):
+    """Failure-only attribution; never replaces actual outputs or any assertion."""
+    import random
+    import torch
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    numpy = sys.modules.get('numpy')
+    numpy_rng = numpy.random.get_state() if numpy is not None else None
+    def state():
+        return [(kind, name, id(value), _loader_tensor_summary(value))
+                for kind, pairs in [('parameter', model.named_parameters()), ('buffer', model.named_buffers())]
+                for name, value in pairs]
+    before = state()
+    result = dict(diagnostic_only=True)
+    try:
+        # The source-qualified original custom loader is a diagnostic control,
+        # not a fallback for the failing default-loader result.
+        custom = type(model).from_pretrained(str(checkpoint), use_default_loader=False).eval()
+        observed, handles = _install_loader_gan_observer(custom)
+        try:
+            with torch.no_grad():
+                custom_outputs = custom(**fixture['inputs'], gan_mode=True)
+        finally:
+            for handle in handles:
+                handle.remove()
+        custom_trace = _loader_gan_trace(observed)
+        result['custom_copy'] = dict(matches_reference=all(torch.equal(a, b)
+            for a, b in zip(custom_outputs, fixture['outputs'], strict=True)),
+            comparison=_loader_gan_comparison(custom_trace, reference_trace), trace=custom_trace)
+        comparison = _loader_gan_comparison(_loader_gan_trace(records), reference_trace)
+        first = comparison['first_divergence']
+        if first is None or first['kind'] != 'operator_output_difference':
+            result['first_layer'] = dict(not_run='no first operator mismatch with equal input/parameter values')
+        else:
+            index = next(i for i, record in enumerate(records) if record[0] == first['name'])
+            name, layer, args, _ = records[index]
+            parameters = dict(layer.named_parameters())
+            buffers = dict(layer.named_buffers())
+            # Only this first mismatching operator's parameters are copied.
+            # No original Parameter, buffer, model binding or default is changed.
+            owned = {key: value.detach().clone(memory_format=torch.preserve_format)
+                     for key, value in parameters.items()}
+            with torch.no_grad():
+                replay = layer(*args)
+                aligned = torch.func.functional_call(layer, (owned, buffers), args, strict=True)
+            expected = reference_trace[index]['output']
+            replay_summary, aligned_summary = _loader_tensor_summary(replay), _loader_tensor_summary(aligned)
+            result['first_layer'] = dict(name=name, type=first['type'],
+                unmodified_replay_matches_reference=replay_summary['sha256'] == expected['sha256'],
+                owned_parameter_replay_matches_reference=aligned_summary['sha256'] == expected['sha256'],
+                cloned_parameter_bytes=sum(v.numel() * v.element_size() for v in owned.values()),
+                original_parameter_layouts={k: _loader_tensor_summary(v) for k, v in parameters.items()},
+                owned_parameter_layouts={k: _loader_tensor_summary(v) for k, v in owned.items()},
+                unmodified_replay=replay_summary, owned_parameter_replay=aligned_summary)
+    except Exception as error:
+        # A diagnostic failure cannot hide the original strict output failure.
+        result['diagnostic_error'] = dict(type=type(error).__name__, message=str(error))
+    finally:
+        torch.set_rng_state(rng)
+        random.setstate(python_rng)
+        if numpy_rng is not None:
+            numpy.random.set_state(numpy_rng)
+    result['original_model_unchanged'] = state() == before
+    return result
+
+
+def _loader_output_failure(outputs, expected, model, reference_metadata, *,
+                           reference_trace=None, actual_trace=None, counterfactual=None):
+    """Keep strict failure, but preserve the failing process's actual evidence."""
+    import torch
+    differences = []
+    for index, (actual, reference) in enumerate(zip(outputs, expected, strict=True)):
+        if not torch.equal(actual, reference):
+            max_abs = float((actual - reference).abs().max())
+            differences.append(dict(index=index, shape=list(actual.shape), dtype=str(actual.dtype),
+                unequal=int(torch.count_nonzero(actual != reference)),
+                actual_nonfinite=int(torch.count_nonzero(~torch.isfinite(actual))),
+                reference_nonfinite=int(torch.count_nonzero(~torch.isfinite(reference))),
+                max_abs=max_abs if math.isfinite(max_abs) else None))
+    details = dict(error='strict fresh-process output mismatch', differences=differences,
+                   reference=reference_metadata, actual=_loader_execution_metadata(model))
+    if reference_trace is not None and actual_trace is not None:
+        details['gan'] = dict(reference=reference_trace, actual=actual_trace,
+            comparison=_loader_gan_comparison(actual_trace, reference_trace), counterfactual=counterfactual)
+    return json.dumps(details, sort_keys=True, allow_nan=False)
+
+
+@pytest.mark.parametrize('nonfinite', [False, True])
+def test_loader_failure_diagnostic_preserves_rng_tensors_and_strict_failure(nonfinite):
+    """Synthetic tensor diagnostic, not an original-model qualification proof."""
+    import torch
+    model = torch.nn.Linear(2, 1)
+    reference = torch.tensor([1., 2.])
+    actual = reference.clone()
+    actual[0] = float('nan') if nonfinite else torch.nextafter(actual[0], torch.tensor(float('inf')))
+    actual_bits = actual.view(torch.int32).clone()
+    metadata = _loader_execution_metadata(model)
+    rng = torch.get_rng_state().clone()
+    state = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    with pytest.raises(AssertionError, match='strict fresh-process output mismatch') as error:
+        assert torch.equal(actual, reference), _loader_output_failure(
+            [actual], [reference], model, metadata)
+    details = json.loads(str(error.value).split('\n', 1)[0])
+    assert details['differences'] == [dict(index=0, shape=[2], dtype='torch.float32',
+        unequal=1, actual_nonfinite=int(nonfinite), reference_nonfinite=0,
+        max_abs=None if nonfinite else float(actual[0] - reference[0]))]
+    assert details['actual'] == metadata == details['reference']
+    assert torch.equal(torch.get_rng_state(), rng)
+    assert torch.equal(reference, torch.tensor([1., 2.]))
+    assert torch.equal(actual.view(torch.int32), actual_bits)
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in state.items())
+
+
 def test_full_original_class_dense_flow_and_original_gan_head_backward():
     import torch
     native_before = {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
@@ -385,12 +598,20 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
     import torch
     model = _tiny_model().eval()
     kwargs = _inputs(3)
-    with torch.no_grad():
-        expected = model(**kwargs, gan_mode=True)
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            expected = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    reference_trace = _loader_gan_trace(records)
     model.save_pretrained(tmp_path / "model", safe_serialization=True)
     assert (tmp_path / "model/config.json").is_file()
     assert (tmp_path / "model/diffusion_pytorch_model.safetensors").is_file()
-    torch.save({"inputs": kwargs, "outputs": expected, "state": model.state_dict()}, tmp_path / "expected.pt")
+    torch.save({"inputs": kwargs, "outputs": expected, "state": model.state_dict(),
+                "buffers": dict(model.named_buffers()), "gan_trace": reference_trace,
+                "execution_metadata": _loader_execution_metadata(model)}, tmp_path / "expected.pt")
     _fresh('''
         from pathlib import Path
         import sys
@@ -406,9 +627,32 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
         actual = model.state_dict()
         assert actual.keys() == fixture["state"].keys()
         assert all(torch.equal(v, actual[n]) for n, v in fixture["state"].items())
-        with torch.no_grad():
-            outputs = model(**fixture["inputs"], gan_mode=True)
-        assert all(torch.equal(a, b) for a, b in zip(outputs, fixture["outputs"]))
+        # The observer itself only appends Python references: no tensor
+        # summaries, clones or counterfactual forwards execute on this path.
+        from test_helios_reference_model_cpu import _install_loader_gan_observer
+        records, handles = _install_loader_gan_observer(model)
+        try:
+            with torch.no_grad():
+                outputs = model(**fixture["inputs"], gan_mode=True)
+        finally:
+            for handle in handles:
+                handle.remove()
+        assert [row[0] for row in records] == [row['name'] for row in fixture['gan_trace']]
+        def failure_details():
+            # Numerical diagnostics run only after a genuine strict failure.
+            # Neither custom-copy nor layer replay replaces the actual result.
+            from test_helios_reference_model_cpu import (
+                _loader_gan_trace, _loader_gan_counterfactual, _loader_output_failure,
+            )
+            return _loader_output_failure(outputs, fixture["outputs"], model, fixture["execution_metadata"],
+                reference_trace=fixture['gan_trace'], actual_trace=_loader_gan_trace(records),
+                counterfactual=_loader_gan_counterfactual(model, records, fixture['gan_trace'], fixture, root / 'model'))
+        assert len(outputs) == len(fixture["outputs"])
+        assert all(torch.equal(a, b) for a, b in zip(outputs, fixture["outputs"])), \
+            failure_details()
+        buffers = dict(model.named_buffers())
+        assert buffers.keys() == fixture["buffers"].keys()
+        assert all(torch.equal(v, buffers[n]) for n, v in fixture["buffers"].items())
         assert type(model).__module__ == reference_model_identity(backend="torch-sdpa")["model_module"]
         assert not torch.cuda.is_initialized()
     ''', tmp_path, default_loader)
@@ -479,3 +723,360 @@ def test_full_class_true_peft_original_critic_helper_adam_and_restart(tmp_path):
     assert equal(expected, pack_state(fresh_state)) and equal(expected_rng, rng_state())
     assert native_after == {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
     assert not torch.cuda.is_initialized()
+
+
+def test_loader_gan_trace_observes_actual_forward_without_mutation():
+    """Actual original GAN trace; neither a hosted reproduction nor a fix."""
+    import random
+    import torch
+    model = _tiny_model().eval()
+    kwargs = _inputs(3)
+    with torch.no_grad():
+        expected = model(**kwargs, gan_mode=True)
+    before = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    buffers = {name: value.detach().clone() for name, value in model.named_buffers()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            actual = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    trace = _loader_gan_trace(records)
+    assert all(torch.equal(a, b) for a, b in zip(actual, expected, strict=True))
+    assert [row['name'] for row in trace] == [str(index) for index in range(21)]
+    assert [row['type'] for row in trace] == [
+        type(layer).__module__ + '.' + type(layer).__qualname__
+        for layer in model.gan_final_head.head3d]
+    assert trace[0]['inputs'][0]['shape'] == [3, 16, 9, 16, 16]
+    assert 'small_values' not in trace[0]['output']
+    assert trace[-1]['output']['small_values'] == actual[1].tolist()
+    assert trace[-1]['parameters']['weight']['shape'] == [1, 32]
+    assert all(not layer._forward_hooks for layer in model.gan_final_head.head3d)
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
+    assert all(torch.equal(value, dict(model.named_buffers())[name]) for name, value in buffers.items())
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
+    assert _loader_gan_comparison(trace, trace)['first_divergence'] is None
+    assert not torch.cuda.is_initialized()
+
+
+def test_loader_gan_failure_trace_and_counterfactual_keep_real_strict_failure(tmp_path):
+    """Synthetic one-ulp hook fault in the actual original class, CPU only."""
+    import copy
+    import random
+    import torch
+    model = _tiny_model().eval()
+    kwargs = _inputs(3)
+    reference_records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            expected = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    reference_trace = _loader_gan_trace(reference_records)
+    metadata = _loader_execution_metadata(model)
+    model.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    fixture = dict(inputs=kwargs, outputs=expected, gan_trace=reference_trace)
+    before = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    buffers = {name: value.detach().clone() for name, value in model.named_buffers()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+
+    # Fault injection belongs only to this diagnostic canary. The strict
+    # assertion below must continue to fail; no golden/tolerance is changed.
+    def one_ulp_fault(module, args, output):
+        changed = output.clone()
+        changed[0, 0] = torch.nextafter(changed[0, 0], torch.full_like(changed[0, 0], float('inf')))
+        return changed
+    fault = model.gan_final_head.head3d[-1].register_forward_hook(one_ulp_fault)
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            actual = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+        fault.remove()
+    actual_trace = _loader_gan_trace(records)
+    comparison = _loader_gan_comparison(actual_trace, reference_trace)
+    assert comparison['census_equal'] and comparison['first_divergence']['name'] == '20'
+    assert comparison['first_divergence']['kind'] == 'operator_output_difference'
+    assert comparison['first_divergence']['input_values_equal']
+    assert comparison['first_divergence']['parameter_values_equal']
+    assert comparison['first_divergence']['output_difference']['unequal'] == 1
+
+    # Separately prove that summaries distinguish changed inputs/parameters
+    # from the observed operator-output difference and from layout alone.
+    wrong_input = copy.deepcopy(actual_trace)
+    wrong_input[-1]['inputs'][0]['sha256'] = '0' * 64
+    assert _loader_gan_comparison(wrong_input, reference_trace)['first_divergence']['kind'] == 'input_value_difference'
+    wrong_parameter = copy.deepcopy(actual_trace)
+    wrong_parameter[-1]['parameters']['weight']['sha256'] = '0' * 64
+    assert _loader_gan_comparison(wrong_parameter, reference_trace)['first_divergence']['kind'] == 'parameter_value_difference'
+    layout_only = copy.deepcopy(reference_trace)
+    layout_only[-1]['parameters']['weight']['alignment_mod64'] = 20
+    layout_result = _loader_gan_comparison(layout_only, reference_trace)
+    assert layout_result['first_divergence'] is None and layout_result['layers'][-1]['parameter_layout_differences'] == ['weight']
+
+    counterfactual = _loader_gan_counterfactual(model, records, reference_trace, fixture, tmp_path / 'model')
+    assert counterfactual['diagnostic_only'] and counterfactual['custom_copy']['matches_reference']
+    assert counterfactual['first_layer']['name'] == '20'
+    assert counterfactual['first_layer']['unmodified_replay_matches_reference']
+    assert counterfactual['first_layer']['owned_parameter_replay_matches_reference']
+    assert counterfactual['first_layer']['cloned_parameter_bytes'] == 132
+    assert counterfactual['original_model_unchanged']
+    details = _loader_output_failure(actual, expected, model, metadata,
+        reference_trace=reference_trace, actual_trace=actual_trace, counterfactual=counterfactual)
+    with pytest.raises(AssertionError, match='strict fresh-process output mismatch'):
+        assert all(torch.equal(a, b) for a, b in zip(actual, expected, strict=True)), details
+    decoded = json.loads(details)
+    assert decoded['gan']['comparison'] == comparison
+    assert decoded['gan']['counterfactual']['first_layer']['unmodified_replay_matches_reference']
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
+    assert all(torch.equal(value, dict(model.named_buffers())[name]) for name, value in buffers.items())
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
+    assert not torch.cuda.is_initialized()
+
+
+def _hosted_final_linear_case():
+    """Exact tiny tensors captured by the failure-only hosted diagnostic."""
+    import torch
+    path = ROOT / 'tests/fixtures/helios_cpu_fp32_final_linear_hosted.json'
+    record = json.loads(path.read_text())
+    assert record['source_report_sha256'] == '8a351ee180d371d3abeb3b0292b30d0eaa864e7a0b46ef06a8114741b59a646b'
+    tensors = {name: torch.tensor(record[name]['small_values'], dtype=torch.float32)
+               for name in ('input', 'weight', 'bias', 'reference_output', 'unaligned_hosted_output')}
+    for name, value in tensors.items():
+        assert _loader_tensor_summary(value)['sha256'] == record[name]['sha256']
+    return tensors
+
+
+def _shift_cpu_storage(parameter, offset):
+    """Preserve actual tensor values/Parameter identity, set a known alignment."""
+    import torch
+    owner = torch.empty(parameter.numel() + 16, dtype=parameter.dtype)
+    view = owner[offset:offset + parameter.numel()].view(parameter.shape)
+    with torch.no_grad():
+        view.copy_(parameter)
+        parameter.data = view
+    assert parameter.data_ptr() % 64 == offset * parameter.element_size()
+
+
+@pytest.mark.parametrize('default_loader', [False, True])
+def test_real_hosted_final_linear_pretrained_owns_only_its_132_unaligned_bytes(tmp_path, monkeypatch, default_loader):
+    import torch
+    from diffusers.models.modeling_utils import ModelMixin
+    case = _hosted_final_linear_case()
+    source = _tiny_model().eval()
+    with torch.no_grad():
+        source.gan_final_head.head3d[-1].weight.copy_(case['weight'])
+        source.gan_final_head.head3d[-1].bias.copy_(case['bias'])
+    source.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    original = ModelMixin.from_pretrained.__func__
+    produced = {}
+    def snapshot(model):
+        return {name: dict(parameter_id=id(value), pointer=value.data_ptr(), version=value._version,
+            requires_grad=value.requires_grad, grad=value.grad, summary=_loader_tensor_summary(value))
+            for name, value in model.named_parameters()}
+    def observe(cls, *args, **kwargs):
+        model = original(cls, *args, **kwargs)
+        produced.update(snapshot(model))
+        return model
+    monkeypatch.setattr(ModelMixin, 'from_pretrained', classmethod(observe))
+    loaded = type(source).from_pretrained(str(tmp_path / 'model'), use_default_loader=default_loader).eval()
+    final = loaded.gan_final_head.head3d[-1]
+    assert final.weight.data_ptr() % 64 == final.bias.data_ptr() % 64 == 0
+    with torch.no_grad():
+        # Match the local owned-storage reference, not a cross-CPU BLAS golden.
+        expected = torch.nn.functional.linear(case['input'], case['weight'], case['bias'])
+        assert torch.equal(final(case['input']), expected)
+    if default_loader:
+        current = snapshot(loaded)
+        changed = {name for name in current if current[name]['pointer'] != produced[name]['pointer']}
+        assert changed == {'gan_final_head.head3d.20.weight', 'gan_final_head.head3d.20.bias'}
+        assert sum(dict(loaded.named_parameters())[name].numel() * 4 for name in changed) == 132
+        for name, row in current.items():
+            before = produced[name]
+            assert all(row[key] == before[key] for key in ('parameter_id', 'version', 'requires_grad', 'grad'))
+            assert row['summary']['sha256'] == before['summary']['sha256']
+    else:
+        assert not produced, 'custom loader must not use Diffusers default loading'
+    assert not torch.cuda.is_initialized()
+
+
+def test_real_hosted_final_linear_ownership_keeps_parameter_gradient_version_rng_and_state():
+    import random
+    import torch
+    case = _hosted_final_linear_case()
+    model = _tiny_model().eval()
+    final = model.gan_final_head.head3d[-1]
+    with torch.no_grad():
+        final.weight.copy_(case['weight']); final.bias.copy_(case['bias'])
+    _shift_cpu_storage(final.weight, 5); _shift_cpu_storage(final.bias, 4)
+    final.weight.grad = torch.full_like(final.weight, .25)
+    final.bias.grad = torch.full_like(final.bias, .5)
+    optimizer = torch.optim.AdamW(final.parameters())
+    for parameter in final.parameters():
+        optimizer.state[parameter] = dict(step=torch.tensor(7.), exp_avg=torch.full_like(parameter, .1),
+                                          exp_avg_sq=torch.full_like(parameter, .2))
+    before = {name: (id(value), value.data_ptr(), value._version, value.requires_grad,
+                    value.grad, value.detach().clone()) for name, value in model.named_parameters()}
+    optimizer_before = {parameter: {key: (id(value), value.clone()) for key, value in state.items()}
+                        for parameter, state in optimizer.state.items()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    assert _provider()._own_cpu_pretrained_gan_linear(model, default_loader=True) is model
+    assert final.weight.data_ptr() % 64 == final.bias.data_ptr() % 64 == 0
+    for name, value in model.named_parameters():
+        identity, pointer, version, requires_grad, grad, values = before[name]
+        assert id(value) == identity and value._version == version and value.requires_grad == requires_grad
+        assert value.grad is grad and torch.equal(value, values)
+        if name not in ('gan_final_head.head3d.20.weight', 'gan_final_head.head3d.20.bias'):
+            assert value.data_ptr() == pointer
+    for parameter, state in optimizer.state.items():
+        for key, value in state.items():
+            assert id(value) == optimizer_before[parameter][key][0]
+            assert torch.equal(value, optimizer_before[parameter][key][1])
+    x = case['input'].requires_grad_()
+    w, b = case['weight'].requires_grad_(), case['bias'].requires_grad_()
+    expected = torch.nn.functional.linear(x, w, b)
+    actual = final(x)
+    assert torch.equal(actual, expected)
+    grad = torch.autograd.grad(actual.square().sum(), (x, final.weight, final.bias))
+    reference = torch.autograd.grad(expected.square().sum(), (x, w, b))
+    assert all(torch.equal(a, b) for a, b in zip(grad, reference, strict=True))
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
+    assert final.weight.grad is before['gan_final_head.head3d.20.weight'][4]
+    assert final.bias.grad is before['gan_final_head.head3d.20.bias'][4]
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('damage', ['weight_stride', 'bias_stride', 'weight_shape'])
+def test_cpu_final_linear_rejects_damaged_layout_before_any_parameter_change(damage):
+    import torch
+    model = _tiny_model().eval(); final = model.gan_final_head.head3d[-1]
+    _shift_cpu_storage(final.weight, 5); _shift_cpu_storage(final.bias, 4)
+    with torch.no_grad():
+        if damage == 'weight_stride':
+            final.weight.data = torch.zeros(64)[::2].view(1, 32)
+        elif damage == 'bias_stride':
+            final.bias.data = torch.zeros(2)[::2]
+        else:
+            final.weight.data = torch.zeros(1, 31)
+    before = {name: (id(value), value.data_ptr(), value._version, value.detach().clone())
+              for name, value in model.named_parameters()}
+    rng = torch.get_rng_state().clone()
+    with pytest.raises(ValueError, match='final GAN Linear layout'):
+        _provider()._own_cpu_pretrained_gan_linear(model, default_loader=True)
+    for name, value in model.named_parameters():
+        assert (id(value), value.data_ptr(), value._version) == before[name][:3]
+        assert torch.equal(value, before[name][3])
+    assert torch.equal(rng, torch.get_rng_state())
+
+
+@pytest.mark.parametrize('path', ['custom', 'nogan', 'bf16', 'mixed', 'meta', 'width64', 'aligned'])
+def test_nonselected_pretrained_final_linear_storage_is_unchanged(path):
+    import torch
+    model = _tiny_model().eval()
+    if path == 'nogan':
+        cls = type(model)
+        model = cls.from_config(model.config, is_use_gan=False, is_use_gan_final=False, is_use_gan_hooks=False)
+        assert not hasattr(model, 'gan_final_head')
+    elif path == 'bf16':
+        model = model.to(dtype=torch.bfloat16)
+    elif path == 'mixed':
+        model.patch_embedding.weight.data = model.patch_embedding.weight.to(dtype=torch.bfloat16)
+    elif path == 'meta':
+        model = model.to(device='meta')
+    elif path == 'width64':
+        model = type(model).from_config(model.config, gan_cond_map_dim=64)
+    if path == 'custom':
+        _shift_cpu_storage(model.gan_final_head.head3d[-1].weight, 5)
+        _shift_cpu_storage(model.gan_final_head.head3d[-1].bias, 4)
+    before = {name: (id(value), value._version, value.device, value.dtype,
+                    value.data_ptr() if value.device.type != 'meta' else None)
+              for name, value in model.named_parameters()}
+    assert _provider()._own_cpu_pretrained_gan_linear(model, default_loader=path != 'custom') is model
+    assert before == {name: (id(value), value._version, value.device, value.dtype,
+                            value.data_ptr() if value.device.type != 'meta' else None)
+                      for name, value in model.named_parameters()}
+    assert not torch.cuda.is_initialized()
+
+
+def test_pretrained_cpu_storage_policy_is_explicit_and_live_bound(monkeypatch):
+    provider = _provider()
+    cls = provider.load_reference_model_class(backend='torch-sdpa')
+    identity = provider.reference_model_identity(backend='torch-sdpa')
+    policy = identity['pretrained_storage_policy']
+    assert policy['name'] == 'cpu-fp32-final-gan-linear-owned64-v1'
+    assert policy['scope'] == 'DEFAULT_LOADER_FINAL_GAN_LINEAR_32_TO_1_ONLY'
+    assert policy['device'] == 'cpu' and policy['dtype'] == 'torch.float32'
+    assert policy['alignment_bytes'] == 64 and policy['max_parameter_bytes'] == 132
+    assert policy['module'] == provider.__name__ and 'path' not in policy
+    assert Path(sys.modules[policy['module']].__spec__.origin).resolve() == Path(provider.__file__).resolve()
+    assert policy['sha256'] == hashlib.sha256(Path(provider.__file__).read_bytes()).hexdigest()
+    wrapper = cls.from_pretrained.__func__
+    assert wrapper.__module__ == provider.__name__
+    assert wrapper.__wrapped__.__module__ == identity['model_module']
+    for change in ('loader', 'original', 'policy'):
+        with monkeypatch.context() as scoped:
+            if change == 'loader':
+                scoped.setattr(cls, 'from_pretrained', classmethod(lambda *args, **kwargs: None))
+            elif change == 'original':
+                scoped.setattr(wrapper, '__wrapped__', lambda *args, **kwargs: None)
+            else:
+                scoped.setattr(provider, '_own_cpu_pretrained_gan_linear', lambda *args, **kwargs: None)
+            for admission in (provider.reference_model_identity, provider.load_reference_model_class):
+                with pytest.raises(ValueError, match='pretrained storage policy binding'):
+                    admission(backend='torch-sdpa')
+        assert provider.reference_model_identity(backend='torch-sdpa') == identity
+
+
+@pytest.mark.parametrize('binding', ['native', 'policy', 'signature', 'code'])
+def test_pretrained_wrapper_actual_closure_rejects_unadmitted_delegate_and_recovers(tmp_path, binding):
+    import torch
+    provider = _provider()
+    source = _tiny_model().eval()
+    source.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    cls = type(source)
+    identity = provider.reference_model_identity(backend='torch-sdpa')
+    wrapper = cls.from_pretrained.__func__
+    code = wrapper.__code__
+    cells = dict(zip(code.co_freevars, wrapper.__closure__, strict=True))
+    original = cells[binding].cell_contents if binding != 'code' else code
+    reported_original = wrapper.__wrapped__
+    calls = []
+
+    def unadmitted(*args, **kwargs):
+        calls.append('SYNTHETIC_TEST_ONLY_UNADMITTED_DELEGATE')
+        raise AssertionError('unadmitted pretrained delegate executed')
+
+    class UnadmittedSignature:
+        bind = staticmethod(unadmitted)
+
+    rng = torch.get_rng_state().clone()
+    try:
+        if binding == 'code':
+            wrapper.__code__ = code.replace(co_name='unadmitted_pretrained_wrapper')
+        else:
+            cells[binding].cell_contents = UnadmittedSignature() if binding == 'signature' else unadmitted
+        # These are not legitimate source/model changes. The same wrapper and
+        # reported original remain, but its actual callee is no longer bound.
+        assert cls.from_pretrained.__func__ is wrapper and wrapper.__wrapped__ is reported_original
+        assert hashlib.sha256(Path(provider.__file__).read_bytes()).hexdigest() == \
+            identity['pretrained_storage_policy']['sha256']
+        for admission in (provider.reference_model_identity, provider.load_reference_model_class):
+            with pytest.raises(ValueError, match='pretrained storage policy binding'):
+                admission(backend='torch-sdpa')
+        assert calls == [] and torch.equal(rng, torch.get_rng_state())
+    finally:
+        if binding == 'code':
+            wrapper.__code__ = original
+        else:
+            cells[binding].cell_contents = original
+    assert provider.reference_model_identity(backend='torch-sdpa') == identity
+    loaded = cls.from_pretrained(str(tmp_path / 'model'), use_default_loader=True).eval()
+    assert all(torch.equal(value, loaded.state_dict()[name]) for name, value in source.state_dict().items())
+    assert loaded.gan_final_head.head3d[-1].weight.data_ptr() % 64 == 0
+    assert loaded.gan_final_head.head3d[-1].bias.data_ptr() % 64 == 0
+    assert calls == [] and not torch.cuda.is_initialized()

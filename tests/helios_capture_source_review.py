@@ -88,6 +88,8 @@ def assert_native_history_ast(parent_source, reviewed_source, *, control_name="c
 
 def assert_nogan_capture_lineage(source):
     review = load_review()
+    if _sha(source) != REVIEWED_SHA256:
+        return _assert_aligned_capture_lineage(source, gan=False)
     assert _sha(source) == REVIEWED_SHA256, "reviewed capture source SHA changed; new review required"
     assert_native_history_ast("\n".join(review["parent_source_lines"]), source)
 
@@ -121,5 +123,131 @@ def load_gan_review():
 
 def assert_gan_capture_lineage(source):
     review = load_gan_review()
+    if _sha(source) != GAN_REVIEWED_SHA256:
+        return _assert_aligned_capture_lineage(source, gan=True)
     assert _sha(source) == GAN_REVIEWED_SHA256, "reviewed GAN capture source SHA changed; new review required"
     assert_native_history_ast("\n".join(review["parent_source_lines"]), source, control_name="controls")
+
+
+# V1's maps, historical goldens and exact two-node inverse above stay intact.
+# V2 reviews the later, explicit aligned-scope integration as ONE replacement
+# assignment plus its complete new helper, not as byte identity with V1.
+_ROOT = Path(__file__).resolve().parents[1]
+ALIGNED_REVIEW_PATH = _ROOT / "docs/contracts/helios_nogan_capture_source_review_v2.json"
+GAN_ALIGNED_REVIEW_PATH = _ROOT / "docs/contracts/helios_gan_capture_source_review_v2.json"
+ALIGNED_SHA256 = "d9ee346257c26547e10ba7aa6e1a228b40c2527bbc2dc484a7e4eb92d8f1dc6f"
+GAN_ALIGNED_SHA256 = "ab2f40246eb04dfa15303f1b375d398321677b5fa778182c5e4fe2a5973ffbef"
+HELPER_SHA256 = "9314c9ca9e3b566dfdc5d67d823eaec91c430f4c477706d99130bc3851548678"
+_ALIGNED_COMMON = {
+    "function": "capture_rank",
+    "parent_commit": "48b2c4ed7d8b0b1a0ec3e9f6043cde1eaad6f5e4",
+    "transition_commit": "e6fb2e1b9653cdd4a8cfc8d7f9b8fa212a506e27",
+    "reviewed_commit": "555d3250721601489f94e92eb765bfcce5efc60f",
+    "helper_source_path": SOURCE_PATH,
+    "helper_function": "history_control_options",
+    "helper_source_sha256": HELPER_SHA256,
+    "helper_module_sha256": "f4d9f524ee205a5993e5d867795ddc32259ca9970ebfe1c7ec46f5f0d9b045e2",
+    "hash_scope": _MAPPING["hash_scope"],
+}
+_ALIGNED_MAPPING = {
+    **_ALIGNED_COMMON,
+    "schema_version": "distillschedule.helios_nogan_capture_source_review.v2",
+    "source_path": SOURCE_PATH,
+    "parent_git_blob": "5396b8d1ce74b38955cf9d1a22f71263c1ceab95",
+    "parent_module_sha256": "dd7183aa89db88b054186b7c1e88f5b31a0eaad084e84f958ad3df504852fb17",
+    "parent_source_sha256": REVIEWED_SHA256,
+    "parent_review_path": "docs/contracts/helios_nogan_capture_source_review_v1.json",
+    "parent_review_sha256": "5052bffdf6b3af45216f29138309a3ece9687adb6aa55323980259d676cbd72d",
+    "reviewed_git_blob": "9805411d1294a88120eaf9d8a8d83d7b72921b4e",
+    "reviewed_module_sha256": _ALIGNED_COMMON["helper_module_sha256"],
+    "reviewed_source_sha256": ALIGNED_SHA256,
+}
+_GAN_ALIGNED_MAPPING = {
+    **_ALIGNED_COMMON,
+    "schema_version": "distillschedule.helios_gan_capture_source_review.v2",
+    "source_path": GAN_SOURCE_PATH,
+    "parent_git_blob": "502d0dd9aecba705198a376a7e894a2ffdc32b9c",
+    "parent_module_sha256": "0f8057b12b10c9a39096a2ad8815311d29c7aa7c2abff683eb1f7657362437f4",
+    "parent_source_sha256": GAN_REVIEWED_SHA256,
+    "parent_review_path": "docs/contracts/helios_gan_capture_source_review_v1.json",
+    "parent_review_sha256": "4dab090b8918bf40481421b7b01efffe3b9db1878b68dc74e7b5dee4879a6405",
+    "reviewed_git_blob": "942b712555ec92d5f4083f4f6295a653f7a01c7a",
+    "reviewed_module_sha256": "752973c24f354b6ed6b1faf000c4d9a16c583c0311ab4d7d8ae8926ea6f686b0",
+    "reviewed_source_sha256": GAN_ALIGNED_SHA256,
+}
+_ALIGNED_OPTIONS = ast.parse('''options = history_control_options(task,
+    zero=all(bool(tensors[name].sum() == 0)
+        for name in ("history_short", "history_mid", "history_long")), rank=rank)''').body[0]
+_HISTORY_CONTROL_OPTIONS = ast.parse('''def history_control_options(task, *, zero, rank):
+    """Keep sampled history and its native grid; only the explicit scope owns exits."""
+    require(type(zero) is bool, "explicit original history predicate required", path="helios.inputs")
+    if task.native_policy is not None or task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY:
+        return {"all_history_zero":zero, "rank":rank}
+    require(not zero, "normal reference forbids rank-local amplified zero history", path="helios.inputs")
+    return {}
+''')
+
+
+def assert_history_control_helper(source):
+    assert _sha(source) == HELPER_SHA256, "reviewed history-control helper source SHA changed"
+    assert _dump(ast.parse(source)) == _dump(_HISTORY_CONTROL_OPTIONS), "exact reviewed helper AST required"
+
+
+def assert_aligned_capture_ast(previous_source, source, helper_source, *, control_name="control"):
+    """Invert only the exact options assignment; compare the entire V1 function.
+
+    The whole helper AST (including the empty default and normal-zero refusal)
+    is independently exact. This routine deliberately does not use raw hashes,
+    so mutation tests prove semantic rejection rather than a failing base gate.
+    """
+    assert control_name in ("control", "controls")
+    assert _dump(ast.parse(helper_source)) == _dump(_HISTORY_CONTROL_OPTIONS), "exact reviewed helper AST required"
+    previous, actual = _capture_ast(previous_source), _capture_ast(source)
+    dispatch = deepcopy(_NATIVE_DISPATCH)
+    dispatch.targets[0].id = control_name
+    matches = []
+    for owner in ast.walk(actual):
+        for _, value in ast.iter_fields(owner):
+            if isinstance(value, list):
+                matches.extend((value, index) for index, item in enumerate(value)
+                               if isinstance(item, ast.Assign) and _dump(item) == _dump(_ALIGNED_OPTIONS))
+    assert len(matches) == 1, "exactly one reviewed aligned options assignment required"
+    body, index = matches[0]
+    assert index + 1 < len(body) and _dump(body[index + 1]) == _dump(dispatch), (
+        "aligned options must immediately precede the exact **options stage_control dispatch")
+    body[index] = deepcopy(_OPTIONS)
+    assert _dump(actual) == _dump(previous), "capture default/math/order differs from actual V1 AST"
+
+
+def load_aligned_review(*, gan=False):
+    old = load_gan_review() if gan else load_review()
+    mapping = _GAN_ALIGNED_MAPPING if gan else _ALIGNED_MAPPING
+    review = json.loads((GAN_ALIGNED_REVIEW_PATH if gan else ALIGNED_REVIEW_PATH).read_text())
+    assert {key: review.get(key) for key in mapping} == mapping, "aligned source review mapping changed"
+    assert hashlib.sha256((_ROOT / mapping["parent_review_path"]).read_bytes()).hexdigest() == (
+        mapping["parent_review_sha256"]), "original V1 source review bytes changed"
+    lines = review["parent_source_lines"]
+    assert isinstance(lines, list) and all(isinstance(line, str) for line in lines)
+    previous = "\n".join(lines)
+    assert _sha(previous) == mapping["parent_source_sha256"], "actual V1 capture source SHA changed"
+    assert_native_history_ast("\n".join(old["parent_source_lines"]), previous,
+                              control_name="controls" if gan else "control")
+    helper = review["helper_source_lines"]
+    assert isinstance(helper, list) and all(isinstance(line, str) for line in helper)
+    assert_history_control_helper("\n".join(helper))
+    return review
+
+
+def _assert_aligned_capture_lineage(source, *, gan):
+    review = load_aligned_review(gan=gan)
+    assert _sha(source) == review["reviewed_source_sha256"], (
+        "reviewed capture source SHA changed; explicit new review required")
+    # Pin the actual helper binding/import/ALIGNED constant as well as function
+    # bodies. This is source review, not a Python runtime rebinding audit.
+    for path_key, hash_key in (("source_path", "reviewed_module_sha256"),
+                               ("helper_source_path", "helper_module_sha256")):
+        assert hashlib.sha256((_ROOT / review[path_key]).read_bytes()).hexdigest() == review[hash_key], (
+            "reviewed capture/helper module source SHA changed")
+    assert_aligned_capture_ast("\n".join(review["parent_source_lines"]), source,
+                               "\n".join(review["helper_source_lines"]),
+                               control_name="controls" if gan else "control")

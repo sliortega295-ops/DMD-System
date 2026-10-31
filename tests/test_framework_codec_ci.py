@@ -43,7 +43,10 @@ def test_codec_ci_runs_explicit_source_free_proofs_with_existing_no_skip_gate():
     assert required=={'test_encoder_contract_is_available_without_importing_original_or_cuda',
         'test_encoder_invalid_manifest_fails_before_source_import[nested_bool]',
         'test_encoder_discovery_imports_no_model_or_torch',
-        'test_explicit_bf16_storage_loads_only_selected_decoder_keys_exactly'}
+        'test_explicit_bf16_storage_loads_only_selected_decoder_keys_exactly',
+        'test_fl2va_factory_is_explicit_and_lazy',
+        'test_fl2va_wrapper_never_changes_canonical_v1_acceptance',
+        'test_fl2va_header_relabels_preserve_tensors_and_only_official_exclusion'}
     upload=next(s for s in config['steps'] if s.get('uses')=='actions/upload-artifact@v4')
     assert upload['if']=='always()' and upload['with']['path']=='h3-codec-contracts.xml'
     assert upload['with']['if-no-files-found']=='error'

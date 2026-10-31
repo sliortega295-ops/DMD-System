@@ -139,12 +139,14 @@ def native_argv(assets, stream, output, logical_hash):
 
 
 def admit_training(config, task_value, assets_value, paths):
-    require(task_value == inputs.REQUEST.to_dict(), "GAN stream requires exact native33/222/world16 task", path="helios.gan.training")
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    inputs.GANCohortTask(0, request=OriginalHeliosRequest.from_dict(task_value))
     assets = assets_io.asset_config(json.loads(Path(paths["assets"]).read_text()))
     require(assets == assets_value, "GAN assets changed during admission", path="helios.gan.training")
     observations = assets_io.verify_pins(assets)
     logical, _ = assets_io.load_bootstrap(assets, verify_payloads=False)
     stream = inputs.load_stream(config.data["prepared"], cycles=config.trainer["cycles"], expected_kind=config.data["input_kind"])
+    require(stream["identity"]["request"] == task_value, "GAN stream/task request differs", path="helios.gan.training")
     require(stream["identity"]["training_config_sha256"] == assets["assets"]["gan_config"]["sha256"],
             "GAN stream and runtime config identities differ", path="helios.gan.training")
     resume = config.trainer.get("resume_from")
@@ -230,7 +232,7 @@ def admit_original_rank(*, torch, dist, rank, args, policy, seed_runtime=True):
             if resume:
                 saved = json.loads((Path(resume) / "manifest.json").read_text()).get("identity", {}).get("native_owner_layout")
                 validate_layout_record(saved); identity["native_owner_layout"] = saved
-            return stream, identity, {"logical": logical, "trace": trace, "request": inputs.REQUEST,
+            return stream, identity, {"logical": logical, "trace": trace, "request":trace.task.request,
                 "negative": NegativePromptAsset.load(rows["negative_prompt"]["path"])}
         stream, identity, startup = distributed.checked(local, "Helios GAN native input/asset admission")
         binding.update(stream=stream, identity=identity, startup=startup,
