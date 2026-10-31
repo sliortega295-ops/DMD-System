@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "curated_date": "2026-10-31",
+  "patterns": 19,
+  "entries": 128,
+  "entries_by_collection": {
+    "Helios optimization history": 24,
+    "Helios A100 history": 64,
+    "Helios H100 history": 16,
+    "ResearchBoost external": 24
+  },
+  "entries_by_outcome": {
+    "positive_observation": 34,
+    "negative_observation": 19,
+    "implementation_failure": 12,
+    "inconclusive": 8,
+    "source_contract": 42,
+    "unverified": 6,
+    "correctness_failure": 7
+  },
+  "publicly_referenced_entries": 122,
+  "source_files": 136,
+  "source_review_status": {
+    "DISCOVERED_NOT_CURATED": 40,
+    "CURATED_EXCERPTS": 96
+  },
+  "history_screening": {
+    "main_final_messages": 1108,
+    "h100_final_messages": 568,
+    "total_final_messages": 1676,
+    "unique_normalized_bodies": 1243,
+    "duplicate_bodies": 433,
+    "method": "bounded snapshot of assistant final messages; keyword screening; selected source-backed curation, not exhaustive manual transcript review"
+  },
+  "completeness_claim": false,
+  "gpu_reproduction": "NOT_RUN",
+  "external_reproduction": "NOT_RUN",
+  "privacy": "Raw conversations, session IDs, private paths and large artifacts are not included."
+}

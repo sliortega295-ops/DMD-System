@@ -12,11 +12,11 @@ profile 用来解释机制，正式收益用 unprofiled 对照；NVTX envelope �
 
 正确性前提（未知需要核实，冲突不可直接套用）：
 
-- matched_comparison_contract: True
+- matched_comparison_contract: true
 
 收益条件（不满足会降低收益预期，不等于语义错误）：
 
-- representative_measurement: True
+- representative_measurement: true
 
 最小验证：记录源码含 dirty 改动、配置、输入/状态、硬件、timer、rank 聚合和独立重复；拆开主表、消融与当前 control。
 
@@ -26,28 +26,90 @@ profile 用来解释机制，正式收益用 unprofiled 对照；NVTX envelope �
 
 - ID：helios-w3-observer-failure
 - 状态：inconclusive / HISTORICAL_REVIEW
+- 来源类别：Helios optimization history；本次未复现实验。
 - 观察：N70-OFF C2 116.253523015 秒，16 ranks merge=0；原回执计时后 observer KeyError 失败，strict numerical REVIEW。
 - 经验：保留可支持的计时事实，同时保留原失败；CPU 离线核对不等于端到端 PASS。
 - 范围：指定 no-merge retime；formal_speedup_eligible=false，不是旧113.59秒记录。
+- 条件：{"workload": "W3", "merged_lora": false}
+- 失败分类：post_timer_instrumentation_failure
 - 重试条件：在目标 workload 上重新确认条件、数值和完整周期收益。
-- 来源：[SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)；[gan_nomerge_retime.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json)
+- 来源：[sliortega295-ops/DMD-System / SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)；定位：section 2: N70-OFF retime and preserved failure
+- 来源：[sliortega295-ops/DMD-System / gan_nomerge_retime.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json)；定位：status; strict_numerical_status; rank records
 
 ### W4：新两臂与旧 baseline 的来源不同
 
 - ID：helios-w4-ablation-sources
 - 状态：inconclusive / HISTORICAL_REVIEW
+- 来源类别：Helios optimization history；本次未复现实验。
 - 观察：R3 新 only-A 和 complete-B 同源；旧 baseline 与 joint-full 来自父源，没有在 R3 重跑全四格。
 - 经验：可以引用各自观察；不能拼成同源完整因果消融，也不能因有四个数字就相加边际贡献。
 - 范围：W4 R3 对照来源审计。
+- 条件：{"workload": "W4"}
+- 失败分类：comparison_identity
 - 重试条件：在目标 workload 上重新确认条件、数值和完整周期收益。
-- 来源：[conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json)
+- 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json)；定位：source_boundary; baseline; joint_reference
 
 ### 保存计划接近手工结果与全系统加速分别归因
 
 - ID：helios-planner-increment
 - 状态：source_contract / HISTORICAL_EVIDENCE_SCOPE
+- 来源类别：Helios optimization history；本次未复现实验。
 - 观察：公开纠偏文档列出手工/保存计划逐项配对，并保留 W5 NOT_RUN。
 - 经验：planner 复现手工选择的增量用手工作对照；不能把相对普通 FSDP 的系统收益全算成搜索收益。
 - 范围：20261019 六工作量历史索引；不代表全局最优或当前 head GPU 验收。
+- 条件：{}
+- 失败分类：not_established
 - 重试条件：在目标 workload 上重新确认条件、数值和完整周期收益。
-- 来源：[SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)
+- 来源：[sliortega295-ops/DMD-System / SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)；定位：section 5: manual vs saved plan
+
+### 两波 GAS 必须重放同一逻辑操作的 selected-call 语义
+
+- ID：helios-gas-trace-baseline-repair
+- 状态：correctness_failure / HISTORICAL_SOURCE_REPORTED
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：旧 48.551620 秒 anchor 第二波只连接最后一个 selected call；官方 strict-v4 两波均需三个 selected call，旧时间不能作为新合同分母。
+- 经验：修正训练图要重建 baseline；因少做 backward 得到的旧快值不能成为优化目标或算作加速。
+- 范围：官方同步退出的 Step10-A DP8 MB1/GAS2。
+- 条件：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 失败分类：different_backward_work
+- 重试条件：固定新的 trace/connected-call 图，重新验证 baseline 与 candidate。
+- 来源：[sliortega295-ops/DMD-System / rb16_full5_2g6c_continuous_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_full5_2g6c_continuous_20260810.md)；定位：结果、合同、限制与失败记录
+
+### B32 的 B16 等效时间不是实际 B16 训练记录
+
+- ID：livewan-b32-normalization
+- 状态：source_contract / HISTORICAL_DIAGNOSTIC_NORMALIZATION
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：LiveWan B32 108.583634 秒可除二得到 B16-equivalent 54.291817 秒，但 slots16–31 复用同一批 feature rows；两个 B16 overlap/RNG-elision 试验还略慢。
+- 经验：报告真实 batch、样本身份与资源；算术归一化可用于描述，不能替代相同 batch 和数据契约实测。
+- 范围：LiveWan continuous B16/B32 historical probe。
+- 条件：{"workload": "W4", "model_family": "LiveWan", "training_mode": "training"}
+- 失败分类：not_established
+- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
+- 来源：[sliortega295-ops/DMD-System / LIVEWAN_CONTINUOUS_B16_B32_20260901.md](https://github.com/sliortega295-ops/DMD-System/blob/54351707288c8d8a8d2efd789ece708852a07033/docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md)；定位：结果、合同、限制与失败记录
+
+### W6 C1 与 C2 相差很大，不能混用周期分母
+
+- ID：h100-w6-warmup-cycle-denominator
+- 状态：source_contract / HISTORICAL_H100_SINGLE_TRIAL_REVIEW
+- 来源类别：Helios H100 history；本次未复现实验。
+- 观察：candidate C1 359.380 秒而 C2 278.886 秒；startup/warmup 与持续周期分开。
+- 经验：所有 arm 必须比较同一个窗口与周期序号；将热候选对冷 baseline 会夸大收益。
+- 范围：W6 same0419 matrix 的计时字段，不构成新重复试验。
+- 条件：{"physical_gpus": 8, "logical_sample_slots": 16, "training_mode": "training", "workload": "W6", "gpu_family": "H100", "gpu_memory_gb": 80}
+- 失败分类：not_established
+- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
+- 来源：[sliortega295-ops/DMD-System / report.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md)；定位：该结果及 qualification / NOT_RUN 边界
+
+### ResearchBoost：共享机器的慢 baseline 会夸大候选收益
+
+- ID：rb-timing-contaminated-baselines
+- 状态：source_contract / EXTERNAL_GUIDANCE_NOT_REPRODUCED
+- 来源类别：ResearchBoost external；本次未复现实验。
+- 观察：公开 lessons 记录受其他作业影响的 baseline 窗口产生虚高加速；小差值与 run-to-run 噪声难分离。
+- 经验：保留每个窗口、交错对照与资源竞争证据，既防候选受扰也防 baseline 受扰；阈值按当前合同预先定义。
+- 范围：外部测量经验，不照搬其固定百分比或重复次数。
+- 条件：{"training_mode": "training"}
+- 失败分类：not_established
+- 重试条件：在目标 workload、库版本与冻结验收合同下先验证触发条件；外部成功/失败均不直接授权采用或永久否决。
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / lessons.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md)；定位：Measurement

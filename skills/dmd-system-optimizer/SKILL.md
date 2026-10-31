@@ -42,6 +42,11 @@ Read [reuse and memory](references/reuse-memory.md) and the
 [experience map](references/knowledge/README.md) when searching or recording.
 Use `dmd_knowledge.py recall` for the bundled conditional priors; search the
 project's local records as well. Read only the relevant mechanism cards.
+If curated cases are insufficient, use `dmd_knowledge.py sources` to find pinned
+historical and external reports. The [coverage report](references/knowledge/coverage.md)
+states what was indexed, curated or remains unverified; do not assume completeness.
+External guidance and inference cases are priors with their own scope, not local
+training validation. Historical source hashes never qualify a newer implementation.
 Search the project's experience records and existing implementations before
 writing a kernel, scheduler, cache or offload path. Inspect actual code, guards,
 licenses and tests. Similar names do not establish equivalent semantics.
