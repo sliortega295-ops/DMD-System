@@ -22,4 +22,6 @@
 
 Read the [r46 mechanism erratum](status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md) together with the frozen [six-workload corrections](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before the [A100/planner source index](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and [H100 source index](status/H100_SOURCE_SNAPSHOT_20261019.md). The r46 experiment restored metadata reads (0→350 per rank/cycle); the old summary incorrectly said it removed them. Historical runbook `NOT_RUN` statements describe their original source and date; later archived receipts do not silently update those frozen records.
 
+[Unlinked fixed-date documentation snapshots](architecture/retired_unlinked_reports_20261031.md) were retired from the current tree; original bytes and their validation scope remain in pinned Git history.
+
 [Legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md) describe the later FSDP2/native compatibility cohorts. Earlier Route-A/Route-B launchers and offload prototypes have been [retired](architecture/legacy_route_retirement.md); recover their evidence from the pinned Git history only. Numerical REVIEW, genuine FAIL and missing quality results remain explicit.
