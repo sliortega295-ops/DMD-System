@@ -2242,7 +2242,8 @@
             "candidate": 350
           },
           "status": "CONTENT_ERRATUM_NOT_NEW_EXPERIMENT",
-          "note": "该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。"
+          "note": "固定历史汇总的r46消除表述有误；补充勘误见docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md。按r46原始回执与归档packet记录恢复读取/同步，保留单配对数值REVIEW和原因未隔离。",
+          "erratum_path": "docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md"
         }
       ]
     },

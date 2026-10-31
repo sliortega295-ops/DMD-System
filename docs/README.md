@@ -20,6 +20,6 @@
 
 ## Results and provenance
 
-Read [six-workload corrections](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before the [A100/planner source index](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and [H100 source index](status/H100_SOURCE_SNAPSHOT_20261019.md). Historical runbook `NOT_RUN` statements describe their original source and date; later archived receipts do not silently update those frozen records.
+Read the [r46 mechanism erratum](status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md) together with the frozen [six-workload corrections](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before the [A100/planner source index](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and [H100 source index](status/H100_SOURCE_SNAPSHOT_20261019.md). The r46 experiment restored metadata reads (0→350 per rank/cycle); the old summary incorrectly said it removed them. Historical runbook `NOT_RUN` statements describe their original source and date; later archived receipts do not silently update those frozen records.
 
 [Legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md) and [Route-A](status/routea_world16.md) remain historical compatibility evidence, not the current project scope. Numerical REVIEW, genuine FAIL and missing quality results remain explicit. Main is not modified by the research-branch organization.

@@ -72,6 +72,8 @@ class ExperienceContentTests(unittest.TestCase):
         self.assertEqual(correction["correct_intervention"], "restore_native_metadata_barrier")
         self.assertEqual(correction["reads_per_rank_cycle"], {"control": 0, "candidate": 350})
         self.assertFalse(source["automatic_application"])
+        self.assertTrue((REPO / correction["erratum_path"]).is_file())
+        self.assertEqual(hashlib.sha256((REPO / source["path"]).read_bytes()).hexdigest(), source["sha256"])
 
     def test_w6_tail_cache_is_output_storage_not_parameter_residency(self):
         c = self.case("helios-w6-retention-r1")
