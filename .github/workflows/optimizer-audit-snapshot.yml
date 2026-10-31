@@ -1,0 +1,37 @@
+name: optimizer-audit-snapshot
+on:
+  push:
+    branches: [codex/optimizer-user-experience-cleanup-20261031]
+    paths: ['.github/workflows/optimizer-audit-snapshot.yml']
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run unchanged skill baseline
+        run: |
+          python -m unittest discover -s skills/dmd-system-optimizer/tests -v > "$RUNNER_TEMP/baseline-tests.log" 2>&1
+      - name: Preserve exact source for local CPU reproduction
+        if: always()
+        run: |
+          git rev-parse HEAD > "$RUNNER_TEMP/source-commit.txt"
+          git archive --format=tar.gz --output="$RUNNER_TEMP/source.tar.gz" HEAD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: optimizer-audit-source
+          retention-days: 1
+          path: |
+            ${{ runner.temp }}/source.tar.gz
+            ${{ runner.temp }}/source-commit.txt
+            ${{ runner.temp }}/baseline-tests.log
+          if-no-files-found: error
