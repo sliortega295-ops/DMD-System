@@ -1,171 +1,103 @@
-# Optional CPU helpers
+# Helpers: use only what the task needs
 
-Use existing project runners and ledgers when they already satisfy the task.
-These helpers require only Python 3.10+ stdlib and never launch GPU work.
-`SKILL`, `REPO` and `RUN` below are explicit absolute paths. Keep run state in
-the project's artifact directory, out of Git. Evidence paths resolve relative to
-their input JSON file and include path, sha256 and an exact locator.
+**The default workflow is the project's runner/checker plus WORK_LOG.** Nothing
+on this page is a prerequisite for ordinary optimization. Helpers need Python
+3.10+ stdlib and do not launch GPU work. `$SKILL`, `$RUN` and `$REPO` below are
+explicit paths. Do not invent input fields just to make a helper accept a task.
 
-## Retrieve and reuse
+## Useful standalone commands
 
-    python3 "$SKILL/scripts/dmd_knowledge.py" recall --query "参数保留 residency" --context "$RUN/context.json" --store "$RUN/knowledge" --brief
-    python3 "$SKILL/scripts/dmd_knowledge.py" recall --query "attention FA3" --repo "$REPO"
-    python3 "$SKILL/scripts/dmd_knowledge.py" inventory --repo "$REPO" --store "$RUN/knowledge"
-    python3 "$SKILL/scripts/dmd_knowledge.py" search --store "$RUN/knowledge" --query "LoRA" --context "$RUN/context.json"
-
-Read [reuse and memory](reuse-memory.md). Private directories stay physically
-separate; explicit `--store` options include them in the same retrieval. Inventory requires the DMD registry; external projects can create their
-own implementation records with the experience template.
-For a genuinely new store, create the explicitly chosen directory before searching
-or omit `--store` for public-only recall. Do not silently replace a missing old store.
-
-## Forecast and prioritize
-
+    python3 "$SKILL/scripts/dmd_knowledge.py" recall --brief --query "参数保留"
+    python3 "$SKILL/scripts/dmd_knowledge.py" locate --case helios-crosskv-gan-positive --repo "$REPO"
     python3 "$SKILL/scripts/dmd_perf.py" inspect --repo "$REPO"
     python3 "$SKILL/scripts/dmd_perf.py" target --baseline-seconds 100 --speedup 1.5
+    python3 "$SKILL/scripts/dmd_perf.py" compare --input "$RUN/pair.json"
+
+The numbers above illustrate syntax. `compare` is descriptive only, not a
+numerical checker or statistical promotion. Keep raw native output alongside
+any summary. Context JSON and private stores are optional; inventory requires
+the DMD registry. See [reuse and memory](reuse-memory.md) for private recording.
+
+## Advanced opt-in: forecasts and persistent campaigns
+
+Use these only for an explicitly selected formal study or an existing project
+requirement. Do not initialize them automatically when this Skill starts.
+Do not silently abandon an already frozen protocol after seeing a failed result.
+
     python3 "$SKILL/scripts/dmd_perf.py" rank --campaign "$RUN/campaign.json" --opportunities "$RUN/opportunities.json"
     python3 "$SKILL/scripts/dmd_perf.py" gate --campaign "$RUN/campaign.json" --opportunities "$RUN/opportunities.json" --candidate C1 --ledger "$RUN/ledger.sqlite"
-
-`assets/campaign.template.json` describes the forecast; opportunities use their
-own template. Null means unknown. A forecast is not an observed result.
-Gate exit codes: 0 admitted bounded experiment, 2 invalid, 3 probe-only, 4 defer.
-Without `--ledger`, budget checks use declared JSON only. With it, identities must
-match and used **plus reserved** cost comes from the persistent ledger.
-Gate does not reserve resources; reserve separately before a launch. A concurrent
-reservation can exhaust budget after an otherwise valid gate.
-
-The materiality threshold prioritizes exploration. It never decides whether to
-keep an already measured 1% gain. `compare --input pair.json` reports descriptive
-medians only; read the script's help and [performance model](performance-model.md).
-
-## Persist reservations and actual costs
-
     python3 "$SKILL/scripts/dmd_campaign.py" init --state "$RUN/ledger.sqlite" --input "$RUN/contract.json"
     python3 "$SKILL/scripts/dmd_campaign.py" reserve --state "$RUN/ledger.sqlite" --run-id C1-probe1 --input "$RUN/reservation.json"
     python3 "$SKILL/scripts/dmd_campaign.py" settle --state "$RUN/ledger.sqlite" --run-id C1-probe1 --input "$RUN/settlement.json"
     python3 "$SKILL/scripts/dmd_campaign.py" status --state "$RUN/ledger.sqlite"
 
-Start from `ledger-contract.template.json`, `run-reservation.template.json` and
-`run-settlement.template.json`. Freeze a real baseline, validator hashes,
-workload/semantics/hardware/timer/claim identities, budget and risk routes.
-Claim classes: strict (original semantic contract), approximate (explicitly
-authorized altered contract), diagnostic_review. Strict is not a synonym for
-bitwise. A corrected baseline starts a separately documented comparison; it
-cannot reset spent resources or earn speedup credit.
+Forecasts use `assets/campaign.template.json` and `opportunities.template.json`.
+A persistent campaign instead uses `ledger-contract.template.json` and the
+reservation/settlement templates. These are different optional interfaces, not
+forms every round must fill. Null means unknown, not fabricated zero.
 
-Reservation purpose is probe, validation or timing. GPU-hours include every
-allocated GPU and authorized occupied time, including failed work. A confirmation
-timing block has three independent processes: count all their costs and starts.
-Define what a full run means once for this campaign; do not count cycles as runs.
-`candidate_id` fixes source/config/input/control/risk; `run_id` is the attempt id.
-Validation attempts also name their comparator source and validation scope.
-Use schema 2 contracts with frozen checker selection and version; see
-[parsed receipts](checker-receipts.md). Schema 1 ledgers remain readable and their
-costs remain charged, but raw declarations cannot earn new KEEP/default decisions.
-Pre-upgrade judgments without saved input JSON remain historical and cannot be
-revised safely; preserve their ledger, then explicitly create a linked campaign
-carrying spent costs and current baseline evidence. Never silently reset budgets.
+Gate exit codes are 0 admitted, 2 invalid, 3 probe-only, 4 deferred. Without
+`--ledger`, budgets are declarations; with it, identity and consumed plus
+reserved costs bind to persisted state. Gate does not reserve or grant resources.
+In lightweight work, choose feasible opportunities with reasoned judgment rather
+than treating this schema-driven gate as a universal permission service.
 
-SQLite transactions prevent concurrent over-reservation by these helpers.
-Identical requests are idempotent. Unsettled reservations survive restarts.
-Record actual overruns honestly: they remain in the ledger and block new
-reservations. Settle errors/interrupted runs with their available receipts; do not
-delete them. Helper accounting cannot stop an independently launched process or
-prevent a user from editing/replacing the database.
+Existing schema-2 campaigns freeze workload/source/config/input, checker versions,
+tolerances, timing scope and budget. Claim classes are strict (original semantics,
+not necessarily bitwise), approximate (explicitly authorized), diagnostic_review.
+Use actual runner outputs through [receipt adapters](checker-receipts.md), not
+handwritten PASS. Unsupported native formats do not require fake JUnit.
 
-## Optional frozen confirmation and control promotion
+Reservations count all allocated resource costs and launches, including failures.
+SQLite prevents concurrent over-reservation by these helpers; it does not police
+other processes. Record actual overruns and reconcile unsettled work. Changing
+chat, branch, candidate name or tracking tool does not reset an explicit cap.
+Schema-1 judgments stay historical; new trusted judgments need the documented
+schema-2 evidence. A linked replacement campaign must carry prior costs/evidence,
+not silently restart them.
 
-Use this only when the [fixed-sample protocol](validation.md) suits the task.
-Exploration probes and descriptive measurements do not require this protocol.
-An existing suitable repository acceptance process takes precedence.
-
-For correctness/capacity-only work, set `timing: null` and allow
-`baseline.seconds: null`. Keep `measurement_kind: observed` for real CPU checks;
-no artificial timing baseline is needed. Timing reservations and speed claims
-are disabled in that frozen campaign. If later opening a separate confirmation
-campaign, explicitly carry the previous evidence and remaining authorized budget;
-do not reset spent costs or treat validation-only work as a speed baseline.
+## Advanced opt-in: fixed-sample confirmation
 
     python3 "$SKILL/scripts/dmd_campaign.py" assess --state "$RUN/ledger.sqlite" --input "$RUN/result.json"
     python3 "$SKILL/scripts/dmd_campaign.py" promote --state "$RUN/ledger.sqlite" --input "$RUN/result.json"
 
-Populate `result.template.json` with real runner receipts. All candidate runs must
-be settled. Every frozen correctness level must be PASS; a numerical failure
-prevents retention. Auxiliary capacity/default-enable checks remain separate.
-Each timing row has:
+Read [validation](validation.md) before choosing this protocol. Six A-B-A blocks
+mean 18 independent process starts; they are an example, not a default budget.
+Freeze the valid-sample count, maximum attempts/candidates, effect floor and drift
+policy before measuring. Include every valid sample; do not drop slow results.
+Predeclared environmental invalid-window replacements need an `attempt-json`
+receipt; candidate errors/OOM/numerical failure are not environmental retries.
+Every attempt still costs resources.
 
-    {"run_id": "C1-block1", "process_ids": ["invocation-a", "invocation-b", "invocation-a2"],
-     "control_before": 100, "candidate": 99, "control_after": 100}
+For correctness/capacity-only campaigns, `timing: null` and
+`baseline.seconds: null` avoid artificial measurements. Real CPU checks can be
+observed with zero GPUs. A partial timing set remains incomplete, not early
+statistical acceptance. Correct capacity value can remain optional with its
+latency tradeoff disclosed. Default/control promotion requires the prescribed
+numerical, compatibility, composition and fallback evidence, including required
+checks against the original baseline. Existing frozen thresholds are unchanged.
 
-Those numbers illustrate syntax only. A speed verdict requires exactly the predeclared repeat count,
-all valid registered timing blocks once, independent unprofiled invocations and matched
-work. Confirmation counts apply to candidates with timing reservations; cheap
-probes consume resource budget without consuming a confirmation slot.
-Example feasible arithmetic: repeat_count=6, max_candidates=1, alpha=.05; with
-four confirmations use at least seven blocks to permit significance at all.
-Choose actual counts from measurement needs and granted budget.
-Six A–B–A blocks are 18 process starts: reserve them for a shortlist, not every edit.
+A REVIEW or missing sample count is not an instruction to run indefinitely.
+At a stop or exhausted allocation, keep the best verified control and partial
+results. If a helper cannot represent a failure/transition, retain its error and
+native evidence in a plain handoff rather than fabricating rows, deleting samples
+or launching more work. The formal verdict stays unresolved until correctly
+handled; this fallback does not certify a candidate or reset spent resources.
 
-`repeat_count` is the fixed number of valid samples; `max_attempts` separately
-caps all timing attempts for one candidate. Freeze `replaceable_failures` before
-the first run: supported reasons are `launch_failure`, `environment_interruption`
-and `invalid_timer_window`. Empty means no replacement. An excluded settlement
-must contain an `attempt-json` receipt and matching `sample` with `status: invalid`,
-`valid_window: false`, `failure_origin: environment` and the exact reason. It must
-end `error` or `interrupted`. The adapter reads these facts from runner output.
-Valid slow observations still count. Candidate errors/OOM/numerical failure cannot
-use this route; all attempts and overruns remain charged to the resource ledger.
+## Optional structured Memory publication
 
-Assess appends an immutable `decision_revision`; status exposes the entire history.
-Identical evidence/attempt sets replay the same revision. REVIEW stays open: within
-the existing authorization and remaining budget, reserve
-a validation attempt, settle its parsed receipt, and assess again with unchanged
-timings and accumulated evidence. Every supplied timing sample is immutable on first
-assessment, including when V2 is missing. A stopped partial confirmation may supply
-all currently registered valid blocks (for example, two of six); it persists REVIEW
-with performance INCOMPLETE and no significance result. `confirmation` reports the
-collected/required count. `finish` can write this state to Memory without more runs.
-Later append only new authorized samples toward the original count; existing slow
-samples cannot disappear or change. The partial record never earns early KEEP/default
-from speed evidence. An independently established capacity benefit can still remain
-KEEP_OPTIONAL. A missing count describes evidence, not permission or a demand to run.
-Recorded failures cannot be erased;
-new failure evidence can invalidate a previous KEEP. Incorrect -> DISCARD,
-incomplete -> REVIEW, established benefit -> KEEP. `composition`, `compatibility`,
-`fallback`, and the risk-route checks against the original baseline must pass
-before default_enable. Current control remains the timing comparator.
-
-With correct risk-route checks, a parsed `capacity` check, `capacity_evidence`
-and explicit `latency_tradeoff`, empty `timings` can yield KEEP_OPTIONAL, default
-off and performance NOT_EVALUATED. This can later add a fixed speed confirmation.
-Missing speed evidence is not a speed claim. Assess before promote; only the
-latest decision may advance control. Promotion changes no model code.
-
-## Settle, decide, and write private Memory
-
+    python3 "$SKILL/scripts/dmd_knowledge.py" record --store "$RUN/knowledge" --input "$RUN/experience.json"
     python3 "$SKILL/scripts/dmd_campaign.py" finish --state "$RUN/ledger.sqlite" --input "$RUN/finish.json" --store "$RUN/knowledge"
     python3 "$SKILL/scripts/dmd_campaign.py" flush-memory --state "$RUN/ledger.sqlite"
 
-Use `assets/finish.template.json`. `settlements` optionally contains pending
-`{run_id, settlement}` rows; `result` is the full assess input. `experience`
-describes the mechanism (`pattern`), conditions, correctness/performance conditions,
-retry and failure scope, optionally a complete ReuseDecision/source reference.
-Outcome, decision revision and evidence are derived from the ledger. Keep the
-summary descriptive; generated outcome/qualification govern its interpretation.
-This path applies only to campaigns using this ledger. For a native runner/ledger,
-or an explicitly documentation-only handoff, keep its own result format and record
-a scoped experience with `dmd_knowledge.py record`. Use the existing decision as
-evidence and describe its checker/qualification; do not claim this campaign parser
-verified an unsupported native format. No new experiment is required to save an
-incomplete decision. See the outcome values in [reuse and memory](reuse-memory.md).
+Ordinary projects can use `record` after saving native outputs, or keep WORK_LOG
+only. `finish` is for existing campaigns: it combines settlements/assessment with
+an immutable outbox record. Use `flush-memory` for a recoverable publication error;
+do not retry unchanged malformed input forever. Preserve the pending record,
+error and native results if repair is outside scope. Optional indexing cannot
+require another GPU experiment or prevent an honest handoff.
 
-The transaction commits settlements, decision and an immutable outbox record.
-Publication is idempotent. If writing the private store fails, the committed
-decision and pending record survive; fix the path/evidence and run `flush-memory`.
-A retry cannot create another record or replace an earlier observation. Use a new
-decision/record for new evidence. Status reports `memory_pending`.
-
-The helper reparses receipts, but does not independently run a validator, prove
-process independence, isolate an optimizer or certify long-term training quality.
-The contract's `measurement_kind` is observed or synthetic; synthetic receipts
-cannot enter an observed campaign. Synthetic decisions qualify workflow only.
+These helpers check supplied content, not execution ownership, process independence,
+scientific adequacy or long-run quality. Synthetic results qualify workflow only.
+The lightweight default does not change advanced scripts or certify their remaining
+edge cases; it avoids making them a dependency for every optimization task.
