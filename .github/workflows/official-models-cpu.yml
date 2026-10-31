@@ -19,7 +19,7 @@ on:
       - 'pyproject.toml'
       - '.github/workflows/official-models-cpu.yml'
   push:
-    branches: [main, codex/open-source-framework-20261021]
+    branches: [main]
 permissions:
   contents: read
 jobs:

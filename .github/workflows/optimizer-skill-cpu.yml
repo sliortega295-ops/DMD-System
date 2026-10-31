@@ -6,7 +6,7 @@ on:
       - 'tools/install_optimizer_skill.py'
       - '.github/workflows/optimizer-skill-cpu.yml'
   push:
-    branches: [main, codex/distributable-optimizer-skill-20261030]
+    branches: [main]
     paths:
       - 'skills/dmd-system-optimizer/**'
       - 'tools/install_optimizer_skill.py'
