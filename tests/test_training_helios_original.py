@@ -37,7 +37,9 @@ def fresh_stream(tmp_path_factory, request):
     training["training_config"]["noise_corrupt_clean_prob_history"] = 1.
     config = root / "training.yaml"; config.write_text(yaml.safe_dump(training))
     sources = []
-    for index in range(getattr(request, "param", 3)):
+    options = getattr(request, "param", 3)
+    count = options["cycles"] if isinstance(options,dict) else options
+    for index in range(count):
         samples = []
         seed = 41 + index
         for offset in range(5):
@@ -63,7 +65,10 @@ def fresh_stream(tmp_path_factory, request):
     # Admit the same pinned closure before legacy capture reuses its imports.
     from distillschedule.strategies.wan_capture import native_primitives
     native_primitives(source_only=True)
-    document = prepare_stream(HeliosCohortTask(0).request, sources, config, root / "prepared")
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    task_request = OriginalHeliosRequest(stage_schedule_policy=options["stage_schedule_policy"]) \
+        if isinstance(options,dict) else HeliosCohortTask(0).request
+    document = prepare_stream(task_request, sources, config, root / "prepared")
     return root, document
 
 
@@ -510,3 +515,11 @@ def test_actual_original_helpers_three_cycles_checkpoint_resume_equal(fresh_stre
         "live_parameter_identity_preserved":True, "final_versions":final["final_versions"],
         "control_and_resumed_progress_published":True, "foreign_identity_and_wrong_boundary_rejected":True,
     }, indent=2) + "\n")
+
+
+@pytest.mark.parametrize("fresh_stream", [{"cycles":3,"stage_schedule_policy":"benchmark_v4_strict_global"}], indirect=True)
+def test_explicit_aligned_original_helpers_save_fresh_resume_and_continue(
+        fresh_stream, original_cpu_engines, original_logical, frozen_assets, tmp_path, monkeypatch):
+    assert fresh_stream[1]["identity"]["request"]["stage_schedule_policy"] == "benchmark_v4_strict_global"
+    test_actual_original_helpers_three_cycles_checkpoint_resume_equal(
+        fresh_stream,original_cpu_engines,original_logical,frozen_assets,tmp_path,monkeypatch)

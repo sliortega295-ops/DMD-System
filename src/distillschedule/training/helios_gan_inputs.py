@@ -13,7 +13,8 @@ from distillschedule.core.contracts import require
 from distillschedule.search.helios_request import OriginalHeliosRequest
 from distillschedule.workloads.best_known.registry import fingerprint, file_sha256, repository_root, write_new_json
 from .helios_inputs import (HeliosCohortSources, HeliosTrainingTrace, _inventory,
-                            _require_fresh_cohorts, source_fingerprint)
+                            _require_fresh_cohorts, source_fingerprint, validate_cohort_request,
+                            history_control_options, ALIGNED_SCHEDULE_POLICY)
 
 KIND = "original_helios_gan_cohort_stream.v1"
 SCHEMA = "distillschedule." + KIND
@@ -36,10 +37,13 @@ class GANCohortTask:
     native_policy: str | None = None
 
     def __post_init__(self):
-        require(type(self.index) is int and self.index >= 0 and self.request == REQUEST,
+        require(type(self.index) is int and self.index >= 0,
                 "nonnegative fresh GAN33/222/world16/B1 cohort required", path="helios.gan.inputs")
+        validate_cohort_request(self.request, variant="gan")
         require(self.native_policy is None or self.native_policy == NATIVE_HISTORY_POLICY,
                 "unsupported explicit GAN native history policy", path="helios.gan.inputs")
+        require(self.native_policy is None or self.request.stage_schedule_policy == "source_normal_only",
+                "cannot combine aligned benchmark and native rank-local history", path="helios.gan.inputs")
 
     def __getattr__(self, name):
         return getattr(self.request, name)
@@ -79,7 +83,8 @@ class GANCohortTask:
 
 
 def task_for_stream(stream, index):
-    return GANCohortTask(index, native_policy=stream["identity"].get("native_history_policy"))
+    return GANCohortTask(index, request=OriginalHeliosRequest.from_dict(stream["identity"]["request"]),
+                         native_policy=stream["identity"].get("native_history_policy"))
 
 
 def keys(step, phase):
@@ -204,9 +209,8 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
                     tensors[crop] = torch.stack((torch.randint(0, 25, (1,)), torch.randint(0, 41, (1,))), dim=1)
             for name, tensor in tensors.items():
                 writer.add_tensor(prefix + "/" + name, tensor, role=name)
-            options = ({"all_history_zero": all(bool(tensors[name].sum() == 0)
-                        for name in ("history_short", "history_mid", "history_long")), "rank": rank}
-                       if task.native_policy is not None else {})
+            options = history_control_options(task, zero=all(bool(tensors[name].sum() == 0)
+                for name in ("history_short", "history_mid", "history_long")), rank=rank)
             controls = stage_control(native, task, sources.seed, task.index, step, phase, **options)
             writer.add_operation(prefix + "/rollout", component=phase, operation="native_pyramid_rollout",
                                  tensor_keys=list(keys(step, phase).values()), control=controls)
@@ -219,10 +223,10 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
         "dtype": "bfloat16", "dfake_gen_update_ratio": 5})
 
 
-def prepare_stream(sources, training_config, output, *, input_policy=None, native_policy=None):
+def prepare_stream(sources, training_config, output, *, input_policy=None, native_policy=None, request=REQUEST):
     from runtime.operation_trace import write_operation_trace_bundle_manifest
     from distillschedule.data.helios_epoch_inputs import build_cohorts, cohort_identity
-    task_type = partial(GANCohortTask, native_policy=native_policy)
+    task_type = partial(GANCohortTask, request=request, native_policy=native_policy)
     task_type(0)  # Fail closed before reading input tensors or creating output.
     if input_policy is None:
         require(isinstance(sources, (list, tuple)) and len(sources) >= 2
@@ -238,7 +242,7 @@ def prepare_stream(sources, training_config, output, *, input_policy=None, nativ
         sources, inventories, epoch_policy = build_cohorts(sources, task_type=task_type, input_policy=input_policy)
         tasks = [task_type(i) for i in range(len(sources))]
         config = read_config(training_config)
-    identity = {"request": REQUEST.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
+    identity = {"request": request.to_dict(), "sources": [s.to_dict() for s in sources], "inventory": inventories,
                 "training_config_sha256": file_sha256(Path(training_config)), "source_fingerprint": source_fingerprint()}
     if epoch_policy is not None:
         identity["input_policy"] = epoch_policy
@@ -318,9 +322,14 @@ def validate_controls(task, controls):
                             "native GAN tensor geometry/precision changed: " + role, path="helios.gan.inputs")
                 control = trace.operation(prefix + "/rollout")["control"]
                 schedule = control["pyramid_stage_call_sequence"]
-                budget = 4 if task.native_policy is not None and control.get("all_history_zero") is True else 2
+                budget = 4 if (task.native_policy is not None or task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY) \
+                    and control.get("all_history_zero") is True else 2
+                if task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY:
+                    require(control.get("stage_schedule_policy") == ALIGNED_SCHEDULE_POLICY
+                            and type(control.get("all_history_zero")) is bool,
+                            "aligned GAN history/schedule scope missing", path="helios.gan.inputs")
                 require(len(schedule) == 3 and [s["stage"] for s in schedule] == [0,1,2]
-                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= budget
+                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= (2 if task.native_policy is None else budget)
                                 and s["denoising_step_budget"] == budget for s in schedule),
                         "native GAN222 stage scope changed", path="helios.gan.inputs")
             for source in ("primary", "secondary"):
@@ -383,9 +392,7 @@ def validate_rank_payload(trace, rank, source):
             require(bool(((timestep >= 20) & (timestep <= 980)).all()), "GAN timestep outside native clamp", path="helios.gan.inputs")
             zero = all(bool(value.tensor(prefix + "/" + role).sum() == 0)
                        for role in ("history_short", "history_mid", "history_long"))
-            require(trace.task.native_policy is not None or not zero,
-                    "GAN normal path forbids amplified zero history", path="helios.gan.inputs")
-            options = {"all_history_zero": zero, "rank": rank} if trace.task.native_policy is not None else {}
+            options = history_control_options(trace.task, zero=zero, rank=rank)
             require(value.operation(prefix + "/rollout")["control"] ==
                     stage_control(native, trace.task, source.seed, trace.task.index, step, phase, **options),
                     "GAN original stage grid/RNG exits changed", path="helios.gan.inputs")
@@ -409,10 +416,12 @@ def load_stream(path, *, cycles, verify_rank=None, expected_kind=KIND):
     require((expected_kind == NATIVE_KIND and native_policy == NATIVE_HISTORY_POLICY)
             or (expected_kind == KIND and "native_history_policy" not in identity),
             "GAN stream history policy/schema differs", path="helios.gan.inputs")
-    task_type = partial(GANCohortTask, native_policy=native_policy)
+    request = OriginalHeliosRequest.from_dict(identity["request"])
+    task_type = partial(GANCohortTask, request=request, native_policy=native_policy)
+    task_type(0)
     sources = [HeliosCohortSources.from_dict(s) for s in identity["sources"]]
     require(type(cycles) is int and cycles >= 2 and len(doc["cohorts"]) == len(sources) == len(identity["inventory"]) == cycles
-            and identity["request"] == REQUEST.to_dict() and identity["source_fingerprint"] == source_fingerprint(),
+            and identity["source_fingerprint"] == source_fingerprint(),
             "GAN stream cycles/source/request changed", path="helios.gan.inputs")
     from distillschedule.data.helios_epoch_inputs import validate_identity, cohort_identity
     if "input_policy" in identity:

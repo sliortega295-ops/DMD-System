@@ -67,6 +67,39 @@ def test_original_helios_training_task_never_relabels_canonical_request():
         HeliosCohortTask(0, request=OriginalHeliosRequest(video_frames=17))
 
 
+def test_explicit_aligned_request_survives_public_cohort_roundtrip():
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    from distillschedule.training.helios_inputs import HeliosCohortTask
+    request = OriginalHeliosRequest(stage_schedule_policy="benchmark_v4_strict_global")
+    task = HeliosCohortTask(1, request)
+    assert HeliosCohortTask.from_dict(task.to_dict()) == task
+    assert task.source_steps == (15,16,17,18,19)
+    assert HeliosCohortTask(1).stage_schedule_policy == "source_normal_only"
+    from distillschedule.strategies.wan_task import NATIVE_HISTORY_POLICY
+    with pytest.raises(ValueError, match="cannot combine"):
+        HeliosCohortTask(1, request, NATIVE_HISTORY_POLICY)
+
+
+@pytest.mark.parametrize("variant", ["no-gan", "gan"])
+def test_data_cli_passes_explicit_aligned_scope_to_real_stream_producer(tmp_path, monkeypatch, capsys, variant):
+    from distillschedule.data.cli import main
+    from distillschedule.training import helios_inputs, helios_gan_inputs
+    sources = tmp_path / "sources.json"
+    sources.write_text("[]")
+    seen = []
+    def capture(*args, **kwargs):
+        seen.append((args, kwargs))
+        return {"status":"SYNTHETIC_TEST_ONLY", "gpu_execution":"NOT_RUN"}
+    module = helios_inputs if variant == "no-gan" else helios_gan_inputs
+    monkeypatch.setattr(module, "prepare_stream", capture)
+    command = "prepare-helios-stream" if variant == "no-gan" else "prepare-helios-gan-stream"
+    assert main([command,"--sources",str(sources),"--training-config",str(tmp_path/"train.yaml"),
+        "--output",str(tmp_path/"prepared"),"--stage-schedule-policy","benchmark_v4_strict_global"]) == 0
+    request = seen[0][0][0] if variant == "no-gan" else seen[0][1]["request"]
+    assert request.variant == variant and request.stage_schedule_policy == "benchmark_v4_strict_global"
+    assert not (tmp_path/"prepared").exists()
+
+
 def test_rollout_math_reads_explicit_helios_geometry_not_wan_default():
     from types import SimpleNamespace
     from distillschedule.search.helios_request import OriginalHeliosRequest

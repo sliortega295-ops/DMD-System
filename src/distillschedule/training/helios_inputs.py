@@ -6,7 +6,7 @@ loader: explicit pre-encoded, step-qualified features, normal globally synced
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +22,24 @@ NATIVE_KIND = "original_helios_native_history_cohort_stream.v1"
 NATIVE_SCHEMA = "distillschedule." + NATIVE_KIND
 TRACE_KEY = "distillschedule_helios_training_cohort"
 MAX_COHORTS = 100
+ALIGNED_SCHEDULE_POLICY = "benchmark_v4_strict_global"
+
+
+def validate_cohort_request(request, *, variant):
+    """Admit the existing synchronized scope without widening its workload."""
+    require(type(request) is OriginalHeliosRequest
+            and replace(request, stage_schedule_policy="source_normal_only") == OriginalHeliosRequest(variant=variant),
+            "fresh reference requires original33/222/world16/B1/G1-C5", path="helios.inputs")
+    return request
+
+
+def history_control_options(task, *, zero, rank):
+    """Keep sampled history and its native grid; only the explicit scope owns exits."""
+    require(type(zero) is bool, "explicit original history predicate required", path="helios.inputs")
+    if task.native_policy is not None or task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY:
+        return {"all_history_zero":zero, "rank":rank}
+    require(not zero, "normal reference forbids rank-local amplified zero history", path="helios.inputs")
+    return {}
 
 
 @dataclass(frozen=True)
@@ -33,10 +51,11 @@ class HeliosCohortTask:
     def __post_init__(self):
         require(type(self.index) is int and 0 <= self.index < MAX_COHORTS,
                 f"cohort index must be in [0,{MAX_COHORTS-1}]", path="helios.inputs")
-        require(self.request == OriginalHeliosRequest(),
-                "fresh reference currently requires original No-GAN33/222/world16/B1", path="helios.inputs")
+        validate_cohort_request(self.request, variant="no-gan")
         require(self.native_policy is None or self.native_policy == NATIVE_HISTORY_POLICY,
                 "unsupported explicit W2 native history policy", path="helios.inputs")
+        require(self.native_policy is None or self.request.stage_schedule_policy == "source_normal_only",
+                "cannot combine aligned benchmark and native rank-local history", path="helios.inputs")
 
     def __getattr__(self, name):
         return getattr(self.request, name)
@@ -202,9 +221,8 @@ def capture_rank(task, sources, inventory, config, *, rank, output, provenance):
             for name, tensor in tensors.items():
                 writer.add_tensor(prefix + "/" + name, tensor, role=name)
             keys = list(_keys(step, phase).values())
-            options = ({"all_history_zero": all(bool(tensors[name].sum() == 0)
-                        for name in ("history_short", "history_mid", "history_long")), "rank": rank}
-                       if task.native_policy is not None else {})
+            options = history_control_options(task, zero=all(bool(tensors[name].sum() == 0)
+                for name in ("history_short", "history_mid", "history_long")), rank=rank)
             control = stage_control(native, task, sources.seed, task.index, step, phase, **options)
             writer.add_operation(prefix + "/rollout", component=phase, operation="native_pyramid_rollout",
                                  tensor_keys=keys, control=control)
@@ -334,9 +352,7 @@ def validate_rank_payload(trace, rank, source):
                     "original score timestep outside native clamp", path="helios.inputs")
             zero = all(bool(value.tensor(prefix+"/"+name).sum() == 0)
                        for name in ("history_short", "history_mid", "history_long"))
-            require(trace.task.native_policy is not None or not zero,
-                    "normal reference forbids rank-local amplified zero history", path="helios.inputs")
-            options = {"all_history_zero": zero, "rank": rank} if trace.task.native_policy is not None else {}
+            options = history_control_options(trace.task, zero=zero, rank=rank)
             expected = stage_control(native, trace.task, source.seed, trace.task.index, step, phase, **options)
             require(value.operation(prefix + "/rollout")["control"] == expected,
                     "original stage grid/RNG exits changed", path="helios.inputs")
@@ -419,9 +435,14 @@ def validate_controls(task, controls):
                                 f"native {role} shape/precision changed", path="helios.inputs")
                 schedule = value.operation(f"step/{step}/{phase}/rollout")["control"]["pyramid_stage_call_sequence"]
                 control = value.operation(f"step/{step}/{phase}/rollout")["control"]
-                budget = 4 if task.native_policy is not None and control.get("all_history_zero") is True else 2
+                budget = 4 if (task.native_policy is not None or task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY) \
+                    and control.get("all_history_zero") is True else 2
+                if task.stage_schedule_policy == ALIGNED_SCHEDULE_POLICY:
+                    require(control.get("stage_schedule_policy") == ALIGNED_SCHEDULE_POLICY
+                            and type(control.get("all_history_zero")) is bool,
+                            "aligned history/schedule scope missing", path="helios.inputs")
                 require(len(schedule) == 3 and [s["stage"] for s in schedule] == [0,1,2]
-                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= budget
+                        and all(type(s["call_count"]) is int and 1 <= s["call_count"] <= (2 if task.native_policy is None else budget)
                                 and s["denoising_step_budget"] == budget for s in schedule),
                         "native222 stage scope changed", path="helios.inputs")
         require(len(keys) == len(set(keys)) == len(expected) and set(keys) == set(expected),

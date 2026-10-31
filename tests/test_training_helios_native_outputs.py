@@ -75,7 +75,7 @@ def _marker_engines(current=False):
     return g, c, ema
 
 
-def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request, callback_type):
+def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request, callback_type, task=None):
     """Actual public/worker/lifecycle/native-state chain; CUDA/asset intake injected.
 
     The bootstrap/input/transport identities are explicitly synthetic. No
@@ -92,7 +92,7 @@ def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request,
     from distillschedule.training.config import TrainingConfig
     from distillschedule.search.helios_request import OriginalHeliosRequest
     from test_training_end_to_end import equal
-    task = OriginalHeliosRequest(stage2_inference_steps=(1, 1, 1))
+    task = task or OriginalHeliosRequest(stage2_inference_steps=(1, 1, 1))
     stream = dict(stream_sha256='1' * 64,
         identity=dict(source_fingerprint='SYNTHETIC_ADMISSION_ONLY', request=task.to_dict()),
         cohorts=[dict(trace_hash='2' * 64) for _ in range(100)])
@@ -163,7 +163,10 @@ def _owned_export(tmp_path, monkeypatch, *, optimized, engines_factory, request,
 
 
 @pytest.mark.parametrize('optimized', [False, True], ids=['reference', 'safe_stream'])
-def test_actual_native_restore_output_boundary_preserves_all_owned_state(tmp_path, monkeypatch, optimized):
+@pytest.mark.parametrize('aligned', [False, True], ids=['normal','explicit-aligned'])
+def test_actual_native_restore_output_boundary_preserves_all_owned_state(tmp_path, monkeypatch, optimized, aligned):
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    task = OriginalHeliosRequest(stage_schedule_policy='benchmark_v4_strict_global') if aligned else None
     calls = []
     class Output:
         def __init__(self, value, output):
@@ -172,12 +175,14 @@ def test_actual_native_restore_output_boundary_preserves_all_owned_state(tmp_pat
             calls.append('admit-before-build')
         def publish(self, view, *, manifest, identity):
             assert manifest['cycle'] == 100 and view.generator.global_steps == 102
+            if aligned:
+                assert view.request == task.to_dict()
             assert calls == ['admit-before-build']
             calls.append('publish-after-restore')
             self.result = dict(status='EXPORTED', test='SYNTHETIC_CALLBACK_REAL_NATIVE_RESTORE')
             return self.result
     result, receipt, old = _owned_export(tmp_path, monkeypatch, optimized=optimized,
-        engines_factory=_marker_engines, request={}, callback_type=Output)
+        engines_factory=_marker_engines, request={}, callback_type=Output,task=task)
     assert result['status'] == 'EXPORTED' and calls == ['admit-before-build', 'publish-after-restore']
     assert receipt['output_only']['optimizer_updates'] == 0
 
