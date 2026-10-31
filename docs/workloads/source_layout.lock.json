@@ -652,6 +652,14 @@
       "integrated_sha256": "c1d2de5b4d2d1e9e63fd82f66fb5f40c5cb24fd13ede16513bd04f2792a57404",
       "source_commit": "8e80fa71facb8a4d8755772feee7625595d8b77b",
       "change": "Reviewed test-only maintenance: locate the exact original no-grad optimization scope inside the existing text-KV payload lifetime; assert rollout containment and gradient-path exclusion. Original imported test receipt and all training/kernel code preserved."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "fa1a12ae87a5131e1ef107ae37d171776d161b544f140db4c211f2ea993fe700",
+      "integrated_sha256": "3be973d6e2798486c94c1f3f4b82ed9be0c5c65c39fd3377117c0f8a3ef80ab3",
+      "source_commit": "3a8326ba329f907521a97696e11e1f9b8d6b3df8",
+      "change": "Reviewed explicit native-output owner-level reproduction discovery/dispatch; existing commands and original native training math unchanged; source-pinned process boundary, no rank direct execution"
     }
   ]
 }
