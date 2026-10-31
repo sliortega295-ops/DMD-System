@@ -3,7 +3,8 @@
   "model": {
     "factory": "distillschedule.training.helios_nogan_public:build_model",
     "parameters": {
-      "asset_manifest": "/ABSOLUTE/LOCAL/W2/assets.cpu-reference.json"
+      "asset_manifest": "/ABSOLUTE/LOCAL/W2/assets.cpu-reference.json",
+      "inference_noise_policy": "fresh_projection_v1"
     }
   },
   "data": {

@@ -77,8 +77,10 @@ def admit_assets(parameters):
     from distillschedule.strategies.wan_capture import read_training_config
     from distillschedule.data.wan_reference_inputs import input_policy
     topology(); layout_identity()
-    require(set(parameters) <= {'asset_manifest','seed','device'} and parameters.get('device','cpu') == 'cpu',
+    require(set(parameters) <= {'asset_manifest','seed','device','inference_noise_policy'} and parameters.get('device','cpu') == 'cpu',
             'W2 only admits explicit CPU1 assets')
+    from .reference_inference_noise import enabled
+    enabled(parameters)
     path = local_file(parameters.get('asset_manifest'))
     value = read_json(path)
     require(set(value) == {'schema_version','scope','precision','bootstrap','args','input_config'}

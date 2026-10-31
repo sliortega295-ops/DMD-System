@@ -17,6 +17,7 @@ from .helios_inference import (_environment, _json, content_identity, content_ru
                                refuse_training, SHIFT_KEYS)
 
 SCHEMA = 'distillschedule.helios_nogan_current_generator_inference.v1'
+PROJECTION_SCHEMA = 'distillschedule.helios_nogan_current_generator_inference.v2'
 FACTORY = 'distillschedule.training.helios_nogan_inference:build_inference_model'
 PRECISION = 'WAN_NATIVE_MIXED_BF16'
 SCOPE = 'CPU1_BF16_FP32_CURRENT_W2_NATIVE_ZERO_HISTORY_LATENT_DIAGNOSTIC_NOT_WORLD16'
@@ -44,7 +45,7 @@ def _cpu1():
 
 
 def _metadata(p):
-    return dict(schema_version=SCHEMA, scope=SCOPE, precision=PRECISION, parameters=deepcopy(p),
+    return dict(schema_version=p['schema_version'], scope=SCOPE, precision=PRECISION, parameters=deepcopy(p),
         generator_selection='CURRENT_FULL_UNMERGED_NOT_EMA', evidence_kind=p['evidence_kind'],
         conditioning='NEW_PROMPT_NATIVE_ZERO_HISTORY_NOT_TRAINING_HISTORY',
         quality_validation='NOT_RUN', distributed_execution='NOT_RUN', claimable_speedup=False,
@@ -70,11 +71,16 @@ def _admit(parameters):
     from runtime.critic_pool_helios import TRANSFORMER_ADDITIONAL_KWARGS, _all_linear_targets
     keys = {'schema_version','scope','precision','source','runtime','task','boundary','architecture',
             'peft','native','geometry','budget','evidence_kind','seed'}
-    require(isinstance(parameters,dict) and set(parameters) <= keys | {'device'}, 'unsupported W2 inference parameters')
+    require(isinstance(parameters,dict) and set(parameters) <= keys | {'device','noise_protocol'}, 'unsupported W2 inference parameters')
     p = _json({k:v for k,v in parameters.items() if k != 'device'})
-    require(set(p) == keys and p['schema_version'] == SCHEMA and p['scope'] == SCOPE
+    projection = p.get('schema_version') == PROJECTION_SCHEMA
+    require(set(p) == keys | ({'noise_protocol'} if projection else set())
+            and p['schema_version'] in (SCHEMA,PROJECTION_SCHEMA) and p['scope'] == SCOPE
             and p['precision'] == PRECISION and parameters.get('device','cpu') == 'cpu',
             'explicit independent W2 mixed-precision inference ABI required')
+    if projection:
+        from .reference_inference_noise import protocol
+        require(p['noise_protocol'] == protocol('torch.bfloat16'), 'inference noise protocol/source changed')
     _cpu1()
     require(p['source'] == inference_source() and p['runtime'] == content_runtime(), 'W2 inference source/runtime/layout changed')
     task = HeliosCohortTask.from_dict(p['task'])
@@ -153,6 +159,9 @@ def project_current_generator(components,effective_training_parameters):
         geometry=dict(noise_shape=list(task.latent_shape),prompt_shape=[1,512,4096]),
         budget=deepcopy(dict(owner.warm.identity['assets']['budget'])),
         evidence_kind=owner.warm.identity['assets']['base_evidence_kind'],seed=effective_training_parameters['seed']))
+    from .reference_inference_noise import enabled, protocol
+    if enabled(effective_training_parameters):
+        p.update(schema_version=PROJECTION_SCHEMA,noise_protocol=protocol('torch.bfloat16'))
     _admit(p)
     view = ModelComponents(state={'generator':g},metadata=_metadata(p)).validate()
     return InferenceProjection(view,FACTORY,p).validate()
@@ -196,11 +205,20 @@ def generate(state,feeds,parameters):
             and all(b.attn1.processor.kv_cache is None and not b.attn1.processor.cache_enabled for b in g.blocks),
             'separate frozen unmerged cache-free W2 inference G required')
     native = native_primitives(source_only=True)
+    noise = torch.zeros(p['geometry']['noise_shape'],dtype=torch.bfloat16,device='cpu')
+    inputs = None
+    kwargs = {}
+    if p['schema_version'] == PROJECTION_SCHEMA:
+        from .reference_inference_noise import prepare
+        inputs = prepare(p,torch.bfloat16)
+        noise = inputs.shape_noise
+        kwargs = dict(operation_trace=inputs,trace_prefix=p['noise_protocol']['operation_prefix'])
     result = native.post.run_generator(args=SimpleNamespace(training_config=SimpleNamespace(**p['native']['args'])),
         accelerator=SimpleNamespace(device=torch.device('cpu'),is_main_process=True),transformer=g,
         scheduler=native.scheduler(**p['native']['scheduler']),
-        noise=torch.zeros(p['geometry']['noise_shape'],dtype=torch.bfloat16,device='cpu'),
-        prompt_embeds=prompt,**p['native']['rollout'])
+        noise=noise,prompt_embeds=prompt,**kwargs,**p['native']['rollout'])
+    if inputs is not None:
+        inputs.finish()
     latents = result[0]
     # Original uncaptured block-noise inference returns FP32, despite BF16
     # bases/prompt and FP32 trainables. Never coerce this native return value.
