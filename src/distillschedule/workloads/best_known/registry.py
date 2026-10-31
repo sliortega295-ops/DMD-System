@@ -7,11 +7,13 @@ to a measurement of this checkout. This module needs only the Python stdlib.
 from __future__ import annotations
 
 import copy
+import errno
 import hashlib
 import json
 import os
 import re
 import subprocess
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -605,8 +607,31 @@ def _resolve_configuration(profile, *, root, asset_config, run_id, mode, request
 
 
 def write_new_json(path: Path, value: Any) -> None:
+    """Exclusively publish complete, durable JSON without exposing a partial name."""
     path.parent.mkdir(parents=True, exist_ok=True)
     # Do not overwrite prior run receipts or resolved launch descriptions.
-    with path.open("x", encoding="utf-8") as f:
-        json.dump(value, f, indent=2, sort_keys=True, allow_nan=False)
-        f.write("\n")
+    if os.path.lexists(path):
+        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), str(path))
+    # UUID4 uses OS entropy, not Python/NumPy/Torch training RNG. Keep the
+    # temporary basename bounded and use the same open('x') umask as before.
+    temporary = path.with_name(".distillschedule-json-" + uuid.uuid4().hex + ".tmp")
+    stream = temporary.open("x", encoding="utf-8")
+    try:
+        with stream:
+            json.dump(value, stream, indent=2, sort_keys=True, allow_nan=False)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, path)  # Same-directory publication, never replacement.
+        except FileExistsError as exc:
+            # Match open('x') even when a competing publisher wins after lexists.
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), str(path)) from exc
+    finally:
+        # A failed exclusive open above cannot remove another writer's file.
+        temporary.unlink(missing_ok=True)
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)

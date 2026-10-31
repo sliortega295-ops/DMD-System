@@ -71,6 +71,17 @@ def test_native_attention_capture_seam_is_in_actual_common_lane_and_triggers_ci(
     assert name in workflow['on']['pull_request']['paths']
 
 
+def test_atomic_receipt_writer_is_in_actual_common_lane_and_triggers_ci():
+    import yaml
+    name = 'tests/test_registry_atomic_json.py'
+    assert name in _api()['test_files'](ROOT)
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert name in workflow['on']['pull_request']['paths']
+    step = next(s for s in workflow['jobs']['lifecycle']['steps']
+                if s.get('name') == 'Real media, updates, restart, extension and saved-plan execution')
+    assert step['env']['PYTHONFAULTHANDLER'] == '1'
+
+
 def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_silently_skip():
     import yaml
     files = _api()['test_files'](ROOT)

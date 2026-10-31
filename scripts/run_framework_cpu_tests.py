@@ -28,6 +28,7 @@ EXCLUDED = frozenset({
 PATTERNS = ("test_data_*.py", "test_training_*.py", "test_open_workload_*.py",
             "test_framework_*.py", "test_runtime_*.py", "test_cpu_receipt_gate.py",
             "test_evidence_livewan_c51_phases.py",
+            "test_registry_atomic_json.py",
             "test_refactor_h3_attention_capture_entrypoint.py")
 
 
