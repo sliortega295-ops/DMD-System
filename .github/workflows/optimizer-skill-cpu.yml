@@ -14,7 +14,7 @@ on:
 permissions:
   contents: read
 jobs:
-  retrieval-and-accounting:
+  installation-retrieval-memory:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     strategy:
@@ -52,7 +52,7 @@ jobs:
               subprocess.run(["git", "fetch", "--no-tags", "--depth=1",
                               "https://github.com/" + repository + ".git", *missing], check=True)
           PY
-      - name: Conditional retrieval, accounting and independent installation
+      - name: Installation, retrieval, native checks and private Memory
         run: python -m unittest discover -s skills/dmd-system-optimizer/tests -v
       - name: Validate public pack structure
         run: python skills/dmd-system-optimizer/scripts/dmd_knowledge.py validate-pack

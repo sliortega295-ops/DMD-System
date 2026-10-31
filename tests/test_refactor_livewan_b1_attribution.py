@@ -129,7 +129,10 @@ def test_c24_production_b2_branch_ast_is_unchanged() -> None:
     )
     body = ast.Module(body=branch.body, type_ignores=[])
     digest = hashlib.sha256(
-        ast.dump(body, include_attributes=False).encode()
+        # Python 3.13 omits empty lists by default; preserve the original
+        # serialized AST and the existing frozen hash, not a new acceptance hash.
+        ast.dump(body, include_attributes=False,
+                 **({"show_empty": True} if sys.version_info >= (3, 13) else {})).encode()
     ).hexdigest()
     assert digest == B2_AST_SHA256
     calls = [

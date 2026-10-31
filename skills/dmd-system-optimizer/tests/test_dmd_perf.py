@@ -129,7 +129,7 @@ class FileAndCommandTests(unittest.TestCase):
         git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture")
         result = perf.inspect(self.root)
         self.assertEqual(result["mode"], "external-source")
-        self.assertEqual(result["profiles"], [])
+        self.assertNotIn("profiles", result)
         self.assertFalse(result["gpu_validation_performed"])
         sub = self.root / "nested"; sub.mkdir()
         with self.assertRaises(ValueError):

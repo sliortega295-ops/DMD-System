@@ -22,6 +22,9 @@ external projects need not migrate their code. See [Memory and reuse](reuse-memo
     python3 "$SKILL/scripts/dmd_perf.py" compare --input "$RUN/pair.json"
     python3 "$SKILL/scripts/dmd_perf.py" dag --input "$SKILL/examples/synthetic-dag.json"
 
+`inspect` accepts a Git root or a source archive. Archives return unknown Git identity,
+not a fictitious clean commit. It no longer loads retired best-known execution policies.
+
 The numbers and DAG example are illustrative, not benchmark evidence.
 `compare` accepts timer_scope, semantic_contract, hardware_id, unprofiled=true,
 control_seconds and candidate_seconds arrays; paired=true adds paired differences.

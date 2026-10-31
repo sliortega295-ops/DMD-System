@@ -63,10 +63,6 @@ def load(path: Path) -> Any:
     require(isinstance(value, dict), "top-level JSON must be an object")
     return value
 
-def digest(value: Any) -> str:
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
-                                    allow_nan=False).encode()).hexdigest()
-
 def sha_file(path: Path, limit: int = MAX_EVIDENCE) -> str:
     require(path.is_file(), f"not a regular evidence file: {path}")
     require(path.stat().st_size <= limit, f"use a small evidence report, not raw large data: {path}")
@@ -116,37 +112,34 @@ def git_read(repo: Path, *args: str) -> str:
     return p.stdout.strip()
 
 def inspect(repo: Path) -> dict[str, Any]:
+    """Inspect a checkout or source archive without loading historical policies."""
     repo = repo.resolve()
-    head = git_read(repo, "rev-parse", "HEAD")
-    require(Path(git_read(repo, "rev-parse", "--show-toplevel")).resolve() == repo,
-            "--repo must be the Git checkout root")
-    status = git_read(repo, "status", "--porcelain", "--untracked-files=normal")
-    folder = repo / "configs/distillschedule/best_known"
+    require(repo.is_dir(), "--repo must be an existing source directory")
+    head = status = None
+    warnings = []
+    try:
+        top = Path(git_read(repo, "rev-parse", "--show-toplevel")).resolve()
+    except (InputError, OSError, subprocess.SubprocessError):
+        warnings.append("No Git metadata; source archive inspection only. Record the source version separately.")
+    else:
+        require(top == repo, "--repo must be the Git checkout root")
+        try:
+            head = git_read(repo, "rev-parse", "HEAD")
+            status = git_read(repo, "status", "--porcelain", "--untracked-files=normal")
+        except (InputError, OSError, subprocess.SubprocessError):
+            warnings.append("Git metadata is incomplete; do not assume a clean committed source.")
     native = (repo / "src/distillschedule").is_dir()
-    locks = load(folder / "registry.lock.json").get("profiles", {}) if native and (folder / "registry.lock.json").is_file() else {}
-    require(isinstance(locks, dict), "registry profiles must be an object")
-    profiles = []
-    for name, expected in sorted(locks.items()):
-        require(isinstance(name, str) and name.replace('_', '').isalnum(), "unsafe profile id")
-        path = folder / f"{name}.json"
-        value = load(path)
-        profiles.append({"id": name, "lock_matches": digest(value) == expected,
-                         "semantics": value.get("semantics"), "allowed_run_modes": value.get("allowed_run_modes"),
-                         "contract": value.get("contract"), "hardware": value.get("hardware"),
-                         "topology": value.get("topology"), "memory": value.get("memory"),
-                         "launcher": value.get("runtime", {}).get("launcher"),
-                         "validation": value.get("validation"),
-                         "historical_is_current_measurement": False})
     anchors = ["AGENTS.md", "CONTRIBUTING.md", "pyproject.toml", "docs/guides/support_matrix.md",
-               "src/distillschedule/workloads/catalog.json", "docs/workloads/BEST_KNOWN_WORKLOADS.md",
-               "src/distillschedule/workloads/best_known/registry.py",
-               "docs/runbooks/nsight_activity_overlay.md"]
-    return {"repo": str(repo), "head": head, "git_status": status, "clean_status": not status,
+               "src/distillschedule/workloads/catalog.json", "recipes/README.md",
+               "docs/architecture/framework.md", "docs/guides/optimizer_skill.md"]
+    return {"repo": str(repo), "head": head, "git_status": status,
+            "clean_status": not status if status is not None else None,
             "mode": "dmd-system" if native else "external-source",
             "anchors": {p: sha_file(repo/p) if (repo/p).is_file() else None for p in anchors},
-            "profiles": profiles, "gpu_validation_performed": False,
-            "warning": "Read-only metadata inspection, not numerical validation. Re-read active runbooks. "
-                       "Dirty/untracked source and external assets require explicit experiment identities."}
+            "warnings": warnings, "gpu_validation_performed": False,
+            "warning": "Read-only source inspection, not numerical validation. Use current project instructions "
+                       "and recipes, not a historical best-known policy."}
+
 
 def dag_model(data: dict[str, Any]) -> dict[str, Any]:
     nodes = data.get("nodes")

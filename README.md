@@ -15,6 +15,14 @@ SD1.5/SDXL DMD2, plus LTX, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo adapters
 are shipped together. See the [framework feature overview](docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
 and choose a recipe below.
 
+## Choose your starting point
+
+| Goal | Start here |
+| --- | --- |
+| Optimize an existing project with Codex | [Install the standalone Skill](docs/guides/optimizer_skill.md); Python standard library only, no trainer migration or Torch install |
+| Train with DMD-System | Continue with installation below, then choose a [model recipe](recipes/README.md) |
+| Extend the framework | [Architecture and ownership](docs/architecture/framework.md), then [extension guide](docs/guides/extensions.md) |
+
 ## Install and discover
 
 ```sh
