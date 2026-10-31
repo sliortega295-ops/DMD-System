@@ -1,0 +1,2639 @@
+{
+  "schema_version": 1,
+  "source_snapshot": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+  "notice": "Source navigation, not a claim of GPU validation or automatic portability.",
+  "implementations": [
+    {
+      "id": "fsdp-phase-retention",
+      "title": "FSDP2 完整单元的受控参数驻留",
+      "usage_mode": "runtime_component",
+      "scope": "现有 FSDP2 primitive，要求全 rank 同意物化顺序；不保证旧 r36/任何新模型容量。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "sha256": "08ce82bcdcf228ab9f15eaac829abbb65df1cc316f0bba8a86ab6b1a5587b1bb",
+          "locator": "fsdp2_variable_forward_phase",
+          "symbol": "fsdp2_variable_forward_phase",
+          "line_start": 98,
+          "line_end": 142,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py#L98-L142"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "sha256": "08ce82bcdcf228ab9f15eaac829abbb65df1cc316f0bba8a86ab6b1a5587b1bb",
+          "locator": "_PhaseEngine.step",
+          "symbol": "_PhaseEngine.step",
+          "line_start": 53,
+          "line_end": 62,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py#L53-L62"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "sha256": "08ce82bcdcf228ab9f15eaac829abbb65df1cc316f0bba8a86ab6b1a5587b1bb",
+          "locator": "_PhaseEngine.release",
+          "symbol": "_PhaseEngine.release",
+          "line_start": 73,
+          "line_end": 94,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py#L73-L94"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_runtime_fsdp2_variable_forward.py",
+          "sha256": "3a967bc87c009bf911d3f862746431e91bab4310e7d882b55034bf99737e4084",
+          "locator": "test_materializes_before_calls_releases_before_original_step_and_restores_policy",
+          "symbol": "test_materializes_before_calls_releases_before_original_step_and_restores_policy",
+          "line_start": 68,
+          "line_end": 85,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_runtime_fsdp2_variable_forward.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_runtime_fsdp2_variable_forward.py#L68-L85"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_runtime_fsdp2_variable_forward.py",
+          "sha256": "3a967bc87c009bf911d3f862746431e91bab4310e7d882b55034bf99737e4084",
+          "locator": "test_failure_restores_every_unit_without_committing",
+          "symbol": "test_failure_restores_every_unit_without_committing",
+          "line_start": 102,
+          "line_end": 119,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_runtime_fsdp2_variable_forward.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_runtime_fsdp2_variable_forward.py#L102-L119"
+        }
+      ],
+      "correctness_conditions": {
+        "weights_stable_during_reuse": true,
+        "whole_checkpoint_units": true,
+        "state_release_validated": true
+      },
+      "performance_conditions": {
+        "repeated_forwards": true,
+        "exposed_gather": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "通过 fsdp2_variable_forward_phase(enabled=..., with_grad=..., expected_units=...) 包住合法 phase；有梯度时绑定真实 checkpoint block 类型，保留原 engine 的 backward/step。",
+      "fallback": {
+        "action": "新进程使用 enabled=False 的原 control；已进入的 scope 在异常或 step 前必须完成 release，不能把该 engine view 带出 scope。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_variable_forward.py",
+            "sha256": "08ce82bcdcf228ab9f15eaac829abbb65df1cc316f0bba8a86ab6b1a5587b1bb",
+            "locator": "_PhaseEngine.step",
+            "symbol": "_PhaseEngine.step",
+            "line_start": 53,
+            "line_end": 62,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_variable_forward.py#L53-L62"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试不构成当前 workload 的实机完整周期/组合/恢复验收；这些检查仍需按改动风险选择。"
+    },
+    {
+      "id": "helios-rollout-residency",
+      "title": "Helios 单次 no-grad rollout 的参数驻留",
+      "usage_mode": "runtime_component",
+      "scope": "固定 Helios FSDP 单元 census；外部 ResearchBoost 仅是同机制建议。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_nograd_persistence.py",
+          "sha256": "4a57f7accad40542f8a9f42aa0b6c763b58127f8cadd691c15803cef8d1a6c51",
+          "locator": "generator_nograd_persistent_unshard_scope",
+          "symbol": "generator_nograd_persistent_unshard_scope",
+          "line_start": 43,
+          "line_end": 162,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_nograd_persistence.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_nograd_persistence.py#L43-L162"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_training_helios_gan_native_history.py",
+          "sha256": "e8c2ad38dc34544dd73c4bef9d712127ac46b892528f2d75328efea661f774a0",
+          "locator": "test_original_detached_persistence_preserves_all_rank_local_calls_without_nested_phase",
+          "symbol": "test_original_detached_persistence_preserves_all_rank_local_calls_without_nested_phase",
+          "line_start": 466,
+          "line_end": 494,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_training_helios_gan_native_history.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_training_helios_gan_native_history.py#L466-L494"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "weights_stable_during_reuse": true,
+        "state_release_validated": true
+      },
+      "performance_conditions": {
+        "repeated_forwards": true,
+        "exposed_gather": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "核对 policy.generator_nograd_persistent_unshard 与 flush_allocator_cache；只包 no-grad rollout，进入下一个更新阶段前退出 scope。",
+      "fallback": {
+        "action": "用新 control 进程关闭 generator_nograd_persistent_unshard；不得仅删除 flush 后沿用旧容量验收。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试不构成当前 workload 的实机完整周期/组合/恢复验收；这些检查仍需按改动风险选择。"
+    },
+    {
+      "id": "helios-cross-kv",
+      "title": "Helios 单 rollout cross-attention KV cache",
+      "usage_mode": "runtime_component",
+      "scope": "只缓存 pre-norm encoder KV；不能替代 history self-attention cache，也不能进入可微调用。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_cross_kv_cache.py",
+          "sha256": "b0e4ce53c2ab76f0aa1285e12199aaaeab04f801e8b3321938266075015b4b08",
+          "locator": "install_generator_nograd_cross_kv_cache",
+          "symbol": "install_generator_nograd_cross_kv_cache",
+          "line_start": 101,
+          "line_end": 246,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L101-L246"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_cross_kv_cache.py",
+          "sha256": "b0e4ce53c2ab76f0aa1285e12199aaaeab04f801e8b3321938266075015b4b08",
+          "locator": "generator_nograd_cross_kv_cache_scope",
+          "symbol": "generator_nograd_cross_kv_cache_scope",
+          "line_start": 269,
+          "line_end": 473,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L269-L473"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+          "sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20",
+          "locator": "_build_static_model",
+          "symbol": "_build_static_model",
+          "line_start": 215,
+          "line_end": 404,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_static_fsdp2_p0_world16.py#L314-L317",
+          "focus_call": "install_generator_nograd_cross_kv_cache",
+          "focus_start": 314,
+          "focus_end": 317
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "runtime/static_fsdp2_p0_helios.py",
+          "sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+          "locator": "run_generator_trace_rollout_batch",
+          "symbol": "run_generator_trace_rollout_batch",
+          "line_start": 42,
+          "line_end": 289,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/static_fsdp2_p0_helios.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/static_fsdp2_p0_helios.py#L146-L151",
+          "focus_call": "generator_nograd_cross_kv_cache_scope",
+          "focus_start": 146,
+          "focus_end": 151
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "microbatch": 1,
+        "cache_key_complete": true,
+        "weights_stable_during_reuse": true,
+        "invalidation_validated": true,
+        "upstream_source_hash_matches": true
+      },
+      "performance_conditions": {
+        "cache_reuse_sufficient": true,
+        "saved_compute_exceeds_cache_cost": true
+      },
+      "integration_instructions": "先 source-pin 安装 generator wrapper，再在 generator_nograd_cross_kv_cache_scope 内传 source_encoder_hidden_states；policy.generator_nograd_cross_kv_cache 仅支持 B1。",
+      "fallback": {
+        "action": "在干净进程关闭 generator_nograd_cross_kv_cache，使用原始投影路径；已安装 wrapper 的进程不能以再次调用 disabled 安装器代替真正回退。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "helios-static-context",
+      "title": "Helios rollout 静态 context cache",
+      "usage_mode": "runtime_component",
+      "scope": "绑定源码和 tensor identity/version/layout；零误差不意味着有性能收益。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_rollout_context_cache.py",
+          "sha256": "e03ef5e96d4ec12ee3160ac1daded93f64ecd2a11d88dcb1c16a37305d96f327",
+          "locator": "install_generator_nograd_static_context_cache",
+          "symbol": "install_generator_nograd_static_context_cache",
+          "line_start": 153,
+          "line_end": 404,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py#L153-L404"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_rollout_context_cache.py",
+          "sha256": "e03ef5e96d4ec12ee3160ac1daded93f64ecd2a11d88dcb1c16a37305d96f327",
+          "locator": "generator_nograd_static_context_cache_scope",
+          "symbol": "generator_nograd_static_context_cache_scope",
+          "line_start": 408,
+          "line_end": 596,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py#L408-L596"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+          "sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20",
+          "locator": "_build_static_model",
+          "symbol": "_build_static_model",
+          "line_start": 215,
+          "line_end": 404,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_static_fsdp2_p0_world16.py#L318-L322",
+          "focus_call": "install_generator_nograd_static_context_cache",
+          "focus_start": 318,
+          "focus_end": 322
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "runtime/static_fsdp2_p0_helios.py",
+          "sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e",
+          "locator": "run_generator_trace_rollout_batch",
+          "symbol": "run_generator_trace_rollout_batch",
+          "line_start": 42,
+          "line_end": 289,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/static_fsdp2_p0_helios.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/static_fsdp2_p0_helios.py#L151-L159",
+          "focus_call": "generator_nograd_static_context_cache_scope",
+          "focus_start": 151,
+          "focus_end": 159
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "upstream_source_hash_matches": true
+      },
+      "performance_conditions": {
+        "cache_reuse_sufficient": true,
+        "saved_compute_exceeds_cache_cost": true
+      },
+      "integration_instructions": "核对 generator_nograd_static_context_cache；仅复用 history patch/RoPE/text 等静态项，当前 latent 和 timestep 仍进入原始路径。",
+      "fallback": {
+        "action": "用原 control 在新进程关闭 static context cache；退出 scope 后检查所有 payload 释放。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "wan-lora-epilogue",
+      "title": "Wan no-grad LoRA 融合及实际安装 wrapper",
+      "usage_mode": "runtime_component",
+      "scope": "BF16 base + FP32 LoRA update；保留两次 FP32 round-to-nearest 再转 BF16。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+          "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+          "locator": "fused_lora_epilogue",
+          "symbol": "fused_lora_epilogue",
+          "line_start": 55,
+          "line_end": 92,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py#L55-L92"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+          "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+          "locator": "install_generator_nograd_lora_fused_epilogue",
+          "symbol": "install_generator_nograd_lora_fused_epilogue",
+          "line_start": 430,
+          "line_end": 610,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L430-L610"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
+          "sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+          "locator": "_build_model_fair",
+          "symbol": "_build_model_fair",
+          "line_start": 75,
+          "line_end": 305,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_wan13b_fair_world16.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_wan13b_fair_world16.py#L257-L260",
+          "focus_call": "install_generator_nograd_lora_fused_epilogue",
+          "focus_start": 257,
+          "focus_end": 260
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_cast_composition.py",
+          "sha256": "2c705444013abb6bbbb3d55adeae6627483a611627e76c372051ee10ac4cb702",
+          "locator": "test_fused_cast_composition_output_gradient_input_version_and_scope",
+          "symbol": "test_fused_cast_composition_output_gradient_input_version_and_scope",
+          "line_start": 20,
+          "line_end": 84,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_cast_composition.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_cast_composition.py#L20-L84"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "base_dtype": "bfloat16",
+        "lora_update_dtype": "float32",
+        "contiguous_inputs": true,
+        "numerical_contract_preserved": true
+      },
+      "performance_conditions": {
+        "epilogue_on_critical_path": true
+      },
+      "integration_instructions": "经 install_generator_nograd_lora_fused_epilogue 的角色、源码和 no-grad guard 接入；不要把底层 Triton 函数直接塞进可微 Linear。",
+      "fallback": {
+        "action": "恢复原 PEFT forward 的干净进程，关闭融合开关；底层函数本身没有 autograd fallback。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+            "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+            "locator": "install_generator_nograd_lora_fused_epilogue",
+            "symbol": "install_generator_nograd_lora_fused_epilogue",
+            "line_start": 430,
+            "line_end": 610,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L430-L610"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试将 fused kernel 替换成 CPU eager mock，验证 wrapper/cache 组合与 grad passthrough；不覆盖真实 CUDA kernel、当前 workload 或完整训练周期。",
+      "related_implementations": [
+        {
+          "id": "wan-lora-grad-epilogue",
+          "note": "需要梯度时检查这个独立的 autograd 备选；它不继承 no-grad 案例的历史收益或验收。"
+        }
+      ]
+    },
+    {
+      "id": "wan-lora-grad-epilogue",
+      "title": "Wan 可微 LoRA epilogue 的独立备选",
+      "usage_mode": "runtime_component",
+      "scope": "可微前向/checkpoint replay 的独立候选，底层 BF16/FP32 内核与 no-grad 路径共享但导数由单独 autograd 实现；没有从 no-grad 历史结果继承收益。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "sha256": "719e6c2b3c9c447664dc7b39df2666237293daaea7c28631385eb416ac40781d",
+          "locator": "fused_lora_epilogue_with_grad",
+          "symbol": "fused_lora_epilogue_with_grad",
+          "line_start": 79,
+          "line_end": 85,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L79-L85"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "sha256": "719e6c2b3c9c447664dc7b39df2666237293daaea7c28631385eb416ac40781d",
+          "locator": "make_epilogue_autograd_function",
+          "symbol": "make_epilogue_autograd_function",
+          "line_start": 51,
+          "line_end": 76,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L51-L76"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "sha256": "719e6c2b3c9c447664dc7b39df2666237293daaea7c28631385eb416ac40781d",
+          "locator": "install_grad_lora_fused_epilogue",
+          "symbol": "install_grad_lora_fused_epilogue",
+          "line_start": 88,
+          "line_end": 154,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L88-L154"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
+          "sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac",
+          "locator": "_build_model_fair",
+          "symbol": "_build_model_fair",
+          "line_start": 75,
+          "line_end": 305,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_wan13b_fair_world16.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/scripts/distillschedule/probe_wan13b_fair_world16.py#L266-L266",
+          "focus_call": "install_grad_lora_fused_epilogue",
+          "focus_start": 266,
+          "focus_end": 266
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_grad_epilogue.py",
+          "sha256": "2f317908e0294195b836843bfa960c96dcee370554cc31f8dfa401443fc29a1a",
+          "locator": "test_real_cpu_autograd_matches_native_output_and_both_gradients",
+          "symbol": "test_real_cpu_autograd_matches_native_output_and_both_gradients",
+          "line_start": 42,
+          "line_end": 60,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_grad_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_grad_epilogue.py#L42-L60"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_grad_epilogue.py",
+          "sha256": "2f317908e0294195b836843bfa960c96dcee370554cc31f8dfa401443fc29a1a",
+          "locator": "test_runtime_receipts_require_actual_execution",
+          "symbol": "test_runtime_receipts_require_actual_execution",
+          "line_start": 82,
+          "line_end": 90,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_grad_epilogue.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_grad_epilogue.py#L82-L90"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "grad_enabled",
+        "base_dtype": "bfloat16",
+        "lora_update_dtype": "float32",
+        "single_vanilla_active_adapter": true,
+        "upstream_source_hash_matches": true,
+        "checkpoint_replay_validated": true
+      },
+      "performance_conditions": {
+        "epilogue_on_critical_path": true
+      },
+      "integration_instructions": "通过 DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE 显式 opt-in；分别读取 autograd forward/backward 与 installer 的 PEFT source/adapter guard，检查实际 receipt。",
+      "fallback": {
+        "action": "新进程设置该变量为 0 并恢复原 PEFT 路径；不要从失败后残留的 wrapper/optimizer 状态继续作为 control。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+            "sha256": "719e6c2b3c9c447664dc7b39df2666237293daaea7c28631385eb416ac40781d",
+            "locator": "install_grad_lora_fused_epilogue",
+            "symbol": "install_grad_lora_fused_epilogue",
+            "line_start": 88,
+            "line_end": 154,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L88-L154"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "CPU eager forward 注入测试覆盖 native input gradients，receipt 测试检查命中声明；真实 Triton CUDA 路径、checkpoint replay 与完整周期仍需当前验证。"
+    },
+    {
+      "id": "wan-cast-cache",
+      "title": "Wan 冻结 LoRA 路径的 cast cache wrapper",
+      "usage_mode": "runtime_component",
+      "scope": "当前相关 wrapper，不证明历史 cache 的时间可转移；外部 dtype 方法范围更广。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+          "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+          "locator": "install_generator_nograd_lora_cast_cache",
+          "symbol": "install_generator_nograd_lora_cast_cache",
+          "line_start": 265,
+          "line_end": 427,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L265-L427"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+          "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+          "locator": "install_generator_nograd_lora_cast_cache",
+          "symbol": "install_generator_nograd_lora_cast_cache",
+          "line_start": 265,
+          "line_end": 427,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L265-L427"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_cast_composition.py",
+          "sha256": "2c705444013abb6bbbb3d55adeae6627483a611627e76c372051ee10ac4cb702",
+          "locator": "test_fused_cast_composition_output_gradient_input_version_and_scope",
+          "symbol": "test_fused_cast_composition_output_gradient_input_version_and_scope",
+          "line_start": 20,
+          "line_end": 84,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_cast_composition.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_cast_composition.py#L20-L84"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "weights_stable_during_reuse": true,
+        "invalidation_validated": true
+      },
+      "performance_conditions": {
+        "cache_reuse_sufficient": true,
+        "saved_compute_exceeds_cache_cost": true
+      },
+      "integration_instructions": "读取 wrapper 的 cast 对象与源 hash gate，只处理被允许的冻结计算路径，不转换训练 master/optimizer state。",
+      "fallback": {
+        "action": "新进程禁用 cast cache 并恢复源 forward；重新核对实际 cast 次数和参数 dtype。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+            "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03",
+            "locator": "install_generator_nograd_lora_cast_cache",
+            "symbol": "install_generator_nograd_lora_cast_cache",
+            "line_start": 265,
+            "line_end": 427,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L265-L427"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试将 fused kernel 替换成 CPU eager mock，验证 wrapper/cache 组合与 grad passthrough；不覆盖真实 CUDA kernel、当前 workload 或完整训练周期。"
+    },
+    {
+      "id": "helios-modulation-chunks",
+      "title": "Helios modulation chunk 参数入口",
+      "usage_mode": "runtime_component",
+      "scope": "只改变 token 独立操作的分块 launch；不是修改 attention/MLP 逻辑形状。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_modulation_chunks.py",
+          "sha256": "a99a7429eedfceccbb0f983927d53e804abbb71c238f0aa0c2117ab6308c3b25",
+          "locator": "configure_helios_modulation_chunk_tokens",
+          "symbol": "configure_helios_modulation_chunk_tokens",
+          "line_start": 19,
+          "line_end": 85,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulation_chunks.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulation_chunks.py#L19-L85"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "model_family": "Helios14B",
+        "helios_block_count": 40,
+        "role": [
+          "generator",
+          "critic"
+        ]
+      },
+      "performance_conditions": {
+        "pointwise_launch_cost_exposed": true
+      },
+      "integration_instructions": "chunk_tokens 仅接受 512/1024/2048，逐个核对 40 个 HeliosTransformerBlock；不要将该入口用于 Wan 的同名概念。",
+      "fallback": {
+        "action": "从干净 control 进程设置 512；实现拒绝已经被另一候选修改过的 chunk 策略。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "helios-modnorm",
+      "title": "Helios modulation norm 的安装与融合实现",
+      "usage_mode": "runtime_component",
+      "scope": "当前源码中存在多条互斥融合路径；按所选分支验证。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+          "locator": "install_exact_modulated_norm_epilogue",
+          "symbol": "install_exact_modulated_norm_epilogue",
+          "line_start": 24,
+          "line_end": 774,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+          "sha256": "38f615574bd0031058c81d3ad8e13287625a944a39028093789f72f0616fe493",
+          "locator": "fused_modulated_norm_epilogue",
+          "symbol": "fused_modulated_norm_epilogue",
+          "line_start": 207,
+          "line_end": 263,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_kernel.py#L207-L263"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+          "locator": "install_exact_modulated_norm_epilogue",
+          "symbol": "install_exact_modulated_norm_epilogue",
+          "line_start": 24,
+          "line_end": 774,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "model_family": "Helios14B",
+        "upstream_source_hash_matches": true,
+        "gradient_path_supported": true,
+        "numerical_contract_preserved": true
+      },
+      "performance_conditions": {
+        "norm_on_critical_path": true
+      },
+      "integration_instructions": "先读 installer 的 distinct forward/backward 选项和 source guards；仅调用 epilogue kernel 不等于安装完整 LayerNorm/backward 融合。",
+      "fallback": {
+        "action": "在新进程恢复原 source norm 与 backward；按输出及梯度分别验证，不能只用某个 canary 代替整体。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+            "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+            "locator": "install_exact_modulated_norm_epilogue",
+            "symbol": "install_exact_modulated_norm_epilogue",
+            "line_start": 24,
+            "line_end": 774,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "helios-crossnorm-canary",
+      "title": "Helios LayerNorm/modulation canary",
+      "usage_mode": "diagnostic_only",
+      "scope": "诊断参考；不把当前模块与历史 cross-norm 实验视为同一个实现。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_fused_layernorm_kernel.py",
+          "sha256": "b91dfce7f143497fcce7d1f89f5b30956ed0e8f4e5aa303205b6df300cb6bafa",
+          "locator": "fused_bf16_layernorm_modulation",
+          "symbol": "fused_bf16_layernorm_modulation",
+          "line_start": 135,
+          "line_end": 222,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_fused_layernorm_kernel.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_fused_layernorm_kernel.py#L135-L222"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+          "locator": "install_exact_modulated_norm_epilogue",
+          "symbol": "install_exact_modulated_norm_epilogue",
+          "line_start": 24,
+          "line_end": 774,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "numerical_contract_preserved": true,
+        "dtype_layout_supported": true
+      },
+      "performance_conditions": {
+        "norm_on_critical_path": true
+      },
+      "integration_instructions": "此入口是相关 LayerNorm canary，不是历史 cross-norm 候选的已验证直接替换；先核对 affine、dtype、reduction 与 backward。",
+      "fallback": {
+        "action": "保持原 norm 默认路径；独立 canary 未通过不能接入全模型。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+            "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+            "locator": "install_exact_modulated_norm_epilogue",
+            "symbol": "install_exact_modulated_norm_epilogue",
+            "line_start": 24,
+            "line_end": 774,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "livewan-generator-modulation",
+      "title": "LiveWan Generator modulation canary 与 runtime scope",
+      "usage_mode": "runtime_component",
+      "scope": "C32 指定 Generator canary/运行域；没有跨角色通用支持。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+          "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+          "locator": "build",
+          "symbol": "build",
+          "line_start": 18,
+          "line_end": 65,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L18-L65"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+          "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+          "locator": "model_runtime_scope",
+          "symbol": "model_runtime_scope",
+          "line_start": 140,
+          "line_end": 146,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L140-L146"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+          "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+          "locator": "install",
+          "symbol": "install",
+          "line_start": 131,
+          "line_end": 136,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L131-L136"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_livewan_generator_modulation.py",
+          "sha256": "36338ea144784604be793ffaac6cda8bb69b4168da1fb3c82e7b94c996e4a077",
+          "locator": "test_no_grad_required_before_import_or_device_access",
+          "symbol": "test_no_grad_required_before_import_or_device_access",
+          "line_start": 16,
+          "line_end": 21,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_livewan_generator_modulation.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_livewan_generator_modulation.py#L16-L21"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_livewan_generator_modulation.py",
+          "sha256": "36338ea144784604be793ffaac6cda8bb69b4168da1fb3c82e7b94c996e4a077",
+          "locator": "test_only_installed_on_explicit_validated_g_scope",
+          "symbol": "test_only_installed_on_explicit_validated_g_scope",
+          "line_start": 35,
+          "line_end": 39,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_livewan_generator_modulation.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_livewan_generator_modulation.py#L35-L39"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "microbatch": 1,
+        "width": 1536,
+        "scale_shift_dtype": "float32",
+        "role": "generator"
+      },
+      "performance_conditions": {
+        "pointwise_launch_cost_exposed": true
+      },
+      "integration_instructions": "明确通过 canary/runtime scope 启用；检查 Generator 的 FP32 scale/shift，不能套到 Score 的不同 dtype。",
+      "fallback": {
+        "action": "退出 scope 并使用 default-off 安装路径；runtime receipt 不满足该方案时回到原实现。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+            "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+            "locator": "install",
+            "symbol": "install",
+            "line_start": 131,
+            "line_end": 136,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L131-L136"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试不构成当前 workload 的实机完整周期/组合/恢复验收；这些检查仍需按改动风险选择。"
+    },
+    {
+      "id": "helios-history-fusion",
+      "title": "Helios history/current add+cat 融合",
+      "usage_mode": "runtime_component",
+      "scope": "与 C25 同机制的 source-pinned helper，当前组合仍需完整周期验证。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+          "sha256": "360d7c1dea7b4a5b8b8bdbedcd42542fd196014fba8d8c900cd4bff7a39c7bda",
+          "locator": "install_exact_history_current_fusion",
+          "symbol": "install_exact_history_current_fusion",
+          "line_start": 77,
+          "line_end": 179,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py#L77-L179"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+          "sha256": "360d7c1dea7b4a5b8b8bdbedcd42542fd196014fba8d8c900cd4bff7a39c7bda",
+          "locator": "_rewrite_forward_source",
+          "symbol": "_rewrite_forward_source",
+          "line_start": 43,
+          "line_end": 74,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py#L43-L74"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "upstream_source_hash_matches": true,
+        "gradient_path_supported": true,
+        "numerical_contract_preserved": true
+      },
+      "performance_conditions": {
+        "pointwise_launch_cost_exposed": true
+      },
+      "integration_instructions": "仅在源 hash 和 rewrite 模板完全匹配时安装；核对 actual calls/fallback 与训练梯度。",
+      "fallback": {
+        "action": "新进程不安装该 rewrite，保留原 forward；不能在未知源版本上模糊替换文本。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+            "sha256": "360d7c1dea7b4a5b8b8bdbedcd42542fd196014fba8d8c900cd4bff7a39c7bda",
+            "locator": "_rewrite_forward_source",
+            "symbol": "_rewrite_forward_source",
+            "line_start": 43,
+            "line_end": 74,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py#L43-L74"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "helios-fsdp-layout",
+      "title": "Helios world16 FSDP/node-HSDP 配置",
+      "usage_mode": "runtime_component",
+      "scope": "Helios 固定 profile 的并行 helper，不是任意节点数的通用 HSDP 接口。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "create_device_mesh",
+          "symbol": "create_device_mesh",
+          "line_start": 273,
+          "line_end": 288,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L273-L288"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "apply_blockwise_fsdp2_policy",
+          "symbol": "apply_blockwise_fsdp2_policy",
+          "line_start": 291,
+          "line_end": 398,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L291-L398"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "logical_batch_preserved": true,
+        "gradient_reduction_preserved": true,
+        "mesh_contract_validated": true
+      },
+      "performance_conditions": {
+        "topology_calibrated": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "读取 mesh policy 的 replicate/shard 约束、完整模型构造峰值和原训练时钟；GAS/逻辑 batch 不随 mesh 改动。",
+      "fallback": {
+        "action": "新进程恢复 world16-fsdp control；并行布局不能在已有 optimizer state 上随意就地切换。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "optimizer-dispatch-warmup",
+      "title": "FSDP2 optimizer dispatch 预热与状态恢复",
+      "usage_mode": "runtime_component",
+      "scope": "不能将真实训练更新挪出计时窗口；原 warmup 对 state 的恢复逻辑是必读入口。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_static.py",
+          "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+          "locator": "_optimizer_dispatch_warmup",
+          "symbol": "_optimizer_dispatch_warmup",
+          "line_start": 545,
+          "line_end": 775,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L545-L775"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_static.py",
+          "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+          "locator": "build_fsdp2_engine",
+          "symbol": "build_fsdp2_engine",
+          "line_start": 779,
+          "line_end": 828,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L779-L828"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "optimizer_state_restored": true,
+        "weights_restored": true,
+        "rng_restored": true,
+        "update_clocks_preserved": true
+      },
+      "performance_conditions": {
+        "cold_dispatch_is_relevant": true
+      },
+      "integration_instructions": "沿 build_fsdp2_engine 的原 warmup 参数接入；比较预热前后全部参数/梯度/Adam/scheduler/RNG，单列 setup 时间。",
+      "fallback": {
+        "action": "使用关闭 warmup 的新 control 进程；恢复不完整时丢弃该初始化状态。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_static.py",
+            "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+            "locator": "build_fsdp2_engine",
+            "symbol": "build_fsdp2_engine",
+            "line_start": 779,
+            "line_end": 828,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L779-L828"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "helios-selective-checkpoint",
+      "title": "Helios FA2 selective checkpoint 保留",
+      "usage_mode": "runtime_component",
+      "scope": "FA2 算子级保留策略可供最小适配；外层 FSDP2/P0 训练接入固定 world16/B16 和40个block。不是无条件保存全部 attention；真实 backend 和最坏更新阶段容量都需验收。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_static.py",
+          "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+          "locator": "_selective_flash_checkpoint_contexts",
+          "symbol": "_selective_flash_checkpoint_contexts",
+          "line_start": 84,
+          "line_end": 111,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L84-L111"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_static.py",
+          "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50",
+          "locator": "configure_fsdp2_checkpointing",
+          "symbol": "configure_fsdp2_checkpointing",
+          "line_start": 171,
+          "line_end": 290,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L171-L290"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/fsdp2_p0.py",
+          "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+          "locator": "StaticFSDP2P0Policy",
+          "symbol": "StaticFSDP2P0Policy",
+          "line_start": 47,
+          "line_end": 231,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "attention_backend": "FA2",
+        "checkpoint_replay_pure": true,
+        "gradient_path_supported": true
+      },
+      "performance_conditions": {
+        "recompute_cost_exposed": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "读取 selective Flash checkpoint policy；先证明真实 FA2 op 被命中，再选择保留密度。保持原 checkpoint 的 RNG 与反向路径。 区分策略函数与外层训练接入：后者的 world16/B16 不能直接用于8卡；适配策略须保持目标逻辑工作，重新验证真实算子、block身份及梯度路径。",
+      "fallback": {
+        "action": "恢复原 checkpoint dispatcher/原 stride；不删除 optimizer/update 的语义步骤。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/fsdp2_p0.py",
+            "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff",
+            "locator": "StaticFSDP2P0Policy",
+            "symbol": "StaticFSDP2P0Policy",
+            "line_start": 47,
+            "line_end": 231,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L47-L231"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "block-activation-retention",
+      "title": "选择完整 block 保留 autograd 激活",
+      "usage_mode": "runtime_component",
+      "scope": "当前相关 block retention，不是历史 tail8 patch 的身份保证。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/checkpoint_block_retention.py",
+          "sha256": "08dce8d2a408cbc83b49f30bc11399447dec45d694765cde476efebab39e273c",
+          "locator": "install",
+          "symbol": "install",
+          "line_start": 11,
+          "line_end": 62,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py#L11-L62"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/checkpoint_block_retention.py",
+          "sha256": "08dce8d2a408cbc83b49f30bc11399447dec45d694765cde476efebab39e273c",
+          "locator": "install",
+          "symbol": "install",
+          "line_start": 11,
+          "line_end": 62,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py#L11-L62"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_checkpoint_block_retention.py",
+          "sha256": "28ef42185016c63255b6e074f9459487a5a75a8a6218a9c602bda907e28cba0a",
+          "locator": "test_original_forward_backward_adam_rng_and_selected_recompute",
+          "symbol": "test_original_forward_backward_adam_rng_and_selected_recompute",
+          "line_start": 33,
+          "line_end": 47,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_checkpoint_block_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_checkpoint_block_retention.py#L33-L47"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_checkpoint_block_retention.py",
+          "sha256": "28ef42185016c63255b6e074f9459487a5a75a8a6218a9c602bda907e28cba0a",
+          "locator": "test_uncalibrated_retention_is_rejected_by_calibration_before_cuda",
+          "symbol": "test_uncalibrated_retention_is_rejected_by_calibration_before_cuda",
+          "line_start": 87,
+          "line_end": 97,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_checkpoint_block_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_checkpoint_block_retention.py#L87-L97"
+        }
+      ],
+      "correctness_conditions": {
+        "checkpoint_replay_pure": true,
+        "gradient_path_supported": true,
+        "whole_checkpoint_units": true
+      },
+      "performance_conditions": {
+        "recompute_cost_exposed": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "按实际模块选择 opt-in block retention，未选择模块保留原 dispatcher；先校准候选内存成本。",
+      "fallback": {
+        "action": "不安装/选择空集合，恢复原 checkpoint；不能从 tail8 OOM 推导当前允许的 block 数。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/checkpoint_block_retention.py",
+            "sha256": "08dce8d2a408cbc83b49f30bc11399447dec45d694765cde476efebab39e273c",
+            "locator": "install",
+            "symbol": "install",
+            "line_start": 11,
+            "line_end": 62,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/checkpoint_block_retention.py#L11-L62"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试不构成当前 workload 的实机完整周期/组合/恢复验收；这些检查仍需按改动风险选择。"
+    },
+    {
+      "id": "h3-boundary-offload",
+      "title": "H3 checkpoint 边界 CPU offload",
+      "usage_mode": "runtime_component",
+      "scope": "CPU 边界搬运与 full model GPU residency 可同时存在；配置测试不证明完整状态等价。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+          "sha256": "4fe7f377e1f244750695f27a874b86d06e85cff7b2f601530c852c9b424adfcd",
+          "locator": "install_checkpoint_boundary_cpu_offload",
+          "symbol": "install_checkpoint_boundary_cpu_offload",
+          "line_start": 187,
+          "line_end": 336,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L187-L336"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+          "sha256": "4fe7f377e1f244750695f27a874b86d06e85cff7b2f601530c852c9b424adfcd",
+          "locator": "CheckpointBoundaryOffloadRegistration",
+          "symbol": "CheckpointBoundaryOffloadRegistration",
+          "line_start": 156,
+          "line_end": 184,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L156-L184"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_h3_cache_workflow.py",
+          "sha256": "8a14a2790625984cfcfcd68e34e24fc57d146b2258ee7b5d2aa092ce814db21d",
+          "locator": "test_selected_fields_cannot_be_ignored_by_actual_config",
+          "symbol": "test_selected_fields_cannot_be_ignored_by_actual_config",
+          "line_start": 84,
+          "line_end": 98,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py#L84-L98"
+        }
+      ],
+      "correctness_conditions": {
+        "checkpoint_replay_pure": true,
+        "storage_aliases_preserved": true,
+        "offload_completion_order_validated": true
+      },
+      "performance_conditions": {
+        "host_memory_headroom": true,
+        "device_capacity_bottleneck": true
+      },
+      "integration_instructions": "通过 H3 checkpoint_boundary_cpu policy 选择精确边界；检查 registration、pack/unpack、实际传输字节和最晚 backward。",
+      "fallback": {
+        "action": "保持原 checkpoint policy 的新进程；边界对象仍存活时不可拆掉 hook 或提前释放 CPU storage。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+            "sha256": "4fe7f377e1f244750695f27a874b86d06e85cff7b2f601530c852c9b424adfcd",
+            "locator": "CheckpointBoundaryOffloadRegistration",
+            "symbol": "CheckpointBoundaryOffloadRegistration",
+            "line_start": 156,
+            "line_end": 184,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L156-L184"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列测试检查配置字段确实生效；不是 boundary pack/unpack 的真实 GPU 数值、峰值与完整 backward 验收。"
+    },
+    {
+      "id": "h3-attention-replay",
+      "title": "H3 FA3 replay cache 与 staged 路径",
+      "usage_mode": "runtime_component",
+      "scope": "FA3 专用当前参考；W6 的 FA2 对照不能直接启用此模块。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+          "locator": "install_fa3_replay_cache",
+          "symbol": "install_fa3_replay_cache",
+          "line_start": 880,
+          "line_end": 1131,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L880-L1131"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+          "locator": "prepare_staged_cache_before_backward",
+          "symbol": "prepare_staged_cache_before_backward",
+          "line_start": 854,
+          "line_end": 872,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L854-L872"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+          "locator": "parse_storage",
+          "symbol": "parse_storage",
+          "line_start": 819,
+          "line_end": 825,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L819-L825"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+          "locator": "validate_cycle",
+          "symbol": "validate_cycle",
+          "line_start": 1134,
+          "line_end": 1224,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L1134-L1224"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_h3_cache_workflow.py",
+          "sha256": "8a14a2790625984cfcfcd68e34e24fc57d146b2258ee7b5d2aa092ce814db21d",
+          "locator": "test_receipt_selected_cache_execution_and_all_ranks_fail_closed",
+          "symbol": "test_receipt_selected_cache_execution_and_all_ranks_fail_closed",
+          "line_start": 147,
+          "line_end": 161,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py#L147-L161"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_h3_cache_workflow.py",
+          "sha256": "8a14a2790625984cfcfcd68e34e24fc57d146b2258ee7b5d2aa092ce814db21d",
+          "locator": "test_inactive_cuda_prefetch_is_not_an_invented_candidate",
+          "symbol": "test_inactive_cuda_prefetch_is_not_an_invented_candidate",
+          "line_start": 70,
+          "line_end": 79,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py#L70-L79"
+        }
+      ],
+      "correctness_conditions": {
+        "attention_backend": "FA3",
+        "checkpoint_replay_pure": true,
+        "cache_key_complete": true,
+        "offload_completion_order_validated": true
+      },
+      "performance_conditions": {
+        "recompute_cost_exposed": true,
+        "host_memory_headroom": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "核对 block_indices、storage 与 max_d2h_inflight；staged 路径进入 backward 前准备，并用 validate_cycle 检查实际执行。",
+      "fallback": {
+        "action": "用原 control 新进程禁用 replay cache；CPU-stage 卡住时先用有限超时采集等待，不改名为 OOM 或默认重试。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+            "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599",
+            "locator": "parse_storage",
+            "symbol": "parse_storage",
+            "line_start": 819,
+            "line_end": 825,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L819-L825"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列为 workflow/receipt/配置验证；没有覆盖 CPU-stage futex 停滞的根因、真实 CUDA kernel 数值或完整训练周期。"
+    },
+    {
+      "id": "h3-adaln-bank",
+      "title": "H3 冻结 AdaLN projection bank",
+      "usage_mode": "runtime_component",
+      "scope": "当前 H3 bank 参考；不把其文件 hash 当作 r41 性能结论的新验证。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+          "locator": "install_adaln_cache",
+          "symbol": "install_adaln_cache",
+          "line_start": 233,
+          "line_end": 268,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L233-L268"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+          "locator": "AdaLNCacheController",
+          "symbol": "AdaLNCacheController",
+          "line_start": 51,
+          "line_end": 175,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L51-L175"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+          "locator": "adaln_bank",
+          "symbol": "adaln_bank",
+          "line_start": 271,
+          "line_end": 273,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L271-L273"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+          "locator": "adaln_controller",
+          "symbol": "adaln_controller",
+          "line_start": 276,
+          "line_end": 278,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L276-L278"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "adaln_parameters_frozen": true,
+        "cache_key_complete": true,
+        "invalidation_validated": true
+      },
+      "performance_conditions": {
+        "cache_reuse_sufficient": true,
+        "saved_compute_exceeds_cache_cost": true
+      },
+      "integration_instructions": "从 install_adaln_cache 检查冻结参数断言与 cache scope；不删除注册参数、不合并训练权重。",
+      "fallback": {
+        "action": "新进程保留原 AdaLN 模块，关闭该 cache/bank；比较完整 cycle，不能仅展示命中率。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+            "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+            "locator": "adaln_bank",
+            "symbol": "adaln_bank",
+            "line_start": 271,
+            "line_end": 273,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L271-L273"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "profile-attribution",
+      "title": "Nsight SQLite 区间与 rank 覆盖分析",
+      "usage_mode": "analysis_tool",
+      "scope": "分析工具，不自动采集 profile，也不把非重叠搬运算成可消除关键路径。 当前 search/profile.py 固定2节点×8卡、rank=node*8+device；不能直接接受H100单节点8卡数据。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/profile.py",
+          "sha256": "54ad18f3095431b9001bdd3971dbab1a4e2835c68b2b30db511ecf1df315d957",
+          "locator": "parse_profile",
+          "symbol": "parse_profile",
+          "line_start": 140,
+          "line_end": 211,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/profile.py",
+          "sha256": "54ad18f3095431b9001bdd3971dbab1a4e2835c68b2b30db511ecf1df315d957",
+          "locator": "validate_profile",
+          "symbol": "validate_profile",
+          "line_start": 214,
+          "line_end": 232,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/profile.py",
+          "sha256": "54ad18f3095431b9001bdd3971dbab1a4e2835c68b2b30db511ecf1df315d957",
+          "locator": "feature_weights",
+          "symbol": "feature_weights",
+          "line_start": 235,
+          "line_end": 251,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L235-L251"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_profile_guided_search.py",
+          "sha256": "c6242a286c6ec42b20e4a515f7ca7e681972fc2768e66d2f17a43d338156b52e",
+          "locator": "test_sqlite_per_device_union_pid_and_reconciliation",
+          "symbol": "test_sqlite_per_device_union_pid_and_reconciliation",
+          "line_start": 213,
+          "line_end": 225,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py#L213-L225"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_profile_guided_search.py",
+          "sha256": "c6242a286c6ec42b20e4a515f7ca7e681972fc2768e66d2f17a43d338156b52e",
+          "locator": "test_phase_partition_matches_full_scan_with_cross_boundary_copies",
+          "symbol": "test_phase_partition_matches_full_scan_with_cross_boundary_copies",
+          "line_start": 246,
+          "line_end": 257,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py#L246-L257"
+        }
+      ],
+      "correctness_conditions": {
+        "profile_source_identity_matches": true,
+        "rank_coverage_known": true,
+        "timer_scope_known": true,
+        "nodes": 2,
+        "gpus_per_node": 8,
+        "physical_gpus": 16
+      },
+      "performance_conditions": {},
+      "integration_instructions": "输入实际 trace manifest，先通过 validate_profile，再读 union/overlap、rank 覆盖与源身份；对 Nsight Compute 的 occupancy 还需其专用指标。",
+      "fallback": {
+        "action": "覆盖不足保留 partial/unknown，回到原 trace/未观测计时；不填补缺失 rank 或把空洞归因为 CPU。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/search/profile.py",
+            "sha256": "54ad18f3095431b9001bdd3971dbab1a4e2835c68b2b30db511ecf1df315d957",
+            "locator": "feature_weights",
+            "symbol": "feature_weights",
+            "line_start": 235,
+            "line_end": 251,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L235-L251"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列解析/区间测试不证明输入 trace 的完整性、真实因果关系或 profiler 无扰动。"
+    },
+    {
+      "id": "planner-calibration",
+      "title": "Planner 的已测成本及结果资格",
+      "usage_mode": "analysis_tool",
+      "scope": "解析与资格检查入口；source/config/shape/state policy 变化后成本必须重新核对。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/cost_model.py",
+          "sha256": "f7c24028f90d77df9af48fd7900aea2e7cf7814efab85d614943f1f19f8021a6",
+          "locator": "CostModel",
+          "symbol": "CostModel",
+          "line_start": 77,
+          "line_end": 195,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/measurement.py",
+          "sha256": "a3b05e01850398c146a7de0ecadc895c997b18ae702ee06094623a26dd308706",
+          "locator": "normalize_native",
+          "symbol": "normalize_native",
+          "line_start": 18,
+          "line_end": 98,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/search/helios_action_costs.py",
+          "sha256": "313144c96afc98f52fc6234f4b6408122b859e6387228dd04a0999007f3adde1",
+          "locator": "component_contract",
+          "symbol": "component_contract",
+          "line_start": 68,
+          "line_end": 91,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/helios_action_costs.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/helios_action_costs.py#L68-L91"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_profile_guided_search.py",
+          "sha256": "c6242a286c6ec42b20e4a515f7ca7e681972fc2768e66d2f17a43d338156b52e",
+          "locator": "test_native_measurement_fail_closed",
+          "symbol": "test_native_measurement_fail_closed",
+          "line_start": 95,
+          "line_end": 100,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_profile_guided_search.py#L95-L100"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_h3_cache_workflow.py",
+          "sha256": "8a14a2790625984cfcfcd68e34e24fc57d146b2258ee7b5d2aa092ce814db21d",
+          "locator": "test_shape_and_storage_costs_and_comparisons_are_not_reused",
+          "symbol": "test_shape_and_storage_costs_and_comparisons_are_not_reused",
+          "line_start": 164,
+          "line_end": 183,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_h3_cache_workflow.py#L164-L183"
+        }
+      ],
+      "correctness_conditions": {
+        "cost_source_identity_matches": true,
+        "logical_work_preserved": true,
+        "state_policy_bound": true
+      },
+      "performance_conditions": {},
+      "integration_instructions": "使用真实 component contract/calibration 与 native receipt；未测成本保持 missing，比较当前 manual control 和候选。",
+      "fallback": {
+        "action": "缺 calibration 或验收失败则保持原 control；不把 tie-break 结果报告成实测收益。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/search/helios_action_costs.py",
+            "sha256": "313144c96afc98f52fc6234f4b6408122b859e6387228dd04a0999007f3adde1",
+            "locator": "component_contract",
+            "symbol": "component_contract",
+            "line_start": 68,
+            "line_end": 91,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/helios_action_costs.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/helios_action_costs.py#L68-L91"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "所列合同/解析测试不证明成本在新 shape/storage/topology 下准确，也不证明实际计划更快。"
+    },
+    {
+      "id": "checkpoint-lifecycle",
+      "title": "项目 checkpoint 保存与恢复入口",
+      "usage_mode": "runtime_component",
+      "scope": "当前框架入口；不证明历史 LiveWan 恢复峰值已修复，外部保存失败也非本地复现。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/training/checkpoint.py",
+          "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e",
+          "locator": "save_checkpoint",
+          "symbol": "save_checkpoint",
+          "line_start": 319,
+          "line_end": 456,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L319-L456"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/training/checkpoint.py",
+          "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e",
+          "locator": "restore_checkpoint",
+          "symbol": "restore_checkpoint",
+          "line_start": 541,
+          "line_end": 559,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L541-L559"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/training/checkpoint.py",
+          "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e",
+          "locator": "_stage_state",
+          "symbol": "_stage_state",
+          "line_start": 177,
+          "line_end": 222,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L177-L222"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/training/checkpoint.py",
+          "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e",
+          "locator": "validate_rng",
+          "symbol": "validate_rng",
+          "line_start": 266,
+          "line_end": 279,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L266-L279"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "parameter_mapping_preserved": true,
+        "optimizer_mapping_preserved": true,
+        "rng_restored": true
+      },
+      "performance_conditions": {
+        "host_memory_headroom": true
+      },
+      "integration_instructions": "沿目标 trainer 的 checkpoint 接口保留 canonical 参数/Adam/EMA/RNG/进度映射；_stage_state 是检查临时分配与重复状态的入口。",
+      "fallback": {
+        "action": "保留旧可恢复 checkpoint；新布局/映射的保存恢复未通过前不得覆盖唯一 control checkpoint。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/training/checkpoint.py",
+            "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e",
+            "locator": "_stage_state",
+            "symbol": "_stage_state",
+            "line_start": 177,
+            "line_end": 222,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L177-L222"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。"
+    },
+    {
+      "id": "wan-rollout-graph",
+      "title": "Wan Resident B1 no-grad CUDA Graph 参考",
+      "usage_mode": "runtime_component",
+      "scope": "本地训练中的 no-grad 子路径参考；外部 SGLang 推理案例不验证这个模块。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "sha256": "ded58da8e42e605e13e4b7e27170ec86e5145c8090e48028705246629e1b0395",
+          "locator": "RolloutCudaGraph",
+          "symbol": "RolloutCudaGraph",
+          "line_start": 77,
+          "line_end": 244,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L77-L244"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "sha256": "ded58da8e42e605e13e4b7e27170ec86e5145c8090e48028705246629e1b0395",
+          "locator": "requested",
+          "symbol": "requested",
+          "line_start": 18,
+          "line_end": 22,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L18-L22"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "sha256": "ded58da8e42e605e13e4b7e27170ec86e5145c8090e48028705246629e1b0395",
+          "locator": "validate",
+          "symbol": "validate",
+          "line_start": 303,
+          "line_end": 311,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L303-L311"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_rollout_cuda_graph.py",
+          "sha256": "f31ad539458c8def9cf0a80d4e31e2c24340fdfeefa16b91dab095f609100b95",
+          "locator": "test_dispatch_protocol_live_inputs_weights_and_output_lifetime_cpu",
+          "symbol": "test_dispatch_protocol_live_inputs_weights_and_output_lifetime_cpu",
+          "line_start": 52,
+          "line_end": 109,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py#L52-L109"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "tests/test_refactor_wan13b_rollout_cuda_graph.py",
+          "sha256": "f31ad539458c8def9cf0a80d4e31e2c24340fdfeefa16b91dab095f609100b95",
+          "locator": "test_reference_cannot_be_missing_or_in_native_timer",
+          "symbol": "test_reference_cannot_be_missing_or_in_native_timer",
+          "line_start": 135,
+          "line_end": 144,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py#L135-L144"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "no_grad",
+        "microbatch": 1,
+        "parameters_resident": true,
+        "stable_tensor_addresses": true,
+        "dropout_zero": true
+      },
+      "performance_conditions": {
+        "host_launch_cost_exposed": true,
+        "memory_headroom": true,
+        "capture_amortized": true
+      },
+      "integration_instructions": "通过 DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH 显式 opt-in，核对 requested/install/validate 及每个 capture key。",
+      "fallback": {
+        "action": "在新进程将该变量置 0，恢复原调用；graph output clone 与 pool 必须覆盖完整生命周期。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+            "sha256": "ded58da8e42e605e13e4b7e27170ec86e5145c8090e48028705246629e1b0395",
+            "locator": "requested",
+            "symbol": "requested",
+            "line_start": 18,
+            "line_end": 22,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L18-L22"
+          }
+        ]
+      },
+      "validation_scope": "本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。",
+      "test_gap": "CPU dispatch protocol 和 receipt 测试不执行真实 CUDA Graph；capture/replay 数值、峰值与完整周期仍需验证。"
+    },
+    {
+      "id": "w6-native-metadata-barrier",
+      "title": "W6 r46 原生 metadata barrier 恢复 packet",
+      "usage_mode": "historical_component",
+      "scope": "历史 W6 AR、同 FA3 原始 varlen 路径，两周期/16 ranks；非通用去同步优化。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+          "locator": "NativeMetadataBarrier",
+          "symbol": "NativeMetadataBarrier",
+          "line_start": 7,
+          "line_end": 45,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L7-L45"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+          "locator": "install_on_session",
+          "symbol": "install_on_session",
+          "line_start": 48,
+          "line_end": 55,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L48-L55"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+          "sha256": "8812bed6a7c7b9eda2beb4b58b32cd3264ed2e5e0affa3ec8e092713e47c4590",
+          "locator": "main",
+          "symbol": "main",
+          "line_start": 6,
+          "line_end": 48,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py#L6-L48"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py",
+          "sha256": "7b2eea329059d07cc7643c555aed2fcc426bc923abefad6d450339f0451bdf14",
+          "locator": "test_actual_tolist_before_original_call_and_two_cycle_read_census",
+          "symbol": "test_actual_tolist_before_original_call_and_two_cycle_read_census",
+          "line_start": 24,
+          "line_end": 43,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py#L24-L43"
+        }
+      ],
+      "correctness_conditions": {
+        "workload": "W6",
+        "attention_backend": "FA3",
+        "metadata_semantics_preserved": true,
+        "physical_gpus": 16
+      },
+      "performance_conditions": {
+        "same_backend_comparison": true,
+        "metadata_barrier_policy_measured": true
+      },
+      "integration_instructions": "检查 --restore-native-barrier、cu_q.tolist()、350 次读取 census 与原始 backend；只在匹配 packet 内显式开启。",
+      "fallback": {
+        "action": "新进程关闭 restore-native-barrier，使用同 FA3 control；保留原生注意力与输入。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+            "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+            "locator": "install_on_session",
+            "symbol": "install_on_session",
+            "line_start": 48,
+            "line_end": 55,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L48-L55"
+          },
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+            "sha256": "8812bed6a7c7b9eda2beb4b58b32cd3264ed2e5e0affa3ec8e092713e47c4590",
+            "locator": "main",
+            "symbol": "main",
+            "line_start": 6,
+            "line_end": 48,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py#L6-L48"
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "当前 workload 的梯度、组合、容量和恢复仍需验证。"
+    },
+    {
+      "id": "w3-frozen-ffn-up-replay",
+      "title": "W3 r1 冻结 FFN-up checkpoint 结果复用",
+      "usage_mode": "historical_component",
+      "scope": "155ffbb5 历史 GAN Critic blocks38/39、两周期/10次C更新；接入硬编码 A100/SM80、world16 与 local_rank=rank%8、Torch 2.10.0+cu128/CUDA 12.8；旧 addmm ABI，不支持任意层或解析二阶 backward。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+          "locator": "NativeDownSAC.contexts",
+          "symbol": "NativeDownSAC.contexts",
+          "line_start": 66,
+          "line_end": 115,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L66-L115"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+          "locator": "NativeDownSAC.__init__",
+          "symbol": "NativeDownSAC.__init__",
+          "line_start": 36,
+          "line_end": 54,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L36-L54"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "src/distillschedule/runtime/helios_gan_manual/runtime.py",
+          "sha256": "5ec39d828069df274a555ec1724b3cadd449078e2360ee555274471b8626d944",
+          "locator": "manual_runtime_scope",
+          "symbol": "manual_runtime_scope",
+          "line_start": 114,
+          "line_end": 227,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/runtime.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/runtime.py#L114-L227"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "tests/test_gan_frozen_up_retention.py",
+          "sha256": "44d54b5834623937f84a1dc0b8e6637ea52b3c647e0d9139b732e2ae5b60581d",
+          "locator": "test_frozen_up_operand_contract_and_no_trainable_cache",
+          "symbol": "test_frozen_up_operand_contract_and_no_trainable_cache",
+          "line_start": 22,
+          "line_end": 33,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py#L22-L33"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "tests/test_gan_frozen_up_retention.py",
+          "sha256": "44d54b5834623937f84a1dc0b8e6637ea52b3c647e0d9139b732e2ae5b60581d",
+          "locator": "test_real_selective_addmm_replay_preserves_finite_difference_r1_gradients_rng",
+          "symbol": "test_real_selective_addmm_replay_preserves_finite_difference_r1_gradients_rng",
+          "line_start": 36,
+          "line_end": 63,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py#L36-L63"
+        }
+      ],
+      "correctness_conditions": {
+        "workload": "W3",
+        "grad_mode": "with_grad",
+        "frozen_base_only": true,
+        "replay_scope_validated": true,
+        "gpu_family": "A100",
+        "physical_gpus": 16,
+        "gpus_per_node": 8,
+        "torch_version": "2.10.0+cu128",
+        "cuda_version": "12.8"
+      },
+      "performance_conditions": {
+        "replay_reuses_saved_output": true,
+        "saved_compute_exceeds_cache_cost": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "历史 NativeDownSAC 的 up_blocks 只接受 () 或 (38,39)；由 candidate_bundle.up_blocks 传入；核对 frozen-up guard、版本/graph FIFO 与释放。manual_runtime_scope 明确拒绝非 A100/SM80、非 world16 或不同 Torch/CUDA；H100/8卡只能提取机制后重新适配，不应删除 guard 冒充原样兼容。硬件/拓扑限制属于此历史接入，不能据此否定结果缓存机制在其他环境的可能收益。",
+      "fallback": {
+        "action": "使用相同历史 control 的 up_blocks=()，保留已存在 down replay 路径与原训练语义。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+            "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+            "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+            "locator": "NativeDownSAC.__init__",
+            "symbol": "NativeDownSAC.__init__",
+            "line_start": 36,
+            "line_end": 54,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L36-L54"
+          },
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+            "path": "src/distillschedule/runtime/helios_gan_manual/runtime.py",
+            "sha256": "5ec39d828069df274a555ec1724b3cadd449078e2360ee555274471b8626d944",
+            "locator": "manual_runtime_scope",
+            "symbol": "manual_runtime_scope",
+            "line_start": 114,
+            "line_end": 227,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/runtime.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/runtime.py#L114-L227"
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "当前 workload 的梯度、组合、容量和恢复仍需验证。"
+    },
+    {
+      "id": "role-producer-dispatch",
+      "title": "按 producer_dispatch 执行真实 forward/backward",
+      "usage_mode": "runtime_component",
+      "scope": "resident replicated role pools；CPU/Gloo 合同，不支持自动推导任意 FSDP/offload 调度。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/open_workload/role_transport.py",
+          "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+          "locator": "RolePoolExecutor._run_cycle",
+          "symbol": "RolePoolExecutor._run_cycle",
+          "line_start": 276,
+          "line_end": 466,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L276-L466"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/open_workload/role_transport.py",
+          "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+          "locator": "RolePoolExecutor._prepare",
+          "symbol": "RolePoolExecutor._prepare",
+          "line_start": 157,
+          "line_end": 225,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L157-L225"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/open_workload/role_transport.py",
+          "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+          "locator": "RolePoolExecutor.run",
+          "symbol": "RolePoolExecutor.run",
+          "line_start": 227,
+          "line_end": 255,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L227-L255"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "resident_replicated_pools": true,
+        "dispatch_identity_validated": true,
+        "logical_state_mapping_preserved": true
+      },
+      "performance_conditions": {
+        "cost_domain_matches_target": true
+      },
+      "integration_instructions": "将已验证 producer_dispatch 交给 RolePoolExecutor；核对 rank一致性、实际forward/backward事件与版本，不能只修改 cost-model 输出。",
+      "fallback": {
+        "action": "使用原已验收的 producer 顺序；不能只替换预测表而宣称执行恢复。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/open_workload/role_transport.py",
+            "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+            "locator": "RolePoolExecutor._prepare",
+            "symbol": "RolePoolExecutor._prepare",
+            "line_start": 157,
+            "line_end": 225,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L157-L225"
+          },
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/open_workload/role_transport.py",
+            "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4",
+            "locator": "RolePoolExecutor.run",
+            "symbol": "RolePoolExecutor.run",
+            "line_start": 227,
+            "line_end": 255,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L227-L255"
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "未定位到覆盖该精确历史变体的独立测试；不能借邻近测试声明验收。"
+    },
+    {
+      "id": "wan-exact-ema-11-20",
+      "title": "W1 r34 已知11–20步的原生EMA图",
+      "usage_mode": "historical_component",
+      "scope": "只支持原reference FP32 resident EMA、优化步10起、11..20的十个已知decay和两个原生周期；不是无限训练图。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+          "locator": "ExactEMAStep",
+          "symbol": "ExactEMAStep",
+          "line_start": 13,
+          "line_end": 29,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L13-L29"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+          "locator": "capture",
+          "symbol": "capture",
+          "line_start": 31,
+          "line_end": 57,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L31-L57"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+          "locator": "explicit_worker",
+          "symbol": "explicit_worker",
+          "line_start": 60,
+          "line_end": 99,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L60-L99"
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py",
+          "sha256": "c0fe41890a9aafe0d88510265054807e14a24b9c54f851c75579db49d904af2b",
+          "locator": "test_ten_real_cpu_updates_bitwise_output_metadata_and_rng",
+          "symbol": "test_ten_real_cpu_updates_bitwise_output_metadata_and_rng",
+          "line_start": 27,
+          "line_end": 38,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py#L27-L38"
+        }
+      ],
+      "correctness_conditions": {
+        "workload": "W1",
+        "ema_coefficients": "known_steps_11_20",
+        "resident_fp32_reference_ema": true
+      },
+      "performance_conditions": {
+        "launch_bound": true,
+        "capture_amortized": true
+      },
+      "integration_instructions": "核对schedule/identity/stream guards；通过explicit_worker显式启用；超出已知区间需重新设计并验收，不能删掉 guard。",
+      "fallback": {
+        "action": "新进程使用 enabled=False 的原 reference EMA。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+            "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d",
+            "locator": "explicit_worker",
+            "symbol": "explicit_worker",
+            "line_start": 60,
+            "line_end": 99,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L60-L99"
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "当前 workload 的梯度、组合、容量和恢复仍需验证。"
+    },
+    {
+      "id": "helios-trainable-timestep-residual",
+      "title": "Helios trainable timestep residual backward",
+      "usage_mode": "runtime_component",
+      "scope": "当前Helios phase_local梯度实现；有具体shape、dtype和reduction约束，不是no-grad输出缓存。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_residual_kernel.py",
+          "sha256": "59fc72203e879218df35152cfa00379527e3949f9dbd124866ec4670fe77b6d9",
+          "locator": "fused_gated_residual_trainable_temb_backward_chunk",
+          "symbol": "fused_gated_residual_trainable_temb_backward_chunk",
+          "line_start": 327,
+          "line_end": 391,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_kernel.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_kernel.py#L327-L391"
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "src/distillschedule/runtime/helios_residual_fusion.py",
+          "sha256": "b42facb12a06d4df35167ac1b1adf7891ed4c1a436ba89b8d06d64e03edec666",
+          "locator": "install_generator_nograd_residual_fusion",
+          "symbol": "install_generator_nograd_residual_fusion",
+          "line_start": 58,
+          "line_end": 587,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_fusion.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_fusion.py#L58-L587"
+        }
+      ],
+      "tests": [],
+      "correctness_conditions": {
+        "grad_mode": "with_grad",
+        "timestep_gradients_preserved": true,
+        "bf16_before_reduction": true
+      },
+      "performance_conditions": {
+        "pointwise_staging_on_critical_path": true
+      },
+      "integration_instructions": "函数名含nograd的安装入口也包含训练态分支，逐项核对trainable_residual_backward及phase_local条件，确认真实调用。",
+      "fallback": {
+        "action": "恢复原生residual backward路径；保留梯度和reduction顺序。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+            "path": "src/distillschedule/runtime/helios_residual_fusion.py",
+            "sha256": "b42facb12a06d4df35167ac1b1adf7891ed4c1a436ba89b8d06d64e03edec666",
+            "locator": "install_generator_nograd_residual_fusion",
+            "symbol": "install_generator_nograd_residual_fusion",
+            "line_start": 58,
+            "line_end": 587,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_fusion.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_fusion.py#L58-L587"
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "未定位到覆盖该精确历史变体的独立测试；不能借邻近测试声明验收。"
+    },
+    {
+      "id": "h3-block49-hybrid-output-cache",
+      "title": "W6 r1 block49 GPU结果缓存",
+      "usage_mode": "historical_component",
+      "scope": "45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。 原本地历史提交未发布；当前引用是带原路径/hash记录的逐字节公开归档，并非独立可运行包。",
+      "entrypoints": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+          "locator": "pool_class",
+          "symbol": "pool_class",
+          "line_start": 13,
+          "line_end": 124,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
+        }
+      ],
+      "integration": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+          "locator": "install",
+          "symbol": "install",
+          "line_start": 127,
+          "line_end": 137,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+          "locator": "validate_receipt",
+          "symbol": "validate_receipt",
+          "line_start": 140,
+          "line_end": 147,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
+          "sha256": "491f074f644d5d6700c34625b34921145ed199c768957470752604d6ebe75230",
+          "locator": "test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention",
+          "symbol": "test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention",
+          "line_start": 57,
+          "line_end": 69,
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py#L57-L69",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "tests/test_h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
+        }
+      ],
+      "correctness_conditions": {
+        "workload": "W6",
+        "cache_key_complete": true,
+        "cached_gradients_preserved": true
+      },
+      "performance_conditions": {
+        "saved_cache_transfer_exceeds_overhead": true,
+        "memory_headroom": true
+      },
+      "integration_instructions": "只在对应历史strategy配置启用GPU_BLOCKS=(49,)；核对原父模块身份、GPU输出存储计数与consumer释放。",
+      "fallback": {
+        "action": "恢复原SHA绑定parent pool及pinned CPU存储策略，不改变原始模型或attention。",
+        "references": [
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+            "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+            "locator": "install",
+            "symbol": "install",
+            "line_start": 127,
+            "line_end": 137,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137",
+            "historical_origin": {
+              "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+              "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+              "commit_publicly_fetchable": false,
+              "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+            }
+          },
+          {
+            "repository": "sliortega295-ops/DMD-System",
+            "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+            "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+            "locator": "validate_receipt",
+            "symbol": "validate_receipt",
+            "line_start": 140,
+            "line_end": 147,
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147",
+            "historical_origin": {
+              "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+              "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+              "commit_publicly_fetchable": false,
+              "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+            }
+          }
+        ]
+      },
+      "validation_scope": "本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。",
+      "test_gap": "当前 workload 的梯度、组合、容量和恢复仍需验证。"
+    }
+  ]
+}

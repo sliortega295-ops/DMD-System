@@ -1,0 +1,58 @@
+name: optimizer-skill-cpu
+on:
+  pull_request:
+    paths:
+      - 'skills/dmd-system-optimizer/**'
+      - 'tools/install_optimizer_skill.py'
+      - '.github/workflows/optimizer-skill-cpu.yml'
+  push:
+    branches: [main, codex/distributable-optimizer-skill-20261030]
+    paths:
+      - 'skills/dmd-system-optimizer/**'
+      - 'tools/install_optimizer_skill.py'
+      - '.github/workflows/optimizer-skill-cpu.yml'
+permissions:
+  contents: read
+jobs:
+  retrieval-and-accounting:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Fetch pinned historical implementation sources
+        # The default shallow checkout omits historical experiment branches.
+        # Fetch only named source commits; never run their training code.
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          import subprocess
+          from pathlib import Path
+
+          repository = "sliortega295-ops/DMD-System"
+          catalog = json.loads(Path("skills/dmd-system-optimizer/assets/implementation-map.json").read_text())
+          revisions = set()
+          for entry in catalog["implementations"]:
+              refs = entry["entrypoints"] + entry["integration"] + entry["tests"] + entry["fallback"]["references"]
+              for ref in refs:
+                  assert ref["repository"] == repository, "External source needs an explicit CI fetch policy"
+                  assert re.fullmatch(r"[0-9a-f]{40}", ref["revision"]), "Source commit must be pinned"
+                  revisions.add(ref["revision"])
+          missing = [rev for rev in sorted(revisions) if subprocess.run(
+              ["git", "cat-file", "-e", rev + "^{commit}"], capture_output=True).returncode]
+          if missing:
+              subprocess.run(["git", "fetch", "--no-tags", "--depth=1",
+                              "https://github.com/" + repository + ".git", *missing], check=True)
+          PY
+      - name: Conditional retrieval, accounting and independent installation
+        run: python -m unittest discover -s skills/dmd-system-optimizer/tests -v
+      - name: Validate public pack structure
+        run: python skills/dmd-system-optimizer/scripts/dmd_knowledge.py validate-pack

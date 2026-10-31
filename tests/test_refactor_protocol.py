@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_full5_schedule_is_one_full_plus_four_critic_only() -> None:
-    plan = load_plan(ROOT / "configs/distillschedule/plans/helios_14b_384x640_full5.json").plan
+    plan = load_plan(ROOT / "tests/fixtures/dmd_full_cycle.json").plan
     intents = DMDUpdateSchedule(plan.workload.schedule, plan.workload.branches).compile_range(10, 5)
     assert [intent.kind for intent in intents] == [
         StepKind.FULL,
@@ -26,7 +26,7 @@ def test_full5_schedule_is_one_full_plus_four_critic_only() -> None:
 
 
 def test_compiler_tracks_versions_and_shared_score_modes() -> None:
-    plan = load_plan(ROOT / "configs/distillschedule/plans/helios_14b_384x640_full5.json").plan
+    plan = load_plan(ROOT / "tests/fixtures/dmd_full_cycle.json").plan
     compiled = DMDProtocolCompiler().compile(plan)
     assert compiled.final_versions == {"generator": 3, "critic": 15, "ema": 15}
     first = compiled.steps[0].operation_ids

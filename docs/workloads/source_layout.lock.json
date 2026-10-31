@@ -668,6 +668,14 @@
       "integrated_sha256": "953b3af9ecf7b1b3f729a25168200b63a8fa20a7c84eae973bb8744250b82f5a",
       "source_commit": "eeb0083ddb8f0f92caf3032a5249cd5ad3bbf368",
       "change": "Reviewed complete-JSON create-only publication: same-directory exclusive temporary, file and directory fsync, atomic no-replace hardlink, owned-temp cleanup and preserved final-path EEXIST ABI. Exact committed eeb0083d registry bytes; all other registry AST nodes except errno/uuid imports, training math, defaults, umask and training RNG remain unchanged. Original import receipt and prior overlays preserved. Local CPU publication/source contracts only; not shared-filesystem coherence or native execution qualification."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/adapters/__init__.py",
+      "previous_sha256": "5ba99905fd6afac962634d5c11949a050f64e07fe8aefe403f47a25464b58ab6",
+      "integrated_sha256": "ab79e89eee9369830670b0f350d34ff2e551448df43153ee655976b3ada6b000",
+      "source_commit": "f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e",
+      "change": "Retire the pre-FSDP2 Route-A Helios launch adapter from the default typed registry; current Helios reference helpers and public/native training remain. Exact deletion manifest: docs/architecture/legacy_route_retirement.json. No algorithm replacement or GPU validation."
     }
   ]
 }

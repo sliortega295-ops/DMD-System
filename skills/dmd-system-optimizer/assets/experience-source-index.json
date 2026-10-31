@@ -1,0 +1,2771 @@
+{
+  "schema_version": 1,
+  "curated_date": "2026-10-31",
+  "sources": [
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "70ace0efbb89ce5691617bb06b9971d1e96a2522",
+      "path": "docs/experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md",
+      "sha256": "72d0f774d5f98ceb25d95fb303a1fe3f8c22824cb3457b8109de61f5811c15cf",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/70ace0efbb89ce5691617bb06b9971d1e96a2522/docs/experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan generated actions and reusable component costs",
+      "tags": [
+        "Wan generated actions and reusable component costs",
+        "Preserved completed evidence — no rerun",
+        "Newly completed implementation",
+        "Commands (new immutable output directories required)",
+        "Claim boundaries / unfinished work",
+        "Native component closure — only previously missing work",
+        "Search and held-out prediction",
+        "Calibration decomposition — not native performance denominators",
+        "Memory, semantics and teardown",
+        "Reproduction evidence"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
+      "sha256": "c609e4a7b8c69e96afffbd18e71d35d13bfb64f807cd19efe1af7108e801c6bd",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "H3 measured action costs → common search → native performance closure",
+      "tags": [
+        "H3 measured action costs → common search → native performance closure",
+        "Result",
+        "What was actually searched and executed",
+        "Hard gates and numerical boundary",
+        "Memory and transfers",
+        "Reproduction, failures and source fix",
+        "Stop boundary",
+        "Helios A100 history",
+        "planner-calibration",
+        "缺测动作不应虚构成本，相同预测只说明 tie-break"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "planner-missing-costs-tie"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_H3_PREPARED_ACTIONS_20260907.md",
+      "sha256": "68150c227a5578ff4a672ad142a25f4a33a66c571fe8e7f27f4ef785849b6ddf",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_PREPARED_ACTIONS_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "H3 generated prepared-action native gate",
+      "tags": [
+        "H3 generated prepared-action native gate",
+        "The missing connection that is now exercised",
+        "Native gates",
+        "Diagnostic wall and capacity",
+        "Environment, test and failure evidence",
+        "What remains, without repeating this gate"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
+      "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+      "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Helios No-GAN / GAN: measured search → native execution",
+      "tags": [
+        "Helios No-GAN / GAN: measured search → native execution",
+        "Result and claim boundary",
+        "What the search and executor actually do",
+        "GAN safety rejection is not an OOM",
+        "Frozen workload and versions",
+        "Source, environment and artifacts",
+        "Validation and stop boundary",
+        "Operational validation",
+        "allocator-policy",
+        "Helios GAN：完成校准但被预测容量余量政策拒绝",
+        "validation-lifecycle",
+        "Helios GAN：逻辑版本标签不能重写真实Adam与scheduler时钟"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-capacity-policy-rejection-not-oom",
+        "helios-logical-native-clock-mapping"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+      "sha256": "9f0619b5f9cf0406337b1aa5a21fb6a3b25ec2a9d0164564e14db246861c1eaa",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Native planner continuation: LiveWan complete, H3 numerical gate blocked",
+      "tags": [
+        "Native planner continuation: LiveWan complete, H3 numerical gate blocked",
+        "Environment and denominator",
+        "LiveWan: completed loop",
+        "Memory caveat",
+        "H3: native integration works, numerical admission fails",
+        "Actual blocker and repeat experiment",
+        "Integration bugs fixed and preserved failures",
+        "Evidence, replay and stopping point",
+        "Helios A100 history",
+        "validation-lifecycle",
+        "候选和 unchanged repeat 都失败时，先定位 baseline 可重复性"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "planner-baseline-self-parity-fails"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "8e6fd674302260ea24fa63f0121357db9ac15656",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md",
+      "sha256": "90c5de46b2cb0773f3c85250ed0c8cdc14e0e6642a47cb2e238ca3b6a3d20077",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/8e6fd674302260ea24fa63f0121357db9ac15656/docs/experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Native Wan stage calibration pilot — 2026-09-07",
+      "tags": [
+        "Native Wan stage calibration pilot — 2026-09-07",
+        "Identity and claim boundary",
+        "Real cluster outcome",
+        "Cost samples, not formal cycle timing",
+        "Repairs and verification",
+        "What is still missing",
+        "Artifacts"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "18e889ad3653103e7f1d1aebfb055d71cdc22205",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md",
+      "sha256": "58cb3a7fb426f7c7b49bc8bbac0e55639c3c626ea5d88be599e961bfdd846f66",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/18e889ad3653103e7f1d1aebfb055d71cdc22205/docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Joint-planner Wan native bridge — 2026-09-07",
+      "tags": [
+        "Joint-planner Wan native bridge — 2026-09-07",
+        "Scope and source",
+        "Completed gates",
+        "Raw unprofiled timing",
+        "Remaining, explicitly NOT_RUN",
+        "Persistent evidence"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4b511c49e3b8363d60443f839ebd66f8ea4f69cb",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
+      "sha256": "85024940b33d35afea325fe25f074319dac7d051a2a391d61d7606e48145f08f",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4b511c49e3b8363d60443f839ebd66f8ea4f69cb/docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan measured-cost planner: closed-loop native diagnostic",
+      "tags": [
+        "Wan measured-cost planner: closed-loop native diagnostic",
+        "Scope and remaining work"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "63e7164267a1b2e72304c723b6dd82eb788b6b0f",
+      "path": "docs/experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md",
+      "sha256": "301b5da5347c74203be53424334d9481aab7b7e45026f3d0055c60953d52d7a0",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/63e7164267a1b2e72304c723b6dd82eb788b6b0f/docs/experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "LiveWan native action and transport evidence",
+      "tags": [
+        "LiveWan native action and transport evidence",
+        "Scope: completed missing observation unit, not a new speed result",
+        "Native verification",
+        "What was newly separated",
+        "Helper duration observations, cycle 2 only",
+        "Memory and cleanup",
+        "Planner boundary and remaining work",
+        "Evidence"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6c7d0cbaac3a80eba8d82f409db826fb4572c50f",
+      "path": "docs/experiments/DMD_LIVEWAN_POOL_DAG_20260907.md",
+      "sha256": "6d457593c29bcb81a0e80727c3b02cc3972a697529d04ca4325e205bbc3019c6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6c7d0cbaac3a80eba8d82f409db826fb4572c50f/docs/experiments/DMD_LIVEWAN_POOL_DAG_20260907.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "LiveWan native observations → source-bound pool DAG",
+      "tags": [
+        "LiveWan native observations → source-bound pool DAG",
+        "What this adds beyond the already completed macro search",
+        "Transport reconciliation",
+        "Deliberately unresolved memory and execution",
+        "Verification and failure preservation"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "31f4388ab3ef696d1dd2a21cba500c3b65a0698a",
+      "path": "docs/experiments/GAN_CUDA_BASELINE_OPTIMIZATION_20260829.md",
+      "sha256": "f9a5565cb7602bbb5c037d8ba9b6f686c1488f86d3e43f64de193779344e1579",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/31f4388ab3ef696d1dd2a21cba500c3b65a0698a/docs/experiments/GAN_CUDA_BASELINE_OPTIMIZATION_20260829.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "GAN CUDA-residual baseline optimization task contract",
+      "tags": [
+        "GAN CUDA-residual baseline optimization task contract",
+        "Objective and frozen denominator",
+        "Correctness requirements",
+        "Allowed implementation approaches",
+        "Evidence workflow",
+        "Commands and promotion criteria",
+        "Initial risks and candidate ordering"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "111e293dc79978132af91ab5515a096d941b94fe",
+      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+      "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Helios14B node-HSDP optimization closure (Iterations 368-382)",
+      "tags": [
+        "Helios14B node-HSDP optimization closure (Iterations 368-382)",
+        "Status and claim boundary",
+        "New experiment ladder",
+        "Effective methods",
+        "Explicit pinned local FlashAttention-2",
+        "Critic selective FA2 checkpoint-output retention",
+        "Rejected and bounded-negative methods",
+        "Post-winner Nsight result",
+        "Final result",
+        "Helios A100 history",
+        "activation-retention",
+        "checkpoint-result-reuse",
+        "10/40 checkpoint bypass OOM，4/40 能跑但收益极小",
+        "state-caching",
+        "history self-attention K/V cache 依赖的 attention 模式不成立",
+        "No-GAN cross-KV 命中 880 次仍几乎没有 E2E 收益",
+        "attention-routing",
+        "两次 SAC 目标计数为零，真正原因是运行时落到 SDPA",
+        "保留真实 FA2 输出可省重算，密度受最坏显存限制",
+        "fusion-numerics",
+        "cross LayerNorm 微基准快 5.7–6.35×，Full5 却变慢",
+        "Helios：冻结QKV融合在M6144 canary未获益"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-checkpoint-bypass-capacity",
+        "helios-history-kv-contract-rejected",
+        "helios-crosskv-nogan-negligible",
+        "helios-fa2-backend-missing",
+        "helios-fa2-selective-retention",
+        "helios-bf16-crossnorm-reversal",
+        "helios-frozen-qkv-canary-no-benefit"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
+      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+      "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Helios14B node-HSDP optimization ladder (Iterations 351-367)",
+      "tags": [
+        "Helios14B node-HSDP optimization ladder (Iterations 351-367)",
+        "Status and claim boundary",
+        "Frozen workload",
+        "Results",
+        "Optimization process and code",
+        "1. Placement: world16 FSDP2 -> node-HSDP",
+        "2. Exact LoRA epilogues",
+        "3. State-preserving optimizer dispatch warmup",
+        "4. Exact residual and timestep-gradient fusion",
+        "5. Exact modulated-norm epilogue and materialization",
+        "Iteration 359 Nsight evidence",
+        "Final Iteration 367 evidence",
+        "Rejected and superseded paths",
+        "Remaining work",
+        "Helios A100 history",
+        "fusion-numerics",
+        "Helios 的同类 chunk 扩大只有小收益或回退",
+        "distributed-topology",
+        "No-GAN 的 node-HSDP 有小幅历史改善",
+        "Helios：训练态 phase-local timestep 梯度融合与暂存"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-modulation-chunk-neutral",
+        "helios-hsdp-nogan-positive",
+        "helios-trainable-phase-local-timestep"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a065830e550151c56934ec83771ea506708d0e14",
+      "path": "docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
+      "sha256": "6347bed7c7252e3dd33e52ff9a6681ba992d1ca48e49b8b6070295d98ecadcd6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a065830e550151c56934ec83771ea506708d0e14/docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Bounded H100 Helios no-grad Generator retention experiment",
+      "tags": [
+        "Bounded H100 Helios no-grad Generator retention experiment",
+        "Helios H100 history",
+        "parameter-residency",
+        "H100 HSDP primitive 证明生命周期可行，不证明 14B 容量"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-hsdp-retention-primitive-boundary"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "54351707288c8d8a8d2efd789ece708852a07033",
+      "path": "docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
+      "sha256": "39a2cf2b0c23a2ab9b888d6758b7ed0f0d2dea20f4a3309b2e627e4b308f8e1f",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/54351707288c8d8a8d2efd789ece708852a07033/docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "LiveWan continuous B16/B32 diagnostics (Iterations 143-178)",
+      "tags": [
+        "LiveWan continuous B16/B32 diagnostics (Iterations 143-178)",
+        "Result",
+        "Frozen systems contract",
+        "Execution sequence and outcomes",
+        "C21-0: continuous B16 depth-one lookahead",
+        "C21-C1: overlap the first B1 Critic backward",
+        "C-pool compute audit and C22",
+        "C23: continuous B32",
+        "C24: exact Score modulation fusion on continuous B16",
+        "Why B32 helps only slightly",
+        "Identity and claim boundary",
+        "Helios A100 history",
+        "measurement-identity",
+        "B32 的 B16 等效时间不是实际 B16 训练记录"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "livewan-b32-normalization"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c7590a3e45abd5770e4069cbf26fe3ceba2dcf1b",
+      "path": "docs/experiments/LIVEWAN_H100_TEACHER_RESIDENT.md",
+      "sha256": "e5604090f3a74cb338db4ef2497bf64893594885bd24c7da2a1ec5a75a377724",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c7590a3e45abd5770e4069cbf26fe3ceba2dcf1b/docs/experiments/LIVEWAN_H100_TEACHER_RESIDENT.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "H100 C34 pipeline: Teacher residency probe",
+      "tags": [
+        "H100 C34 pipeline: Teacher residency probe"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c69876197aeaccbab19b515b54d1022f07634422",
+      "path": "docs/experiments/WAN13B_MERGED_SHADOW_NOISE_STUDY.md",
+      "sha256": "0ce92fe554a35198ffea08fa5419539b018a76ebeac0e5a876ae8e340a84d52b",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c69876197aeaccbab19b515b54d1022f07634422/docs/experiments/WAN13B_MERGED_SHADOW_NOISE_STUDY.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan1.3B merged-LoRA shadow noise study (opt-in)",
+      "tags": [
+        "Wan1.3B merged-LoRA shadow noise study (opt-in)"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "e8a72d4cda487e43f2652e75e3d3e1f83604105c",
+      "path": "docs/experiments/WAN13B_RESIDENT_CHUNK2048_20260824.md",
+      "sha256": "3e8a9bf2205ae668bbf231f95f8a60dc6b4654a8d972d58db9735853d3605204",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/e8a72d4cda487e43f2652e75e3d3e1f83604105c/docs/experiments/WAN13B_RESIDENT_CHUNK2048_20260824.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan1.3B Resident modulation-chunk diagnostic (2026-08-24)",
+      "tags": [
+        "Wan1.3B Resident modulation-chunk diagnostic (2026-08-24)",
+        "Scope",
+        "Correctness and capacity",
+        "One matched unprofiled diagnostic pair",
+        "Preserved failures and claim boundary"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
+      "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+      "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan1.3B Resident optimization ladder (Iterations 340-349)",
+      "tags": [
+        "Wan1.3B Resident optimization ladder (Iterations 340-349)",
+        "Status and claim boundary",
+        "Frozen workload",
+        "Optimization ladder",
+        "What changed",
+        "1. Clean Resident runtime",
+        "2. Gradient-ready asynchronous LoRA reduction",
+        "3. NCCL Tree diagnostic arm",
+        "4. Larger exact modulation tile",
+        "5. Kernel attribution and exact no-grad LoRA epilogue",
+        "Kernel evidence",
+        "Final candidate evidence",
+        "Rejected and already-completed paths",
+        "Reproduction and code review",
+        "Helios A100 history",
+        "fusion-numerics",
+        "Wan modulation chunk 扩大得到明显单配对收益",
+        "state-caching",
+        "缓存 cast 不一定值得其维护成本",
+        "no-grad LoRA epilogue 在 Wan 有实测收益"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-modulation-chunk2048",
+        "wan-cast-cache-negative",
+        "wan-lora-epilogue-positive"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "b9dd25e36dfa45e6768428eb08f549afa7d3895e",
+      "path": "docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
+      "sha256": "9b5da1646210931109837f473e8aec1355c4ab095e09da6a8e3c02e6264290b4",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Wan1.3B Generator No-Grad `torch.compile` Canary (2026-08-24)",
+      "tags": [
+        "Wan1.3B Generator No-Grad `torch.compile` Canary (2026-08-24)",
+        "Identity and scope",
+        "Gates",
+        "One unprofiled diagnostic pair",
+        "Decision",
+        "Helios A100 history",
+        "graphs-and-ema",
+        "Wan block 级 torch.compile 变慢且严格 rollout 不通过"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-block-compile-fails"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/current_status.md",
+      "sha256": "ba08d5ea022ec13e042478a26100a7d02f8c90162618fc042d4367ba224d667b",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/current_status.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Helios GAN-on optimization pause summary",
+      "tags": [
+        "Helios GAN-on optimization pause summary",
+        "Formal result at the pause point",
+        "Frozen comparison contract",
+        "Accepted trajectory",
+        "Important rejected or bounded paths",
+        "Diagnostic boundary"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/draft.md",
+      "sha256": "ee84eb974cd18e1b9196c4f1fc1b97035829f703879d68571cd211de38d02b68",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/draft.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Helios GAN-on CUDA-resident optimization draft",
+      "tags": [
+        "Helios GAN-on CUDA-resident optimization draft",
+        "Task contract",
+        "Baseline evidence",
+        "C1.1 measured result",
+        "Risks and unknowns",
+        "Ranked candidates",
+        "Validation and evaluation",
+        "C2 selected hypothesis",
+        "C2 measured result",
+        "C3 measured result",
+        "C4 selected hypothesis",
+        "C4 measured result",
+        "C5 measured result",
+        "C8 measured result",
+        "C9 selected hypothesis",
+        "C9 measured result",
+        "C10 selected hypothesis",
+        "C10 measured result",
+        "C11 selected hypothesis",
+        "C11 post-fix profile and C12 selected hypothesis",
+        "C12 measured result",
+        "C13 exact rollout-context result",
+        "C14 selected kernel hypothesis",
+        "C14 measured result and C15 selected kernel hypothesis",
+        "C15 measured result",
+        "C17 measured result",
+        "C18 selected Generator allocator hypothesis",
+        "C18 measured result",
+        "C19 selected kernel diagnostic",
+        "C19 NCU result"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "205dbd6fac25ad7b46f24040e3f2250f1bd6c696",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration351_profile.md",
+      "sha256": "8d0fd4185e20784429130b8e59ed06aa1dd2d1c2312e833c3bb3380e0d63cc72",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/205dbd6fac25ad7b46f24040e3f2250f1bd6c696/docs/experiments/gan_cuda_baseline_opt_20260829/iteration351_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 351 profile attribution",
+      "tags": [
+        "Iteration 351 profile attribution",
+        "Identity and claim boundary",
+        "Exact 16-rank phase attribution",
+        "C2 preflight: world16 optimizer dispatch warmup"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "dcc4a740a8dbf17969a7618f1514c7d6438e9931",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
+      "sha256": "eda0dfdc9c3b035a1565e2dc3073150932d97fe586e16dc30dc5f69e23f50cae",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 352: world16 optimizer dispatch warmup",
+      "tags": [
+        "Iteration 352: world16 optimizer dispatch warmup",
+        "Decision record",
+        "Preserved failed attempts",
+        "Focused validation",
+        "World16 evidence",
+        "Outcome",
+        "Next constraint",
+        "Helios A100 history",
+        "graphs-and-ema",
+        "预热 optimizer dispatch 的前提是恢复所有训练状态"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-optimizer-warmup-restored"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5f399a0f4faf4df0a38e7a46255299e00992da71",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration353_local_fa2.md",
+      "sha256": "81baa7a7e9886fcc9503c303ff46992c23eda67f1566fb5252a81cbbaec5cc6d",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5f399a0f4faf4df0a38e7a46255299e00992da71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration353_local_fa2.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 353: pinned local FlashAttention-2",
+      "tags": [
+        "Iteration 353: pinned local FlashAttention-2",
+        "Frozen single-variable arm",
+        "Gates",
+        "Formal timing"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+      "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 354: modulation chunk 2048",
+      "tags": [
+        "Iteration 354: modulation chunk 2048",
+        "Single-variable contract",
+        "Gates",
+        "Formal timing",
+        "Helios A100 history",
+        "fusion-numerics",
+        "Helios 的同类 chunk 扩大只有小收益或回退"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-modulation-chunk-neutral"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+      "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 355: Critic selective Flash checkpoint replay",
+      "tags": [
+        "Iteration 355: Critic selective Flash checkpoint replay",
+        "Candidate",
+        "Gates",
+        "Formal timing",
+        "Decision",
+        "Helios A100 history",
+        "checkpoint-result-reuse",
+        "保留真实 FA2 输出可省重算，密度受最坏显存限制"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-fa2-selective-retention"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "ea520a2e339506e704122c3e35314de3ac9e09b2",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration356_c5_profile.md",
+      "sha256": "712c4014d75fc5a50e6c38569b9b0b7d968a2274993f652d542196f6e0a91005",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/ea520a2e339506e704122c3e35314de3ac9e09b2/docs/experiments/gan_cuda_baseline_opt_20260829/iteration356_c5_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 356: C5 post-optimization profile",
+      "tags": [
+        "Iteration 356: C5 post-optimization profile",
+        "Claim boundary",
+        "Overlap-aware result",
+        "Kernel evidence and root cause",
+        "Next bounded candidate",
+        "Remote evidence"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6d88e4d45ab07e3fd54bc9edacc3954ee6168937",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
+      "sha256": "451e6488d156ece3d4a6f8b6c57457a5019bfa2dfa2e3d239d20314d5746aeb8",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6d88e4d45ab07e3fd54bc9edacc3954ee6168937/docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 357: C6 node-HSDP placement result",
+      "tags": [
+        "Iteration 357: C6 node-HSDP placement result",
+        "Claim boundary",
+        "Construction result",
+        "Gates and formal result",
+        "Decision",
+        "Helios A100 history",
+        "distributed-topology",
+        "GAN-on node-HSDP 反而变慢；构造修复需单独保留"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-hsdp-gan-negative"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "d5ff09623a1f57a8194619b24fc633fd51569fff",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
+      "sha256": "653b9e61977c7b3b82fa3d4ccf95c988c08e2795b520222448d9385e46fdf0b1",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/d5ff09623a1f57a8194619b24fc633fd51569fff/docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 358: C7 dominant Critic GEMM NCU diagnostic",
+      "tags": [
+        "Iteration 358: C7 dominant Critic GEMM NCU diagnostic",
+        "Claim boundary",
+        "Kernel result",
+        "Decision",
+        "Remote evidence",
+        "Helios A100 history",
+        "profiling-attribution",
+        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-ncu-low-occupancy-not-low-throughput"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7f7a5c28db628a22ad494d4533590dc71b3d9afa",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
+      "sha256": "1a86fda321470b615fdf03c0b9a5cfde1fec8b46ca69b016a676def6269f2654",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f7a5c28db628a22ad494d4533590dc71b3d9afa/docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 359: exact Generator rollout cross-attention K/V reuse",
+      "tags": [
+        "Iteration 359: exact Generator rollout cross-attention K/V reuse",
+        "Contract",
+        "Validation",
+        "Formal timing",
+        "Decision",
+        "Helios A100 history",
+        "state-caching",
+        "GAN-on 的 cross-KV 单配对约有 0.75% 改善"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-crosskv-gan-positive"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "06b53e85e6598bbc43d93c785a85520da7c3f716",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
+      "sha256": "1e2b4b978b27dac02601cbe836ce77c6722419eae4d28739dbba8c228c05c4c2",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/06b53e85e6598bbc43d93c785a85520da7c3f716/docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 363: exact modulated-norm backward",
+      "tags": [
+        "Iteration 363: exact modulated-norm backward",
+        "Contract and implementation",
+        "Low-cost gate",
+        "World16 gates",
+        "Formal timing",
+        "Decision",
+        "Helios A100 history",
+        "fusion-numerics",
+        "显式 modulation backward 避免逐 chunk autograd 构图"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-modnorm-explicit-backward"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4e85b5d6bc7f884ca002d4cd0d66dce070531528",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration364_c11_profile.md",
+      "sha256": "c965282012f240db67d572d86edc6faf579fa4a0b40e078ad17caf88762bb30a",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4e85b5d6bc7f884ca002d4cd0d66dce070531528/docs/experiments/gan_cuda_baseline_opt_20260829/iteration364_c11_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 364: C11 post-fix GAN-on profile",
+      "tags": [
+        "Iteration 364: C11 post-fix GAN-on profile",
+        "Identity and claim boundary",
+        "Profile health",
+        "Overlap-aware attribution",
+        "Compute and communication evidence",
+        "New source-qualified hot-path gap",
+        "before: every rollout blocks the host, and G update flushes the allocator",
+        "C12: opt-in low-overhead path; formal boundary synchronization is unchanged",
+        "Decision"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "2883f88a14654d3e6369c4f14de01a1f932edf35",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
+      "sha256": "ddc9058e9a0a265ee1654ebf96eb87cca7a10622c66809a6d0a395b5ee8fd7cd",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/2883f88a14654d3e6369c4f14de01a1f932edf35/docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 365: C12 explicit rollout-fence cleanup",
+      "tags": [
+        "Iteration 365: C12 explicit rollout-fence cleanup",
+        "Contract",
+        "Evidence",
+        "Result boundary",
+        "Helios A100 history",
+        "host-synchronization",
+        "去掉若干内部同步后只获得很小完整周期改善"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-internal-fences-small"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "2d70afbbc3f28d828304b4f08cd6440c4e3e7a71",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
+      "sha256": "ba96398b5926eada6b42dfc48de5a2bc042ebaab9c86b04bc424cfc217552819",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/2d70afbbc3f28d828304b4f08cd6440c4e3e7a71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 366: C13 exact Generator rollout static context",
+      "tags": [
+        "Iteration 366: C13 exact Generator rollout static context",
+        "Hypothesis",
+        "Gates and evidence",
+        "Helios A100 history",
+        "state-caching",
+        "静态 context 缓存零误差，完整周期仍略慢"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-static-context-cache-negative"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "b6cdeed6211bcfb5433840da68d2339b427946f0",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
+      "sha256": "e3bdceb6f6534566f83ef926428e74e0a15bdfb77b2d5bce458dda9eb7d811b3",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/b6cdeed6211bcfb5433840da68d2339b427946f0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 367: C14 fused BF16 LayerNorm and modulation",
+      "tags": [
+        "Iteration 367: C14 fused BF16 LayerNorm and modulation",
+        "Frozen comparison",
+        "Evidence",
+        "Decision",
+        "Helios A100 history",
+        "fusion-numerics",
+        "局部融合的倍数必须换算为完整周期收益"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-fused-modnorm-forward-backward"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "1ef0e907aff7a64d4b459f0f41af64c499d3689b",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
+      "sha256": "44d8752946a28e7eb264e6d7f6bd9509b50bdff149f76d150766831edf0d8dc6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/1ef0e907aff7a64d4b459f0f41af64c499d3689b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 369: C15 fused modulated-norm backward",
+      "tags": [
+        "Iteration 369: C15 fused modulated-norm backward",
+        "Contract",
+        "Evidence",
+        "Decision",
+        "Helios A100 history",
+        "fusion-numerics",
+        "局部融合的倍数必须换算为完整周期收益"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-fused-modnorm-forward-backward"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "50aa0975239449dd2fe874f1c159a23158e5f6d9",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration370_c15_profile.md",
+      "sha256": "d4cf398778d2d7e6ea14cb28e1251d79b821303e891eba906ed62d778a4a5dd6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/50aa0975239449dd2fe874f1c159a23158e5f6d9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration370_c15_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 370: C15 post-fix Nsight diagnosis",
+      "tags": [
+        "Iteration 370: C15 post-fix Nsight diagnosis",
+        "Frozen diagnostic identity",
+        "Overlap-aware result",
+        "Remaining source-qualified work",
+        "Decision boundary"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5fab44949b0d9184fe7fb868ee91c79b91ebf174",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
+      "sha256": "7d3fc4d82e5ea1b086c0b54c0c10914be46591da9795890ced10f19946f9aa0f",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5fab44949b0d9184fe7fb868ee91c79b91ebf174/docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 371: C16 NCCL protocol canary",
+      "tags": [
+        "Iteration 371: C16 NCCL protocol canary",
+        "Question and boundary",
+        "Result",
+        "Decision",
+        "Helios A100 history",
+        "distributed-topology",
+        "强制 NCCL protocol 的 canary 未发现优势"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-nccl-protocol-canary"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6137c4cfa762f7b73aaa08614bd4ac6b19466070",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
+      "sha256": "74b5a6da155e72ede92ca000140ae7885da34c32b5d616948d296614253db269",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6137c4cfa762f7b73aaa08614bd4ac6b19466070/docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 372: C17 elide unused official Critic scalar logs",
+      "tags": [
+        "Iteration 372: C17 elide unused official Critic scalar logs",
+        "Contract",
+        "Live preflight",
+        "Evidence",
+        "Decision",
+        "Helios A100 history",
+        "host-synchronization",
+        "只跳过计时模式不用的 scalar logging"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-scalar-log-elision"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "d91c3727cb22642dc9f54061315f15703dfe623a",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
+      "sha256": "b1c014752fd1bb9238e9c5833958e76cb6d991d6b71ecf725786139aea8c5212",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/d91c3727cb22642dc9f54061315f15703dfe623a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 373: C18 official Generator `free_memory` elision",
+      "tags": [
+        "Iteration 373: C18 official Generator `free_memory` elision",
+        "Preflight decision",
+        "Claim boundary",
+        "Results",
+        "Decision",
+        "Helios A100 history",
+        "host-synchronization",
+        "helper 的全局 free_memory/GC 也可能干扰训练提交"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-free-memory-gc"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "91ca0e007f64cfb857089fd73957669397754a8c",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
+      "sha256": "fca2a83f94060a87c3664c3545ea4dabe08ff5e5d404a48d8df9912295da13ab",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/91ca0e007f64cfb857089fd73957669397754a8c/docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 374: C19 production FlashAttention NCU diagnostic",
+      "tags": [
+        "Iteration 374: C19 production FlashAttention NCU diagnostic",
+        "Frozen identity and validity",
+        "Hardware result",
+        "Claim boundary and decision",
+        "Helios A100 history",
+        "profiling-attribution",
+        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-ncu-low-occupancy-not-low-throughput"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "e89942f29debc04d80b58397614a3f6828d6208a",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration375_c20_postfix_profile.md",
+      "sha256": "84aac39281b16a50850688dc1cdc62a3abf4991282b936730b45f558b2ae2da3",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/e89942f29debc04d80b58397614a3f6828d6208a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration375_c20_postfix_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 375: C20 post-C18 diagnostic profile",
+      "tags": [
+        "Iteration 375: C20 post-C18 diagnostic profile",
+        "Claim boundary",
+        "Identity and validity",
+        "All-rank median attribution",
+        "Post-fix result",
+        "Next bounded candidate"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "59ae41c6a6a3d295117737ed6b26ef3e9a4102a9",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
+      "sha256": "c64650edb2262bcb21c5f98013f1a102c6d09cc9b81bd8e36c397fee43d6e436",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/59ae41c6a6a3d295117737ed6b26ef3e9a4102a9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 376: C21 Generator no-grad persistent unshard",
+      "tags": [
+        "Iteration 376: C21 Generator no-grad persistent unshard",
+        "Contract and mechanism",
+        "Runs",
+        "Correctness and capacity evidence",
+        "Performance",
+        "Next diagnostic boundary",
+        "Helios A100 history",
+        "parameter-residency",
+        "只在五次 no-grad rollout 内保留 41 个 FSDP 单元"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-bounded-rollout-residency"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "313dcbd1925f831ce1d9bf3e322b7a8a5fec1567",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration377_c22_post_c21_profile.md",
+      "sha256": "94706f13d404b4e8e48c4ebc8f250bf3e340cdddc47b6a61c4d1c47cbe6326e2",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/313dcbd1925f831ce1d9bf3e322b7a8a5fec1567/docs/experiments/gan_cuda_baseline_opt_20260829/iteration377_c22_post_c21_profile.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 377: C22 post-C21 diagnostic profile",
+      "tags": [
+        "Iteration 377: C22 post-C21 diagnostic profile",
+        "Workload identity",
+        "Overlap-aware attribution",
+        "New bounded source finding",
+        "Claim boundary and persistent artifacts"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7f64327754a31a409f581470f588c5e94a2787b4",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
+      "sha256": "b725596d6c899859e7df822036a611c44003ccb6a5eedab039c6936c7ddbf07b",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f64327754a31a409f581470f588c5e94a2787b4/docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 378: C23 persistence allocator no-flush",
+      "tags": [
+        "Iteration 378: C23 persistence allocator no-flush",
+        "Contract",
+        "Results",
+        "Decision",
+        "Helios A100 history",
+        "allocator-policy",
+        "正确性模式能跑，去掉 flush 后的正式计时仍可能 OOM"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-no-flush-timing-oom"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "ae6f2b28b97739143b02f21c6496d3afbb5765d0",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
+      "sha256": "f90d92463f09ecdd999cabe5f6475978bb2af396b7d18d02f099b77a34f183b8",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/ae6f2b28b97739143b02f21c6496d3afbb5765d0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 379: C24 expandable allocator with persistence no-flush",
+      "tags": [
+        "Iteration 379: C24 expandable allocator with persistence no-flush",
+        "Contract",
+        "Results",
+        "Decision",
+        "Helios A100 history",
+        "allocator-policy",
+        "expandable_segments 修复容量却比有 flush 的 control 慢"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-expandable-segments-cost"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "160f19543cfdefd71ba9f8dc73bd79cad7b6d207",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
+      "sha256": "68266926ce8416d2612d5197ebb721d39b3f48d6360d639de8e4d890af719dde",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/160f19543cfdefd71ba9f8dc73bd79cad7b6d207/docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 380: C25 exact history/current add-and-cat fusion",
+      "tags": [
+        "Iteration 380: C25 exact history/current add-and-cat fusion",
+        "Selection and contract",
+        "Locked-A100 canary",
+        "Decision",
+        "World16 gates and formal result",
+        "Performance decision",
+        "Helios A100 history",
+        "fusion-numerics",
+        "小型 add+cat 融合有完整周期小收益"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-history-addcat-fusion"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
+      "sha256": "8a8a2b1075527bb856dcfe065e221035532d719440ea1d9cfdb2d3a0617e793f",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 386: C27 frozen cross-attention LayerNorm canary",
+      "tags": [
+        "Iteration 386: C27 frozen cross-attention LayerNorm canary",
+        "Pause-point summary",
+        "Source-qualified hypothesis",
+        "Canary evidence",
+        "Decision and stop boundary",
+        "Helios A100 history",
+        "fusion-numerics",
+        "后续 GAN frozen cross norm 只有 canary，未完成 world16"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-frozen-crossnorm-unrun"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+      "sha256": "4cb0fc460cc10a6c4d40eaa8591d61cf3fd49aa493967d620c8df322ddfaecd6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Executable plan",
+      "tags": [
+        "Executable plan",
+        "validation-lifecycle",
+        "Helios B2：兼容调用日程仍被数值门拒绝"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-b2-rollout-numerical-rejection"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/preflight.md",
+      "sha256": "45812c5197ed1e584618c4e723012f0b6f328369cf0ac99d0df15eb5e9f9d394",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/preflight.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "C1 iteration preflight",
+      "tags": [
+        "C1 iteration preflight",
+        "C1.1 packed-B3 preflight",
+        "C4 modulation/residual chunk-2048 preflight",
+        "Post-C4 repeated-failure audit and C5 preflight",
+        "Iteration 356 C5 diagnostic-profile preflight",
+        "C6 node-HSDP topology preflight",
+        "C6.1 bounded construction recovery",
+        "C7 bounded NCU preflight",
+        "C8 Generator no-grad cross-attention K/V preflight",
+        "C9 Generator no-grad history K/V preflight",
+        "C9 iteration-end failure handoff",
+        "C10 LoRA-B beta-add epilogue preflight",
+        "C10 iteration-end failure handoff",
+        "C11 explicit modulated-norm backward preflight",
+        "C11 canary result and implementation GO",
+        "C11 iteration-end handoff",
+        "C11 post-fix diagnostic profile preflight",
+        "C11 profile result and C12 GO decision",
+        "C12 iteration-end handoff",
+        "C13 Generator no-grad static-context reuse preflight",
+        "C13 pre-launch source-contract correction",
+        "C13 iteration-end handoff",
+        "C14 fused BF16 LayerNorm plus modulation preflight",
+        "C14 canary result",
+        "C15 canary result",
+        "C14 iteration-end handoff and C15 GO decision",
+        "C15 iteration-end handoff",
+        "C19 bounded FlashAttention NCU diagnostic preflight",
+        "C19 result and C20 profile-only GO decision",
+        "C20 result and C21 GO decision"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5c75376982c2d114402992e3538bd59ea9f12fb0",
+      "path": "docs/experiments/h100_five_workload_b16_20260930.md",
+      "sha256": "0787aa2556014e8f9753c42dac1a86ceae5b0c91a32425f49bf33f7e903a5ea7",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5c75376982c2d114402992e3538bd59ea9f12fb0/docs/experiments/h100_five_workload_b16_20260930.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Eight-H100 / logical-B16 adaptation",
+      "tags": [
+        "Eight-H100 / logical-B16 adaptation",
+        "Measured gates (not a model benchmark)",
+        "Wan execution",
+        "Completed Wan1.3B result (2026-09-30)",
+        "Live integration gates and remaining matrix (2026-09-30)"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8",
+      "path": "docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
+      "sha256": "ad7701a593a642c2f8a8e91ae90cd6f7d54962e27a12c085c5b21b18f557b4da",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8/docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 301 — MiniMax-H3 Native Nsight Attribution",
+      "tags": [
+        "Iteration 301 — MiniMax-H3 Native Nsight Attribution",
+        "Status and claim boundary",
+        "Workload identity",
+        "Correctness / capture gates",
+        "Native cycle decomposition (overlap-aware)",
+        "NCCL collective breakdown",
+        "Boundary-offload evidence",
+        "Stage decomposition",
+        "Application DiT call attribution",
+        "Reconciliation and capture limitations",
+        "Conclusion (diagnostic only)",
+        "Minimal next question (not executed)",
+        "Artifacts",
+        "Helios A100 history",
+        "profiling-attribution",
+        "H3 实测大拷贝可对应 boundary storage，但暴露区间不是可直接省掉的时间"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-h3-copy-interval-attribution"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "524048c94c6374ae5071bc23e93daf19fc1e0bb9",
+      "path": "docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
+      "sha256": "b607b6c4696cd748186b64405b3eeaf85bc5ee12da8dca2125066c049b6ef7c5",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/524048c94c6374ae5071bc23e93daf19fc1e0bb9/docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 328 — Wan1.3B fair Resident/FSDP2 result",
+      "tags": [
+        "Iteration 328 — Wan1.3B fair Resident/FSDP2 result",
+        "Status",
+        "Source and compatibility patch",
+        "Frozen workload",
+        "Per-placement execution",
+        "Strict cross-placement correctness",
+        "Conclusion boundary",
+        "Resource and cleanup evidence",
+        "Next bounded question",
+        "Helios A100 history",
+        "validation-lifecycle",
+        "Resident/FSDP/DDP 都完成更新，跨布局数值仍可能失败"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-placement-numerics-failure"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "af240f5e53f9a43eefe523a6473aa6a9fba0164e",
+      "path": "docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
+      "sha256": "c9142d2452e7f4847a6d4a8673d0076f08d2e458c414ec0251b9f74ac2e2ec7e",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/af240f5e53f9a43eefe523a6473aa6a9fba0164e/docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
+      "locator": "结果、合同、限制与失败记录",
+      "title": "Iteration 336 — Wan1.3B resident GPU-residual correction",
+      "tags": [
+        "Iteration 336 — Wan1.3B resident GPU-residual correction",
+        "Status",
+        "Root cause and fix",
+        "Frozen workload",
+        "World16 execution",
+        "Exact post-fix transfer evidence",
+        "Diagnostic timeline comparison",
+        "Unprofiled timing boundary",
+        "Evidence",
+        "Helios A100 history",
+        "implementation-reuse",
+        "配置写着 GPU residual，实际旧 runtime 根本没有实现这个参数"
+      ],
+      "source_group": "Helios and Wan historical experiments",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-runtime-capability-noop"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+      "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+      "locator": "control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "parameter-residency",
+        "W2：参数保留有小幅正向观察，同时增加显存",
+        "memory-tradeoffs",
+        "parameter reserve 与 driver free 不能混用",
+        "experiment-decisions",
+        "累计 owner phases 不是完整训练 run 数"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w2-retention-r36",
+        "helios-allocator-policy-r36",
+        "helios-budget-units-r36"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+      "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+      "locator": "rows[workload=W3]",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "checkpoint-result-reuse",
+        "activation-retention",
+        "W3：Critic 尾两块冻结 FFN-up 结果复用的小幅历史增量",
+        "W6 r1：block49计算结果从CPU缓存改为GPU保留后变慢",
+        "W1：扩大到 whole-block tail8 出现 OOM",
+        "state-caching",
+        "W1：RETAIN4 与 frozen_down 的条件边际不可相加",
+        "validation-lifecycle",
+        "W5：后向诊断并未消除原数值失败"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w3-retention-r1",
+        "helios-w6-retention-r1",
+        "helios-w1-tail8-oom",
+        "helios-w1-frozen-down-r1",
+        "helios-w5-numerical-failure"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+      "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+      "locator": "results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "memory-tradeoffs",
+        "W4：完成运行与全程容量宽裕是不同结论",
+        "measurement-identity",
+        "W4：新两臂与旧 baseline 的来源不同"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w4-capacity-r3",
+        "helios-w4-ablation-sources"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+      "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+      "locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "host-synchronization",
+        "W6 r46：恢复原生 metadata barrier 后的单次正向观察"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w6-metadata-r46"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+      "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+      "locator": "actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "attention-routing",
+        "W6：FA3 已启用仍可能整体变慢"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w6-fa3-r43"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+      "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+      "locator": "saved_s; coverage_caveat; review_note; long_trajectory",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "attention-routing",
+        "W1：primitive 覆盖与实际路由范围必须分开"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w1-fa3-r25"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+      "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py",
+      "locator": "module docstring; fused_lora_epilogue; inline PTX",
+      "title": "wan13b_lora_epilogue",
+      "tags": [
+        "Helios optimization history",
+        "fusion-numerics",
+        "Wan LoRA epilogue：保留 FP32 乘加舍入与 BF16 输出"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-lora-rounding-source"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+      "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+      "locator": "build.op guards; canary_scope; PLAN_CONTRACT",
+      "title": "livewan_generator_modulation",
+      "tags": [
+        "Helios optimization history",
+        "fusion-numerics",
+        "LiveWan：Generator 与 Score 的调制 dtype 不同"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "livewan-modulation-source"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+      "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+      "locator": "scope; coefficient_scope; claim; production_ready",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "graphs-and-ema",
+        "W1：固定 EMA 系数图的有效期只覆盖已测 steps"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w1-ema-r34"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+      "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+      "locator": "exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "state-caching",
+        "W6：AdaLN bank 尝试没有带来时间收益"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w6-adaln-r41"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+      "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+      "locator": "section 2: N70-OFF retime and preserved failure",
+      "title": "六个 workload：当前结果口径、旧审计勘误与源码阅读指南",
+      "tags": [
+        "六个 workload：当前结果口径、旧审计勘误与源码阅读指南",
+        "1. 范围必须是六项，不是五项",
+        "2. 用户当前论文主表快照：A100 六项",
+        "必须更正：W3 的 113.59s 不是当前无 merged-LoRA 数字",
+        "不能再沿用旧审计的三种替代",
+        "3. 主表之后还有新结果：不要隐去，也不要直接替换旧分母",
+        "4. H100 六项均已有结果，不能只写 W1/W2 找到了",
+        "5. 自动规划器：最新证据是“保存计划实际执行并接近手工”，不是把全部系统收益算成搜索增量",
+        "6. 截图中的消融列有算术未同步，且不能用算术替代实测",
+        "7. 网页版应按这个顺序重新整理",
+        "Helios optimization history",
+        "measurement-identity",
+        "W3：计时完成与 observer 失败分别保留",
+        "保存计划接近手工结果与全系统加速分别归因"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w3-observer-failure",
+        "helios-planner-increment"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "content_corrections": [
+        {
+          "case_id": "helios-w6-metadata-r46",
+          "section": "r46 metadata barrier",
+          "incorrect_intervention": "remove_metadata_barrier",
+          "correct_intervention": "restore_native_metadata_barrier",
+          "reads_per_rank_cycle": {
+            "control": 0,
+            "candidate": 350
+          },
+          "status": "CONTENT_ERRATUM_NOT_NEW_EXPERIMENT",
+          "note": "固定历史汇总的r46消除表述有误；补充勘误见docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md。按r46原始回执与归档packet记录恢复读取/同步，保留单配对数值REVIEW和原因未隔离。",
+          "erratum_path": "docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md"
+        }
+      ]
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+      "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+      "locator": "status; strict_numerical_status; rank records",
+      "title": "gan_nomerge_retime",
+      "tags": [
+        "Helios optimization history",
+        "measurement-identity",
+        "W3：计时完成与 observer 失败分别保留"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-w3-observer-failure"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/implementation_library.py",
+      "sha256": "5aae39955bcde32414542576f73c61f88951760052e55b15be59a893e5db1809",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/implementation_library.py",
+      "locator": "ENTRIES; implementation_inventory.search_admission",
+      "title": "Exact existing entry modules, not copied kernels or inferred CUDA support.",
+      "tags": [
+        "Exact existing entry modules, not copied kernels or inferred CUDA support.",
+        "Only a public, already-supported tuning surface is listed as tunable.",
+        "Helios optimization history",
+        "implementation-reuse",
+        "14 个已有实现入口可检索，仍需检查 guards"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "dmd-implementation-inventory"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+      "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+      "locator": "status; numerical; saved_seconds",
+      "title": "conclusion",
+      "tags": [
+        "Helios optimization history",
+        "experiment-decisions",
+        "小正向时间与数值 REVIEW 可以同时存在"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-small-gain-review-r14"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+      "sha256": "de1ab6260c895d540bfd9cb24ea25ff5ea9f9b88a742017d1bc8104fd300ee53",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+      "locator": "结果与证据边界",
+      "title": "Wan1.3B merged-LoRA shadow: 30-cycle self-noise experiment",
+      "tags": [
+        "Wan1.3B merged-LoRA shadow: 30-cycle self-noise experiment",
+        "Final parameter movement and curves",
+        "Critic trajectory at all saved anchors",
+        "Every-refresh rounding evidence (rank0, outside timers)",
+        "Resources and timing boundary",
+        "Engineering / reproducibility",
+        "Helios A100 history",
+        "validation-lifecycle",
+        "LoRA 合并的 nearest 与 stochastic 两种舍入都未通过轨迹"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "wan-merged-lora-trajectory-rejected"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+      "sha256": "b6a55cb6ef6a32bc4a46514299ac1ac0d19336d65e64075f7d9d6425b9616032",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+      "locator": "结果与证据边界",
+      "title": "Wan：状态保留策略的真实搜索与保存计划执行",
+      "tags": [
+        "Wan：状态保留策略的真实搜索与保存计划执行",
+        "这次新增的系统能力",
+        "数值、显存与证据边界",
+        "Helios A100 history",
+        "planner-calibration",
+        "Planner 复现接近手工最优，不等于独立新增加速"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "planner-manual-rediscovery"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/guides/optimization_capabilities.md",
+      "sha256": "eb2eed667d2370287ae7245b90dc0b4d02d80238cb339f8780870b02f3c91dcb",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md",
+      "locator": "结果与证据边界",
+      "title": "Physical capabilities and executable plans",
+      "tags": [
+        "Physical capabilities and executable plans",
+        "Reuse the existing runtime",
+        "Four uses of one executable policy",
+        "Model adaptation, not optimization-script copying",
+        "Scoped native owner example: DMD2 UNet checkpointing",
+        "Official Self-Forcing: Fake-only checkpoint policy",
+        "Modern native flow planning is a separately qualified CPU slice",
+        "Direct single-CUDA immutable sharing",
+        "Explicit image replication with immutable sharing",
+        "Atomic native-owner policies",
+        "Helios A100 history",
+        "memory-tradeoffs",
+        "冻结权重共享不等于 trainable/optimizer 状态共享",
+        "validation-lifecycle",
+        "checkpoint replay 不能包住 optimizer 更新等副作用"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "dmd-frozen-alias-construction-peak",
+        "dmd-pure-call-checkpoint-contract"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/status/ROLE_PRODUCER_DISPATCH.md",
+      "sha256": "c6dc442a039e198bba02391a640aebfab11c792183981d841c8d4e713a96c1d5",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/ROLE_PRODUCER_DISPATCH.md",
+      "locator": "结果与证据边界",
+      "title": "Component-derived producer dispatch on the existing role runtime",
+      "tags": [
+        "Component-derived producer dispatch on the existing role runtime",
+        "Evidence",
+        "Boundaries",
+        "Dispatch safety and a non-preset scheduling example",
+        "Helios A100 history",
+        "planner-calibration",
+        "计划中的 producer 顺序必须落到真实 forward/backward"
+      ],
+      "source_group": "DMD public snapshot",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "planner-dispatch-realized"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/manifests/imported_A100_exact_source_r1.json",
+      "sha256": "c11ad9be4ebe555f34fa6a277f4b0ae68adaa4ea63d868f812442717609ec7b6",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/manifests/imported_A100_exact_source_r1.json",
+      "locator": "来源文件本体",
+      "title": "imported_A100_exact_source_r1",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/manifests/committed_offline_canary_source_r1.json",
+      "sha256": "e51b8c375f4ce766a58c8dbfae3e26ac51bc384da16680049b68224ee44eef60",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/manifests/committed_offline_canary_source_r1.json",
+      "locator": "来源文件本体",
+      "title": "committed_offline_canary_source_r1",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
+      "sha256": "cd2849bc3145fc6fdfc79cb47af11dd5915d6c43cbe9fdd289a50c6b5495324d",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
+      "locator": "来源文件本体",
+      "title": "wan_matched_r1_result",
+      "tags": [
+        "Helios H100 history",
+        "implementation-reuse",
+        "H100 W1 的已测组合与后续未测 norm 代码分开"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w1-source-qualified-pair"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/arm_table.csv",
+      "sha256": "0ca6aec3898f1bc5b8b26e427ceec32fb319d90335c7d23eda5344689b69b011",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/arm_table.csv",
+      "locator": "来源文件本体",
+      "title": "arm_table",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/artifact_sha256.json",
+      "sha256": "f8eb72a4fcf038f80c95dc9424501eff17797e3021ce6b7358cff4746e0f97c3",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/artifact_sha256.json",
+      "locator": "来源文件本体",
+      "title": "artifact_sha256",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/report.md",
+      "sha256": "c030845fef1a6fcc74970aa2b8cd8d0b00c60e3d7f6ce9349f1fb30e6aede735",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/report.md",
+      "locator": "来源文件本体",
+      "title": "W2: retained G, then only internal rollout-fence elision",
+      "tags": [
+        "W2: retained G, then only internal rollout-fence elision"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
+      "sha256": "bc0b55746b97b3f24ea108f749e5094fb27150f96d8f07e9655540369358db91",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
+      "locator": "来源文件本体",
+      "title": "result",
+      "tags": [
+        "Helios H100 history",
+        "host-synchronization",
+        "H100 W2 只有同源 fence-only 差值能归因给 fence"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w2-fence-only-pair"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
+      "sha256": "8f4e850d4771fa4749c9f2d95e535255ae083b331944a69dbb1441bec1667587",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
+      "locator": "来源文件本体",
+      "title": "w3_official_swap_matched_r1",
+      "tags": [
+        "Helios H100 history",
+        "memory-tradeoffs",
+        "H100 W3 已完成的是 official role-swap 对照组合"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w3-role-swap-combination"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
+      "sha256": "5c481c36044bb6759dcefd31f8f3044694d4ca772443ed92e155a71f43b748bd",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
+      "locator": "来源文件本体",
+      "title": "timing_audit_committed_source_r1",
+      "tags": [
+        "Helios H100 history",
+        "parameter-residency",
+        "H100 W4 teacher resident 单次差值只有约 0.23%"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w4-teacher-resident-small"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/artifact_sha256.json",
+      "sha256": "28b102e3778d53b1e6c95a58f1fda65293bbdc63da1dfc74cb59676bbfc59477",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/artifact_sha256.json",
+      "locator": "来源文件本体",
+      "title": "artifact_sha256",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/baseline_summary.json",
+      "sha256": "b5c4a287a30dcc13bcedf8865d8ca67f4a8f50761492d9916653475b0c298cb0",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/baseline_summary.json",
+      "locator": "来源文件本体",
+      "title": "baseline_summary",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/candidate_summary.json",
+      "sha256": "333b63719852bcb8ad828ae2d465c0c6627ea44252e9cbf306f5c59fe1d74209",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/candidate_summary.json",
+      "locator": "来源文件本体",
+      "title": "candidate_summary",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
+      "sha256": "6b66166f3a36ddbe23a15e5d5c00cab6a2c1b851e99fcbd1fd75f907c01a04ca",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
+      "locator": "来源文件本体",
+      "title": "result",
+      "tags": [
+        "Helios H100 history",
+        "parameter-residency",
+        "H100 W4 teacher resident 单次差值只有约 0.23%"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w4-teacher-resident-small"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/arm_table.csv",
+      "sha256": "744f0d237d9ae75ea5ada39f5bed90b42a7c097195490347c174c81fc06771da",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/arm_table.csv",
+      "locator": "来源文件本体",
+      "title": "arm_table",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/artifact_sha256.json",
+      "sha256": "4c965f52ac48734e0c8ebe092a6feb6caa617b267dcc24e5cd2ee21df04a1143",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/artifact_sha256.json",
+      "locator": "来源文件本体",
+      "title": "artifact_sha256",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/per_rank_contract.csv",
+      "sha256": "a57bcf293222575c716fd4f9203282280be49ebb06aaab0255ea43cf2bf17ee2",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/per_rank_contract.csv",
+      "locator": "来源文件本体",
+      "title": "per_rank_contract",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
+      "sha256": "8354eea5ea5757afc85eb60c009d68bfc87a9d560010b60fc1122d562b271e23",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
+      "locator": "来源文件本体",
+      "title": "W5 H100: preserved three-arm re-audit, no new GPU experiment",
+      "tags": [
+        "W5 H100: preserved three-arm re-audit, no new GPU experiment",
+        "Helios H100 history",
+        "memory-tradeoffs",
+        "名为 Resident 的 fallback 实际仍搬运 CPU checkpoint boundaries"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w5-resident-cpu-fallback"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
+      "sha256": "1072f45472f39ae09268ba6e5562c9d57660b2a97f2e430424ee01dd9950e1e2",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
+      "locator": "来源文件本体",
+      "title": "result",
+      "tags": [
+        "Helios H100 history",
+        "checkpoint-result-reuse",
+        "H100 W5 保存 attention 输出/LSE 换取重算减少"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w5-attention-cache-memory-trade"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
+      "sha256": "414ac8469ea08c92e7852955045966443a0a2138a241b74c29f9da1da7d6c8d5",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
+      "locator": "来源文件本体",
+      "title": "w5_cpu_staged_candidate_stall_r1",
+      "tags": [
+        "Helios H100 history",
+        "transfer-staging",
+        "CPU staged H3 候选卡住，证据不足以称为 OOM"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w5-cpu-stage-stall"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
+      "sha256": "ff4ef977f2cf5058fbc56387c4fe6d6513291e0ef0d3591bb914f2045d959875",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
+      "locator": "来源文件本体",
+      "title": "w5_resident_actual_capacity_failure_r4",
+      "tags": [
+        "Helios H100 history",
+        "allocator-policy",
+        "80GB H100 上纯 resident H3 仍在第二次 Fake backward OOM"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w5-pure-resident-oom"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/arm_table.csv",
+      "sha256": "7e233167d3e61cf405f745ca2a25aa7198b76a72699682a7c18f3ce4f4f3fe23",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/arm_table.csv",
+      "locator": "来源文件本体",
+      "title": "arm_table",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/artifact_sha256.json",
+      "sha256": "b93e515e72657566ef7c6885a4d4c3dc149249b7585efe875cbb51a7634a27d0",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/artifact_sha256.json",
+      "locator": "来源文件本体",
+      "title": "artifact_sha256",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+      "sha256": "514508e0d790788ab359363335a17e48323f5816cc1a7794041eb436ae74a4c9",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+      "locator": "来源文件本体",
+      "title": "W6 same0419 native single-trial matrix",
+      "tags": [
+        "W6 same0419 native single-trial matrix",
+        "Helios H100 history",
+        "measurement-identity",
+        "W6 C1 与 C2 相差很大，不能混用周期分母",
+        "allocator-policy",
+        "GPU 容量改善可能转移为很大的 host 内存压力"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w6-warmup-cycle-denominator",
+        "h100-w6-host-budget"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
+      "sha256": "e8ba806f429ac5c2ddcc0ac4cb58027902dc27984bb37ed6b0f4197c1608c2a0",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
+      "locator": "来源文件本体",
+      "title": "result",
+      "tags": [
+        "Helios H100 history",
+        "memory-tradeoffs",
+        "H100 W6 三臂比较绑定同 0419 source 与 FA2"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w6-same-source-matrix"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/source_receipt_sha256.json",
+      "sha256": "cc568358bdc3976d3ab2379380c7018372c042d491d301da9a4848dc3ce68d8d",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/source_receipt_sha256.json",
+      "locator": "来源文件本体",
+      "title": "source_receipt_sha256",
+      "tags": [],
+      "source_group": "H100 public receipts",
+      "review_status": "DISCOVERED_NOT_CURATED",
+      "linked_case_ids": [],
+      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
+      "sha256": "e9b7e8f30d0402cd0c67c5b7a4fd71bdbaffa6dcae047cb43e0f751df926b495",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
+      "locator": "来源文件本体",
+      "title": "w6_tiny_trainable_state_parity_r1",
+      "tags": [
+        "Helios H100 history",
+        "validation-lifecycle",
+        "tiny trainable-state parity 不能覆盖全模型 AR rollout"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-w6-tiny-parity-boundary"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+      "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+      "locator": "来源文件本体",
+      "title": "R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch",
+      "tags": [
+        "R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch",
+        "New measured W2 result",
+        "W1 actual cheap failure, not new model/OOM/numeric failure",
+        "Actual resource blocker after reconnect",
+        "Next authorized serial work",
+        "Helios H100 history",
+        "implementation-reuse",
+        "离线 import 故障发生在模型之前，修复代码不等于新 GPU 结果",
+        "profiling-attribution",
+        "W5 晚期 backward 的完整 rank/copy 覆盖是归因前提",
+        "experiment-decisions",
+        "被停止的队列必须保持 NOT_RUN，压缩上下文不能重置预算"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-offline-import-and-wrapper-identity",
+        "h100-partial-profile-rank-coverage",
+        "h100-stopped-campaign-ledger"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
+      "sha256": "16d4b00b57e5c6bcaf8bdad099e654028b54a6713353990035193fb9ec3a000a",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
+      "locator": "来源文件本体",
+      "title": "R48 — Explicit user stop before machine reboot",
+      "tags": [
+        "R48 — Explicit user stop before machine reboot",
+        "Actual verified stop",
+        "Unfinished work is cancelled, not completed",
+        "Evidence",
+        "Helios H100 history",
+        "experiment-decisions",
+        "被停止的队列必须保持 NOT_RUN，压缩上下文不能重置预算"
+      ],
+      "source_group": "H100 public receipts",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "h100-stopped-campaign-ledger"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
+      "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md",
+      "locator": "重复 forward、reshard 与 backward 约束",
+      "title": "FSDP: several forwards in one iteration",
+      "tags": [
+        "FSDP: several forwards in one iteration",
+        "1. All-gather once per iteration",
+        "2. Cast frozen models to the compute dtype before wrapping in FSDP",
+        "3. Keep the frozen encoder's parameters resident",
+        "4. Cross-attention K/V cache",
+        "5. Remove host syncs",
+        "6. Spend the freed memory on speed",
+        "What ships with it",
+        "ResearchBoost external",
+        "parameter-residency",
+        "ResearchBoost：跨多次 forward 保留需固定权重版本与后向语义",
+        "implementation-reuse",
+        "ResearchBoost：冻结计算权重可预转换，状态与输入梯度需单独核对",
+        "state-caching",
+        "ResearchBoost：wrapper 重建容器会让 host metadata 更新丢失"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-fsdp-stable-multiforward",
+        "rb-frozen-dtype-not-whole-model",
+        "rb-fsdp-container-host-state"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-action-ladder/SKILL.md",
+      "sha256": "666781d0c202b58f7f6938a6487af59fee1cba6b5439ae9340044f36e653f9a3",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md",
+      "locator": "Compile falls back / proving compile effective",
+      "title": "The action ladder",
+      "tags": [
+        "The action ladder",
+        "Check the existing fast paths first",
+        "Classify first, then work in batches",
+        "L0 switches and configuration",
+        "L1 a different library or backend",
+        "L2 parameter search",
+        "L3 graph or Python rewrites",
+        "L4 custom kernels",
+        "Remedies by stage",
+        "ResearchBoost external",
+        "graphs-and-ema",
+        "ResearchBoost：SAC/dispatch mode 可让 compile 路径静默回到 eager",
+        "ResearchBoost：单层 compile 测试漏掉全模型的重编译与 fallback"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-compile-dispatch-fallback",
+        "rb-compile-full-flow-specializations"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-fusion-patterns/SKILL.md",
+      "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md",
+      "locator": "Read these first / GEMM prologue and epilogue",
+      "title": "Common fusion paths and examples",
+      "tags": [
+        "Common fusion paths and examples",
+        "Read these first",
+        "1. Residual add + norm",
+        "reference",
+        "fused: read x and y once, write h (still needed by the residual stream) and out",
+        "2. Norm + scale and shift (+ gate): adaLN in DiT",
+        "3. Bias + activation (+ gated activation)",
+        "fused: one kernel reads h and writes out; in backward one kernel writes da and dg directly into one contiguous buffer, no separate cat",
+        "4. RoPE (and QK norm + RoPE)",
+        "reference: Q and K one at a time",
+        "fused: Q and K together, in place, one launch; with QK norm, normalize then rotate",
+        "5. QKV packing and merged projections",
+        "reference: 3 GEMMs, x read 3 times",
+        "merged: one GEMM with a concatenated weight view [3C, C]; the result is split by views, no copy",
+        "6. Removing layout copies",
+        "7. GroupNorm + SiLU (convolutional networks, VAEs)",
+        "8. Small selections and reductions (routing, top-k, masks)",
+        "9. Optimizers, EMA and other once-per-parameter loops",
+        "10. Attention",
+        "Reproducing library reductions bit for bit: keeping fusions with reductions at N0",
+        "What every fusion ships with",
+        "ResearchBoost external",
+        "fusion-numerics",
+        "ResearchBoost：融合进 GEMM 可能输给库 GEMM 加独立融合",
+        "ResearchBoost：QKV packing 需覆盖 optimizer、checkpoint 与 reduction 顺序",
+        "ResearchBoost：复现库 reduction 需要核对分区、舍入和算术顺序"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-vendor-gemm-fusion-tradeoff",
+        "rb-qkv-layout-state-mapping",
+        "rb-reduction-architecture-numerics"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-tiered-profiling/SKILL.md",
+      "sha256": "4840fa97aeb495e07da49e545a6f457a80006fc4518805073cb7a11f2cb68c33",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md",
+      "locator": "Do not attribute backward with a module full backward hook",
+      "title": "Tiered profiling",
+      "tags": [
+        "Tiered profiling",
+        "Split by training phase first, then by the parts of one step",
+        "The parts of one training step",
+        "Three kinds of hotspot",
+        "Identifying the bottleneck type: by ablation, not by nvidia-smi",
+        "Accounting conventions",
+        "Kernel level (Nsight Compute)",
+        "ResearchBoost external",
+        "profiling-attribution",
+        "ResearchBoost：backward hook 名称可能把上游 kernel 算到错误模块",
+        "ResearchBoost：详细 observer 本身会改变 compile 路径"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-profile-backward-labels",
+        "rb-observer-may-change-execution"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/lessons.md",
+      "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+      "locator": "Measurement",
+      "title": "Results and lessons across tasks",
+      "tags": [
+        "Results and lessons across tasks",
+        "Four tasks, four ceilings",
+        "General lessons",
+        "ResearchBoost external",
+        "measurement-identity",
+        "ResearchBoost：共享机器的慢 baseline 会夸大候选收益",
+        "validation-lifecycle",
+        "ResearchBoost：文件缓存与依赖库可能消费全局随机流",
+        "data-lifecycle-costs",
+        "ResearchBoost：judge 没测保存，真实训练第一次 save 才失败",
+        "experiment-decisions",
+        "ResearchBoost：可改变的合同与内存目标决定搜索上限"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-timing-contaminated-baselines",
+        "rb-rng-dependency-side-effects",
+        "rb-first-checkpoint-save-crash",
+        "rb-constraints-and-memory-objectives"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-numerics-validation/SKILL.md",
+      "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+      "locator": "Common pitfalls / ghost gradient",
+      "title": "Numerics tiers and validation",
+      "tags": [
+        "Numerics tiers and validation",
+        "N0–N5",
+        "How thresholds are set",
+        "Cheap investigation order (T0 → T3)",
+        "When only one component cannot be bitwise: isolate it behind a stand-in",
+        "Common pitfalls",
+        "ResearchBoost external",
+        "validation-lifecycle",
+        "ResearchBoost：no-grad 覆盖 cache 仍可能留下旧梯度连接",
+        "ResearchBoost：接近零的梯度相对误差需要诊断而非事后放宽门槛",
+        "acceptance-design",
+        "ResearchBoost：让已知错误真正触发最终失败出口",
+        "ResearchBoost：隔离非bitwise组件，再验真实最终组合"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-ghost-gradient-inplace-cache",
+        "rb-zero-gradient-error-localization",
+        "rb-judge-negative-controls",
+        "rb-nonbitwise-isolation-final-combination"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/judge.md",
+      "sha256": "a6688646c098d504fdbec114607a6b190d51c36b93173b3d5dff0e3e6ecf377a",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/judge.md",
+      "locator": "Four gates; When the judge may change; Known limits",
+      "title": "The judge",
+      "tags": [
+        "The judge",
+        "Four gates",
+        "When the judge may change, and when it may not",
+        "Fake gains the judge caught",
+        "Known limits of the judge",
+        "ResearchBoost external",
+        "acceptance-design",
+        "ResearchBoost：同一路径与原始 baseline 比较，任务变更需新合同"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-judge-scope-and-contract"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/video-generation.md",
+      "sha256": "ecf04bf3f3f5816fd790ecbc33391aef6931a6026b408798246f5916085a1b95",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md",
+      "locator": "MiniMax-H3 trajectory failure and repair",
+      "title": "Video Generation",
+      "tags": [
+        "Video Generation",
+        "Faster-SelfForcing",
+        "Faster-MiniMax-H3",
+        "ResearchBoost external",
+        "validation-lifecycle",
+        "ResearchBoost H3：短测很快，较长轨迹暴露 checkpoint replay 数值问题",
+        "ResearchBoost H3：统一 forward/导数后重新通过其短轨迹 gate"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-h3-checkpoint-qknorm-regression",
+        "rb-h3-qknorm-repair"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/llm.md",
+      "sha256": "56bb7cbea8f3b61d296966636d742baac30acff9b0999001096bbcd456f3df42",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md",
+      "locator": "YOCO; R3; LLM2Vec",
+      "title": "LLM",
+      "tags": [
+        "LLM",
+        "Faster-NanoChat",
+        "Faster-YOCO",
+        "Faster-LLM2Vec",
+        "ResearchBoost external",
+        "data-lifecycle-costs",
+        "ResearchBoost：计时窗口与优化贡献分母分别记录"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-end-to-end-denominator"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/sglang-diffusion-performance/SKILL.md",
+      "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md",
+      "locator": "SANA-Video graph capture shape",
+      "title": "SGLang Diffusion Performance Tuning",
+      "tags": [
+        "SGLang Diffusion Performance Tuning",
+        "Start from the model's cookbook page",
+        "Native Backend Gate",
+        "Section 1: Lossless Optimizations",
+        "Choosing what goes in `--layerwise-offload-components`",
+        "Prefetch depth has a knee",
+        "Host memory is part of the placement decision",
+        "When the transfer knobs do nothing",
+        "Single-GPU large-VRAM notes (measured on 1x B300, 275 GB, SM103)",
+        "Section 2: Lossy Optimizations",
+        "Quick Recipes",
+        "MiniMax-H3 first: lossless joint video/audio",
+        "Maximum speed, video model, multi-GPU, lossless (Wan A14B, 8 GPUs)",
+        "Current-source model, 2 GPUs: LTX-2 two-stage",
+        "Nightly-aligned model, 2 GPUs: LTX-2.3 TI2V two-stage",
+        "Native baseline, 2 GPUs: LTX-2.3 one-stage",
+        "Skill-only stress target, 2 GPUs: LTX-2.3 two-stage high resolution",
+        "Maximum speed, image model, single GPU, lossless",
+        "Launch-bound fixed-resolution path: Breakable CUDA Graph",
+        "Compare cumulative request-quality fast paths",
+        "Image-edit baselines: JoyAI and FireRed",
+        "Hunyuan3D shape baseline",
+        "Low VRAM, decent speed (single GPU)",
+        "Maximum speed, lossy native path (SageAttention + Cache-DiT)",
+        "Model-Specific Starting Points",
+        "Historical PR Watchlist",
+        "Tips",
+        "ResearchBoost external",
+        "graphs-and-ema",
+        "ResearchBoost/SGLang：推理 graph capture shape 与服务请求不符会失效",
+        "memory-tradeoffs",
+        "ResearchBoost/SGLang：大显存能驻留时 offload 可能只剩开销",
+        "attention-routing",
+        "ResearchBoost/SGLang：稀疏/缓存/量化快路径需单独质量合同"
+      ],
+      "source_group": "ResearchBoost external",
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "rb-inference-graph-shape-miss",
+        "rb-inference-offload-vram-dependent",
+        "rb-inference-approximation-boundary"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+      "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+      "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+      "locator": "up_blocks in ((),(38,39))",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L41",
+      "locator_quality": "structured_source_locator",
+      "title": "down_replay.py",
+      "tags": [
+        "checkpoint-result-reuse",
+        "W3：Critic 尾两块冻结 FFN-up 结果复用的小幅历史增量"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w3-retention-r1"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+      "locator": "Only block49",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
+      "locator_quality": "structured_source_locator",
+      "title": "h3_ar_hybrid_cache.py",
+      "tags": [
+        "checkpoint-result-reuse",
+        "W6 r1：block49计算结果从CPU缓存改为GPU保留后变慢"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w6-retention-r1"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "historical_origin": {
+        "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+        "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+        "commit_publicly_fetchable": false,
+        "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+      }
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/contracts/wan_tail8_retention_v1.md",
+      "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3",
+      "locator": "tail8",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md#L1",
+      "locator_quality": "structured_source_locator",
+      "title": "wan_tail8_retention_v1.md",
+      "tags": [
+        "activation-retention",
+        "W1：扩大到 whole-block tail8 出现 OOM"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w1-tail8-oom"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+      "locator": "POLICY='restore-native-cu-metadata-barrier.v1'",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L4",
+      "locator_quality": "structured_source_locator",
+      "title": "native_metadata_barrier.py",
+      "tags": [
+        "host-synchronization",
+        "W6 r46：恢复原生 metadata barrier 后的单次正向观察"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w6-metadata-r46"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/multimodal.md",
+      "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9",
+      "locator": "With the optimized reward service on both sides",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md",
+      "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56",
+      "locator_quality": "structured_source_locator",
+      "title": "multimodal.md",
+      "tags": [
+        "data-lifecycle-costs",
+        "ResearchBoost：计时窗口与优化贡献分母分别记录"
+      ],
+      "source_group": "ResearchBoost external",
+      "linked_case_ids": [
+        "rb-end-to-end-denominator"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    }
+  ],
+  "policy": "Pinned source metadata only. DISCOVERED_NOT_CURATED is a backlog item, not a verified experience."
+}

@@ -1,0 +1,28 @@
+{
+  "id": "choose-a-new-immutable-id",
+  "kind": "experience",
+  "summary": "State the mechanism and observed outcome, bounded to this workload.",
+  "strength": "unverified",
+  "outcome": "unverified",
+  "pattern": "choose-an-existing-public-pattern-or-explicit-local-mechanism-id",
+  "conditions": {
+    "workload": null,
+    "source_identity": null,
+    "hardware": null,
+    "timer_scope": null
+  },
+  "correctness_conditions": {},
+  "performance_conditions": {},
+  "failure": {
+    "category": "unknown",
+    "scope": null,
+    "cause_confidence": "unknown"
+  },
+  "retry": "What new evidence or condition would justify trying again?",
+  "failure_scope": "Bound the failure or remaining uncertainty to actual evidence.",
+  "provenance": {
+    "scope": "Current project observation; fill actual source/run identities"
+  },
+  "evidence": [],
+  "supersedes": []
+}

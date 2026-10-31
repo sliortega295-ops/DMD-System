@@ -1,0 +1,26 @@
+{
+  "assumptions": "SYNTHETIC: A and B run on independent resources; join waits for both. No contention. Not a DMD trace.",
+  "nodes": [
+    {
+      "id": "A",
+      "seconds": 10.0,
+      "depends_on": []
+    },
+    {
+      "id": "B",
+      "seconds": 9.0,
+      "depends_on": []
+    },
+    {
+      "id": "join",
+      "seconds": 1.0,
+      "depends_on": [
+        "A",
+        "B"
+      ]
+    }
+  ],
+  "candidate_seconds": {
+    "A": 5.0
+  }
+}

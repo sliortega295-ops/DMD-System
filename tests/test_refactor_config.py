@@ -12,14 +12,14 @@ from distillschedule.core.contracts import ContractViolation
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_composed_helios_plan_loads_and_derives_profile_key() -> None:
-    loaded = load_plan(ROOT / "configs/distillschedule/plans/helios_14b_384x640_full5.json")
+def test_composed_plan_loads_and_derives_profile_key() -> None:
+    loaded = load_plan(ROOT / "tests/fixtures/dmd_full_cycle.json")
     plan = loaded.plan
     assert plan.workload.shape.profile_key == "b1-f81-lc16-lf9-384x640-l48x80-t512-p12x20_24x40_48x80"
-    assert plan.workload.profile_key.startswith("g-helios-14b-bf16-r256__s-helios-14b-bf16-r256__")
+    assert plan.workload.profile_key.startswith("g-fixture-14b-bf16-r256__s-fixture-14b-bf16-r256__")
     assert plan.evidence.start_step == 10
     assert plan.evidence.steps == 5
-    assert len(loaded.source_files) == 5
+    assert len(loaded.source_files) == 3
     assert len(loaded.digest) == 64
 
 
