@@ -1,0 +1,17 @@
+{
+  "format": "junit",
+  "checker": {"path": null, "sha256": null, "locator": null, "version": null},
+  "raw": {"path": null, "sha256": null, "locator": null},
+  "binding": {
+    "run_id": null,
+    "candidate_id": null,
+    "source_identity": null,
+    "config_identity": null,
+    "input_identity": null,
+    "comparator_id": null,
+    "comparator_source_identity": null,
+    "validation_scope": null
+  },
+  "selection": {},
+  "notes": "Copy the frozen receipt_policy.checks to selection, and the reserved run binding exactly. Adapter parses raw checker bytes; it does not launch the checker. The runner owns binding to its real invocation."
+}

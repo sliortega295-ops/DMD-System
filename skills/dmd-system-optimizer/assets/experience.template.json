@@ -4,7 +4,7 @@
   "summary": "State the mechanism and observed outcome, bounded to this workload.",
   "strength": "unverified",
   "outcome": "unverified",
-  "mechanism_id": null,
+  "pattern": "choose-an-existing-public-pattern-or-explicit-local-mechanism-id",
   "conditions": {
     "workload": null,
     "source_identity": null,
@@ -18,7 +18,8 @@
     "scope": null,
     "cause_confidence": "unknown"
   },
-  "reentry": "What new evidence or condition would justify trying again?",
+  "retry": "What new evidence or condition would justify trying again?",
+  "failure_scope": "Bound the failure or remaining uncertainty to actual evidence.",
   "provenance": {
     "scope": "Current project observation; fill actual source/run identities"
   },

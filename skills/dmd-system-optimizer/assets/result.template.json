@@ -16,10 +16,13 @@
     "V3": "NOT_RUN"
   },
   "compatibility": "UNKNOWN",
+  "composition": "UNKNOWN",
+  "capacity_evidence": [],
+  "latency_tradeoff": null,
   "fallback": "UNKNOWN",
   "unprofiled": null,
   "repeat_unit": "independent_processes",
   "timings": [],
   "evidence": [],
-  "notes": "Each timing block: run_id, process_ids (three unique invocation ids), control_before, candidate, control_after. Never fill with invented times or checks."
+  "notes": "Checks/timings must match parsed receipts attached to settled runs. Each timing block: run_id, process_ids (three unique invocation ids), control_before, candidate, control_after. Copy timings unchanged when adding validation. Capacity-only retention uses empty timings and explicit latency_tradeoff. Scope must equal the candidate's reserved scope."
 }

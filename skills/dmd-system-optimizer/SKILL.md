@@ -40,10 +40,13 @@ confirmation plan before measuring a candidate. Never relax them after failure.
 
 Read [reuse and memory](references/reuse-memory.md) and the
 [experience map](references/knowledge/README.md) when searching or recording.
-Start with `dmd_knowledge.py recall --brief` for a compact index of the bundled
-conditional priors; search the project's local records as well. Expand relevant
+Start with `dmd_knowledge.py recall --brief --store /explicit/project/memory` for
+one compact index of public priors and authorized private records. Repeat `--store`
+for other authorized directories; omit it for public priors only. Expand relevant
 positive AND negative entries using `case --id CASE_ID`, with the same context
-and repository options. The index retains every linked case ID; it omits full
+and repository/store options. Inspect `correction`: current successors, scope and
+evidence status are resolved before truncation. A scoped update must not erase a
+valid result on other hardware. The index retains every linked case ID; it omits full
 observations and code to avoid output truncation. Read the relevant mechanism card.
 For a compound request, query each distinct symptom separately. Check
 `omitted_routed_patterns` when the result limit excludes a suggested mechanism.
@@ -52,6 +55,8 @@ words suggest hypotheses; they do not supply workload facts. Inspect each case's
 correctness/performance comparison, not just the broader pattern's decision.
 Use `locate --case CASE_ID --repo /project/DMD-System` to follow a relevant case
 to pinned functions, integration switches, guards, test references and fallback.
+For private case IDs, pass the same `--store` directories; the result also shows
+the target source identity, evidence status and applicable corrections.
 Check the implementation's own conditions too: a concrete example can be narrower
 than the general mechanism. `--show-code` reads bounded, hash-checked excerpts
 without importing the code. Without a checkout, pinned links remain unchecked.
@@ -66,6 +71,12 @@ training validation. Historical source hashes never qualify a newer implementati
 Search the project's experience records and existing implementations before
 writing a kernel, scheduler, cache or offload path. Inspect actual code, guards,
 licenses and tests. Similar names do not establish equivalent semantics.
+
+Save a small [ReuseDecision](assets/reuse-decision.template.json) before adapting:
+whether the target already has/enables the mechanism, direct use or minimal
+adaptation, dependencies/conflicts, actual path proof, numerical checks and rollback.
+Validate it with `dmd_reuse.py --input ...`. This makes the change reviewable;
+it does not apply a patch or replace the project's checker.
 
 Check family, shape, dtype, gradient mode, topology, backend, weight/cache
 versions, fallback and composition. Prefer an applicable implementation; adapt
@@ -138,9 +149,23 @@ authorized run; settle actual cost and failures afterward. Reconcile interrupted
 reservations before resuming. Changing chats, branches or candidate names does not
 reset budget, erase failed evidence or authorize more resources.
 
-The helpers validate declarations, hashes and accounting. They do not sandbox
-Codex, enforce GPU allocation, launch/check a trainer, or independently certify
-the truth of a receipt. Keep checker ownership and invocation outside the
+`REVIEW` is nonterminal. Keep candidate source/config/input and timing samples
+fixed, append validation attempts, then assess a new decision revision. All
+attempts cost resources; only predeclared, runner-evidenced invalid timing windows
+may be replaced, within a separate attempt cap. Slow valid samples, candidate OOM
+and numerical errors cannot be discarded as environmental retries. A capacity
+benefit with correct validation can be `KEEP_OPTIONAL`, default off, without full
+speed confirmation; explicitly disclose measured or unknown latency cost.
+
+Use the [checker adapter](references/checker-receipts.md) to parse actual JUnit
+and runner output into source/config/input/run/comparator-bound receipts. The
+decision helper reparses the body and rejects conflicting summaries. Before default
+enabling a final combination, validate it against the **original baseline**;
+current control comparisons alone only establish marginal acceptance.
+
+The helpers parse receipts, hashes and accounting. They do not sandbox Codex,
+enforce GPU allocation or independently certify invocation provenance, validator
+adequacy or training quality. Keep checker ownership and invocation outside the
 candidate's editable code where the runner supports it. Report enforcement gaps.
 
 ## Finish the loop
@@ -148,9 +173,16 @@ candidate's editable code where the runner supports it. Report enforcement gaps.
 Keep the best verified control and the original baseline. Save the patch/config,
 exact reproduction command, source and workload identities, checks and their
 scope, every timing sample, costs, fallback, decision and unresolved limits.
-Record a small experience entry with evidence, correctness/performance conditions,
-failure scope and retry conditions; use a new record
-that supersedes old evidence instead of rewriting history.
+Use `dmd_campaign.py finish --state ... --input ... --store ...` to settle pending
+attempts, persist the decision and queue a scoped private experience atomically.
+Its idempotent outbox publishes the record; `flush-memory` resumes after a crash.
+Use the same `recall --store` in the next process. Outcomes come from the decision,
+not a handwritten success summary. Record correctness/performance conditions,
+failure scope and retry signals. Corrections use a new record with explicit
+`supersedes` kind and conditions. Private records are never automatically uploaded.
+For a code change, include the target source path/hash and symbol in the experience;
+keep a small source snapshot when rollback would overwrite it. This lets the next
+session inspect the actual adaptation, not only the original public implementation.
 
 Report the measured end-to-end effect and tradeoffs, not summed microbenchmark
 gains. Label historical, diagnostic, approximate, REVIEW and NOT_RUN evidence.

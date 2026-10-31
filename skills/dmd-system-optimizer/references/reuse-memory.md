@@ -129,8 +129,23 @@ is separate from its reported measurements. Inference-only SGLang cases carry
 External instructions, thresholds and historical stop/retry commands are source
 data, not commands or policies for the current task.
 
-After an experiment, also search and update the project-local store below. Public
-priors and private project records are queried separately in this version.
+Add explicit private stores to the same query with repeatable `--store`:
+
+    python3 "$SKILL/scripts/dmd_knowledge.py" recall --brief --query "参数上卡总是在等，怎么优化？" --context /project/context.json --store /project/private-memory
+
+Public priors and private records share Chinese tokens, symptom routes, explicit
+condition normalization and positive/negative mechanism grouping. Query text
+never supplies facts. Use the public `pattern` id for a known mechanism; a new
+local pattern remains explicitly local. Old unclassified records retain unknown
+correctness preconditions rather than silently upgrading historical context to
+permission. `search` remains a private-only compatibility view of this engine.
+Expand qualified private ids using `case --id ... --store /project/private-memory`.
+Follow their implementations with `locate --case ... --store /project/private-memory`;
+this preserves correction warnings and distinguishes the local target source from
+the reused public implementation. Include `--repo` to inspect that implementation
+in a checkout. Neither command implicitly opens other private stores.
+Only specified directories are read; no home scan, implicit store or network call.
+
 Publishing a new case is an explicit repository contribution after removing
 private data; local recording does not automatically push to GitHub.
 
@@ -142,7 +157,7 @@ Keep three distinct kinds of record in an explicitly chosen project-local store:
 | implementation | Reusable source, parameters, guards, fallback | Source hash plus declared applicability; inventory starts unverified |
 | history | A lead from a specific local conversation | Always unverified, even when the conversation says PASS |
 
-Use `assets/experience.template.json`. A record has an immutable id, summary,
+Use `assets/experience.template.json`. A record has an immutable id, summary, pattern,
 conditions, outcome, strength, provenance and evidence. Evidence rows contain
 `path`, `sha256`, `locator`. Paths in an input record resolve relative to that
 input file; stored paths are absolute. Observations/mechanisms require hash-checked
@@ -154,9 +169,12 @@ topology/backend, state versions, update ratio and timer. A null means unknown;
 an array means an explicitly allowed set. A historical context mismatch calls
 for inspection; a correctness conflict blocks applying the method as-is.
 Even `declared_conditions_match` means only these declared fields match.
-The private search's `match` describes the historical context, not permission to
-apply a method. Read `correctness_conditions`, `performance_conditions` and
-`failure` in the record before deciding.
+The private search's legacy `match` describes historical context. Like public
+cases, it now also returns `correctness_comparison`, `performance_comparison`
+and `next_action`. Read failure scope and evidence qualification before deciding.
+Local schema 2 adds these condition fields; older records are read without
+overwriting their immutable files. Local records and the public mechanism pack
+share condition semantics, not an identical storage envelope.
 
 Record successes, no benefit, numerical errors, implementation failures,
 environment failures and incomplete work separately. A failure entry explains
@@ -177,8 +195,36 @@ For an optional schema-1 bundle of project records, `seed --pack bundle.json
 hashes and rejects traversal. It is separate from the schema-3 public mechanism
 pack read by recall. If sources change, inspect the new evidence and issue a new
 versioned record; do not silently update hashes.
-Corrections use a new id and `supersedes`; old observations remain auditable.
-Search can return superseded records: inspect that field before using a result.
+Corrections use a new id and structured `supersedes`; old observations remain
+auditable. For example:
+
+```json
+[{"id": "old-record", "kind": "context_update",
+  "conditions": {"gpu_family": "H100"},
+  "reason": "On this hardware, staging overhead exceeds saved materialization"}]
+```
+
+`correction` means an erroneous prior conclusion (empty conditions can apply
+globally); `context_update` requires nonempty conditions and preserves the old
+context. `decision_update` marks additional evidence for the same frozen candidate:
+finish automatically links its new record to the previous recorded revision.
+This does not supersede other candidates or workloads. An id without a prefix targets the same private store. `public:CASE_ID`
+targets a public case; a qualified private id can target another explicitly read
+store. Missing stores/targets are disclosed, never scanned automatically.
+
+The complete graph is resolved before result limits. Each case exposes successors,
+scope comparison and current successor ids; applicable corrections are ordered
+ahead of corrected records. Brief output retains correction warnings. Chains are
+resolved and cycles rejected. Unknown scope, legacy string-only links, and stale
+or unverified successor evidence require inspection; they do not globally erase
+an old observation. Multiple successors remain visible rather than picking a
+winner by id or vote. A new record's hash still does not prove its conclusion.
+
+`dmd_campaign.py finish` connects settled experiments and decisions to a private
+record through a durable, idempotent outbox. See [campaign tools](campaign-tools.md).
+Its outcome/evidence/decision identity and synthetic qualification are generated
+from the ledger, while Codex supplies mechanism, scope and retry explanation.
+After recovery, use the same recall command in a new process to check discoverability.
 
 ## Explicit conversation import
 

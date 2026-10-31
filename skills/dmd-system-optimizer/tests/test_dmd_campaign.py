@@ -12,6 +12,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import dmd_campaign as m
 import dmd_perf as perf
+import dmd_receipts as receipts
 
 
 class CampaignTests(unittest.TestCase):
@@ -24,14 +25,19 @@ class CampaignTests(unittest.TestCase):
         self.ev = [{"path": str(receipt), "sha256": perf.sha_file(receipt), "locator": "fixture"}]
         self.path = self.root / "campaign.sqlite"
         self.c = {
-            "schema_version": 1, "campaign_id": "fixture", "workload_id": "toy",
+            "schema_version": 2, "campaign_id": "fixture", "workload_id": "toy", "measurement_kind": "synthetic",
             "semantic_contract": "same-logical-work", "hardware_id": "cpu-fixture",
             "timer_scope": "complete-cycle", "claim_class": "strict",
             "baseline": {"id": "b", "source_identity": "b-source", "seconds": 100., "evidence": self.ev},
             "validators": self.ev, "budget": {"max_gpu_hours": 100., "max_full_runs": 100},
             "validation_by_risk": {"local": ["V0", "V1"], "stateful": ["V0", "V1", "V2"]},
             "timing": {"repeat_count": 6, "max_candidates": 1, "minimum_effect_seconds": .1,
-                       "alpha": .05, "max_control_relative_drift": .02}}
+                       "alpha": .05, "max_control_relative_drift": .02,
+                       "max_attempts": 8, "replaceable_failures": ["launch_failure", "environment_interruption"]}}
+        self.checker = {**self.ev[0], "version": "synthetic-fixture-v1"}
+        self.c["receipt_policy"] = {"checkers": {k: self.checker for k in ("junit", "aba-json", "attempt-json")},
+                                    "checks": {k: {"tests": [k], "scope": "synthetic " + k}
+                                               for k in ("V0", "V1", "V2", "backward", "compatibility", "fallback", "composition", "capacity")}}
         self.initialize()
 
     def initialize(self):
@@ -43,6 +49,8 @@ class CampaignTests(unittest.TestCase):
 
     def proposal(self, **values):
         return {"candidate_id": "c", "source_identity": "c-source", "control_id": "b",
+                "config_identity": "fixture-config", "input_identity": "fixture-input",
+                "comparator_id": "b", "comparator_source_identity": "b-source", "validation_scope": "synthetic complete cycle",
                 "risk": "local", "purpose": "timing", "gpu_hours": 1., "full_runs": 3, **values}
 
     def reserve(self, ident="run-0", **values):
@@ -50,23 +58,50 @@ class CampaignTests(unittest.TestCase):
             return m.reserve(db, ident, self.proposal(**values))
 
     def settle(self, ident="run-0", **values):
+        timing = values.pop("timing", {"run_id": ident, "process_ids": [ident + s for s in ("-a", "-b", "-a2")],
+                                      "control_before": 100., "candidate": 99., "control_after": 100.})
+        proposal = next(r["proposal"] for r in self.state()["runs"] if r["run_id"] == ident)
+        if proposal["purpose"] == "timing" and values.get("outcome", "pass") in {"pass", "no_benefit"}:
+            values.setdefault("receipts", [self.receipt(ident, "aba-json", {"status": "PASS", "timing": timing,
+                              "measurement_kind": "synthetic", "unprofiled": True, "repeat_unit": "independent_processes"})])
         with m.connection(self.path) as db:
             return m.settle(db, ident, {"outcome": "pass", "gpu_hours": .9, "full_runs": 3,
                                        "evidence": self.ev, **values}, self.root)
 
-    def ready(self, risk="local", **values):
+    def receipt(self, ident, fmt, body):
+        proposal = next(r["proposal"] for r in self.state()["runs"] if r["run_id"] == ident)
+        bound = m.binding(proposal, ident)
+        raw = self.root / (ident + "." + fmt)
+        raw.write_text(body if fmt == "junit" else json.dumps({**body, "binding": bound}))
+        request = {"format": fmt, "binding": bound, "checker": self.checker,
+                   "raw": {"path": str(raw), "sha256": perf.sha_file(raw), "locator": "whole fixture"}}
+        if fmt == "junit":
+            request["selection"] = self.c["receipt_policy"]["checks"]
+        return receipts.adapt(request, self.root)
+
+    def validation(self, ident="validation", checks=None, risk="local", **values):
+        self.reserve(ident, purpose="validation", full_runs=0, risk=risk, **values)
+        checks = checks or {"V0": "PASS", "V1": "PASS"}
+        body = '<testsuite>' + ''.join('<testcase name="' + k + '">' +
+            ('<failure/>' if v == "FAIL" else '<skipped/>' if v != "PASS" else '') + '</testcase>'
+            for k, v in checks.items()) + '</testsuite>'
+        self.settle(ident, full_runs=0, receipts=[self.receipt(ident, "junit", body)])
+
+    def ready(self, risk="local", candidate_time=99., control_after=100., reused=False, **values):
+        times = [{"run_id": "run-" + str(i), "process_ids": [f"{0 if reused else i}-a", f"{i}-b", f"{i}-a2"],
+                  "control_before": 100., "candidate": candidate_time, "control_after": control_after} for i in range(6)]
         for i in range(6):
             self.reserve("run-" + str(i), risk=risk)
-            self.settle("run-" + str(i))
+            self.settle("run-" + str(i), timing=times[i])
+        self.validation(risk=risk, checks={**values.get("checks", {"V0": "PASS", "V1": "PASS"}),
+                        **{k: values.get(k, "PASS") for k in ("compatibility", "fallback", "composition")}, "capacity": "PASS"})
         return {**{k: self.c[k] for k in ("workload_id", "semantic_contract", "hardware_id", "timer_scope", "claim_class")},
                 "contract_sha256": self.state()["contract_sha256"],
                 "candidate_id": "c", "source_identity": "c-source", "control_id": "b",
                 "checks": {"V0": "PASS", "V1": "PASS"}, "validation_scope": "synthetic complete cycle",
                 "evidence": self.ev, "unprofiled": True, "repeat_unit": "independent_processes",
-                "compatibility": "PASS", "fallback": "PASS",
-                "timings": [{"run_id": "run-" + str(i), "process_ids": [f"{i}-a", f"{i}-b", f"{i}-a2"],
-                             "control_before": 100., "candidate": 99., "control_after": 100.}
-                            for i in range(6)], **values}
+                "compatibility": "PASS", "fallback": "PASS", "composition": "PASS",
+                "timings": times, **values}
 
     def assess(self, r):
         with m.connection(self.path) as db:
@@ -132,16 +167,14 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(d["one_sided_sign_p"], 1/64)
 
     def test_negative_gain_is_inconclusive_not_promoted(self):
-        r = self.ready()
-        for t in r["timings"]:
-            t["candidate"] = 101
+        r = self.ready(candidate_time=101)
         d = self.assess(r)
         self.assertEqual(d["performance"], "INCONCLUSIVE")
         self.assertFalse(d["default_enable"])
 
     def test_timing_does_not_override_gradient_failure(self):
-        r = self.ready()
-        r["checks"]["backward"] = "FAIL"
+        r = self.ready(checks={"V0": "FAIL", "V1": "FAIL", "backward": "FAIL"},
+                       compatibility="FAIL", fallback="FAIL", composition="FAIL")
         d = self.assess(r)
         self.assertEqual(d["retention"], "DISCARD")
         self.assertEqual(d["performance"], "NOT_EVALUATED")
@@ -179,14 +212,12 @@ class CampaignTests(unittest.TestCase):
             self.assess(self.ready(unprofiled=False))
 
     def test_reused_invocation_ids_rejected(self):
-        r = self.ready()
-        r["timings"][1]["process_ids"] = r["timings"][0]["process_ids"]
+        r = self.ready(reused=True)
         with self.assertRaisesRegex(ValueError, "reused"):
             self.assess(r)
 
     def test_control_drift_blocks_benefit(self):
-        r = self.ready()
-        r["timings"][0]["control_after"] = 110
+        r = self.ready(control_after=110)
         self.assertEqual(self.assess(r)["performance"], "INVALID_DRIFT")
 
     def test_cannot_select_only_favorable_samples(self):
@@ -237,9 +268,7 @@ class CampaignTests(unittest.TestCase):
         self.assertFalse(d["default_enable"])
 
     def test_capacity_value_requires_evidence(self):
-        r = self.ready(capacity_evidence=self.ev)
-        for t in r["timings"]:
-            t["candidate"] = 101
+        r = self.ready(capacity_evidence=self.ev, candidate_time=101, latency_tradeoff="synthetic +1 second")
         d = self.assess(r)
         self.assertEqual(d["retention"], "KEEP_OPTIONAL")
         self.assertFalse(d["default_enable"])

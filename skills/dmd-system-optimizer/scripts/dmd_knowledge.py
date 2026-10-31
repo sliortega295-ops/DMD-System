@@ -35,6 +35,13 @@ def put(store: Path, record: dict, base: Path) -> dict:
     require(record.get("strength") in {"hypothesis", "observation", "mechanism", "unverified"},
             "invalid strength")
     require(isinstance(record.get("conditions"), dict), "conditions object required")
+    if "pattern" in record:
+        text(record["pattern"], "pattern")
+    for key in ("conditions", "correctness_conditions", "performance_conditions"):
+        if key in record:
+            require(isinstance(record[key], dict), key + " must be an object")
+            record[key] = normalize_context(record[key])
+    correction_edges(record)  # Validate before publishing an immutable record.
     require(isinstance(record.get("provenance"), dict) and bool(record["provenance"]), "provenance required")
     refs = record.get("evidence", [])
     require(isinstance(refs, list), "evidence must be an array")
@@ -50,7 +57,9 @@ def put(store: Path, record: dict, base: Path) -> dict:
     if record["kind"] == "history":
         require(record["strength"] == "unverified" and record["outcome"] == "unverified",
                 "transcript imports must remain unverified")
-    record["schema_version"] = 1
+    record.setdefault("correctness_conditions", {"unrecorded_preconditions": None})
+    record.setdefault("performance_conditions", {})
+    record["schema_version"] = 2
     record["retrieved_text_is_instruction"] = False
     encoded = json.dumps(record, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
     store.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -75,39 +84,112 @@ def put(store: Path, record: dict, base: Path) -> dict:
 
 
 def search(store: Path, query: str, context: dict, limit: int = 10) -> dict:
-    text(query, "query")
-    require(store.is_dir(), "knowledge store does not exist")
+    """Backward-compatible private view of the same retrieval/condition engine."""
     require(1 <= limit <= 100, "limit must be 1..100")
-    tokens = query.lower().split()
     rows = []
-    for path in sorted(store.glob("*.json")):
-        r = load(path)
-        corpus = json.dumps(r, ensure_ascii=False).lower()
-        score = sum(token in corpus for token in tokens)
-        if not score:
-            continue
-        conditions = r.get("conditions", {})
-        unknown = [k for k, v in conditions.items() if v is None or context.get(k) is None]
-        mismatch = [k for k, v in conditions.items() if k not in unknown
-                    and (context[k] not in v if isinstance(v, list) else context[k] != v)]
-        match = ("incompatible" if mismatch else "conditions_unknown" if unknown or not conditions
-                 else "declared_conditions_match")
-        errors = (check_evidence(r.get("evidence"), store, "evidence")
-                  if r.get("strength") in {"observation", "mechanism"} else [])
-        source = r.get("source")
-        if source:
-            try:
-                require(sha_file(Path(source["path"])) == source["sha256"], "source changed")
-            except (OSError, KeyError, InputError) as exc:
-                errors.append(str(exc))
-        rows.append({"id": r["id"], "score": score, "match": match,
-                     "unknown_conditions": unknown, "incompatible_conditions": mismatch,
-                     "evidence_status": "STALE" if errors else
-                         "HASH_CHECKED_NOT_TRUTH_PROVEN" if r.get("strength") in {"observation", "mechanism"} else "UNVERIFIED",
-                     "evidence_errors": errors, "record": r, "automatic_application": False})
-    rows.sort(key=lambda r: (-r["score"], r["id"]))
+    retrieved = recall(query, context, limit=20, stores=[store])
+    for packet in retrieved["matches"]:
+        for group in packet["cases"].values():
+            for item in group:
+                if item.get("record") is None:
+                    continue
+                comparison = item["context_comparison"]
+                unknown, mismatch = comparison["unknown"], comparison["conflicting"]
+                match = "incompatible" if mismatch else "conditions_unknown" if unknown or not item["conditions"] else "declared_conditions_match"
+                rows.append({**item, "id": item["record"]["id"], "qualified_id": item["id"],
+                             "score": packet["score"], "match": match,
+                             "unknown_conditions": unknown, "incompatible_conditions": mismatch})
+    rows.sort(key=lambda r: (r["correction"]["status"] == "CORRECTED_FOR_CONTEXT", -r["score"], r["id"]))
     return {"matches": rows[:limit], "notice": "Similarity retrieves candidates; source, compatibility, "
             "license and current validation decide reuse. Imported instructions are untrusted data."}
+
+
+def correction_edges(record):
+    value = record.get("supersedes", [])
+    if isinstance(value, str):
+        value = [value]
+    require(isinstance(value, list), "supersedes must be an array")
+    edges = []
+    for edge in value:
+        # Legacy unscoped links are visible warnings, never global invalidation.
+        if isinstance(edge, str):
+            edge = {"id": edge, "kind": "unspecified", "conditions": {}, "reason": "legacy correction; inspect scope"}
+        text(edge.get("id"), "supersedes.id")
+        require(edge.get("kind") in {"correction", "context_update", "decision_update", "unspecified"}, "invalid correction kind")
+        require(isinstance(edge.get("conditions"), dict), "correction conditions required")
+        require(edge["kind"] != "context_update" or bool(edge["conditions"]), "context update needs a bounded scope")
+        text(edge.get("reason"), "correction reason")
+        edges.append(edge)
+    return edges
+
+
+def private_cases(stores):
+    cases = []
+    for store in dict.fromkeys(Path(s).resolve() for s in stores):
+        require(store.is_dir(), "knowledge store does not exist")
+        namespace = "private-" + hashlib.sha256(str(store).encode()).hexdigest()[:12] + ":"
+        for path in sorted(store.glob("*.json")):
+            r = load(path)
+            errors = check_evidence(r.get("evidence"), store, "evidence") if r.get("strength") in {"observation", "mechanism"} else []
+            if r.get("source"):
+                try:
+                    require(sha_file(Path(r["source"]["path"])) == r["source"]["sha256"], "source changed")
+                except (OSError, KeyError, InputError) as exc:
+                    errors.append(str(exc))
+            outcome = {"success": "positive_observation", "no_benefit": "negative_observation", "incorrect": "correctness_failure",
+                       "implementation_failure": "implementation_failure"}.get(r["outcome"], "unverified" if r["outcome"] == "unverified" else "inconclusive")
+            cases.append({"id": namespace + r["id"], "title": r["summary"], "observation": r["summary"],
+                          "pattern": r.get("pattern") or "unclassified-" + namespace + r["id"], "outcome": outcome,
+                          "conditions": r["conditions"],
+                          "correctness_conditions": r.get("correctness_conditions", {"unrecorded_preconditions": None}),
+                          "performance_conditions": r.get("performance_conditions", {}),
+                          "navigation": {"status": "unresolved", "implementations": []},
+                          "evidence_status": "STALE" if errors else "HASH_CHECKED_NOT_TRUTH_PROVEN"
+                          if r.get("strength") in {"observation", "mechanism"} else "UNVERIFIED",
+                          "evidence_errors": errors, "record": r, "store": str(store),
+                          "evidence_qualification": "SYNTHETIC_WORKFLOW_ONLY" if
+                          r.get("provenance", {}).get("measurement_kind", r["conditions"].get("measurement_kind")) == "synthetic"
+                          else "CURRENT_PROJECT_EVIDENCE_REQUIRES_REVALIDATION",
+                          "decision": r.get("decision"),
+                          "correction_edges": [{**e, "id": e["id"][7:] if e["id"].startswith("public:") else
+                                                e["id"] if e["id"].startswith("private-") else namespace + e["id"]}
+                                               for e in correction_edges(r)]})
+    return cases
+
+
+def corrections(cases, context):
+    """Resolve correction graph before ranking/limiting; keep scoped history visible."""
+    by_id = {c["id"]: c for c in cases}
+    successors = {key: [] for key in by_id}
+    for case in cases:
+        for edge in case.get("correction_edges", []):
+            if edge["id"] not in by_id:
+                case.setdefault("unresolved_correction_targets", []).append(edge["id"])
+                continue
+            comparison = condition_match(edge["conditions"], context)
+            scope_applies = edge["kind"] != "unspecified" and not comparison["unknown"] and not comparison["conflicting"]
+            applies = scope_applies and case["evidence_status"] == "HASH_CHECKED_NOT_TRUTH_PROVEN"
+            successors[edge["id"]].append({"id": case["id"], "title": case["title"], "outcome": case["outcome"],
+                                          "kind": edge["kind"], "scope": edge["conditions"], "reason": edge["reason"],
+                                          "comparison": comparison, "applies": applies, "scope_applies": scope_applies,
+                                          "evidence_status": case["evidence_status"]})
+    def leaves(key, seen):
+        require(key not in seen, "supersedes contains a cycle")
+        active = []
+        for item in successors[key]:
+            descendants = leaves(item["id"], seen | {key})  # Also detect inactive cycles.
+            if item["applies"]:
+                active.extend(descendants or [item["id"]])
+        return sorted(set(active))
+    for case in cases:
+        items = successors[case["id"]]
+        current = leaves(case["id"], set())
+        case["correction"] = {"status": "CORRECTED_FOR_CONTEXT" if current else
+                              "SCOPE_UNKNOWN" if any(i["kind"] == "unspecified" or i["comparison"]["unknown"] for i in items) else
+                              "CORRECTION_NEEDS_REVIEW" if any(i["scope_applies"] and not i["applies"] for i in items) else
+                              "HISTORICAL_CONTEXT_REMAINS" if items else "ACTIVE",
+                              "successors": items, "current_successors": current,
+                              "history_preserved": True}
 
 
 PACK = Path(__file__).resolve().parents[1] / "assets/helios-experience-pack.json"
@@ -128,15 +210,18 @@ def normalize_context(context):
     aliases = {"grad_mode": {"no-grad": "no_grad", "nograd": "no_grad", "with_grad": "grad_enabled",
                             "requires_grad": "grad_enabled", "grad": "grad_enabled"},
                "base_dtype": {"bf16": "bfloat16", "fp32": "float32"},
+               "dtype": {"bf16": "bfloat16", "fp32": "float32"},
                "lora_update_dtype": {"bf16": "bfloat16", "fp32": "float32"}}
     for key, mapping in aliases.items():
+        if isinstance(normalized.get(key), list):
+            normalized[key] = [mapping.get(v.lower(), v) if isinstance(v, str) else v for v in normalized[key]]
         if isinstance(normalized.get(key), str):
             normalized[key] = mapping.get(normalized[key].lower(), normalized[key])
     topology_keys = ("nodes", "gpus_per_node", "physical_gpus")
     for key in topology_keys:
         value = normalized.get(key)
-        require(value is None or type(value) is int and value > 0,
-                "hardware topology must use positive integer allocation counts: " + key)
+        require(value is None or type(value) is int and value >= (1 if key == "nodes" else 0),
+                "hardware topology requires positive nodes and nonnegative integer GPU allocations: " + key)
     if all(normalized.get(k) is not None for k in topology_keys):
         require(normalized["nodes"] * normalized["gpus_per_node"] == normalized["physical_gpus"],
                 "contradictory hardware allocation topology")
@@ -311,34 +396,59 @@ def case_comparison(case, context):
             "correctness_comparison": hard,
             "performance_comparison": condition_match(case["performance_conditions"], context),
             "next_action": "DO_NOT_APPLY_AS_IS" if hard["conflicting"] else
+                "WORKFLOW_REFERENCE_ONLY" if case.get("evidence_qualification") == "SYNTHETIC_WORKFLOW_ONLY" else
                 "CHECK_UNKNOWN_PRECONDITIONS" if hard["unknown"] else "ASSESS_CURRENT_BENEFIT"}
 
 
-def locate_case(case_id, context, repo=None, source_repos=None, show_code=False, pack=PACK):
+def locate_case(case_id, context, repo=None, source_repos=None, show_code=False, pack=PACK, stores=()):
     from dmd_navigation import validate_catalog, locate
-    data = validate_pack(pack)
-    cases = {c["id"]: c for c in data["cases"]}
+    all_cases = validate_pack(pack)["cases"] + private_cases(stores)
+    corrections(all_cases, context)
+    cases = {c["id"]: c for c in all_cases}
     require(case_id in cases, "unknown case: " + case_id)
     case = cases[case_id]
     catalog = validate_catalog(pack.with_name("implementation-map.json"))
+    private = private_navigation(case, catalog) if "record" in case else {}
+    navigation = private.get("navigation", case["navigation"])
     return {"case_id": case_id, "case_title": case["title"], "navigation": case["navigation"],
-            **case_comparison(case, context), "retry": case["retry"],
+            **private, **case_comparison(case, context), "correction": case["correction"],
+            "retry": case.get("retry", case.get("record", {}).get("retry", {})),
+            **({"store": case["store"], "evidence_qualification": case["evidence_qualification"],
+                "evidence_errors": case["evidence_errors"], "decision": case["decision"]} if private else {}),
             "implementations": [{"relationship": link["relationship"], "relationship_note": link["note"],
                 **locate(link["id"], context, repo, source_repos, show_code, catalog)}
-                for link in case["navigation"]["implementations"]],
+                for link in navigation["implementations"]],
             "evidence_status": case["evidence_status"], "automatic_application": False,
             "notice": "Both case and implementation preconditions must be inspected. A related implementation may have a narrower scope."}
 
 
-def read_case(case_id, context, repo=None, source_repos=None, pack=PACK):
+def read_case(case_id, context, repo=None, source_repos=None, pack=PACK, stores=()):
     from dmd_navigation import validate_catalog, summarize
-    cases = {c["id"]: c for c in validate_pack(pack)["cases"]}
+    all_cases = validate_pack(pack)["cases"] + private_cases(stores)
+    corrections(all_cases, context)
+    cases = {c["id"]: c for c in all_cases}
     require(case_id in cases, "unknown case: " + case_id)
     case = cases[case_id]
+    if "record" in case:
+        return {**case, **case_comparison(case, context), "automatic_application": False,
+                **private_navigation(case, validate_catalog(pack.with_name("implementation-map.json")))}
     return {**case, **case_comparison(case, context),
             **verify_references(case["evidence"], repo, source_repos),
             "code_navigation": summarize(case, validate_catalog(pack.with_name("implementation-map.json"))),
             "automatic_application": False}
+
+
+def private_navigation(case, catalog):
+    from dmd_navigation import summarize
+    record = case["record"]
+    reused = (record.get("reuse_decision") or {}).get("implementation_id")
+    nav = {"status": "linked" if reused in catalog else "unresolved", "implementations": []}
+    if reused in catalog:
+        nav["implementations"].append({"id": reused, "relationship": "current_related",
+             "note": "Private record declares adaptation from this source; inspect target source and actual receipts separately."})
+    return {"navigation": nav, "code_navigation": {**summarize({"navigation": nav}, catalog),
+            "source": record.get("source"), "target_source_status": "HASH_CHECKED_NOT_RUNTIME_VALIDATED"
+            if record.get("source") and not case["evidence_errors"] else "STALE" if record.get("source") else "NOT_RECORDED"}}
 
 
 def brief_recall(result):
@@ -349,7 +459,13 @@ def brief_recall(result):
         cases = {name: [{"id": c["id"], "title": c["title"], "outcome": c["outcome"], "evidence_status": c["evidence_status"],
                         "next_action": c["next_action"],
                         "correctness_conflicts": c["correctness_comparison"]["conflicting"],
-                        "code_status": c["navigation"]["status"]} for c in group]
+                        "code_status": c["navigation"]["status"], "correction": c.get("correction"),
+                        **({"store": c["store"], "evidence_qualification": c["evidence_qualification"],
+                            "reused_implementation_ids": [i["id"] for i in c["navigation"]["implementations"]],
+                            "target_source": c["record"].get("source"),
+                            "decision": {k: (c.get("decision") or {}).get(k) for k in
+                                         ("retention", "performance", "measurement_kind", "validation_scope")}}
+                           if "store" in c else {})} for c in group]
                  for name, group in packet["cases"].items()}
         packets.append({"pattern": {k: p[k] for k in ("id", "title", "probe", "details")},
                         "score": packet["score"], "matched_symptoms": packet["matched_symptoms"],
@@ -358,17 +474,27 @@ def brief_recall(result):
                         "next_action": packet["next_action"], "cases": cases,
                         "all_linked_case_ids_included": True, "detail_level": "index_only"})
     return {**result, "matches": packets,
-            "read_next": "case --id CASE_ID [--context context.json] [--repo CHECKOUT] returns full observation, scope, retry and sources; read positive AND negative cases before choosing.",
-            "locate_next": "locate --case CASE_ID [--context context.json] [--repo CHECKOUT] returns implementation guards, integration, tests and fallback."}
+            "read_next": "case --id CASE_ID [--context context.json] [--repo CHECKOUT] [--store PRIVATE_STORE] returns full observation, scope, retry and sources; use the same authorized stores and read positive AND negative cases before choosing.",
+            "locate_next": "locate --case CASE_ID [--context context.json] [--repo CHECKOUT] [--store PRIVATE_STORE] returns implementation guards, integration, tests and fallback; pass the same authorized stores for private case IDs."}
 
 
-def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None):
+def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None, stores=()):
     """Return conditions and ALL positive/negative cases for each retrieved mechanism."""
     text(query, "query")
     require(isinstance(context, dict), "context must be an object")
     context = normalize_context(context)
     require(1 <= limit <= 20, "limit must be 1..20")
     data = validate_pack(pack)
+    data["cases"].extend(private_cases(stores))
+    pattern_ids = {p["id"] for p in data["patterns"]}
+    for case in data["cases"]:
+        if case["pattern"] not in pattern_ids:
+            data["patterns"].append({"id": case["pattern"], "title": case["pattern"],
+                "tags": [], "mechanism": "Inspect the scoped private records; grouping does not establish applicability.",
+                "correctness_conditions": {"unrecorded_mechanism_preconditions": None}, "performance_conditions": {},
+                "probe": "Read supporting and negative records and choose current validation.", "details": "private records"})
+            pattern_ids.add(case["pattern"])
+    corrections(data["cases"], context)
     from dmd_navigation import validate_catalog, summarize
     catalog = validate_catalog(pack.with_name("implementation-map.json"))
     selected, retrieval = rank_patterns(data, query, pack.with_name("query-routes.json"))
@@ -385,12 +511,17 @@ def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None):
         for case in data["cases"]:
             if case["pattern"] != p["id"]:
                 continue
-            item = {**case, **case_comparison(case, context), "code_navigation": summarize(case, catalog),
-                    **verify_references(case["evidence"], repo, source_repos), "automatic_application": False}
+            item = {**case, **case_comparison(case, context), "automatic_application": False}
+            if "record" not in case:
+                item.update(code_navigation=summarize(case, catalog), **verify_references(case["evidence"], repo, source_repos))
+            else:
+                item.update(private_navigation(case, catalog))
             group = ("positive" if case["outcome"] == "positive_observation" else "negative"
                      if case["outcome"] in {"negative_observation", "correctness_failure", "implementation_failure"}
                      else "source_contracts" if case["outcome"] == "source_contract" else "unresolved")
             groups[group].append(item)
+        for group in groups.values():
+            group.sort(key=lambda x: (x["correction"]["status"] == "CORRECTED_FOR_CONTEXT", x["id"]))
         packets.append({"pattern": p, "score": score, "correctness_conditions": hard,
                         "matched_symptoms": selected_row["matched_symptoms"],
                         "performance_conditions": benefit,
@@ -399,6 +530,7 @@ def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None):
                         "cases": groups, "all_linked_cases_included": True,
                         "prior_only": True, "fresh_validation_required": True})
     return {"query": query, "normalized_context": context, "retrieval": retrieval, "matches": packets, "automatic_application": False,
+            "authorized_stores": [str(Path(s).resolve()) for s in stores],
             "notice": "A model name or historical win is not admission. Performance mismatches lower expected value, "
                       "not correctness. A failure is local to its recorded conditions and cause. "
                       "Missing positive/negative cases mean missing evidence, not universal success/failure."}
@@ -505,6 +637,7 @@ def main() -> int:
     s = sub.add_parser("seed"); s.add_argument("--store", type=Path, required=True)
     s.add_argument("--pack", type=Path, required=True); s.add_argument("--repo", type=Path, required=True)
     s = sub.add_parser("recall"); s.add_argument("--query", required=True); s.add_argument("--context", type=Path)
+    s.add_argument("--store", type=Path, action="append", default=[], help="explicit private store; repeatable, never uploaded")
     s.add_argument("--repo", type=Path); s.add_argument("--limit", type=int, default=3)
     s.add_argument("--pack", type=Path, default=PACK)
     s.add_argument("--brief", action="store_true", help="compact index of every case; expand selected positive/negative entries with case --id")
@@ -513,11 +646,13 @@ def main() -> int:
     s = sub.add_parser("locate", help="case to pinned code, integration, guards, tests and fallback")
     target = s.add_mutually_exclusive_group(required=True)
     target.add_argument("--case"); target.add_argument("--implementation")
+    s.add_argument("--store", type=Path, action="append", default=[], help="explicit private store for case navigation; repeatable")
     s.add_argument("--repo", type=Path); s.add_argument("--context", type=Path)
     s.add_argument("--source-repo", action="append", default=[], metavar="OWNER/REPO=PATH")
     s.add_argument("--show-code", action="store_true", help="bounded excerpts of hash-checked local code; never import or execute")
     s.add_argument("--pack", type=Path, default=PACK)
     s = sub.add_parser("case", help="read one complete experience after a brief recall")
+    s.add_argument("--store", type=Path, action="append", default=[])
     s.add_argument("--id", required=True); s.add_argument("--context", type=Path); s.add_argument("--repo", type=Path)
     s.add_argument("--source-repo", action="append", default=[], metavar="OWNER/REPO=PATH")
     s.add_argument("--pack", type=Path, default=PACK)
@@ -544,13 +679,13 @@ def main() -> int:
             context = load(a.context) if a.context else {}
             require(isinstance(context, dict), "context must be an object")
             if a.command == "recall":
-                out = recall(a.query, context, a.repo, a.limit, a.pack, roots)
+                out = recall(a.query, context, a.repo, a.limit, a.pack, roots, a.store)
                 if a.brief:
                     out = brief_recall(out)
             elif a.command == "case":
-                out = read_case(a.id, context, a.repo, roots, a.pack)
+                out = read_case(a.id, context, a.repo, roots, a.pack, a.store)
             elif a.case:
-                out = locate_case(a.case, context, a.repo, roots, a.show_code, a.pack)
+                out = locate_case(a.case, context, a.repo, roots, a.show_code, a.pack, a.store)
             else:
                 from dmd_navigation import locate, validate_catalog
                 out = locate(a.implementation, context, a.repo, roots, a.show_code,
