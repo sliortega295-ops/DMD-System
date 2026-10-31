@@ -53,7 +53,7 @@ class RetrievalRegressionTests(unittest.TestCase):
     def test_external_inference_case_conflicts_with_training(self):
         result = knowledge.locate_case("rb-inference-graph-shape-miss", {"training_mode": "training"})
         self.assertEqual(result["next_action"], "DO_NOT_APPLY_AS_IS")
-        self.assertEqual(result["implementations"][0]["relationship"], "current_related")
+        self.assertEqual(result["implementations"][0]["relationship"], "adaptation_example")
         self.assertEqual(result["evidence_status"], "EXTERNAL_REPORTED_NOT_REPRODUCED")
 
     def test_all_cases_expose_specific_retry_and_navigation(self):
@@ -93,7 +93,7 @@ class RetrievalRegressionTests(unittest.TestCase):
             self.assertEqual(short["detail_level"], "index_only")
         self.assertLess(len(json.dumps(brief, ensure_ascii=False).encode()), 20000)
         case = knowledge.read_case("helios-crosskv-nogan-negligible", {"grad_mode": "grad_enabled"})
-        self.assertEqual(case["outcome"], "negative_observation")
+        self.assertEqual(case["outcome"], "inconclusive")
         self.assertTrue(case["observation"])
         self.assertTrue(case["retry"]["minimum_probe"])
         self.assertEqual(case["next_action"], "DO_NOT_APPLY_AS_IS")

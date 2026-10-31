@@ -1,76 +1,58 @@
-# 经验库覆盖范围与剩余缺口
+# 经验覆盖范围与证据边界
 
-截至 2026-10-31，**19 个机制主题、128 条案例与方法条目、136 份固定版本来源**。首版 24 条只是精选子集；这次扩展保留原 ID，新增 104 条。
+截至 2026-10-31：**21 个机制主题、134 条案例与方法条目、141 份固定版本来源**。
+条目不等于独立实验或验证成功的方案；本轮是来源核验和内容修正，没有新 GPU 实验。
 
-## 已纳入什么
+| 来源类别 | 条目数 |
+| --- | ---: |
+| Helios optimization history | 24 |
+| Helios A100 history | 69 |
+| Helios H100 history | 16 |
+| ResearchBoost external | 25 |
 
-| 来源集合 | 条目数 | 范围 |
-| --- | ---: | --- |
-| 首版 Helios/DMD 公开证据与线索 | 24 | W1–W6、数值、生命周期、测量与已有实现 |
-| 新增 Helios/Wan 与框架历史 | 64 | 早期连续 Full5、角色过渡、ZeRO leaf、pinned staging、融合、cache、allocator、profile、planner |
-| H100 历史 | 16 | W1–W6、8 physical GPUs/16 logical slots、后期 OOM/stall、source 身份、tiny 与 full-model 的差别 |
-| ResearchBoost 外部经验 | 24 | 19 条方法建议、5 条外部报告条目；其中 3 条明确限定为推理 |
+| 记录状态 | 条目数 |
+| --- | ---: |
+| positive_observation | 35 |
+| negative_observation | 17 |
+| implementation_failure | 12 |
+| inconclusive | 12 |
+| source_contract | 44 |
+| unverified | 6 |
+| correctness_failure | 8 |
 
-条目类型不同，不能相加成“128 次独立实验”或“128 个验证成功方案”：
+128 条有公开引用；6 条未核实会话线索保持线索等级。历史 PASS、REVIEW、FAIL、NOT_RUN 和外部报告均按各自范围保留。
 
-| 记录类型 | 数量 |
-| --- | ---: | --- |
-| 正向观察 | 34 |
-| 负向或收益不足观察 | 19 |
-| 容量、环境或实现失败 | 12 |
-| 未决/范围有限 | 8 |
-| 源码约束或方法建议 | 42 |
-| 未核实会话线索 | 6 |
-| 数值或语义失败 | 7 |
+## 历史筛选与本轮修正
 
-122 条关联公开来源；6 条只有会话线索。所有条目都不是本次新跑的 GPU 实验。历史 PASS、REVIEW、FAIL、NOT_RUN 与外部报告状态按各自范围保留。
+前期按确切会话身份筛选主会话1,108条与H100会话568条assistant最终消息；1,676条经空白归一化后有1,243条不同正文、433条重复。只用摘要寻找线索，再核对公开报告；不是逐句审完全部会话。私人原始会话没有上传。
 
-## 这次怎样查找
+本轮纠正七条明确错误，并检查同类条件与代码关系；新增六条有来源的数值隔离、B2失败、训练态timestep、QKV canary、容量政策和时钟映射经验。相邻W6 r1也查出计算结果缓存误归为参数驻留的问题，已纠正。
 
-1. 按确切会话身份读取 Helios 主会话的 6 个分段快照及 H100 会话的 1 个快照，只提取 assistant 最终消息，未导入工具输出、用户消息或隐藏推理。主会话 1,108 条，H100 568 条。
-2. 对 1,676 条做关键词筛选；按空白归一化去重后为 1,243 条不同正文，433 条重复来自继承/重复历史，不能算独立证据。随后阅读有关摘要并追查原始公开报告。
-3. 从远端分支对应的 Git 历史找回 79 份实验文档，包括主分支已经不再保留的早期报告；再结合 28 份 H100 小型回执、19 份当前公开来源和 10 份 ResearchBoost 来源。
-4. 按机制、条件、失败类型和独立结论抽取条目。同一试验的多张表、多个 rank 或近似重复摘要不单独凑案例数。
+核验范围是已列明的内容问题与同类错配；不声明完成全部历史材料的逐项内容审计。
 
-**这是可追溯的筛选与扩展，不是已人工逐句读完所有历史，也不声称找全全部实验。** 私人会话只提供线索，公开证据才支持公开观察；没有找到回执的数字没有被搬进案例。
+## 代码导航覆盖
 
-## 哪些还没有完成
+35 个实现/工具条目，62 份固定版本Python文件；这是代码身份统计，不是新增实测报告。
 
-经验到代码的导航现有 **29 个实现条目，覆盖 49 份固定版本 Python 文件，关联 71 条经验**。
-另外 19 条是验收/计量/决策方法，38 条尚未定位到可核对符号和接入方式的对应实现。
-它们分别标为 `linked`、`method_only`、`unresolved`，不会用相似模块填补缺口。
-[实现索引](implementations.md) 给出入口、接入、约束、测试和回退；引用关系明确区分当前相关代码和保留的旧实现。
-这些 49 份源码属于独立的实现索引，不作为 49 份新增历史实测报告重复计算。
+- `linked`：74 条经验。
+- `method_only`：24 条经验。
+- `unresolved`：36 条经验。
 
-29 个实现中，16 个列出了可检查的测试入口；13 个尚未找到专门测试入口。
-所有条目均说明 `test_gap`，包括已列测试仍未覆盖的范围。所列测试有的是 CPU mock、配置/协议检查，
-具体范围以正文为准；不能把“找到测试”称作“已完成训练验收”。
-本次只验证定位器、引用身份和静态符号，不重新运行这些组件的 GPU/训练验收。
+关系明确区分历史实际实现、当前复用候选、需适配示例、诊断工具、概念相关。所有导航结果的 `direct_reuse_verified=false`；hash/符号吻合不能证明当前训练验收或可直接迁移。
 
-128 条经验均有案例级正确性/收益条件与具体重试计划。
-135 次案例来源引用中，61 次有观察数值对应的文本行锚点，12 次保留结构化来源定位，
-62 次仍明确为报告范围定位，需要继续阅读同节合同与限制；行锚点不是独立的事实验证。
+15 个实现没有定位到专门测试入口。其余测试也仅供检查覆盖，未在本轮执行组件GPU/训练验收。见 [实现索引](implementations.md)。
 
-136 份来源中，96 份已抽取相关片段形成条目，40 份仍为 `DISCOVERED_NOT_CURATED`。后者包括 overview/preflight、重复的辅助 hash/CSV 回执及尚未完整提炼的 planner/profile 报告；状态表示没有完成案例提炼，不代表文件错误或必须新增独立案例。
+## 未完成范围
 
-具体清单在 [source index](../../assets/experience-source-index.json)；每条有 repository、40 位 commit、path、SHA-256、标题、状态与关联 case IDs。可直接搜索未提炼报告：
+- `DISCOVERED_NOT_CURATED`：38 份来源。
+- `CURATED_EXCERPTS`：103 份来源。
 
-    python3 scripts/dmd_knowledge.py sources --query "LiveWan planner" --limit 10
-    python3 scripts/dmd_knowledge.py sources --query "H100" --limit 10
+六条会话线索涉及早期流水、loss趋势、恢复Adam峰值、NUMA、staging扩展、H3 block-major；缺公开回执，不能当成根因或速度结论。
 
-6 条待核实会话线索涉及早期流水比较、loss trend、resume Adam 峰值、NUMA 整进程绑定、单卡到节点 staging 扩展、H3 block-major gather。它们仅提供问题方向，不能用来声称根因或速度。
+来源索引只表示发现或抽取了有关片段，行锚点只辅助阅读。没有穷尽远端大文件、重开停止的campaign或重跑全部历史验收。独立子观察分别保留workload/更新合同比较；微小单次差值和未隔离解释不升级成稳定规律。
 
-本轮没有遍历所有远端私有大文件、恢复停止的 GPU campaign，或对每条历史结果重新运行验收。对来源文档的引用和 hash 复核也不等于原始科学结论已独立复现。
+使用 `dmd_knowledge.py sources --query ...` 搜索尚未提炼的来源；见 [source index](../../assets/experience-source-index.json)。
 
-## 如何避免错误迁移
+## 维护
 
-- 同机制的正反条目一起返回；按 workload、训练/推理、shape、梯度、状态版本、拓扑、硬件和 timer 比较，未知保留 unknown。
-- HSDP、cross-KV、chunk、pinned cleanup、checkpoint retention 均有相反或受限结果；失败只限制所测条件，重试需要新证据。
-- ResearchBoost 作为外部报告/建议单独标注，不继承其阈值、预算、权限或启用策略。SGLang 推理案例不作为训练等价证据。
-- historical blob hash 匹配只说明读到了当时文件；当前工作区内容不同时明确标记，不能升级为当前实现已验证。
-
-## 来源与维护
-
-ResearchBoost 固定于 [908c6a13](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/tree/908c6a13c41fcb6da6d0237aba2574d368ffbec8)。本包使用原创概括与固定引用，没有复制第三方代码或技能卡。移植其实现仍应按对应来源检查许可。
-
-结构化统计在 [coverage JSON](../../assets/experience-coverage.json)。补齐来源时先判断是否提供新结论；修正已有错误要保留旧结论的审计关系，不靠重复条目累加数量。
+统计由 [coverage JSON](../../assets/experience-coverage.json) 渲染；经验与代码关系由JSON生成Markdown。ResearchBoost固定为 [908c6a13](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/tree/908c6a13c41fcb6da6d0237aba2574d368ffbec8)，只做有归属的原创概括，不复制其代码或Skill卡。复用前仍须检查对应许可和当前适用性。

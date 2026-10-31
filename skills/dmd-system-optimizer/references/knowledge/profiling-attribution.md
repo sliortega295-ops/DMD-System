@@ -33,7 +33,7 @@
 - 不应重复：不得人为补齐 pack/unpack 差值或让观察器延长生命周期
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-saved-tensor-census`
-- 关联实现：[保存张量的无策略改变 census](implementations.md#legacy-saved-tensor-census)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[保存张量的无策略改变 census](implementations.md#legacy-saved-tensor-census)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[runtime/saved_tensor_census.py::install_saved_tensor_census_hooks](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/saved_tensor_census.py#L164-L193)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_saved_tensor_census_result_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_saved_tensor_census_result_20260810.md#L1)；定位：报告范围 L1–L40；L1: Iteration 302: Step10-A saved-tensor ownership census；L35: Evidence；原定位：结果、合同、限制与失败记录
 
@@ -54,7 +54,7 @@
 - 不应重复：源码调用次数不能推翻已测 0.666 对 33.169 秒差异
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-group-count-hypothesis-refuted`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_transition_optimization_audit_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_transition_optimization_audit_20260810.md#L1)；定位：报告范围 L1–L189；L1: Iteration 291: strict-v4 Step10-A and representation-transition optimization audit；L3: Status and scope；L17: Frozen contract；L31: 1. Step10-A: what the existing evidence says；L82: Step10-A optimization opportunities, ranked；L107: 2. Live representation transition: what is long；L137: Transition optimization opportunities, ranked；L159: 3. Quantitative ceiling and bounded next experiment；原定位：结果、合同、限制与失败记录
@@ -65,19 +65,20 @@
 - ID：helios-profile-teardown-incomplete
 - 状态：inconclusive / HISTORICAL_INCOMPLETE_PROFILE
 - 来源类别：Helios A100 history；本次未复现实验。
-- 观察：固定内存流水的 node0 八个 rank 停在 cudaProfilerStop/teardown，最终报告不完整。低开销计时记录与缺失 profile 分开保留。
+- 观察：14 个非控制 rank 完成逻辑窗口（1256.233–1256.234 秒）；rank0、rank8 在 node-local cudaProfilerStop 收尾阻塞。训练计时与不完整 profile 分开。
 - 经验：进程算完训练不等于采集产物可用；确认最终文件、rank 覆盖和时间关联后再解释 overlap。
 - 范围：该 GAN pipeline Nsight capture，不能从残片推出全系统归因。
 - 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
 - 正确性前提：{"observer_preserves_execution_path": true}
 - 收益条件：{"capture_covers_target_phases_and_ranks": true}
-- 失败分类：not_established
+- 失败分类：profiler_teardown_incomplete
 - 重试信号：profiler teardown 与 rank 收尾可可靠完成
 - 最小验证：缩小 capture 验证所有 rank/阶段和文件完整性
 - 不应重复：不把缺失 trace 补成全程观察或否定另存的低开销 timer
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-profile-teardown-incomplete`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 结构化事实：{"blocked_ranks": [0, 8], "completed_rank_count": 14, "total_ranks": 16, "failure_phase": "cudaProfilerStop", "profile_status": "INCOMPLETE"}
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[sliortega295-ops/DMD-System / gan_systems_experiment_20260811.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/gan_systems_experiment_20260811.md#L1)；定位：报告范围 L1–L161；L1: Systems-only GAN Baseline/Pipeline execution report；L6: Environment；L21: Systems-only GAN bootstrap；L43: PR #4 Sequential GAN baseline；L59: PR #5 persistent 8G+8Score pipeline；L77: Fairness；L91: Formal timing；L107: Nsight Sequential；原定位：结果与证据边界
@@ -99,7 +100,7 @@
 - 不应重复：部分 profile 不能替代完整 rank 覆盖
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case h100-partial-profile-rank-coverage`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；诊断方法示例；该 parser 固定2×8/world16，与本条H100八卡拓扑不兼容，需要显式适配。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[sliortega295-ops/DMD-System / h100_campaign_handoff_20261016_r47.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md#L1)；定位：报告范围 L1–L33；L1: R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch；L5: New measured W2 result；L17: W1 actual cheap failure, not new model/OOM/numeric failure；L24: Actual resource blocker after reconnect；L28: Next authorized serial work；原定位：该结果及 qualification / NOT_RUN 边界
@@ -121,7 +122,7 @@
 - 不应重复：不能把 full backward hook 标签直接当作单模块成本
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-profile-backward-labels`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md#L1)；定位：报告范围 L1–L93；L6: Tiered profiling；L10: Split by training phase first, then by the parts of one step；L17: The parts of one training step；L54: Three kinds of hotspot；L64: Identifying the bottleneck type: by ablation, not by nvidia-smi；L80: Accounting conventions；L86: Kernel level (Nsight Compute)；原定位：Do not attribute backward with a module full backward hook
@@ -143,7 +144,7 @@
 - 不应重复：不得用被 dispatch 改成 eager 的 trace 代表正常性能
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-observer-may-change-execution`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md#L1)；定位：报告范围 L1–L93；L6: Tiered profiling；L10: Split by training phase first, then by the parts of one step；L17: The parts of one training step；L54: Three kinds of hotspot；L64: Identifying the bottleneck type: by ablation, not by nvidia-smi；L80: Accounting conventions；L86: Kernel level (Nsight Compute)；原定位：Fine-grained observation
@@ -165,7 +166,7 @@
 - 不应重复：不把重叠 NCCL/copy 时间直接相加
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-h3-copy-interval-attribution`
-- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py::install_checkpoint_boundary_cpu_offload](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L187-L336)
 - 来源：[sliortega295-ops/DMD-System / minimax_h3_native_nsys_attribution_20260818.md](https://github.com/sliortega295-ops/DMD-System/blob/17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8/docs/experiments/minimax_h3_native_nsys_attribution_20260818.md#L1)；定位：报告范围 L1–L147；L1: Iteration 301 — MiniMax-H3 Native Nsight Attribution；L3: Status and claim boundary；L12: Workload identity；L34: Correctness / capture gates；L42: Native cycle decomposition (overlap-aware)；L61: NCCL collective breakdown；L73: Boundary-offload evidence；L85: Stage decomposition；原定位：结果、合同、限制与失败记录
 
@@ -186,7 +187,7 @@
 - 不应重复：单 kernel 约 12% occupancy 不证明整模型吞吐低
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-ncu-low-occupancy-not-low-throughput`
-- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Nsight SQLite 区间与 rank 覆盖分析](implementations.md#profile-attribution)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/profile.py::parse_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L140-L211)
 - 函数入口：[src/distillschedule/search/profile.py::validate_profile](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/profile.py#L214-L232)
 - 来源：[sliortega295-ops/DMD-System / iteration358_c7_ncu.md](https://github.com/sliortega295-ops/DMD-System/blob/d5ff09623a1f57a8194619b24fc633fd51569fff/docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md#L1)；定位：报告范围 L1–L82；L1: Iteration 358: C7 dominant Critic GEMM NCU diagnostic；L3: Claim boundary；L22: Kernel result；L56: Decision；L69: Remote evidence；原定位：结果、合同、限制与失败记录

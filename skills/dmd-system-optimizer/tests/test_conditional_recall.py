@@ -36,10 +36,11 @@ class RecallTests(unittest.TestCase):
         self.assertTrue(r["prior_only"])
 
     def test_positive_and_negative_workloads_returned_together(self):
-        r = self.recall({"workload": "W6", "ranks": 16})
-        self.assertIn("helios-w2-retention-r36", {c["id"] for c in r["cases"]["positive"]})
+        r = m.recall("FFN-up replay", {"workload": "W6", "ranks": 16}, limit=1)["matches"][0]
+        self.assertIn("helios-w3-retention-r1", {c["id"] for c in r["cases"]["positive"]})
         self.assertIn("helios-w6-retention-r1", {c["id"] for c in r["cases"]["negative"]})
-        self.assertIn("workload", r["cases"]["positive"][0]["context_comparison"]["conflicting"])
+        w3 = next(c for c in r["cases"]["positive"] if c["id"] == "helios-w3-retention-r1")
+        self.assertIn("workload", w3["context_comparison"]["conflicting"])
         self.assertTrue(r["all_linked_cases_included"])
 
     def test_new_model_retrieves_mechanism_without_approval(self):

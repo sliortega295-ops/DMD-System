@@ -44,7 +44,7 @@ def rank(data, query, routes_path=ROUTES):
     for p in data["patterns"]:
         fields[p["id"]] = [(p["title"], 4), (" ".join(p["tags"]), 4), (p["mechanism"], 1),
             (" ".join(c["title"] + " " + c["observation"] for c in data["cases"] if c["pattern"] == p["id"]), 0.5),
-            (" ".join(c["title"] for c in data["cases"] if c["pattern"] == p["id"] and "record" in c), 4)]
+            (" ".join(c["id"] + " " + c["title"] for c in data["cases"] if c["pattern"] == p["id"]), 4)]
         corpora[p["id"]] = " ".join(v for v, _ in fields[p["id"]]).lower()
     ts = tokens(query)
     idf = {t: math.log(1 + len(corpora) / (1 + sum(t in v for v in corpora.values()))) for t in ts}

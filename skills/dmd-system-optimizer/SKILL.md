@@ -66,8 +66,12 @@ the target source identity, evidence status and applicable corrections.
 Check the implementation's own conditions too: a concrete example can be narrower
 than the general mechanism. `--show-code` reads bounded, hash-checked excerpts
 without importing the code. Without a checkout, pinned links remain unchecked.
-`current_related` means related source, not the historical measured implementation;
-`historical_reference` may need substantial adaptation. Respect `method_only`,
+Code relationships distinguish `historical_implementation`, `reusable_candidate`,
+`adaptation_example`, `diagnostic_tool` and `conceptual_reference`. Only the first
+claims the historical source identity; none establishes direct reuse in the current
+workload. A diagnostic parser or conceptual example is not the optimization itself.
+Older `current_related` / `historical_reference` records need relationship inspection.
+Respect `method_only`,
 `unresolved`, diagnostic-only entries and explicit test gaps; never invent a code link.
 If curated cases are insufficient, use `dmd_knowledge.py sources` to find pinned
 historical and external reports. The [coverage report](references/knowledge/coverage.md)
@@ -95,6 +99,11 @@ an unknown needs investigation. A performance mismatch changes the expected
 value, not the training semantics. Compare the current role/phase, update ratio,
 shapes, hardware, implementation and existing optimization stack, not just the
 model's name. Do not require identical model names to consider a mechanism.
+Inspect the intervention's direction and retained object: parameter residency,
+whole-block activation retention and checkpoint result reuse have different costs.
+Read independent `observations` when a card spans workloads; a result or validation
+from one context must not qualify another. Separate measured facts from unisolated
+explanations, and checker paths from accelerated timing paths.
 
 Read both supporting and negative cases returned for that mechanism. Classify a
 failure as implementation defect, unmet condition, capacity, net overhead,

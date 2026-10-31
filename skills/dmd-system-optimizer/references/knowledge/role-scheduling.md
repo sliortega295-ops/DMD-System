@@ -60,7 +60,7 @@
 - 不应重复：不能把同布局 Critic-window 加速当成任意完整训练加速
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-matched-pipeline-positive`
-- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
 - 来源：[sliortega295-ops/DMD-System / rb16_f5_pipeline_20260809.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_f5_pipeline_20260809.md#L45)；定位：观察中的数值文本锚点 L45；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -81,6 +81,6 @@
 - 不应重复：未解释约千秒流水慢点前不扩大同方案
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-fixed-memory-pipeline-negative`
-- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
 - 来源：[sliortega295-ops/DMD-System / gan_systems_experiment_20260811.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/gan_systems_experiment_20260811.md#L57)；定位：观察中的数值文本锚点 L57；同时阅读同节合同、状态与限制。原定位：结果与证据边界

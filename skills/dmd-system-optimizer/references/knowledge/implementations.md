@@ -256,10 +256,10 @@
 ## Helios FA2 selective checkpoint 保留
 
 - ID：`helios-selective-checkpoint`；用途：runtime_component
-- 范围：不是无条件保存全部 attention；真实 backend 和最坏更新阶段容量都需验收。
+- 范围：FA2 算子级保留策略可供最小适配；外层 FSDP2/P0 训练接入固定 world16/B16 和40个block。不是无条件保存全部 attention；真实 backend 和最坏更新阶段容量都需验收。
 - 正确性前提：{"attention_backend": "FA2", "checkpoint_replay_pure": true, "gradient_path_supported": true}
 - 收益条件：{"recompute_cost_exposed": true, "memory_headroom": true}
-- 接入：读取 selective Flash checkpoint policy；先证明真实 FA2 op 被命中，再选择保留密度。保持原 checkpoint 的 RNG 与反向路径。
+- 接入：读取 selective Flash checkpoint policy；先证明真实 FA2 op 被命中，再选择保留密度。保持原 checkpoint 的 RNG 与反向路径。 区分策略函数与外层训练接入：后者的 world16/B16 不能直接用于8卡；适配策略须保持目标逻辑工作，重新验证真实算子、block身份及梯度路径。
 - 回退：恢复原 checkpoint dispatcher/原 stride；不删除 optimizer/update 的语义步骤。
 - 验证范围：本次只核对固定源码、定义和测试位置，未重新执行所列组件测试。所列测试覆盖以正文为准；helper 的 CPU 测试不等于组件训练验收。
 - 测试缺口：未在该源码快照中定位到专门验证此组件前后向/完整周期的测试；不得把配置检查当作该项验收。
@@ -454,8 +454,8 @@
 ## Nsight SQLite 区间与 rank 覆盖分析
 
 - ID：`profile-attribution`；用途：analysis_tool
-- 范围：分析工具，不自动采集 profile，也不把非重叠搬运算成可消除关键路径。
-- 正确性前提：{"profile_source_identity_matches": true, "rank_coverage_known": true, "timer_scope_known": true}
+- 范围：分析工具，不自动采集 profile，也不把非重叠搬运算成可消除关键路径。 当前 search/profile.py 固定2节点×8卡、rank=node*8+device；不能直接接受H100单节点8卡数据。
+- 正确性前提：{"profile_source_identity_matches": true, "rank_coverage_known": true, "timer_scope_known": true, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
 - 收益条件：{}
 - 接入：输入实际 trace manifest，先通过 validate_profile，再读 union/overlap、rank 覆盖与源身份；对 Nsight Compute 的 occupancy 还需其专用指标。
 - 回退：覆盖不足保留 partial/unknown，回到原 trace/未观测计时；不填补缺失 rank 或把空洞归因为 CPU。
@@ -523,4 +523,110 @@
 - 测试：[tests/test_refactor_wan13b_rollout_cuda_graph.py::test_dispatch_protocol_live_inputs_weights_and_output_lifetime_cpu](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py#L52-L109)
 - 测试：[tests/test_refactor_wan13b_rollout_cuda_graph.py::test_reference_cannot_be_missing_or_in_native_timer](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/tests/test_refactor_wan13b_rollout_cuda_graph.py#L135-L144)
 - 核对命令：`dmd_knowledge.py locate --implementation wan-rollout-graph --repo /project/DMD-System --show-code`
+
+<a id="w6-native-metadata-barrier"></a>
+
+## W6 r46 原生 metadata barrier 恢复 packet
+
+- ID：`w6-native-metadata-barrier`；用途：historical_component
+- 范围：历史 W6 AR、同 FA3 原始 varlen 路径，两周期/16 ranks；非通用去同步优化。
+- 正确性前提：{"workload": "W6", "attention_backend": "FA3", "metadata_semantics_preserved": true, "physical_gpus": 16}
+- 收益条件：{"same_backend_comparison": true, "metadata_barrier_policy_measured": true}
+- 接入：检查 --restore-native-barrier、cu_q.tolist()、350 次读取 census 与原始 backend；只在匹配 packet 内显式开启。
+- 回退：新进程关闭 restore-native-barrier，使用同 FA3 control；保留原生注意力与输入。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：当前 workload 的梯度、组合、容量和恢复仍需验证。
+- 入口：[artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py::NativeMetadataBarrier](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L7-L45)
+- 接入代码：[artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py::install_on_session](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L48-L55)
+- 接入代码：[artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py::main](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py#L6-L48)
+- 测试：[artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py::test_actual_tolist_before_original_call_and_two_cycle_read_census](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py#L24-L43)
+- 核对命令：`dmd_knowledge.py locate --implementation w6-native-metadata-barrier --repo /project/DMD-System --show-code`
+
+<a id="w3-frozen-ffn-up-replay"></a>
+
+## W3 r1 冻结 FFN-up checkpoint 结果复用
+
+- ID：`w3-frozen-ffn-up-replay`；用途：historical_component
+- 范围：155ffbb5 历史 GAN Critic blocks38/39、两周期/10次C更新；接入硬编码 A100/SM80、world16 与 local_rank=rank%8、Torch 2.10.0+cu128/CUDA 12.8；旧 addmm ABI，不支持任意层或解析二阶 backward。
+- 正确性前提：{"workload": "W3", "grad_mode": "with_grad", "frozen_base_only": true, "replay_scope_validated": true, "gpu_family": "A100", "physical_gpus": 16, "gpus_per_node": 8, "torch_version": "2.10.0+cu128", "cuda_version": "12.8"}
+- 收益条件：{"replay_reuses_saved_output": true, "saved_compute_exceeds_cache_cost": true, "memory_headroom": true}
+- 接入：历史 NativeDownSAC 的 up_blocks 只接受 () 或 (38,39)；由 candidate_bundle.up_blocks 传入；核对 frozen-up guard、版本/graph FIFO 与释放。manual_runtime_scope 明确拒绝非 A100/SM80、非 world16 或不同 Torch/CUDA；H100/8卡只能提取机制后重新适配，不应删除 guard 冒充原样兼容。硬件/拓扑限制属于此历史接入，不能据此否定结果缓存机制在其他环境的可能收益。
+- 回退：使用相同历史 control 的 up_blocks=()，保留已存在 down replay 路径与原训练语义。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：当前 workload 的梯度、组合、容量和恢复仍需验证。
+- 入口：[src/distillschedule/runtime/helios_gan_manual/down_replay.py::NativeDownSAC.contexts](https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L66-L115)
+- 接入代码：[src/distillschedule/runtime/helios_gan_manual/down_replay.py::NativeDownSAC.__init__](https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L36-L54)
+- 接入代码：[src/distillschedule/runtime/helios_gan_manual/runtime.py::manual_runtime_scope](https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/runtime.py#L114-L227)
+- 测试：[tests/test_gan_frozen_up_retention.py::test_frozen_up_operand_contract_and_no_trainable_cache](https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py#L22-L33)
+- 测试：[tests/test_gan_frozen_up_retention.py::test_real_selective_addmm_replay_preserves_finite_difference_r1_gradients_rng](https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/tests/test_gan_frozen_up_retention.py#L36-L63)
+- 核对命令：`dmd_knowledge.py locate --implementation w3-frozen-ffn-up-replay --repo /project/DMD-System --show-code`
+
+<a id="role-producer-dispatch"></a>
+
+## 按 producer_dispatch 执行真实 forward/backward
+
+- ID：`role-producer-dispatch`；用途：runtime_component
+- 范围：resident replicated role pools；CPU/Gloo 合同，不支持自动推导任意 FSDP/offload 调度。
+- 正确性前提：{"resident_replicated_pools": true, "dispatch_identity_validated": true, "logical_state_mapping_preserved": true}
+- 收益条件：{"cost_domain_matches_target": true}
+- 接入：将已验证 producer_dispatch 交给 RolePoolExecutor；核对 rank一致性、实际forward/backward事件与版本，不能只修改 cost-model 输出。
+- 回退：使用原已验收的 producer 顺序；不能只替换预测表而宣称执行恢复。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：未定位到覆盖该精确历史变体的独立测试；不能借邻近测试声明验收。
+- 入口：[src/distillschedule/open_workload/role_transport.py::RolePoolExecutor._run_cycle](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L276-L466)
+- 接入代码：[src/distillschedule/open_workload/role_transport.py::RolePoolExecutor._prepare](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L157-L225)
+- 接入代码：[src/distillschedule/open_workload/role_transport.py::RolePoolExecutor.run](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L227-L255)
+- 核对命令：`dmd_knowledge.py locate --implementation role-producer-dispatch --repo /project/DMD-System --show-code`
+
+<a id="wan-exact-ema-11-20"></a>
+
+## W1 r34 已知11–20步的原生EMA图
+
+- ID：`wan-exact-ema-11-20`；用途：historical_component
+- 范围：只支持原reference FP32 resident EMA、优化步10起、11..20的十个已知decay和两个原生周期；不是无限训练图。
+- 正确性前提：{"workload": "W1", "ema_coefficients": "known_steps_11_20", "resident_fp32_reference_ema": true}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
+- 接入：核对schedule/identity/stream guards；通过explicit_worker显式启用；超出已知区间需重新设计并验收，不能删掉 guard。
+- 回退：新进程使用 enabled=False 的原 reference EMA。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：当前 workload 的梯度、组合、容量和恢复仍需验证。
+- 入口：[artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py::ExactEMAStep](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L13-L29)
+- 入口：[artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py::capture](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L31-L57)
+- 接入代码：[artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py::explicit_worker](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L60-L99)
+- 测试：[artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py::test_ten_real_cpu_updates_bitwise_output_metadata_and_rng](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py#L27-L38)
+- 核对命令：`dmd_knowledge.py locate --implementation wan-exact-ema-11-20 --repo /project/DMD-System --show-code`
+
+<a id="helios-trainable-timestep-residual"></a>
+
+## Helios trainable timestep residual backward
+
+- ID：`helios-trainable-timestep-residual`；用途：runtime_component
+- 范围：当前Helios phase_local梯度实现；有具体shape、dtype和reduction约束，不是no-grad输出缓存。
+- 正确性前提：{"grad_mode": "with_grad", "timestep_gradients_preserved": true, "bf16_before_reduction": true}
+- 收益条件：{"pointwise_staging_on_critical_path": true}
+- 接入：函数名含nograd的安装入口也包含训练态分支，逐项核对trainable_residual_backward及phase_local条件，确认真实调用。
+- 回退：恢复原生residual backward路径；保留梯度和reduction顺序。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：未定位到覆盖该精确历史变体的独立测试；不能借邻近测试声明验收。
+- 入口：[src/distillschedule/runtime/helios_residual_kernel.py::fused_gated_residual_trainable_temb_backward_chunk](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_kernel.py#L327-L391)
+- 接入代码：[src/distillschedule/runtime/helios_residual_fusion.py::install_generator_nograd_residual_fusion](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_fusion.py#L58-L587)
+- 核对命令：`dmd_knowledge.py locate --implementation helios-trainable-timestep-residual --repo /project/DMD-System --show-code`
+
+<a id="h3-block49-hybrid-output-cache"></a>
+
+## W6 r1 block49 GPU结果缓存
+
+- ID：`h3-block49-hybrid-output-cache`；用途：historical_component
+- 范围：45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。
+- 正确性前提：{"workload": "W6", "cache_key_complete": true, "cached_gradients_preserved": true}
+- 收益条件：{"saved_cache_transfer_exceeds_overhead": true, "memory_headroom": true}
+- 接入：只在对应历史strategy配置启用GPU_BLOCKS=(49,)；核对原父模块身份、GPU输出存储计数与consumer释放。
+- 回退：恢复原SHA绑定parent pool及pinned CPU存储策略，不改变原始模型或attention。
+- 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
+- 测试缺口：当前 workload 的梯度、组合、容量和恢复仍需验证。
+- 入口：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::pool_class](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124)
+- 接入代码：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::install](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137)
+- 接入代码：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::validate_receipt](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147)
+- 测试：[tests/test_h3_ar_hybrid_cache.py::test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/tests/test_h3_ar_hybrid_cache.py#L57-L69)
+- 核对命令：`dmd_knowledge.py locate --implementation h3-block49-hybrid-output-cache --repo /project/DMD-System --show-code`
 

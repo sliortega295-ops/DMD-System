@@ -11,7 +11,22 @@ from dmd_perf import load, require, text
 
 CATALOG = Path(__file__).resolve().parents[1] / "assets/implementation-map.json"
 STATUSES = {"linked", "method_only", "unresolved"}
-RELATIONS = {"current_related", "historical_reference"}
+RELATION_ACTIONS = {
+    "historical_implementation": "INSPECT_HISTORICAL_IMPLEMENTATION",
+    "reusable_candidate": "VALIDATE_CURRENT_REUSE",
+    "adaptation_example": "ADAPT_BEFORE_USE",
+    "diagnostic_tool": "DIAGNOSTIC_ONLY",
+    "conceptual_reference": "CONCEPT_ONLY",
+    # Read older private records without upgrading their broad relationship.
+    "current_related": "INSPECT_RELATIONSHIP",
+    "historical_reference": "INSPECT_RELATIONSHIP",
+}
+RELATIONS = set(RELATION_ACTIONS)
+
+
+def relation_summary(link):
+    return {"relationship_action": RELATION_ACTIONS[link["relationship"]],
+            "direct_reuse_verified": False}
 
 
 def symbol_span(source, symbol):
@@ -94,14 +109,17 @@ def validate_case(case, catalog):
     require(len({link["id"] for link in links}) == len(links), "duplicate case code link")
     for link in links:
         require(link["id"] in catalog, "unknown implementation link: " + link["id"])
-        require(link.get("relationship") in RELATIONS, "declare historical/current code relationship")
+        require(link.get("relationship") in RELATIONS, "declare scoped code relationship")
         text(link.get("note"), "code relationship note")
+        if catalog[link["id"]]["usage_mode"] in {"diagnostic_only", "analysis_tool"}:
+            require(link["relationship"] not in {"historical_implementation", "reusable_candidate"},
+                    "analysis/diagnostic source is not a runtime implementation")
 
 
 def summarize(case, catalog):
     nav = case["navigation"]
     return {**nav, "implementations": [
-        {**link, "title": catalog[link["id"]]["title"],
+        {**link, **relation_summary(link), "title": catalog[link["id"]]["title"],
          "entrypoints": [{k: ref[k] for k in ("repository", "revision", "path", "symbol", "anchor_url")}
                          for ref in catalog[link["id"]]["entrypoints"]],
          "locate": "locate --implementation " + link["id"]}

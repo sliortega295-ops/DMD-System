@@ -77,7 +77,7 @@ finite、调用计数和版本相同不能替代梯度、参数与 optimizer 状
 - 不应重复：CPU 检查线索不能证明 GPU 恢复内存已解决
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case livewan-checkpoint-memory-lead`
-- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/training/checkpoint.py::save_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L319-L456)
 - 函数入口：[src/distillschedule/training/checkpoint.py::restore_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L541-L559)
 - 来源：仅本地会话线索，未公开原始会话；缺少可核实的公开实验回执。
@@ -118,7 +118,7 @@ finite、调用计数和版本相同不能替代梯度、参数与 optimizer 状
 - 不应重复：不能用 metadata/RNG 名义相同跳过 baseline 失败
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case planner-baseline-self-parity-fails`
-- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/cost_model.py::CostModel](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195)
 - 函数入口：[src/distillschedule/search/measurement.py::normalize_native](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98)
 - 来源：[sliortega295-ops/DMD-System / DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md](https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md#L1)；定位：报告范围 L1–L213；L1: Native planner continuation: LiveWan complete, H3 numerical gate blocked；L19: Environment and denominator；L41: LiveWan: completed loop；L74: Memory caveat；L81: H3: native integration works, numerical admission fails；L107: Actual blocker and repeat experiment；L146: Integration bugs fixed and preserved failures；L185: Evidence, replay and stopping point；原定位：结果、合同、限制与失败记录
@@ -140,7 +140,7 @@ finite、调用计数和版本相同不能替代梯度、参数与 optimizer 状
 - 不应重复：不能 checkpoint 含 optimizer 或改变 Self-Forcing cache 语义的宏调用
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case dmd-pure-call-checkpoint-contract`
-- 关联实现：[Helios FA2 selective checkpoint 保留](implementations.md#helios-selective-checkpoint)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios FA2 selective checkpoint 保留](implementations.md#helios-selective-checkpoint)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/fsdp2_static.py::_selective_flash_checkpoint_contexts](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L84-L111)
 - 函数入口：[src/distillschedule/runtime/fsdp2_static.py::configure_fsdp2_checkpointing](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L171-L290)
 - 来源：[sliortega295-ops/DMD-System / optimization_capabilities.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md#L1)；定位：报告范围 L1–L239；L1: Physical capabilities and executable plans；L20: Reuse the existing runtime；L37: Four uses of one executable policy；L59: Model adaptation, not optimization-script copying；L76: Scoped native owner example: DMD2 UNet checkpointing；L113: Official Self-Forcing: Fake-only checkpoint policy；L135: Modern native flow planning is a separately qualified CPU slice；L171: Direct single-CUDA immutable sharing；原定位：结果与证据边界
@@ -277,3 +277,43 @@ finite、调用计数和版本相同不能替代梯度、参数与 optimizer 状
 - 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
 - 定位命令：`dmd_knowledge.py locate --case wan-placement-numerics-failure`
 - 来源：[sliortega295-ops/DMD-System / wan13b_fair_pr22_iteration328_20260822.md](https://github.com/sliortega295-ops/DMD-System/blob/524048c94c6374ae5071bc23e93daf19fc1e0bb9/docs/experiments/wan13b_fair_pr22_iteration328_20260822.md#L1)；定位：报告范围 L1–L101；L1: Iteration 328 — Wan1.3B fair Resident/FSDP2 result；L3: Status；L10: Source and compatibility patch；L28: Frozen workload；L46: Per-placement execution；L57: Strict cross-placement correctness；L82: Conclusion boundary；L90: Resource and cleanup evidence；原定位：结果、合同、限制与失败记录
+
+### Helios B2：兼容调用日程仍被数值门拒绝
+
+- ID：helios-b2-rollout-numerical-rejection
+- 状态：correctness_failure / HISTORICAL_NUMERICAL_FAILURE
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：schedule-compatible B2已移除metadata-only冲突、仅合批相同物理日程并检查per-row B1；15份保留rank回执均失败，normalized-L2 0.058–0.071、cosine 0.9977–0.9984。
+- 经验：不能把合批自动归为纯调度等价；这是数值拒绝，缺失的第16份回执不能补成失败或PASS，也没有正式速度结果。
+- 范围：No-GAN兼容B2历史实验；GAN计划引用它作为匹配负例，不是GAN已测B2结果。
+- 历史上下文：{"workload": "W2", "model_family": "Helios14B", "training_mode": "training", "physical_gpus": 16, "rollout_batch": 2}
+- 正确性前提：{"logical_rows_rng_and_gradient_contract_preserved": true}
+- 收益条件：{}
+- 失败分类：numerical_gate_rejection
+- 重试信号：新的实现或误差归因改变该数值结论
+- 最小验证：定位每行数值差异和运算路径变化；仅在新证据解释并修复原因后先做局部parity
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：method_only；本条提供来源明确的方法或诊断，不提供未定位的runtime实现。
+- 定位命令：`dmd_knowledge.py locate --case helios-b2-rollout-numerical-rejection`
+- 结构化事实：{"preserved_failed_rank_receipts": 15, "expected_ranks": 16, "performance_status": "NOT_RUN"}
+- 来源：[sliortega295-ops/DMD-System / plan.md](https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md#L63)；定位：iter355_helios14b_hsdp_compatible_b2_correctness_r2_20260824
+
+### Helios GAN：逻辑版本标签不能重写真实Adam与scheduler时钟
+
+- ID：helios-logical-native-clock-mapping
+- 状态：source_contract / HISTORICAL_SOURCE_REPORTED
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：systems-only bootstrap的实际Adam/scheduler为G2/C10，逻辑版本G200/C1000；两周期后逻辑G202/C1010/EMA802，物理G4/C20/EMA802。早期混同命名空间的adapter在cycle1前拒绝。
+- 经验：以不可变映射连接两个时钟，只对ledger/receipt标签施加offset；不为让日志相同而修改Adam、scheduler、EMA或分支判断。
+- 范围：W3 systems-only bootstrap，不是官方checkpoint1000；每种workload独立定义映射。
+- 历史上下文：{"workload": "W3", "training_mode": "training", "bootstrap": "systems_only"}
+- 正确性前提：{"logical_native_clock_mapping_validated": true, "optimizer_scheduler_state_preserved": true}
+- 收益条件：{}
+- 失败分类：namespace_mapping_defect
+- 重试信号：出现逻辑和真实counter不一致，需要核对既有bootstrap映射
+- 最小验证：分别核对初始、每action、周期和最终逻辑/物理计数与state；恢复后仍使用同一不可变映射
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：method_only；本条提供来源明确的方法或诊断，不提供未定位的runtime实现。
+- 定位命令：`dmd_knowledge.py locate --case helios-logical-native-clock-mapping`
+- 结构化事实：{"initial_logical": {"G": 200, "C": 1000, "EMA": 800}, "initial_physical": {"G": 2, "C": 10, "EMA": 800}, "final_logical": {"G": 202, "C": 1010, "EMA": 802}, "final_physical": {"G": 4, "C": 20, "EMA": 802}, "optimizer_state_rewritten": false}
+- 来源：[sliortega295-ops/DMD-System / DMD_HELIOS_COMPONENT_CLOSURE_20260908.md](https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L136)；定位：Its actual restored Adam/scheduler counters

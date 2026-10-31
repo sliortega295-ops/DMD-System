@@ -60,7 +60,15 @@ W2/W3 的 688.73/762.44s 是旧角色切换／offload 路径，不能称“全�
 | W2 阶段内部分参数保留 r36 | 83.970328→83.023065 | [r36](../../artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json)，`e2374f08`；本行同源增量约0.947s，非109.17s新基线配对 |
 | W3 冻结 FFN-up replay 保留 | 117.074207→116.673757 | [六项 r1](../../artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json)，`155ffbb5`；约0.400s增量，REVIEW，不与113.59s无条件叠加 |
 | W4 重新选择仅A／完整仅B | 仅A **82.330023**；完整仅B **42.123914** | [R3](../../artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json)，新两格同源 `053bdcad`；旧83.853875 baseline与42.407027联合full来自父源，不能伪称新源重跑全四格 |
-| W6 同 FA3 的 metadata barrier 消除 r46 | 262.384847→253.740367 | [r46](../../artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json)，`69a94649`加外部 packet；同FA3下约8.644s增量，REVIEW，非把旧SDPA255.67当新配对分母 |
+| W6 同 FA3 的原生 metadata barrier 恢复 r46 | 262.384847→253.740367 | [r46](../../artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json)，`69a94649`加外部 packet；读取由每 rank 每周期0次变350次，单配对约8.644s改善，机制原因未隔离，数值REVIEW |
+
+2026-10-31 勘误：本表此前把 r46 写成“消除 metadata barrier”，方向有误。
+原回执的 `actual_native_metadata_reads_per_rank_cycle` 为 control=0、candidate=350；
+[归档实现](../../artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py)
+启用 `restore-native-cu-metadata-barrier.v1` 后执行 `cu_q.tolist()`，worker 使用
+`--restore-native-barrier`。这项观察是在同 FA3 下恢复原生读取/同步，
+不能据此建议删除同步，也不能推出恢复 barrier 普遍更快；尚未完成改善原因隔离与完整数值验收。
+更早 SDPA 的历史时间不能混入这一配对分母。原始实验回执保留不变。
 
 W4 旧79.15s仅B是兼容子集；72.12s仅A包含 CPU optimizer offload；都不能代替后续完整B／重选A结果。完整B的4.375MiB是末边界采样余量，不是证明全程容量宽裕。[总源码索引](GITHUB_SOURCE_SNAPSHOT_20261019.md)列明这些版本的代码与外部 packet。
 

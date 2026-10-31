@@ -96,7 +96,7 @@
 - 不应重复：不能对整个模型粗暴 cast 以消除重复转换
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-frozen-dtype-not-whole-model`
-- 关联实现：[Wan 冻结 LoRA 路径的 cast cache wrapper](implementations.md#wan-cast-cache)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan 冻结 LoRA 路径的 cast cache wrapper](implementations.md#wan-cast-cache)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_cast.py::install_generator_nograd_lora_cast_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L265-L427)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md#L1)；定位：报告范围 L1–L88；L6: FSDP: several forwards in one iteration；L24: 1. All-gather once per iteration；L33: 2. Cast frozen models to the compute dtype before wrapping in FSDP；L45: 3. Keep the frozen encoder's parameters resident；L54: 4. Cross-attention K/V cache；L63: 5. Remove host syncs；L72: 6. Spend the freed memory on speed；L83: What ships with it；原定位：frozen weights / compute dtype
 

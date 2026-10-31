@@ -33,7 +33,7 @@
 - 不应重复：不重复调用 to_empty 或强行 swap live tensor
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-role-transition-alias-owners`
-- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
 - 来源：[sliortega295-ops/DMD-System / rb16_full5_2g6c_continuous_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_full5_2g6c_continuous_20260810.md#L1)；定位：报告范围 L1–L220；L1: RB16 continuous Full5: 8G4S4T to per-node 2G6C；L3: Scope；L17: Preflight decision；L31: Status；L57: Preserved transition attempts；L81: Iteration 281 correction: Step10-A backend parity；L113: Iteration 281 subgroup-initialization correction；L135: Iteration 282 control and process-world correction；原定位：结果、合同、限制与失败记录
 
@@ -54,7 +54,7 @@
 - 不应重复：correctness 模式通过不取消 timing OOM
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-no-flush-timing-oom`
-- 关联实现：[Helios 单次 no-grad rollout 的参数驻留](implementations.md#helios-rollout-residency)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios 单次 no-grad rollout 的参数驻留](implementations.md#helios-rollout-residency)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/runtime/fsdp2_nograd_persistence.py::generator_nograd_persistent_unshard_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_nograd_persistence.py#L43-L162)
 - 来源：[sliortega295-ops/DMD-System / iteration378_c23_allocator_noflush.md](https://github.com/sliortega295-ops/DMD-System/blob/7f64327754a31a409f581470f588c5e94a2787b4/docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md#L29)；定位：观察中的数值文本锚点 L29；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -75,7 +75,7 @@
 - 不应重复：解除 OOM 不自动等于比有 flush 的 control 更快
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-expandable-segments-cost`
-- 关联实现：[Helios 单次 no-grad rollout 的参数驻留](implementations.md#helios-rollout-residency)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios 单次 no-grad rollout 的参数驻留](implementations.md#helios-rollout-residency)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/runtime/fsdp2_nograd_persistence.py::generator_nograd_persistent_unshard_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_nograd_persistence.py#L43-L162)
 - 来源：[sliortega295-ops/DMD-System / iteration379_c24_expandable_noflush.md](https://github.com/sliortega295-ops/DMD-System/blob/ae6f2b28b97739143b02f21c6496d3afbb5765d0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md#L33)；定位：观察中的数值文本锚点 L33；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -96,7 +96,7 @@
 - 不应重复：不要按 host OOM 调参处理 CUDA OOM
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case h100-w5-pure-resident-oom`
-- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py::install_checkpoint_boundary_cpu_offload](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L187-L336)
 - 来源：[sliortega295-ops/DMD-System / w5_resident_actual_capacity_failure_r4.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json#L5)；定位：观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界
 
@@ -117,6 +117,26 @@
 - 不应重复：不能把约 1256 GiB cgroup peak 写成进程 RSS 之和
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case h100-w6-host-budget`
-- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[H3 checkpoint 边界 CPU offload](implementations.md#h3-boundary-offload)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py::install_checkpoint_boundary_cpu_offload](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py#L187-L336)
 - 来源：[sliortega295-ops/DMD-System / report.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md#L1)；定位：报告范围 L1–L14；L1: W6 same0419 native single-trial matrix；原定位：该结果及 qualification / NOT_RUN 边界
+
+### Helios GAN：完成校准但被预测容量余量政策拒绝
+
+- ID：helios-capacity-policy-rejection-not-oom
+- 状态：inconclusive / HISTORICAL_POLICY_REJECTION
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：C25完成correctness与fenced calibration，无OOM；peak allocated 39,734,593,536B，而2GiB余量后的模型限制39,219,232,768–39,290,535,936B。状态PREDICTED_CAPACITY_FAIL；124.029020秒是校准时间。
+- 经验：政策拒绝、真实CUDA OOM、未运行和测量缺失分别保存；不能用校准时间代替未执行的native timing，也不能删除余量政策制造可行。
+- 范围：该W3组件搜索、chunk2048与Generator unshard persistence；当前源与原余量政策。
+- 历史上下文：{"workload": "W3", "physical_gpus": 16, "training_mode": "training"}
+- 正确性前提：{"capacity_policy_frozen": true}
+- 收益条件：{"capacity_model_metric_defined": true}
+- 失败分类：predicted_capacity_policy
+- 重试信号：峰值或可用容量改变，满足原政策
+- 最小验证：核对allocated模型、非allocator用量、预留余量与实测阶段；新可行性证据再进入native确认
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：method_only；本条提供来源明确的方法或诊断，不提供未定位的runtime实现。
+- 定位命令：`dmd_knowledge.py locate --case helios-capacity-policy-rejection-not-oom`
+- 结构化事实：{"correctness_completed": true, "calibration_completed": true, "cuda_oom": false, "native_timing_status": "NOT_RUN", "predicted_capacity_status": "FAIL"}
+- 来源：[sliortega295-ops/DMD-System / DMD_HELIOS_COMPONENT_CLOSURE_20260908.md](https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L92)；定位：## GAN safety rejection is not an OOM

@@ -42,7 +42,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不能把无 autograd 的底层函数移入可微路径
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case wan-lora-rounding-source`
-- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_epilogue.py::fused_lora_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py#L55-L92)
 - 来源：[sliortega295-ops/DMD-System / wan13b_lora_epilogue.py](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py)；定位：module docstring; fused_lora_epilogue; inline PTX
 
@@ -63,7 +63,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不能把 Score 的 BF16 modulation 当成同一精度合同
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case livewan-modulation-source`
-- 关联实现：[LiveWan Generator modulation canary 与 runtime scope](implementations.md#livewan-generator-modulation)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[LiveWan Generator modulation canary 与 runtime scope](implementations.md#livewan-generator-modulation)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/livewan_generator_modulation.py::build](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L18-L65)
 - 函数入口：[src/distillschedule/runtime/livewan_generator_modulation.py::model_runtime_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py#L140-L146)
 - 来源：[sliortega295-ops/DMD-System / livewan_generator_modulation.py](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py)；定位：build.op guards; canary_scope; PLAN_CONTRACT
@@ -90,12 +90,12 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 ### Helios 的同类 chunk 扩大只有小收益或回退
 
 - ID：helios-modulation-chunk-neutral
-- 状态：negative_observation / HISTORICAL_SOURCE_REPORTED
+- 状态：inconclusive / HISTORICAL_SOURCE_REPORTED
 - 来源类别：Helios A100 history；本次未复现实验。
 - 观察：No-GAN ladder 的 chunk2048 观察为 116.008085 秒，未优于此前点；GAN-on 独立配对 143.379704→143.206713 秒，仅约 0.12%。
 - 经验：模型家族、序列长度、角色比例和原有融合会改变 chunk 选择；一次跨 workload 成功不构成通用参数。
 - 范围：Helios No-GAN 与 GAN-on 是两个独立合同，不能直接比绝对秒数。
-- 历史上下文：{"workload": "W2", "model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gan_enabled": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
 - 正确性前提：{"dtype_layout_supported": true, "gradient_path_supported": true, "numerical_contract_preserved": true}
 - 收益条件：{"fusion_cost_on_critical_path": true, "saved_traffic_exceeds_overhead": true}
 - 失败分类：workload_dependent_small_or_negative_gain
@@ -104,7 +104,15 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：Wan 的大收益不是 Helios 重试的证据
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-modulation-chunk-neutral`
-- 关联实现：[Helios modulation chunk 参数入口](implementations.md#helios-modulation-chunks)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 独立子观察 `w2`：No-GAN ladder 的 chunk2048 为116.008085秒；不是与GAN-on配对。
+  - 上下文：{"model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16, "workload": "W2", "gan_enabled": false, "update_ratio": "G1/C5/EMA5"}
+  - 状态：inconclusive / HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED
+  - 来源：[docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L43)
+- 独立子观察 `w3`：GAN-on 同源单配对143.379704→143.206713秒，约0.12%；不认定稳定收益。
+  - 上下文：{"model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16, "workload": "W3", "gan_enabled": true, "update_ratio": "G1/C5/EMA1"}
+  - 状态：positive_observation / HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED
+  - 来源：[docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md](https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md#L34)
+- 关联实现：[Helios modulation chunk 参数入口](implementations.md#helios-modulation-chunks)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_modulation_chunks.py::configure_helios_modulation_chunk_tokens](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulation_chunks.py#L19-L85)
 - 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L43)；定位：观察中的数值文本锚点 L43；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 - 来源：[sliortega295-ops/DMD-System / iteration354_modulation_chunk2048.md](https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md#L34)；定位：观察中的数值文本锚点 L34；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -126,7 +134,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不要把这份 no-grad 实现直接用于梯度路径
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case wan-lora-epilogue-positive`
-- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_epilogue.py::fused_lora_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py#L55-L92)
 - 来源：[sliortega295-ops/DMD-System / WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md](https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md#L7)；定位：观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -147,7 +155,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不能把 hidden bitwise 写成所有梯度 bitwise
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-modnorm-explicit-backward`
-- 关联实现：[Helios modulation norm 的安装与融合实现](implementations.md#helios-modnorm)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios modulation norm 的安装与融合实现](implementations.md#helios-modnorm)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_modulated_norm_fusion.py::install_exact_modulated_norm_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774)
 - 函数入口：[src/distillschedule/runtime/helios_modulated_norm_kernel.py::fused_modulated_norm_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_kernel.py#L207-L263)
 - 来源：[sliortega295-ops/DMD-System / iteration363_c11_modnorm_backward.md](https://github.com/sliortega295-ops/DMD-System/blob/06b53e85e6598bbc43d93c785a85520da7c3f716/docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md#L5)；定位：观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -169,7 +177,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：微测 5–6 倍不能当作训练周期加速
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-fused-modnorm-forward-backward`
-- 关联实现：[Helios modulation norm 的安装与融合实现](implementations.md#helios-modnorm)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios modulation norm 的安装与融合实现](implementations.md#helios-modnorm)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_modulated_norm_fusion.py::install_exact_modulated_norm_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_fusion.py#L24-L774)
 - 函数入口：[src/distillschedule/runtime/helios_modulated_norm_kernel.py::fused_modulated_norm_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_modulated_norm_kernel.py#L207-L263)
 - 来源：[sliortega295-ops/DMD-System / iteration367_c14_fused_layernorm.md](https://github.com/sliortega295-ops/DMD-System/blob/b6cdeed6211bcfb5433840da68d2339b427946f0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md#L1)；定位：报告范围 L1–L40；L1: Iteration 367: C14 fused BF16 LayerNorm and modulation；L3: Frozen comparison；L14: Evidence；L31: Decision；原定位：结果、合同、限制与失败记录
@@ -192,7 +200,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：孤立 bitwise 不构成忽略 Full5 回退的理由
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-bf16-crossnorm-reversal`
-- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/runtime/helios_fused_layernorm_kernel.py::fused_bf16_layernorm_modulation](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_fused_layernorm_kernel.py#L135-L222)
 - 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1)；定位：报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录
 
@@ -213,7 +221,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不能把 canary 时间写成 world16 已测收益
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-frozen-crossnorm-unrun`
-- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/runtime/helios_fused_layernorm_kernel.py::fused_bf16_layernorm_modulation](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_fused_layernorm_kernel.py#L135-L222)
 - 来源：[sliortega295-ops/DMD-System / iteration386_c27_frozen_cross_norm.md](https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md#L1)；定位：报告范围 L1–L83；L1: Iteration 386: C27 frozen cross-attention LayerNorm canary；L3: Pause-point summary；L16: Source-qualified hypothesis；L38: Canary evidence；L73: Decision and stop boundary；原定位：结果、合同、限制与失败记录
 
@@ -234,7 +242,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：micro 的 1.59/2.09 倍不直接等于约 0.44% 之外的新收益
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-history-addcat-fusion`
-- 关联实现：[Helios history/current add+cat 融合](implementations.md#helios-history-fusion)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios history/current add+cat 融合](implementations.md#helios-history-fusion)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_history_current_fusion.py::install_exact_history_current_fusion](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_history_current_fusion.py#L77-L179)
 - 来源：[sliortega295-ops/DMD-System / iteration380_c25_history_current_fusion.md](https://github.com/sliortega295-ops/DMD-System/blob/160f19543cfdefd71ba9f8dc73bd79cad7b6d207/docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md#L5)；定位：观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -255,9 +263,9 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：不因减少 kernel 数就重写高性能 GEMM
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-vendor-gemm-fusion-tradeoff`
-- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan no-grad LoRA 融合及实际安装 wrapper](implementations.md#wan-lora-epilogue)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_epilogue.py::fused_lora_epilogue](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py#L55-L92)
-- 关联实现：[Wan 可微 LoRA epilogue 的独立备选](implementations.md#wan-lora-grad-epilogue)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan 可微 LoRA epilogue 的独立备选](implementations.md#wan-lora-grad-epilogue)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_grad_epilogue.py::fused_lora_epilogue_with_grad](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L79-L85)
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_grad_epilogue.py::make_epilogue_autograd_function](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_grad_epilogue.py#L51-L76)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1)；定位：报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：Read these first / GEMM prologue and epilogue
@@ -279,7 +287,7 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：keys/shapes 变化不能只验当前 forward
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-qkv-layout-state-mapping`
-- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；conceptual_reference；仅说明 checkpoint 状态生命周期；save/restore 不实现 QKV 权重布局转换，也没有该转换的 optimizer/state 索引映射。
 - 函数入口：[src/distillschedule/training/checkpoint.py::save_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L319-L456)
 - 函数入口：[src/distillschedule/training/checkpoint.py::restore_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L541-L559)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1)；定位：报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：QKV packing; Removing layout copies
@@ -301,6 +309,47 @@ Generator 与冻结 Score 可能使用不同 dtype；复用前读调用方和包
 - 不应重复：另一架构上的逐位结果不能担保当前硬件
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-reduction-architecture-numerics`
-- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios LayerNorm/modulation canary](implementations.md#helios-crossnorm-canary)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/runtime/helios_fused_layernorm_kernel.py::fused_bf16_layernorm_modulation](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_fused_layernorm_kernel.py#L135-L222)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1)；定位：报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：Reproducing library reductions bit for bit
+
+### Helios：训练态 phase-local timestep 梯度融合与暂存
+
+- ID：helios-trainable-phase-local-timestep
+- 状态：positive_observation / HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：历史ladder的trainable timestep residual backward点为104.866740秒，随后phase-local gradient staging点103.952151秒，均单次观察；保留BF16先舍入再reduce及真实timestep梯度。
+- 经验：需要梯度的phase-local输入不能使用no-grad缓存替代；forward相同不够，需核对每个timestep输入梯度、reduction顺序和版本。
+- 范围：W2 No-GAN node-HSDP，iterations364/365，历史单次序列，未重新测量。
+- 历史上下文：{"workload": "W2", "training_mode": "training", "grad_mode": "with_grad", "timestep_mode": "phase_local"}
+- 正确性前提：{"grad_mode": "with_grad", "timestep_gradients_preserved": true, "bf16_before_reduction": true}
+- 收益条件：{"pointwise_staging_on_critical_path": true}
+- 失败分类：not_established
+- 重试信号：训练态phase_local计算与暂存占比显著
+- 最小验证：用代表shape检查output、hidden和全部timestep梯度、BF16 reduction顺序与零fallback，再做当前完整周期验证
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：linked；关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。
+- 定位命令：`dmd_knowledge.py locate --case helios-trainable-phase-local-timestep`
+- 关联实现：[Helios trainable timestep residual backward](implementations.md#helios-trainable-timestep-residual)；reusable_candidate；明确进入trainable_temb backward分支；名称中的nograd不能替代源码核查。
+- 函数入口：[src/distillschedule/runtime/helios_residual_kernel.py::fused_gated_residual_trainable_temb_backward_chunk](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_residual_kernel.py#L327-L391)
+- 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L105)；定位：### 4. Exact residual and timestep-gradient fusion
+
+### Helios：冻结QKV融合在M6144 canary未获益
+
+- ID：helios-frozen-qkv-canary-no-benefit
+- 状态：negative_observation / HISTORICAL_CANARY_ONLY
+- 来源类别：Helios A100 history；本次未复现实验。
+- 观察：iteration374对主导M6144 shape尝试一个融合QKV GEMM，live long-sequence canary未改善，在world16实施/正式Full5之前停止。
+- 经验：局部shape负例限定该实现和形状；不是测过完整训练后变慢，也不否定不同shape或库中的QKV融合。
+- 范围：W2 No-GAN frozen-base QKV projection canary，world16 timing NOT_RUN。
+- 历史上下文：{"workload": "W2", "training_mode": "training", "gemm_m": 6144}
+- 正确性前提：{"qkv_layout_and_gradient_contract_preserved": true}
+- 收益条件：{"target_gemm_shape_measured": true}
+- 失败分类：no_canary_benefit
+- 重试信号：shape、库或融合实现改变
+- 最小验证：先在目标shape比较原库与融合完整开销，只有新canary证据才购买全模型试验
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：method_only；本条提供来源明确的方法或诊断，不提供未定位的runtime实现。
+- 定位命令：`dmd_knowledge.py locate --case helios-frozen-qkv-canary-no-benefit`
+- 结构化事实：{"measurement_scope": "canary", "gemm_m": 6144, "full_workload_performance_status": "NOT_RUN"}
+- 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L96)；定位：One fused QKV GEMM

@@ -402,12 +402,28 @@ def validate_pack(pack=PACK):
             require(c["outcome"] == "unverified", "only unverified leads may omit public evidence")
         for ref in c["evidence"]:
             validate_reference(ref)
+        observations = c.get("observations", [])
+        require(isinstance(observations, list), "observations must be a list")
+        require(len({o["id"] for o in observations}) == len(observations), "duplicate observation id")
+        for obs in observations:
+            text(obs.get("id"), "observation.id")
+            text(obs.get("observation"), "observation text")
+            require(isinstance(obs.get("conditions"), dict), "observation conditions required")
+            require(obs.get("outcome") in CASE_OUTCOMES, "invalid observation outcome")
+            text(obs.get("evidence_status"), "observation evidence status")
+            require(bool(obs.get("evidence")), "observation evidence required")
+            for ref in obs["evidence"]:
+                validate_reference(ref)
     return data
 
 
 def case_comparison(case, context):
     hard = condition_match(case["correctness_conditions"], context)
     return {"context_comparison": condition_match(case["conditions"], context),
+            "observation_comparisons": [{"id": o["id"], "conditions": o["conditions"],
+                "outcome": o["outcome"], "evidence_status": o["evidence_status"],
+                "context_comparison": condition_match(o["conditions"], context)}
+                for o in case.get("observations", [])],
             "correctness_comparison": hard,
             "performance_comparison": condition_match(case["performance_conditions"], context),
             "next_action": "DO_NOT_APPLY_AS_IS" if hard["conflicting"] else
@@ -416,7 +432,7 @@ def case_comparison(case, context):
 
 
 def locate_case(case_id, context, repo=None, source_repos=None, show_code=False, pack=PACK, stores=()):
-    from dmd_navigation import validate_catalog, locate
+    from dmd_navigation import validate_catalog, locate, relation_summary
     all_cases = validate_pack(pack)["cases"] + private_cases(stores)
     corrections(all_cases, context)
     cases = {c["id"]: c for c in all_cases}
@@ -431,7 +447,7 @@ def locate_case(case_id, context, repo=None, source_repos=None, show_code=False,
             **({"store": case["store"], "evidence_qualification": case["evidence_qualification"],
                 "evidence_errors": case["evidence_errors"], "decision": case["decision"]} if private else {}),
             "implementations": [{"relationship": link["relationship"], "relationship_note": link["note"],
-                **locate(link["id"], context, repo, source_repos, show_code, catalog)}
+                **locate(link["id"], context, repo, source_repos, show_code, catalog), **relation_summary(link)}
                 for link in navigation["implementations"]],
             "evidence_status": case["evidence_status"], "automatic_application": False,
             "notice": "Both case and implementation preconditions must be inspected. A related implementation may have a narrower scope."}
@@ -475,6 +491,9 @@ def brief_recall(result):
                         "next_action": c["next_action"],
                         "correctness_conflicts": c["correctness_comparison"]["conflicting"],
                         "code_status": c["navigation"]["status"], "correction": c.get("correction"),
+                        "code_relationships": [{k: i[k] for k in ("id", "relationship", "relationship_action", "direct_reuse_verified")}
+                                               for i in c["code_navigation"]["implementations"]],
+                        **({k: c[k] for k in ("facts", "interpretation", "observation_comparisons") if c.get(k)}),
                         **({"store": c["store"], "evidence_qualification": c["evidence_qualification"],
                             "reused_implementation_ids": [i["id"] for i in c["navigation"]["implementations"]],
                             "target_source": c["record"].get("source"),

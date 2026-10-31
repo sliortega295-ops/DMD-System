@@ -34,7 +34,7 @@
 - 不应重复：解析器缺陷不要靠重跑模型或删除多余事件修饰
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-scope-aware-validator`
-- 关联实现：[旧 Route-A 精确 saved-tensor offload](implementations.md#legacy-saved-tensor-offload)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A 精确 saved-tensor offload](implementations.md#legacy-saved-tensor-offload)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
 - 函数入口：[runtime/activation_offload.py::install_activation_offload_hooks](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L362-L407)
 - 函数入口：[runtime/activation_offload.py::AuditedSavedTensorOffloader](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L61-L347)
 - 来源：[sliortega295-ops/DMD-System / ra16_f5_glp_score4_20260809.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/ra16_f5_glp_score4_20260809.md#L1)；定位：报告范围 L1–L117；L1: RA16-F5-GLP-SCORE4: selective four-block Score lifecycle；L7: Question and frozen contract；L27: Validation gates；L35: Measured causal capacity result；L58: Correctness result；L79: Diagnostic timing (not a formal speedup claim)；L98: Interpretation and boundary；L111: Evidence；原定位：结果、合同、限制与失败记录
@@ -76,3 +76,22 @@
 - 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
 - 定位命令：`dmd_knowledge.py locate --case rb-judge-scope-and-contract`
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / judge.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/judge.md#L1)；定位：报告范围 L1–L43；L1: The judge；L5: Four gates；L19: When the judge may change, and when it may not；L26: Fake gains the judge caught；L38: Known limits of the judge；原定位：Four gates; When the judge may change; Known limits
+
+### ResearchBoost：隔离非bitwise组件，再验真实最终组合
+
+- ID：rb-nonbitwise-isolation-final-combination
+- 状态：source_contract / EXTERNAL_GUIDANCE_NOT_REPRODUCED
+- 来源类别：ResearchBoost external；本次未复现实验。
+- 观察：原方法用reference组件作为接口一致的替身，检查其余改动及组合；最终切回真实组件对原始baseline完成适当数值验收。
+- 经验：替身通过只说明该配置下其他改动；真实组件、依赖布局/梯度或组合发生变化仍要检验。验证层级按当前合同选择，不照抄固定100步或外部收益阈值。
+- 范围：外部训练验证方法，本系统未由此获得新的GPU数值结论。
+- 历史上下文：{"training_mode": "training"}
+- 正确性前提：{"standin_interface_and_gradient_contract_match": true, "original_baseline_preserved": true}
+- 收益条件：{}
+- 失败分类：not_established
+- 重试信号：一个已知非bitwise组件遮蔽其他改动差异
+- 最小验证：先隔离组件核对其他路径，最后验证真实组合对original baseline的结果，并记录比较对象与范围
+- 不应重复：不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验
+- 代码状态：method_only；本条提供来源明确的方法或诊断，不提供未定位的runtime实现。
+- 定位命令：`dmd_knowledge.py locate --case rb-nonbitwise-isolation-final-combination`
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L68)；定位：## When only one component cannot be bitwise

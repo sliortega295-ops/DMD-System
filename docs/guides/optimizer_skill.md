@@ -25,11 +25,11 @@ Codex 读取当前工作量，检索机制及历史正反案例，核对适用�
 
 ## 经验范围
 
-当前有 [19 个机制主题与 128 条案例/方法条目](../../skills/dmd-system-optimizer/references/knowledge/README.md)，
+当前有 [21 个机制主题与 134 条案例/方法条目](../../skills/dmd-system-optimizer/references/knowledge/README.md)，
 包括 Helios/Wan 连续执行与调度、H100 W1–W6、pinned staging、allocator、
 融合、编译、缓存、profiling 和 ResearchBoost 的外部经验。
-其中 122 条关联公开来源，6 条会话线索保持未核实；实测与方法建议分开。
-这不是 128 次独立成功实验，也不声称找全全部历史。
+其中 128 条关联公开来源，6 条会话线索保持未核实；实测与方法建议分开。
+这不是 134 次独立成功实验，也不声称找全全部历史。
 [覆盖报告](../../skills/dmd-system-optimizer/references/knowledge/coverage.md)
 列出历史筛选方法、来源统计和未完成项。
 
@@ -59,15 +59,15 @@ Codex 读取当前工作量，检索机制及历史正反案例，核对适用�
 --repo 核对 DMD 本地证据，历史文件可从本地已有的固定 Git 提交读取；不会联网拉取。
 外部来源可用 --source-repo OWNER/REPO=/absolute/checkout 指定独立 checkout，
 不会把 ResearchBoost 路径误当成本仓库文件。没有 checkout 时仍可读摘要和固定链接。
-sources 可搜索 136 份来源元数据，包括尚未提炼完的报告；索引命中不是验证通过。
+sources 可搜索 141 份来源元数据，包括尚未提炼完的报告；索引命中不是验证通过。
 检索不联网、调用模型或创建向量数据库。Codex 按需读取相关 Markdown 卡片，
 判断适用性；检索命中本身不代表批准应用。
 
 每条案例有独立的正确性/收益比较与具体重试计划。`locate` 可从经验定位到
-[29 个实现条目](../../skills/dmd-system-optimizer/references/knowledge/implementations.md)，
+[35 个实现条目](../../skills/dmd-system-optimizer/references/knowledge/implementations.md)，
 提供固定 commit 的函数行号、接入开关、guard、测试和回退。
-71 条经验有相关代码链接，19 条是纯方法，38 条的对应实现尚未定位。
-其中 13 个实现尚未找到专门测试入口；所有条目保留测试尚未覆盖的范围。“相关当前实现”不冒充历史计时源码。
+74 条经验有相关代码链接，24 条是纯方法，36 条的对应实现尚未定位。
+其中 15 个实现尚未找到专门测试入口；所有条目保留测试尚未覆盖的范围。历史实际实现、当前复用候选、需适配示例、诊断工具和概念相关分别标注；均不直接证明当前可复用。
 `--repo` 会核对源码 hash 与符号，`--show-code` 只读取有限片段，不导入或执行代码。
 具体实现可能比通用经验更窄，必须同时检查两层条件，例如 no-grad/B1 的 cross-KV
 不能直接用于需要梯度的调用。没有本地 checkout 时仍返回固定 GitHub 链接并保留未核对状态。

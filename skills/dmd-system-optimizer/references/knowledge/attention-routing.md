@@ -30,7 +30,7 @@
 - 状态：negative_observation / HISTORICAL_REVIEW
 - 来源类别：Helios optimization history；本次未复现实验。
 - 观察：实际 FA3 每周期每 rank 350 次调用；C2 255.528302602→257.709695683 秒。
-- 经验：快路径命中证据与收益证据分开；后续去同步的收益不把这次 backend 试验改写为成功。
+- 经验：快路径命中证据与收益证据分开；后续 r46 恢复原生 metadata barrier 的单次改善，不把这次 backend 试验改写为成功，也不证明删除同步有益。
 - 范围：W6 r43 的同源单配对，grad/selected attention 未改，numerical REVIEW。
 - 历史上下文：{"workload": "W6", "ranks": 16}
 - 正确性前提：{"attention_semantics_supported": true, "backward_and_cache_validated": true}
@@ -79,7 +79,7 @@
 - 不应重复：开关声明不等于 runtime 使用该 backend
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-fa2-backend-missing`
-- 关联实现：[Helios FA2 selective checkpoint 保留](implementations.md#helios-selective-checkpoint)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios FA2 selective checkpoint 保留](implementations.md#helios-selective-checkpoint)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/fsdp2_static.py::_selective_flash_checkpoint_contexts](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L84-L111)
 - 函数入口：[src/distillschedule/runtime/fsdp2_static.py::configure_fsdp2_checkpointing](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L171-L290)
 - 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1)；定位：报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录

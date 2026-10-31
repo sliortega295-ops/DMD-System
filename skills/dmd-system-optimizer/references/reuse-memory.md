@@ -98,13 +98,33 @@ the current file, `read_revision` identifies that historical source, and
 
 `linked` cases have references; `method_only` cases describe a check or decision
 without claiming a runtime patch; `unresolved` cases have no located corresponding
-implementation. Relations are `current_related` or `historical_reference`, never
-an assertion that a nearby implementation produced the old timing. Follow both
+implementation. Relationships specify how the source relates to the case:
+
+| Relationship | Meaning |
+| --- | --- |
+| `historical_implementation` | Pinned source actually used for the historical mechanism; its old guards and scope still apply. |
+| `reusable_candidate` | Current implementation of the same mechanism, requiring current integration and validation. |
+| `adaptation_example` | Example requiring adaptation; its measured scope does not transfer. |
+| `diagnostic_tool` | Analysis, profiling or a canary, not the runtime optimization. |
+| `conceptual_reference` | Related concept only; it does not implement the case's change. |
+
+`direct_reuse_verified` is false for every navigation result. Legacy private
+`current_related` / `historical_reference` labels remain readable as
+`INSPECT_RELATIONSHIP`, without promotion. Follow both
 case and implementation conditions. A general external fusion method can link
 to a narrower no-grad Wan example without inheriting that example's validity.
 Test names are navigation, not passed test receipts. Read `validation_scope` and
 `test_gap` before selecting current validation. Runtime safeguards remain the
 runner's responsibility; these tools report conflicts, not execution permissions.
+
+Mixed-workload cards contain independently sourced `observations`; `case`, full
+and brief `recall` expose `observation_comparisons` against the supplied context.
+Parent context does not stand in for the children. Structured `facts` retain
+intervention direction, failure role/ranks and measurement scope where recorded;
+`interpretation` separates an unisolated hypothesis from a measured observation.
+These fields preserve curated evidence; the helper does not infer causality or
+independently prove the truth of the report. A checker PASS on an unmodified
+branch cannot qualify an accelerated branch that the checker did not exercise.
 
 Retry plans contain `change_signals`, `minimum_probe` and `do_not_repeat`.
 They describe what new information justifies revisiting an idea; they are not

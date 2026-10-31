@@ -54,7 +54,7 @@
 - 不应重复：Step10-A 的边际改善不能直接外推 Full5
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-persistence-window`
-- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/zero3_module_granularity.py::census_zero3_module_granularity](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L25-L86)
 - 函数入口：[runtime/zero3_module_granularity.py::selected_preorder_leaf_records](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L89-L111)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_2m_persistence_result_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_2m_persistence_result_20260810.md#L9)；定位：观察中的数值文本锚点 L9；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -77,7 +77,7 @@
 - 不应重复：开启 overlap_comm 不自动等于更快
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-overlap-comm-regression`
-- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/zero3_module_granularity.py::census_zero3_module_granularity](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L25-L86)
 - 函数入口：[runtime/zero3_module_granularity.py::selected_preorder_leaf_records](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L89-L111)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_overlap_comm_result_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_overlap_comm_result_20260810.md#L9)；定位：观察中的数值文本锚点 L9；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -99,7 +99,7 @@
 - 不应重复：不重复用粗标量阈值把 mixed-dtype embedding 纳入
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-block-leaf-grouping`
-- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[ZeRO-3 模块粒度与 parent-first leaf 选择](implementations.md#legacy-zero3-leaf)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/zero3_module_granularity.py::census_zero3_module_granularity](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L25-L86)
 - 函数入口：[runtime/zero3_module_granularity.py::selected_preorder_leaf_records](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/zero3_module_granularity.py#L89-L111)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_explicit_block_leaf_result_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_explicit_block_leaf_result_20260810.md#L1)；定位：报告范围 L1–L47；L1: Iteration 307: explicit Transformer-block ZeRO-3 leaves；L11: Exact continuous Full5；L31: Low-overhead Step10 diagnostic；原定位：结果、合同、限制与失败记录
@@ -122,7 +122,7 @@
 - 不应重复：不同重复次数的历史中位数不是新机器的保证
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-hsdp-nogan-positive`
-- 关联实现：[Helios world16 FSDP/node-HSDP 配置](implementations.md#helios-fsdp-layout)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios world16 FSDP/node-HSDP 配置](implementations.md#helios-fsdp-layout)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/fsdp2_p0.py::create_device_mesh](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L273-L288)
 - 函数入口：[src/distillschedule/runtime/fsdp2_p0.py::apply_blockwise_fsdp2_policy](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L291-L398)
 - 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L7)；定位：观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -144,7 +144,7 @@
 - 不应重复：不能因 No-GAN 有利就重复 GAN 的慢配置
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-hsdp-gan-negative`
-- 关联实现：[Helios world16 FSDP/node-HSDP 配置](implementations.md#helios-fsdp-layout)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios world16 FSDP/node-HSDP 配置](implementations.md#helios-fsdp-layout)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/fsdp2_p0.py::create_device_mesh](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L273-L288)
 - 函数入口：[src/distillschedule/runtime/fsdp2_p0.py::apply_blockwise_fsdp2_policy](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_p0.py#L291-L398)
 - 来源：[sliortega295-ops/DMD-System / iteration357_c6_hsdp.md](https://github.com/sliortega295-ops/DMD-System/blob/6d88e4d45ab07e3fd54bc9edacc3954ee6168937/docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md#L1)；定位：报告范围 L1–L54；L1: Iteration 357: C6 node-HSDP placement result；L3: Claim boundary；L13: Construction result；L29: Gates and formal result；L42: Decision；原定位：结果、合同、限制与失败记录

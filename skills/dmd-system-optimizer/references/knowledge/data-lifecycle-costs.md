@@ -33,26 +33,28 @@
 - 不应重复：稳定 step 的 judge 不替代第一次 save/resume
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-first-checkpoint-save-crash`
-- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[项目 checkpoint 保存与恢复入口](implementations.md#checkpoint-lifecycle)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/training/checkpoint.py::save_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L319-L456)
 - 函数入口：[src/distillschedule/training/checkpoint.py::restore_checkpoint](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/training/checkpoint.py#L541-L559)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / lessons.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1)；定位：报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：From the judge to a real run
 
-### ResearchBoost：stage、step 与含外部服务/启动的收益不能混为一个倍数
+### ResearchBoost：计时窗口与优化贡献分母分别记录
 
 - ID：rb-end-to-end-denominator
 - 状态：source_contract / EXTERNAL_GUIDANCE_NOT_REPRODUCED
 - 来源类别：ResearchBoost external；本次未复现实验。
-- 观察：公开 LLM results 分别报告 YOCO step 与 full run、R3 是否包含 reward service、LLM2Vec 不同阶段的时间。
-- 经验：按用户目标明确端到端窗口；多阶段倍数不能相乘，省下稳态时间还要覆盖必要启动、数据和外部服务。
+- 观察：YOCO 区分 step/full run，LLM2Vec 区分阶段；R3 的 2.08× 包括 reward 服务优化贡献，1.88× 则两臂均使用优化后的 reward 服务。R3 RL step 仍含 rollout、reward service 和 optimizer。
+- 经验：服务是否在计时窗口内，与两臂服务实现是否相同是两回事；R3 不能解释为计时排除 reward 服务。不同阶段和优化栈的倍数不能拼接。
 - 范围：外部 LLM 各自实验合同，不能与 DMD 数值横向排榜。
 - 历史上下文：{"training_mode": "training"}
 - 正确性前提：{"data_and_progress_identity_preserved": true}
 - 收益条件：{"reported_window_matches_user_objective": true}
 - 失败分类：not_established
-- 重试信号：服务、数据阶段和启动成本的计时范围已明确
-- 最小验证：同时记录 step、各阶段、外部 reward service 与 full run
-- 不应重复：不同阶段和排除服务的比值不能拼成总体收益
+- 重试信号：计时窗口和每臂服务实现身份已分别明确
+- 最小验证：分别记录 step/full-run 范围、各臂 reward 版本及优化贡献；不要从标题倍数倒推计时范围
+- 不应重复：不能把 R3 的 1.88× 写成排除了 reward service 的计时
 - 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
 - 定位命令：`dmd_knowledge.py locate --case rb-end-to-end-denominator`
+- 结构化事实：{"r3_reward_service_in_timed_step": true, "r3_with_reward_optimization_speedup": 2.08, "r3_optimized_reward_both_arms_speedup": 1.88, "r3_comparison_axis": "optimization_contribution"}
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / llm.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md#L1)；定位：报告范围 L1–L56；L1: LLM；L7: Faster-NanoChat；L24: Faster-YOCO；L39: Faster-LLM2Vec；原定位：YOCO; R3; LLM2Vec
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / multimodal.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56)；定位：With the optimized reward service on both sides

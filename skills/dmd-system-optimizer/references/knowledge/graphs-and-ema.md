@@ -38,8 +38,11 @@
 - 重试信号：capture 能表达当前动态 decay 序列
 - 最小验证：至少跨已知区间边界比较 EMA 系数与参数更新，再测 replay 命中
 - 不应重复：不能把 decays11–20 的两周期结果推广到任意训练步
-- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 代码状态：linked；关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。
 - 定位命令：`dmd_knowledge.py locate --case helios-w1-ema-r34`
+- 关联实现：[W1 r34 已知11–20步的原生EMA图](implementations.md#wan-exact-ema-11-20)；historical_implementation；已归档的r34原型；只覆盖11..20步，仍为历史REVIEW。
+- 函数入口：[artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py::ExactEMAStep](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L13-L29)
+- 函数入口：[artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py::capture](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py#L31-L57)
 - 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json#L8)；定位：观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：scope; coefficient_scope; claim; production_ready
 
 ### Wan block 级 torch.compile 变慢且严格 rollout 不通过
@@ -78,7 +81,7 @@
 - 不应重复：不允许隐藏真实更新或只把准备工作移出分母
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-optimizer-warmup-restored`
-- 关联实现：[FSDP2 optimizer dispatch 预热与状态恢复](implementations.md#optimizer-dispatch-warmup)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[FSDP2 optimizer dispatch 预热与状态恢复](implementations.md#optimizer-dispatch-warmup)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/fsdp2_static.py::_optimizer_dispatch_warmup](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L545-L775)
 - 来源：[sliortega295-ops/DMD-System / iteration352_optimizer_warmup.md](https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md#L52)；定位：观察中的数值文本锚点 L52；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -137,6 +140,6 @@
 - 不应重复：外部推理 graph 结果不能证明本地训练或可微 graph
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case rb-inference-graph-shape-miss`
-- 关联实现：[Wan Resident B1 no-grad CUDA Graph 参考](implementations.md#wan-rollout-graph)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan Resident B1 no-grad CUDA Graph 参考](implementations.md#wan-rollout-graph)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[src/distillschedule/runtime/wan13b_rollout_cuda_graph.py::RolloutCudaGraph](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L77-L244)
 - 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md#L1)；定位：报告范围 L1–L565；L6: SGLang Diffusion Performance Tuning；L10: Start from the model's cookbook page；L38: Native Backend Gate；L51: Section 1: Lossless Optimizations；L73: Choosing what goes in `--layerwise-offload-components`；L105: Prefetch depth has a knee；L118: Host memory is part of the placement decision；L135: When the transfer knobs do nothing；原定位：SANA-Video graph capture shape

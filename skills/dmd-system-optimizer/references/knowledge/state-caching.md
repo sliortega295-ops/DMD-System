@@ -41,7 +41,7 @@
 - 不应重复：零误差不构成重复同一慢 cache 方案的理由
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-w6-adaln-r41`
-- 关联实现：[H3 冻结 AdaLN projection bank](implementations.md#h3-adaln-bank)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[H3 冻结 AdaLN projection bank](implementations.md#h3-adaln-bank)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/adaln_cache.py::install_adaln_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L233-L268)
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/adaln_cache.py::AdaLNCacheController](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/adaln_cache.py#L51-L175)
 - 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json#L8)；定位：观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status
@@ -82,7 +82,7 @@
 - 不应重复：相同 shape 的单配对无收益不宜反复消耗预算
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case wan-cast-cache-negative`
-- 关联实现：[Wan 冻结 LoRA 路径的 cast cache wrapper](implementations.md#wan-cast-cache)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Wan 冻结 LoRA 路径的 cast cache wrapper](implementations.md#wan-cast-cache)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/wan13b_lora_cast.py::install_generator_nograd_lora_cast_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_cast.py#L265-L427)
 - 来源：[sliortega295-ops/DMD-System / WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md](https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md#L47)；定位：观察中的数值文本锚点 L47；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
@@ -108,21 +108,22 @@
 ### No-GAN cross-KV 命中 880 次仍几乎没有 E2E 收益
 
 - ID：helios-crosskv-nogan-negligible
-- 状态：negative_observation / HISTORICAL_SOURCE_REPORTED
+- 状态：inconclusive / HISTORICAL_SOURCE_REPORTED
 - 来源类别：Helios A100 history；本次未复现实验。
 - 观察：每 rank 200 fills/880 reuses 且零 mismatch，Full5 96.529020→96.497111 秒，只约 0.033%。
-- 经验：高命中率不说明省下关键路径大头；保留机制正确性证据，避免将微小单次差值称为稳定加速。
+- 经验：高命中率不说明省下关键路径大头；保留机制正确性证据，避免将微小单次差值称为稳定加速。 该差值没有充分复测/独立归因，原解释只保留为假设，不据此认定机制普遍无效。
 - 范围：Helios No-GAN node-HSDP 的 per-rollout cross-attention cache。
 - 历史上下文：{"workload": "W2", "model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gan_enabled": false, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
 - 正确性前提：{"cache_key_complete": true, "invalidation_validated": true, "cached_gradients_preserved": true, "grad_mode": "no_grad", "microbatch": 1, "weights_stable_during_reuse": true}
 - 收益条件：{"cache_reuse_sufficient": true, "saved_compute_exceeds_cache_cost": true}
-- 失败分类：insufficient_exposed_saved_compute
+- 失败分类：unresolved_timing_difference
 - 重试信号：目标 KV 投影占比或复用收益明显高于 No-GAN 旧点
 - 最小验证：验证 no-grad B1、版本/key 与 uncached 输出，分开计填充/复用/整周期
 - 不应重复：200 fills/880 reuses 不能单独证明加速
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-crosskv-nogan-negligible`
-- 关联实现：[Helios 单 rollout cross-attention KV cache](implementations.md#helios-cross-kv)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 归因边界：{"status": "HYPOTHESIS_NOT_ISOLATED", "hypothesis": "节省的计算较少或缓存维护开销抵消收益；现有单次差值未隔离原因。", "performance_status": "UNRESOLVED_SINGLE_PAIR"}
+- 关联实现：[Helios 单 rollout cross-attention KV cache](implementations.md#helios-cross-kv)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_cross_kv_cache.py::install_generator_nograd_cross_kv_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L101-L246)
 - 函数入口：[src/distillschedule/runtime/helios_cross_kv_cache.py::generator_nograd_cross_kv_cache_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L269-L473)
 - 来源：[sliortega295-ops/DMD-System / HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md](https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1)；定位：报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录
@@ -144,7 +145,7 @@
 - 不应重复：不能把很慢的 uncached-reference 校验路径作性能分母
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-crosskv-gan-positive`
-- 关联实现：[Helios 单 rollout cross-attention KV cache](implementations.md#helios-cross-kv)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Helios 单 rollout cross-attention KV cache](implementations.md#helios-cross-kv)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_cross_kv_cache.py::install_generator_nograd_cross_kv_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L101-L246)
 - 函数入口：[src/distillschedule/runtime/helios_cross_kv_cache.py::generator_nograd_cross_kv_cache_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_cross_kv_cache.py#L269-L473)
 - 来源：[sliortega295-ops/DMD-System / iteration359_c8_crosskv.md](https://github.com/sliortega295-ops/DMD-System/blob/7f7a5c28db628a22ad494d4533590dc71b3d9afa/docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md#L48)；定位：观察中的数值文本锚点 L48；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -152,21 +153,22 @@
 ### 静态 context 缓存零误差，完整周期仍略慢
 
 - ID：helios-static-context-cache-negative
-- 状态：negative_observation / HISTORICAL_SOURCE_REPORTED
+- 状态：inconclusive / HISTORICAL_SOURCE_REPORTED
 - 来源类别：Helios A100 history；本次未复现实验。
 - 观察：history patch、RoPE、text 缓存每 rollout 5 fills/22 reuses；零误差但 138.176083→138.243935 秒，未晋级。
-- 经验：完整 key 和命中证明正确工作；是否值得保留还要看维护与节省的净成本，不能只展示 cache hit。
+- 经验：完整 key 和命中证明正确工作；是否值得保留还要看维护与节省的净成本，不能只展示 cache hit。 该差值没有充分复测/独立归因，原解释只保留为假设，不据此认定机制普遍无效。
 - 范围：GAN-on、完整 pyramid context key、同权重 rollout。
 - 历史上下文：{"workload": "W3", "model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gan_enabled": true, "update_ratio": "G1/C5/EMA1", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
 - 正确性前提：{"cache_key_complete": true, "invalidation_validated": true, "cached_gradients_preserved": true, "grad_mode": "no_grad"}
 - 收益条件：{"cache_reuse_sufficient": true, "saved_compute_exceeds_cache_cost": true}
-- 失败分类：cache_net_cost
+- 失败分类：unresolved_timing_difference
 - 重试信号：静态 patch/RoPE/text 计算占比或缓存开销发生变化
 - 最小验证：先测 5 fills/22 reuses 对应计算净节省，再比完整周期
 - 不应重复：零误差与 cache 命中不构成收益证明
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-static-context-cache-negative`
-- 关联实现：[Helios rollout 静态 context cache](implementations.md#helios-static-context)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 归因边界：{"status": "HYPOTHESIS_NOT_ISOLATED", "hypothesis": "节省的计算较少或缓存维护开销抵消收益；现有单次差值未隔离原因。", "performance_status": "UNRESOLVED_SINGLE_PAIR"}
+- 关联实现：[Helios rollout 静态 context cache](implementations.md#helios-static-context)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/runtime/helios_rollout_context_cache.py::install_generator_nograd_static_context_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py#L153-L404)
 - 函数入口：[src/distillschedule/runtime/helios_rollout_context_cache.py::generator_nograd_static_context_cache_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/helios_rollout_context_cache.py#L408-L596)
 - 来源：[sliortega295-ops/DMD-System / iteration366_c13_static_context.md](https://github.com/sliortega295-ops/DMD-System/blob/2d70afbbc3f28d828304b4f08cd6440c4e3e7a71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md#L18)；定位：观察中的数值文本锚点 L18；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录

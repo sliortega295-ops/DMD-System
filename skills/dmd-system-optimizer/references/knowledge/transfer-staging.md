@@ -35,7 +35,7 @@
 - 不应重复：correctness 通过不足以重复同步 offload 的慢点
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-sync-pinned-boundaries-regress`
-- 关联实现：[旧 Route-A 精确 saved-tensor offload](implementations.md#legacy-saved-tensor-offload)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A 精确 saved-tensor offload](implementations.md#legacy-saved-tensor-offload)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/activation_offload.py::install_activation_offload_hooks](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L362-L407)
 - 函数入口：[runtime/activation_offload.py::AuditedSavedTensorOffloader](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L61-L347)
 - 来源：[sliortega295-ops/DMD-System / rb16_step10a_boundary_pinned_sync_result_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_step10a_boundary_pinned_sync_result_20260810.md#L23)；定位：观察中的数值文本锚点 L23；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
@@ -57,7 +57,7 @@
 - 不应重复：不因 H2D 改善就忽略 G3 broadcast 回退
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-bounded-pin-bucket-regression`
-- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/bounded_materialization.py::pin_module_cpu_registered_state](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L189-L238)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_persistent_pinned_cpu](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L242-L331)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_cpu_with_bounded_pinned_staging](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L335-L480)
@@ -81,7 +81,7 @@
 - 不应重复：不隐藏 31–42 秒准备及 11 秒清理
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-persistent-pin-cold-cost`
-- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/bounded_materialization.py::pin_module_cpu_registered_state](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L189-L238)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_persistent_pinned_cpu](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L242-L331)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_cpu_with_bounded_pinned_staging](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L335-L480)
@@ -104,7 +104,7 @@
 - 不应重复：不以 transition 达标忽略 Full5 变慢
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-background-cleanup-contention`
-- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/bounded_materialization.py::pin_module_cpu_registered_state](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L189-L238)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_persistent_pinned_cpu](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L242-L331)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_cpu_with_bounded_pinned_staging](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L335-L480)
@@ -128,7 +128,7 @@
 - 不应重复：不把 timer 外 cleanup 当成免费
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-persistent-cache-inclusive-time`
-- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；historical_reference；保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。
+- 关联实现：[旧 Route-A pinned target 与有界 staging](implementations.md#legacy-pinned-materialization)；adaptation_example；机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。
 - 函数入口：[runtime/bounded_materialization.py::pin_module_cpu_registered_state](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L189-L238)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_persistent_pinned_cpu](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L242-L331)
 - 函数入口：[runtime/bounded_materialization.py::materialize_module_from_cpu_with_bounded_pinned_staging](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/bounded_materialization.py#L335-L480)
@@ -152,7 +152,7 @@
 - 不应重复：没有 OOM 证据时不要按 OOM 重跑或填造 candidate timing
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case h100-w5-cpu-stage-stall`
-- 关联实现：[H3 FA3 replay cache 与 staged 路径](implementations.md#h3-attention-replay)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[H3 FA3 replay cache 与 staged 路径](implementations.md#h3-attention-replay)；reusable_candidate；同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py::install_fa3_replay_cache](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L880-L1131)
 - 函数入口：[src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py::prepare_staged_cache_before_backward](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py#L854-L872)
 - 来源：[sliortega295-ops/DMD-System / w5_cpu_staged_candidate_stall_r1.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json)；定位：该结果及 qualification / NOT_RUN 边界

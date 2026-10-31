@@ -33,7 +33,7 @@
 - 不应重复：重新找到已有点不能作为 planner 独立提升
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case planner-manual-rediscovery`
-- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/cost_model.py::CostModel](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195)
 - 函数入口：[src/distillschedule/search/measurement.py::normalize_native](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98)
 - 来源：[sliortega295-ops/DMD-System / conclusion.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md#L7)；定位：观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果与证据边界
@@ -55,7 +55,7 @@
 - 不应重复：确定性 tie-break 选 window5 不证明它最快
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case planner-missing-costs-tie`
-- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/cost_model.py::CostModel](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195)
 - 函数入口：[src/distillschedule/search/measurement.py::normalize_native](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98)
 - 来源：[sliortega295-ops/DMD-System / DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md](https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md#L1)；定位：报告范围 L1–L140；L1: H3 measured action costs → common search → native performance closure；L8: Result；L30: What was actually searched and executed；L59: Hard gates and numerical boundary；L82: Memory and transfers；L102: Reproduction, failures and source fix；L134: Stop boundary；原定位：结果、合同、限制与失败记录
@@ -75,9 +75,8 @@
 - 重试信号：运行器能够执行而非只打印选定计划
 - 最小验证：跨 rank 核对 plan identity、调用顺序和实际调度事件
 - 不应重复：planner 表里换序但 runtime FIFO 不算调度生效
-- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
+- 代码状态：linked；关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。
 - 定位命令：`dmd_knowledge.py locate --case planner-dispatch-realized`
-- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
-- 函数入口：[src/distillschedule/search/cost_model.py::CostModel](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195)
-- 函数入口：[src/distillschedule/search/measurement.py::normalize_native](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98)
+- 关联实现：[按 producer_dispatch 执行真实 forward/backward](implementations.md#role-producer-dispatch)；reusable_candidate；此处是实际执行序列的代码；成本分析另行阅读，CPU测试不证明目标GPU吞吐。
+- 函数入口：[src/distillschedule/open_workload/role_transport.py::RolePoolExecutor._run_cycle](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/open_workload/role_transport.py#L276-L466)
 - 来源：[sliortega295-ops/DMD-System / ROLE_PRODUCER_DISPATCH.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/ROLE_PRODUCER_DISPATCH.md#L1)；定位：报告范围 L1–L69；L1: Component-derived producer dispatch on the existing role runtime；L20: Evidence；L32: Boundaries；L49: Dispatch safety and a non-preset scheduling example；原定位：结果与证据边界

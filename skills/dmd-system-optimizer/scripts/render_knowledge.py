@@ -7,6 +7,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def render_coverage(root):
+    c = json.loads((root / "assets/experience-coverage.json").read_text())
+    nav = c["code_navigation"]
+    lines = ["# 经验覆盖范围与证据边界", "",
+        f"截至 {c['curated_date']}：**{c['patterns']} 个机制主题、{c['entries']} 条案例与方法条目、{c['source_files']} 份固定版本来源**。",
+        "条目不等于独立实验或验证成功的方案；本轮是来源核验和内容修正，没有新 GPU 实验。", "",
+        "| 来源类别 | 条目数 |", "| --- | ---: |"]
+    lines.extend(f"| {name} | {count} |" for name, count in c["entries_by_collection"].items())
+    lines.extend(["", "| 记录状态 | 条目数 |", "| --- | ---: |"])
+    lines.extend(f"| {name} | {count} |" for name, count in c["entries_by_outcome"].items())
+    lines.extend(["", f"{c['publicly_referenced_entries']} 条有公开引用；6 条未核实会话线索保持线索等级。历史 PASS、REVIEW、FAIL、NOT_RUN 和外部报告均按各自范围保留。", "",
+        "## 历史筛选与本轮修正", "",
+        "前期按确切会话身份筛选主会话1,108条与H100会话568条assistant最终消息；1,676条经空白归一化后有1,243条不同正文、433条重复。只用摘要寻找线索，再核对公开报告；不是逐句审完全部会话。私人原始会话没有上传。", "",
+        "本轮纠正七条明确错误，并检查同类条件与代码关系；新增六条有来源的数值隔离、B2失败、训练态timestep、QKV canary、容量政策和时钟映射经验。相邻W6 r1也查出计算结果缓存误归为参数驻留的问题，已纠正。", "",
+        "核验范围是已列明的内容问题与同类错配；不声明完成全部历史材料的逐项内容审计。", "",
+        "## 代码导航覆盖", "",
+        f"{nav['implementation_entries']} 个实现/工具条目，{nav['unique_code_files']} 份固定版本Python文件；这是代码身份统计，不是新增实测报告。", ""])
+    lines.extend(f"- `{name}`：{count} 条经验。" for name, count in nav["case_status_counts"].items())
+    lines.extend(["", "关系明确区分历史实际实现、当前复用候选、需适配示例、诊断工具、概念相关。所有导航结果的 `direct_reuse_verified=false`；hash/符号吻合不能证明当前训练验收或可直接迁移。", "",
+        f"{len(nav['entries_without_targeted_test_reference'])} 个实现没有定位到专门测试入口。其余测试也仅供检查覆盖，未在本轮执行组件GPU/训练验收。见 [实现索引](implementations.md)。", "",
+        "## 未完成范围", ""])
+    lines.extend(f"- `{name}`：{count} 份来源。" for name, count in c["source_review_status"].items())
+    lines.extend(["", "六条会话线索涉及早期流水、loss趋势、恢复Adam峰值、NUMA、staging扩展、H3 block-major；缺公开回执，不能当成根因或速度结论。", "",
+        "来源索引只表示发现或抽取了有关片段，行锚点只辅助阅读。没有穷尽远端大文件、重开停止的campaign或重跑全部历史验收。独立子观察分别保留workload/更新合同比较；微小单次差值和未隔离解释不升级成稳定规律。", "",
+        "使用 `dmd_knowledge.py sources --query ...` 搜索尚未提炼的来源；见 [source index](../../assets/experience-source-index.json)。", "",
+        "## 维护", "",
+        "统计由 [coverage JSON](../../assets/experience-coverage.json) 渲染；经验与代码关系由JSON生成Markdown。ResearchBoost固定为 [908c6a13](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/tree/908c6a13c41fcb6da6d0237aba2574d368ffbec8)，只做有归属的原创概括，不复制其代码或Skill卡。复用前仍须检查对应许可和当前适用性。"])
+    (root / "references/knowledge/coverage.md").write_text("\n".join(lines) + "\n")
+
+
 def render(root=ROOT):
     data = json.loads((root / "assets/helios-experience-pack.json").read_text())
     catalog = {i["id"]: i for i in json.loads((root / "assets/implementation-map.json").read_text())["implementations"]}
@@ -43,6 +73,15 @@ def render(root=ROOT):
                           "- 不应重复：" + case["retry"]["do_not_repeat"],
                           "- 代码状态：" + case["navigation"]["status"] + "；" + case["navigation"]["reason"],
                           "- 定位命令：`dmd_knowledge.py locate --case " + case["id"] + "`"])
+            for field, label in (("facts", "结构化事实"), ("interpretation", "归因边界")):
+                if case.get(field):
+                    lines.append("- " + label + "：" + json.dumps(case[field], ensure_ascii=False))
+            for observation in case.get("observations", []):
+                lines.extend(["- 独立子观察 `" + observation["id"] + "`：" + observation["observation"],
+                              "  - 上下文：" + json.dumps(observation["conditions"], ensure_ascii=False),
+                              "  - 状态：" + observation["outcome"] + " / " + observation["evidence_status"]])
+                for ref in observation["evidence"]:
+                    lines.append("  - 来源：[" + ref["path"] + "](" + ref.get("anchor_url", ref["url"]) + ")")
             for link in case["navigation"]["implementations"]:
                 entry = catalog[link["id"]]
                 lines.append(f"- 关联实现：[{entry['title']}](implementations.md#{entry['id']})；{link['relationship']}；{link['note']}")
@@ -51,6 +90,8 @@ def render(root=ROOT):
             if case["evidence"]:
                 for ref in case["evidence"]:
                     lines.append(f"- 来源：[{ref['repository']} / {Path(ref['path']).name}]({ref.get('anchor_url', ref['url'])})；定位：{ref['locator']}")
+                    for correction in ref.get("content_corrections", []):
+                        lines.append("- 固定来源勘误：" + correction["note"])
             else:
                 lines.append("- 来源：仅本地会话线索，未公开原始会话；缺少可核实的公开实验回执。")
             lines.append("")
@@ -86,6 +127,7 @@ def render(root=ROOT):
                 lines.append(f"- {label}：[{ref['path']}::{ref['symbol']}]({ref['anchor_url']})")
         lines.extend(["- 核对命令：`dmd_knowledge.py locate --implementation " + entry["id"] + " --repo /project/DMD-System --show-code`", ""])
     (directory / "implementations.md").write_text("\n".join(lines) + "\n")
+    render_coverage(root)
     return {"patterns": len(data["patterns"]), "cases": len(data["cases"])}
 
 

@@ -1,28 +1,28 @@
 {
   "schema_version": 1,
   "curated_date": "2026-10-31",
-  "patterns": 19,
-  "entries": 128,
+  "patterns": 21,
+  "entries": 134,
   "entries_by_collection": {
     "Helios optimization history": 24,
-    "Helios A100 history": 64,
+    "Helios A100 history": 69,
     "Helios H100 history": 16,
-    "ResearchBoost external": 24
+    "ResearchBoost external": 25
   },
   "entries_by_outcome": {
-    "positive_observation": 34,
-    "negative_observation": 19,
+    "positive_observation": 35,
+    "negative_observation": 17,
     "implementation_failure": 12,
-    "inconclusive": 8,
-    "source_contract": 42,
+    "inconclusive": 12,
+    "source_contract": 44,
     "unverified": 6,
-    "correctness_failure": 7
+    "correctness_failure": 8
   },
-  "publicly_referenced_entries": 122,
-  "source_files": 136,
+  "publicly_referenced_entries": 128,
+  "source_files": 141,
   "source_review_status": {
-    "DISCOVERED_NOT_CURATED": 40,
-    "CURATED_EXCERPTS": 96
+    "DISCOVERED_NOT_CURATED": 38,
+    "CURATED_EXCERPTS": 103
   },
   "history_screening": {
     "main_final_messages": 1108,
@@ -38,12 +38,12 @@
   "privacy": "Raw conversations, session IDs, private paths and large artifacts are not included.",
   "code_navigation": {
     "case_status_counts": {
-      "linked": 71,
-      "method_only": 19,
-      "unresolved": 38
+      "linked": 74,
+      "method_only": 24,
+      "unresolved": 36
     },
-    "implementation_entries": 29,
-    "unique_code_files": 49,
+    "implementation_entries": 35,
+    "unique_code_files": 62,
     "entries_without_targeted_test_reference": [
       "helios-cross-kv",
       "helios-static-context",
@@ -57,14 +57,21 @@
       "h3-adaln-bank",
       "legacy-frozen-streaming",
       "legacy-saved-tensor-census",
-      "checkpoint-lifecycle"
+      "checkpoint-lifecycle",
+      "role-producer-dispatch",
+      "helios-trainable-timestep-residual"
     ],
-    "relationship_notice": "Current-related or preserved legacy references; no claim of historical measured implementation identity.",
+    "relationship_notice": "历史实际实现、当前复用候选、需适配示例、诊断工具和概念相关分别返回；均不自动通过当前复用验收。",
     "gpu_validation": "NOT_RUN"
   },
   "evidence_locator_counts": {
     "literal_observation_anchor": 61,
-    "structured_source_locator": 12,
+    "structured_source_locator": 23,
     "report_scope_not_case_exact": 62
+  },
+  "content_review": {
+    "scope": "Named content errors, explicitly described boundary issues, related mechanism conditions and six source-backed omissions",
+    "full_library_content_audit": false,
+    "gpu_reproduction": "NOT_RUN"
   }
 }

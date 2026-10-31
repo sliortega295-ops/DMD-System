@@ -43,16 +43,16 @@
         "Memory and transfers",
         "Reproduction, failures and source fix",
         "Stop boundary",
+        "Helios A100 history",
         "planner-calibration",
-        "缺测动作不应虚构成本，相同预测只说明 tie-break",
-        "Helios A100 history"
+        "缺测动作不应虚构成本，相同预测只说明 tie-break"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "planner-missing-costs-tie"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -91,12 +91,19 @@
         "Frozen workload and versions",
         "Source, environment and artifacts",
         "Validation and stop boundary",
-        "Operational validation"
+        "Operational validation",
+        "allocator-policy",
+        "Helios GAN：完成校准但被预测容量余量政策拒绝",
+        "validation-lifecycle",
+        "Helios GAN：逻辑版本标签不能重写真实Adam与scheduler时钟"
       ],
       "source_group": "Helios and Wan historical experiments",
-      "review_status": "DISCOVERED_NOT_CURATED",
-      "linked_case_ids": [],
-      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-capacity-policy-rejection-not-oom",
+        "helios-logical-native-clock-mapping"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -115,16 +122,16 @@
         "Actual blocker and repeat experiment",
         "Integration bugs fixed and preserved failures",
         "Evidence, replay and stopping point",
+        "Helios A100 history",
         "validation-lifecycle",
-        "候选和 unchanged repeat 都失败时，先定位 baseline 可重复性",
-        "Helios A100 history"
+        "候选和 unchanged repeat 都失败时，先定位 baseline 可重复性"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "planner-baseline-self-parity-fails"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -269,9 +276,10 @@
         "Rejected and bounded-negative methods",
         "Post-winner Nsight result",
         "Final result",
-        "memory-tradeoffs",
-        "10/40 checkpoint bypass OOM，4/40 能跑但收益极小",
         "Helios A100 history",
+        "activation-retention",
+        "checkpoint-result-reuse",
+        "10/40 checkpoint bypass OOM，4/40 能跑但收益极小",
         "state-caching",
         "history self-attention K/V cache 依赖的 attention 模式不成立",
         "No-GAN cross-KV 命中 880 次仍几乎没有 E2E 收益",
@@ -279,7 +287,8 @@
         "两次 SAC 目标计数为零，真正原因是运行时落到 SDPA",
         "保留真实 FA2 输出可省重算，密度受最坏显存限制",
         "fusion-numerics",
-        "cross LayerNorm 微基准快 5.7–6.35×，Full5 却变慢"
+        "cross LayerNorm 微基准快 5.7–6.35×，Full5 却变慢",
+        "Helios：冻结QKV融合在M6144 canary未获益"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
@@ -289,9 +298,10 @@
         "helios-crosskv-nogan-negligible",
         "helios-fa2-backend-missing",
         "helios-fa2-selective-retention",
-        "helios-bf16-crossnorm-reversal"
+        "helios-bf16-crossnorm-reversal",
+        "helios-frozen-qkv-canary-no-benefit"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -316,19 +326,21 @@
         "Final Iteration 367 evidence",
         "Rejected and superseded paths",
         "Remaining work",
+        "Helios A100 history",
         "fusion-numerics",
         "Helios 的同类 chunk 扩大只有小收益或回退",
-        "Helios A100 history",
         "distributed-topology",
-        "No-GAN 的 node-HSDP 有小幅历史改善"
+        "No-GAN 的 node-HSDP 有小幅历史改善",
+        "Helios：训练态 phase-local timestep 梯度融合与暂存"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-modulation-chunk-neutral",
-        "helios-hsdp-nogan-positive"
+        "helios-hsdp-nogan-positive",
+        "helios-trainable-phase-local-timestep"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -340,16 +352,16 @@
       "title": "Bounded H100 Helios no-grad Generator retention experiment",
       "tags": [
         "Bounded H100 Helios no-grad Generator retention experiment",
+        "Helios H100 history",
         "parameter-residency",
-        "H100 HSDP primitive 证明生命周期可行，不证明 14B 容量",
-        "Helios H100 history"
+        "H100 HSDP primitive 证明生命周期可行，不证明 14B 容量"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-hsdp-retention-primitive-boundary"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -371,16 +383,16 @@
         "C24: exact Score modulation fusion on continuous B16",
         "Why B32 helps only slightly",
         "Identity and claim boundary",
+        "Helios A100 history",
         "measurement-identity",
-        "B32 的 B16 等效时间不是实际 B16 训练记录",
-        "Helios A100 history"
+        "B32 的 B16 等效时间不是实际 B16 训练记录"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "livewan-b32-normalization"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -457,9 +469,9 @@
         "Final candidate evidence",
         "Rejected and already-completed paths",
         "Reproduction and code review",
+        "Helios A100 history",
         "fusion-numerics",
         "Wan modulation chunk 扩大得到明显单配对收益",
-        "Helios A100 history",
         "state-caching",
         "缓存 cast 不一定值得其维护成本",
         "no-grad LoRA epilogue 在 Wan 有实测收益"
@@ -471,7 +483,7 @@
         "wan-cast-cache-negative",
         "wan-lora-epilogue-positive"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -487,16 +499,16 @@
         "Gates",
         "One unprofiled diagnostic pair",
         "Decision",
+        "Helios A100 history",
         "graphs-and-ema",
-        "Wan block 级 torch.compile 变慢且严格 rollout 不通过",
-        "Helios A100 history"
+        "Wan block 级 torch.compile 变慢且严格 rollout 不通过"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "wan-block-compile-fails"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -599,16 +611,16 @@
         "World16 evidence",
         "Outcome",
         "Next constraint",
+        "Helios A100 history",
         "graphs-and-ema",
-        "预热 optimizer dispatch 的前提是恢复所有训练状态",
-        "Helios A100 history"
+        "预热 optimizer dispatch 的前提是恢复所有训练状态"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-optimizer-warmup-restored"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -642,16 +654,16 @@
         "Single-variable contract",
         "Gates",
         "Formal timing",
+        "Helios A100 history",
         "fusion-numerics",
-        "Helios 的同类 chunk 扩大只有小收益或回退",
-        "Helios A100 history"
+        "Helios 的同类 chunk 扩大只有小收益或回退"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-modulation-chunk-neutral"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -667,16 +679,16 @@
         "Gates",
         "Formal timing",
         "Decision",
-        "memory-tradeoffs",
-        "保留真实 FA2 输出可省重算，密度受最坏显存限制",
-        "Helios A100 history"
+        "Helios A100 history",
+        "checkpoint-result-reuse",
+        "保留真实 FA2 输出可省重算，密度受最坏显存限制"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-fa2-selective-retention"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -713,16 +725,16 @@
         "Construction result",
         "Gates and formal result",
         "Decision",
+        "Helios A100 history",
         "distributed-topology",
-        "GAN-on node-HSDP 反而变慢；构造修复需单独保留",
-        "Helios A100 history"
+        "GAN-on node-HSDP 反而变慢；构造修复需单独保留"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-hsdp-gan-negative"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -738,16 +750,16 @@
         "Kernel result",
         "Decision",
         "Remote evidence",
+        "Helios A100 history",
         "profiling-attribution",
-        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间",
-        "Helios A100 history"
+        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-ncu-low-occupancy-not-low-throughput"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -763,16 +775,16 @@
         "Validation",
         "Formal timing",
         "Decision",
+        "Helios A100 history",
         "state-caching",
-        "GAN-on 的 cross-KV 单配对约有 0.75% 改善",
-        "Helios A100 history"
+        "GAN-on 的 cross-KV 单配对约有 0.75% 改善"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-crosskv-gan-positive"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -789,16 +801,16 @@
         "World16 gates",
         "Formal timing",
         "Decision",
+        "Helios A100 history",
         "fusion-numerics",
-        "显式 modulation backward 避免逐 chunk autograd 构图",
-        "Helios A100 history"
+        "显式 modulation backward 避免逐 chunk autograd 构图"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-modnorm-explicit-backward"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -837,16 +849,16 @@
         "Contract",
         "Evidence",
         "Result boundary",
+        "Helios A100 history",
         "host-synchronization",
-        "去掉若干内部同步后只获得很小完整周期改善",
-        "Helios A100 history"
+        "去掉若干内部同步后只获得很小完整周期改善"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-internal-fences-small"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -860,16 +872,16 @@
         "Iteration 366: C13 exact Generator rollout static context",
         "Hypothesis",
         "Gates and evidence",
+        "Helios A100 history",
         "state-caching",
-        "静态 context 缓存零误差，完整周期仍略慢",
-        "Helios A100 history"
+        "静态 context 缓存零误差，完整周期仍略慢"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-static-context-cache-negative"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -884,16 +896,16 @@
         "Frozen comparison",
         "Evidence",
         "Decision",
+        "Helios A100 history",
         "fusion-numerics",
-        "局部融合的倍数必须换算为完整周期收益",
-        "Helios A100 history"
+        "局部融合的倍数必须换算为完整周期收益"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-fused-modnorm-forward-backward"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -908,16 +920,16 @@
         "Contract",
         "Evidence",
         "Decision",
+        "Helios A100 history",
         "fusion-numerics",
-        "局部融合的倍数必须换算为完整周期收益",
-        "Helios A100 history"
+        "局部融合的倍数必须换算为完整周期收益"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-fused-modnorm-forward-backward"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -952,16 +964,16 @@
         "Question and boundary",
         "Result",
         "Decision",
+        "Helios A100 history",
         "distributed-topology",
-        "强制 NCCL protocol 的 canary 未发现优势",
-        "Helios A100 history"
+        "强制 NCCL protocol 的 canary 未发现优势"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-nccl-protocol-canary"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -977,16 +989,16 @@
         "Live preflight",
         "Evidence",
         "Decision",
+        "Helios A100 history",
         "host-synchronization",
-        "只跳过计时模式不用的 scalar logging",
-        "Helios A100 history"
+        "只跳过计时模式不用的 scalar logging"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-scalar-log-elision"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1002,16 +1014,16 @@
         "Claim boundary",
         "Results",
         "Decision",
+        "Helios A100 history",
         "host-synchronization",
-        "helper 的全局 free_memory/GC 也可能干扰训练提交",
-        "Helios A100 history"
+        "helper 的全局 free_memory/GC 也可能干扰训练提交"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-free-memory-gc"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1026,16 +1038,16 @@
         "Frozen identity and validity",
         "Hardware result",
         "Claim boundary and decision",
+        "Helios A100 history",
         "profiling-attribution",
-        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间",
-        "Helios A100 history"
+        "GEMM/FA2 occupancy 低，不代表有同等比例的系统提速空间"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-ncu-low-occupancy-not-low-throughput"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1073,16 +1085,16 @@
         "Correctness and capacity evidence",
         "Performance",
         "Next diagnostic boundary",
+        "Helios A100 history",
         "parameter-residency",
-        "只在五次 no-grad rollout 内保留 41 个 FSDP 单元",
-        "Helios A100 history"
+        "只在五次 no-grad rollout 内保留 41 个 FSDP 单元"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-bounded-rollout-residency"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1117,16 +1129,16 @@
         "Contract",
         "Results",
         "Decision",
+        "Helios A100 history",
         "allocator-policy",
-        "正确性模式能跑，去掉 flush 后的正式计时仍可能 OOM",
-        "Helios A100 history"
+        "正确性模式能跑，去掉 flush 后的正式计时仍可能 OOM"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-no-flush-timing-oom"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1141,16 +1153,16 @@
         "Contract",
         "Results",
         "Decision",
+        "Helios A100 history",
         "allocator-policy",
-        "expandable_segments 修复容量却比有 flush 的 control 慢",
-        "Helios A100 history"
+        "expandable_segments 修复容量却比有 flush 的 control 慢"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-expandable-segments-cost"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1167,16 +1179,16 @@
         "Decision",
         "World16 gates and formal result",
         "Performance decision",
+        "Helios A100 history",
         "fusion-numerics",
-        "小型 add+cat 融合有完整周期小收益",
-        "Helios A100 history"
+        "小型 add+cat 融合有完整周期小收益"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-history-addcat-fusion"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1192,16 +1204,16 @@
         "Source-qualified hypothesis",
         "Canary evidence",
         "Decision and stop boundary",
+        "Helios A100 history",
         "fusion-numerics",
-        "后续 GAN frozen cross norm 只有 canary，未完成 world16",
-        "Helios A100 history"
+        "后续 GAN frozen cross norm 只有 canary，未完成 world16"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-frozen-crossnorm-unrun"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1212,12 +1224,16 @@
       "locator": "结果、合同、限制与失败记录",
       "title": "Executable plan",
       "tags": [
-        "Executable plan"
+        "Executable plan",
+        "validation-lifecycle",
+        "Helios B2：兼容调用日程仍被数值门拒绝"
       ],
       "source_group": "Helios and Wan historical experiments",
-      "review_status": "DISCOVERED_NOT_CURATED",
-      "linked_case_ids": [],
-      "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
+      "review_status": "CURATED_EXCERPTS",
+      "linked_case_ids": [
+        "helios-b2-rollout-numerical-rejection"
+      ],
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1306,16 +1322,16 @@
         "Conclusion (diagnostic only)",
         "Minimal next question (not executed)",
         "Artifacts",
+        "Helios A100 history",
         "profiling-attribution",
-        "H3 实测大拷贝可对应 boundary storage，但暴露区间不是可直接省掉的时间",
-        "Helios A100 history"
+        "H3 实测大拷贝可对应 boundary storage，但暴露区间不是可直接省掉的时间"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-h3-copy-interval-attribution"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1332,16 +1348,16 @@
         "Implemented target executor",
         "Next bounded execution",
         "Bounded execution result",
+        "Helios A100 history",
         "memory-tradeoffs",
-        "孤立 G/S/T 容量搜索不能代替连续 Full5",
-        "Helios A100 history"
+        "孤立 G/S/T 容量搜索不能代替连续 Full5"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-isolated-offload-search"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1359,16 +1375,16 @@
         "Failure",
         "Interpretation and next boundary",
         "Evidence",
+        "Helios A100 history",
         "memory-tradeoffs",
-        "隐藏 ZeRO-1 flat owner 可精确释放，但不足以完成 backward",
-        "Helios A100 history"
+        "隐藏 ZeRO-1 flat owner 可精确释放，但不足以完成 backward"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-lp-flat-release"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1387,9 +1403,9 @@
         "Diagnostic timing (not a formal speedup claim)",
         "Interpretation and boundary",
         "Evidence",
+        "Helios A100 history",
         "memory-tradeoffs",
         "只给 Critic 所需的四个 Score 块加 streaming 后通过 Full5",
-        "Helios A100 history",
         "acceptance-design",
         "两组 offload scope 被旧验收器误判，复核原始证据即可修正"
       ],
@@ -1399,7 +1415,7 @@
         "helios-score4-streaming-admission",
         "helios-scope-aware-validator"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1416,16 +1432,16 @@
         "Attempt 001: instrumentation failure after the capacity gate advanced",
         "Bounded recovery 002",
         "Recovery 002 result: bounded Critic-backward capacity failure",
+        "Helios A100 history",
         "memory-tradeoffs",
-        "g12 通过 Generator，瓶颈迁移到 Critic",
-        "Helios A100 history"
+        "g12 通过 Generator，瓶颈迁移到 Critic"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-phase-shift-after-g12"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1460,16 +1476,16 @@
         "Planned evidence",
         "Measured result",
         "Gate conclusion",
+        "Helios A100 history",
         "memory-tradeoffs",
-        "g8 确实释放了容量，连续 checkpoint backward 仍 OOM",
-        "Helios A100 history"
+        "g8 确实释放了容量，连续 checkpoint backward 仍 OOM"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-full5-pr8-oom"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1485,16 +1501,16 @@
         "Candidate-A implementation gates",
         "Candidate-A result",
         "Candidate-B status",
+        "Helios A100 history",
         "role-scheduling",
-        "同布局、同 B16 的 Critic 流水有三对正向结果",
-        "Helios A100 history"
+        "同布局、同 B16 的 Critic 流水有三对正向结果"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-matched-pipeline-positive"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1519,9 +1535,9 @@
         "Iteration 286 source-layout release gate",
         "Final correctness result",
         "Iteration 287 official backward-semantics audit",
+        "Helios A100 history",
         "allocator-policy",
         "to_empty 或 swap 无法保证旧分布式状态真正释放",
-        "Helios A100 history",
         "distributed-topology",
         "ZeRO-3 default-world 假设会让部分 rank 初始化或 forward 卡住",
         "measurement-identity",
@@ -1534,7 +1550,7 @@
         "helios-zero3-subgroup-default-world",
         "helios-gas-trace-baseline-repair"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1546,16 +1562,16 @@
       "title": "Iteration 296: strict-v4 Step10-A 2M persistence",
       "tags": [
         "Iteration 296: strict-v4 Step10-A 2M persistence",
+        "Helios A100 history",
         "distributed-topology",
-        "小参数 persistence 与同步 prefetch 有收益，但未达到当次目标",
-        "Helios A100 history"
+        "小参数 persistence 与同步 prefetch 有收益，但未达到当次目标"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-persistence-window"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1570,16 +1586,16 @@
         "Correctness and admission",
         "Preliminary low-overhead timing",
         "Evidence",
+        "Helios A100 history",
         "transfer-staging",
-        "同步 pinned checkpoint boundaries 正确但变慢",
-        "Helios A100 history"
+        "同步 pinned checkpoint boundaries 正确但变慢"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-sync-pinned-boundaries-regress"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1593,16 +1609,16 @@
         "Iteration 307: explicit Transformer-block ZeRO-3 leaves",
         "Exact continuous Full5",
         "Low-overhead Step10 diagnostic",
+        "Helios A100 history",
         "distributed-topology",
-        "按真实 Transformer 类分组优于粗粒度阈值混选",
-        "Helios A100 history"
+        "按真实 Transformer 类分组优于粗粒度阈值混选"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-block-leaf-grouping"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1614,16 +1630,16 @@
       "title": "Iteration 298: async ZeRO-3 prefetch stream",
       "tags": [
         "Iteration 298: async ZeRO-3 prefetch stream",
+        "Helios A100 history",
         "distributed-topology",
-        "打开异步通信后，比同步窗口更慢且占更多显存",
-        "Helios A100 history"
+        "打开异步通信后，比同步窗口更慢且占更多显存"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-overlap-comm-regression"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1635,16 +1651,16 @@
       "title": "Iteration 297: one-block prefetch / two-block live Step10-A",
       "tags": [
         "Iteration 297: one-block prefetch / two-block live Step10-A",
+        "Helios A100 history",
         "distributed-topology",
-        "小参数 persistence 与同步 prefetch 有收益，但未达到当次目标",
-        "Helios A100 history"
+        "小参数 persistence 与同步 prefetch 有收益，但未达到当次目标"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-persistence-window"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1657,16 +1673,16 @@
       "tags": [
         "Iteration 302: Step10-A saved-tensor ownership census",
         "Evidence",
+        "Helios A100 history",
         "profiling-attribution",
-        "saved-tensor census 确认存储类别，不等于全部 memcpy 归因",
-        "Helios A100 history"
+        "saved-tensor census 确认存储类别，不等于全部 memcpy 归因"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-saved-tensor-census"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1685,9 +1701,9 @@
         "5. 目标与可比性",
         "6. 资源与限制",
         "7. 结论",
+        "Helios A100 history",
         "distributed-topology",
         "按真实 Transformer 类分组优于粗粒度阈值混选",
-        "Helios A100 history",
         "transfer-staging",
         "缓存保留至语义边界后，仍需报告后续串行清理"
       ],
@@ -1697,7 +1713,7 @@
         "helios-block-leaf-grouping",
         "helios-persistent-cache-inclusive-time"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1717,16 +1733,16 @@
         "Transition optimization opportunities, ranked",
         "3. Quantitative ceiling and bounded next experiment",
         "Evidence",
+        "Helios A100 history",
         "profiling-attribution",
-        "30 个 subgroup 的源码计数没有解释 50 秒 transition",
-        "Helios A100 history"
+        "30 个 subgroup 的源码计数没有解释 50 秒 transition"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-group-count-hypothesis-refuted"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1742,16 +1758,16 @@
         "Causal correction",
         "Decision",
         "Evidence",
+        "Helios A100 history",
         "profiling-attribution",
-        "30 个 subgroup 的源码计数没有解释 50 秒 transition",
-        "Helios A100 history"
+        "30 个 subgroup 的源码计数没有解释 50 秒 transition"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-group-count-hypothesis-refuted"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1763,16 +1779,16 @@
       "title": "Iteration 300: immediate background pinned-cache cleanup",
       "tags": [
         "Iteration 300: immediate background pinned-cache cleanup",
+        "Helios A100 history",
         "transfer-staging",
-        "清理放到后台会干扰通信；晚点清理又会干扰 Critic",
-        "Helios A100 history"
+        "清理放到后台会干扰通信；晚点清理又会干扰 Critic"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-background-cleanup-contention"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1784,16 +1800,16 @@
       "title": "Iteration 301: late-start pinned-cache cleanup",
       "tags": [
         "Iteration 301: late-start pinned-cache cleanup",
+        "Helios A100 history",
         "transfer-staging",
-        "清理放到后台会干扰通信；晚点清理又会干扰 Critic",
-        "Helios A100 history"
+        "清理放到后台会干扰通信；晚点清理又会干扰 Critic"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-background-cleanup-contention"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1808,16 +1824,16 @@
         "Contract",
         "Exact attempt 02",
         "Interpretation",
+        "Helios A100 history",
         "transfer-staging",
-        "缓存保留至语义边界后，仍需报告后续串行清理",
-        "Helios A100 history"
+        "缓存保留至语义边界后，仍需报告后续串行清理"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-persistent-cache-inclusive-time"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1829,16 +1845,16 @@
       "title": "Iteration 299: persistent-pinned transition target",
       "tags": [
         "Iteration 299: persistent-pinned transition target",
+        "Helios A100 history",
         "transfer-staging",
-        "persistent pinned target 明显缩短传输，也带来准备与清理成本",
-        "Helios A100 history"
+        "persistent pinned target 明显缩短传输，也带来准备与清理成本"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-persistent-pin-cold-cost"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1850,16 +1866,16 @@
       "title": "Iteration 295: pinned transition with legacy G3 redistribution",
       "tags": [
         "Iteration 295: pinned transition with legacy G3 redistribution",
+        "Helios A100 history",
         "transfer-staging",
-        "减少 G3 collective 数量后，广播关键路径反而变长",
-        "Helios A100 history"
+        "减少 G3 collective 数量后，广播关键路径反而变长"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-bounded-pin-bucket-regression"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1874,16 +1890,16 @@
         "Frozen comparison",
         "Correctness",
         "Interpretation",
+        "Helios A100 history",
         "transfer-staging",
-        "减少 G3 collective 数量后，广播关键路径反而变长",
-        "Helios A100 history"
+        "减少 G3 collective 数量后，广播关键路径反而变长"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-bounded-pin-bucket-regression"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1924,16 +1940,16 @@
         "Conclusion boundary",
         "Resource and cleanup evidence",
         "Next bounded question",
+        "Helios A100 history",
         "validation-lifecycle",
-        "Resident/FSDP/DDP 都完成更新，跨布局数值仍可能失败",
-        "Helios A100 history"
+        "Resident/FSDP/DDP 都完成更新，跨布局数值仍可能失败"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "wan-placement-numerics-failure"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1953,16 +1969,16 @@
         "Diagnostic timeline comparison",
         "Unprofiled timing boundary",
         "Evidence",
+        "Helios A100 history",
         "implementation-reuse",
-        "配置写着 GPU residual，实际旧 runtime 根本没有实现这个参数",
-        "Helios A100 history"
+        "配置写着 GPU residual，实际旧 runtime 根本没有实现这个参数"
       ],
       "source_group": "Helios and Wan historical experiments",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "wan-runtime-capability-noop"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1973,9 +1989,9 @@
       "locator": "control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "parameter-residency",
         "W2：参数保留有小幅正向观察，同时增加显存",
-        "Helios optimization history",
         "memory-tradeoffs",
         "parameter reserve 与 driver free 不能混用",
         "experiment-decisions",
@@ -1988,7 +2004,7 @@
         "helios-allocator-policy-r36",
         "helios-budget-units-r36"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -1999,10 +2015,11 @@
       "locator": "rows[workload=W3]",
       "title": "conclusion",
       "tags": [
-        "parameter-residency",
-        "W3：冻结 replay 保留只带来小增量",
         "Helios optimization history",
-        "W6：同类保留尝试变慢",
+        "checkpoint-result-reuse",
+        "activation-retention",
+        "W3：Critic 尾两块冻结 FFN-up 结果复用的小幅历史增量",
+        "W6 r1：block49计算结果从CPU缓存改为GPU保留后变慢",
         "W1：扩大到 whole-block tail8 出现 OOM",
         "state-caching",
         "W1：RETAIN4 与 frozen_down 的条件边际不可相加",
@@ -2018,7 +2035,7 @@
         "helios-w1-frozen-down-r1",
         "helios-w5-numerical-failure"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2029,9 +2046,9 @@
       "locator": "results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "memory-tradeoffs",
         "W4：完成运行与全程容量宽裕是不同结论",
-        "Helios optimization history",
         "measurement-identity",
         "W4：新两臂与旧 baseline 的来源不同"
       ],
@@ -2041,7 +2058,7 @@
         "helios-w4-capacity-r3",
         "helios-w4-ablation-sources"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2052,16 +2069,16 @@
       "locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "host-synchronization",
-        "W6：同 FA3 对照下 metadata barrier 消除有正向观察",
-        "Helios optimization history"
+        "W6 r46：恢复原生 metadata barrier 后的单次正向观察"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w6-metadata-r46"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2072,16 +2089,16 @@
       "locator": "actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "attention-routing",
-        "W6：FA3 已启用仍可能整体变慢",
-        "Helios optimization history"
+        "W6：FA3 已启用仍可能整体变慢"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w6-fa3-r43"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2092,16 +2109,16 @@
       "locator": "saved_s; coverage_caveat; review_note; long_trajectory",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "attention-routing",
-        "W1：primitive 覆盖与实际路由范围必须分开",
-        "Helios optimization history"
+        "W1：primitive 覆盖与实际路由范围必须分开"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w1-fa3-r25"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2112,16 +2129,16 @@
       "locator": "module docstring; fused_lora_epilogue; inline PTX",
       "title": "wan13b_lora_epilogue",
       "tags": [
+        "Helios optimization history",
         "fusion-numerics",
-        "Wan LoRA epilogue：保留 FP32 乘加舍入与 BF16 输出",
-        "Helios optimization history"
+        "Wan LoRA epilogue：保留 FP32 乘加舍入与 BF16 输出"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "wan-lora-rounding-source"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2132,16 +2149,16 @@
       "locator": "build.op guards; canary_scope; PLAN_CONTRACT",
       "title": "livewan_generator_modulation",
       "tags": [
+        "Helios optimization history",
         "fusion-numerics",
-        "LiveWan：Generator 与 Score 的调制 dtype 不同",
-        "Helios optimization history"
+        "LiveWan：Generator 与 Score 的调制 dtype 不同"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "livewan-modulation-source"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2152,16 +2169,16 @@
       "locator": "scope; coefficient_scope; claim; production_ready",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "graphs-and-ema",
-        "W1：固定 EMA 系数图的有效期只覆盖已测 steps",
-        "Helios optimization history"
+        "W1：固定 EMA 系数图的有效期只覆盖已测 steps"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w1-ema-r34"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2172,16 +2189,16 @@
       "locator": "exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "state-caching",
-        "W6：AdaLN bank 尝试没有带来时间收益",
-        "Helios optimization history"
+        "W6：AdaLN bank 尝试没有带来时间收益"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w6-adaln-r41"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2202,9 +2219,9 @@
         "5. 自动规划器：最新证据是“保存计划实际执行并接近手工”，不是把全部系统收益算成搜索增量",
         "6. 截图中的消融列有算术未同步，且不能用算术替代实测",
         "7. 网页版应按这个顺序重新整理",
+        "Helios optimization history",
         "measurement-identity",
         "W3：计时完成与 observer 失败分别保留",
-        "Helios optimization history",
         "保存计划接近手工结果与全系统加速分别归因"
       ],
       "source_group": "DMD public snapshot",
@@ -2213,7 +2230,21 @@
         "helios-w3-observer-failure",
         "helios-planner-increment"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "content_corrections": [
+        {
+          "case_id": "helios-w6-metadata-r46",
+          "section": "r46 metadata barrier",
+          "incorrect_intervention": "remove_metadata_barrier",
+          "correct_intervention": "restore_native_metadata_barrier",
+          "reads_per_rank_cycle": {
+            "control": 0,
+            "candidate": 350
+          },
+          "status": "CONTENT_ERRATUM_NOT_NEW_EXPERIMENT",
+          "note": "该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。"
+        }
+      ]
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2224,16 +2255,16 @@
       "locator": "status; strict_numerical_status; rank records",
       "title": "gan_nomerge_retime",
       "tags": [
+        "Helios optimization history",
         "measurement-identity",
-        "W3：计时完成与 observer 失败分别保留",
-        "Helios optimization history"
+        "W3：计时完成与 observer 失败分别保留"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-w3-observer-failure"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2246,16 +2277,16 @@
       "tags": [
         "Exact existing entry modules, not copied kernels or inferred CUDA support.",
         "Only a public, already-supported tuning surface is listed as tunable.",
+        "Helios optimization history",
         "implementation-reuse",
-        "14 个已有实现入口可检索，仍需检查 guards",
-        "Helios optimization history"
+        "14 个已有实现入口可检索，仍需检查 guards"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "dmd-implementation-inventory"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2266,16 +2297,16 @@
       "locator": "status; numerical; saved_seconds",
       "title": "conclusion",
       "tags": [
+        "Helios optimization history",
         "experiment-decisions",
-        "小正向时间与数值 REVIEW 可以同时存在",
-        "Helios optimization history"
+        "小正向时间与数值 REVIEW 可以同时存在"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "helios-small-gain-review-r14"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2298,9 +2329,9 @@
         "Minimum-offload search",
         "Current blocker",
         "2026-08-12 role/lifecycle follow-up",
+        "Helios A100 history",
         "role-scheduling",
         "另一固定内存分区的流水三对结果明显慢于顺序",
-        "Helios A100 history",
         "profiling-attribution",
         "训练结束而 Nsight teardown 卡住，不能声称完成全 rank profile"
       ],
@@ -2310,7 +2341,7 @@
         "helios-fixed-memory-pipeline-negative",
         "helios-profile-teardown-incomplete"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2327,16 +2358,16 @@
         "Every-refresh rounding evidence (rank0, outside timers)",
         "Resources and timing boundary",
         "Engineering / reproducibility",
+        "Helios A100 history",
         "validation-lifecycle",
-        "LoRA 合并的 nearest 与 stochastic 两种舍入都未通过轨迹",
-        "Helios A100 history"
+        "LoRA 合并的 nearest 与 stochastic 两种舍入都未通过轨迹"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "wan-merged-lora-trajectory-rejected"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2350,16 +2381,16 @@
         "Wan：状态保留策略的真实搜索与保存计划执行",
         "这次新增的系统能力",
         "数值、显存与证据边界",
+        "Helios A100 history",
         "planner-calibration",
-        "Planner 复现接近手工最优，不等于独立新增加速",
-        "Helios A100 history"
+        "Planner 复现接近手工最优，不等于独立新增加速"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "planner-manual-rediscovery"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2380,9 +2411,9 @@
         "Direct single-CUDA immutable sharing",
         "Explicit image replication with immutable sharing",
         "Atomic native-owner policies",
+        "Helios A100 history",
         "memory-tradeoffs",
         "冻结权重共享不等于 trainable/optimizer 状态共享",
-        "Helios A100 history",
         "validation-lifecycle",
         "checkpoint replay 不能包住 optimizer 更新等副作用"
       ],
@@ -2392,7 +2423,7 @@
         "dmd-frozen-alias-construction-peak",
         "dmd-pure-call-checkpoint-contract"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2407,16 +2438,16 @@
         "Evidence",
         "Boundaries",
         "Dispatch safety and a non-preset scheduling example",
+        "Helios A100 history",
         "planner-calibration",
-        "计划中的 producer 顺序必须落到真实 forward/backward",
-        "Helios A100 history"
+        "计划中的 producer 顺序必须落到真实 forward/backward"
       ],
       "source_group": "DMD public snapshot",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "planner-dispatch-realized"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2455,16 +2486,16 @@
       "locator": "来源文件本体",
       "title": "wan_matched_r1_result",
       "tags": [
+        "Helios H100 history",
         "implementation-reuse",
-        "H100 W1 的已测组合与后续未测 norm 代码分开",
-        "Helios H100 history"
+        "H100 W1 的已测组合与后续未测 norm 代码分开"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w1-source-qualified-pair"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2519,16 +2550,16 @@
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
+        "Helios H100 history",
         "host-synchronization",
-        "H100 W2 只有同源 fence-only 差值能归因给 fence",
-        "Helios H100 history"
+        "H100 W2 只有同源 fence-only 差值能归因给 fence"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w2-fence-only-pair"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2539,16 +2570,16 @@
       "locator": "来源文件本体",
       "title": "w3_official_swap_matched_r1",
       "tags": [
+        "Helios H100 history",
         "memory-tradeoffs",
-        "H100 W3 已完成的是 official role-swap 对照组合",
-        "Helios H100 history"
+        "H100 W3 已完成的是 official role-swap 对照组合"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w3-role-swap-combination"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2559,16 +2590,16 @@
       "locator": "来源文件本体",
       "title": "timing_audit_committed_source_r1",
       "tags": [
+        "Helios H100 history",
         "parameter-residency",
-        "H100 W4 teacher resident 单次差值只有约 0.23%",
-        "Helios H100 history"
+        "H100 W4 teacher resident 单次差值只有约 0.23%"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w4-teacher-resident-small"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2621,16 +2652,16 @@
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
+        "Helios H100 history",
         "parameter-residency",
-        "H100 W4 teacher resident 单次差值只有约 0.23%",
-        "Helios H100 history"
+        "H100 W4 teacher resident 单次差值只有约 0.23%"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w4-teacher-resident-small"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2684,16 +2715,16 @@
       "title": "W5 H100: preserved three-arm re-audit, no new GPU experiment",
       "tags": [
         "W5 H100: preserved three-arm re-audit, no new GPU experiment",
+        "Helios H100 history",
         "memory-tradeoffs",
-        "名为 Resident 的 fallback 实际仍搬运 CPU checkpoint boundaries",
-        "Helios H100 history"
+        "名为 Resident 的 fallback 实际仍搬运 CPU checkpoint boundaries"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w5-resident-cpu-fallback"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2704,16 +2735,16 @@
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
-        "memory-tradeoffs",
-        "H100 W5 保存 attention 输出/LSE 换取重算减少",
-        "Helios H100 history"
+        "Helios H100 history",
+        "checkpoint-result-reuse",
+        "H100 W5 保存 attention 输出/LSE 换取重算减少"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w5-attention-cache-memory-trade"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2724,16 +2755,16 @@
       "locator": "来源文件本体",
       "title": "w5_cpu_staged_candidate_stall_r1",
       "tags": [
+        "Helios H100 history",
         "transfer-staging",
-        "CPU staged H3 候选卡住，证据不足以称为 OOM",
-        "Helios H100 history"
+        "CPU staged H3 候选卡住，证据不足以称为 OOM"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w5-cpu-stage-stall"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2744,16 +2775,16 @@
       "locator": "来源文件本体",
       "title": "w5_resident_actual_capacity_failure_r4",
       "tags": [
+        "Helios H100 history",
         "allocator-policy",
-        "80GB H100 上纯 resident H3 仍在第二次 Fake backward OOM",
-        "Helios H100 history"
+        "80GB H100 上纯 resident H3 仍在第二次 Fake backward OOM"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w5-pure-resident-oom"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2793,9 +2824,9 @@
       "title": "W6 same0419 native single-trial matrix",
       "tags": [
         "W6 same0419 native single-trial matrix",
+        "Helios H100 history",
         "measurement-identity",
         "W6 C1 与 C2 相差很大，不能混用周期分母",
-        "Helios H100 history",
         "allocator-policy",
         "GPU 容量改善可能转移为很大的 host 内存压力"
       ],
@@ -2805,7 +2836,7 @@
         "h100-w6-warmup-cycle-denominator",
         "h100-w6-host-budget"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2816,16 +2847,16 @@
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
+        "Helios H100 history",
         "memory-tradeoffs",
-        "H100 W6 三臂比较绑定同 0419 source 与 FA2",
-        "Helios H100 history"
+        "H100 W6 三臂比较绑定同 0419 source 与 FA2"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w6-same-source-matrix"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2850,16 +2881,16 @@
       "locator": "来源文件本体",
       "title": "w6_tiny_trainable_state_parity_r1",
       "tags": [
+        "Helios H100 history",
         "validation-lifecycle",
-        "tiny trainable-state parity 不能覆盖全模型 AR rollout",
-        "Helios H100 history"
+        "tiny trainable-state parity 不能覆盖全模型 AR rollout"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-w6-tiny-parity-boundary"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2875,9 +2906,9 @@
         "W1 actual cheap failure, not new model/OOM/numeric failure",
         "Actual resource blocker after reconnect",
         "Next authorized serial work",
+        "Helios H100 history",
         "implementation-reuse",
         "离线 import 故障发生在模型之前，修复代码不等于新 GPU 结果",
-        "Helios H100 history",
         "profiling-attribution",
         "W5 晚期 backward 的完整 rank/copy 覆盖是归因前提",
         "experiment-decisions",
@@ -2890,7 +2921,7 @@
         "h100-partial-profile-rank-coverage",
         "h100-stopped-campaign-ledger"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "sliortega295-ops/DMD-System",
@@ -2905,16 +2936,16 @@
         "Actual verified stop",
         "Unfinished work is cancelled, not completed",
         "Evidence",
+        "Helios H100 history",
         "experiment-decisions",
-        "被停止的队列必须保持 NOT_RUN，压缩上下文不能重置预算",
-        "Helios H100 history"
+        "被停止的队列必须保持 NOT_RUN，压缩上下文不能重置预算"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "h100-stopped-campaign-ledger"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -2933,9 +2964,9 @@
         "5. Remove host syncs",
         "6. Spend the freed memory on speed",
         "What ships with it",
+        "ResearchBoost external",
         "parameter-residency",
         "ResearchBoost：跨多次 forward 保留需固定权重版本与后向语义",
-        "ResearchBoost external",
         "implementation-reuse",
         "ResearchBoost：冻结计算权重可预转换，状态与输入梯度需单独核对",
         "state-caching",
@@ -2948,7 +2979,7 @@
         "rb-frozen-dtype-not-whole-model",
         "rb-fsdp-container-host-state"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -2968,9 +2999,9 @@
         "L3 graph or Python rewrites",
         "L4 custom kernels",
         "Remedies by stage",
+        "ResearchBoost external",
         "graphs-and-ema",
         "ResearchBoost：SAC/dispatch mode 可让 compile 路径静默回到 eager",
-        "ResearchBoost external",
         "ResearchBoost：单层 compile 测试漏掉全模型的重编译与 fallback"
       ],
       "source_group": "ResearchBoost external",
@@ -2979,7 +3010,7 @@
         "rb-compile-dispatch-fallback",
         "rb-compile-full-flow-specializations"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3011,9 +3042,9 @@
         "10. Attention",
         "Reproducing library reductions bit for bit: keeping fusions with reductions at N0",
         "What every fusion ships with",
+        "ResearchBoost external",
         "fusion-numerics",
         "ResearchBoost：融合进 GEMM 可能输给库 GEMM 加独立融合",
-        "ResearchBoost external",
         "ResearchBoost：QKV packing 需覆盖 optimizer、checkpoint 与 reduction 顺序",
         "ResearchBoost：复现库 reduction 需要核对分区、舍入和算术顺序"
       ],
@@ -3024,7 +3055,7 @@
         "rb-qkv-layout-state-mapping",
         "rb-reduction-architecture-numerics"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3042,9 +3073,9 @@
         "Identifying the bottleneck type: by ablation, not by nvidia-smi",
         "Accounting conventions",
         "Kernel level (Nsight Compute)",
+        "ResearchBoost external",
         "profiling-attribution",
         "ResearchBoost：backward hook 名称可能把上游 kernel 算到错误模块",
-        "ResearchBoost external",
         "ResearchBoost：详细 observer 本身会改变 compile 路径"
       ],
       "source_group": "ResearchBoost external",
@@ -3053,7 +3084,7 @@
         "rb-profile-backward-labels",
         "rb-observer-may-change-execution"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3067,9 +3098,9 @@
         "Results and lessons across tasks",
         "Four tasks, four ceilings",
         "General lessons",
+        "ResearchBoost external",
         "measurement-identity",
         "ResearchBoost：共享机器的慢 baseline 会夸大候选收益",
-        "ResearchBoost external",
         "validation-lifecycle",
         "ResearchBoost：文件缓存与依赖库可能消费全局随机流",
         "data-lifecycle-costs",
@@ -3085,7 +3116,7 @@
         "rb-first-checkpoint-save-crash",
         "rb-constraints-and-memory-objectives"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3102,21 +3133,23 @@
         "Cheap investigation order (T0 → T3)",
         "When only one component cannot be bitwise: isolate it behind a stand-in",
         "Common pitfalls",
+        "ResearchBoost external",
         "validation-lifecycle",
         "ResearchBoost：no-grad 覆盖 cache 仍可能留下旧梯度连接",
-        "ResearchBoost external",
         "ResearchBoost：接近零的梯度相对误差需要诊断而非事后放宽门槛",
         "acceptance-design",
-        "ResearchBoost：让已知错误真正触发最终失败出口"
+        "ResearchBoost：让已知错误真正触发最终失败出口",
+        "ResearchBoost：隔离非bitwise组件，再验真实最终组合"
       ],
       "source_group": "ResearchBoost external",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "rb-ghost-gradient-inplace-cache",
         "rb-zero-gradient-error-localization",
-        "rb-judge-negative-controls"
+        "rb-judge-negative-controls",
+        "rb-nonbitwise-isolation-final-combination"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3132,16 +3165,16 @@
         "When the judge may change, and when it may not",
         "Fake gains the judge caught",
         "Known limits of the judge",
+        "ResearchBoost external",
         "acceptance-design",
-        "ResearchBoost：同一路径与原始 baseline 比较，任务变更需新合同",
-        "ResearchBoost external"
+        "ResearchBoost：同一路径与原始 baseline 比较，任务变更需新合同"
       ],
       "source_group": "ResearchBoost external",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "rb-judge-scope-and-contract"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3155,9 +3188,9 @@
         "Video Generation",
         "Faster-SelfForcing",
         "Faster-MiniMax-H3",
+        "ResearchBoost external",
         "validation-lifecycle",
         "ResearchBoost H3：短测很快，较长轨迹暴露 checkpoint replay 数值问题",
-        "ResearchBoost external",
         "ResearchBoost H3：统一 forward/导数后重新通过其短轨迹 gate"
       ],
       "source_group": "ResearchBoost external",
@@ -3166,7 +3199,7 @@
         "rb-h3-checkpoint-qknorm-regression",
         "rb-h3-qknorm-repair"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3181,16 +3214,16 @@
         "Faster-NanoChat",
         "Faster-YOCO",
         "Faster-LLM2Vec",
+        "ResearchBoost external",
         "data-lifecycle-costs",
-        "ResearchBoost：stage、step 与含外部服务/启动的收益不能混为一个倍数",
-        "ResearchBoost external"
+        "ResearchBoost：计时窗口与优化贡献分母分别记录"
       ],
       "source_group": "ResearchBoost external",
       "review_status": "CURATED_EXCERPTS",
       "linked_case_ids": [
         "rb-end-to-end-denominator"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
       "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
@@ -3228,9 +3261,9 @@
         "Model-Specific Starting Points",
         "Historical PR Watchlist",
         "Tips",
+        "ResearchBoost external",
         "graphs-and-ema",
         "ResearchBoost/SGLang：推理 graph capture shape 与服务请求不符会失效",
-        "ResearchBoost external",
         "memory-tradeoffs",
         "ResearchBoost/SGLang：大显存能驻留时 offload 可能只剩开销",
         "attention-routing",
@@ -3243,7 +3276,112 @@
         "rb-inference-offload-vram-dependent",
         "rb-inference-approximation-boundary"
       ],
-      "summary": "已抽取限定范围的经验；来源其余部分不代表已完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+      "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+      "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+      "locator": "up_blocks in ((),(38,39))",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L41",
+      "locator_quality": "structured_source_locator",
+      "title": "down_replay.py",
+      "tags": [
+        "checkpoint-result-reuse",
+        "W3：Critic 尾两块冻结 FFN-up 结果复用的小幅历史增量"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w3-retention-r1"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+      "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+      "locator": "Only block49",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
+      "locator_quality": "structured_source_locator",
+      "title": "h3_ar_hybrid_cache.py",
+      "tags": [
+        "checkpoint-result-reuse",
+        "W6 r1：block49计算结果从CPU缓存改为GPU保留后变慢"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w6-retention-r1"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/contracts/wan_tail8_retention_v1.md",
+      "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3",
+      "locator": "tail8",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md#L1",
+      "locator_quality": "structured_source_locator",
+      "title": "wan_tail8_retention_v1.md",
+      "tags": [
+        "activation-retention",
+        "W1：扩大到 whole-block tail8 出现 OOM"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w1-tail8-oom"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+      "locator": "POLICY='restore-native-cu-metadata-barrier.v1'",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L4",
+      "locator_quality": "structured_source_locator",
+      "title": "native_metadata_barrier.py",
+      "tags": [
+        "host-synchronization",
+        "W6 r46：恢复原生 metadata barrier 后的单次正向观察"
+      ],
+      "source_group": "DMD public snapshot",
+      "linked_case_ids": [
+        "helios-w6-metadata-r46"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+    },
+    {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/multimodal.md",
+      "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9",
+      "locator": "With the optimized reward service on both sides",
+      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md",
+      "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56",
+      "locator_quality": "structured_source_locator",
+      "title": "multimodal.md",
+      "tags": [
+        "data-lifecycle-costs",
+        "ResearchBoost：计时窗口与优化贡献分母分别记录"
+      ],
+      "source_group": "ResearchBoost external",
+      "linked_case_ids": [
+        "rb-end-to-end-denominator"
+      ],
+      "review_status": "CURATED_EXCERPTS",
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     }
   ],
   "policy": "Pinned source metadata only. DISCOVERED_NOT_CURATED is a backlog item, not a verified experience."

@@ -40,6 +40,7 @@ profile 用来解释机制，正式收益用 unprofiled 对照；NVTX envelope �
 - 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
 - 定位命令：`dmd_knowledge.py locate --case helios-w3-observer-failure`
 - 来源：[sliortega295-ops/DMD-System / SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L39)；定位：观察中的数值文本锚点 L39；同时阅读同节合同、状态与限制。原定位：section 2: N70-OFF retime and preserved failure
+- 固定来源勘误：该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。
 - 来源：[sliortega295-ops/DMD-System / gan_nomerge_retime.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json#L32)；定位：观察中的数值文本锚点 L32；同时阅读同节合同、状态与限制。原定位：status; strict_numerical_status; rank records
 
 ### W4：新两臂与旧 baseline 的来源不同
@@ -78,10 +79,11 @@ profile 用来解释机制，正式收益用 unprofiled 对照；NVTX envelope �
 - 不应重复：不能用原 baseline 与 planner 的总差代替 planner 独立贡献
 - 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
 - 定位命令：`dmd_knowledge.py locate --case helios-planner-increment`
-- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 关联实现：[Planner 的已测成本及结果资格](implementations.md#planner-calibration)；diagnostic_tool；用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。
 - 函数入口：[src/distillschedule/search/cost_model.py::CostModel](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/cost_model.py#L77-L195)
 - 函数入口：[src/distillschedule/search/measurement.py::normalize_native](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/measurement.py#L18-L98)
 - 来源：[sliortega295-ops/DMD-System / SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L1)；定位：报告范围 L1–L122；L1: 六个 workload：当前结果口径、旧审计勘误与源码阅读指南；L7: 1. 范围必须是六项，不是五项；L20: 2. 用户当前论文主表快照：A100 六项；L37: 必须更正：W3 的 113.59s 不是当前无 merged-LoRA 数字；L47: 不能再沿用旧审计的三种替代；L53: 3. 主表之后还有新结果：不要隐去，也不要直接替换旧分母；L67: 4. H100 六项均已有结果，不能只写 W1/W2 找到了；L86: 5. 自动规划器：最新证据是“保存计划实际执行并接近手工”，不是把全部系统收益算成搜索增量；原定位：section 5: manual vs saved plan
+- 固定来源勘误：该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。
 
 ### 两波 GAS 必须重放同一逻辑操作的 selected-call 语义
 

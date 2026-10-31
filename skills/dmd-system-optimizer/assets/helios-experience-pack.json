@@ -53,10 +53,9 @@
         "state_lifetime_preserved": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "memory_tradeoff_measured": true
       },
-      "probe": "先做逐阶段容量账：常驻、激活、临时 gather、workspace、pinned 和 checkpoint；再量传输与计算重叠。",
+      "probe": "按动作区分：开启 offload 需证明容量收益足以抵消搬运；关闭 offload 需证明完整活跃状态能驻留；缓存计算结果另查重算与存活峰值。",
       "details": "references/knowledge/memory-tradeoffs.md"
     },
     {
@@ -88,7 +87,7 @@
     },
     {
       "id": "host-synchronization",
-      "title": "消除 metadata 同步与 CPU 提交空隙",
+      "title": "metadata 同步策略与 CPU 提交次序",
       "tags": [
         "metadata",
         "barrier",
@@ -101,15 +100,15 @@
         "调度",
         "空隙"
       ],
-      "mechanism": "频繁读取 GPU 上的 metadata 可能阻断 CPU 提交；可推导的 host 状态可减少这些同步。",
+      "mechanism": "metadata读取会影响CPU提交和资源竞争；恢复、增添或删除同步的收益方向应由匹配实验确认，不能先验假定消除同步更快。",
       "correctness_conditions": {
         "metadata_semantics_preserved": true,
         "host_state_lifetime_validated": true
       },
       "performance_conditions": {
-        "host_sync_on_critical_path": true
+        "host_policy_e2e_effect_measured": true
       },
-      "probe": "定位 item/DtoH/同步调用及其依赖；用开关只改变 metadata 路径，确认调用、版本和缓存输入一致。",
+      "probe": "先核对动作是增添、恢复还是删除同步；检查实际消费者、提交次序与同源端到端证据，不预设删除一定更快。",
       "details": "references/knowledge/host-synchronization.md"
     },
     {
@@ -153,7 +152,10 @@
         "融合",
         "精度",
         "梯度",
-        "舍入"
+        "舍入",
+        "phase-local",
+        "timestep gradient",
+        "训练态"
       ],
       "mechanism": "融合可减少中间访存和 launch，但 dtype、舍入点、布局及 backward 决定实现是否可复用。",
       "correctness_conditions": {
@@ -259,7 +261,10 @@
         "验证",
         "数值",
         "梯度",
-        "恢复"
+        "恢复",
+        "logical clock",
+        "逻辑时钟",
+        "B2"
       ],
       "mechanism": "不同改动需要不同深度的验证；训练 loss 走势、数值一致性和输出质量是不同判断。",
       "correctness_conditions": {
@@ -498,6 +503,52 @@
       },
       "probe": "在小预算下触发真实数据加载、phase 切换、save/resume；同时报告冷启动、稳态与必要的后续清理。",
       "details": "references/knowledge/data-lifecycle-costs.md"
+    },
+    {
+      "id": "activation-retention",
+      "title": "激活保留与 checkpoint 重算取舍",
+      "tags": [
+        "激活保留",
+        "tail8",
+        "checkpoint bypass",
+        "activation retention"
+      ],
+      "mechanism": "保留激活减少重算，增加存活显存；不表示参数驻留或减少 all-gather。",
+      "correctness_conditions": {
+        "recompute_semantics_preserved": true,
+        "activation_lifetime_validated": true
+      },
+      "performance_conditions": {
+        "recomputation_on_critical_path": true,
+        "memory_headroom": true
+      },
+      "probe": "核对哪些 checkpoint 被跳过、减少的重算与完整周期激活峰值；再验证梯度和更新。",
+      "details": "references/knowledge/activation-retention.md"
+    },
+    {
+      "id": "checkpoint-result-reuse",
+      "title": "checkpoint 中间计算结果复用",
+      "tags": [
+        "FFN-up",
+        "SAC",
+        "计算结果缓存",
+        "replay",
+        "attention output",
+        "LSE"
+      ],
+      "mechanism": "在合法 forward/replay 生命周期内复用选定算子的结果；保留参数、保留整块激活和缓存算子输出分别建模。",
+      "correctness_conditions": {
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true
+      },
+      "performance_conditions": {
+        "replay_reuses_saved_output": true,
+        "saved_compute_exceeds_cache_cost": true,
+        "memory_headroom": true
+      },
+      "probe": "检查实际 save/reuse 计数、梯度路径、版本键与释放；同时测节省的重算和新增峰值。",
+      "details": "references/knowledge/checkpoint-result-reuse.md"
     }
   ],
   "cases": [
@@ -560,19 +611,19 @@
         "implementations": [
           {
             "id": "fsdp-phase-retention",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
     },
     {
       "id": "helios-w3-retention-r1",
-      "pattern": "parameter-residency",
-      "title": "W3：冻结 replay 保留只带来小增量",
+      "pattern": "checkpoint-result-reuse",
+      "title": "W3：Critic 尾两块冻结 FFN-up 结果复用的小幅历史增量",
       "outcome": "positive_observation",
       "observation": "C2 117.074207036→116.673757426 秒，约 0.400 秒；numerical REVIEW。",
-      "lesson": "保留收益按当前 GAN 合同计算；不能与另一提交的最好成绩叠加。",
+      "lesson": "保存 Critic blocks 38/39 的冻结 FFN-up addmm 结果，减少 checkpoint 重算；不是缓存参数，也不以 exposed_gather 解释收益。约 0.400 秒只属该源单配对。",
       "scope": "W3 r1 该源同源增量，非长期等价证明。",
       "conditions": {
         "workload": "W3",
@@ -582,7 +633,7 @@
         "category": "not_established",
         "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
       },
-      "reentry": "当前调用频率或 gather 比例增加；最小验证：用当前 G/C 比例测有无驻留，保留梯度/更新检查和多次配对。",
+      "reentry": "选定 FFN-up 重算占比或可用激活容量发生变化；最小验证：核对 blocks38/39 的 original/replay 输出复用、输入梯度、权重版本和 graph-drain，然后补同源重复配对。",
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
@@ -595,6 +646,16 @@
           "original_locator": "rows[workload=W3]",
           "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L45",
           "locator_quality": "literal_observation_anchor"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+          "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+          "locator": "up_blocks in ((),(38,39))",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L41",
+          "locator_quality": "structured_source_locator"
         }
       ],
       "provenance": {
@@ -604,39 +665,52 @@
       },
       "retry": {
         "change_signals": [
-          "当前调用频率或 gather 比例增加"
+          "选定 FFN-up 重算占比或可用激活容量发生变化"
         ],
-        "minimum_probe": "用当前 G/C 比例测有无驻留，保留梯度/更新检查和多次配对",
-        "do_not_repeat": "不直接把约 0.4 秒差值当作新 workload 的收益"
+        "minimum_probe": "核对 blocks38/39 的 original/replay 输出复用、输入梯度、权重版本和 graph-drain，然后补同源重复配对",
+        "do_not_repeat": "不按参数驻留或 gather 开销选路线；不把 0.400 秒推广到其他合同"
       },
       "correctness_conditions": {
-        "weights_stable_during_reuse": true,
-        "state_release_validated": true
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true,
+        "frozen_base_only": true,
+        "grad_mode": "with_grad"
       },
       "performance_conditions": {
-        "repeated_forwards": true,
-        "exposed_gather": true,
+        "replay_reuses_saved_output": true,
+        "saved_compute_exceeds_cache_cost": true,
         "memory_headroom": true
       },
       "navigation": {
         "status": "linked",
-        "reason": "已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
         "implementations": [
           {
-            "id": "fsdp-phase-retention",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "id": "w3-frozen-ffn-up-replay",
+            "relationship": "historical_implementation",
+            "note": "绑定该实验训练源 155ffbb5 的 up_blocks 分支；当前同名 down-only 文件不能替代此历史变体。"
           }
         ]
+      },
+      "facts": {
+        "retained_object": "frozen_ffn_up_output",
+        "role": "Critic",
+        "blocks": [
+          38,
+          39
+        ],
+        "numerical_status": "REVIEW",
+        "paired_runs": 1
       }
     },
     {
       "id": "helios-w6-retention-r1",
-      "pattern": "parameter-residency",
-      "title": "W6：同类保留尝试变慢",
+      "pattern": "checkpoint-result-reuse",
+      "title": "W6 r1：block49计算结果从CPU缓存改为GPU保留后变慢",
       "outcome": "negative_observation",
       "observation": "C2 255.363757909→260.582584122 秒，增加约 5.219 秒；未晋级。",
-      "lesson": "其他 workload 的保留正例不决定 W6 的收益。净减速已观察，具体成本来源仍需局部测量。",
+      "lesson": "保存的是原生selected-output return trees：block49由pinned CPU改留GPU，其他块保持原路径。不是参数驻留，也不减少参数gather；该次约5.219秒回退未隔离原因。",
       "scope": "W6 r1 的该实现和工作量，numerical REVIEW。",
       "conditions": {
         "workload": "W6",
@@ -646,7 +720,7 @@
         "category": "net_slowdown_cause_not_isolated",
         "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
       },
-      "reentry": "gather 节省或保留/释放成本发生可测变化；最小验证：先分解 gather、驻留峰值和额外调度开销，再做完整周期配对。",
+      "reentry": "CPU/GPU结果存储的传输代价或容量条件改变；最小验证：检查block49原输出树、consumer计数、autograd、版本与完整释放；量化传输差异及同源完整周期。",
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
@@ -659,6 +733,16 @@
           "original_locator": "rows[workload=W6]",
           "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L89",
           "locator_quality": "literal_observation_anchor"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+          "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+          "locator": "Only block49",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
+          "locator_quality": "structured_source_locator"
         }
       ],
       "provenance": {
@@ -668,39 +752,49 @@
       },
       "retry": {
         "change_signals": [
-          "gather 节省或保留/释放成本发生可测变化"
+          "CPU/GPU结果存储的传输代价或容量条件改变"
         ],
-        "minimum_probe": "先分解 gather、驻留峰值和额外调度开销，再做完整周期配对",
-        "do_not_repeat": "未解释原先约 5.2 秒回退前不重复相同配置"
+        "minimum_probe": "检查block49原输出树、consumer计数、autograd、版本与完整释放；量化传输差异及同源完整周期",
+        "do_not_repeat": "不把GPU保留计算结果当成参数驻留，不用gather解释此结果"
       },
       "correctness_conditions": {
-        "weights_stable_during_reuse": true,
-        "state_release_validated": true
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true
       },
       "performance_conditions": {
-        "repeated_forwards": true,
-        "exposed_gather": true,
+        "saved_cache_transfer_exceeds_overhead": true,
         "memory_headroom": true
       },
       "navigation": {
         "status": "linked",
-        "reason": "已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
         "implementations": [
           {
-            "id": "fsdp-phase-retention",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "id": "h3-block49-hybrid-output-cache",
+            "relationship": "historical_implementation",
+            "note": "固定历史source实际GPU-tail1输出缓存，不是FSDP参数驻留。"
           }
         ]
+      },
+      "facts": {
+        "retained_object": "selected_operation_outputs",
+        "block": 49,
+        "storage_change": "pinned_cpu_to_gpu",
+        "numerical_status": "REVIEW"
+      },
+      "interpretation": {
+        "status": "MECHANISM_UNRESOLVED",
+        "claim": "单次完整周期回退；未证明由哪一项开销导致。"
       }
     },
     {
       "id": "helios-w1-tail8-oom",
-      "pattern": "parameter-residency",
+      "pattern": "activation-retention",
       "title": "W1：扩大到 whole-block tail8 出现 OOM",
       "outcome": "implementation_failure",
       "observation": "公开回执记为 CUDA_OOM_NOT_PROMOTED；候选没有有效 C2。",
-      "lesson": "容量失败限定当时保留范围；没有候选速度值，不能把它记作慢或零收益。",
+      "lesson": "容量失败限定当时保留范围；没有候选速度值，不能把它记作慢或零收益。 whole-block tail8 保留的是激活，收益来自减少重算；新增激活峰值决定容量，不是少做 gather。",
       "scope": "W1 当时 tail8 实现与 A100-40GB 容量。",
       "conditions": {
         "workload": "W1",
@@ -722,6 +816,16 @@
           "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "followups.wan_tail8; cleanup[0].unpaired_tail8_source_control",
           "locator_quality": "structured_source_locator"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "docs/contracts/wan_tail8_retention_v1.md",
+          "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3",
+          "locator": "tail8",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md#L1",
+          "locator_quality": "structured_source_locator"
         }
       ],
       "provenance": {
@@ -737,12 +841,11 @@
         "do_not_repeat": "不以 allocated 单点或微测通过替代完整周期容量"
       },
       "correctness_conditions": {
-        "weights_stable_during_reuse": true,
-        "state_release_validated": true
+        "recompute_semantics_preserved": true,
+        "activation_lifetime_validated": true
       },
       "performance_conditions": {
-        "repeated_forwards": true,
-        "exposed_gather": true,
+        "recomputation_on_critical_path": true,
         "memory_headroom": true
       },
       "navigation": {
@@ -751,10 +854,15 @@
         "implementations": [
           {
             "id": "block-activation-retention",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
+      },
+      "facts": {
+        "retained_object": "whole_block_activations",
+        "performance_status": "NOT_RUN",
+        "cuda_oom": true
       }
     },
     {
@@ -804,8 +912,7 @@
         "state_lifetime_preserved": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "capacity_metric_and_sampling_scope_defined": true
       },
       "navigation": {
         "status": "method_only",
@@ -858,8 +965,7 @@
         "state_lifetime_preserved": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "capacity_metric_and_sampling_scope_defined": true
       },
       "navigation": {
         "status": "method_only",
@@ -915,10 +1021,10 @@
     {
       "id": "helios-w6-metadata-r46",
       "pattern": "host-synchronization",
-      "title": "W6：同 FA3 对照下 metadata barrier 消除有正向观察",
+      "title": "W6 r46：恢复原生 metadata barrier 后的单次正向观察",
       "outcome": "positive_observation",
-      "observation": "两臂同 FA3：C2 262.384847224→253.740367298 秒，节省 8.644479926 秒；单配对 REVIEW。",
-      "lesson": "这是 metadata 变化的该次增量；不能把更早 SDPA 的 255.528 秒代入分母。",
+      "observation": "同 FA3 的单次配对：每 rank 每周期 metadata 读取 control 0→candidate 350 次；C2 262.384847224→253.740367298 秒，差值 8.644479926 秒，数值 REVIEW。",
+      "lesson": "启用 restore-native-cu-metadata-barrier.v1 会恢复 cu_q.tolist() 读取/同步。该次时间改善的底层原因未隔离，不能推出删除同步有益或恢复 barrier 普遍有益。",
       "scope": "W6 r46 相同训练源加外部 packet；非长期数值或最终全系统收益。",
       "conditions": {
         "workload": "W6",
@@ -929,7 +1035,7 @@
         "category": "not_established",
         "scope": "仅限此案例记录的实现、条件和测量范围；不构成整个机制的否决"
       },
-      "reentry": "当前 trace 显示 metadata 同步仍暴露在关键路径；最小验证：保持同 FA3 和相同读取值，检查消费者与计时边界后交错配对。",
+      "reentry": "同 FA3、相同读取值与原生 barrier 路径可独立比较；最小验证：先核对 0/350 读取计数和真实 tolist 路径，再检查梯度/状态及同源交错配对。",
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
@@ -942,6 +1048,16 @@
           "original_locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
           "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json#L12",
           "locator_quality": "literal_observation_anchor"
+        },
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+          "locator": "POLICY='restore-native-cu-metadata-barrier.v1'",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L4",
+          "locator_quality": "structured_source_locator"
         }
       ],
       "provenance": {
@@ -951,22 +1067,44 @@
       },
       "retry": {
         "change_signals": [
-          "当前 trace 显示 metadata 同步仍暴露在关键路径"
+          "同 FA3、相同读取值与原生 barrier 路径可独立比较"
         ],
-        "minimum_probe": "保持同 FA3 和相同读取值，检查消费者与计时边界后交错配对",
-        "do_not_repeat": "不把 backend 改变混入 metadata 单因素收益"
+        "minimum_probe": "先核对 0/350 读取计数和真实 tolist 路径，再检查梯度/状态及同源交错配对",
+        "do_not_repeat": "不把恢复 barrier 写成删除同步，不以单配对推断通用因果规律，也不混入 backend 更换"
       },
       "correctness_conditions": {
         "metadata_semantics_preserved": true,
         "host_state_lifetime_validated": true
       },
       "performance_conditions": {
-        "host_sync_on_critical_path": true
+        "same_backend_comparison": true,
+        "metadata_barrier_policy_measured": true
       },
       "navigation": {
-        "status": "unresolved",
-        "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
-        "implementations": []
+        "status": "linked",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
+        "implementations": [
+          {
+            "id": "w6-native-metadata-barrier",
+            "relationship": "historical_implementation",
+            "note": "r46 归档 packet，实际恢复原生 metadata 读取；训练源与外部 packet 身份分别核对。"
+          }
+        ]
+      },
+      "facts": {
+        "intervention": "restore_native_metadata_barrier",
+        "metadata_reads_per_rank_cycle": {
+          "control": 0,
+          "candidate": 350
+        },
+        "control_C2_s": 262.384847224,
+        "candidate_C2_s": 253.740367298,
+        "numerical_status": "REVIEW",
+        "paired_runs": 1
+      },
+      "interpretation": {
+        "status": "MECHANISM_UNRESOLVED",
+        "claim": "观察到恢复 barrier 后的单次改善；改善原因未完成隔离。"
       }
     },
     {
@@ -975,7 +1113,7 @@
       "title": "W6：FA3 已启用仍可能整体变慢",
       "outcome": "negative_observation",
       "observation": "实际 FA3 每周期每 rank 350 次调用；C2 255.528302602→257.709695683 秒。",
-      "lesson": "快路径命中证据与收益证据分开；后续去同步的收益不把这次 backend 试验改写为成功。",
+      "lesson": "快路径命中证据与收益证据分开；后续 r46 恢复原生 metadata barrier 的单次改善，不把这次 backend 试验改写为成功，也不证明删除同步有益。",
       "scope": "W6 r43 的同源单配对，grad/selected attention 未改，numerical REVIEW。",
       "conditions": {
         "workload": "W6",
@@ -1145,8 +1283,8 @@
         "implementations": [
           {
             "id": "wan-lora-epilogue",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -1214,8 +1352,8 @@
         "implementations": [
           {
             "id": "livewan-generator-modulation",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -1272,9 +1410,15 @@
         "capture_amortized": true
       },
       "navigation": {
-        "status": "unresolved",
-        "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
-        "implementations": []
+        "status": "linked",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
+        "implementations": [
+          {
+            "id": "wan-exact-ema-11-20",
+            "relationship": "historical_implementation",
+            "note": "已归档的r34原型；只覆盖11..20步，仍为历史REVIEW。"
+          }
+        ]
       }
     },
     {
@@ -1335,8 +1479,8 @@
         "implementations": [
           {
             "id": "h3-adaln-bank",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -1426,7 +1570,21 @@
           "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "section 2: N70-OFF retime and preserved failure",
           "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L39",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "content_corrections": [
+            {
+              "case_id": "helios-w6-metadata-r46",
+              "section": "r46 metadata barrier",
+              "incorrect_intervention": "remove_metadata_barrier",
+              "correct_intervention": "restore_native_metadata_barrier",
+              "reads_per_rank_cycle": {
+                "control": 0,
+                "candidate": 350
+              },
+              "status": "CONTENT_ERRATUM_NOT_NEW_EXPERIMENT",
+              "note": "该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。"
+            }
+          ]
         },
         {
           "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
@@ -1542,7 +1700,21 @@
           "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "section 5: manual vs saved plan",
           "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "content_corrections": [
+            {
+              "case_id": "helios-w6-metadata-r46",
+              "section": "r46 metadata barrier",
+              "incorrect_intervention": "remove_metadata_barrier",
+              "correct_intervention": "restore_native_metadata_barrier",
+              "reads_per_rank_cycle": {
+                "control": 0,
+                "candidate": 350
+              },
+              "status": "CONTENT_ERRATUM_NOT_NEW_EXPERIMENT",
+              "note": "该固定历史汇总的r46消除表述有误；读取r46原始回执与归档packet，保留单配对数值REVIEW和原因未隔离。"
+            }
+          ]
         }
       ],
       "provenance": {
@@ -1569,8 +1741,8 @@
         "implementations": [
           {
             "id": "planner-calibration",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -1707,8 +1879,8 @@
         "implementations": [
           {
             "id": "checkpoint-lifecycle",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -1929,8 +2101,8 @@
         "implementations": [
           {
             "id": "legacy-frozen-streaming",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -1940,7 +2112,7 @@
       "pattern": "memory-tradeoffs",
       "title": "g8 确实释放了容量，连续 checkpoint backward 仍 OOM",
       "outcome": "implementation_failure",
-      "observation": "相对 g4，pre-backward allocation 精确减少 2,811,154,432 字节；随后 216 MiB 临时量分配失败，Full5 和计时未完成。",
+      "observation": "相对 g4，pre-backward allocation 精确减少 2,811,154,432 字节；随后 Step10 Generator checkpoint backward 的 216 MiB 临时量分配失败，Full5 和计时未完成。",
       "lesson": "优化生效与容量够用是两个问题；不把 OOM 记为无效开关，也不靠继续清缓存绕过已复现的存活容量瓶颈。",
       "scope": "早期 Route-A PR8、ZeRO-1 CPU optimizer、该激活策略。",
       "conditions": {
@@ -1956,9 +2128,11 @@
       },
       "failure": {
         "category": "checkpoint_backward_capacity",
-        "scope": "早期 Route-A PR8、ZeRO-1 CPU optimizer、该激活策略。；只约束所述实现和条件，不封禁整个机制。"
+        "scope": "早期 Route-A PR8、ZeRO-1 CPU optimizer、该激活策略。；只约束所述实现和条件，不封禁整个机制。",
+        "role": "Generator",
+        "phase": "Step10 checkpoint backward"
       },
-      "reentry": "失败点的临时分配空间增加或活跃峰值下降；最小验证：重测 Critic checkpoint backward 的分配轨迹与完整 Full5。",
+      "reentry": "失败点的临时分配空间增加或活跃峰值下降；最小验证：重测 Step10 Generator checkpoint backward 的存活分配、216 MiB 临时量与完整 Full5；g12 之后的 Critic 失败另读独立案例。",
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
@@ -1982,7 +2156,7 @@
         "change_signals": [
           "失败点的临时分配空间增加或活跃峰值下降"
         ],
-        "minimum_probe": "重测 Critic checkpoint backward 的分配轨迹与完整 Full5",
+        "minimum_probe": "重测 Step10 Generator checkpoint backward 的存活分配、216 MiB 临时量与完整 Full5；g12 之后的 Critic 失败另读独立案例",
         "do_not_repeat": "不只凭少了 2.81 GB 参数就重跑同一 OOM 点"
       },
       "correctness_conditions": {
@@ -1998,10 +2172,16 @@
         "implementations": [
           {
             "id": "legacy-frozen-streaming",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
+      },
+      "facts": {
+        "failure_role": "Generator",
+        "failure_phase": "Step10 checkpoint backward",
+        "temporary_allocation_mib": 216,
+        "performance_status": "NOT_RUN"
       }
     },
     {
@@ -2067,8 +2247,8 @@
         "implementations": [
           {
             "id": "legacy-frozen-streaming",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2199,8 +2379,8 @@
         "implementations": [
           {
             "id": "legacy-frozen-streaming",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2266,8 +2446,8 @@
         "implementations": [
           {
             "id": "legacy-saved-tensor-offload",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -2338,8 +2518,8 @@
         "implementations": [
           {
             "id": "rolephase-transport",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2406,8 +2586,8 @@
         "implementations": [
           {
             "id": "rolephase-transport",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -2613,8 +2793,8 @@
         "implementations": [
           {
             "id": "legacy-zero3-leaf",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2683,8 +2863,8 @@
         "implementations": [
           {
             "id": "legacy-zero3-leaf",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2751,8 +2931,8 @@
         "implementations": [
           {
             "id": "legacy-saved-tensor-census",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -2821,8 +3001,8 @@
         "implementations": [
           {
             "id": "legacy-saved-tensor-offload",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2902,8 +3082,8 @@
         "implementations": [
           {
             "id": "legacy-zero3-leaf",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -2981,8 +3161,8 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -3062,8 +3242,8 @@
         "implementations": [
           {
             "id": "legacy-pinned-materialization",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -3132,8 +3312,8 @@
         "implementations": [
           {
             "id": "legacy-pinned-materialization",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -3213,8 +3393,8 @@
         "implementations": [
           {
             "id": "legacy-pinned-materialization",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -3294,8 +3474,8 @@
         "implementations": [
           {
             "id": "legacy-pinned-materialization",
-            "relationship": "historical_reference",
-            "note": "保留的旧 Route-A 实现参考；不是新 workload 的现成接入或当前默认配置。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -3369,16 +3549,14 @@
       "id": "helios-modulation-chunk-neutral",
       "pattern": "fusion-numerics",
       "title": "Helios 的同类 chunk 扩大只有小收益或回退",
-      "outcome": "negative_observation",
+      "outcome": "inconclusive",
       "observation": "No-GAN ladder 的 chunk2048 观察为 116.008085 秒，未优于此前点；GAN-on 独立配对 143.379704→143.206713 秒，仅约 0.12%。",
       "lesson": "模型家族、序列长度、角色比例和原有融合会改变 chunk 选择；一次跨 workload 成功不构成通用参数。",
       "scope": "Helios No-GAN 与 GAN-on 是两个独立合同，不能直接比绝对秒数。",
       "conditions": {
-        "workload": "W2",
         "model_family": "Helios14B",
         "training_mode": "training",
         "global_batch": 16,
-        "gan_enabled": null,
         "gpu_family": "A100",
         "gpu_memory_gb": 40,
         "nodes": 2,
@@ -3442,11 +3620,77 @@
         "implementations": [
           {
             "id": "helios-modulation-chunks",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
-      }
+      },
+      "observations": [
+        {
+          "id": "w2",
+          "conditions": {
+            "model_family": "Helios14B",
+            "training_mode": "training",
+            "global_batch": 16,
+            "gpu_family": "A100",
+            "gpu_memory_gb": 40,
+            "nodes": 2,
+            "gpus_per_node": 8,
+            "physical_gpus": 16,
+            "workload": "W2",
+            "gan_enabled": false,
+            "update_ratio": "G1/C5/EMA5"
+          },
+          "observation": "No-GAN ladder 的 chunk2048 为116.008085秒；不是与GAN-on配对。",
+          "outcome": "inconclusive",
+          "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
+          "evidence": [
+            {
+              "repository": "sliortega295-ops/DMD-System",
+              "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
+              "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+              "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
+              "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+              "locator": "观察中的数值文本锚点 L43；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
+              "original_locator": "结果、合同、限制与失败记录",
+              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L43",
+              "locator_quality": "literal_observation_anchor"
+            }
+          ]
+        },
+        {
+          "id": "w3",
+          "conditions": {
+            "model_family": "Helios14B",
+            "training_mode": "training",
+            "global_batch": 16,
+            "gpu_family": "A100",
+            "gpu_memory_gb": 40,
+            "nodes": 2,
+            "gpus_per_node": 8,
+            "physical_gpus": 16,
+            "workload": "W3",
+            "gan_enabled": true,
+            "update_ratio": "G1/C5/EMA1"
+          },
+          "observation": "GAN-on 同源单配对143.379704→143.206713秒，约0.12%；不认定稳定收益。",
+          "outcome": "positive_observation",
+          "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
+          "evidence": [
+            {
+              "repository": "sliortega295-ops/DMD-System",
+              "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
+              "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+              "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78",
+              "url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+              "locator": "观察中的数值文本锚点 L34；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
+              "original_locator": "结果、合同、限制与失败记录",
+              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md#L34",
+              "locator_quality": "literal_observation_anchor"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "wan-cast-cache-negative",
@@ -3514,8 +3758,8 @@
         "implementations": [
           {
             "id": "wan-cast-cache",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -3590,8 +3834,8 @@
         "implementations": [
           {
             "id": "wan-lora-epilogue",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -3727,8 +3971,8 @@
         "implementations": [
           {
             "id": "helios-fsdp-layout",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -3799,8 +4043,8 @@
         "implementations": [
           {
             "id": "helios-fsdp-layout",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -3875,15 +4119,15 @@
         "implementations": [
           {
             "id": "optimizer-dispatch-warmup",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
     },
     {
       "id": "helios-checkpoint-bypass-capacity",
-      "pattern": "memory-tradeoffs",
+      "pattern": "activation-retention",
       "title": "10/40 checkpoint bypass OOM，4/40 能跑但收益极小",
       "outcome": "implementation_failure",
       "observation": "No-GAN 对两角色或仅 Critic 的 10/40 bypass 均 OOM；Critic-only 4/40 完成，96.529020→96.341895 秒，仅约 0.19%。",
@@ -3933,11 +4177,12 @@
         "do_not_repeat": "不要重复 10/40 OOM 或因完成就推定 4/40 有显著收益"
       },
       "correctness_conditions": {
-        "state_lifetime_preserved": true
+        "recompute_semantics_preserved": true,
+        "activation_lifetime_validated": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "recomputation_on_critical_path": true,
+        "memory_headroom": true
       },
       "navigation": {
         "status": "linked",
@@ -3945,8 +4190,8 @@
         "implementations": [
           {
             "id": "helios-selective-checkpoint",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -4022,9 +4267,9 @@
       "id": "helios-crosskv-nogan-negligible",
       "pattern": "state-caching",
       "title": "No-GAN cross-KV 命中 880 次仍几乎没有 E2E 收益",
-      "outcome": "negative_observation",
+      "outcome": "inconclusive",
       "observation": "每 rank 200 fills/880 reuses 且零 mismatch，Full5 96.529020→96.497111 秒，只约 0.033%。",
-      "lesson": "高命中率不说明省下关键路径大头；保留机制正确性证据，避免将微小单次差值称为稳定加速。",
+      "lesson": "高命中率不说明省下关键路径大头；保留机制正确性证据，避免将微小单次差值称为稳定加速。 该差值没有充分复测/独立归因，原解释只保留为假设，不据此认定机制普遍无效。",
       "scope": "Helios No-GAN node-HSDP 的 per-rollout cross-attention cache。",
       "conditions": {
         "workload": "W2",
@@ -4039,7 +4284,7 @@
         "physical_gpus": 16
       },
       "failure": {
-        "category": "insufficient_exposed_saved_compute",
+        "category": "unresolved_timing_difference",
         "scope": "Helios No-GAN node-HSDP 的 per-rollout cross-attention cache。；只约束所述实现和条件，不封禁整个机制。"
       },
       "reentry": "目标 KV 投影占比或复用收益明显高于 No-GAN 旧点；最小验证：验证 no-grad B1、版本/key 与 uncached 输出，分开计填充/复用/整周期。",
@@ -4087,10 +4332,15 @@
         "implementations": [
           {
             "id": "helios-cross-kv",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
+      },
+      "interpretation": {
+        "status": "HYPOTHESIS_NOT_ISOLATED",
+        "hypothesis": "节省的计算较少或缓存维护开销抵消收益；现有单次差值未隔离原因。",
+        "performance_status": "UNRESOLVED_SINGLE_PAIR"
       }
     },
     {
@@ -4163,8 +4413,8 @@
         "implementations": [
           {
             "id": "helios-cross-kv",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -4173,9 +4423,9 @@
       "id": "helios-static-context-cache-negative",
       "pattern": "state-caching",
       "title": "静态 context 缓存零误差，完整周期仍略慢",
-      "outcome": "negative_observation",
+      "outcome": "inconclusive",
       "observation": "history patch、RoPE、text 缓存每 rollout 5 fills/22 reuses；零误差但 138.176083→138.243935 秒，未晋级。",
-      "lesson": "完整 key 和命中证明正确工作；是否值得保留还要看维护与节省的净成本，不能只展示 cache hit。",
+      "lesson": "完整 key 和命中证明正确工作；是否值得保留还要看维护与节省的净成本，不能只展示 cache hit。 该差值没有充分复测/独立归因，原解释只保留为假设，不据此认定机制普遍无效。",
       "scope": "GAN-on、完整 pyramid context key、同权重 rollout。",
       "conditions": {
         "workload": "W3",
@@ -4191,7 +4441,7 @@
         "physical_gpus": 16
       },
       "failure": {
-        "category": "cache_net_cost",
+        "category": "unresolved_timing_difference",
         "scope": "GAN-on、完整 pyramid context key、同权重 rollout。；只约束所述实现和条件，不封禁整个机制。"
       },
       "reentry": "静态 patch/RoPE/text 计算占比或缓存开销发生变化；最小验证：先测 5 fills/22 reuses 对应计算净节省，再比完整周期。",
@@ -4237,10 +4487,15 @@
         "implementations": [
           {
             "id": "helios-static-context",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
+      },
+      "interpretation": {
+        "status": "HYPOTHESIS_NOT_ISOLATED",
+        "hypothesis": "节省的计算较少或缓存维护开销抵消收益；现有单次差值未隔离原因。",
+        "performance_status": "UNRESOLVED_SINGLE_PAIR"
       }
     },
     {
@@ -4309,26 +4564,24 @@
         "implementations": [
           {
             "id": "helios-selective-checkpoint",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
     },
     {
       "id": "helios-fa2-selective-retention",
-      "pattern": "memory-tradeoffs",
+      "pattern": "checkpoint-result-reuse",
       "title": "保留真实 FA2 输出可省重算，密度受最坏显存限制",
       "outcome": "positive_observation",
       "observation": "No-GAN 固定 local FA2 后 stride2 retention：95.725157→94.461700 秒；GAN-on 独立配对 143.206713→142.295342 秒，但最小 end driver free 仅约 12 MiB。",
       "lesson": "核对原始 saves/replay reuses 与零物理调用 bypass；小余量的成功不能自动支持 stride1 或新 workload。",
       "scope": "两个独立 Helios 合同、Critic-only FA2 replay retention、均单次计时。",
       "conditions": {
-        "workload": "W2",
         "model_family": "Helios14B",
         "training_mode": "training",
         "global_batch": 16,
-        "gan_enabled": null,
         "gpu_family": "A100",
         "gpu_memory_gb": 40,
         "nodes": 2,
@@ -4378,12 +4631,15 @@
         "do_not_repeat": "仅末边界约 12 MiB free 不足以说明稳健容量"
       },
       "correctness_conditions": {
-        "state_lifetime_preserved": true,
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true,
         "attention_backend": "FA2"
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "replay_reuses_saved_output": true,
+        "saved_compute_exceeds_cache_cost": true,
+        "memory_headroom": true
       },
       "navigation": {
         "status": "linked",
@@ -4391,11 +4647,77 @@
         "implementations": [
           {
             "id": "helios-selective-checkpoint",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
-      }
+      },
+      "observations": [
+        {
+          "id": "w2",
+          "conditions": {
+            "model_family": "Helios14B",
+            "training_mode": "training",
+            "global_batch": 16,
+            "gpu_family": "A100",
+            "gpu_memory_gb": 40,
+            "nodes": 2,
+            "gpus_per_node": 8,
+            "physical_gpus": 16,
+            "workload": "W2",
+            "gan_enabled": false,
+            "update_ratio": "G1/C5/EMA5"
+          },
+          "observation": "No-GAN local FA2：95.725156637→94.461699722秒；末边界driver free至少1.762085 GiB。",
+          "outcome": "positive_observation",
+          "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
+          "evidence": [
+            {
+              "repository": "sliortega295-ops/DMD-System",
+              "revision": "111e293dc79978132af91ab5515a096d941b94fe",
+              "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+              "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
+              "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+              "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
+              "original_locator": "结果、合同、限制与失败记录",
+              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
+              "locator_quality": "report_scope_not_case_exact"
+            }
+          ]
+        },
+        {
+          "id": "w3",
+          "conditions": {
+            "model_family": "Helios14B",
+            "training_mode": "training",
+            "global_batch": 16,
+            "gpu_family": "A100",
+            "gpu_memory_gb": 40,
+            "nodes": 2,
+            "gpus_per_node": 8,
+            "physical_gpus": 16,
+            "workload": "W3",
+            "gan_enabled": true,
+            "update_ratio": "G1/C5/EMA1"
+          },
+          "observation": "GAN-on：143.206713110→142.295342秒；最小末边界driver free约12MiB，不是全程容量保证。",
+          "outcome": "positive_observation",
+          "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
+          "evidence": [
+            {
+              "repository": "sliortega295-ops/DMD-System",
+              "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
+              "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+              "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1",
+              "url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+              "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
+              "original_locator": "结果、合同、限制与失败记录",
+              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md#L6",
+              "locator_quality": "literal_observation_anchor"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "helios-modnorm-explicit-backward",
@@ -4464,8 +4786,8 @@
         "implementations": [
           {
             "id": "helios-modnorm",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -4548,8 +4870,8 @@
         "implementations": [
           {
             "id": "helios-modnorm",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -4620,8 +4942,8 @@
         "implementations": [
           {
             "id": "helios-crossnorm-canary",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -4693,8 +5015,8 @@
         "implementations": [
           {
             "id": "helios-crossnorm-canary",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -4766,8 +5088,8 @@
         "implementations": [
           {
             "id": "helios-history-fusion",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -4843,8 +5165,8 @@
       "title": "只跳过计时模式不用的 scalar logging",
       "outcome": "positive_observation",
       "observation": "每次 Critic update 四次无消费者的 item 转换，在 correctness 模式保留，正式计时共省 20 次；131.562027→130.630471 秒。",
-      "lesson": "先证明值不参与训练控制、输出承诺或验收；不要删除必需的观测来制造收益。",
-      "scope": "GAN-on C17、固定 timing-mode logging 契约。",
+      "lesson": "先证明值不参与训练控制、输出承诺或验收；不要删除必需的观测来制造收益。 旧 correctness 分支保留调用，它的 PASS 不能证明省略调用的 timing 分支获得相同检查；迁移需验实际加速分支。",
+      "scope": "GAN-on C17、固定 timing-mode logging 契约。 两模式路径不同，timing 分支的等同检查覆盖尚未建立。",
       "conditions": {
         "workload": "W3",
         "model_family": "Helios14B",
@@ -4862,7 +5184,7 @@
         "category": "not_established",
         "scope": "GAN-on C17、固定 timing-mode logging 契约。；只约束所述实现和条件，不封禁整个机制。"
       },
-      "reentry": "目标 scalar 转换确实无当前消费者；最小验证：核对日志/检查路径消费者，比较 timing 与 correctness 模式的有效行为。",
+      "reentry": "目标 scalar 转换确实无当前消费者；最小验证：核对日志/检查路径消费者，比较 timing 与 correctness 模式的有效行为；在实际省略调用的分支检查数值、日志消费者、对象释放与多周期状态。",
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
@@ -4886,12 +5208,14 @@
         "change_signals": [
           "目标 scalar 转换确实无当前消费者"
         ],
-        "minimum_probe": "核对日志/检查路径消费者，比较 timing 与 correctness 模式的有效行为",
+        "minimum_probe": "核对日志/检查路径消费者，比较 timing 与 correctness 模式的有效行为；在实际省略调用的分支检查数值、日志消费者、对象释放与多周期状态",
         "do_not_repeat": "不删除用户需要的指标或验收值"
       },
       "correctness_conditions": {
         "metadata_semantics_preserved": true,
-        "host_state_lifetime_validated": true
+        "host_state_lifetime_validated": true,
+        "timing_path_consumers_checked": true,
+        "timing_path_state_lifetime_validated": true
       },
       "performance_conditions": {
         "host_sync_on_critical_path": true
@@ -4900,6 +5224,11 @@
         "status": "unresolved",
         "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
         "implementations": []
+      },
+      "facts": {
+        "correctness_branch": "original_calls_retained",
+        "timing_branch": "calls_elided",
+        "same_path_validation": false
       }
     },
     {
@@ -4908,8 +5237,8 @@
       "title": "helper 的全局 free_memory/GC 也可能干扰训练提交",
       "outcome": "positive_observation",
       "observation": "限定 timing 模式移除四次 GAN helper free_memory/GC，correctness 保留；130.630471→129.441379 秒。最初 SSH 断开在构造前发生。",
-      "lesson": "核对对象生命周期后再改变 cleanup；连接故障不算模型失败，也不能由此重置实验次数。",
-      "scope": "GAN-on C18，作用域局限于已验证 helper。",
+      "lesson": "核对对象生命周期后再改变 cleanup；连接故障不算模型失败，也不能由此重置实验次数。 旧 correctness 分支保留调用，它的 PASS 不能证明省略调用的 timing 分支获得相同检查；迁移需验实际加速分支。",
+      "scope": "GAN-on C18，作用域局限于已验证 helper。 两模式路径不同，timing 分支的等同检查覆盖尚未建立。",
       "conditions": {
         "workload": "W3",
         "model_family": "Helios14B",
@@ -4927,7 +5256,7 @@
         "category": "not_established",
         "scope": "GAN-on C18，作用域局限于已验证 helper。；只约束所述实现和条件，不封禁整个机制。"
       },
-      "reentry": "GC/free_memory 不再是容量或生命周期必要条件；最小验证：在目标 timing 模式测多周期峰值与完成释放。",
+      "reentry": "GC/free_memory 不再是容量或生命周期必要条件；最小验证：在目标 timing 模式测多周期峰值与完成释放；在实际省略调用的分支检查数值、日志消费者、对象释放与多周期状态。",
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
@@ -4951,12 +5280,14 @@
         "change_signals": [
           "GC/free_memory 不再是容量或生命周期必要条件"
         ],
-        "minimum_probe": "在目标 timing 模式测多周期峰值与完成释放",
+        "minimum_probe": "在目标 timing 模式测多周期峰值与完成释放；在实际省略调用的分支检查数值、日志消费者、对象释放与多周期状态",
         "do_not_repeat": "不能把构造前 SSH 中断归因于候选或忽略模式差别"
       },
       "correctness_conditions": {
         "metadata_semantics_preserved": true,
-        "host_state_lifetime_validated": true
+        "host_state_lifetime_validated": true,
+        "timing_path_consumers_checked": true,
+        "timing_path_state_lifetime_validated": true
       },
       "performance_conditions": {
         "host_sync_on_critical_path": true
@@ -4965,6 +5296,11 @@
         "status": "unresolved",
         "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
         "implementations": []
+      },
+      "facts": {
+        "correctness_branch": "original_calls_retained",
+        "timing_branch": "calls_elided",
+        "same_path_validation": false
       }
     },
     {
@@ -5035,8 +5371,8 @@
         "implementations": [
           {
             "id": "helios-rollout-residency",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -5106,8 +5442,8 @@
         "implementations": [
           {
             "id": "helios-rollout-residency",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -5177,8 +5513,8 @@
         "implementations": [
           {
             "id": "helios-rollout-residency",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -5371,8 +5707,8 @@
         "implementations": [
           {
             "id": "rolephase-transport",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -5382,7 +5718,7 @@
       "pattern": "profiling-attribution",
       "title": "训练结束而 Nsight teardown 卡住，不能声称完成全 rank profile",
       "outcome": "inconclusive",
-      "observation": "固定内存流水的 node0 八个 rank 停在 cudaProfilerStop/teardown，最终报告不完整。低开销计时记录与缺失 profile 分开保留。",
+      "observation": "14 个非控制 rank 完成逻辑窗口（1256.233–1256.234 秒）；rank0、rank8 在 node-local cudaProfilerStop 收尾阻塞。训练计时与不完整 profile 分开。",
       "lesson": "进程算完训练不等于采集产物可用；确认最终文件、rank 覆盖和时间关联后再解释 overlap。",
       "scope": "该 GAN pipeline Nsight capture，不能从残片推出全系统归因。",
       "conditions": {
@@ -5397,7 +5733,7 @@
         "physical_gpus": 16
       },
       "failure": {
-        "category": "not_established",
+        "category": "profiler_teardown_incomplete",
         "scope": "该 GAN pipeline Nsight capture，不能从残片推出全系统归因。；只约束所述实现和条件，不封禁整个机制。"
       },
       "reentry": "profiler teardown 与 rank 收尾可可靠完成；最小验证：缩小 capture 验证所有 rank/阶段和文件完整性。",
@@ -5439,10 +5775,20 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
+      },
+      "facts": {
+        "blocked_ranks": [
+          0,
+          8
+        ],
+        "completed_rank_count": 14,
+        "total_ranks": 16,
+        "failure_phase": "cudaProfilerStop",
+        "profile_status": "INCOMPLETE"
       }
     },
     {
@@ -5560,8 +5906,8 @@
         "implementations": [
           {
             "id": "planner-calibration",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -5621,8 +5967,8 @@
         "implementations": [
           {
             "id": "planner-calibration",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -5680,8 +6026,8 @@
         "implementations": [
           {
             "id": "planner-calibration",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -5732,8 +6078,8 @@
         "state_lifetime_preserved": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "duplicate_frozen_storage": true,
+        "sharing_precedes_peak": true
       },
       "navigation": {
         "status": "unresolved",
@@ -5795,8 +6141,8 @@
         "implementations": [
           {
             "id": "helios-selective-checkpoint",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -5851,12 +6197,12 @@
       },
       "navigation": {
         "status": "linked",
-        "reason": "已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
         "implementations": [
           {
-            "id": "planner-calibration",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "id": "role-producer-dispatch",
+            "relationship": "reusable_candidate",
+            "note": "此处是实际执行序列的代码；成本分析另行阅读，CPU测试不证明目标GPU吞吐。"
           }
         ]
       }
@@ -6103,8 +6449,8 @@
         "state_release_validated": true
       },
       "performance_conditions": {
-        "repeated_forwards": true,
-        "exposed_gather": true,
+        "repeated_teacher_forwards": true,
+        "exposed_parameter_transfer": true,
         "memory_headroom": true
       },
       "navigation": {
@@ -6172,8 +6518,8 @@
         "implementations": [
           {
             "id": "h3-boundary-offload",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -6238,15 +6584,15 @@
         "implementations": [
           {
             "id": "h3-boundary-offload",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
     },
     {
       "id": "h100-w5-attention-cache-memory-trade",
-      "pattern": "memory-tradeoffs",
+      "pattern": "checkpoint-result-reuse",
       "title": "H100 W5 保存 attention 输出/LSE 换取重算减少",
       "outcome": "positive_observation",
       "observation": "同 9bfd source，FSDP 638.522138→GPU-cache 539.718383 秒；allocated 41.603→64.116 GiB，reserved 45.516→71.082 GiB。",
@@ -6292,11 +6638,14 @@
         "do_not_repeat": "把时间改善迁移前必须重查显存，不能只看 H100 型号"
       },
       "correctness_conditions": {
-        "state_lifetime_preserved": true
+        "cache_key_complete": true,
+        "invalidation_validated": true,
+        "cached_gradients_preserved": true
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "replay_reuses_saved_output": true,
+        "saved_compute_exceeds_cache_cost": true,
+        "memory_headroom": true
       },
       "navigation": {
         "status": "linked",
@@ -6304,8 +6653,8 @@
         "implementations": [
           {
             "id": "h3-attention-replay",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -6370,8 +6719,8 @@
         "implementations": [
           {
             "id": "h3-attention-replay",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -6554,8 +6903,8 @@
         "implementations": [
           {
             "id": "h3-boundary-offload",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -6734,8 +7083,8 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "诊断方法示例；该 parser 固定2×8/world16，与本条H100八卡拓扑不兼容，需要显式适配。"
           }
         ]
       }
@@ -6865,8 +7214,8 @@
         "implementations": [
           {
             "id": "helios-rollout-residency",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -6926,8 +7275,8 @@
         "implementations": [
           {
             "id": "wan-cast-cache",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -7158,13 +7507,13 @@
         "implementations": [
           {
             "id": "wan-lora-epilogue",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           },
           {
             "id": "wan-lora-grad-epilogue",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -7227,8 +7576,8 @@
         "implementations": [
           {
             "id": "checkpoint-lifecycle",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "仅说明 checkpoint 状态生命周期；save/restore 不实现 QKV 权重布局转换，也没有该转换的 optimizer/state 索引映射。"
           }
         ]
       }
@@ -7290,8 +7639,8 @@
         "implementations": [
           {
             "id": "helios-crossnorm-canary",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -7350,8 +7699,8 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -7410,8 +7759,8 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -7897,8 +8246,8 @@
         "implementations": [
           {
             "id": "checkpoint-lifecycle",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -7958,10 +8307,10 @@
     {
       "id": "rb-end-to-end-denominator",
       "pattern": "data-lifecycle-costs",
-      "title": "ResearchBoost：stage、step 与含外部服务/启动的收益不能混为一个倍数",
+      "title": "ResearchBoost：计时窗口与优化贡献分母分别记录",
       "outcome": "source_contract",
-      "observation": "公开 LLM results 分别报告 YOCO step 与 full run、R3 是否包含 reward service、LLM2Vec 不同阶段的时间。",
-      "lesson": "按用户目标明确端到端窗口；多阶段倍数不能相乘，省下稳态时间还要覆盖必要启动、数据和外部服务。",
+      "observation": "YOCO 区分 step/full run，LLM2Vec 区分阶段；R3 的 2.08× 包括 reward 服务优化贡献，1.88× 则两臂均使用优化后的 reward 服务。R3 RL step 仍含 rollout、reward service 和 optimizer。",
+      "lesson": "服务是否在计时窗口内，与两臂服务实现是否相同是两回事；R3 不能解释为计时排除 reward 服务。不同阶段和优化栈的倍数不能拼接。",
       "scope": "外部 LLM 各自实验合同，不能与 DMD 数值横向排榜。",
       "conditions": {
         "training_mode": "training"
@@ -7970,7 +8319,7 @@
         "category": "not_established",
         "scope": "外部 LLM 各自实验合同，不能与 DMD 数值横向排榜。；只约束所述实现和条件，不封禁整个机制。"
       },
-      "reentry": "服务、数据阶段和启动成本的计时范围已明确；最小验证：同时记录 step、各阶段、外部 reward service 与 full run。",
+      "reentry": "计时窗口和每臂服务实现身份已分别明确；最小验证：分别记录 step/full-run 范围、各臂 reward 版本及优化贡献；不要从标题倍数倒推计时范围。",
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
@@ -7983,6 +8332,16 @@
           "original_locator": "YOCO; R3; LLM2Vec",
           "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md#L1",
           "locator_quality": "report_scope_not_case_exact"
+        },
+        {
+          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+          "path": "docs/results/multimodal.md",
+          "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9",
+          "locator": "With the optimized reward service on both sides",
+          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md",
+          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56",
+          "locator_quality": "structured_source_locator"
         }
       ],
       "provenance": {
@@ -7992,10 +8351,10 @@
       },
       "retry": {
         "change_signals": [
-          "服务、数据阶段和启动成本的计时范围已明确"
+          "计时窗口和每臂服务实现身份已分别明确"
         ],
-        "minimum_probe": "同时记录 step、各阶段、外部 reward service 与 full run",
-        "do_not_repeat": "不同阶段和排除服务的比值不能拼成总体收益"
+        "minimum_probe": "分别记录 step/full-run 范围、各臂 reward 版本及优化贡献；不要从标题倍数倒推计时范围",
+        "do_not_repeat": "不能把 R3 的 1.88× 写成排除了 reward service 的计时"
       },
       "correctness_conditions": {
         "data_and_progress_identity_preserved": true
@@ -8007,6 +8366,12 @@
         "status": "method_only",
         "reason": "这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。",
         "implementations": []
+      },
+      "facts": {
+        "r3_reward_service_in_timed_step": true,
+        "r3_with_reward_optimization_speedup": 2.08,
+        "r3_optimized_reward_both_arms_speedup": 1.88,
+        "r3_comparison_axis": "optimization_contribution"
       }
     },
     {
@@ -8068,8 +8433,8 @@
         "implementations": [
           {
             "id": "wan-rollout-graph",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "adaptation_example",
+            "note": "机制参考或旧版本示例；需核对实现差异并适配，未证明是历史计时所用源码。"
           }
         ]
       }
@@ -8124,13 +8489,17 @@
         "training_mode": "inference"
       },
       "performance_conditions": {
-        "capacity_limits_candidate": true,
-        "enabled_gain_exceeds_transfer": true
+        "full_model_and_workspace_fit": true,
+        "offload_transfer_exposed": true
       },
       "navigation": {
         "status": "unresolved",
         "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
         "implementations": []
+      },
+      "facts": {
+        "intervention": "disable_unnecessary_offload",
+        "training_mode": "inference"
       }
     },
     {
@@ -8381,8 +8750,8 @@
         "implementations": [
           {
             "id": "h3-boundary-offload",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "conceptual_reference",
+            "note": "只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。"
           }
         ]
       }
@@ -8462,8 +8831,8 @@
         "implementations": [
           {
             "id": "profile-attribution",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "diagnostic_tool",
+            "note": "用于分析、诊断或 canary；不是可接入的 runtime 优化，拓扑和输入格式仍需核对。"
           }
         ]
       }
@@ -8532,8 +8901,8 @@
         "implementations": [
           {
             "id": "fsdp-phase-retention",
-            "relationship": "current_related",
-            "note": "固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。"
+            "relationship": "reusable_candidate",
+            "note": "同机制的当前复用候选；须检查 guards、生效路径、依赖和验证，不代表历史实现身份或直接迁移通过。"
           }
         ]
       }
@@ -8673,6 +9042,375 @@
         "status": "unresolved",
         "reason": "已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。",
         "implementations": []
+      }
+    },
+    {
+      "id": "rb-nonbitwise-isolation-final-combination",
+      "pattern": "acceptance-design",
+      "title": "ResearchBoost：隔离非bitwise组件，再验真实最终组合",
+      "observation": "原方法用reference组件作为接口一致的替身，检查其余改动及组合；最终切回真实组件对原始baseline完成适当数值验收。",
+      "lesson": "替身通过只说明该配置下其他改动；真实组件、依赖布局/梯度或组合发生变化仍要检验。验证层级按当前合同选择，不照抄固定100步或外部收益阈值。",
+      "scope": "外部训练验证方法，本系统未由此获得新的GPU数值结论。",
+      "conditions": {
+        "training_mode": "training"
+      },
+      "outcome": "source_contract",
+      "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
+      "evidence": [
+        {
+          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+          "path": "skills/train-opt-numerics-validation/SKILL.md",
+          "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
+          "locator": "## When only one component cannot be bitwise",
+          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L68",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "standin_interface_and_gradient_contract_match": true,
+        "original_baseline_preserved": true
+      },
+      "performance_conditions": {},
+      "failure": {
+        "category": "not_established",
+        "scope": "外部训练验证方法，本系统未由此获得新的GPU数值结论。"
+      },
+      "provenance": {
+        "collection": "ResearchBoost external",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "method_only",
+        "reason": "本条提供来源明确的方法或诊断，不提供未定位的runtime实现。",
+        "implementations": []
+      },
+      "retry": {
+        "change_signals": [
+          "一个已知非bitwise组件遮蔽其他改动差异"
+        ],
+        "minimum_probe": "先隔离组件核对其他路径，最后验证真实组合对original baseline的结果，并记录比较对象与范围",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "一个已知非bitwise组件遮蔽其他改动差异；最小验证：先隔离组件核对其他路径，最后验证真实组合对original baseline的结果，并记录比较对象与范围。"
+    },
+    {
+      "id": "helios-b2-rollout-numerical-rejection",
+      "pattern": "validation-lifecycle",
+      "title": "Helios B2：兼容调用日程仍被数值门拒绝",
+      "observation": "schedule-compatible B2已移除metadata-only冲突、仅合批相同物理日程并检查per-row B1；15份保留rank回执均失败，normalized-L2 0.058–0.071、cosine 0.9977–0.9984。",
+      "lesson": "不能把合批自动归为纯调度等价；这是数值拒绝，缺失的第16份回执不能补成失败或PASS，也没有正式速度结果。",
+      "scope": "No-GAN兼容B2历史实验；GAN计划引用它作为匹配负例，不是GAN已测B2结果。",
+      "conditions": {
+        "workload": "W2",
+        "model_family": "Helios14B",
+        "training_mode": "training",
+        "physical_gpus": 16,
+        "rollout_batch": 2
+      },
+      "outcome": "correctness_failure",
+      "evidence_status": "HISTORICAL_NUMERICAL_FAILURE",
+      "evidence": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+          "sha256": "4cb0fc460cc10a6c4d40eaa8591d61cf3fd49aa493967d620c8df322ddfaecd6",
+          "locator": "iter355_helios14b_hsdp_compatible_b2_correctness_r2_20260824",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md#L63",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "logical_rows_rng_and_gradient_contract_preserved": true
+      },
+      "performance_conditions": {},
+      "failure": {
+        "category": "numerical_gate_rejection",
+        "scope": "No-GAN兼容B2历史实验；GAN计划引用它作为匹配负例，不是GAN已测B2结果。"
+      },
+      "provenance": {
+        "collection": "Helios A100 history",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "method_only",
+        "reason": "本条提供来源明确的方法或诊断，不提供未定位的runtime实现。",
+        "implementations": []
+      },
+      "retry": {
+        "change_signals": [
+          "新的实现或误差归因改变该数值结论"
+        ],
+        "minimum_probe": "定位每行数值差异和运算路径变化；仅在新证据解释并修复原因后先做局部parity",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "新的实现或误差归因改变该数值结论；最小验证：定位每行数值差异和运算路径变化；仅在新证据解释并修复原因后先做局部parity。",
+      "facts": {
+        "preserved_failed_rank_receipts": 15,
+        "expected_ranks": 16,
+        "performance_status": "NOT_RUN"
+      }
+    },
+    {
+      "id": "helios-trainable-phase-local-timestep",
+      "pattern": "fusion-numerics",
+      "title": "Helios：训练态 phase-local timestep 梯度融合与暂存",
+      "observation": "历史ladder的trainable timestep residual backward点为104.866740秒，随后phase-local gradient staging点103.952151秒，均单次观察；保留BF16先舍入再reduce及真实timestep梯度。",
+      "lesson": "需要梯度的phase-local输入不能使用no-grad缓存替代；forward相同不够，需核对每个timestep输入梯度、reduction顺序和版本。",
+      "scope": "W2 No-GAN node-HSDP，iterations364/365，历史单次序列，未重新测量。",
+      "conditions": {
+        "workload": "W2",
+        "training_mode": "training",
+        "grad_mode": "with_grad",
+        "timestep_mode": "phase_local"
+      },
+      "outcome": "positive_observation",
+      "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
+      "evidence": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
+          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+          "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
+          "locator": "### 4. Exact residual and timestep-gradient fusion",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L105",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "grad_mode": "with_grad",
+        "timestep_gradients_preserved": true,
+        "bf16_before_reduction": true
+      },
+      "performance_conditions": {
+        "pointwise_staging_on_critical_path": true
+      },
+      "failure": {
+        "category": "not_established",
+        "scope": "W2 No-GAN node-HSDP，iterations364/365，历史单次序列，未重新测量。"
+      },
+      "provenance": {
+        "collection": "Helios A100 history",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "linked",
+        "reason": "关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。",
+        "implementations": [
+          {
+            "id": "helios-trainable-timestep-residual",
+            "relationship": "reusable_candidate",
+            "note": "明确进入trainable_temb backward分支；名称中的nograd不能替代源码核查。"
+          }
+        ]
+      },
+      "retry": {
+        "change_signals": [
+          "训练态phase_local计算与暂存占比显著"
+        ],
+        "minimum_probe": "用代表shape检查output、hidden和全部timestep梯度、BF16 reduction顺序与零fallback，再做当前完整周期验证",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "训练态phase_local计算与暂存占比显著；最小验证：用代表shape检查output、hidden和全部timestep梯度、BF16 reduction顺序与零fallback，再做当前完整周期验证。"
+    },
+    {
+      "id": "helios-frozen-qkv-canary-no-benefit",
+      "pattern": "fusion-numerics",
+      "title": "Helios：冻结QKV融合在M6144 canary未获益",
+      "observation": "iteration374对主导M6144 shape尝试一个融合QKV GEMM，live long-sequence canary未改善，在world16实施/正式Full5之前停止。",
+      "lesson": "局部shape负例限定该实现和形状；不是测过完整训练后变慢，也不否定不同shape或库中的QKV融合。",
+      "scope": "W2 No-GAN frozen-base QKV projection canary，world16 timing NOT_RUN。",
+      "conditions": {
+        "workload": "W2",
+        "training_mode": "training",
+        "gemm_m": 6144
+      },
+      "outcome": "negative_observation",
+      "evidence_status": "HISTORICAL_CANARY_ONLY",
+      "evidence": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
+          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
+          "locator": "One fused QKV GEMM",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L96",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "qkv_layout_and_gradient_contract_preserved": true
+      },
+      "performance_conditions": {
+        "target_gemm_shape_measured": true
+      },
+      "failure": {
+        "category": "no_canary_benefit",
+        "scope": "W2 No-GAN frozen-base QKV projection canary，world16 timing NOT_RUN。"
+      },
+      "provenance": {
+        "collection": "Helios A100 history",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "method_only",
+        "reason": "本条提供来源明确的方法或诊断，不提供未定位的runtime实现。",
+        "implementations": []
+      },
+      "retry": {
+        "change_signals": [
+          "shape、库或融合实现改变"
+        ],
+        "minimum_probe": "先在目标shape比较原库与融合完整开销，只有新canary证据才购买全模型试验",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "shape、库或融合实现改变；最小验证：先在目标shape比较原库与融合完整开销，只有新canary证据才购买全模型试验。",
+      "facts": {
+        "measurement_scope": "canary",
+        "gemm_m": 6144,
+        "full_workload_performance_status": "NOT_RUN"
+      }
+    },
+    {
+      "id": "helios-capacity-policy-rejection-not-oom",
+      "pattern": "allocator-policy",
+      "title": "Helios GAN：完成校准但被预测容量余量政策拒绝",
+      "observation": "C25完成correctness与fenced calibration，无OOM；peak allocated 39,734,593,536B，而2GiB余量后的模型限制39,219,232,768–39,290,535,936B。状态PREDICTED_CAPACITY_FAIL；124.029020秒是校准时间。",
+      "lesson": "政策拒绝、真实CUDA OOM、未运行和测量缺失分别保存；不能用校准时间代替未执行的native timing，也不能删除余量政策制造可行。",
+      "scope": "该W3组件搜索、chunk2048与Generator unshard persistence；当前源与原余量政策。",
+      "conditions": {
+        "workload": "W3",
+        "physical_gpus": 16,
+        "training_mode": "training"
+      },
+      "outcome": "inconclusive",
+      "evidence_status": "HISTORICAL_POLICY_REJECTION",
+      "evidence": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
+          "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+          "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
+          "locator": "## GAN safety rejection is not an OOM",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L92",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "capacity_policy_frozen": true
+      },
+      "performance_conditions": {
+        "capacity_model_metric_defined": true
+      },
+      "failure": {
+        "category": "predicted_capacity_policy",
+        "scope": "该W3组件搜索、chunk2048与Generator unshard persistence；当前源与原余量政策。"
+      },
+      "provenance": {
+        "collection": "Helios A100 history",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "method_only",
+        "reason": "本条提供来源明确的方法或诊断，不提供未定位的runtime实现。",
+        "implementations": []
+      },
+      "retry": {
+        "change_signals": [
+          "峰值或可用容量改变，满足原政策"
+        ],
+        "minimum_probe": "核对allocated模型、非allocator用量、预留余量与实测阶段；新可行性证据再进入native确认",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "峰值或可用容量改变，满足原政策；最小验证：核对allocated模型、非allocator用量、预留余量与实测阶段；新可行性证据再进入native确认。",
+      "facts": {
+        "correctness_completed": true,
+        "calibration_completed": true,
+        "cuda_oom": false,
+        "native_timing_status": "NOT_RUN",
+        "predicted_capacity_status": "FAIL"
+      }
+    },
+    {
+      "id": "helios-logical-native-clock-mapping",
+      "pattern": "validation-lifecycle",
+      "title": "Helios GAN：逻辑版本标签不能重写真实Adam与scheduler时钟",
+      "observation": "systems-only bootstrap的实际Adam/scheduler为G2/C10，逻辑版本G200/C1000；两周期后逻辑G202/C1010/EMA802，物理G4/C20/EMA802。早期混同命名空间的adapter在cycle1前拒绝。",
+      "lesson": "以不可变映射连接两个时钟，只对ledger/receipt标签施加offset；不为让日志相同而修改Adam、scheduler、EMA或分支判断。",
+      "scope": "W3 systems-only bootstrap，不是官方checkpoint1000；每种workload独立定义映射。",
+      "conditions": {
+        "workload": "W3",
+        "training_mode": "training",
+        "bootstrap": "systems_only"
+      },
+      "outcome": "source_contract",
+      "evidence_status": "HISTORICAL_SOURCE_REPORTED",
+      "evidence": [
+        {
+          "repository": "sliortega295-ops/DMD-System",
+          "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
+          "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+          "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
+          "locator": "Its actual restored Adam/scheduler counters",
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L136",
+          "locator_quality": "structured_source_locator"
+        }
+      ],
+      "correctness_conditions": {
+        "logical_native_clock_mapping_validated": true,
+        "optimizer_scheduler_state_preserved": true
+      },
+      "performance_conditions": {},
+      "failure": {
+        "category": "namespace_mapping_defect",
+        "scope": "W3 systems-only bootstrap，不是官方checkpoint1000；每种workload独立定义映射。"
+      },
+      "provenance": {
+        "collection": "Helios A100 history",
+        "freshly_reproduced": false
+      },
+      "navigation": {
+        "status": "method_only",
+        "reason": "本条提供来源明确的方法或诊断，不提供未定位的runtime实现。",
+        "implementations": []
+      },
+      "retry": {
+        "change_signals": [
+          "出现逻辑和真实counter不一致，需要核对既有bootstrap映射"
+        ],
+        "minimum_probe": "分别核对初始、每action、周期和最终逻辑/物理计数与state；恢复后仍使用同一不可变映射",
+        "do_not_repeat": "不把该证据范围外的结果补成已测或通过，不因模型名称变化而重复相同已否决实验"
+      },
+      "reentry": "出现逻辑和真实counter不一致，需要核对既有bootstrap映射；最小验证：分别核对初始、每action、周期和最终逻辑/物理计数与state；恢复后仍使用同一不可变映射。",
+      "facts": {
+        "initial_logical": {
+          "G": 200,
+          "C": 1000,
+          "EMA": 800
+        },
+        "initial_physical": {
+          "G": 2,
+          "C": 10,
+          "EMA": 800
+        },
+        "final_logical": {
+          "G": 202,
+          "C": 1010,
+          "EMA": 802
+        },
+        "final_physical": {
+          "G": 4,
+          "C": 20,
+          "EMA": 802
+        },
+        "optimizer_state_rewritten": false
       }
     }
   ],

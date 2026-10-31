@@ -19,7 +19,7 @@
     {"query":"H100 CPU staging 等待","top":["transfer-staging"]},
     {"query":"ZeRO subgroup deadlock","top":["distributed-topology"]},
     {"query":"显存不够 OOM","top":["allocator-policy"]},
-    {"query":"重算开销太多，能保留激活吗","top":["memory-tradeoffs"]},
+    {"query":"重算开销太多，能保留激活吗","top":["activation-retention"]},
     {"query":"FA3 attention 后端","top":["attention-routing"]},
     {"query":"LoRA epilogue 舍入融合","top":["fusion-numerics"]},
     {"query":"图捕获 shape 没命中","top":["graphs-and-ema"]},
