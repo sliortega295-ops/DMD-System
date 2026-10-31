@@ -12,7 +12,7 @@ from test_training_helios_nogan_bootstrap_cpu import _write,_pin
 from test_training_helios_public_cpu import STACK_AVAILABLE
 from distillschedule.data import PreparedDataset
 from distillschedule.data import helios_nogan_reference_inputs as inputs
-from distillschedule.training.helios_inputs import HeliosCohortTask
+from distillschedule.training.helios_inputs import HeliosCohortTask, MAX_COHORTS
 from distillschedule.workloads.best_known.registry import fingerprint
 
 if os.environ.get('HELIOS_NOGAN_PUBLIC_REQUIRE_STACK') == '1' and not STACK_AVAILABLE:
@@ -86,13 +86,13 @@ def test_control_seed_source_task_bytes_and_unqualified_cpu_refuse_before_write(
         inputs.decode(feeds,HeliosCohortTask(0))
 
 
-@pytest.mark.parametrize('count',[1,65])
-def test_finite_2_to_64_capacity_rejects_before_publication(fixture_assets,tmp_path,count):
+@pytest.mark.parametrize('count',[1,MAX_COHORTS+1])
+def test_finite_cohort_capacity_rejects_before_publication(fixture_assets,tmp_path,count):
     source = json.loads((Path(fixture_assets['root'])/'training-inputs/source.json').read_text())
     stream = json.loads(Path(source['stream']['path']).read_text())
     for key in ('sources','inventory'):
-        stream['identity'][key] = (stream['identity'][key]*65)[:count]
-    stream['cohorts'] = (stream['cohorts']*65)[:count]
+        stream['identity'][key] = (stream['identity'][key]*count)[:count]
+    stream['cohorts'] = (stream['cohorts']*count)[:count]
     stream.pop('stream_sha256'); stream['stream_sha256'] = fingerprint(stream)
     source['stream'] = _pin(_write(tmp_path/'stream.json',stream))
     path = _write(tmp_path/'source.json',source)
