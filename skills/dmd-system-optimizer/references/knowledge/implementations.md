@@ -617,16 +617,16 @@
 ## W6 r1 block49 GPU结果缓存
 
 - ID：`h3-block49-hybrid-output-cache`；用途：historical_component
-- 范围：45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。
+- 范围：45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。 原本地历史提交未发布；当前引用是带原路径/hash记录的逐字节公开归档，并非独立可运行包。
 - 正确性前提：{"workload": "W6", "cache_key_complete": true, "cached_gradients_preserved": true}
 - 收益条件：{"saved_cache_transfer_exceeds_overhead": true, "memory_headroom": true}
 - 接入：只在对应历史strategy配置启用GPU_BLOCKS=(49,)；核对原父模块身份、GPU输出存储计数与consumer释放。
 - 回退：恢复原SHA绑定parent pool及pinned CPU存储策略，不改变原始模型或attention。
 - 验证范围：本轮核对固定源码和符号，未执行该历史 GPU/训练实验；测试链接只提供导航。
 - 测试缺口：当前 workload 的梯度、组合、容量和恢复仍需验证。
-- 入口：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::pool_class](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124)
-- 接入代码：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::install](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137)
-- 接入代码：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::validate_receipt](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147)
-- 测试：[tests/test_h3_ar_hybrid_cache.py::test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/tests/test_h3_ar_hybrid_cache.py#L57-L69)
+- 入口：[artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py::pool_class](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124)
+- 接入代码：[artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py::install](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137)
+- 接入代码：[artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py::validate_receipt](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147)
+- 测试：[artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py::test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py#L57-L69)
 - 核对命令：`dmd_knowledge.py locate --implementation h3-block49-hybrid-output-cache --repo /project/DMD-System --show-code`
 

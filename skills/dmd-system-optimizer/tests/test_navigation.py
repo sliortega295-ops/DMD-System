@@ -110,7 +110,7 @@ class CodeNavigationTests(unittest.TestCase):
         checked = set()
         for entry in nav.validate_catalog().values():
             for ref in nav.references(entry):
-                key = (ref["path"], ref["symbol"], ref.get("focus_call"))
+                key = (ref["repository"], ref["revision"], ref["path"], ref["symbol"], ref.get("focus_call"))
                 if key in checked:
                     continue
                 checked.add(key)

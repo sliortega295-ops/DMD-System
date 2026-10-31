@@ -3027,59 +3027,83 @@
       "id": "h3-block49-hybrid-output-cache",
       "title": "W6 r1 block49 GPU结果缓存",
       "usage_mode": "historical_component",
-      "scope": "45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。",
+      "scope": "45938af8历史原生selected-output pool；只有block49从pinned CPU改留GPU，严格绑定原consumer/version。 原本地历史提交未发布；当前引用是带原路径/hash记录的逐字节公开归档，并非独立可运行包。",
       "entrypoints": [
         {
           "repository": "sliortega295-ops/DMD-System",
-          "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-          "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
           "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
           "locator": "pool_class",
           "symbol": "pool_class",
           "line_start": 13,
           "line_end": 124,
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124"
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
         }
       ],
       "integration": [
         {
           "repository": "sliortega295-ops/DMD-System",
-          "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-          "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
           "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
           "locator": "install",
           "symbol": "install",
           "line_start": 127,
           "line_end": 137,
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137"
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
         },
         {
           "repository": "sliortega295-ops/DMD-System",
-          "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-          "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
           "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
           "locator": "validate_receipt",
           "symbol": "validate_receipt",
           "line_start": 140,
           "line_end": 147,
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147"
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
         }
       ],
       "tests": [
         {
           "repository": "sliortega295-ops/DMD-System",
-          "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-          "path": "tests/test_h3_ar_hybrid_cache.py",
+          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
           "sha256": "491f074f644d5d6700c34625b34921145ed199c768957470752604d6ebe75230",
           "locator": "test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention",
           "symbol": "test_full_original_consumer_order_cpu_loss_grad_rng_adam_and_actual_retention",
           "line_start": 57,
           "line_end": 69,
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/tests/test_h3_ar_hybrid_cache.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/tests/test_h3_ar_hybrid_cache.py#L57-L69"
+          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
+          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py#L57-L69",
+          "historical_origin": {
+            "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+            "path": "tests/test_h3_ar_hybrid_cache.py",
+            "commit_publicly_fetchable": false,
+            "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+          }
         }
       ],
       "correctness_conditions": {
@@ -3097,27 +3121,39 @@
         "references": [
           {
             "repository": "sliortega295-ops/DMD-System",
-            "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+            "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
             "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
             "locator": "install",
             "symbol": "install",
             "line_start": 127,
             "line_end": 137,
-            "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137"
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L127-L137",
+            "historical_origin": {
+              "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+              "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+              "commit_publicly_fetchable": false,
+              "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+            }
           },
           {
             "repository": "sliortega295-ops/DMD-System",
-            "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-            "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+            "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
             "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
             "locator": "validate_receipt",
             "symbol": "validate_receipt",
             "line_start": 140,
             "line_end": 147,
-            "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147"
+            "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+            "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L140-L147",
+            "historical_origin": {
+              "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+              "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+              "commit_publicly_fetchable": false,
+              "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+            }
           }
         ]
       },

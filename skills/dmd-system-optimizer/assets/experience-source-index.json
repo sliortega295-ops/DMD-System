@@ -3301,12 +3301,12 @@
     },
     {
       "repository": "sliortega295-ops/DMD-System",
-      "revision": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
-      "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
       "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
       "locator": "Only block49",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
+      "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
       "locator_quality": "structured_source_locator",
       "title": "h3_ar_hybrid_cache.py",
       "tags": [
@@ -3318,7 +3318,13 @@
         "helios-w6-retention-r1"
       ],
       "review_status": "CURATED_EXCERPTS",
-      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "historical_origin": {
+        "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
+        "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+        "commit_publicly_fetchable": false,
+        "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
+      }
     },
     {
       "repository": "sliortega295-ops/DMD-System",

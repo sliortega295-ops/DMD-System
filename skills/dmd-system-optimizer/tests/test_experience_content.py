@@ -1,5 +1,6 @@
 """Curated semantic regressions: source direction, scope and advice, never GPU proof."""
 import copy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -78,6 +79,18 @@ class ExperienceContentTests(unittest.TestCase):
         self.assertEqual(c["facts"]["block"], 49)
         self.assertNotIn("exposed_gather", c["performance_conditions"])
         self.assertEqual(c["navigation"]["implementations"][0]["id"], "h3-block49-hybrid-output-cache")
+
+    def test_w6_local_commit_has_public_byte_identical_source_archive(self):
+        c = self.case("helios-w6-retention-r1")
+        ref = next(r for r in c["evidence"] if "historical_origin" in r)
+        self.assertFalse(ref["historical_origin"]["commit_publicly_fetchable"])
+        self.assertNotEqual(ref["revision"], ref["historical_origin"]["local_commit"])
+        self.assertIn("artifacts/publications/20261031/optimizer_reference_sources/", ref["path"])
+        self.assertEqual(hashlib.sha256((REPO / ref["path"]).read_bytes()).hexdigest(), ref["sha256"])
+        impl = navigation.validate_catalog()["h3-block49-hybrid-output-cache"]
+        for code in navigation.references(impl):
+            self.assertEqual(code["revision"], ref["revision"])
+            self.assertEqual(code["historical_origin"]["copy_policy"], "BYTE_IDENTICAL_SOURCE_SNAPSHOT")
 
     def test_g8_failure_does_not_inherit_later_critic_failure(self):
         c = self.case("helios-full5-pr8-oom")

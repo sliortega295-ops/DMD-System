@@ -58,14 +58,14 @@
 - 重试信号：CPU/GPU结果存储的传输代价或容量条件改变
 - 最小验证：检查block49原输出树、consumer计数、autograd、版本与完整释放；量化传输差异及同源完整周期
 - 不应重复：不把GPU保留计算结果当成参数驻留，不用gather解释此结果
-- 代码状态：linked；关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。
+- 代码状态：linked；关系按具体机制和代码职责标注；源码匹配不等于当前 workload 已验证。 原45938af8只在本地，所引两份实现/测试源码已逐字节公开归档；依赖原生helper，不能直接当成完整可运行组件。
 - 定位命令：`dmd_knowledge.py locate --case helios-w6-retention-r1`
 - 结构化事实：{"retained_object": "selected_operation_outputs", "block": 49, "storage_change": "pinned_cpu_to_gpu", "numerical_status": "REVIEW"}
 - 归因边界：{"status": "MECHANISM_UNRESOLVED", "claim": "单次完整周期回退；未证明由哪一项开销导致。"}
 - 关联实现：[W6 r1 block49 GPU结果缓存](implementations.md#h3-block49-hybrid-output-cache)；historical_implementation；固定历史source实际GPU-tail1输出缓存，不是FSDP参数驻留。
-- 函数入口：[src/distillschedule/strategies/h3_ar_hybrid_cache.py::pool_class](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124)
+- 函数入口：[artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py::pool_class](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L13-L124)
 - 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L89)；定位：观察中的数值文本锚点 L89；同时阅读同节合同、状态与限制。原定位：rows[workload=W6]
-- 来源：[sliortega295-ops/DMD-System / h3_ar_hybrid_cache.py](https://github.com/sliortega295-ops/DMD-System/blob/45938af88d65ddb15b96ec1a181b65aa4e92de70/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4)；定位：Only block49
+- 来源：[sliortega295-ops/DMD-System / h3_ar_hybrid_cache.py](https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4)；定位：Only block49
 
 ### 保留真实 FA2 输出可省重算，密度受最坏显存限制
 

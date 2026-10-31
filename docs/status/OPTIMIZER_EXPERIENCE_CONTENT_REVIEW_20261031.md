@@ -19,6 +19,9 @@
 同类检查还纠正了 `helios-w6-retention-r1`：它把block49的原生计算结果从
 pinned CPU缓存改留GPU，其他块保持父路径；不是FSDP参数驻留。固定历史实现为
 `45938af8:src/distillschedule/strategies/h3_ar_hybrid_cache.py`，当次回退原因未隔离。
+该提交只在本地，原GitHub链接不可访问；引用的两份源码已逐字节保存到
+[公开归档](../../artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/README.md)，
+机器导航改用公开归档提交`48134cde`。归档保留原hash和来源，依赖原生helper，不是独立可运行组件。
 
 原回执保留。上游[六项结果汇总](SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)已加入r46勘误；
 检索仍指向旧固定版本汇总时，来源元数据和案例引用也携带内容勘误，防止再次学习错误方向。
@@ -77,9 +80,13 @@ W3首次使用`locate --show-code`时自动展开关联历史组件测试摘录�
 它能阻止这些已知错配被重新引入，不是自动证明任意新增经验真实的Judge。
 原有36个自然语言检索夹具保留；激活保留夹具改用纠正后的机制分类。
 
-本地202项Skill CPU测试通过，包括21项内容回归；Skill结构、Markdown链接和差异检查通过。
+本地203项Skill CPU测试通过，包括22项内容回归；Skill结构、Markdown链接和差异检查通过。
 训练源码Python编译检查与17份shell脚本语法检查通过；完整仓库refactor测试未运行，
 当前本地Python没有pytest。本次没有改动训练runtime，也没有安装依赖或运行GPU实验。
+
+首次CI暴露浅克隆缺少历史源码；工作流现按实现清单抓取固定提交，保留源码和符号校验。
+从本地浅克隆复现并修正后，导航测试通过。公开访问检查确认当前案例及实现引用涉及的
+36个固定提交可读取；这证明资料可取得，不代替历史结论的真伪或新workload验收。
 
 本轮核对103份去重案例证据文件的固定hash及125个固定源码符号，未运行引用中的GPU测试。
 源码存在、测试存在与当前训练验证通过是三个不同结论。未声明完成所有历史材料的全面审计，
