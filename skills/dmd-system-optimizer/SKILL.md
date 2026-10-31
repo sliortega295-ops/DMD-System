@@ -1,6 +1,6 @@
 ---
 name: dmd-system-optimizer
-description: Help Codex accelerate DMD and related multi-model training workloads: reuse proven implementations and experience, target real bottlenecks, test cheaply while exploring, and validate the final combination. Works in the user's existing repository without a mandatory ledger or migration.
+description: "Help Codex accelerate DMD and related multi-model training workloads: reuse proven implementations and experience, target real bottlenecks, test cheaply while exploring, and validate the final combination. Works in the user's existing repository without a mandatory ledger or migration."
 ---
 
 # DMD system optimizer
@@ -110,6 +110,11 @@ using that implementation as-is; unknown correctness needs checking before use.
 Performance differences change expected value, not mathematical validity.
 Inspect intervention direction, retained object and workload-specific observations.
 A diagnostic tool or conceptual reference is not a ready-made optimization.
+
+Early Route-A/Route-B, fixed-role and manual block-offload prototypes before
+2026-08-15 have been retired from this distribution. Do not recover them from Git
+history to fill a missing candidate; use the current workload and remaining scoped
+experience. Historical investigation is a separate user request.
 
 Write new successes, failures and uncertainties to WORK_LOG first, with the code
 and actual result paths. Use `dmd_knowledge.py record` to index useful experiences

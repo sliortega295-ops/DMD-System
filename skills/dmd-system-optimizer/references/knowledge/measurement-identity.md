@@ -85,25 +85,6 @@ profile 用来解释机制，正式收益用 unprofiled 对照；NVTX envelope �
 - 来源：[sliortega295-ops/DMD-System / SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L1)；定位：报告范围 L1–L122；L1: 六个 workload：当前结果口径、旧审计勘误与源码阅读指南；L7: 1. 范围必须是六项，不是五项；L20: 2. 用户当前论文主表快照：A100 六项；L37: 必须更正：W3 的 113.59s 不是当前无 merged-LoRA 数字；L47: 不能再沿用旧审计的三种替代；L53: 3. 主表之后还有新结果：不要隐去，也不要直接替换旧分母；L67: 4. H100 六项均已有结果，不能只写 W1/W2 找到了；L86: 5. 自动规划器：最新证据是“保存计划实际执行并接近手工”，不是把全部系统收益算成搜索增量；原定位：section 5: manual vs saved plan
 - 固定来源勘误：固定历史汇总的r46消除表述有误；补充勘误见docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md。按r46原始回执与归档packet记录恢复读取/同步，保留单配对数值REVIEW和原因未隔离。
 
-### 两波 GAS 必须重放同一逻辑操作的 selected-call 语义
-
-- ID：helios-gas-trace-baseline-repair
-- 状态：correctness_failure / HISTORICAL_SOURCE_REPORTED
-- 来源类别：Helios A100 history；本次未复现实验。
-- 观察：旧 48.551620 秒 anchor 第二波只连接最后一个 selected call；官方 strict-v4 两波均需三个 selected call，旧时间不能作为新合同分母。
-- 经验：修正训练图要重建 baseline；因少做 backward 得到的旧快值不能成为优化目标或算作加速。
-- 范围：官方同步退出的 Step10-A DP8 MB1/GAS2。
-- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
-- 正确性前提：{"matched_comparison_contract": true}
-- 收益条件：{"representative_measurement": true}
-- 失败分类：different_backward_work
-- 重试信号：两波 selected calls 已符合 strict-v4 语义
-- 最小验证：核对每波三次调用和梯度连接，然后重建同合同 baseline
-- 不应重复：不继续用少算逻辑工作的 48.55 秒旧分母
-- 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
-- 定位命令：`dmd_knowledge.py locate --case helios-gas-trace-baseline-repair`
-- 来源：[sliortega295-ops/DMD-System / rb16_full5_2g6c_continuous_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_full5_2g6c_continuous_20260810.md#L87)；定位：观察中的数值文本锚点 L87；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
-
 ### B32 的 B16 等效时间不是实际 B16 训练记录
 
 - ID：livewan-b32-normalization

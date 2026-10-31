@@ -1,5 +1,9 @@
 # Optimizer 经验内容修正与适用范围
 
+这是清理前的内容审查记录。随后按用户要求[撤下早期路线](../architecture/legacy_route_retirement.md)，
+其中 g8、旧 profile 收尾等案例已退出当前经验包；这里保留审查时的勘误记录。
+当前数量与可检索范围以[覆盖报告](../../skills/dmd-system-optimizer/references/knowledge/coverage.md)为准。
+
 本次修正针对公开 Skill 在 `5e2af222` 中的经验内容和代码导航。修改首先落到
 `helios-experience-pack.json`、`implementation-map.json` 和来源索引，再生成 Markdown。
 这是历史来源核验，不是重新做 GPU 实验或为当前 workload 证明加速。

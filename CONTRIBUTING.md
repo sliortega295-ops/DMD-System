@@ -11,7 +11,7 @@ DMD-System is a research runtime with strict equivalence and evidence boundaries
   use `examples/framework/newmodel.py` and the extension guide. Do not add a
   model-name condition to the generic planner for a new factory.
 - Put model-independent schemas, contracts, adapters and orchestration in `src/distillschedule/`.
-- Keep already-measured compatibility mechanisms in root `runtime/` until their typed replacement passes operation/tensor/loss/version/optimizer/EMA parity.
+- Keep compatibility dependencies still used by current training at their audited `runtime/` paths. Retired early routes and exclusive launch/offload code are listed in `docs/architecture/legacy_route_retirement.json`; do not restore them as current optimization candidates.
 - Put immutable workload semantics in `docs/contracts/`.
 - Put mutable operating procedures in `docs/runbooks/`.
 - Put measured/not-run outcomes in `docs/status/` and small curated manifests.
@@ -26,7 +26,7 @@ Do not edit a frozen plan to make an integration failure disappear. Changes to m
 3. new checkpoint/trace identities where applicable; and
 4. a matched baseline before performance comparison.
 
-Route-A specifically forbids a fallback to ZeRO-2.
+Route-A/Route-B are retired. Historical recovery uses the pinned pre-retirement commit and its original contracts; current work starts from `recipes/`.
 
 ## Fail closed before model construction
 
@@ -54,7 +54,7 @@ find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 pytest -q tests/test_refactor_*.py
 ```
 
-Cluster-facing changes additionally require the BAAI smoke gate and an immutable status update. A successful GPU run is not required to review source cleanup, but unexecuted cluster behavior must be labeled `Pending cluster validation`, not `PASS`.
+Cluster-facing changes additionally require the current workload's source/asset preflight and an immutable status update. A successful GPU run is not required to review source cleanup, but unexecuted cluster behavior must be labeled `Pending cluster validation`, not `PASS`.
 
 ## Six-workload organization
 

@@ -66,8 +66,8 @@ class RecallTests(unittest.TestCase):
                          "PUBLIC_REFERENCES_NOT_LOCALLY_CHECKED")
 
     def test_unverified_leads_remain_separate(self):
-        r = m.recall("pipeline 流水", {}, limit=1)["matches"][0]
-        self.assertEqual(r["pattern"]["id"], "role-scheduling")
+        r = m.recall("loss", {}, limit=1)["matches"][0]
+        self.assertEqual(r["pattern"]["id"], "validation-lifecycle")
         self.assertTrue(r["cases"]["unresolved"])
         self.assertTrue(r["cases"]["positive"])
         self.assertTrue(r["cases"]["negative"])

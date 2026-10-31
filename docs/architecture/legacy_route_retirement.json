@@ -1,0 +1,841 @@
+{
+  "schema_version": "distillschedule.legacy_route_retirement.v1",
+  "date": "2026-10-31",
+  "recovery_commit": "f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e",
+  "scope": "Pre-2026-08-15 Route-A/Route-B, fixed-role GAN prototypes and their exclusive launch/offload closure.",
+  "replacement": "recipes/README.md",
+  "files": [
+    {
+      "path": "configs/distillschedule/fragments/helios_14b_models.json",
+      "sha256": "809272222520ae1d483f9e4faf50c1ad37222eedbd282c926eac8e30e4f0a60d"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_a_local_lifecycle.json",
+      "sha256": "49dc3e200b939b4d0c410a9fb334bc3e5a3df43e40a5b84dac1bcec026545eb4"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_ra16_f5_glp_offload_lifecycle.json",
+      "sha256": "e310716e18de828e4e50898573e4de8aa8c902359e4819d3209d800aa9cf1394"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_ra16_f5_glp_score4_lifecycle.json",
+      "sha256": "160544277fef4f77e22b8d415f586be43ba005c42f93800e0a15d8d4af9c9aab"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_ra16_f5_pr12_lifecycle.json",
+      "sha256": "33e419af844a26477e87769d62ebe7874c2de4554d0870ebca298666e9a955bd"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_ra16_f5_pr4_lifecycle.json",
+      "sha256": "2079008ff6cd08bc7139033892207c8e444ebe7473aad4c65abd81106c0a33f9"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_ra16_f5_pr8_lifecycle.json",
+      "sha256": "279cd70acf5bdf48073cbeb248b531a1c367e906f955d91b939b189bcc8307de"
+    },
+    {
+      "path": "configs/distillschedule/fragments/helios_routea_world16_lifecycle.json",
+      "sha256": "9b0c3cbca238bebbf23136b73ed475819bd008f4608f54f567c0f1708844544d"
+    },
+    {
+      "path": "configs/distillschedule/pipelines/helios_gan_world16_4g8c4flex_rolephase.json",
+      "sha256": "fd9d442672c9a62c1cac6240776e0d18312cc3daaf40e01b9d9cb3f56212212e"
+    },
+    {
+      "path": "configs/distillschedule/pipelines/helios_gan_world16_8g8score.json",
+      "sha256": "9d61636cbc3ee556d5354b66b558f41ec46af32f6066aa4c9be74ea4467084ae"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_14b_384x640_full5.json",
+      "sha256": "9cb11314b548b6c366bfc4d09bde2678d58f6683d358285942e6220c9ed768c1"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_glp_offload.json",
+      "sha256": "c3c9c29443b64c7e4f51026781173fd91973ebb129353e1d17db61c66d09dba5"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_glp_score4.json",
+      "sha256": "1087443e7b9379647e5e3b8e6e2f858b27ecc67f22662b2a001934ee3187c0f3"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_pr12.json",
+      "sha256": "7a22646c2b1741351a680487a337cdbd9729c936d60ee04134c35fee11026dcb"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_pr4.json",
+      "sha256": "dbdfd6c3c8b0b8180cc2dd454943791c3f5ed64289a8cc89dfaca66924447e95"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_pr4_ec.json",
+      "sha256": "a5d76016328b65309c39eff21f12b3bd859ab37509a396baca2a2f3e483b3fbd"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_ra16_f5_pr8.json",
+      "sha256": "bdfac672c1b5168a96d9b8d59dffce0e50e78b87b9ac68c90f2cabc1563ca0e7"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_routea_full5_world16_typed.json",
+      "sha256": "a1c288704617276aece8182e28838084307ab45a129c787eaf0d7825444e9f06"
+    },
+    {
+      "path": "configs/distillschedule/plans/helios_routea_gan_full5_world16_baseline.json",
+      "sha256": "8e92789427116579440589cff4f77d7e3b8fbd8fb73fc00922840e4e03b2790e"
+    },
+    {
+      "path": "configs/distillschedule/server/baai_2x8_a100.env.example",
+      "sha256": "15e9723fbe446ac9d28e73f13272275dfa078562215303efeb6c27ec68748307"
+    },
+    {
+      "path": "configs/distillschedule/server/baai_gan_2x8_a100.env.example",
+      "sha256": "e15b6ca986ab6b01152c701b5437c9fc716364311161ec4b172f97be5b686d4c"
+    },
+    {
+      "path": "configs/distillschedule/server/baai_ra16_f5_glp_offload.env",
+      "sha256": "bb132aefa702f52f7c5eb7e23b8879748765a6d45fb03cc88621d86a1f1ece1c"
+    },
+    {
+      "path": "configs/distillschedule/suites/helios_no_gan_world16.yaml",
+      "sha256": "ca1a99eeb46c2d8bf1a2f2f1ec9c02f25b030a831ce36855b2640c72fb753f60"
+    },
+    {
+      "path": "docs/architecture/baai_server_adaptation_20260808.md",
+      "sha256": "5d0209d6e83cf531e3af25ce13842509c737ec7ca2079f9052ed35147d063007"
+    },
+    {
+      "path": "docs/architecture/refactor_v1.md",
+      "sha256": "731546b99e8736114b49ee4562cf890dfc8f37c0dddedfcb80d2f674f7aafae2"
+    },
+    {
+      "path": "docs/contracts/routea_full5_world16.md",
+      "sha256": "357171226d976826db3382cf08d8dc426b16c5d02116f75736b5a9d6919f43c7"
+    },
+    {
+      "path": "docs/contracts/routea_gan_full5_world16.md",
+      "sha256": "023ecc06e7da70e5f6f5633fea85df033373950ff3f953a7575e04dbbf012285"
+    },
+    {
+      "path": "docs/design/gan_nsight_notes.md",
+      "sha256": "2698f74f9c92c816a15008685cc429784de60847c9feaf64dfcee485750d018f"
+    },
+    {
+      "path": "docs/design/gan_pipeline_8g8score.md",
+      "sha256": "f789182970047b1a7785aa167d563af9da4ff2d97b91bc2ca0d112a9e50443c7"
+    },
+    {
+      "path": "docs/design/gan_rolephase_4g8c4flex_v1.md",
+      "sha256": "e92206bd8372f5e133afe7c73409876b7807ff5afd48bb7c4dd9c776cf9e7a6f"
+    },
+    {
+      "path": "docs/design/gan_timing_fairness.md",
+      "sha256": "0f9b1334b66ecad8ddbd8d7fe2817f8099efa73c351fc2e4f150ee5928c064ca"
+    },
+    {
+      "path": "docs/experiments/routea_world16_typed_revalidation_20260808.md",
+      "sha256": "75f9f8f6f4c90069e2f48a2f09c315e745cef815621cc48f659cde5133de6c9f"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/README.md",
+      "sha256": "2920ea50637b0b81b8de79c0ac951dbcbbefef4769f88eb235d0ecefe9a0ca44"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/SHA256SUMS",
+      "sha256": "fc3af9ec1d8da0ad9f92e573e1fa441bd8f6efe3e4fc703195162099035fda2c"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/figures/01_nogan_all40_wave8_nsys_timeline.png",
+      "sha256": "04f032670ac0ae838bce007a785545b29b0e117c0d7795cae4b569124dd44b0e"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/figures/02_nogan_routea_score4_404_diagnostic_timeline.png",
+      "sha256": "253c0dcaca674ecca3f3902115edfea27294242f246f00c7820917229cc05f54"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/figures/03_nogan_full5_iteration309_nsys_timeline.png",
+      "sha256": "288e40fb7cc67af286cb6eeb58483850400a2961ff062599654238e8e7ab047b"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/figures/04_gan_on_sequential_fine_nsys_timeline.png",
+      "sha256": "d70bfcb02989277d96fc66bdfbc63fc5fde5499d86eaa19f912b4afa0b34969f"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/figures/05_gan_on_rolephase_reference_timeline.png",
+      "sha256": "1afdc5d895e821b1b2db9ecf52443e210165b86feb10a3a944d2b0539379e242"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/gan_on_pipeline_metrics.json",
+      "sha256": "0abd57fa54e4bd7f9f98a32325ae33e3854801ea68ad949d1f8f0b7e9848c713"
+    },
+    {
+      "path": "docs/issue-assets/nsight-utilization-gan-rolephase-20260814/no_gan_utilization_supplement.json",
+      "sha256": "7d446a87a278dacf975ae7bc3326c3a6e8aa04d3ae2692c2981fe61c790bdc2c"
+    },
+    {
+      "path": "docs/runbooks/baai_no_gan_suite.md",
+      "sha256": "95e348fe4c04469570d99cfc1b0d05cc99ea365bae0631dfb9b27946b5a601e3"
+    },
+    {
+      "path": "docs/runbooks/baai_routea_gan_world16.md",
+      "sha256": "d741c3492666408b4ed3e5c05ee40756b84154b97c30a8293a26e098ea09a1a8"
+    },
+    {
+      "path": "docs/runbooks/baai_routea_world16.md",
+      "sha256": "7b2ccd56c19c6b362941a73c442c8a5f99d24af6771c87cd6966d200c320b0bd"
+    },
+    {
+      "path": "docs/status/gan_pipeline_rolephase_20260812.md",
+      "sha256": "eed4eb08b74f21c152bd44c317355bedf5be13921b8cd072d7a62c0871fcee77"
+    },
+    {
+      "path": "docs/status/gan_rolephase_node1_20260812.md",
+      "sha256": "9e85ce075bcdaf59b4149ae8d30866f5177d8d036109d47945c0cddb7370f883"
+    },
+    {
+      "path": "docs/status/gan_rolephase_world16_execution_20260812.md",
+      "sha256": "107b47cd9eb9612b7fd5cfd8c1a5313370b465ff32db591dc895ede725eaa8e6"
+    },
+    {
+      "path": "docs/status/gan_systems_experiment_20260811.md",
+      "sha256": "6651a5d025035834267e51c1892216092faa641c238622427b0843572cc137df"
+    },
+    {
+      "path": "docs/status/gan_world16.md",
+      "sha256": "944d244b7c5cbee1003b70d5fca6db5a3cb1825bf3f0904efd6012d14ea85a91"
+    },
+    {
+      "path": "docs/status/routea_world16.md",
+      "sha256": "db5921ac73d4585f6d956821545639a67494479a474a3fdcb389f92431d9c047"
+    },
+    {
+      "path": "runtime/activation_offload.py",
+      "sha256": "617bb14612dba05f285f04662ec53cd75bea7a41707713b00f5ef676f958f77d"
+    },
+    {
+      "path": "runtime/bounded_materialization.py",
+      "sha256": "443e05f458be855f1570869f1819be76b6b5d759f033488e6be46553e2713d6b"
+    },
+    {
+      "path": "runtime/critic_pool.py",
+      "sha256": "53cb4122c693ff52e0df21a13b4ac8f90e478c43ad44666de9b582501235a562"
+    },
+    {
+      "path": "runtime/critic_pool_transport.py",
+      "sha256": "10c07a261f045ab20d7635a96b0e0deb05c58d45ed37554fd0d10373b9406766"
+    },
+    {
+      "path": "runtime/deepspeed_backend.py",
+      "sha256": "77933dd36c7d0583779f9a602346d3a9a6206eb6751d2d02f1c42c109994e58d"
+    },
+    {
+      "path": "runtime/frozen_block_streaming.py",
+      "sha256": "d9e0cf1c98e842c5516a6d3fc1385909c4f7c3b2ae97cb1d38821bf085ba721a"
+    },
+    {
+      "path": "runtime/gan_pipeline_helios.py",
+      "sha256": "4d698efe29888dd571c071ffbe83c4905a1f9c78a896162ccc1bb46289b496c7"
+    },
+    {
+      "path": "runtime/gan_pipeline_transport.py",
+      "sha256": "e2d13caa4b13c15ec6fcc5cae136fcdad1ac3ffe6ca8172ee9275d6a9fe1fcba"
+    },
+    {
+      "path": "runtime/gan_rolephase_helios.py",
+      "sha256": "63cc48ae7d494b4cace6ba395274d855b685350f2cece93e5a4f20626e2038a5"
+    },
+    {
+      "path": "runtime/gan_rolephase_node1.py",
+      "sha256": "bf40dbc4e01221c77f3f162c354df1a227ac9d11f16afe94b2cc3f6a173f7f78"
+    },
+    {
+      "path": "runtime/gan_rolephase_trace.py",
+      "sha256": "4abb0a9d49a9b6a875601c918d11657515c10f14cfc026a5472638d4d2a92ec4"
+    },
+    {
+      "path": "runtime/generator_update_gate.py",
+      "sha256": "4b80af3571f78b5af36b021b3618960cd98c51ff82cf5dd70951264c1e613085"
+    },
+    {
+      "path": "runtime/gst_pool_exchange.py",
+      "sha256": "080f693016b44d5c57fe64f85cbbad81fd08d3eed783a234076810ed2f7bdca5"
+    },
+    {
+      "path": "runtime/routeb_full5.py",
+      "sha256": "2df6c13d7463f4def2d10523a4ba5c8666c0991c6960dbe2ff374b9ad4636fb1"
+    },
+    {
+      "path": "runtime/routeb_full5_trace.py",
+      "sha256": "00ead4bc3718417ed9156875487b82568c89e89aee81cacfc21a3753e0a14cb2"
+    },
+    {
+      "path": "runtime/routeb_full5_transport.py",
+      "sha256": "b907a39ce6a490e7562323611a57175301b77ae158772e6eeb8732c62cb1830d"
+    },
+    {
+      "path": "runtime/saved_tensor_census.py",
+      "sha256": "ad2531dd21b0ea6b0aae6fe0f94b653e488cc9bd798fccea3ad62cde18f1e62d"
+    },
+    {
+      "path": "runtime/zero3_checkpoint.py",
+      "sha256": "5143a370bdb149b0ee5396f5d2e7835e79066d056cb6ebb40de2d0375b087715"
+    },
+    {
+      "path": "runtime/zero3_module_granularity.py",
+      "sha256": "7e3b9eb19a02faa98b4633d36a3a5dff2515033ce7f709c8469781152f0c3dd7"
+    },
+    {
+      "path": "scripts/distillschedule/baai_server_smoke.sh",
+      "sha256": "3f9a578a6c598768c3cb10576d456abffa48349cf312dd4d94781ed65edcdf47"
+    },
+    {
+      "path": "scripts/distillschedule/build_gan_execution_receipts.py",
+      "sha256": "8c6a93256ffe4883b0e0648d6e3b35365fe9af5d6427f46a5f0314bfce1251ed"
+    },
+    {
+      "path": "scripts/distillschedule/build_routea_evidence_contract.py",
+      "sha256": "2baaa51da460d1a4010ecad11d3f9f4744421e0147770dda6f1e6c452aba3160"
+    },
+    {
+      "path": "scripts/distillschedule/check_gan_fairness_pair.py",
+      "sha256": "1ee015fbb0e67af91183fef5e75fc0c3ae8dcf6cc11ce2c74e119651d16ce5aa"
+    },
+    {
+      "path": "scripts/distillschedule/compare_routeb_candidate_b_state.py",
+      "sha256": "0f999958b3ded8c219541045fb140ac84e76f29bc31ba81e3711bc6f291f6aa8"
+    },
+    {
+      "path": "scripts/distillschedule/compare_routeb_full5_2g6c_continuous.py",
+      "sha256": "9fa8775164bcb5664022e5b348e28ba576cd15fcedfd9b03b30468781680e0fd"
+    },
+    {
+      "path": "scripts/distillschedule/compare_routeb_full5_candidate_a.py",
+      "sha256": "2cd689e961e75d9e6cf21547d3b5e5ae82ed52c068f64230cfd10e802d316661"
+    },
+    {
+      "path": "scripts/distillschedule/compare_routeb_full5_candidate_b.py",
+      "sha256": "ecb945f37b8edd5afcc109983ef6bd359fa8f9c22444e62dd98fbc33cffe8814"
+    },
+    {
+      "path": "scripts/distillschedule/evaluate_routeb_candidate_a_numerical_contract.py",
+      "sha256": "94a191150bbc6d22a9e82702de69307292531a57d54beb86ea2387e2382b6e83"
+    },
+    {
+      "path": "scripts/distillschedule/evaluate_routeb_candidate_b_numerical_contract.py",
+      "sha256": "abc6c1ffbbeb8cbc5f97039d4f9b373808353516ee08e58354bf92ebe3b8de00"
+    },
+    {
+      "path": "scripts/distillschedule/evaluate_routeb_full5_2g6c_continuous.py",
+      "sha256": "43b110ce610999fa1f85cc56d1ef5ddc9aee1068c47b1f6f00f02025d0db3216"
+    },
+    {
+      "path": "scripts/distillschedule/export_routeb_candidate_b_transition.py",
+      "sha256": "6eedef3eade1f5a5dd2c3671f9e967c40507dbcbfa20b2b667a2532f54bdf789"
+    },
+    {
+      "path": "scripts/distillschedule/gan_launch_shim.sh",
+      "sha256": "a8887b2c96bef545f0ffc25c447873fec3e297140199e57b35b374fba8f3753c"
+    },
+    {
+      "path": "scripts/distillschedule/helios_gan_compat_entrypoint.py",
+      "sha256": "675da823986d20d6a87db5ce323ace2ec9f2d4d7c768a50484406d16ced94dbd"
+    },
+    {
+      "path": "scripts/distillschedule/inspect_gan_pipeline.py",
+      "sha256": "e63549db6a34d57de817c7326cab4f380c93c12419d79b21af88cfc83023bf76"
+    },
+    {
+      "path": "scripts/distillschedule/inspect_gan_rolephase.py",
+      "sha256": "74cfc10039b0f327599c91d4d7b83e8f0b330b642f6745df89b0f6e5b98e6af9"
+    },
+    {
+      "path": "scripts/distillschedule/launch_gan_rolephase_world16_node.sh",
+      "sha256": "6e50e24495a41ac14309118098b5eb9b89df40789ebbed25be7f6a597f4809d9"
+    },
+    {
+      "path": "scripts/distillschedule/launch_gst_pool_candidate_node.sh",
+      "sha256": "71d1df9085790ffee19b823cf33d72343a8d7939b48dce0a7a7db0abad6dbb66"
+    },
+    {
+      "path": "scripts/distillschedule/launch_routea_gan_world16_node.sh",
+      "sha256": "41e38c45b3d64b96be40e80d3a774de6ff4f15baf32e6179438f3290769469d4"
+    },
+    {
+      "path": "scripts/distillschedule/launch_routea_world16_typed_node.sh",
+      "sha256": "3a670886e20e9bdec4a0dcbd6ca8ab5f097aede08a0d0debef18af7fc1b25689"
+    },
+    {
+      "path": "scripts/distillschedule/launch_routeb_full5_2g6c_continuous_node.sh",
+      "sha256": "7cf4d57ada293517f3ee84d86e2109a7e3e64fae9b402b74f88eee607ab32f44"
+    },
+    {
+      "path": "scripts/distillschedule/launch_routeb_full5_candidate_a_node.sh",
+      "sha256": "259cf733b7ef36902161c6172bdf8e0d99dfb75e60f1f4de47befe94b9cfeb76"
+    },
+    {
+      "path": "scripts/distillschedule/launch_routeb_full5_candidate_b_node.sh",
+      "sha256": "83d74ddbd8267e95b407e3b8cfa05d890d4c7a21b60ae1af8ae7bd1ba324c448"
+    },
+    {
+      "path": "scripts/distillschedule/probe_gan_rolephase_node1.py",
+      "sha256": "aa13a29c57c054b207a8270c5effcc6fcc39660c2c8716f98adb48cc2b268619"
+    },
+    {
+      "path": "scripts/distillschedule/probe_gan_rolephase_world16.py",
+      "sha256": "78e2b41f3352f96b0e4169e117dfafe8261ba27d1cec7b5ce261e7b362fbc6bb"
+    },
+    {
+      "path": "scripts/distillschedule/probe_gst_pool_generator.py",
+      "sha256": "469bfdf0fc593e44f02b48e8766f9302cf892dee64fc3362f4eb1e2972f83b84"
+    },
+    {
+      "path": "scripts/distillschedule/probe_gst_pool_score.py",
+      "sha256": "37565c8977914de0fd41a67ef6ab55c24bd30fbf2f223b3734076e492476e473"
+    },
+    {
+      "path": "scripts/distillschedule/probe_phaseb_communicator_collapse.py",
+      "sha256": "ceae5f0612c64890f26eb9728af198b74a06a12a129807a3a779cd8a754e9f2d"
+    },
+    {
+      "path": "scripts/distillschedule/probe_routeb_full5_2g6c_continuous.py",
+      "sha256": "11c9cd223250df78f505c4a605c401e372ff213c5186b2b8397041476dd8f0b8"
+    },
+    {
+      "path": "scripts/distillschedule/probe_routeb_full5_candidate_a.py",
+      "sha256": "21da831ed723156331fecc49a82a8e118c1df838ad91d8fa0755d3076b90d188"
+    },
+    {
+      "path": "scripts/distillschedule/probe_routeb_full5_candidate_b.py",
+      "sha256": "2d4d77695ef131294975806ac6ce64eafead93bf67586f5f0f1e1d694bd5c925"
+    },
+    {
+      "path": "scripts/distillschedule/render_accelerate_config.py",
+      "sha256": "dbc07fa13e749305cd9a995954b7d8f7a47c4d2e30a6c575337e8b5868829b07"
+    },
+    {
+      "path": "scripts/distillschedule/run_g_offload_search.py",
+      "sha256": "5cbd524555f7d4f70d816e853cfaee50f9d9a6c302a3a7f4935c96e3aec340be"
+    },
+    {
+      "path": "scripts/distillschedule/run_gan_offload_search.py",
+      "sha256": "af9c066bbfd51bc571d7148acbe3afa3945b92eb4353789eb200aa1ed4ab9748"
+    },
+    {
+      "path": "scripts/distillschedule/run_gan_paired_formal.py",
+      "sha256": "10f3fefa2234a97536b42bf0ac90c7d3846731986b9903ff207c6f7ec3670b21"
+    },
+    {
+      "path": "scripts/distillschedule/run_gan_pipeline_offload_search.py",
+      "sha256": "dbb709611810174018b433627c551f5bdb960cd8c817cb8ab9f95808ac34630c"
+    },
+    {
+      "path": "scripts/distillschedule/run_gan_rolephase_world16.py",
+      "sha256": "f3661263d94be1a87ec4ccb5853cb32c10dd0db5df6c26badf3915ba4836e4a5"
+    },
+    {
+      "path": "scripts/distillschedule/run_gan_systems_formal_trial.py",
+      "sha256": "dda532ec74e43c3e8eac8b9173ea1a0b5d5096297b47164dac44505cad713aaf"
+    },
+    {
+      "path": "scripts/distillschedule/run_gst_pool_candidate.py",
+      "sha256": "6af97b36cb50d7e932f2a0af208d2b456818f19f5e58721aade0a11621bb9ba4"
+    },
+    {
+      "path": "scripts/distillschedule/run_no_gan_suite.py",
+      "sha256": "6c123f89994111765162b237b851881b21cb7e4f2d27f6ef4142cd3b527e72d1"
+    },
+    {
+      "path": "scripts/distillschedule/run_paired_formal.py",
+      "sha256": "78cdce2c906959d6b3ecf8afe5cc41329910703ee64d8bc4e31fdf89310f58aa"
+    },
+    {
+      "path": "scripts/distillschedule/run_routea_gan_world16.py",
+      "sha256": "1e89f09e08e72aefccb0cd51a4dfb61679678e9e06118589433ec8d72223d60c"
+    },
+    {
+      "path": "scripts/distillschedule/run_routea_world16.py",
+      "sha256": "abaa3ed2d921395855cae09fc04df286adfefc39fc3715dd078c418720fe5c49"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_gan_rolephase_world16.py",
+      "sha256": "b76cbf55cb9b108fb8e7b71f4857a466a6b99560437d8649eca236d7c63baffe"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_gst_pool_candidate.py",
+      "sha256": "f6938d3ccb9c04932af5e5d19b0ecad9f8408281ef6a67c6ad6183e6d7fe5d96"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routea_gan_world16.py",
+      "sha256": "3f5f9f673e7c9cc61ac770d8b0cf9a4a8cfc3955af2aa8b2e29c282fe6c566da"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routea_rank_memory.py",
+      "sha256": "6cba7bd315f8fd4ed9ec3412008aa3b7b5c86124dc805e752224dab6c3aa2be1"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routea_world16_typed.py",
+      "sha256": "c4711334ce48c4125d796fd25da9883712f6c6dec507ee7596cd19ad4d019e56"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routeb_full5_2g6c_continuous.py",
+      "sha256": "c505b51bbc2e62fa051d465bc2e670a5b31d862760149cf6598d74f7f9549293"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routeb_full5_candidate_a.py",
+      "sha256": "06df1342f8b10dfb8b5366f5d416a5e3c0c38d2a446e0e8306d200894605be55"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_routeb_full5_candidate_b.py",
+      "sha256": "c83cd2a09c62d73541d581fbe4f232d053f3146a050b1ecab35d8893eecad74b"
+    },
+    {
+      "path": "scripts/distillschedule/summarize_step10a_saved_tensor_census.py",
+      "sha256": "cefaae5dad115fd5b00a29285a46e2a34752deaf869859b5990577fa5c1c2228"
+    },
+    {
+      "path": "scripts/distillschedule/validate_gan_rolephase_world16_inputs.py",
+      "sha256": "440b668262bfa74e93a56d5bf1ba91dc7f59b1a6bf412d9e59fc7afe8c525c16"
+    },
+    {
+      "path": "scripts/distillschedule/validate_gan_timing_receipts.py",
+      "sha256": "2798aa361b70efe01898dbcf8b8648dc6bc764693352e3f7b3942187c6eb3e1c"
+    },
+    {
+      "path": "scripts/distillschedule/validate_gst_pool_inputs.py",
+      "sha256": "596054921e2aa5033e692dc538e7a92c8363afe737c7e679a0a51e9a9e23d8d2"
+    },
+    {
+      "path": "scripts/distillschedule/validate_routeb_candidate_b_inputs.py",
+      "sha256": "a8b5bdb8d41e2548d9bd8651df2b9f991faa7c7dc3e29c644d0dea875cdf763d"
+    },
+    {
+      "path": "scripts/distillschedule/validate_routeb_full5_inputs.py",
+      "sha256": "f2aa1f9aac7372fbc771822c4c403901d72f4dce609da5fbf55b0883177669df"
+    },
+    {
+      "path": "scripts/probes/probe_zero1_lp_state_offload.py",
+      "sha256": "a38c9a0c5eabd49dccdcb1df5ddb619403237d428eb50581b25c7c49f6feb335"
+    },
+    {
+      "path": "src/distillschedule/adapters/helios/adapter.py",
+      "sha256": "a2f40762723a135bb1c72da13535db8cd84b982819ad92e85fcda826385b9b93"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_baseline.py",
+      "sha256": "f41261bb529157dfb3b106d3af7bc00fc71e3904211b62c737c9b37c5d8f37af"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_compute_inventory.py",
+      "sha256": "0b729bb52472793e7a0c72bab55d241f5a821aeb9946eeb0208f7c594776c38c"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_execution_receipts.py",
+      "sha256": "7cfb71c4f7420a0d9ca20b653ab0a69c54ba971decc94c838f3011159a993fef"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_fairness.py",
+      "sha256": "61bc7c382134c005c1f83be9fb3305f4a59d80e190e70787e73b11a8065e53d2"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_pipeline.py",
+      "sha256": "16355e2ad589d3c5711a92e4bf51dd137dc977619f348c89bb397ccc6abb2944"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_pipeline_deepspeed.py",
+      "sha256": "1fb7ed33e5fb0d32140e0e246b9a6c55323c409ed23cccad7718b154026a7fb3"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_pipeline_helios.py",
+      "sha256": "4d698efe29888dd571c071ffbe83c4905a1f9c78a896162ccc1bb46289b496c7"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_pipeline_transport.py",
+      "sha256": "3426023d34ffd9636ff2f869252dcf250a2f3abc78018faf1999cb0590b7f108"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase.py",
+      "sha256": "8b89578259ba004c395e78379fd2a777083cc6f2f0ecd8ad22b1169f3739a0e5"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase_critic.py",
+      "sha256": "caf0fa6e8fb28e7e056c121447245de5a142d752bf9ed8f77512cbd0f9c2b01f"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase_groups.py",
+      "sha256": "7a04d11a0870fbb3fa54055a8a07594afe14257fcfb522a862f101ff5cb488d6"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase_schedule.py",
+      "sha256": "1cc5dc6c096253722699a25a51abe33282a34ca164335cfe2dba7221f437a4a7"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase_transition.py",
+      "sha256": "6623f043a835809b1ef6f208ec7b9ac078e650bc520f18f9d623ceeb793f44fe"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_rolephase_transport.py",
+      "sha256": "19ecedf4a3e90bb6e41ed37fc2e2283ee3f258a8d8716b513ef451e4733ada47"
+    },
+    {
+      "path": "src/distillschedule/runtime/gan_timing_range.py",
+      "sha256": "bbd8e8d884592ef3b192148cf8e20d132907aeca917c1e61a82122426c126fb5"
+    },
+    {
+      "path": "src/distillschedule/runtime/launch_config.py",
+      "sha256": "97ffe66a88b901adf2abece8f5ea9ee81e7c10f59ea85eb416f35ea6953ff7d0"
+    },
+    {
+      "path": "src/distillschedule/runtime/routea_evidence.py",
+      "sha256": "008c287ad261c66bb271d4304ec5f8fb82ce699e4bb804030b7d428825fce22e"
+    },
+    {
+      "path": "tests/test_activation_offload.py",
+      "sha256": "9beb083b5f0718af8bb7b1cb3b8e9dae0f672d413a8e7480ef780533d0ee92ac"
+    },
+    {
+      "path": "tests/test_bounded_materialization.py",
+      "sha256": "aac79664df43ca21f9ec7c7409e725028503012664bbc45a201d35f858e3c8a5"
+    },
+    {
+      "path": "tests/test_critic_pool.py",
+      "sha256": "1b85df230fa28db094a91d68ef10b02dcac99f04a92c80eadbaf7674ebe688bf"
+    },
+    {
+      "path": "tests/test_critic_pool_transport.py",
+      "sha256": "0fd6319704b17045ea0f08c9e5c0b0b30cff24571d98ad39f5e9569551d10043"
+    },
+    {
+      "path": "tests/test_deepspeed_backend.py",
+      "sha256": "f790a1844ec99605af8b206245a5e056aae5303dc122122166c3e8d1b67f252d"
+    },
+    {
+      "path": "tests/test_frozen_block_promotion.py",
+      "sha256": "6ae60d13179c09f280bb8bc494bd8fb3eb5a8eca288a2e7d5e919f08dea922dc"
+    },
+    {
+      "path": "tests/test_gan_rolephase_node1.py",
+      "sha256": "9e9e96c240c07bce92587d08a3261f3b2116793c0a343c25a9693cde2f3c3761"
+    },
+    {
+      "path": "tests/test_gan_rolephase_world16_executor.py",
+      "sha256": "049ac9a079092186d31dd3902b9fe4e47392b4475917f396752ee02a7b4debef"
+    },
+    {
+      "path": "tests/test_phaseb_communicator_collapse.py",
+      "sha256": "c37fb1e05340cc138080c41943853f42e9fb649b175b49374456a9101b4ca7c5"
+    },
+    {
+      "path": "tests/test_refactor_gan_baseline.py",
+      "sha256": "592bf9cc316374b297e0dfec50d5da1f3482e15a1e61b982fdaa0c1f97e4d358"
+    },
+    {
+      "path": "tests/test_refactor_gan_compute_inventory.py",
+      "sha256": "a34fb646e7f7af2268c3364a666625133c0a126ba4d88be3c22a842c351d4e54"
+    },
+    {
+      "path": "tests/test_refactor_gan_contract_docs.py",
+      "sha256": "44a8fc15ab8134f3bfe12e59d39332bb5480876640ba79966c750294d06338b5"
+    },
+    {
+      "path": "tests/test_refactor_gan_execution_receipts.py",
+      "sha256": "bee621e748d4d7d7df1b8f73c110ecabde481532fdd0827fd0a82650cbf63421"
+    },
+    {
+      "path": "tests/test_refactor_gan_fairness.py",
+      "sha256": "e4fcabef8206f5cea843f8d9785ad2b1ec8e8680bb5c8ca3fefa36b5e51950bf"
+    },
+    {
+      "path": "tests/test_refactor_gan_nsight_docs.py",
+      "sha256": "dabdf7a5e59af9e824dc01698bb07dabd4c798fcf2a7918b57443d4a8cc1b4cc"
+    },
+    {
+      "path": "tests/test_refactor_gan_offload_search.py",
+      "sha256": "b4beac3a13e7d4831e0bbb585b8472570c5ddd28cae26a1e9aceb75923942e7f"
+    },
+    {
+      "path": "tests/test_refactor_gan_paired_formal_import.py",
+      "sha256": "48fb580cd63873da4d9ca4c7b3ac4c59929b64f036ee2e758601fcf01af29687"
+    },
+    {
+      "path": "tests/test_refactor_gan_pipeline.py",
+      "sha256": "62ec0d3db03f5da6b6211ccabfb68101ee97c50ceaabcb281b9fd126a99d67b2"
+    },
+    {
+      "path": "tests/test_refactor_gan_pipeline_deepspeed.py",
+      "sha256": "a9965e0a62c7e24b54f936ff7b2af853db278967904266dcf2012eecfd7af632"
+    },
+    {
+      "path": "tests/test_refactor_gan_pipeline_offload_search.py",
+      "sha256": "70ef42c2992dccd9e0d70c995f40e921dd85d240d77c7675b691262e099b645a"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase.py",
+      "sha256": "dd526570215113aebdcbdb560b8a81d7fdaf3c22a7c45f49ce2f0a080b2d0095"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_critic.py",
+      "sha256": "81f2c5c28e9e8639e2a991d2565c542199a07cf8d53fa8648b4351a7a8c3b866"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_groups.py",
+      "sha256": "4775efec089765f909887c7056dd62013b2e4448892c509063ec71d65e0f38d8"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_helios_torch.py",
+      "sha256": "5c55c44d68a800a4637b4a69111bacf528497f838f3cc8a1cec84ee5abdee6bd"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_schedule.py",
+      "sha256": "2db8fca67d2761e31e41f1eda8b1280de4712953c073adeddbb7f5c243c86b66"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_transition.py",
+      "sha256": "fb6c8228385488b26ab527e57a4603edfab52a528f1d610db93894650f22e01e"
+    },
+    {
+      "path": "tests/test_refactor_gan_rolephase_transport_torch.py",
+      "sha256": "340f9bca94deceb2f28d7bc79a149a11f2fa020b68c1cf59744ac433265c35be"
+    },
+    {
+      "path": "tests/test_refactor_gan_summarizer.py",
+      "sha256": "ac6b05a0ac17057e7352905d7550664ecd588ea63a5d2531671025a758661459"
+    },
+    {
+      "path": "tests/test_refactor_gan_systems_formal_trial.py",
+      "sha256": "07ba40f00239ee54cfb1df600267bd2e19b0edc4c5383228a0c5185e3a64012b"
+    },
+    {
+      "path": "tests/test_refactor_gan_timing_range.py",
+      "sha256": "de115cbfb3c78f35939bfb4c8a6ed1b4db88e6458759e5b454bc7521a5d1539a"
+    },
+    {
+      "path": "tests/test_refactor_rank_memory.py",
+      "sha256": "82dc57721f1f729c67c4a5314b5d964012fa4e5bd693c9a1fed1872336eb8104"
+    },
+    {
+      "path": "tests/test_refactor_routea_attempt004.py",
+      "sha256": "808fd6ce5140fa30598369d8b86fe63e1992c8053a97b2113c1e309b920d4fce"
+    },
+    {
+      "path": "tests/test_refactor_routea_integration.py",
+      "sha256": "170596bf50a5668f6c755d89de3ea0d623f6ddefd664dea96e1cb3c1e2fab939"
+    },
+    {
+      "path": "tests/test_routeb_candidate_b_executor.py",
+      "sha256": "c7abdf0537169345605801268d08d6b462a5896f464e4560f7df13eaf26a9528"
+    },
+    {
+      "path": "tests/test_routeb_checkpoint.py",
+      "sha256": "ec986c84753790b20cf17c9415fabfd761fcce635e37971e190fca2891b25329"
+    },
+    {
+      "path": "tests/test_routeb_full5.py",
+      "sha256": "7fa9112325446959cd46f219d2b33e65f3b179a3963e1ed3d22fd9080df4ac98"
+    },
+    {
+      "path": "tests/test_routeb_full5_2g6c_continuous.py",
+      "sha256": "b487dae78a1272edf9dfd09c5b53b69f97432cecf9d063e1eb8bd0cad69a7cab"
+    },
+    {
+      "path": "tests/test_routeb_full5_numerical_contract.py",
+      "sha256": "23876396939473b0f8fd3e59cd004587b015c1bc4a66558130d092d7d872c57c"
+    },
+    {
+      "path": "tests/test_routeb_full5_transport.py",
+      "sha256": "6af0234a0fa1f9b3235657268504851e026242b7ef1769d16003445fa3ae6446"
+    },
+    {
+      "path": "tests/test_saved_tensor_census.py",
+      "sha256": "27c1f01798229228375a145ed31f4867bf42681c426ab4f6cfbf326b4ff995e1"
+    },
+    {
+      "path": "tests/test_zero3_checkpoint.py",
+      "sha256": "871987ad3600c79934786e3b0a23631ce9120087398780256124d0c45665207d"
+    },
+    {
+      "path": "tests/test_zero3_module_granularity.py",
+      "sha256": "850795db195c05e80d094a1c1f2fd685116e1c8d68864eacbd0b37259578c764"
+    },
+    {
+      "path": "tools/assets/build_gan_baseline_contract.py",
+      "sha256": "645967aafc5948afd198cb836a4c539316fbde5413800f431b8b1757a56d59c7"
+    },
+    {
+      "path": "tools/assets/build_gan_rolephase_source_identity.py",
+      "sha256": "aa15436ebb62ee0cde84289ea2665308864f5c989c8f7eaece87bd47766730c7"
+    },
+    {
+      "path": "tools/profiling/profile_step10a_module_granularity.py",
+      "sha256": "4d67965c03ad6b877e41c5f845871185e9804b918d0d215b4f01e08ec1271626"
+    }
+  ],
+  "removed_experience_ids": [
+    "helios-background-cleanup-contention",
+    "helios-block-leaf-grouping",
+    "helios-bounded-pin-bucket-regression",
+    "helios-fixed-memory-pipeline-negative",
+    "helios-full5-pr8-oom",
+    "helios-gas-trace-baseline-repair",
+    "helios-group-count-hypothesis-refuted",
+    "helios-isolated-offload-search",
+    "helios-lp-flat-release",
+    "helios-matched-pipeline-positive",
+    "helios-numa-whole-process-lead",
+    "helios-overlap-comm-regression",
+    "helios-persistence-window",
+    "helios-persistent-cache-inclusive-time",
+    "helios-persistent-pin-cold-cost",
+    "helios-phase-shift-after-g12",
+    "helios-pipeline-c10-lead",
+    "helios-profile-teardown-incomplete",
+    "helios-role-transition-alias-owners",
+    "helios-saved-tensor-census",
+    "helios-scope-aware-validator",
+    "helios-score4-streaming-admission",
+    "helios-single-gpu-staging-scale-lead",
+    "helios-sync-pinned-boundaries-regress",
+    "helios-zero3-subgroup-default-world"
+  ],
+  "removed_implementation_ids": [
+    "legacy-frozen-streaming",
+    "legacy-pinned-materialization",
+    "legacy-saved-tensor-census",
+    "legacy-saved-tensor-offload",
+    "legacy-zero3-leaf",
+    "rolephase-transport"
+  ],
+  "removed_source_paths": [
+    "docs/experiments/n2_target_g_offload_20260808.md",
+    "docs/experiments/ra16_f5_glp_offload_20260809.md",
+    "docs/experiments/ra16_f5_glp_score4_20260809.md",
+    "docs/experiments/ra16_f5_pr12_20260809.md",
+    "docs/experiments/ra16_f5_pr4_20260808.md",
+    "docs/experiments/ra16_f5_pr8_20260809.md",
+    "docs/experiments/rb16_f5_pipeline_20260809.md",
+    "docs/experiments/rb16_full5_2g6c_continuous_20260810.md",
+    "docs/experiments/rb16_step10a_2m_persistence_result_20260810.md",
+    "docs/experiments/rb16_step10a_boundary_pinned_sync_result_20260810.md",
+    "docs/experiments/rb16_step10a_explicit_block_leaf_result_20260810.md",
+    "docs/experiments/rb16_step10a_overlap_comm_result_20260810.md",
+    "docs/experiments/rb16_step10a_prefetch_live_result_20260810.md",
+    "docs/experiments/rb16_step10a_saved_tensor_census_result_20260810.md",
+    "docs/experiments/rb16_step10a_transition_combined_formal_result_20260810.md",
+    "docs/experiments/rb16_step10a_transition_optimization_audit_20260810.md",
+    "docs/experiments/rb16_transition_causal_profile_20260810.md",
+    "docs/experiments/rb16_transition_immediate_background_cleanup_result_20260810.md",
+    "docs/experiments/rb16_transition_late_cleanup_result_20260810.md",
+    "docs/experiments/rb16_transition_persistent_cache_post_full5_result_20260810.md",
+    "docs/experiments/rb16_transition_persistent_pinned_result_20260810.md",
+    "docs/experiments/rb16_transition_pinned_legacy_g3_result_20260810.md",
+    "docs/experiments/rb16_transition_pinned_result_20260810.md",
+    "docs/experiments/routea_world16_typed_revalidation_20260808.md",
+    "docs/status/gan_systems_experiment_20260811.md"
+  ],
+  "retained_shared_dependencies": {
+    "runtime/critic_pool_checkpoint.py": "Current Helios reference/native checkpoint readers.",
+    "runtime/critic_pool_helios.py": "Current model loading and input adapters.",
+    "runtime/gst_pool_helios.py": "Current Wan/FSDP2 mathematical helpers; source-audited.",
+    "runtime/gst_pool_contract.py": "Negative-prompt identity used by current training.",
+    "runtime/gan_rolephase_official.py": "Current Helios GAN loss/state bindings, without retired worker or topology.",
+    "runtime/sparse_ema.py": "Current public Helios/Wan EMA ownership.",
+    "third_party/helios_compat": "Immutable upstream/source snapshot; not a supported Route-A/Route-B launcher.",
+    "tools/assets/build_systems_gan_bootstrap.py": "Current Helios native-stream recipe bootstrap; paired precast/trace tools and their shared tests remain."
+  }
+}

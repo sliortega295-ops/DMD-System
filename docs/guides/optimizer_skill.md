@@ -69,10 +69,12 @@ Codex 使用现有训练仓库和测试命令，先找可复用实现与历史�
 公开/私人记录可用同一个 `recall --store` 检索，但不会自动上传私人会话或数据。
 详见 [Memory 与复用](../../skills/dmd-system-optimizer/references/reuse-memory.md)。
 
-现有 [21 个机制主题、134 条经验/方法条目](../../skills/dmd-system-optimizer/references/knowledge/README.md)
-和 [35 个实现/工具条目](../../skills/dmd-system-optimizer/references/knowledge/implementations.md) 保留。
-其中 128 条有公开来源，6 条仍是未核实线索；不是 134 次独立成功实验。
-本次不撤销已有内容勘误或放宽来源、数值和范围标注。
+现有 [21 个机制主题、109 条经验/方法条目](../../skills/dmd-system-optimizer/references/knowledge/README.md)
+和 [29 个实现/工具条目](../../skills/dmd-system-optimizer/references/knowledge/implementations.md) 保留。
+其中 106 条有公开来源，3 条仍是未核实线索；不是 109 次独立成功实验。
+早期 Route-A/Route-B、固定角色流水和旧 offload/staging 路线已退出当前分发包：
+撤下25条案例、6个实现入口和25个来源入口。旧内容仅从Git历史追溯；
+当前框架/FSDP2阶段、H100和ResearchBoost经验继续按适用范围保留。
 [覆盖与缺口](../../skills/dmd-system-optimizer/references/knowledge/coverage.md) 继续单独维护。
 
 ## 高级工具不再是默认控制器

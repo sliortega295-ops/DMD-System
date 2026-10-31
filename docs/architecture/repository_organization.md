@@ -2,6 +2,12 @@
 
 Base checkout: `0e8cbe5c006fceda36a7547b3eda60d6daea1eb8`, after the shared `ea291293` runtime and `c823cb0` immutable publication data were integrated in `7bb5c89` on PR #34. The unapplied five-profile migration was retired, not applied to the newer tree.
 
+The later [early-route retirement](legacy_route_retirement.md) removes obsolete
+Route-A/Route-B entrypoints and their exclusive dependency closure. Its explicit
+manifest supersedes the original preservation list for those files. Current
+shared training dependencies and immutable source-import/publication receipts
+retain their audited bytes; this is retirement, not a parity-certified replacement.
+
 ## Public ownership
 
 `workloads/catalog.json` enumerates six **protocols** and the matching local native entrypoints, documentation, tested source and hardware provenance. It is packaged so discovery works outside a checkout. `catalog.py` only reads/displays/verifies metadata; it cannot execute, contact a node, manufacture costs or choose a winning plan. Actual calibration/search/execution still uses existing `strategies`, `search`, `native` and `runtime` implementations.

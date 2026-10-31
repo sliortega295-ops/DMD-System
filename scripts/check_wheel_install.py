@@ -34,14 +34,19 @@ def main() -> int:
         subprocess.run([str(python), "-I", "-m", "pip", "install", "--no-index", "--no-deps",
                         "--force-reinstall", str(wheel_files[0])], check=True, cwd=work, env=env)
         probe = r'''
-import json, sys, sysconfig
+import importlib.util, json, sys, sysconfig
 from pathlib import Path
 import distillschedule, runtime, runtime.host_admission
 from distillschedule.workloads.catalog import load_catalog
+from distillschedule.adapters import default_registry
 site = Path(sysconfig.get_paths()['purelib']).resolve()
 for package in (distillschedule, runtime):
     assert Path(package.__file__).resolve().is_relative_to(site), package.__file__
 assert [r['id'] for r in load_catalog()['workloads']] == ['W1','W2','W3','W4','W5','W6']
+assert 'helios' not in default_registry().names(), 'retired launch adapter is packaged'
+for retired in ('runtime.frozen_block_streaming', 'runtime.routeb_full5',
+                'distillschedule.runtime.gan_baseline', 'distillschedule.adapters.helios.adapter'):
+    assert importlib.util.find_spec(retired) is None, retired
 from distillschedule.cli import main
 for command in ('models', 'algorithms', 'strategies', 'capabilities'):
     assert main([command, 'list']) == 0

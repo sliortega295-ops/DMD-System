@@ -17,28 +17,6 @@
 
 ## 已整理案例
 
-### 两组 offload scope 被旧验收器误判，复核原始证据即可修正
-
-- ID：helios-scope-aware-validator
-- 状态：source_contract / HISTORICAL_VALIDATOR_REPAIR
-- 来源类别：Helios A100 history；本次未复现实验。
-- 观察：Score4 首版 summarizer 强求一个 final event 而报失败；同一不可变 trace 实际有两个已安装且均归零的 scope，修复 multiset 检查后通过，没有重跑模型。
-- 经验：先区分执行失败与观测格式错误；修复验收器要保持同一语义要求，保留旧判定与同证据重放。
-- 范围：该 activation-offload installed/final scope 校验。
-- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
-- 正确性前提：{"acceptance_contract_frozen": true, "candidate_cannot_redefine_success": true}
-- 收益条件：{}
-- 失败分类：not_established
-- 重试信号：验证器可正确覆盖安装的多个 scope
-- 最小验证：对同一不可变 trace 做 scope multiset、计数与归零检查
-- 不应重复：解析器缺陷不要靠重跑模型或删除多余事件修饰
-- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
-- 定位命令：`dmd_knowledge.py locate --case helios-scope-aware-validator`
-- 关联实现：[旧 Route-A 精确 saved-tensor offload](implementations.md#legacy-saved-tensor-offload)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
-- 函数入口：[runtime/activation_offload.py::install_activation_offload_hooks](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L362-L407)
-- 函数入口：[runtime/activation_offload.py::AuditedSavedTensorOffloader](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/runtime/activation_offload.py#L61-L347)
-- 来源：[sliortega295-ops/DMD-System / ra16_f5_glp_score4_20260809.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/ra16_f5_glp_score4_20260809.md#L1)；定位：报告范围 L1–L117；L1: RA16-F5-GLP-SCORE4: selective four-block Score lifecycle；L7: Question and frozen contract；L27: Validation gates；L35: Measured causal capacity result；L58: Correctness result；L79: Diagnostic timing (not a formal speedup claim)；L98: Interpretation and boundary；L111: Evidence；原定位：结果、合同、限制与失败记录
-
 ### ResearchBoost：让已知错误真正触发最终失败出口
 
 - ID：rb-judge-negative-controls

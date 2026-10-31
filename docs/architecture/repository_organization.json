@@ -2,23 +2,17 @@
   "schema_version": "distillschedule.repository_organization.v2",
   "base_commit": "0e8cbe5c006fceda36a7547b3eda60d6daea1eb8",
   "six_workload_source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
-  "runtime_layout": "Compatibility runtime stays byte-identical in runtime/ and is now packaged.",
+  "runtime_layout": "Current shared compatibility dependencies remain at audited paths; superseded early route modules are retired with an explicit manifest.",
   "preserved_launcher_closure": [
-    "scripts/distillschedule/baai_server_smoke.sh",
-    "scripts/distillschedule/build_gan_execution_receipts.py",
     "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py",
-    "scripts/distillschedule/build_routea_evidence_contract.py",
     "scripts/distillschedule/cancel_remote_stage.sh",
     "scripts/distillschedule/check_best_known_integration.py",
     "scripts/distillschedule/check_h100_source_publication.py",
     "scripts/distillschedule/check_source_publication.py",
     "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py",
     "scripts/distillschedule/compare_wan13b_trajectory_world16.py",
-    "scripts/distillschedule/gan_launch_shim.sh",
-    "scripts/distillschedule/helios_gan_compat_entrypoint.py",
     "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
     "scripts/distillschedule/launch_minimax_h3_best_node.sh",
-    "scripts/distillschedule/launch_routea_world16_typed_node.sh",
     "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
     "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
     "scripts/distillschedule/livewan_crossscale_entrypoint.py",
@@ -26,7 +20,6 @@
     "scripts/distillschedule/own_h3_native_plan.py",
     "scripts/distillschedule/prepare_livewan_crossscale_source.sh",
     "scripts/distillschedule/probe_livewan_crossscale_transport.py",
-    "scripts/distillschedule/probe_phaseb_communicator_collapse.py",
     "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
     "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
     "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",
@@ -37,14 +30,10 @@
     "scripts/distillschedule/probe_world16_topology.py",
     "scripts/distillschedule/process_tree.sh",
     "scripts/distillschedule/remote_stage_wrapper.sh",
-    "scripts/distillschedule/render_accelerate_config.py",
     "scripts/distillschedule/run_best_known_workload.py",
-    "scripts/distillschedule/run_g_offload_search.py",
-    "scripts/distillschedule/run_routea_world16.py",
     "scripts/distillschedule/summarize_livewan_continuous_world16.py",
     "scripts/distillschedule/summarize_livewan_trajectory_world16.py",
     "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
-    "scripts/distillschedule/summarize_routea_world16_typed.py",
     "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py",
     "scripts/distillschedule/summarize_wan13b_fair_world16.py",
     "scripts/distillschedule/validate_gan_nsys_receipts.py",
@@ -80,16 +69,6 @@
       "from": "scripts/distillschedule/bench_transfer.py",
       "to": "tools/profiling/bench_transfer.py",
       "original_sha256": "0fd323b5b28a9f88d38d110827c88848dce87b0d5b7b16e12df62f80935c667e"
-    },
-    {
-      "from": "scripts/distillschedule/build_gan_baseline_contract.py",
-      "to": "tools/assets/build_gan_baseline_contract.py",
-      "original_sha256": "645967aafc5948afd198cb836a4c539316fbde5413800f431b8b1757a56d59c7"
-    },
-    {
-      "from": "scripts/distillschedule/build_gan_rolephase_source_identity.py",
-      "to": "tools/assets/build_gan_rolephase_source_identity.py",
-      "original_sha256": "aa15436ebb62ee0cde84289ea2665308864f5c989c8f7eaece87bd47766730c7"
     },
     {
       "from": "scripts/distillschedule/build_livewan_continuous_trace.py",
@@ -207,15 +186,11 @@
       "original_sha256": "f43e14b6330ec322665bdd956900399f85cf2637d3c9ec41f11c284336817969"
     },
     {
-      "from": "scripts/distillschedule/profile_step10a_module_granularity.py",
-      "to": "tools/profiling/profile_step10a_module_granularity.py",
-      "original_sha256": "4d67965c03ad6b877e41c5f845871185e9804b918d0d215b4f01e08ec1271626"
-    },
-    {
       "from": "scripts/distillschedule/run_nsys_locked.sh",
       "to": "tools/profiling/run_nsys_locked.sh",
       "original_sha256": "fdf531e71c93dccd19035a509f9f4cbe1aa2e820178bae22e3cdd3e8574adfa6"
     }
   ],
-  "validation_scope": "SOURCE_AND_CPU_ONLY_NO_NEW_GPU_RESULTS"
+  "validation_scope": "SOURCE_AND_CPU_ONLY_NO_NEW_GPU_RESULTS",
+  "retirement_manifest": "docs/architecture/legacy_route_retirement.json"
 }

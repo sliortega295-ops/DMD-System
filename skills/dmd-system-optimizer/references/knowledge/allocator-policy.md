@@ -16,27 +16,6 @@
 
 ## 已整理案例
 
-### to_empty 或 swap 无法保证旧分布式状态真正释放
-
-- ID：helios-role-transition-alias-owners
-- 状态：implementation_failure / HISTORICAL_SOURCE_REPORTED
-- 来源类别：Helios A100 history；本次未复现实验。
-- 观察：连续切换时旧 Generator 的 Engine、hooks 和 partition aliases 仍持有 CUDA 存储；to_empty 未释放，swap_tensors 被 live use count 拒绝。最终按所有权释放过时分片才通过。
-- 经验：必须证明没有未来消费者并清点所有存储 owner；模块表面换设备不等于 Engine/optimizer 引用已解除。
-- 范围：8G4S4T→4G12C 的旧 DeepSpeed 表示释放；不授权删除当前仍有效的状态。
-- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
-- 正确性前提：{"live_storage_ownership_known": true}
-- 收益条件：{"allocator_cost_or_capacity_is_limiting": true}
-- 失败分类：obsolete_owner_retains_storage
-- 重试信号：已定位旧 Engine/hooks/partition 的存储所有权
-- 最小验证：缩小角色切换探针，检查 live aliases、release 和新角色值
-- 不应重复：不重复调用 to_empty 或强行 swap live tensor
-- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
-- 定位命令：`dmd_knowledge.py locate --case helios-role-transition-alias-owners`
-- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；conceptual_reference；只关联状态/生命周期或周边机制；不是本案例优化的实现，不可直接据此迁移。
-- 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
-- 来源：[sliortega295-ops/DMD-System / rb16_full5_2g6c_continuous_20260810.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_full5_2g6c_continuous_20260810.md#L1)；定位：报告范围 L1–L220；L1: RB16 continuous Full5: 8G4S4T to per-node 2G6C；L3: Scope；L17: Preflight decision；L31: Status；L57: Preserved transition attempts；L81: Iteration 281 correction: Step10-A backend parity；L113: Iteration 281 subgroup-initialization correction；L135: Iteration 282 control and process-world correction；原定位：结果、合同、限制与失败记录
-
 ### 正确性模式能跑，去掉 flush 后的正式计时仍可能 OOM
 
 - ID：helios-no-flush-timing-oom

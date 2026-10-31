@@ -17,10 +17,11 @@ def render_coverage(root):
     lines.extend(f"| {name} | {count} |" for name, count in c["entries_by_collection"].items())
     lines.extend(["", "| 记录状态 | 条目数 |", "| --- | ---: |"])
     lines.extend(f"| {name} | {count} |" for name, count in c["entries_by_outcome"].items())
-    lines.extend(["", f"{c['publicly_referenced_entries']} 条有公开引用；6 条未核实会话线索保持线索等级。历史 PASS、REVIEW、FAIL、NOT_RUN 和外部报告均按各自范围保留。", "",
+    lines.extend(["", f"{c['publicly_referenced_entries']} 条有公开引用；{c['entries_by_outcome'].get('unverified', 0)} 条未核实会话线索保持线索等级。历史 PASS、REVIEW、FAIL、NOT_RUN 和外部报告均按各自范围保留。", "",
         "## 历史筛选与本轮修正", "",
         "前期按确切会话身份筛选主会话1,108条与H100会话568条assistant最终消息；1,676条经空白归一化后有1,243条不同正文、433条重复。只用摘要寻找线索，再核对公开报告；不是逐句审完全部会话。私人原始会话没有上传。", "",
-        "本轮纠正七条明确错误，并检查同类条件与代码关系；新增六条有来源的数值隔离、B2失败、训练态timestep、QKV canary、容量政策和时钟映射经验。相邻W6 r1也查出计算结果缓存误归为参数驻留的问题，已纠正。", "",
+        "前一轮完成内容勘误与六条有来源的补充。本轮按维护范围撤下2026年8月15日前的Route-A/Route-B、固定角色流水及旧offload/staging案例；当前框架、FSDP2阶段、H100和ResearchBoost方法仍按条件保留。", "",
+        f"从分发包移除 {c['retirement']['cases_removed']} 条案例、{c['retirement']['implementation_entries_removed']} 个实现条目及 {c['retirement']['source_entries_removed']} 个来源入口。旧内容仅在Git历史中追溯，不作为sources的备用候选库。", "",
         "核验范围是已列明的内容问题与同类错配；不声明完成全部历史材料的逐项内容审计。", "",
         "## 代码导航覆盖", "",
         f"{nav['implementation_entries']} 个实现/工具条目，{nav['unique_code_files']} 份固定版本Python文件；这是代码身份统计，不是新增实测报告。", ""])
@@ -29,7 +30,7 @@ def render_coverage(root):
         f"{len(nav['entries_without_targeted_test_reference'])} 个实现没有定位到专门测试入口。其余测试也仅供检查覆盖，未在本轮执行组件GPU/训练验收。见 [实现索引](implementations.md)。", "",
         "## 未完成范围", ""])
     lines.extend(f"- `{name}`：{count} 份来源。" for name, count in c["source_review_status"].items())
-    lines.extend(["", "六条会话线索涉及早期流水、loss趋势、恢复Adam峰值、NUMA、staging扩展、H3 block-major；缺公开回执，不能当成根因或速度结论。", "",
+    lines.extend(["", "剩余会话线索涉及loss趋势、恢复Adam峰值和H3 block-major；缺公开回执，不能当成根因或速度结论。", "",
         "来源索引只表示发现或抽取了有关片段，行锚点只辅助阅读。没有穷尽远端大文件、重开停止的campaign或重跑全部历史验收。独立子观察分别保留workload/更新合同比较；微小单次差值和未隔离解释不升级成稳定规律。", "",
         "使用 `dmd_knowledge.py sources --query ...` 搜索尚未提炼的来源；见 [source index](../../assets/experience-source-index.json)。", "",
         "## 维护", "",

@@ -94,18 +94,6 @@ class ExperienceContentTests(unittest.TestCase):
             self.assertEqual(code["revision"], ref["revision"])
             self.assertEqual(code["historical_origin"]["copy_policy"], "BYTE_IDENTICAL_SOURCE_SNAPSHOT")
 
-    def test_g8_failure_does_not_inherit_later_critic_failure(self):
-        c = self.case("helios-full5-pr8-oom")
-        self.assertEqual(c["failure"]["role"], "Generator")
-        self.assertEqual(c["facts"]["temporary_allocation_mib"], 216)
-        self.assertEqual(c["facts"]["performance_status"], "NOT_RUN")
-        self.assertIn("Step10 Generator checkpoint backward", c["retry"]["minimum_probe"])
-
-    def test_profile_failure_ranks_are_controllers_on_two_nodes(self):
-        c = self.recalled("profile teardown", "helios-profile-teardown-incomplete")
-        self.assertEqual(c["facts"]["blocked_ranks"], [0, 8])
-        self.assertEqual(c["facts"]["completed_rank_count"], 14)
-        self.assertEqual(c["facts"]["profile_status"], "INCOMPLETE")
 
     def test_r3_denominator_compares_reward_optimization_contribution(self):
         c = self.case("rb-end-to-end-denominator")

@@ -65,7 +65,7 @@ class RetrievalRegressionTests(unittest.TestCase):
 
     def test_missing_code_is_explicit_not_an_empty_success(self):
         method = knowledge.locate_case("rb-judge-negative-controls", {})
-        unresolved = knowledge.locate_case("helios-numa-whole-process-lead", {})
+        unresolved = knowledge.locate_case("helios-h3-blockmajor-lead", {})
         self.assertEqual(method["navigation"]["status"], "method_only")
         self.assertEqual(unresolved["navigation"]["status"], "unresolved")
         self.assertEqual(method["implementations"], [])
