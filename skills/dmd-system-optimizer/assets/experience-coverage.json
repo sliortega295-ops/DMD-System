@@ -35,5 +35,36 @@
   "completeness_claim": false,
   "gpu_reproduction": "NOT_RUN",
   "external_reproduction": "NOT_RUN",
-  "privacy": "Raw conversations, session IDs, private paths and large artifacts are not included."
+  "privacy": "Raw conversations, session IDs, private paths and large artifacts are not included.",
+  "code_navigation": {
+    "case_status_counts": {
+      "linked": 71,
+      "method_only": 19,
+      "unresolved": 38
+    },
+    "implementation_entries": 29,
+    "unique_code_files": 49,
+    "entries_without_targeted_test_reference": [
+      "helios-cross-kv",
+      "helios-static-context",
+      "helios-modulation-chunks",
+      "helios-modnorm",
+      "helios-crossnorm-canary",
+      "helios-history-fusion",
+      "helios-fsdp-layout",
+      "optimizer-dispatch-warmup",
+      "helios-selective-checkpoint",
+      "h3-adaln-bank",
+      "legacy-frozen-streaming",
+      "legacy-saved-tensor-census",
+      "checkpoint-lifecycle"
+    ],
+    "relationship_notice": "Current-related or preserved legacy references; no claim of historical measured implementation identity.",
+    "gpu_validation": "NOT_RUN"
+  },
+  "evidence_locator_counts": {
+    "literal_observation_anchor": 61,
+    "structured_source_locator": 12,
+    "report_scope_not_case_exact": 62
+  }
 }

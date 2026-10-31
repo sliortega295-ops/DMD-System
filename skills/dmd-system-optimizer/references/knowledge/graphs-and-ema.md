@@ -31,10 +31,16 @@
 - 观察：C2 19.720700→19.549642 秒，约0.171秒；仅已知 EMA decays11–20 两周期；REVIEW。
 - 经验：小正值可保留为组合候选；有限系数范围不能包装成生产无限训练支持。
 - 范围：r34 exact EMA submission graph，同 streams/order；长期未跑，生产未晋级。
-- 条件：{"workload": "W1", "ema_coefficients": "known_steps_11_20"}
+- 历史上下文：{"workload": "W1", "ema_coefficients": "known_steps_11_20"}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：not_established
-- 重试条件：在目标 workload 上重新确认条件、数值和完整周期收益。
-- 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json)；定位：scope; coefficient_scope; claim; production_ready
+- 重试信号：capture 能表达当前动态 decay 序列
+- 最小验证：至少跨已知区间边界比较 EMA 系数与参数更新，再测 replay 命中
+- 不应重复：不能把 decays11–20 的两周期结果推广到任意训练步
+- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 定位命令：`dmd_knowledge.py locate --case helios-w1-ema-r34`
+- 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json#L8)；定位：观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：scope; coefficient_scope; claim; production_ready
 
 ### Wan block 级 torch.compile 变慢且严格 rollout 不通过
 
@@ -44,10 +50,16 @@
 - 观察：30 blocks 编译路径有实际命中；diagnostic 27.181843→33.730888 秒，80/80 rollout strict checks 失败。另有冷编译成本，不能减掉估算成本伪造快值。
 - 经验：编译需要同时验证命中、冷启动、稳态与数值；这是该分块编译范围的失败，不是整个 compile 机制的黑名单。
 - 范围：Wan1.3B no-grad Generator block canary、该版本和 shapes。
-- 条件：{"workload": "W1", "model_family": "Wan1.3B", "training_mode": "training", "global_batch": 16, "grad_mode": "no_grad", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 历史上下文：{"workload": "W1", "model_family": "Wan1.3B", "training_mode": "training", "global_batch": 16, "grad_mode": "no_grad", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true, "grad_mode": "no_grad"}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：compile_numerics_and_runtime
-- 重试条件：只有编译范围、kernel lowering 或数值实现等发生可验证变化后重试，并重新测冷/热成本。
-- 来源：[sliortega295-ops/DMD-System / WAN13B_TORCH_COMPILE_CANARY_20260824.md](https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md)；定位：结果、合同、限制与失败记录
+- 重试信号：编译 variant、精度差异或冷成本已有定位修复
+- 最小验证：先复核 80 条 rollout 与 eager 对照，再测冷/热真实时间
+- 不应重复：不能从总时间减掉估算 compile 成本造出快值
+- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 定位命令：`dmd_knowledge.py locate --case wan-block-compile-fails`
+- 来源：[sliortega295-ops/DMD-System / WAN13B_TORCH_COMPILE_CANARY_20260824.md](https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md#L38)；定位：观察中的数值文本锚点 L38；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
 ### 预热 optimizer dispatch 的前提是恢复所有训练状态
 
@@ -57,10 +69,18 @@
 - 观察：正式 timer 前零梯度/零学习率/零 weight-decay dispatch，并恢复参数、Adam、step、清空梯度；16 ranks 验证后 151.851949→144.621745 秒。
 - 经验：避免首次调度开销可有用，但不能把真实更新移到 timer 外；mesh 应比较逻辑签名而非 Python 对象身份。
 - 范围：GAN-on CUDA optimizer 首次 dispatch，cold setup 单独计算。
-- 条件：{"workload": "W3", "model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gan_enabled": true, "update_ratio": "G1/C5/EMA1", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 历史上下文：{"workload": "W3", "model_family": "Helios14B", "training_mode": "training", "global_batch": 16, "gan_enabled": true, "update_ratio": "G1/C5/EMA1", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true, "parameters_restored": true, "optimizer_state_restored": true, "rng_restored": true, "clocks_restored": true}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：not_established
-- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
-- 来源：[sliortega295-ops/DMD-System / iteration352_optimizer_warmup.md](https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md)；定位：结果、合同、限制与失败记录
+- 重试信号：当前首次 optimizer dispatch 成本仍暴露
+- 最小验证：零更新 warmup 后核对参数、Adam、step、RNG、grad 恢复，再测总成本
+- 不应重复：不允许隐藏真实更新或只把准备工作移出分母
+- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
+- 定位命令：`dmd_knowledge.py locate --case helios-optimizer-warmup-restored`
+- 关联实现：[FSDP2 optimizer dispatch 预热与状态恢复](implementations.md#optimizer-dispatch-warmup)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 函数入口：[src/distillschedule/runtime/fsdp2_static.py::_optimizer_dispatch_warmup](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_static.py#L545-L775)
+- 来源：[sliortega295-ops/DMD-System / iteration352_optimizer_warmup.md](https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md#L52)；定位：观察中的数值文本锚点 L52；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
 ### ResearchBoost：SAC/dispatch mode 可让 compile 路径静默回到 eager
 
@@ -70,10 +90,16 @@
 - 观察：action ladder 报告 Torch2.7 下编译函数被某些 dispatch mode 调用后，后续调用未再走预期编译 kernel。
 - 经验：用实际 kernel/counter 区分“编译无收益”和“编译未生效”；升级版本后重新验证，不把外部 workaround 固定为通用禁令。
 - 范围：外部版本限定的 compile/SAC 经验，不保证当前 Torch 行为相同。
-- 条件：{"training_mode": "training"}
+- 历史上下文：{"training_mode": "training"}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：not_established
-- 重试条件：在目标 workload、库版本与冻结验收合同下先验证触发条件；外部成功/失败均不直接授权采用或永久否决。
-- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md)；定位：Compile falls back / proving compile effective
+- 重试信号：目标 PyTorch/dispatch 组合行为已核实
+- 最小验证：比较 mode 前后实际 kernel 类别和编译命中
+- 不应重复：外部 Torch2.7 观察不是所有版本的永久规则
+- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 定位命令：`dmd_knowledge.py locate --case rb-compile-dispatch-fallback`
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md#L1)；定位：报告范围 L1–L127；L6: The action ladder；L10: Check the existing fast paths first；L41: Classify first, then work in batches；L55: L0 switches and configuration；L79: L1 a different library or backend；L84: L2 parameter search；L89: L3 graph or Python rewrites；L97: L4 custom kernels；原定位：Compile falls back / proving compile effective
 
 ### ResearchBoost：单层 compile 测试漏掉全模型的重编译与 fallback
 
@@ -83,10 +109,16 @@
 - 观察：同一 forward code object 被多层、grad/no-grad、EMA 与不同 shapes 共用，可能触及版本相关的 recompile limit。
 - 经验：先找为何重编译，再选择形状/作用域；验证完整训练流程，不把提高 limit 当默认解决办法。
 - 范围：外部 regional compilation 方法建议；具体阈值不继承。
-- 条件：{"training_mode": "training"}
+- 历史上下文：{"training_mode": "training"}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：not_established
-- 重试条件：在目标 workload、库版本与冻结验收合同下先验证触发条件；外部成功/失败均不直接授权采用或永久否决。
-- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md)；定位：Recompile limit
+- 重试信号：完整调用组合与编译 specialization 数量可控
+- 最小验证：覆盖 grad/no-grad、EMA、层和 shape 组合，记录重编译与 eager fallback
+- 不应重复：只测一次 forward 不能证明完整训练都走 compiled path
+- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 定位命令：`dmd_knowledge.py locate --case rb-compile-full-flow-specializations`
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md#L1)；定位：报告范围 L1–L127；L6: The action ladder；L10: Check the existing fast paths first；L41: Classify first, then work in batches；L55: L0 switches and configuration；L79: L1 a different library or backend；L84: L2 parameter search；L89: L3 graph or Python rewrites；L97: L4 custom kernels；原定位：Recompile limit
 
 ### ResearchBoost/SGLang：推理 graph capture shape 与服务请求不符会失效
 
@@ -96,7 +128,15 @@
 - 观察：其 inference card 报告 SANA-Video 捕获 81 frames 而实际服务 17 frames 时没命中并变慢；改为目标形状后有改善。
 - 经验：核对 capture key、实际形状和命中；这是推理范围的经验，迁移训练还需 backward、参数地址、RNG 与更新验证。
 - 范围：外部 SGLang diffusion inference 案例，不是 DMD training graph 验收。
-- 条件：{"training_mode": "inference", "model_family": "SANA-Video", "source_project": "SGLang"}
+- 历史上下文：{"training_mode": "inference", "model_family": "SANA-Video", "source_project": "SGLang"}
+- 正确性前提：{"dynamic_state_and_coefficients_preserved": true, "capture_paths_validated": true, "training_mode": "inference"}
+- 收益条件：{"launch_bound": true, "capture_amortized": true}
 - 失败分类：capture_shape_mismatch
-- 重试条件：在目标 workload、库版本与冻结验收合同下先验证触发条件；外部成功/失败均不直接授权采用或永久否决。
-- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md)；定位：SANA-Video graph capture shape
+- 重试信号：实际服务 shape 与 capture 覆盖一致
+- 最小验证：检查目标 17/81-frame 等形状命中、fallback、capture 成本与推理输出
+- 不应重复：外部推理 graph 结果不能证明本地训练或可微 graph
+- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
+- 定位命令：`dmd_knowledge.py locate --case rb-inference-graph-shape-miss`
+- 关联实现：[Wan Resident B1 no-grad CUDA Graph 参考](implementations.md#wan-rollout-graph)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 函数入口：[src/distillschedule/runtime/wan13b_rollout_cuda_graph.py::RolloutCudaGraph](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_rollout_cuda_graph.py#L77-L244)
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / SKILL.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md#L1)；定位：报告范围 L1–L565；L6: SGLang Diffusion Performance Tuning；L10: Start from the model's cookbook page；L38: Native Backend Gate；L51: Section 1: Lossless Optimizations；L73: Choosing what goes in `--layerwise-offload-components`；L105: Prefetch depth has a knee；L118: Host memory is part of the placement decision；L135: When the transfer knobs do nothing；原定位：SANA-Video graph capture shape

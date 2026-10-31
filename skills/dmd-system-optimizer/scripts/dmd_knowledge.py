@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 from dmd_perf import InputError, check_evidence, git_read, load, require, sha_file, text
+from dmd_retrieval import tokens as terms, rank as rank_patterns
 
 OUTCOMES = {"success", "no_benefit", "inconclusive", "incorrect", "environment",
             "implementation_failure", "incomplete", "unverified"}
@@ -116,12 +117,6 @@ CASE_OUTCOMES = {"positive_observation", "negative_observation", "correctness_fa
                  "inconclusive", "implementation_failure", "source_contract", "unverified"}
 
 
-def terms(query):
-    tokens = re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]+", query.lower())
-    return set(tokens + [t[i:i+2] for t in tokens if re.fullmatch(r"[\u4e00-\u9fff]+", t)
-                         for i in range(len(t) - 1)])
-
-
 def normalize_context(context):
     """Separate explicit hardware facts; a partial model name never invents capacity.
 
@@ -129,6 +124,14 @@ def normalize_context(context):
     Unknown hardware labels remain opaque; ambiguous labels infer no GPU family.
     """
     normalized = dict(context)
+    # Normalize explicit values only. Query text never becomes an observed fact.
+    aliases = {"grad_mode": {"no-grad": "no_grad", "nograd": "no_grad", "with_grad": "grad_enabled",
+                            "requires_grad": "grad_enabled", "grad": "grad_enabled"},
+               "base_dtype": {"bf16": "bfloat16", "fp32": "float32"},
+               "lora_update_dtype": {"bf16": "bfloat16", "fp32": "float32"}}
+    for key, mapping in aliases.items():
+        if isinstance(normalized.get(key), str):
+            normalized[key] = mapping.get(normalized[key].lower(), normalized[key])
     topology_keys = ("nodes", "gpus_per_node", "physical_gpus")
     for key in topology_keys:
         value = normalized.get(key)
@@ -256,13 +259,17 @@ def source_search(query, limit=10, index=SOURCE_INDEX):
 
 
 def validate_pack(pack=PACK):
+    from dmd_navigation import validate_catalog, validate_case
     data = load(pack)
-    require(data.get("schema_version") == 2, "public pack schema_version must be 2")
+    require(data.get("schema_version") == 3, "public pack schema_version must be 3")
+    catalog = validate_catalog(pack.with_name("implementation-map.json"))
     patterns, cases = data.get("patterns"), data.get("cases")
     require(isinstance(patterns, list) and patterns and isinstance(cases, list), "patterns and cases required")
     ids = [p["id"] for p in patterns] + [c["id"] for c in cases]
     require(len(set(ids)) == len(ids), "duplicate pattern/case ids")
     pattern_ids = {p["id"] for p in patterns}
+    from dmd_retrieval import validate_routes
+    validate_routes(pattern_ids, pack.with_name("query-routes.json"))
     for p in patterns:
         for key in ("title", "mechanism", "probe", "details"):
             text(p.get(key), key)
@@ -280,6 +287,15 @@ def validate_pack(pack=PACK):
         for key in ("title", "observation", "lesson", "scope", "reentry", "evidence_status"):
             text(c.get(key), key)
         require(isinstance(c.get("conditions"), dict), "case conditions required")
+        for key in ("correctness_conditions", "performance_conditions"):
+            require(isinstance(c.get(key), dict), "case " + key + " required")
+        retry = c.get("retry", {})
+        require(isinstance(retry.get("change_signals"), list) and retry["change_signals"], "retry change signals required")
+        for signal in retry["change_signals"]:
+            text(signal, "retry change signal")
+        for key in ("minimum_probe", "do_not_repeat"):
+            text(retry.get(key), "retry." + key)
+        validate_case(c, catalog)
         require(isinstance(c.get("failure"), dict), "failure scope required, including for positive cases")
         require(isinstance(c.get("evidence"), list), "case evidence required")
         if not c["evidence"]:
@@ -289,6 +305,63 @@ def validate_pack(pack=PACK):
     return data
 
 
+def case_comparison(case, context):
+    hard = condition_match(case["correctness_conditions"], context)
+    return {"context_comparison": condition_match(case["conditions"], context),
+            "correctness_comparison": hard,
+            "performance_comparison": condition_match(case["performance_conditions"], context),
+            "next_action": "DO_NOT_APPLY_AS_IS" if hard["conflicting"] else
+                "CHECK_UNKNOWN_PRECONDITIONS" if hard["unknown"] else "ASSESS_CURRENT_BENEFIT"}
+
+
+def locate_case(case_id, context, repo=None, source_repos=None, show_code=False, pack=PACK):
+    from dmd_navigation import validate_catalog, locate
+    data = validate_pack(pack)
+    cases = {c["id"]: c for c in data["cases"]}
+    require(case_id in cases, "unknown case: " + case_id)
+    case = cases[case_id]
+    catalog = validate_catalog(pack.with_name("implementation-map.json"))
+    return {"case_id": case_id, "case_title": case["title"], "navigation": case["navigation"],
+            **case_comparison(case, context), "retry": case["retry"],
+            "implementations": [{"relationship": link["relationship"], "relationship_note": link["note"],
+                **locate(link["id"], context, repo, source_repos, show_code, catalog)}
+                for link in case["navigation"]["implementations"]],
+            "evidence_status": case["evidence_status"], "automatic_application": False,
+            "notice": "Both case and implementation preconditions must be inspected. A related implementation may have a narrower scope."}
+
+
+def read_case(case_id, context, repo=None, source_repos=None, pack=PACK):
+    from dmd_navigation import validate_catalog, summarize
+    cases = {c["id"]: c for c in validate_pack(pack)["cases"]}
+    require(case_id in cases, "unknown case: " + case_id)
+    case = cases[case_id]
+    return {**case, **case_comparison(case, context),
+            **verify_references(case["evidence"], repo, source_repos),
+            "code_navigation": summarize(case, validate_catalog(pack.with_name("implementation-map.json"))),
+            "automatic_application": False}
+
+
+def brief_recall(result):
+    """Keep every case ID/outcome and conflict in a bounded reading index."""
+    packets = []
+    for packet in result["matches"]:
+        p = packet["pattern"]
+        cases = {name: [{"id": c["id"], "title": c["title"], "outcome": c["outcome"], "evidence_status": c["evidence_status"],
+                        "next_action": c["next_action"],
+                        "correctness_conflicts": c["correctness_comparison"]["conflicting"],
+                        "code_status": c["navigation"]["status"]} for c in group]
+                 for name, group in packet["cases"].items()}
+        packets.append({"pattern": {k: p[k] for k in ("id", "title", "probe", "details")},
+                        "score": packet["score"], "matched_symptoms": packet["matched_symptoms"],
+                        "correctness_conditions": packet["correctness_conditions"],
+                        "performance_conditions": packet["performance_conditions"],
+                        "next_action": packet["next_action"], "cases": cases,
+                        "all_linked_case_ids_included": True, "detail_level": "index_only"})
+    return {**result, "matches": packets,
+            "read_next": "case --id CASE_ID [--context context.json] [--repo CHECKOUT] returns full observation, scope, retry and sources; read positive AND negative cases before choosing.",
+            "locate_next": "locate --case CASE_ID [--context context.json] [--repo CHECKOUT] returns implementation guards, integration, tests and fallback."}
+
+
 def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None):
     """Return conditions and ALL positive/negative cases for each retrieved mechanism."""
     text(query, "query")
@@ -296,40 +369,36 @@ def recall(query, context, repo=None, limit=3, pack=PACK, source_repos=None):
     context = normalize_context(context)
     require(1 <= limit <= 20, "limit must be 1..20")
     data = validate_pack(pack)
-    tokens = terms(query)
-    selected = []
-    for pattern in data["patterns"]:
-        fields = [(pattern["title"], 4), (" ".join(pattern["tags"]), 4), (pattern["mechanism"], 1)]
-        score = sum(weight * sum(t in value.lower() for t in tokens) for value, weight in fields)
-        case_corpus = " ".join(c["title"] + " " + c["observation"] + " " +
-                               json.dumps(c["conditions"], ensure_ascii=False)
-                               for c in data["cases"] if c["pattern"] == pattern["id"]).lower()
-        score += sum(t in case_corpus for t in tokens)
-        if score:
-            selected.append((score, pattern))
-    selected.sort(key=lambda item: (-item[0], item[1]["id"]))
+    from dmd_navigation import validate_catalog, summarize
+    catalog = validate_catalog(pack.with_name("implementation-map.json"))
+    selected, retrieval = rank_patterns(data, query, pack.with_name("query-routes.json"))
+    retrieval["omitted_routed_patterns"] = [{"id": row["pattern"]["id"], "title": row["pattern"]["title"]}
+                                            for row in selected[limit:] if row["matched_symptoms"]]
+    if retrieval["omitted_routed_patterns"]:
+        retrieval["coverage_notice"] = "The result limit omitted routed hypotheses. Split compound requests into separate symptoms or raise --limit; this is not exhaustive diagnosis."
     packets = []
-    for score, p in selected[:limit]:
+    for selected_row in selected[:limit]:
+        p, score = selected_row["pattern"], selected_row["score"]
         hard = condition_match(p["correctness_conditions"], context)
         benefit = condition_match(p["performance_conditions"], context)
         groups = {"positive": [], "negative": [], "unresolved": [], "source_contracts": []}
         for case in data["cases"]:
             if case["pattern"] != p["id"]:
                 continue
-            cm = condition_match(case["conditions"], context)
-            item = {**case, "context_comparison": cm,
+            item = {**case, **case_comparison(case, context), "code_navigation": summarize(case, catalog),
                     **verify_references(case["evidence"], repo, source_repos), "automatic_application": False}
             group = ("positive" if case["outcome"] == "positive_observation" else "negative"
                      if case["outcome"] in {"negative_observation", "correctness_failure", "implementation_failure"}
                      else "source_contracts" if case["outcome"] == "source_contract" else "unresolved")
             groups[group].append(item)
         packets.append({"pattern": p, "score": score, "correctness_conditions": hard,
+                        "matched_symptoms": selected_row["matched_symptoms"],
                         "performance_conditions": benefit,
                         "next_action": "DO_NOT_APPLY_AS_IS" if hard["conflicting"] else "CHECK_UNKNOWN_PRECONDITIONS"
                         if hard["unknown"] else "ASSESS_CURRENT_BENEFIT",
                         "cases": groups, "all_linked_cases_included": True,
                         "prior_only": True, "fresh_validation_required": True})
-    return {"query": query, "normalized_context": context, "matches": packets, "automatic_application": False,
+    return {"query": query, "normalized_context": context, "retrieval": retrieval, "matches": packets, "automatic_application": False,
             "notice": "A model name or historical win is not admission. Performance mismatches lower expected value, "
                       "not correctness. A failure is local to its recorded conditions and cause. "
                       "Missing positive/negative cases mean missing evidence, not universal success/failure."}
@@ -438,8 +507,20 @@ def main() -> int:
     s = sub.add_parser("recall"); s.add_argument("--query", required=True); s.add_argument("--context", type=Path)
     s.add_argument("--repo", type=Path); s.add_argument("--limit", type=int, default=3)
     s.add_argument("--pack", type=Path, default=PACK)
+    s.add_argument("--brief", action="store_true", help="compact index of every case; expand selected positive/negative entries with case --id")
     s.add_argument("--source-repo", action="append", default=[], metavar="OWNER/REPO=PATH",
                    help="explicit external checkout for optional local hash verification; repeatable")
+    s = sub.add_parser("locate", help="case to pinned code, integration, guards, tests and fallback")
+    target = s.add_mutually_exclusive_group(required=True)
+    target.add_argument("--case"); target.add_argument("--implementation")
+    s.add_argument("--repo", type=Path); s.add_argument("--context", type=Path)
+    s.add_argument("--source-repo", action="append", default=[], metavar="OWNER/REPO=PATH")
+    s.add_argument("--show-code", action="store_true", help="bounded excerpts of hash-checked local code; never import or execute")
+    s.add_argument("--pack", type=Path, default=PACK)
+    s = sub.add_parser("case", help="read one complete experience after a brief recall")
+    s.add_argument("--id", required=True); s.add_argument("--context", type=Path); s.add_argument("--repo", type=Path)
+    s.add_argument("--source-repo", action="append", default=[], metavar="OWNER/REPO=PATH")
+    s.add_argument("--pack", type=Path, default=PACK)
     s = sub.add_parser("sources"); s.add_argument("--query", required=True)
     s.add_argument("--limit", type=int, default=10); s.add_argument("--index", type=Path, default=SOURCE_INDEX)
     s = sub.add_parser("validate-pack"); s.add_argument("--pack", type=Path, default=PACK)
@@ -453,14 +534,27 @@ def main() -> int:
             out = import_session(a.store, a.session)
         elif a.command == "seed":
             out = seed(a.store, a.pack, a.repo)
-        elif a.command == "recall":
+        elif a.command in {"recall", "locate", "case"}:
             roots = {}
             for value in a.source_repo:
                 name, sep, path = value.partition("=")
                 require(bool(sep and name and path), "source-repo must be OWNER/REPO=PATH")
                 require(name not in roots, "duplicate source repository")
                 roots[name] = Path(path)
-            out = recall(a.query, load(a.context) if a.context else {}, a.repo, a.limit, a.pack, roots)
+            context = load(a.context) if a.context else {}
+            require(isinstance(context, dict), "context must be an object")
+            if a.command == "recall":
+                out = recall(a.query, context, a.repo, a.limit, a.pack, roots)
+                if a.brief:
+                    out = brief_recall(out)
+            elif a.command == "case":
+                out = read_case(a.id, context, a.repo, roots, a.pack)
+            elif a.case:
+                out = locate_case(a.case, context, a.repo, roots, a.show_code, a.pack)
+            else:
+                from dmd_navigation import locate, validate_catalog
+                out = locate(a.implementation, context, a.repo, roots, a.show_code,
+                             validate_catalog(a.pack.with_name("implementation-map.json")))
         elif a.command == "sources":
             out = source_search(a.query, a.limit, a.index)
         elif a.command == "validate-pack":

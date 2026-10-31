@@ -10,12 +10,23 @@ semantic equivalence or a trained optimization model.
 The bundled [experience map](knowledge/README.md) has three layers:
 judgment methods in the skill/references, conditional mechanism cards, and
 historical cases. The machine-readable pack is
-`assets/helios-experience-pack.json` (schema 2); readable cards are under
+`assets/helios-experience-pack.json` (schema 3); readable cards are under
 `references/knowledge/`. Both ship with the skill, so a new Codex session
 needs no original conversation or DMD installation to retrieve them.
 
-    python3 "$SKILL/scripts/dmd_knowledge.py" recall --query "参数保留 residency" --context /project/context.json
+    python3 "$SKILL/scripts/dmd_knowledge.py" recall --brief --query "参数保留 residency" --context /project/context.json
     python3 "$SKILL/scripts/dmd_knowledge.py" recall --query "FA3 attention" --repo "$REPO" --limit 2
+
+Start with `--brief` for long/combined requests. It lists every linked case ID,
+title, group, evidence status, correctness conflicts and code status without
+dumping every full report and code reference. Expand selected positive AND
+negative entries with `case --id CASE_ID`, keeping the same `--context`, `--repo`
+and external mappings. Omit `--brief` only when full packets are useful.
+Split compound requests into separate symptom queries; `omitted_routed_patterns`
+reports routed hypotheses left out by `--limit`. Asking for success/failure
+examples alone is not a budget or retry symptom.
+
+    python3 "$SKILL/scripts/dmd_knowledge.py" case --id helios-crosskv-nogan-negligible --context /project/context.json
 
 The context is a regular JSON file containing observed properties. Use
 `assets/workload-context.template.json`; leave unknown fields null.
@@ -33,8 +44,20 @@ For each matching pattern, recall returns:
   cases from other workloads, each with its own context differences and evidence;
 - a probe and the path to the full card.
 
-Lexical ranking chooses relevant mechanisms, not winners. It uses English terms
-and Chinese bigrams, no embeddings or network. A missing category means no
+Each case now has separate historical context, correctness and performance
+comparisons, its own `next_action`, a specific retry plan, and code-navigation
+status. Inspect the case even when the pattern has no conflict. For example,
+the Helios cross-KV example requires `grad_mode: no_grad` and `microbatch: 1`;
+a grad-enabled context conflicts with that implementation even though caching
+as a general mechanism can support other gradient-aware implementations.
+
+Lexical ranking chooses relevant mechanisms, not winners. It uses English terms,
+filtered Chinese bigrams, inverse frequency and reviewable symptom routes in
+`assets/query-routes.json`, with no embeddings or network. Colloquial repeated
+computation retrieves caching/residency; uneven waiting retrieves diagnostic
+profiling before assuming a scheduling cause. `NEEDS_DIAGNOSIS` means inspect
+the returned questions first. No query phrase becomes an observed context fact.
+A missing category means no
 curated evidence in that category; it does not establish universal success/failure.
 Unknown preconditions must be checked, and even a full declared match requires
 current source/numerical/performance validation. Do not use case-count voting.
@@ -57,6 +80,37 @@ Without the corresponding checkout, references remain
 `STALE_OR_UNAVAILABLE` requires inspection, and never silently becomes a new
 observation. No status upgrades REVIEW, FAIL, NOT_RUN, external guidance or
 unreproduced reports. Source hashes identify artifacts, not scientific truth.
+
+## From a case to implementation
+
+    python3 "$SKILL/scripts/dmd_knowledge.py" locate --case helios-crosskv-gan-positive --context /project/context.json --repo "$REPO"
+    python3 "$SKILL/scripts/dmd_knowledge.py" locate --implementation wan-lora-epilogue --repo "$REPO" --show-code
+
+The [implementation map](knowledge/implementations.md), generated from
+`assets/implementation-map.json`, gives pinned function/class definitions,
+integration instructions and switches, correctness/performance conditions,
+test references, explicit test gaps and fallback. The locator verifies bytes
+and AST symbol spans without importing Torch or executing retrieved code.
+An installed copy can return pinned GitHub anchors without any checkout;
+`NOT_LOCALLY_CHECKED` remains explicit. If it reads an old Git blob instead of
+the current file, `read_revision` identifies that historical source, and
+`local_path` must not be treated as the inspected version.
+
+`linked` cases have references; `method_only` cases describe a check or decision
+without claiming a runtime patch; `unresolved` cases have no located corresponding
+implementation. Relations are `current_related` or `historical_reference`, never
+an assertion that a nearby implementation produced the old timing. Follow both
+case and implementation conditions. A general external fusion method can link
+to a narrower no-grad Wan example without inheriting that example's validity.
+Test names are navigation, not passed test receipts. Read `validation_scope` and
+`test_gap` before selecting current validation. Runtime safeguards remain the
+runner's responsibility; these tools report conflicts, not execution permissions.
+
+Retry plans contain `change_signals`, `minimum_probe` and `do_not_repeat`.
+They describe what new information justifies revisiting an idea; they are not
+newly measured results. Historical report locators distinguish exact numeric
+text anchors from whole-report scope. A text anchor aids reading and does not
+independently establish the claim or all its qualifications.
 
 ## Discover beyond curated cases
 
@@ -120,7 +174,7 @@ Set `SKILL`, `REPO` and `STORE` to explicit absolute paths.
 
 For an optional schema-1 bundle of project records, `seed --pack bundle.json
 --repo "$REPO" --store "$STORE"` resolves repository-relative evidence, checks
-hashes and rejects traversal. It is separate from the schema-2 public mechanism
+hashes and rejects traversal. It is separate from the schema-3 public mechanism
 pack read by recall. If sources change, inspect the new evidence and issue a new
 versioned record; do not silently update hashes.
 Corrections use a new id and `supersedes`; old observations remain auditable.

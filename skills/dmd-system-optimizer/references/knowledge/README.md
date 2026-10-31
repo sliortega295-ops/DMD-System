@@ -30,6 +30,8 @@
 
 使用 `dmd_knowledge.py recall` 返回条件与同机制全部正反案例；使用 `sources` 搜索尚未整理完的历史来源。详见 [检索规则](../reuse-memory.md)。
 
+使用 `locate --case CASE_ID` 从经验进入 [实现索引](implementations.md)：固定源码、函数、接入、测试与回退。`linked` 是相关参考，`method_only` 是纯方法，`unresolved` 表示对应实现尚未定位。
+
 H100、A100 和外部推理案例都保留硬件/模式边界。关键词命中不等于当前适用，外部报告也不是本系统的验收结果。
 
 维护者编辑 JSON pack 后运行 `scripts/render_knowledge.py` 同步这些卡片；机制说明保留，案例部分由结构化记录生成。

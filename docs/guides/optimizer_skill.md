@@ -49,14 +49,28 @@ Codex 读取当前工作量，检索机制及历史正反案例，核对适用�
     python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py recall --query "参数保留 residency" --limit 2
     python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py recall --query "FA3 attention" --repo .
     python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py sources --query "H100" --limit 10
+    python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py recall --brief --query "同样的东西算了好多遍"
+    python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py case --id helios-crosskv-nogan-negligible
+    python3 skills/dmd-system-optimizer/scripts/dmd_knowledge.py locate --case helios-crosskv-gan-positive --repo . --show-code
 
-支持中文关键词与英文术语。--context 接收当前条件 JSON；未知写 null。
+支持中文关键词、常见口语症状与英文术语；含糊的等待会提示先诊断原因。
+查询文字只用于排序假设，不推定硬件、梯度或其他 workload 事实。
+--context 接收当前条件 JSON；未知写 null。
 --repo 核对 DMD 本地证据，历史文件可从本地已有的固定 Git 提交读取；不会联网拉取。
 外部来源可用 --source-repo OWNER/REPO=/absolute/checkout 指定独立 checkout，
 不会把 ResearchBoost 路径误当成本仓库文件。没有 checkout 时仍可读摘要和固定链接。
 sources 可搜索 136 份来源元数据，包括尚未提炼完的报告；索引命中不是验证通过。
 检索不联网、调用模型或创建向量数据库。Codex 按需读取相关 Markdown 卡片，
 判断适用性；检索命中本身不代表批准应用。
+
+每条案例有独立的正确性/收益比较与具体重试计划。`locate` 可从经验定位到
+[29 个实现条目](../../skills/dmd-system-optimizer/references/knowledge/implementations.md)，
+提供固定 commit 的函数行号、接入开关、guard、测试和回退。
+71 条经验有相关代码链接，19 条是纯方法，38 条的对应实现尚未定位。
+其中 13 个实现尚未找到专门测试入口；所有条目保留测试尚未覆盖的范围。“相关当前实现”不冒充历史计时源码。
+`--repo` 会核对源码 hash 与符号，`--show-code` 只读取有限片段，不导入或执行代码。
+具体实现可能比通用经验更窄，必须同时检查两层条件，例如 no-grad/B1 的 cross-KV
+不能直接用于需要梯度的调用。没有本地 checkout 时仍返回固定 GitHub 链接并保留未核对状态。
 
 新观察可保存到项目本地经验目录，用 record/search 查询；
 导入原始会话需要显式指定文件，始终作为未验证材料。

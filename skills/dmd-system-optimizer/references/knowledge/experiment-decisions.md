@@ -30,9 +30,15 @@
 - 观察：r36 campaign_charges=92，回执明确是累计 owner phases，包含失败，不是92次world16训练。
 - 经验：把成本单位和失败消耗写清，不能跨会话重置，也不能错把 phase 当 run。
 - 范围：该历史实验记账口径；新项目使用自己的明确成本定义。
-- 条件：{}
+- 历史上下文：{}
+- 正确性前提：{"cost_and_evidence_scope_defined": true}
+- 收益条件：{}
 - 失败分类：not_established
-- 重试条件：在目标 workload 上重新确认条件、数值和完整周期收益。
+- 重试信号：账本计量单位或资源分配改变
+- 最小验证：逐项对齐 owner phases、失败成本与设备时长，转换单位时保留依据
+- 不应重复：不把 92 owner phases 当作 92 次 world16 训练
+- 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
+- 定位命令：`dmd_knowledge.py locate --case helios-budget-units-r36`
 - 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json)；定位：campaign_charges; ledger; charged_stage_phases
 
 ### 小正向时间与数值 REVIEW 可以同时存在
@@ -43,10 +49,16 @@
 - 观察：W4 C2 42.488375→42.334359 秒；Critic Adam sketch nL2=0.2127849，未建立 symmetric noise floor，未默认晋级。
 - 经验：不因收益小就丢弃线索，也不因时间变快就升级数值结论；保留候选状态和剩余问题。
 - 范围：r14 单配对和原始统计范围，非严格等价或已确认小收益。
-- 条件：{"workload": "W4"}
+- 历史上下文：{"workload": "W4"}
+- 正确性前提：{"cost_and_evidence_scope_defined": true}
+- 收益条件：{}
 - 失败分类：numerical_uncertainty
-- 重试条件：用预先确定的对照和验证解决状态差异，再判断小收益是否稳定。
-- 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json)；定位：status; numerical; saved_seconds
+- 重试信号：已有对称 baseline noise floor 和状态解释
+- 最小验证：重复 baseline/control 并比较 Critic Adam sketch，再判断约 0.154 秒收益
+- 不应重复：未建立噪声地板前不把 REVIEW 改成默认启用
+- 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
+- 定位命令：`dmd_knowledge.py locate --case helios-small-gain-review-r14`
+- 来源：[sliortega295-ops/DMD-System / conclusion.json](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json#L4)；定位：观察中的数值文本锚点 L4；同时阅读同节合同、状态与限制。原定位：status; numerical; saved_seconds
 
 ### 被停止的队列必须保持 NOT_RUN，压缩上下文不能重置预算
 
@@ -56,11 +68,17 @@
 - 观察：r48 的停止状态覆盖 r47 的待执行计划；取消的 canary/queue 没有完成结果。r47 也保留了失败尝试计数与 GPU owner 未确认状态。
 - 经验：恢复经验时读取最新状态而非执行旧 handoff 命令；技术修复、换会话或分支不能擦除失败成本和用户停止决定。
 - 范围：H100 这次 campaign 的操作经验；当前用户的新任务需按新授权单独判断。
-- 条件：{"physical_gpus": 8, "logical_sample_slots": 16, "training_mode": "training", "workload": "campaign", "gpu_family": "H100", "gpu_memory_gb": 80}
+- 历史上下文：{"physical_gpus": 8, "logical_sample_slots": 16, "training_mode": "training", "workload": "campaign", "gpu_family": "H100", "gpu_memory_gb": 80}
+- 正确性前提：{"cost_and_evidence_scope_defined": true}
+- 收益条件：{}
 - 失败分类：not_established
-- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
-- 来源：[sliortega295-ops/DMD-System / h100_campaign_handoff_20261016_r47.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md)；定位：该结果及 qualification / NOT_RUN 边界
-- 来源：[sliortega295-ops/DMD-System / h100_campaign_handoff_20261016_r48.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md)；定位：该结果及 qualification / NOT_RUN 边界
+- 重试信号：用户重新授权且资源所有权、失败账本已确认
+- 最小验证：先读取最新停止状态与已有费用，重建明确 bounded run
+- 不应重复：旧 r47 队列不能覆盖 r48 停止决定或视为已完成
+- 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
+- 定位命令：`dmd_knowledge.py locate --case h100-stopped-campaign-ledger`
+- 来源：[sliortega295-ops/DMD-System / h100_campaign_handoff_20261016_r47.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md#L1)；定位：报告范围 L1–L33；L1: R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch；L5: New measured W2 result；L17: W1 actual cheap failure, not new model/OOM/numeric failure；L24: Actual resource blocker after reconnect；L28: Next authorized serial work；原定位：该结果及 qualification / NOT_RUN 边界
+- 来源：[sliortega295-ops/DMD-System / h100_campaign_handoff_20261016_r48.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md#L1)；定位：报告范围 L1–L27；L1: R48 — Explicit user stop before machine reboot；L6: Actual verified stop；L18: Unfinished work is cancelled, not completed；L23: Evidence；原定位：该结果及 qualification / NOT_RUN 边界
 
 ### ResearchBoost：可改变的合同与内存目标决定搜索上限
 
@@ -70,7 +88,13 @@
 - 观察：其 lessons 中 LLaVA 的较大收益依赖用户后来允许的 padding/recompute 变更；另有 balancing 主要省内存而未加速。DMD2 后期小改动受噪声和 OOM 约束。
 - 经验：把允许空间、容量改善、时间改善与停止理由分开；不拿改变任务后的最佳值当作原固定合同收益。
 - 范围：外部跨任务经验，外部轮数、OOM 次数、噪声阈值不是本系统默认预算。
-- 条件：{"training_mode": "training"}
+- 历史上下文：{"training_mode": "training"}
+- 正确性前提：{"cost_and_evidence_scope_defined": true}
+- 收益条件：{}
 - 失败分类：not_established
-- 重试条件：在目标 workload、库版本与冻结验收合同下先验证触发条件；外部成功/失败均不直接授权采用或永久否决。
-- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / lessons.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md)；定位：Four tasks, four ceilings; Memory is an account
+- 重试信号：用户明确授权语义范围变化或省内存目标
+- 最小验证：重新冻结任务合同与 baseline，分开报告内存和时间收益
+- 不应重复：不能自行放宽 padding/recompute 约束或把省内存叫加速
+- 代码状态：method_only；这是验收、计量或决策方法；本条不交付可直接接入的 runtime 优化实现。请按最小验证检查当前项目。
+- 定位命令：`dmd_knowledge.py locate --case rb-constraints-and-memory-objectives`
+- 来源：[AI4AI-for-Anything/ResearchBoost-Agent / lessons.md](https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1)；定位：报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：Four tasks, four ceilings; Memory is an account

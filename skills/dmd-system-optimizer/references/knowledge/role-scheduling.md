@@ -32,9 +32,15 @@
 - 观察：本地会话报告：C10 相比前一版流水有改进，仍慢于顺序执行；这里未重新取得原运行回执，不发布该比值为实测结论。
 - 经验：同时保留当前流水对照和最佳顺序对照，避免只看局部迭代进步。
 - 范围：早期 G1/C5/EMA0、16卡与8G+8Score探索的会话线索；不等于当前 W1/W2。
-- 条件：{"update_ratio": "G1/C5/EMA0", "ranks": 16}
+- 历史上下文：{"update_ratio": "G1/C5/EMA0", "ranks": 16}
+- 正确性前提：{"logical_work_preserved": true, "versions_and_dependencies_validated": true}
+- 收益条件：{"independent_work_available": true, "overlap_exceeds_partition_cost": true}
 - 失败分类：unverified_net_slowdown
-- 重试条件：阶段比例、角色效率、microbatch 或拓扑变化后，先比较服务时间及填充排空成本。
+- 重试信号：找到原始回执或当前有独立工作可重叠
+- 最小验证：先恢复可核实的同布局顺序/流水对照，再验证依赖和逻辑工作
+- 不应重复：不能据未核实会话比值继续昂贵流水搜索
+- 代码状态：unresolved；已保留报告/线索与适用边界，但未定位到可核对符号和接入方式的对应实现；不能把同名或邻近模块当作该案例代码。
+- 定位命令：`dmd_knowledge.py locate --case helios-pipeline-c10-lead`
 - 来源：仅本地会话线索，未公开原始会话；缺少可核实的公开实验回执。
 
 ### 同布局、同 B16 的 Critic 流水有三对正向结果
@@ -45,10 +51,18 @@
 - 观察：固定 post-Step10-A 状态，8G+8C 的顺序/流水三次独立交错配对：中位 354.893050→258.778970 秒；六次正式运行均通过。
 - 经验：流水可以有效，但该结论只覆盖共同布局上的 Critic 窗口，不包含冷构造、Step10-A、布局过渡、保存或数据加载。
 - 范围：早期 SYN-FEATURE、384x640、DP8 MB1/GAS2、五次 Critic/EMA。
-- 条件：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "global_batch": 16, "comparison": "same_layout_critic_window", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "global_batch": 16, "comparison": "same_layout_critic_window", "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 正确性前提：{"logical_work_preserved": true, "versions_and_dependencies_validated": true}
+- 收益条件：{"independent_work_available": true, "overlap_exceeds_partition_cost": true}
 - 失败分类：not_established
-- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
-- 来源：[sliortega295-ops/DMD-System / rb16_f5_pipeline_20260809.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_f5_pipeline_20260809.md)；定位：结果、合同、限制与失败记录
+- 重试信号：当前布局存在可重叠 Critic 工作且分区成本可控
+- 最小验证：固定 post-state 和布局，顺序/流水交错配对并逐 rank 验证
+- 不应重复：不能把同布局 Critic-window 加速当成任意完整训练加速
+- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
+- 定位命令：`dmd_knowledge.py locate --case helios-matched-pipeline-positive`
+- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
+- 来源：[sliortega295-ops/DMD-System / rb16_f5_pipeline_20260809.md](https://github.com/sliortega295-ops/DMD-System/blob/15a0511803ba97d860f80b6ecd5b88121cbccdf7/docs/experiments/rb16_f5_pipeline_20260809.md#L45)；定位：观察中的数值文本锚点 L45；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
 ### 另一固定内存分区的流水三对结果明显慢于顺序
 
@@ -58,7 +72,15 @@
 - 观察：同 global B16、G1/C5/EMA1，顺序三次 656.125/596.234/658.338 秒，固定内存流水 1139.194/1043.215/1170.197 秒。
 - 经验：流水收益取决于分配给各角色的资源和效率；早期 same-layout Critic 正例不能外推到这种全系统分区。
 - 范围：GAN systems 20260811 的 matched-work contract，runtime fairness 通过不代表训练收敛。
-- 条件：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "global_batch": 16, "gan_enabled": true, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 历史上下文：{"model_family": "Helios14B", "training_mode": "training", "resolution": "384x640", "trace": null, "global_batch": 16, "gan_enabled": true, "gpu_family": "A100", "gpu_memory_gb": 40, "nodes": 2, "gpus_per_node": 8, "physical_gpus": 16}
+- 正确性前提：{"logical_work_preserved": true, "versions_and_dependencies_validated": true}
+- 收益条件：{"independent_work_available": true, "overlap_exceeds_partition_cost": true}
 - 失败分类：resource_partition_net_regression
-- 重试条件：当前 workload 的相关前提、容量或实现改变后，先做最小判别测试，再以匹配对照验证完整周期。
-- 来源：[sliortega295-ops/DMD-System / gan_systems_experiment_20260811.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/gan_systems_experiment_20260811.md)；定位：结果与证据边界
+- 重试信号：能量化减少分区/切换/等待成本的新设计
+- 最小验证：固定 B16 和 G1/C5/EMA1，先测成本分解再与顺序配对
+- 不应重复：未解释约千秒流水慢点前不扩大同方案
+- 代码状态：linked；已定位相关源码；关系标注区分当前参考与旧实现，不能据此认定它就是历史计时源码。
+- 定位命令：`dmd_knowledge.py locate --case helios-fixed-memory-pipeline-negative`
+- 关联实现：[角色流水的 FIFO P2P 与转换合同](implementations.md#rolephase-transport)；current_related；固定源码中的相关实现，供当前任务检查或适配；不是该历史计时所用源码的身份声明。
+- 函数入口：[src/distillschedule/runtime/gan_rolephase_transport.py::RolePhaseCriticP2PTransport](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/gan_rolephase_transport.py#L105-L258)
+- 来源：[sliortega295-ops/DMD-System / gan_systems_experiment_20260811.md](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/gan_systems_experiment_20260811.md#L57)；定位：观察中的数值文本锚点 L57；同时阅读同节合同、状态与限制。原定位：结果与证据边界
