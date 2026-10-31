@@ -89,3 +89,10 @@ Source/CPU tests cover the restore-to-export control chain and actual original
 model consumer. Native world16 CUDA export and pretrained output quality still
 require their corresponding hardware acceptance. W5 Grid1000 remains a
 different model/workload binding.
+
+## Explicit native-output reproduction (not a generate fallback)
+
+The separate opt-in [`native-output` reproduction tool](../../recipes/h3_ar/NATIVE_OUTPUT_REPRODUCTION.md)
+can hand an explicitly pinned R375 C50/AP40-history/new232-text request to its
+original two-node owner and historical runtime. It does not generalize the
+portable input consumer, retag old checkpoints or authorize GPU ownership.

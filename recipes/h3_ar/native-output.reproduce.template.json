@@ -1,0 +1,27 @@
+{
+  "schema_version": "distillschedule.h3_native_output_reproduction.v1",
+  "scope": "R375_C50_AP40_NEW232_REPRODUCTION_NOT_GENERAL_INPUT",
+  "launch": {"path": "/operator/admitted/native-launch.GO.json", "sha256": null},
+  "runtime": {
+    "python": {"path": "/original/validated/env/bin/python", "sha256": null},
+    "source_root": "/original/clean/source228",
+    "source_head": "228cfdc093dd5e6c5fa4d130c7ef88f4f8a5656b"
+  },
+  "owner": {
+    "entry": {"path": "/original/packet/scripts/native_output_node_owner.py", "sha256": "e851ab3643ce5d74e72c14c59b937467bb35d6d22b878a728ff60e26cf64e8ed"},
+    "original_launch": {"path": "/original/packet/configs/original-launch.json", "sha256": "c68fd1802851fc22ae13469ddbf33172e51ca87a9218a1678c1055ff9ca3ca66"},
+    "admission": {"path": "/operator/admitted/scope-v2-target-CPU-gate.json", "sha256": null},
+    "run_root": "/operator/admitted/packet/runs/native_output50-new-namespace",
+    "nodes": [
+      {"node_rank": 0, "hostname": null, "gpu_uuids": [], "target_cpu_gate": {"path": "/original/cpu-node0.json", "sha256": null}},
+      {"node_rank": 1, "hostname": null, "gpu_uuids": [], "target_cpu_gate": {"path": "/original/cpu-node1.json", "sha256": null}}
+    ]
+  },
+  "checkpoint_manifest": {"path": "/original/checkpoints/cycle-000050/manifest.json", "sha256": "184326ab71dd82ee3f888b79820d666bea82f033d211bd2647d053ee87734112"},
+  "extensions": {
+    "scope": {"path": "/reviewed/extension-v2/native_h3_output_cache.py", "sha256": "4107606aacdb6a26ec2fac02609644286ef7bbc084e60ad11d404335ca476c38"},
+    "generation": {"path": "/reviewed/extension-v2/native_h3_generation.py", "sha256": "a41a8081441fa2aef5881c0b1bcbf0dd2db7eb29b4b5202959e5e3f5812c095d"}
+  },
+  "conditions": {"path": "/reviewed/actual-v2-condition-binding.json", "sha256": null},
+  "input_witness": {"path": "/actual/functional-input-v2/composition.json", "sha256": null}
+}

@@ -38,6 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ("export", "export inference weights from a training checkpoint"),
         ("import-weights", "initialize trained Generator weights for export; not resume"),
         ("generate", "generate new prepared inputs from portable inference weights"),
+        ("native-output", "explicit R375 H3 C50 reproduction through its original node owner"),
         ("decode", "decode prepared latents using an explicit native codec"),
     ):
         subparsers.add_parser(name, help=help_text)
@@ -145,7 +146,7 @@ def _run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
-    if argv and argv[0] in {"models", "algorithms", "strategies", "capabilities", "doctor", "data", "train", "evaluate", "export", "import-weights", "generate", "decode", "config"}:
+    if argv and argv[0] in {"models", "algorithms", "strategies", "capabilities", "doctor", "data", "train", "evaluate", "export", "import-weights", "generate", "decode", "config", "native-output"}:
         from distillschedule.training.cli import main as training_main
         return training_main(argv)
     if len(argv) > 1 and argv[0] == "workloads":
