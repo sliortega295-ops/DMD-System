@@ -106,6 +106,36 @@ class UnifiedMemoryTests(KnowledgeTests):
         self.assertEqual(stale["evidence_status"], "STALE")
         self.assertEqual(stale["code_navigation"]["target_source_status"], "STALE")
 
+    def test_native_label_roundtrip_and_partial_outcome_remain_inspectable(self):
+        self.record("native", "参数上卡容量收益", outcome="success", decision="KEEP_OPTIONAL")
+        self.record("partial", "参数上卡确认未完成", outcome="incomplete", decision={"retention": "REVIEW", "performance": "INCOMPLETE"})
+        cmd = [sys.executable, m.__file__, "recall", "--query", "参数上卡", "--store", str(self.store), "--brief"]
+        packet = json.loads(subprocess.check_output(cmd, text=True))
+        rows = [c for p in packet["matches"] for group in p["cases"].values() for c in group if "store" in c]
+        native = next(c for c in rows if c["id"].endswith(":native"))
+        partial = next(c for c in rows if c["id"].endswith(":partial"))
+        self.assertEqual(native["decision"]["retention"], "KEEP_OPTIONAL")
+        self.assertEqual(native["decision"]["evidence_assurance"], "DECLARATION_ONLY")
+        self.assertEqual(partial["outcome"], "incomplete")
+
+    def test_record_returns_usable_qualified_id_without_extra_search(self):
+        stored = self.put()
+        command = [sys.executable, m.__file__, "case", "--id", stored["qualified_id"], "--store", str(self.store)]
+        expanded = json.loads(subprocess.check_output(command, text=True))
+        self.assertEqual(expanded["record"]["id"], self.r["id"])
+        self.assertEqual(self.put()["qualified_id"], stored["qualified_id"])
+
+    def test_malformed_legacy_decision_cannot_crash_brief_retrieval(self):
+        self.record("old", "参数上卡等待")
+        path = self.store / "old.json"
+        legacy = json.loads(path.read_text()); legacy["decision"] = ["ambiguous", "old", "data"]
+        path.write_text(json.dumps(legacy))
+        result = m.brief_recall(m.recall("参数上卡", {}, stores=[self.store]))
+        row = next(c for p in result["matches"] for group in p["cases"].values() for c in group if c["id"].endswith(":old"))
+        self.assertEqual(row["decision"]["evidence_assurance"], "MALFORMED_LEGACY_DECISION")
+        with self.assertRaisesRegex(ValueError, "decision must be an object"):
+            self.put({**self.r, "id": "new", "decision": []})
+
 
 def load_tests(loader, suite, pattern):
     return unittest.TestSuite(UnifiedMemoryTests(name) for name in UnifiedMemoryTests.__dict__ if name.startswith("test_"))

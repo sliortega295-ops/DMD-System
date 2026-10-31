@@ -24,5 +24,5 @@
   "repeat_unit": "independent_processes",
   "timings": [],
   "evidence": [],
-  "notes": "Checks/timings must match parsed receipts attached to settled runs. Each timing block: run_id, process_ids (three unique invocation ids), control_before, candidate, control_after. Copy timings unchanged when adding validation. Capacity-only retention uses empty timings and explicit latency_tradeoff. Scope must equal the candidate's reserved scope."
+  "notes": "Checks/timings must match parsed receipts attached to settled runs. Each timing block: run_id, process_ids (three unique invocation ids), control_before, candidate, control_after. Preserve every recorded sample unchanged. A stopped partial confirmation includes all currently valid blocks and remains INCOMPLETE; append authorized samples later toward the frozen count. Capacity-only retention may use empty timings and explicit latency_tradeoff. Scope must equal the candidate's reserved scope."
 }

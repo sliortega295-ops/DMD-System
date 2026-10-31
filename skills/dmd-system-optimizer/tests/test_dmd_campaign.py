@@ -223,7 +223,7 @@ class CampaignTests(unittest.TestCase):
     def test_cannot_select_only_favorable_samples(self):
         r = self.ready()
         r["timings"].pop()
-        with self.assertRaisesRegex(ValueError, "repeat count"):
+        with self.assertRaisesRegex(ValueError, "every valid registered timing run"):
             self.assess(r)
 
     def test_no_optional_stopping_or_relabeling_candidate_source(self):

@@ -163,6 +163,16 @@ conditions, outcome, strength, provenance and evidence. Evidence rows contain
 input file; stored paths are absolute. Observations/mechanisms require hash-checked
 files. A hash proves which file was read, not that its claims are scientifically
 valid. Use source identities and validation scopes inside the record.
+`outcome` uses `success`, `no_benefit`, `inconclusive`, `incorrect`, `environment`,
+`implementation_failure`, `incomplete` or `unverified`. Keep a campaign/native
+decision such as REVIEW separately in `decision`: missing required evidence maps
+to `incomplete`; completed but uncertain timing maps to `inconclusive`. Neither is
+`success`. `strength` is `hypothesis`, `observation`, `mechanism` or `unverified`.
+Prefer a `decision` object with retention, performance and validation scope. A
+native string label remains readable and is explicitly DECLARATION_ONLY; reading
+it does not certify the native checker. `record` returns `qualified_id`: use that
+value with `case --id` or `locate --case` and the same explicit `--store`. The bare
+record id is local to its store and can collide with another store or public case.
 
 Useful conditions include model family, architecture/shape, dtype, grad mode,
 topology/backend, state versions, update ratio and timer. A null means unknown;
@@ -222,6 +232,9 @@ winner by id or vote. A new record's hash still does not prove its conclusion.
 
 `dmd_campaign.py finish` connects settled experiments and decisions to a private
 record through a durable, idempotent outbox. See [campaign tools](campaign-tools.md).
+It is optional with the campaign ledger. Existing native acceptance and documentation-only
+work use `record` directly; preserve the native decision, raw output and actual assurance
+instead of migrating tools or synthesizing a different checker's output format.
 Its outcome/evidence/decision identity and synthetic qualification are generated
 from the ledger, while Codex supplies mechanism, scope and retry explanation.
 After recovery, use the same recall command in a new process to check discoverability.

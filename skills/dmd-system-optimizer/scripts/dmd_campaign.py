@@ -292,8 +292,9 @@ def assess(db, result, base):
                 continue
             elif key in {"compatibility", "fallback", "composition"} and value == "PASS" and result.get(key) == "FAIL":
                 continue
-            elif key == "timings" and not value:
-                continue
+            elif key == "timings":
+                require(all(row in result.get("timings", []) for row in value),
+                        "candidate already assessed on different evidence: recorded timings cannot be changed or removed")
             elif key in {"unprofiled", "repeat_unit"} and not old.get("timings"):
                 continue
             elif key == "latency_tradeoff" and value is None:
@@ -338,7 +339,7 @@ def assess(db, result, base):
     timing_runs = {r["run_id"]: r for r in same if r["proposal"]["purpose"] == "timing" and not invalid_sample(r)}
     if times:
         require(c["timing"] is not None, "speed confirmation disabled in this frozen contract")
-        require(isinstance(times, list) and len(times) == c["timing"]["repeat_count"], "provide exactly the frozen repeat count")
+        require(isinstance(times, list) and len(times) <= c["timing"]["repeat_count"], "timings exceed frozen repeat count")
         require(len({t["run_id"] for t in times}) == len(times) and {t["run_id"] for t in times} == set(timing_runs),
                 "include every valid registered timing run once")
         parsed_times = {r["binding"]["run_id"]: r for r in parsed if r["format"] == "aba-json"}
@@ -347,6 +348,11 @@ def assess(db, result, base):
                     "timing declaration conflicts with parsed runner body")
             require(all(parsed_times[t["run_id"]]["measurement_kind"] == c["measurement_kind"] for t in times),
                     "synthetic/observed timing qualification differs")
+    complete_timing = bool(times) and len(times) == c["timing"]["repeat_count"]
+    out["confirmation"] = {"state": "DISABLED" if c["timing"] is None else
+                           "COMPLETE" if complete_timing else "INCOMPLETE" if times else "NOT_EVALUATED",
+                           "samples_recorded": len(times),
+                           "samples_required": c["timing"]["repeat_count"] if c["timing"] else None}
     if correct and result.get("capacity_evidence"):
         refs(result["capacity_evidence"], base)
         out["capacity_benefit"] = "ESTABLISHED" if checks.get("capacity") == "PASS" else "NOT_ESTABLISHED"
@@ -372,12 +378,15 @@ def assess(db, result, base):
             drift_ok &= abs(before - after) / min(before, after) <= c["timing"]["max_control_relative_drift"]
             savings.append(min(before, after) - candidate_time)
             candidates.append(candidate_time)
-        wins = sum(x > c["timing"]["minimum_effect_seconds"] for x in savings)
-        n = len(savings)
-        probability = sum(math.comb(n, k) for k in range(wins, n + 1)) / 2**n
-        threshold = c["timing"]["alpha"] / c["timing"]["max_candidates"]
-        benefit = drift_ok and probability <= threshold
-        if correct:
+        benefit = False
+        if correct and not complete_timing:
+            out["performance"] = "INCOMPLETE"
+        if correct and complete_timing:
+            wins = sum(x > c["timing"]["minimum_effect_seconds"] for x in savings)
+            n = len(savings)
+            probability = sum(math.comb(n, k) for k in range(wins, n + 1)) / 2**n
+            threshold = c["timing"]["alpha"] / c["timing"]["max_candidates"]
+            benefit = drift_ok and probability <= threshold
             out.update(performance="BENEFIT" if benefit else "INVALID_DRIFT" if not drift_ok else "INCONCLUSIVE",
                        conservative_paired_savings=savings, candidate_median_seconds=statistics.median(candidates),
                        one_sided_sign_p=probability, adjusted_alpha=threshold,

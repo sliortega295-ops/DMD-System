@@ -8,6 +8,73 @@ from test_dmd_campaign import CampaignTests, SCRIPTS, m
 
 class RecoveryTests(CampaignTests):
     # Reuse the fixture, not its test methods (see load_tests below).
+    def partial(self, candidate_time=99.):
+        times = []
+        for i in range(2):
+            row = {"run_id": "run-" + str(i), "process_ids": [f"{i}-a", f"{i}-b", f"{i}-a2"],
+                   "control_before": 100., "candidate": candidate_time, "control_after": 100.}
+            self.reserve(row["run_id"]); self.settle(row["run_id"], timing=row); times.append(row)
+        self.validation(checks={k: "PASS" for k in ("V0", "V1", "capacity", "compatibility", "composition", "fallback")})
+        return {**{k: self.c[k] for k in ("workload_id", "semantic_contract", "hardware_id", "timer_scope", "claim_class")},
+                "contract_sha256": self.state()["contract_sha256"], "candidate_id": "c", "source_identity": "c-source",
+                "control_id": "b", "checks": {"V0": "PASS", "V1": "PASS"}, "validation_scope": "synthetic complete cycle",
+                "evidence": self.ev, "unprofiled": True, "repeat_unit": "independent_processes", "timings": times,
+                "compatibility": "PASS", "fallback": "PASS", "composition": "PASS"}
+
+    def test_partial_confirmation_can_close_and_resume_without_early_promotion(self):
+        r = self.partial()
+        first = self.assess(r)
+        self.assertEqual(first["retention"], "REVIEW")
+        self.assertEqual(first["performance"], "INCOMPLETE")
+        self.assertEqual(first["confirmation"]["samples_recorded"], 2)
+        self.assertFalse(first["default_enable"])
+        self.assertNotIn("one_sided_sign_p", first)
+        for i in range(2, 6):
+            row = {"run_id": "run-" + str(i), "process_ids": [f"{i}-a", f"{i}-b", f"{i}-a2"],
+                   "control_before": 100., "candidate": 99., "control_after": 100.}
+            self.reserve(row["run_id"]); self.settle(row["run_id"], timing=row); r["timings"].append(row)
+        final = self.assess(r)
+        self.assertEqual(final["retention"], "KEEP")
+        self.assertEqual(final["decision_revision"], 2)
+        self.assertEqual(self.state()["decisions"][0], first)
+
+    def test_partial_slow_samples_cannot_be_removed_or_changed(self):
+        r = self.partial(candidate_time=101.)
+        self.assess(r)
+        changed = json.loads(json.dumps(r)); changed["timings"][0]["candidate"] = 98.
+        removed = json.loads(json.dumps(r)); removed["timings"].pop()
+        for invalid in (changed, removed):
+            with self.assertRaisesRegex(ValueError, "recorded timings cannot be changed or removed"):
+                self.assess(invalid)
+        self.assertEqual(self.assess(r)["performance"], "INCOMPLETE")
+
+    def test_capacity_retention_survives_incomplete_speed_confirmation(self):
+        r = self.partial()
+        r.update(capacity_evidence=self.ev, latency_tradeoff="UNKNOWN; no speed-sensitive default use")
+        decision = self.assess(r)
+        self.assertEqual(decision["retention"], "KEEP_OPTIONAL")
+        self.assertEqual(decision["performance"], "INCOMPLETE")
+        self.assertFalse(decision["default_enable"])
+
+    def test_partial_finish_writes_retrievable_memory_without_new_runs(self):
+        r = self.partial()
+        bundle = {"result": r, "experience": {"summary": "参数上卡确认只完成两次", "pattern": "parameter-residency",
+                  "conditions": {}, "correctness_conditions": {}, "performance_conditions": {},
+                  "retry": "Resume only within authorization; preserve existing samples", "failure_scope": "synthetic partial confirmation"}}
+        before = self.state()
+        with m.connection(self.path) as db:
+            result = m.finish(db, bundle, self.root / "memory", self.root)
+        m.flush_memory(self.path)
+        after = self.state()
+        self.assertEqual(before["runs"], after["runs"])
+        self.assertEqual(before["budget"], after["budget"])
+        command = [sys.executable, str(SCRIPTS / "dmd_knowledge.py"), "recall", "--brief", "--query", "参数上卡", "--store", str(self.root / "memory")]
+        packet = json.loads(subprocess.check_output(command, text=True))
+        row = next(c for p in packet["matches"] for group in p["cases"].values() for c in group if c["id"].endswith(result["memory_id"]))
+        self.assertEqual(row["decision"]["performance"], "INCOMPLETE")
+        self.assertEqual(row["decision"]["confirmation"]["samples_required"], 6)
+        self.assertEqual(row["evidence_qualification"], "SYNTHETIC_WORKFLOW_ONLY")
+
     def test_review_can_add_v2_without_resampling(self):
         r = self.ready(risk="stateful")
         first = self.assess(r)

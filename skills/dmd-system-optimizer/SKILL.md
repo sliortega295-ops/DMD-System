@@ -17,6 +17,9 @@ commands, environments, assets, receipts and active resource allocations. Reuse
 valid work. Ask only for missing information that blocks the next meaningful step.
 Respect an analysis-only request; an optimization request includes implementation
 within the user's authorized resource scope. Do not restart a solved intake.
+Missing GPU access, timing baseline or a training environment blocks the dependent
+run or claim, not authorized source inspection, small CPU checks or a reviewable
+patch. Complete those useful steps and state what the later target run needs.
 
 Choose the lightest integration:
 
@@ -42,7 +45,10 @@ Read [reuse and memory](references/reuse-memory.md) and the
 [experience map](references/knowledge/README.md) when searching or recording.
 Start with `dmd_knowledge.py recall --brief --store /explicit/project/memory` for
 one compact index of public priors and authorized private records. Repeat `--store`
-for other authorized directories; omit it for public priors only. Expand relevant
+for other authorized directories; omit it for public priors only.
+If a new project store has not been created, explicitly create the chosen directory
+or omit `--store` until recording; an existing store's missing path is an error to inspect.
+Expand relevant
 positive AND negative entries using `case --id CASE_ID`, with the same context
 and repository/store options. Inspect `correction`: current successors, scope and
 evidence status are resolved before truncation. A scoped update must not erase a
@@ -77,6 +83,8 @@ whether the target already has/enables the mechanism, direct use or minimal
 adaptation, dependencies/conflicts, actual path proof, numerical checks and rollback.
 Validate it with `dmd_reuse.py --input ...`. This makes the change reviewable;
 it does not apply a patch or replace the project's checker.
+`existing_equivalent` is explanatory text about what exists and is enabled, not
+a boolean. A PLANNED decision does not require future runtime evidence.
 
 Check family, shape, dtype, gradient mode, topology, backend, weight/cache
 versions, fallback and composition. Prefer an applicable implementation; adapt
@@ -157,6 +165,13 @@ and numerical errors cannot be discarded as environmental retries. A capacity
 benefit with correct validation can be `KEEP_OPTIONAL`, default off, without full
 speed confirmation; explicitly disclose measured or unknown latency cost.
 
+`REVIEW` describes evidence, not an instruction to keep running. At a user stop,
+budget limit or unavailable dependency, preserve completed work, the best verified
+control, exact missing checks and a concrete resumption condition. Do not invent
+evidence, seek more resources against the user's scope, or repeatedly retry an
+unchanged rejected input. Partial confirmations can be saved without a speed verdict;
+completing the user's current phase does not require promoting the candidate.
+
 Use the [checker adapter](references/checker-receipts.md) to parse actual JUnit
 and runner output into source/config/input/run/comparator-bound receipts. The
 decision helper reparses the body and rejects conflicting summaries. Before default
@@ -173,9 +188,15 @@ candidate's editable code where the runner supports it. Report enforcement gaps.
 Keep the best verified control and the original baseline. Save the patch/config,
 exact reproduction command, source and workload identities, checks and their
 scope, every timing sample, costs, fallback, decision and unresolved limits.
-Use `dmd_campaign.py finish --state ... --input ... --store ...` to settle pending
-attempts, persist the decision and queue a scoped private experience atomically.
-Its idempotent outbox publishes the record; `flush-memory` resumes after a crash.
+When using the optional campaign ledger, use `dmd_campaign.py finish --state ...
+--input ... --store ...` to settle pending attempts, persist the decision and queue
+a scoped private experience atomically. Its idempotent outbox publishes the record;
+`flush-memory` resumes after a crash. Otherwise preserve the native runner/ledger
+and its actual decision, then use `dmd_knowledge.py record` with hash-bound evidence.
+The same route supports a documentation-only handoff when ledger writes are out of
+scope. Do not create a second ledger, invent a timing baseline, or reformat a native
+checker as fake JUnit merely to use an optional helper. Unsupported checker formats
+limit that adapter's assurance; they do not forbid the project's own acceptance.
 Use the same `recall --store` in the next process. Outcomes come from the decision,
 not a handwritten success summary. Record correctness/performance conditions,
 failure scope and retry signals. Corrections use a new record with explicit
@@ -191,8 +212,10 @@ control. Re-enter a failed direction only when evidence or its mechanism changes
 
 ## Tools
 
-Python 3.10+ standard library is sufficient for bundled helpers. Start with
-`--help`; use [campaign tools](references/campaign-tools.md) for schemas and commands.
+Python 3.10+ standard library is sufficient for bundled helpers. For these helpers,
+start with `--help`; use [campaign tools](references/campaign-tools.md) for schemas
+and commands. Inspect an unfamiliar project launcher's entry point before invoking
+it: a script that ignores arguments may run the workload even with `--help`.
 Run from any directory using the installed skill's absolute script path.
 Optional nsys/ncu or kernel-specific skills can help when installed and relevant;
 read their instructions then. Do not install them or delegate work merely because

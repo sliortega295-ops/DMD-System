@@ -24,6 +24,19 @@ OUTCOMES = {"success", "no_benefit", "inconclusive", "incorrect", "environment",
             "implementation_failure", "incomplete", "unverified"}
 
 
+def qualified_id(store, ident):
+    return "private-" + hashlib.sha256(str(Path(store).resolve()).encode()).hexdigest()[:12] + ":" + ident
+
+
+def decision_view(value):
+    """Native and legacy labels are display data, not parsed checker decisions."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        return {"retention": value, "evidence_assurance": "DECLARATION_ONLY"}
+    return {} if value is None else {"evidence_assurance": "MALFORMED_LEGACY_DECISION", "raw": value}
+
+
 def put(store: Path, record: dict, base: Path) -> dict:
     """Immutable, idempotent records; a correction gets a new id and supersedes."""
     record = json.loads(json.dumps(record, allow_nan=False))
@@ -35,6 +48,8 @@ def put(store: Path, record: dict, base: Path) -> dict:
     require(record.get("strength") in {"hypothesis", "observation", "mechanism", "unverified"},
             "invalid strength")
     require(isinstance(record.get("conditions"), dict), "conditions object required")
+    require(record.get("decision") is None or isinstance(record["decision"], (dict, str)),
+            "decision must be an object or a native decision label string")
     if "pattern" in record:
         text(record["pattern"], "pattern")
     for key in ("conditions", "correctness_conditions", "performance_conditions"):
@@ -66,7 +81,7 @@ def put(store: Path, record: dict, base: Path) -> dict:
     path = store / (ident + ".json")
     if path.exists():
         require(path.read_text() == encoded, "record id already exists with different content")
-        return {"id": ident, "status": "ALREADY_RECORDED"}
+        return {"id": ident, "qualified_id": qualified_id(store, ident), "status": "ALREADY_RECORDED"}
     # Link publishes a complete temporary file exclusively. Two writers cannot replace it.
     fd, temporary = tempfile.mkstemp(prefix=".record-", dir=store)
     try:
@@ -80,7 +95,7 @@ def put(store: Path, record: dict, base: Path) -> dict:
             require(path.read_text() == encoded, "concurrent conflicting record")
     finally:
         os.unlink(temporary)
-    return {"id": ident, "status": "RECORDED"}
+    return {"id": ident, "qualified_id": qualified_id(store, ident), "status": "RECORDED"}
 
 
 def search(store: Path, query: str, context: dict, limit: int = 10) -> dict:
@@ -127,7 +142,7 @@ def private_cases(stores):
     cases = []
     for store in dict.fromkeys(Path(s).resolve() for s in stores):
         require(store.is_dir(), "knowledge store does not exist")
-        namespace = "private-" + hashlib.sha256(str(store).encode()).hexdigest()[:12] + ":"
+        namespace = qualified_id(store, "")
         for path in sorted(store.glob("*.json")):
             r = load(path)
             errors = check_evidence(r.get("evidence"), store, "evidence") if r.get("strength") in {"observation", "mechanism"} else []
@@ -137,7 +152,7 @@ def private_cases(stores):
                 except (OSError, KeyError, InputError) as exc:
                     errors.append(str(exc))
             outcome = {"success": "positive_observation", "no_benefit": "negative_observation", "incorrect": "correctness_failure",
-                       "implementation_failure": "implementation_failure"}.get(r["outcome"], "unverified" if r["outcome"] == "unverified" else "inconclusive")
+                       "implementation_failure": "implementation_failure", "incomplete": "incomplete"}.get(r["outcome"], "unverified" if r["outcome"] == "unverified" else "inconclusive")
             cases.append({"id": namespace + r["id"], "title": r["summary"], "observation": r["summary"],
                           "pattern": r.get("pattern") or "unclassified-" + namespace + r["id"], "outcome": outcome,
                           "conditions": r["conditions"],
@@ -150,7 +165,7 @@ def private_cases(stores):
                           "evidence_qualification": "SYNTHETIC_WORKFLOW_ONLY" if
                           r.get("provenance", {}).get("measurement_kind", r["conditions"].get("measurement_kind")) == "synthetic"
                           else "CURRENT_PROJECT_EVIDENCE_REQUIRES_REVALIDATION",
-                          "decision": r.get("decision"),
+                          "decision": decision_view(r.get("decision")),
                           "correction_edges": [{**e, "id": e["id"][7:] if e["id"].startswith("public:") else
                                                 e["id"] if e["id"].startswith("private-") else namespace + e["id"]}
                                                for e in correction_edges(r)]})
@@ -464,7 +479,7 @@ def brief_recall(result):
                             "reused_implementation_ids": [i["id"] for i in c["navigation"]["implementations"]],
                             "target_source": c["record"].get("source"),
                             "decision": {k: (c.get("decision") or {}).get(k) for k in
-                                         ("retention", "performance", "measurement_kind", "validation_scope")}}
+                                         ("retention", "performance", "confirmation", "evidence_assurance", "measurement_kind", "validation_scope")}}
                            if "store" in c else {})} for c in group]
                  for name, group in packet["cases"].items()}
         packets.append({"pattern": {k: p[k] for k in ("id", "title", "probe", "details")},

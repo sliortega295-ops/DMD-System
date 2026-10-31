@@ -16,6 +16,8 @@ their input JSON file and include path, sha256 and an exact locator.
 Read [reuse and memory](reuse-memory.md). Private directories stay physically
 separate; explicit `--store` options include them in the same retrieval. Inventory requires the DMD registry; external projects can create their
 own implementation records with the experience template.
+For a genuinely new store, create the explicitly chosen directory before searching
+or omit `--store` for public-only recall. Do not silently replace a missing old store.
 
 ## Forecast and prioritize
 
@@ -95,7 +97,7 @@ Each timing row has:
     {"run_id": "C1-block1", "process_ids": ["invocation-a", "invocation-b", "invocation-a2"],
      "control_before": 100, "candidate": 99, "control_after": 100}
 
-Those numbers illustrate syntax only. Use exactly the predeclared repeat count,
+Those numbers illustrate syntax only. A speed verdict requires exactly the predeclared repeat count,
 all valid registered timing blocks once, independent unprofiled invocations and matched
 work. Confirmation counts apply to candidates with timing reservations; cheap
 probes consume resource budget without consuming a confirmation slot.
@@ -115,10 +117,19 @@ Valid slow observations still count. Candidate errors/OOM/numerical failure cann
 use this route; all attempts and overruns remain charged to the resource ledger.
 
 Assess appends an immutable `decision_revision`; status exposes the entire history.
-Identical evidence/attempt sets replay the same revision. REVIEW stays open: reserve
+Identical evidence/attempt sets replay the same revision. REVIEW stays open: within
+the existing authorization and remaining budget, reserve
 a validation attempt, settle its parsed receipt, and assess again with unchanged
-timings and accumulated evidence. Complete timing inputs are frozen on first
-assessment, including when V2 is missing. Recorded failures cannot be erased;
+timings and accumulated evidence. Every supplied timing sample is immutable on first
+assessment, including when V2 is missing. A stopped partial confirmation may supply
+all currently registered valid blocks (for example, two of six); it persists REVIEW
+with performance INCOMPLETE and no significance result. `confirmation` reports the
+collected/required count. `finish` can write this state to Memory without more runs.
+Later append only new authorized samples toward the original count; existing slow
+samples cannot disappear or change. The partial record never earns early KEEP/default
+from speed evidence. An independently established capacity benefit can still remain
+KEEP_OPTIONAL. A missing count describes evidence, not permission or a demand to run.
+Recorded failures cannot be erased;
 new failure evidence can invalidate a previous KEEP. Incorrect -> DISCARD,
 incomplete -> REVIEW, established benefit -> KEEP. `composition`, `compatibility`,
 `fallback`, and the risk-route checks against the original baseline must pass
@@ -141,6 +152,12 @@ describes the mechanism (`pattern`), conditions, correctness/performance conditi
 retry and failure scope, optionally a complete ReuseDecision/source reference.
 Outcome, decision revision and evidence are derived from the ledger. Keep the
 summary descriptive; generated outcome/qualification govern its interpretation.
+This path applies only to campaigns using this ledger. For a native runner/ledger,
+or an explicitly documentation-only handoff, keep its own result format and record
+a scoped experience with `dmd_knowledge.py record`. Use the existing decision as
+evidence and describe its checker/qualification; do not claim this campaign parser
+verified an unsupported native format. No new experiment is required to save an
+incomplete decision. See the outcome values in [reuse and memory](reuse-memory.md).
 
 The transaction commits settlements, decision and an immutable outbox record.
 Publication is idempotent. If writing the private store fails, the committed
