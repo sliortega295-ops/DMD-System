@@ -837,3 +837,245 @@ def test_loader_gan_failure_trace_and_counterfactual_keep_real_strict_failure(tm
     assert all(torch.equal(value, dict(model.named_buffers())[name]) for name, value in buffers.items())
     assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
     assert not torch.cuda.is_initialized()
+
+
+def _hosted_final_linear_case():
+    """Exact tiny tensors captured by the failure-only hosted diagnostic."""
+    import torch
+    path = ROOT / 'tests/fixtures/helios_cpu_fp32_final_linear_hosted.json'
+    record = json.loads(path.read_text())
+    assert record['source_report_sha256'] == '8a351ee180d371d3abeb3b0292b30d0eaa864e7a0b46ef06a8114741b59a646b'
+    tensors = {name: torch.tensor(record[name]['small_values'], dtype=torch.float32)
+               for name in ('input', 'weight', 'bias', 'reference_output', 'unaligned_hosted_output')}
+    for name, value in tensors.items():
+        assert _loader_tensor_summary(value)['sha256'] == record[name]['sha256']
+    return tensors
+
+
+def _shift_cpu_storage(parameter, offset):
+    """Preserve actual tensor values/Parameter identity, set a known alignment."""
+    import torch
+    owner = torch.empty(parameter.numel() + 16, dtype=parameter.dtype)
+    view = owner[offset:offset + parameter.numel()].view(parameter.shape)
+    with torch.no_grad():
+        view.copy_(parameter)
+        parameter.data = view
+    assert parameter.data_ptr() % 64 == offset * parameter.element_size()
+
+
+@pytest.mark.parametrize('default_loader', [False, True])
+def test_real_hosted_final_linear_pretrained_owns_only_its_132_unaligned_bytes(tmp_path, monkeypatch, default_loader):
+    import torch
+    from diffusers.models.modeling_utils import ModelMixin
+    case = _hosted_final_linear_case()
+    source = _tiny_model().eval()
+    with torch.no_grad():
+        source.gan_final_head.head3d[-1].weight.copy_(case['weight'])
+        source.gan_final_head.head3d[-1].bias.copy_(case['bias'])
+    source.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    original = ModelMixin.from_pretrained.__func__
+    produced = {}
+    def snapshot(model):
+        return {name: dict(parameter_id=id(value), pointer=value.data_ptr(), version=value._version,
+            requires_grad=value.requires_grad, grad=value.grad, summary=_loader_tensor_summary(value))
+            for name, value in model.named_parameters()}
+    def observe(cls, *args, **kwargs):
+        model = original(cls, *args, **kwargs)
+        produced.update(snapshot(model))
+        return model
+    monkeypatch.setattr(ModelMixin, 'from_pretrained', classmethod(observe))
+    loaded = type(source).from_pretrained(str(tmp_path / 'model'), use_default_loader=default_loader).eval()
+    final = loaded.gan_final_head.head3d[-1]
+    assert final.weight.data_ptr() % 64 == final.bias.data_ptr() % 64 == 0
+    with torch.no_grad():
+        # Match the local owned-storage reference, not a cross-CPU BLAS golden.
+        expected = torch.nn.functional.linear(case['input'], case['weight'], case['bias'])
+        assert torch.equal(final(case['input']), expected)
+    if default_loader:
+        current = snapshot(loaded)
+        changed = {name for name in current if current[name]['pointer'] != produced[name]['pointer']}
+        assert changed == {'gan_final_head.head3d.20.weight', 'gan_final_head.head3d.20.bias'}
+        assert sum(dict(loaded.named_parameters())[name].numel() * 4 for name in changed) == 132
+        for name, row in current.items():
+            before = produced[name]
+            assert all(row[key] == before[key] for key in ('parameter_id', 'version', 'requires_grad', 'grad'))
+            assert row['summary']['sha256'] == before['summary']['sha256']
+    else:
+        assert not produced, 'custom loader must not use Diffusers default loading'
+    assert not torch.cuda.is_initialized()
+
+
+def test_real_hosted_final_linear_ownership_keeps_parameter_gradient_version_rng_and_state():
+    import random
+    import torch
+    case = _hosted_final_linear_case()
+    model = _tiny_model().eval()
+    final = model.gan_final_head.head3d[-1]
+    with torch.no_grad():
+        final.weight.copy_(case['weight']); final.bias.copy_(case['bias'])
+    _shift_cpu_storage(final.weight, 5); _shift_cpu_storage(final.bias, 4)
+    final.weight.grad = torch.full_like(final.weight, .25)
+    final.bias.grad = torch.full_like(final.bias, .5)
+    optimizer = torch.optim.AdamW(final.parameters())
+    for parameter in final.parameters():
+        optimizer.state[parameter] = dict(step=torch.tensor(7.), exp_avg=torch.full_like(parameter, .1),
+                                          exp_avg_sq=torch.full_like(parameter, .2))
+    before = {name: (id(value), value.data_ptr(), value._version, value.requires_grad,
+                    value.grad, value.detach().clone()) for name, value in model.named_parameters()}
+    optimizer_before = {parameter: {key: (id(value), value.clone()) for key, value in state.items()}
+                        for parameter, state in optimizer.state.items()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    assert _provider()._own_cpu_pretrained_gan_linear(model, default_loader=True) is model
+    assert final.weight.data_ptr() % 64 == final.bias.data_ptr() % 64 == 0
+    for name, value in model.named_parameters():
+        identity, pointer, version, requires_grad, grad, values = before[name]
+        assert id(value) == identity and value._version == version and value.requires_grad == requires_grad
+        assert value.grad is grad and torch.equal(value, values)
+        if name not in ('gan_final_head.head3d.20.weight', 'gan_final_head.head3d.20.bias'):
+            assert value.data_ptr() == pointer
+    for parameter, state in optimizer.state.items():
+        for key, value in state.items():
+            assert id(value) == optimizer_before[parameter][key][0]
+            assert torch.equal(value, optimizer_before[parameter][key][1])
+    x = case['input'].requires_grad_()
+    w, b = case['weight'].requires_grad_(), case['bias'].requires_grad_()
+    expected = torch.nn.functional.linear(x, w, b)
+    actual = final(x)
+    assert torch.equal(actual, expected)
+    grad = torch.autograd.grad(actual.square().sum(), (x, final.weight, final.bias))
+    reference = torch.autograd.grad(expected.square().sum(), (x, w, b))
+    assert all(torch.equal(a, b) for a, b in zip(grad, reference, strict=True))
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
+    assert final.weight.grad is before['gan_final_head.head3d.20.weight'][4]
+    assert final.bias.grad is before['gan_final_head.head3d.20.bias'][4]
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('damage', ['weight_stride', 'bias_stride', 'weight_shape'])
+def test_cpu_final_linear_rejects_damaged_layout_before_any_parameter_change(damage):
+    import torch
+    model = _tiny_model().eval(); final = model.gan_final_head.head3d[-1]
+    _shift_cpu_storage(final.weight, 5); _shift_cpu_storage(final.bias, 4)
+    with torch.no_grad():
+        if damage == 'weight_stride':
+            final.weight.data = torch.zeros(64)[::2].view(1, 32)
+        elif damage == 'bias_stride':
+            final.bias.data = torch.zeros(2)[::2]
+        else:
+            final.weight.data = torch.zeros(1, 31)
+    before = {name: (id(value), value.data_ptr(), value._version, value.detach().clone())
+              for name, value in model.named_parameters()}
+    rng = torch.get_rng_state().clone()
+    with pytest.raises(ValueError, match='final GAN Linear layout'):
+        _provider()._own_cpu_pretrained_gan_linear(model, default_loader=True)
+    for name, value in model.named_parameters():
+        assert (id(value), value.data_ptr(), value._version) == before[name][:3]
+        assert torch.equal(value, before[name][3])
+    assert torch.equal(rng, torch.get_rng_state())
+
+
+@pytest.mark.parametrize('path', ['custom', 'nogan', 'bf16', 'mixed', 'meta', 'width64', 'aligned'])
+def test_nonselected_pretrained_final_linear_storage_is_unchanged(path):
+    import torch
+    model = _tiny_model().eval()
+    if path == 'nogan':
+        cls = type(model)
+        model = cls.from_config(model.config, is_use_gan=False, is_use_gan_final=False, is_use_gan_hooks=False)
+        assert not hasattr(model, 'gan_final_head')
+    elif path == 'bf16':
+        model = model.to(dtype=torch.bfloat16)
+    elif path == 'mixed':
+        model.patch_embedding.weight.data = model.patch_embedding.weight.to(dtype=torch.bfloat16)
+    elif path == 'meta':
+        model = model.to(device='meta')
+    elif path == 'width64':
+        model = type(model).from_config(model.config, gan_cond_map_dim=64)
+    if path == 'custom':
+        _shift_cpu_storage(model.gan_final_head.head3d[-1].weight, 5)
+        _shift_cpu_storage(model.gan_final_head.head3d[-1].bias, 4)
+    before = {name: (id(value), value._version, value.device, value.dtype,
+                    value.data_ptr() if value.device.type != 'meta' else None)
+              for name, value in model.named_parameters()}
+    assert _provider()._own_cpu_pretrained_gan_linear(model, default_loader=path != 'custom') is model
+    assert before == {name: (id(value), value._version, value.device, value.dtype,
+                            value.data_ptr() if value.device.type != 'meta' else None)
+                      for name, value in model.named_parameters()}
+    assert not torch.cuda.is_initialized()
+
+
+def test_pretrained_cpu_storage_policy_is_explicit_and_live_bound(monkeypatch):
+    provider = _provider()
+    cls = provider.load_reference_model_class(backend='torch-sdpa')
+    identity = provider.reference_model_identity(backend='torch-sdpa')
+    policy = identity['pretrained_storage_policy']
+    assert policy['name'] == 'cpu-fp32-final-gan-linear-owned64-v1'
+    assert policy['scope'] == 'DEFAULT_LOADER_FINAL_GAN_LINEAR_32_TO_1_ONLY'
+    assert policy['device'] == 'cpu' and policy['dtype'] == 'torch.float32'
+    assert policy['alignment_bytes'] == 64 and policy['max_parameter_bytes'] == 132
+    assert Path(policy['path']).resolve() == Path(provider.__file__).resolve()
+    assert policy['sha256'] == hashlib.sha256(Path(provider.__file__).read_bytes()).hexdigest()
+    wrapper = cls.from_pretrained.__func__
+    assert wrapper.__module__ == provider.__name__
+    assert wrapper.__wrapped__.__module__ == identity['model_module']
+    for change in ('loader', 'original', 'policy'):
+        with monkeypatch.context() as scoped:
+            if change == 'loader':
+                scoped.setattr(cls, 'from_pretrained', classmethod(lambda *args, **kwargs: None))
+            elif change == 'original':
+                scoped.setattr(wrapper, '__wrapped__', lambda *args, **kwargs: None)
+            else:
+                scoped.setattr(provider, '_own_cpu_pretrained_gan_linear', lambda *args, **kwargs: None)
+            for admission in (provider.reference_model_identity, provider.load_reference_model_class):
+                with pytest.raises(ValueError, match='pretrained storage policy binding'):
+                    admission(backend='torch-sdpa')
+        assert provider.reference_model_identity(backend='torch-sdpa') == identity
+
+
+@pytest.mark.parametrize('binding', ['native', 'policy', 'signature', 'code'])
+def test_pretrained_wrapper_actual_closure_rejects_unadmitted_delegate_and_recovers(tmp_path, binding):
+    import torch
+    provider = _provider()
+    source = _tiny_model().eval()
+    source.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    cls = type(source)
+    identity = provider.reference_model_identity(backend='torch-sdpa')
+    wrapper = cls.from_pretrained.__func__
+    code = wrapper.__code__
+    cells = dict(zip(code.co_freevars, wrapper.__closure__, strict=True))
+    original = cells[binding].cell_contents if binding != 'code' else code
+    reported_original = wrapper.__wrapped__
+    calls = []
+
+    def unadmitted(*args, **kwargs):
+        calls.append('SYNTHETIC_TEST_ONLY_UNADMITTED_DELEGATE')
+        raise AssertionError('unadmitted pretrained delegate executed')
+
+    class UnadmittedSignature:
+        bind = staticmethod(unadmitted)
+
+    rng = torch.get_rng_state().clone()
+    try:
+        if binding == 'code':
+            wrapper.__code__ = code.replace(co_name='unadmitted_pretrained_wrapper')
+        else:
+            cells[binding].cell_contents = UnadmittedSignature() if binding == 'signature' else unadmitted
+        # These are not legitimate source/model changes. The same wrapper and
+        # reported original remain, but its actual callee is no longer bound.
+        assert cls.from_pretrained.__func__ is wrapper and wrapper.__wrapped__ is reported_original
+        assert hashlib.sha256(Path(provider.__file__).read_bytes()).hexdigest() == \
+            identity['pretrained_storage_policy']['sha256']
+        for admission in (provider.reference_model_identity, provider.load_reference_model_class):
+            with pytest.raises(ValueError, match='pretrained storage policy binding'):
+                admission(backend='torch-sdpa')
+        assert calls == [] and torch.equal(rng, torch.get_rng_state())
+    finally:
+        if binding == 'code':
+            wrapper.__code__ = original
+        else:
+            cells[binding].cell_contents = original
+    assert provider.reference_model_identity(backend='torch-sdpa') == identity
+    loaded = cls.from_pretrained(str(tmp_path / 'model'), use_default_loader=True).eval()
+    assert all(torch.equal(value, loaded.state_dict()[name]) for name, value in source.state_dict().items())
+    assert loaded.gan_final_head.head3d[-1].weight.data_ptr() % 64 == 0
+    assert loaded.gan_final_head.head3d[-1].bias.data_ptr() % 64 == 0
+    assert calls == [] and not torch.cuda.is_initialized()
