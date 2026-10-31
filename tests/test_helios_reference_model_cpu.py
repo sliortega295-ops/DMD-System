@@ -246,7 +246,150 @@ def _loader_execution_metadata(model):
     )
 
 
-def _loader_output_failure(outputs, expected, model, reference_metadata):
+def _install_loader_gan_observer(model):
+    """Observe the original call once; hooks retain references, never compute."""
+    records, handles = [], []
+    for name, layer in model.gan_final_head.head3d.named_children():
+        def observe(module, args, output, name=name):
+            records.append((name, module, args, output))
+        handles.append(layer.register_forward_hook(observe))
+    return records, handles
+
+
+def _loader_tensor_summary(value):
+    """Post-forward CPU evidence, not a replacement input or reference."""
+    import torch
+    assert isinstance(value, torch.Tensor) and value.device.type == 'cpu'
+    flat = value.detach().contiguous().reshape(-1)
+    result = dict(dtype=str(value.dtype), shape=list(value.shape), stride=list(value.stride()),
+        storage_offset=value.storage_offset(), alignment_mod64=value.data_ptr() % 64,
+        sha256=hashlib.sha256(flat.view(torch.uint8).numpy().tobytes()).hexdigest())
+    if value.numel() <= 128:
+        def finite_json(item):
+            if isinstance(item, list):
+                return [finite_json(child) for child in item]
+            if isinstance(item, float) and not math.isfinite(item):
+                return str(item)
+            return item
+        result['small_values'] = finite_json(value.detach().tolist())
+    return result
+
+
+def _loader_gan_trace(records):
+    # All hashing/copies happen after the original forward and hook removal.
+    return [dict(name=name, type=type(layer).__module__ + '.' + type(layer).__qualname__,
+                 inputs=[_loader_tensor_summary(value) for value in args],
+                 parameters={key: _loader_tensor_summary(value)
+                             for key, value in layer.named_parameters(recurse=False)},
+                 output=_loader_tensor_summary(output))
+            for name, layer, args, output in records]
+
+
+def _loader_gan_comparison(actual, reference):
+    def values(value):
+        return {key: value[key] for key in ('dtype', 'shape', 'sha256')}
+    def layout(value):
+        return {key: value[key] for key in ('stride', 'storage_offset', 'alignment_mod64')}
+    def flat(value):
+        return [child for row in value for child in flat(row)] if isinstance(value, list) else [value]
+    census_equal = [(r['name'], r['type']) for r in actual] == [(r['name'], r['type']) for r in reference]
+    result = dict(census_equal=census_equal, actual_census=[r['name'] for r in actual],
+                  reference_census=[r['name'] for r in reference], layers=[], first_divergence=None)
+    if not census_equal:
+        result['first_divergence'] = dict(name=None, kind='census_difference')
+    for current, expected in zip(actual, reference):
+        inputs_equal = [values(v) for v in current['inputs']] == [values(v) for v in expected['inputs']]
+        parameters_equal = ({k: values(v) for k, v in current['parameters'].items()} ==
+                            {k: values(v) for k, v in expected['parameters'].items()})
+        output_equal = values(current['output']) == values(expected['output'])
+        row = dict(name=current['name'], type=current['type'], input_values_equal=inputs_equal,
+                   parameter_values_equal=parameters_equal, output_values_equal=output_equal,
+                   input_layouts_equal=([layout(v) for v in current['inputs']] ==
+                                        [layout(v) for v in expected['inputs']]),
+                   parameter_layout_differences=[k for k, v in current['parameters'].items()
+                       if k not in expected['parameters'] or layout(v) != layout(expected['parameters'][k])],
+                   output_layouts_equal=layout(current['output']) == layout(expected['output']))
+        if 'small_values' in current['output'] and 'small_values' in expected['output']:
+            a, b = flat(current['output']['small_values']), flat(expected['output']['small_values'])
+            if len(a) == len(b):
+                finite = [(x, y) for x, y in zip(a, b) if isinstance(x, (int, float)) and isinstance(y, (int, float))]
+                row['output_difference'] = dict(unequal=sum(x != y for x, y in zip(a, b)),
+                    max_abs=max((abs(x - y) for x, y in finite), default=None))
+        result['layers'].append(row)
+        if result['first_divergence'] is None and not (inputs_equal and parameters_equal and output_equal):
+            kind = ('input_value_difference' if not inputs_equal else
+                    'parameter_value_difference' if not parameters_equal else 'operator_output_difference')
+            result['first_divergence'] = dict(row, kind=kind)
+    return result
+
+
+def _loader_gan_counterfactual(model, records, reference_trace, fixture, checkpoint):
+    """Failure-only attribution; never replaces actual outputs or any assertion."""
+    import random
+    import torch
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    numpy = sys.modules.get('numpy')
+    numpy_rng = numpy.random.get_state() if numpy is not None else None
+    def state():
+        return [(kind, name, id(value), _loader_tensor_summary(value))
+                for kind, pairs in [('parameter', model.named_parameters()), ('buffer', model.named_buffers())]
+                for name, value in pairs]
+    before = state()
+    result = dict(diagnostic_only=True)
+    try:
+        # The source-qualified original custom loader is a diagnostic control,
+        # not a fallback for the failing default-loader result.
+        custom = type(model).from_pretrained(str(checkpoint), use_default_loader=False).eval()
+        observed, handles = _install_loader_gan_observer(custom)
+        try:
+            with torch.no_grad():
+                custom_outputs = custom(**fixture['inputs'], gan_mode=True)
+        finally:
+            for handle in handles:
+                handle.remove()
+        custom_trace = _loader_gan_trace(observed)
+        result['custom_copy'] = dict(matches_reference=all(torch.equal(a, b)
+            for a, b in zip(custom_outputs, fixture['outputs'], strict=True)),
+            comparison=_loader_gan_comparison(custom_trace, reference_trace), trace=custom_trace)
+        comparison = _loader_gan_comparison(_loader_gan_trace(records), reference_trace)
+        first = comparison['first_divergence']
+        if first is None or first['kind'] != 'operator_output_difference':
+            result['first_layer'] = dict(not_run='no first operator mismatch with equal input/parameter values')
+        else:
+            index = next(i for i, record in enumerate(records) if record[0] == first['name'])
+            name, layer, args, _ = records[index]
+            parameters = dict(layer.named_parameters())
+            buffers = dict(layer.named_buffers())
+            # Only this first mismatching operator's parameters are copied.
+            # No original Parameter, buffer, model binding or default is changed.
+            owned = {key: value.detach().clone(memory_format=torch.preserve_format)
+                     for key, value in parameters.items()}
+            with torch.no_grad():
+                replay = layer(*args)
+                aligned = torch.func.functional_call(layer, (owned, buffers), args, strict=True)
+            expected = reference_trace[index]['output']
+            replay_summary, aligned_summary = _loader_tensor_summary(replay), _loader_tensor_summary(aligned)
+            result['first_layer'] = dict(name=name, type=first['type'],
+                unmodified_replay_matches_reference=replay_summary['sha256'] == expected['sha256'],
+                owned_parameter_replay_matches_reference=aligned_summary['sha256'] == expected['sha256'],
+                cloned_parameter_bytes=sum(v.numel() * v.element_size() for v in owned.values()),
+                original_parameter_layouts={k: _loader_tensor_summary(v) for k, v in parameters.items()},
+                owned_parameter_layouts={k: _loader_tensor_summary(v) for k, v in owned.items()},
+                unmodified_replay=replay_summary, owned_parameter_replay=aligned_summary)
+    except Exception as error:
+        # A diagnostic failure cannot hide the original strict output failure.
+        result['diagnostic_error'] = dict(type=type(error).__name__, message=str(error))
+    finally:
+        torch.set_rng_state(rng)
+        random.setstate(python_rng)
+        if numpy_rng is not None:
+            numpy.random.set_state(numpy_rng)
+    result['original_model_unchanged'] = state() == before
+    return result
+
+
+def _loader_output_failure(outputs, expected, model, reference_metadata, *,
+                           reference_trace=None, actual_trace=None, counterfactual=None):
     """Keep strict failure, but preserve the failing process's actual evidence."""
     import torch
     differences = []
@@ -258,8 +401,12 @@ def _loader_output_failure(outputs, expected, model, reference_metadata):
                 actual_nonfinite=int(torch.count_nonzero(~torch.isfinite(actual))),
                 reference_nonfinite=int(torch.count_nonzero(~torch.isfinite(reference))),
                 max_abs=max_abs if math.isfinite(max_abs) else None))
-    return json.dumps(dict(error='strict fresh-process output mismatch', differences=differences,
-        reference=reference_metadata, actual=_loader_execution_metadata(model)), sort_keys=True, allow_nan=False)
+    details = dict(error='strict fresh-process output mismatch', differences=differences,
+                   reference=reference_metadata, actual=_loader_execution_metadata(model))
+    if reference_trace is not None and actual_trace is not None:
+        details['gan'] = dict(reference=reference_trace, actual=actual_trace,
+            comparison=_loader_gan_comparison(actual_trace, reference_trace), counterfactual=counterfactual)
+    return json.dumps(details, sort_keys=True, allow_nan=False)
 
 
 @pytest.mark.parametrize('nonfinite', [False, True])
@@ -451,13 +598,19 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
     import torch
     model = _tiny_model().eval()
     kwargs = _inputs(3)
-    with torch.no_grad():
-        expected = model(**kwargs, gan_mode=True)
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            expected = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    reference_trace = _loader_gan_trace(records)
     model.save_pretrained(tmp_path / "model", safe_serialization=True)
     assert (tmp_path / "model/config.json").is_file()
     assert (tmp_path / "model/diffusion_pytorch_model.safetensors").is_file()
     torch.save({"inputs": kwargs, "outputs": expected, "state": model.state_dict(),
-                "buffers": dict(model.named_buffers()),
+                "buffers": dict(model.named_buffers()), "gan_trace": reference_trace,
                 "execution_metadata": _loader_execution_metadata(model)}, tmp_path / "expected.pt")
     _fresh('''
         from pathlib import Path
@@ -474,13 +627,26 @@ def test_normal_model_save_pretrained_and_fresh_process_from_pretrained(tmp_path
         actual = model.state_dict()
         assert actual.keys() == fixture["state"].keys()
         assert all(torch.equal(v, actual[n]) for n, v in fixture["state"].items())
-        with torch.no_grad():
-            outputs = model(**fixture["inputs"], gan_mode=True)
+        # The observer itself only appends Python references: no tensor
+        # summaries, clones or counterfactual forwards execute on this path.
+        from test_helios_reference_model_cpu import _install_loader_gan_observer
+        records, handles = _install_loader_gan_observer(model)
+        try:
+            with torch.no_grad():
+                outputs = model(**fixture["inputs"], gan_mode=True)
+        finally:
+            for handle in handles:
+                handle.remove()
+        assert [row[0] for row in records] == [row['name'] for row in fixture['gan_trace']]
         def failure_details():
-            # Import diagnostics only after a genuine original forward failure;
-            # do not change allocator/import state before computing its outputs.
-            from test_helios_reference_model_cpu import _loader_output_failure
-            return _loader_output_failure(outputs, fixture["outputs"], model, fixture["execution_metadata"])
+            # Numerical diagnostics run only after a genuine strict failure.
+            # Neither custom-copy nor layer replay replaces the actual result.
+            from test_helios_reference_model_cpu import (
+                _loader_gan_trace, _loader_gan_counterfactual, _loader_output_failure,
+            )
+            return _loader_output_failure(outputs, fixture["outputs"], model, fixture["execution_metadata"],
+                reference_trace=fixture['gan_trace'], actual_trace=_loader_gan_trace(records),
+                counterfactual=_loader_gan_counterfactual(model, records, fixture['gan_trace'], fixture, root / 'model'))
         assert len(outputs) == len(fixture["outputs"])
         assert all(torch.equal(a, b) for a, b in zip(outputs, fixture["outputs"])), \
             failure_details()
@@ -556,4 +722,118 @@ def test_full_class_true_peft_original_critic_helper_adam_and_restart(tmp_path):
     assert equal(expected_loss, loss) and equal(expected_logs, logs)
     assert equal(expected, pack_state(fresh_state)) and equal(expected_rng, rng_state())
     assert native_after == {k: v for k, v in sys.modules.items() if k == "helios" or k.startswith("helios.")}
+    assert not torch.cuda.is_initialized()
+
+
+def test_loader_gan_trace_observes_actual_forward_without_mutation():
+    """Actual original GAN trace; neither a hosted reproduction nor a fix."""
+    import random
+    import torch
+    model = _tiny_model().eval()
+    kwargs = _inputs(3)
+    with torch.no_grad():
+        expected = model(**kwargs, gan_mode=True)
+    before = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    buffers = {name: value.detach().clone() for name, value in model.named_buffers()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            actual = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    trace = _loader_gan_trace(records)
+    assert all(torch.equal(a, b) for a, b in zip(actual, expected, strict=True))
+    assert [row['name'] for row in trace] == [str(index) for index in range(21)]
+    assert [row['type'] for row in trace] == [
+        type(layer).__module__ + '.' + type(layer).__qualname__
+        for layer in model.gan_final_head.head3d]
+    assert trace[0]['inputs'][0]['shape'] == [3, 16, 9, 16, 16]
+    assert 'small_values' not in trace[0]['output']
+    assert trace[-1]['output']['small_values'] == actual[1].tolist()
+    assert trace[-1]['parameters']['weight']['shape'] == [1, 32]
+    assert all(not layer._forward_hooks for layer in model.gan_final_head.head3d)
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
+    assert all(torch.equal(value, dict(model.named_buffers())[name]) for name, value in buffers.items())
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
+    assert _loader_gan_comparison(trace, trace)['first_divergence'] is None
+    assert not torch.cuda.is_initialized()
+
+
+def test_loader_gan_failure_trace_and_counterfactual_keep_real_strict_failure(tmp_path):
+    """Synthetic one-ulp hook fault in the actual original class, CPU only."""
+    import copy
+    import random
+    import torch
+    model = _tiny_model().eval()
+    kwargs = _inputs(3)
+    reference_records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            expected = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+    reference_trace = _loader_gan_trace(reference_records)
+    metadata = _loader_execution_metadata(model)
+    model.save_pretrained(tmp_path / 'model', safe_serialization=True)
+    fixture = dict(inputs=kwargs, outputs=expected, gan_trace=reference_trace)
+    before = {name: value.detach().clone() for name, value in model.state_dict().items()}
+    buffers = {name: value.detach().clone() for name, value in model.named_buffers()}
+    rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+
+    # Fault injection belongs only to this diagnostic canary. The strict
+    # assertion below must continue to fail; no golden/tolerance is changed.
+    def one_ulp_fault(module, args, output):
+        changed = output.clone()
+        changed[0, 0] = torch.nextafter(changed[0, 0], torch.full_like(changed[0, 0], float('inf')))
+        return changed
+    fault = model.gan_final_head.head3d[-1].register_forward_hook(one_ulp_fault)
+    records, handles = _install_loader_gan_observer(model)
+    try:
+        with torch.no_grad():
+            actual = model(**kwargs, gan_mode=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+        fault.remove()
+    actual_trace = _loader_gan_trace(records)
+    comparison = _loader_gan_comparison(actual_trace, reference_trace)
+    assert comparison['census_equal'] and comparison['first_divergence']['name'] == '20'
+    assert comparison['first_divergence']['kind'] == 'operator_output_difference'
+    assert comparison['first_divergence']['input_values_equal']
+    assert comparison['first_divergence']['parameter_values_equal']
+    assert comparison['first_divergence']['output_difference']['unequal'] == 1
+
+    # Separately prove that summaries distinguish changed inputs/parameters
+    # from the observed operator-output difference and from layout alone.
+    wrong_input = copy.deepcopy(actual_trace)
+    wrong_input[-1]['inputs'][0]['sha256'] = '0' * 64
+    assert _loader_gan_comparison(wrong_input, reference_trace)['first_divergence']['kind'] == 'input_value_difference'
+    wrong_parameter = copy.deepcopy(actual_trace)
+    wrong_parameter[-1]['parameters']['weight']['sha256'] = '0' * 64
+    assert _loader_gan_comparison(wrong_parameter, reference_trace)['first_divergence']['kind'] == 'parameter_value_difference'
+    layout_only = copy.deepcopy(reference_trace)
+    layout_only[-1]['parameters']['weight']['alignment_mod64'] = 20
+    layout_result = _loader_gan_comparison(layout_only, reference_trace)
+    assert layout_result['first_divergence'] is None and layout_result['layers'][-1]['parameter_layout_differences'] == ['weight']
+
+    counterfactual = _loader_gan_counterfactual(model, records, reference_trace, fixture, tmp_path / 'model')
+    assert counterfactual['diagnostic_only'] and counterfactual['custom_copy']['matches_reference']
+    assert counterfactual['first_layer']['name'] == '20'
+    assert counterfactual['first_layer']['unmodified_replay_matches_reference']
+    assert counterfactual['first_layer']['owned_parameter_replay_matches_reference']
+    assert counterfactual['first_layer']['cloned_parameter_bytes'] == 132
+    assert counterfactual['original_model_unchanged']
+    details = _loader_output_failure(actual, expected, model, metadata,
+        reference_trace=reference_trace, actual_trace=actual_trace, counterfactual=counterfactual)
+    with pytest.raises(AssertionError, match='strict fresh-process output mismatch'):
+        assert all(torch.equal(a, b) for a, b in zip(actual, expected, strict=True)), details
+    decoded = json.loads(details)
+    assert decoded['gan']['comparison'] == comparison
+    assert decoded['gan']['counterfactual']['first_layer']['unmodified_replay_matches_reference']
+    assert all(torch.equal(value, model.state_dict()[name]) for name, value in before.items())
+    assert all(torch.equal(value, dict(model.named_buffers())[name]) for name, value in buffers.items())
+    assert torch.equal(rng, torch.get_rng_state()) and python_rng == random.getstate()
     assert not torch.cuda.is_initialized()
