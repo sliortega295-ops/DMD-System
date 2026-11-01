@@ -1,6 +1,6 @@
 interface:
   display_name: "DMD Workload Optimizer"
   short_description: "Reuse experience, optimize bottlenecks, validate the final result"
-  default_prompt: "Use $dmd-system-optimizer in its lightweight default workflow: reuse existing code and experience, improve the actual bottleneck, screen changes with quick checks and timing, and validate the final combination. Use my project's runner and WORK_LOG; do not require a new ledger or exact budget forms. Respect explicit resource limits and stop requests."
+  default_prompt: "Use $dmd-system-optimizer in its lightweight default workflow: reuse existing code and experience, improve the actual bottleneck, screen changes with quick checks and timing, and validate the final combination. Use my project's runner and WORK_LOG; do not require a new ledger or exact budget forms. Consult available authorized Codex native memory/history and WORK_LOG; do not require a separate private Memory. Respect explicit resource limits and stop requests."
 policy:
   allow_implicit_invocation: true

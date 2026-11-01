@@ -21,6 +21,11 @@ restarting intake every round. Missing GPU access blocks GPU work, not source
 inspection or applicable CPU checks. Missing budget fields do not block otherwise
 authorized work; missing resource permission does.
 
+At a new direction, a resumed task or repeated failure, consult available,
+authorized Codex native memory/history and the project's WORK_LOG. Treat remembered
+claims as leads and check their code/logs. Missing native memory is not a blocker;
+do not create or import a separate private Memory store by default.
+
 First check whether the project already has the desired fast path and whether it
 actually executes. Inspect a few relevant successes AND failures from the library,
 then read the implementation. Prefer direct reuse or a small adaptation. Check
@@ -80,14 +85,24 @@ retry an unchanged failure indefinitely, or keep running just to fill a test cou
 
 ## Retrieve and remember
 
-`$SKILL` is the installed skill's absolute path:
+`$SKILL` is the installed skill's absolute path. First find current framework
+entries, then use historical experience to reason about applicability:
+
+    python3 "$SKILL/scripts/dmd_knowledge.py" navigate --query "SD1.5 DMD2 resident tree fused Adam" --repo /path/to/DMD-System
+
+[Current navigation](references/current-navigation.md) is derived from the existing model,
+strategy and profile registries plus recipes, not a second hand-maintained model
+list. Without --repo it returns a clearly labeled bundled source snapshot, not a
+claim about the user's installed framework. `recall` includes these entries too.
 
     python3 "$SKILL/scripts/dmd_knowledge.py" recall --brief --query "参数反复上卡"
 
 Expand a relevant result with `case --id ...` or follow its code using
 `locate --case ... --repo /path/to/DMD-System`. Add `--store` only for an existing,
-authorized private store. `--context` is optional, not an intake form. Read enough
-positive and negative cases to inform the next decision, not the whole library.
+authorized private store. `--context` is optional, not an intake form. Brief recall
+defaults to three relevant entries per outcome and reports omitted counts and
+correction warnings. Use --case-offset N to page, --all-cases for all brief IDs,
+or case --id for the complete record. Read enough positive and negative cases to inform the next decision, not the whole library.
 Unknown correctness requires investigation; a correctness conflict forbids using
 that implementation as-is. Performance differences affect expected value, not
 mathematical validity. Inspect intervention direction and the object being retained:
@@ -101,8 +116,10 @@ user explicitly requests historical investigation. Use current recipes and the
 
 Record each useful outcome in WORK_LOG: change, code/config, actual command and
 output paths, checks, timings, approximate effort, decision and retry conditions.
-The optional [round note](assets/proposal.md) is a convenience. For searchable
-memory, use `dmd_knowledge.py record` after saving real results; see
+The optional [round note](assets/proposal.md) is a convenience. Personal continuity
+belongs to available Codex native memory/history; WORK_LOG keeps experiment facts.
+Only for an already authorized optional store, best-effort `record` at a useful
+milestone can index reusable results; see
 [Memory and reuse](references/reuse-memory.md). Indexing is not required for delivery.
 If it fails, preserve the error and notes, inspect trusted source directly and
 continue safe work. Do not erase history or treat a broken store as an empty one.

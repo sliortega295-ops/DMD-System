@@ -84,7 +84,7 @@ class RetrievalRegressionTests(unittest.TestCase):
     def test_brief_retains_all_case_ids_groups_and_conflicts_with_less_output(self):
         result = knowledge.recall("相同输入的投影反复计算，而且有的 rank 长时间等待",
                                   {"grad_mode": "grad_enabled"}, limit=4)
-        brief = knowledge.brief_recall(result)
+        brief = knowledge.brief_recall(result, all_cases=True)
         for full, short in zip(result["matches"], brief["matches"]):
             for group in full["cases"]:
                 self.assertEqual([c["id"] for c in full["cases"][group]], [c["id"] for c in short["cases"][group]])
