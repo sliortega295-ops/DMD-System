@@ -73,7 +73,7 @@ def _assignments(tree):
 
 def build_index(repo, revision=None):
     root = Path(repo).resolve()
-    inputs = {}
+    inputs, warnings = {}, []
     def read(relative):
         path = _path(root, relative)
         inputs[relative] = sha_file(path)
@@ -92,8 +92,13 @@ def build_index(repo, revision=None):
                     values = [_value(arg) for arg in call.args]
                     capabilities.append(dict(id=_value(key), category=values[0], implementation=values[1],
                         applicability=values[2], effects=values[3], evidence=values[4]))
-    test_sources = {path.relative_to(root).as_posix(): _path(root, path.relative_to(root)).read_text(encoding="utf-8")
-                    for path in sorted((root / "tests").glob("test_*.py"))}
+    test_sources = {}
+    for path in sorted((root / "tests").glob("test_*.py")):
+        relative = path.relative_to(root).as_posix()
+        try:
+            test_sources[relative] = _path(root, relative).read_text(encoding="utf-8")
+        except (OSError, ValueError, UnicodeError) as exc:
+            warnings.append({"path": relative, "error": str(exc), "action": "CHECK_NOT_INDEXED"})
     rows = []
     for folder in sorted((root / "recipes").iterdir()):
         if not folder.is_dir() or folder.is_symlink():
@@ -103,10 +108,23 @@ def build_index(repo, revision=None):
                "implementations": [], "profiles": [], "checks": [], "tests_run": False}
         for path in sorted(folder.glob("training*.json")):
             relative = path.relative_to(root).as_posix()
-            config = json.loads(read(relative))
-            if config.get("schema_version") != "distillschedule.training.v1":
+            try:
+                config = json.loads(read(relative))
+                require(isinstance(config, dict), "recipe must be a JSON object")
+                if config.get("schema_version") != "distillschedule.training.v1":
+                    continue
+                model, algorithm, execution = (config.get(k, {}) for k in ("model", "algorithm", "execution"))
+                require(all(isinstance(value, dict) for value in (model, algorithm, execution)),
+                        "model, algorithm and execution must be objects")
+                require(isinstance(model.get("parameters", {}), dict), "model.parameters must be an object")
+                profile = model.get("parameters", {}).get("optimization_profile")
+                require(profile is None or isinstance(profile, str), "optimization profile must be a string")
+                for value in (model, algorithm):
+                    require(all(value.get(k) is None or isinstance(value[k], str)
+                                for k in ("name", "workload", "factory")), "recipe identities must be strings")
+            except (OSError, ValueError, TypeError, UnicodeError) as exc:
+                warnings.append({"path": relative, "error": str(exc), "action": "RECIPE_SKIPPED"})
                 continue
-            model, algorithm, execution = (config.get(k, {}) for k in ("model", "algorithm", "execution"))
             profile = model.get("parameters", {}).get("optimization_profile")
             mode = "optimized" if profile or "optimized" in path.name else "reference" if (
                 execution.get("mode") == "reference" or "reference" in path.name) else "other"
@@ -139,7 +157,13 @@ def build_index(repo, revision=None):
         row["profiles"] = list({p["id"]: p for p in row["profiles"]}.values())
         guide = folder / "README.md"
         row["guide"] = guide.relative_to(root).as_posix() if guide.is_file() else "docs/guides/support_matrix.md"
-        row["title"] = read(row["guide"]).splitlines()[0].lstrip("# ")[:160]
+        try:
+            lines = read(row["guide"]).splitlines()
+            require(bool(lines) and bool(lines[0].strip("# ")), "guide has no title")
+            row["title"] = lines[0].lstrip("# ")[:160]
+        except (OSError, ValueError, UnicodeError) as exc:
+            row["title"] = folder.name
+            warnings.append({"path": row["guide"], "error": str(exc), "action": "FOLDER_NAME_USED"})
         row["strategy_catalog"] = STRATEGIES
         row["has_optimized_recipe"] = bool(row["recipes"]["optimized"])
         # Exact module boundaries avoid matching dmd2 tests as dmd tests.
@@ -166,7 +190,8 @@ def build_index(repo, revision=None):
             pass
     require(revision is None or re.fullmatch(r"[0-9a-f]{40}", revision), "invalid source revision")
     return {"schema_version": 1, "repository": REPOSITORY, "source_revision": revision,
-            "source_hashes": inputs, "workflows": rows, "capabilities": capabilities, "automatic_application": False,
+            "source_hashes": inputs, "workflows": rows, "capabilities": capabilities,
+            **({"warnings": warnings} if warnings else {}), "automatic_application": False,
             "notice": "Derived recipe/code/test navigation, not a speed guarantee or new validation. Check current guards and fill asset placeholders."}
 
 
@@ -182,31 +207,63 @@ def lookup(query, repo=None, limit=4, index=INDEX):
         else:
             data, source = load(index), "BUNDLED_SNAPSHOT_NOT_CURRENT_TREE"
         require(data.get("schema_version") == 1, "unsupported navigation index")
-        normalized_query = re.sub(r"(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])", " ", query)
-        query_terms = {t for t in tokens(normalized_query.replace("-", " ").replace("_", " ").replace(".", " ")) if len(t) > 1 and not t.isdigit()}
+        def terms(value):
+            value = value.lower().replace("官方", " official ")
+            # Keep versions/short IDs intact: W4 is not the stopword "w".
+            value = re.sub(r"(?<=[a-z0-9])[.](?=[0-9])", "", value)
+            found = tokens(value.replace("-", " ").replace("_", " "))
+            return found | set(re.findall(r"\b([a-z]{3,})[0-9]", value))
+
+        query_terms = {t for t in terms(query) if len(t) > 1 and not t.isdigit()}
+        requested_workloads = {w.upper() for w in re.findall(r"(?<![a-z0-9])w[0-9]+(?![a-z0-9])", query.lower())}
         matches = []
         for row in data["workflows"]:
-            identity = " ".join([row["id"], row.get("title", ""), *row["models"]]).lower().replace("_", " ").replace("-", " ")
-            corpus = json.dumps({k: row[k] for k in ("id", "models", "algorithms", "profiles", "recipes", "implementations")}, ensure_ascii=False).lower().replace("_", " ").replace("-", " ")
-            identity_hits = sum(t in identity for t in query_terms)
+            if requested_workloads and not requested_workloads.intersection(row["models"]):
+                continue
+            identity = " ".join([row["id"], row.get("title", ""), *row["models"]])
+            identity = re.sub(r"\(not [^)]*\)", "", identity, flags=re.I)
+            corpus = json.dumps({k: row[k] for k in ("id", "models", "algorithms", "profiles", "recipes", "implementations")}, ensure_ascii=False)
+            identity_hits = len(query_terms & terms(identity))
+            compact_identity = re.sub(r"[^a-z0-9]", "", identity.lower())
             version_names = re.findall(r"[a-z]+[0-9]+(?:[.][0-9]+)*", query.lower())
-            compact_identity = re.sub(r"[^a-z0-9]", "", identity)
             exact_model = any(re.sub(r"[^a-z0-9]", "", name) in compact_identity for name in version_names)
-            score = 32 * exact_model + 8 * identity_hits + sum(t in corpus for t in query_terms)
-            if not query_terms or identity_hits or score >= 3:
-                matches.append({**row, "score": score})
+            score = 32 * exact_model + 8 * identity_hits + len(query_terms & terms(corpus))
+            if not query.strip() or score > 0 and (identity_hits or exact_model or score >= 3):
+                generic = {"official", "original", "native", "reference", "dmd", "ar",
+                           "video", "image", "training", "flow", "gan", "t2v", "t2i"}
+                specific = bool((query_terms & terms(identity)) - generic) or exact_model
+                matches.append({**row, "score": score, "_specific_identity": specific})
+        if any(row["_specific_identity"] for row in matches):
+            matches = [row for row in matches if row["_specific_identity"]]
+        for row in matches:
+            row.pop("_specific_identity")
         matches.sort(key=lambda r: (-r["score"], r["id"]))
-        caps = sorted(data.get("capabilities", []), key=lambda c: -sum(t in json.dumps(c).lower().replace("_", " ").replace("-", " ") for t in query_terms))
-        caps = [c for c in caps if query_terms and any(t in json.dumps(c).lower().replace("_", " ").replace("-", " ") for t in query_terms)][:3]
+        selected = matches[:limit]
+
+        def compatible_capability(capability):
+            # A training-owner-specific capability must point at this recipe's
+            # implementation family. Shared Program capabilities remain references.
+            owners = re.findall(r"distillschedule\.training\.(?:official_optimizations\.)?([a-z0-9_]+)",
+                                capability.get("implementation", ""))
+            if not owners:
+                return True
+            modules = {Path(p).stem for row in selected for p in row["implementations"]}
+            return any(owner == module or owner.startswith(module + "_")
+                       for owner in owners for module in modules)
+
+        caps = [(len(query_terms & terms(json.dumps(c, ensure_ascii=False))), c)
+                for c in data.get("capabilities", []) if compatible_capability(c)]
+        caps = [c for score, c in sorted(caps, key=lambda pair: (-pair[0], pair[1]["id"])) if score > 0][:3]
         shown = []
         for row in matches[:limit]:
             shown.append({**row, "checks": row["checks"][:4], "check_count": row.get("check_count", len(row["checks"])),
                 "recipe_counts": {k: len(v) for k, v in row["recipes"].items()},
                 "recipes": {k: v[:4] for k, v in row["recipes"].items()}})
         return {"status": source, "source_revision": data.get("source_revision"),
+                "warnings": data.get("warnings", []),
                 "matches": shown, "related_capabilities_require_recipe_check": caps, "total_matches": len(matches), "truncated": len(matches) > limit,
                 "automatic_application": False, "notice": data["notice"]}
-    except (OSError, ValueError, TypeError, KeyError, SyntaxError) as exc:
+    except (OSError, ValueError, TypeError, KeyError, SyntaxError, AttributeError, IndexError) as exc:
         return {"status": "NAVIGATION_UNAVAILABLE", "matches": [], "warning": str(exc),
                 "automatic_application": False, "read_next": "Read current recipes/ and docs/guides/support_matrix.md; historical recall remains usable."}
 
