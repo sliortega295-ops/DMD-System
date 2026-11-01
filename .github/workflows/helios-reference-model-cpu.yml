@@ -7,6 +7,7 @@ on:
       - 'tests/test_helios_reference_model_cpu.py'
       - 'tests/test_helios_reference_compatibility.py'
       - 'tests/test_helios_default_loader_diagnostics.py'
+      - 'tests/test_cpu_blas_reproducibility.py'
       - 'tests/test_helios_step_owner_cpu.py'
       - 'tests/test_training_helios_public_cpu.py'
       - 'tests/test_training_helios_public_inference_cpu.py'
@@ -52,6 +53,9 @@ jobs:
       TRANSFORMERS_OFFLINE: '1'
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
+      # Safetensors can change storage alignment without changing any values.
+      # Pin CPU BLAS arithmetic for bitwise tests, not production benchmarks.
+      MKL_CBWR: 'COMPATIBLE'
       PYTHONDONTWRITEBYTECODE: '1'
       HELIOS_PUBLIC_REQUIRE_STACK: '1'
       WAN_PUBLIC_REQUIRE_STACK: '1'
@@ -71,7 +75,7 @@ jobs:
           python -m pip install --no-cache-dir --constraint "$RUNNER_TEMP/helios-cpu-constraints.txt" -e '.[train,test,test-helios-model]'
           python -c "import torch; assert torch.version.cuda is None, 'CPU CI must not install a CUDA Torch build'; print(torch.__version__)"
       - name: Reference sampler and exact default-loader diagnostics
-        run: python -m pytest -q tests/test_helios_reference_compatibility.py tests/test_helios_default_loader_diagnostics.py --junitxml=helios-reference-compatibility.xml
+        run: python -m pytest -q tests/test_cpu_blas_reproducibility.py tests/test_helios_reference_compatibility.py tests/test_helios_default_loader_diagnostics.py --junitxml=helios-reference-compatibility.xml
       - name: Original Wan Generator import, export and fresh-process inference
         env:
           R217_REQUIRE_UPSTREAM: '1'
