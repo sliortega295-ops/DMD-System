@@ -1,197 +1,111 @@
 # DMD-System
 
-A unified framework for **image, video and audio–video distribution-matching
-distillation**. Choose a model, a distillation workflow and an execution
-policy; use one lifecycle for data preparation, real continuous
-updates, checkpoint recovery, generation and inference export.
+Distribution-matching distillation for image, video and audio–video models.
+Train, resume, export and generate through the `distillctl` command; choose a
+model-specific execution strategy without changing the training algorithm.
+The Python package is named `distillschedule`.
 
-The Python package is **`distillschedule`** and the user command is
-**`distillctl`**. Algorithm mathematics and native iteration clocks remain
-algorithm-owned. Physical placement, state lifetimes and legal execution order
-use the shared Program, distributed backends and measured planner.
+[Documentation](docs/README.md) · [Recipes](recipes/README.md) ·
+[Supported configurations](docs/guides/support_matrix.md) ·
+[Optimizer Skill](docs/guides/optimizer_skill.md) · [Contributing](CONTRIBUTING.md)
 
-**Current integration:** the six native workloads, official Self-Forcing and
-SD1.5/SDXL DMD2, plus LTX, FLUX, Qwen-Image, Wan2.2 and HunyuanVideo adapters
-are shipped together. See the [framework feature overview](docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
-and choose a recipe below.
+**Research software:** model support, hardware requirements and validation vary
+by recipe. Start with the [support matrix](docs/guides/support_matrix.md) and its
+linked validation records before a large training run.
 
-## Choose your starting point
+## Get started
 
-| Goal | Start here |
-| --- | --- |
-| Optimize an existing project with Codex | [Install the standalone Skill](docs/guides/optimizer_skill.md); Python standard library only, no trainer migration or Torch install |
-| Train with DMD-System | Continue with installation below, then choose a [model recipe](recipes/README.md) |
-| Extend the framework | [Architecture and ownership](docs/architecture/framework.md), then [extension guide](docs/guides/extensions.md) |
-
-## Install and discover
+Use Python 3.10 or later in a dedicated environment. From a source checkout:
 
 ```sh
-python -m pip install -e '.[train]'
+git clone https://github.com/sliortega295-ops/DMD-System.git
+cd DMD-System
+python -m pip install -e '.[train,media]'
 distillctl doctor
 distillctl models list
-distillctl algorithms list
-distillctl strategies list
-distillctl capabilities list
-distillctl workloads list
 ```
 
-A base `pip install .` supports lightweight JSON configuration and discovery
-without Torch, CUDA initialization or model downloads. `.[config]` adds YAML;
-`.[media]` adds NumPy/Pillow; `.[train]` adds the common training dependencies.
-Existing FFmpeg/FFprobe decode local video containers. Models and datasets are
-always explicit operator-supplied assets.
+This installs the common training dependencies. For a particular pretrained
+model, use its [recipe](recipes/README.md) and
+[model-family environment](docs/guides/model_families.md); some dependency
+versions conflict and need separate environments. Weights and datasets are
+supplied separately. The public training API requires PyTorch 2.10 or later.
 
-**Use separate model environments.** SD/DMD2, official Self-Forcing, original
-Wan/LiveWan, Helios helpers and LTX/Gemma have distinct pinned dependency lanes.
-Do not install all extras together. See [installation and model families](docs/guides/model_families.md).
+### Try the training lifecycle on CPU
 
-## A complete offline training lifecycle
-
-This executable example uses RGB frame files, WAV audio, text and tiny models
-to walk through real gradient/AdamW updates, recovery and generation.
+The following example needs no model download. It trains small random networks
+on generated media to demonstrate the API, not pretrained generation quality.
 
 ```sh
 DEMO="$(mktemp -d -t dmd-system.XXXXXX)"
 python -m distillschedule.examples.tiny_av --output "$DEMO" --samples 6
-
 distillctl data prepare "$DEMO/raw/manifest.json" --output "$DEMO/prepared"
-distillctl doctor --config "$DEMO/train.json"
 distillctl train "$DEMO/train.json"
-
 CP="$DEMO/run/checkpoints/cycle-000004"
 distillctl train "$DEMO/train.json" --resume "$CP" --cycles 6 --output "$DEMO/resumed"
-distillctl evaluate "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/generated"
 distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported"
-
-# A genuinely new seventh record, not part of the six-record training input.
-NEW="$DEMO/new-inputs"
-python -m distillschedule.examples.tiny_av --output "$NEW" --samples 7
-distillctl data prepare "$NEW/raw/manifest.json" --output "$NEW/prepared"
-distillctl generate "$DEMO/train.json" --weights "$DEMO/exported" \
-  --prepared "$NEW/prepared/manifest.json" --sample-index 6 --output "$DEMO/new-generated"
 ```
 
-Configuration has five independent sections: **model, data, algorithm,
-execution, trainer**. Data can be raw images/video/audio/text, prompt-only, or
-already encoded native features; model-specific encoders prepare features
-offline. Independent generator/guidance/real-image streams keep their own
-sample progress.
+Continue with the [end-to-end tutorial](examples/framework/README.md) for
+new-input generation, or choose a model below. See
+[installation](docs/guides/installation.md) for CPU-only dependencies and
+[troubleshooting](docs/guides/troubleshooting.md) for common setup issues.
 
-A training checkpoint saves actual roles, optimizer/scheduler/EMA state, native
-and public clocks, RNG, input progress and versions. Recovery is at complete
-cycle boundaries with the same topology.
-Portable inference export contains current Student/Generator weights and the
-required inference components.
-`generate --weights` uses new explicit inputs and does not need old training
-artifacts. Outputs are actual images, video frames, WAV audio or AV where the
-adapter supplies decoders. Native latent export is available separately.
+## Models and workflows
 
-Read [data formats](docs/guides/data.md), [training and recovery](docs/guides/training.md)
-and [the end-to-end tutorial](examples/framework/README.md).
+| Workflow | Recipes |
+| --- | --- |
+| Official DMD2 | [SD1.5](recipes/dmd2_sd15/README.md), [SDXL](recipes/dmd2_sdxl/README.md) |
+| Official Self-Forcing | [Causal Wan](recipes/self_forcing_official/README.md) |
+| Flow DMD: images | [FLUX.2 klein Base 4B](recipes/flux_dmd/README.md), [Qwen-Image](recipes/qwen_image_dmd/README.md) |
+| Flow DMD: video | [Wan2.2 TI2V-5B](recipes/wan22_dmd/README.md), [HunyuanVideo-1.5](recipes/hunyuan_video_dmd/README.md) |
+| Flow DMD: audio–video | [LTX-2.5](recipes/ltx25/README.md) |
+| Hierarchical video DMD | [Wan1.3B / W1](recipes/wan_ar/README.md), [Helios No-GAN / W2](recipes/helios_nogan/README.md), [Helios GAN / W3](recipes/helios_gan/README.md) |
+| Cross-scale Self-Forcing | [LiveWan / W4](recipes/self_forcing/README.md) |
+| H3 audio–video DMD | [Full-sequence Grid1000 / W5](recipes/h3_fullseq/README.md), [Autoregressive / W6](recipes/h3_ar/README.md) |
 
-## Models and algorithms
+W1–W6 identify the original benchmark protocols, not the limit of model support.
+Official Self-Forcing and cross-scale LiveWan have separate recipes. H3
+Grid1000 uses an approximate schedule; H3 AR keeps continuous sigma sampling.
+The [support matrix](docs/guides/support_matrix.md) distinguishes available
+execution paths and the scope of their tests.
 
-| Integration | Reference workflow | Entry and scope |
-| --- | --- | --- |
-| SD1.5 | Official DMD2 single-step; optional original GAN branch | [Recipe and local image/prompt intake](recipes/dmd2_sd15/README.md) |
-| SDXL | Official DMD2 four-step and explicitly initialized single-step; dual CLIP/added conditions | [Recipe](recipes/dmd2_sdxl/README.md) |
-| Official Self-Forcing Wan | Native causal chunk rollout, random gradient exit, KV cache, DMD loss and EMA/update clocks | [Recipe](recipes/self_forcing_official/README.md) |
-| LTX-2.5 | Actual LTX AV model/codecs/Gemma with reusable No-GAN flow DMD; full parameters or unmerged LoRA | [Recipe; start with LoRA](recipes/ltx25/README.md) |
-| FLUX.2 klein Base 4B T2I | Native Flux2/Qwen3/VAE; explicit flow DMD with unmerged LoRA | [Recipe](recipes/flux_dmd/README.md) |
-| Original Qwen-Image T2I | Native QwenImage/Qwen2.5-VL/VAE and masked text conditions; explicit flow DMD | [Recipe](recipes/qwen_image_dmd/README.md) |
-| Wan2.2 TI2V-5B T2V | Native Wan/UMT5/VAE; flow DMD | [Recipe](recipes/wan22_dmd/README.md) |
-| HunyuanVideo-1.5 T2V | Native Hunyuan15, dual text and temporal VAE; explicit flow DMD | [Recipe](recipes/hunyuan_video_dmd/README.md) |
+For official SD1.5 DMD2 and Self-Forcing, the
+[optimized training guide](docs/guides/official_optimized_training.md) includes
+reference/optimized configurations and source-bound performance results.
+Other recipes document their own configurations and measurements.
 
-Start with a family recipe and choose its execution policy; data
-preparation, `train`, `train --resume`, `export` and `generate` use the same
-lifecycle. The common-flow LoRA recipes also expose
-direct single-CUDA immutable sharing; FLUX/Qwen have separately qualified
-post-backward replicas. [Model families](docs/guides/model_families.md) explains
-the choices; the [support matrix](docs/guides/support_matrix.md#additional-model-and-workflow-integrations)
-lists the available model, data and execution paths. Supply local checkpoints
-and use the recipe's model-specific environment. Original DMD2 and LTX sources
-use their respective licenses.
+## Optimize an existing project with Codex
 
-Official Self-Forcing and W4 LiveWan cross-scale training have separate recipes
-that preserve their respective rollout and update rules.
-
-**Official distributed workflows:** SD1.5 provides a [native FSDP2 reference](docs/guides/dmd2_fsdp2_reference.md) and an optimized Resident/DDP configuration. Official Self-Forcing provides native FSDP2 reference and optimized configurations. [Choose and launch a recipe](docs/guides/official_optimized_training.md) through `distillctl train`. Each workflow keeps its own loss, sampling and update rules.
-
-## Six preserved native workloads
-
-| ID | Distinct protocol | Recipe |
-| --- | --- | --- |
-| W1 | Wan1.3B hierarchical No-GAN DMD | [Wan](recipes/wan_ar/README.md) |
-| W2 | Helios14B No-GAN, G1/C5/EMA5 | [Helios No-GAN](recipes/helios_nogan/README.md) |
-| W3 | Helios14B DMD + GAN, G1/C5/EMA1 | [Helios GAN](recipes/helios_gan/README.md) |
-| W4 | LiveWan cross-scale Self-Forcing, 14B Teacher → 1.3B Student | [LiveWan](recipes/self_forcing/README.md), [current-G CPU lifecycle](recipes/self_forcing/CPU_PUBLIC.md) |
-| W5 | Full-sequence H3 audio–video, explicitly approximate Grid1000 | [Full-sequence H3](recipes/h3_fullseq/README.md) |
-| W6 | DiffSynth autoregressive previous/current audio–video, continuous sigma | [H3 AR](recipes/h3_ar/README.md) |
-
-Use the [native guide](docs/guides/native_workloads.md) for continuous-training
-recipes, checkpoint recovery and output commands, and the
-[support matrix](docs/guides/support_matrix.md) to select a backend.
+The standalone `dmd-system-optimizer` Skill helps Codex locate existing
+implementations, inspect bottlenecks and test changes using your project's
+commands. Installing the Skill needs only the Python standard library; it does
+not require installing the training framework or moving your trainer.
 
 ```sh
-distillctl workloads describe --workload W4
-distillctl workloads describe --workload W6 --hardware h100
-distillctl config validate recipes/helios_nogan/training.json
-distillctl train recipes/helios_nogan/training.json --dry-run
+python3 tools/install_optimizer_skill.py
 ```
 
-Replace recipe asset placeholders before execution. The old five locked
-profiles remain available with `distillctl workloads list --legacy`.
-Existing A100/H100 implementations and results are indexed in the
-[source overview](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and
-[H100 overview](docs/status/H100_SOURCE_SNAPSHOT_20261019.md).
+Then ask Codex: **Use $dmd-system-optimizer to optimize this workload. Reuse
+existing implementations first, measure end-to-end changes, and keep a WORK_LOG.**
 
-## Optimize your own workload with Codex
+The Skill includes a public library of successful, failed and unresolved
+experiments. Personal continuity uses available, authorized Codex history and
+project logs. See the [Skill guide](docs/guides/optimizer_skill.md) for updates
+and lookup commands.
 
-Install the [dmd-system-optimizer Skill](docs/guides/optimizer_skill.md) to use
-Codex with a local, embedding-free experience library. Conditional mechanism
-cards link positive, negative and unresolved Helios cases; correctness
-preconditions and performance conditions are checked separately. Bring an
-existing training repository or use a DMD-System recipe. Historical results
-remain priors and require validation on the current workload.
+## Development
 
-## Execution and extension
+The main code boundaries are [models/data, algorithms, training state and
+execution](docs/architecture/framework.md). Model factories and workflow
+interfaces are documented in the [extension guide](docs/guides/extensions.md).
+Automatic planning is optional; supported recipes also provide reference or
+manual execution policies.
 
-`reference` is a usable starting point; automatic planning is optional.
-`manual` selects an admitted implementation; `auto` measures real candidates
-and runs the existing constrained solver; `plan` executes that saved,
-source-bound selection. The implementation and actual operation/version/effect
-receipts are recorded. Layout and cache-version checks bind the saved plan to
-the execution. The runtime has no Ray dependency.
+See [CONTRIBUTING](CONTRIBUTING.md) for development environments, focused tests
+and performance-change requirements. Report problems through
+[GitHub Issues](https://github.com/sliortega295-ops/DMD-System/issues), with a
+reproduction command and relevant logs.
 
-See [physical capabilities](docs/guides/optimization_capabilities.md),
-[framework architecture](docs/architecture/framework.md) and
-[native planning](docs/runbooks/native_planner_workflow.md).
-
-Three independent extension seams are supported:
-
-1. **Model/data adapter:** checkpoint, prediction meaning, trainables, encoders,
-   modalities and generation; reuse a compatible algorithm.
-2. **Workflow:** native rollout/loss/update dependencies through existing DMD
-   hooks or Program, reusing models and backends.
-3. **Physical capability:** actual execution, applicability, effect counters and
-   measured costs; no model-name branch in the general solver.
-
-Start with [the new-model template](examples/framework/newmodel.py),
-[the stateful-workflow template](examples/framework/newworkflow.py) and
-[extension contracts](docs/guides/extensions.md). Installed packages may
-advertise model/algorithm entry points; discovery reads metadata without
-executing their trusted Python code.
-
-## Development and licenses
-
-Run the [CPU verification lanes](docs/guides/model_families.md#verification-lanes)
-in their separate environments. The package's installed-wheel acceptance runs
-outside the checkout and verifies fresh-process training/recovery, a measured
-saved plan and genuinely new-input decoded generation after removing training
-artifacts. See [the current integration receipt](docs/status/FRAMEWORK_MODEL_EXPANSION_CPU_20261023.md)
-for the corresponding validation records.
-
-Contributions must retain semantics and include real update/recovery or effect
-proof as appropriate; see [CONTRIBUTING](CONTRIBUTING.md). Framework-authored
-code is Apache-2.0. [Third-party notices](THIRD_PARTY.md), original source and
-model/data licenses remain authoritative.
+Framework code is [Apache-2.0](LICENSE). Third-party source, model and dataset
+licenses remain separate; see [THIRD_PARTY.md](THIRD_PARTY.md).

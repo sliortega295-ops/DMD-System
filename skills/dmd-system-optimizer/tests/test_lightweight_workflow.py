@@ -125,7 +125,7 @@ class LightweightInstructionTests(unittest.TestCase):
 
     def test_correctness_and_explicit_limits_stay_binding(self):
         text = self.skill()
-        for value in ("Explicit user caps and stop requests are hard limits", "Do not remove required work/gradients",
+        for value in ("Explicit user caps and stop requests are hard limits", "Preserve required work and gradients",
                       "Keep already adopted frozen protocols", "alter a checker to pass"):
             self.assertIn(value, text)
 
