@@ -67,3 +67,28 @@ def rank(data, query, routes_path=ROUTES):
     return rows, {"status": status, "matched_symptoms": [r["id"] for r in matched],
                   "inspect_next": questions, "query_does_not_supply_context_facts": True,
                   "notice": "Symptom routes rank hypotheses, not root causes or applicable optimizations."}
+
+
+def rank_cases(cases, query):
+    """Rank records, not their shared folder; propagate relevance to corrections."""
+    ts = tokens(query)
+    fields = {}
+    for case in cases:
+        fields[case["id"]] = [(str(case.get(k, "")), weight) for k, weight in
+            (("id", 2), ("title", 4), ("observation", 3), ("lesson", 2), ("scope", 1), ("failure", 1))]
+    corpus = {key: " ".join(v for v, _ in values).lower() for key, values in fields.items()}
+    idf = {t: math.log(1 + len(cases) / (1 + sum(t in v for v in corpus.values()))) for t in ts}
+    scores = {key: round(sum(weight * sum(idf[t] for t in ts if t in value.lower())
+                            for value, weight in values), 3) for key, values in fields.items()}
+    # A newer correction may not repeat the old keywords. Never lose it at top-N.
+    for case in cases:
+        for successor in case.get("correction", {}).get("current_successors", []):
+            if successor in scores:
+                scores[successor] = max(scores[successor], scores[case["id"]])
+    return {key: {"relevance_score": score, "matched_terms": sorted(t for t in ts if t in corpus[key])}
+            for key, score in scores.items()}
+
+
+def case_order(case):
+    return (case.get("correction", {}).get("status") == "CORRECTED_FOR_CONTEXT",
+            -case.get("relevance_score", 0), case["id"])

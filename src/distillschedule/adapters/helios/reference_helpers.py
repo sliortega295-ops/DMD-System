@@ -1,13 +1,17 @@
 """Explicit source-only admission of the original public CPU helper closure.
 
 The native ``helios`` package keeps its ordinary names and relative imports.
-Only this opt-in path bypasses bytecode; legacy native adapters are unchanged.
+Only this opt-in path bypasses bytecode and binds the explicit PSD block-noise
+compatibility policy. Vendored source bytes are unchanged. The projection has the
+same singular Gaussian law and draw count, not legacy Cholesky bitwise samples.
 Installed dependencies remain trusted Python, not a sandboxed substitute.
 """
 from __future__ import annotations
 
 from contextlib import contextmanager
 import hashlib
+from functools import wraps
+import os
 import importlib
 import importlib.util
 from importlib.abc import MetaPathFinder
@@ -71,6 +75,28 @@ def _source_imports(sources, digests):
         sys.meta_path[:] = [entry for entry in sys.meta_path if entry is not finder]
 
 
+def _bind_block_noise(original):
+    """Handle the exact singular covariance; other gamma/explicit modes delegate.
+
+    Do not add diagonal jitter, retry draws, set process-wide RNG or environment,
+    or disable MultivariateNormal validation. This is an admitted helper binding,
+    not an edit of the historical source snapshot.
+    """
+    @wraps(original)
+    def sample(scheduler, batch_size, channel, num_frames, height, width):
+        if scheduler.config.gamma != 1.0 / 3.0 or os.environ.get("DISTILLSCHEDULE_STABLE_BLOCK_NOISE") == "1":
+            return original(scheduler, batch_size, channel, num_frames, height, width)
+        import torch
+        from runtime.official_baseline import stable_block_noise
+        block_number = batch_size * channel * num_frames * (height // 2) * (width // 2)
+        # Match the original CPU/default-device normal draw's dtype and shape.
+        noise = stable_block_noise(block_number, device=torch.empty(0).device,
+                                   dtype=torch.get_default_dtype())
+        noise = noise.view(batch_size, channel, num_frames, height // 2, width // 2, 2, 2)
+        return noise.permute(0, 1, 2, 3, 5, 4, 6).reshape(batch_size, channel, num_frames, height, width)
+    return sample
+
+
 def _bindings(modules):
     # As in the cached-AV provider, include cross-module aliases and class
     # methods/code, not just the four top-level loss/rollout entrypoints.
@@ -127,7 +153,10 @@ def _identity(backend):
     return dict(schema_version="distillschedule.helios_reference_helpers.v1", source=source,
                 modules={name: digests[file.relative_to(path.parent).as_posix()]
                          for name, file in _sources(source).items()},
-                provider_sha256=file_sha256(Path(__file__)))
+                provider_sha256=file_sha256(Path(__file__)),
+                block_noise_policy={"id": "reference-psd-gamma-third-v1",
+                    "implementation_sha256": file_sha256(Path(importlib.util.find_spec("runtime.official_baseline").origin)),
+                    "legacy_cholesky_bitwise_equivalent": False})
 
 
 def reference_helper_identity(*, backend: str):
@@ -142,7 +171,7 @@ def reference_helper_identity(*, backend: str):
 
 
 def load_reference_primitives(*, backend: str):
-    """Load intact pinned .py modules, refusing unadmitted preloaded helpers."""
+    """Load pinned modules and the declared PSD sampler; reject unadmitted caches."""
     global _loaded_modules, _loaded_bindings
     with _LOCK:
         identity = reference_helper_identity(backend=backend)
@@ -153,6 +182,8 @@ def load_reference_primitives(*, backend: str):
                     for name in _MODULES:
                         importlib.import_module(name)
                 modules = _cached_modules()
+                post = modules["helios.utils.utils_helios_post"]
+                post.sample_block_noise = _bind_block_noise(post.sample_block_noise)
                 bindings = _bindings(modules)
                 _require(_identity(backend) == identity,
                          "original helper source changed during import")

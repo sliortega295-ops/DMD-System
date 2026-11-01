@@ -125,13 +125,13 @@ class LightweightInstructionTests(unittest.TestCase):
 
     def test_correctness_and_explicit_limits_stay_binding(self):
         text = self.skill()
-        for value in ("Explicit user caps and stop requests are hard limits", "Do not remove required work/gradients",
+        for value in ("Explicit user caps and stop requests are hard limits", "Preserve required work and gradients",
                       "Keep already adopted frozen protocols", "alter a checker to pass"):
             self.assertIn(value, text)
 
     def test_memory_failure_has_log_fallback(self):
         text = " ".join((SKILL / "references/reuse-memory.md").read_text().split())
-        for value in ("A plain WORK_LOG is the default memory", "If lookup or indexing fails", "Do not delete", "optional, not a prerequisite"):
+        for value in ("A plain WORK_LOG is the durable experiment record", "If lookup or indexing fails", "Do not delete", "optional, not a prerequisite"):
             self.assertIn(value, text)
 
     def test_effort_is_guidance_not_a_permission_service(self):

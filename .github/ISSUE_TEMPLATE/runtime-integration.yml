@@ -1,57 +1,36 @@
-name: Runtime integration failure
-description: Record a fail-closed DMD-System launcher, parity, topology, checkpoint or evidence issue.
-title: "[integration] "
-labels: []
+name: Bug report
+description: Report a problem with installation, training, a recipe or the optimizer Skill.
+title: "[bug] "
 body:
-  - type: markdown
+  - type: textarea
+    id: problem
     attributes:
-      value: |
-        Keep workload semantics and integration failures separate. Do not propose a silent fallback to a different ZeRO stage, batch, trace, checkpoint or EMA policy.
-  - type: input
-    id: contract
-    attributes:
-      label: Frozen contract
-      description: Path or link to the contract document and plan ID.
-      placeholder: docs/contracts/...; plan id ...
+      label: What happened?
+      description: Describe the expected behavior and what happened instead.
     validations:
       required: true
   - type: textarea
-    id: source_identity
+    id: reproduce
     attributes:
-      label: Source and runtime identity
-      description: DMD-System HEAD, Helios HEAD/dirty state/entrypoint SHA, Python/Accelerate/DeepSpeed paths and versions.
+      label: How can we reproduce it?
+      description: Include the command and a small configuration or example. For the Skill, include the query.
+      render: text
     validations:
       required: true
   - type: textarea
-    id: topology
+    id: environment
     attributes:
-      label: Expected and observed topology
-      description: nodes, local world size, global world size, rank set and topology-probe result.
-    validations:
-      required: true
+      label: Environment
+      description: DMD-System revision, Python/PyTorch versions, model/recipe, operating system, GPU and node count when relevant.
+      render: text
   - type: textarea
-    id: outcome
+    id: logs
     attributes:
-      label: Attempt outcome
-      description: Use Failed, Partial, Running or Not Run until an immutable final result exists.
-    validations:
-      required: true
+      label: Error or logs
+      description: Paste a short error and traceback. Remove tokens, credentials and private data.
+      render: text
   - type: textarea
-    id: evidence
+    id: context
     attributes:
-      label: Evidence paths and hashes
-      description: Launcher manifests, compiled plan, trace/checkpoint identity and result manifest. Do not paste secrets.
-  - type: textarea
-    id: invariant
-    attributes:
-      label: Semantics that must not change
-      description: Explicitly list workload, optimizer, EMA and branch constraints.
-    validations:
-      required: true
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Fail-closed acceptance criteria
-      description: State the pre-model, functional, timing and evidence gates separately.
-    validations:
-      required: true
+      label: Additional context
+      description: Recent changes, attempted fixes, or relevant plan/run identifiers, if available.

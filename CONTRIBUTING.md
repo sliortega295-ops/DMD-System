@@ -1,69 +1,84 @@
-# Contributing to DMD-System
+# Contributing
 
-DMD-System is a research runtime with strict equivalence and evidence boundaries. A change that makes a launch succeed but changes the DMD workload is not a valid fix.
+Bug reports, documentation fixes, model integrations and performance improvements
+are welcome. For a larger change, open an issue describing the use case and the
+proposed approach before starting implementation.
 
-## Choose the correct layer
+## Report a problem
 
-- Public data preparation belongs in `src/distillschedule/data/`; persistent
-  training ownership and checkpoint lifecycle belong in `training/`. Reuse the
-  existing Program/graph and native adapters rather than inventing another solver.
-- New models/algorithms must have an actual reference update and declared state;
-  use `examples/framework/newmodel.py` and the extension guide. Do not add a
-  model-name condition to the generic planner for a new factory.
-- Put model-independent schemas, contracts, adapters and orchestration in `src/distillschedule/`.
-- Keep compatibility dependencies still used by current training at their audited `runtime/` paths. Retired early routes and exclusive launch/offload code are listed in `docs/architecture/legacy_route_retirement.json`; do not restore them as current optimization candidates.
-- Put immutable workload semantics in `docs/contracts/`.
-- Put mutable operating procedures in `docs/runbooks/`.
-- Put measured/not-run outcomes in `docs/status/` and small curated manifests.
-- Keep raw experiments, weights, traces, profiler databases and run directories out of Git.
+Include the DMD-System revision, reproduction command, expected result and actual
+error. For runtime issues, add the model/recipe, Python/PyTorch versions and
+hardware configuration. Small log excerpts are usually sufficient; remove
+credentials and private data before posting. A plan or experiment manifest is
+useful when available, but is not required to report a bug.
 
-## Frozen-plan changes
+## Development setup
 
-Do not edit a frozen plan to make an integration failure disappear. Changes to model/checkpoint/trace, shape, batch, logical steps, update ratio, optimizer, ZeRO stage, EMA behavior or branches require:
+Work in a source checkout and a separate Python environment:
 
-1. a new plan ID;
-2. a new or versioned contract document;
-3. new checkpoint/trace identities where applicable; and
-4. a matched baseline before performance comparison.
-
-Route-A/Route-B are retired. Historical recovery uses the pinned pre-retirement commit and its original contracts; current work starts from `recipes/`.
-
-## Fail closed before model construction
-
-Multi-node launch code should validate, before loading a 14B model:
-
-- executable availability and identity;
-- source HEAD/clean state and entrypoint hash;
-- resolved plan and backend contract;
-- exact world size, node rank and local rank topology; and
-- required asset paths/identities.
-
-Never silently infer `world_size`, launcher type, ZeRO stage or EMA semantics from a historical config.
-
-## Evidence and claims
-
-Functional correctness, diagnostic timing and host-memory reserve are separate outcomes. A zero process return is insufficient. Preserve failed/partial outcomes honestly and do not calculate a speedup from incomplete rank evidence.
-
-## Checks
-
-Run at least:
-
-```bash
-python -m compileall -q src runtime scripts/distillctl.py scripts/distillschedule
-find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
-pytest -q tests/test_refactor_*.py
+```sh
+python -m pip install -e '.[test]'
 ```
 
-Cluster-facing changes additionally require the current workload's source/asset preflight and an immutable status update. A successful GPU run is not required to review source cleanup, but unexecuted cluster behavior must be labeled `Pending cluster validation`, not `PASS`.
+This supports source-only tests. For training or model changes, install the
+[appropriate dependency group](docs/guides/model_families.md) in a compatible
+environment. The standalone Skill uses only the standard library.
 
-## Six-workload organization
+## Where code belongs
 
-`distillctl workloads list` is the six-protocol catalog; the five immutable
-legacy profiles are exposed with `--legacy`. Add current workflow guides under
-`recipes/`, not duplicate model trainers. Developer tools belong under `tools/`
-and standalone canaries under `benchmarks/kernels/`.
+| Change | Location |
+| --- | --- |
+| Model factories and training state | `src/distillschedule/training/` |
+| Model-native adapters | `src/distillschedule/adapters/` |
+| Input preparation | `src/distillschedule/data/` |
+| Program execution and planning | `src/distillschedule/open_workload/`, `search/` |
+| Optimizer Skill | `skills/dmd-system-optimizer/` |
+| User configurations and guides | `recipes/`, `docs/guides/` |
 
-Do not rewrite `source_import_map.json` or publication receipts to hide a
-changed source. A reviewed relocation/integration needs an explicit old/new
-entry in `source_layout.lock.json`, an exact source origin and regression tests.
-The compatibility `runtime/` namespace is packaged at its original audited path.
+See [architecture](docs/architecture/framework.md) and
+[extensions](docs/guides/extensions.md) before adding a model or backend.
+Top-level `runtime/` still contains components used by current recipes; check
+callers before moving them. Legacy Route-A/Route-B runners are retired.
+
+## Tests
+
+Run the tests relevant to the change and add a regression for a fixed bug.
+Useful starting points, from the repository root:
+
+```sh
+# Skill installation, lookup and workflow tests (standard library only).
+python -m unittest discover -s skills/dmd-system-optimizer/tests -v
+
+# Public configuration and small CPU training lifecycle (requires .[train,test]).
+python -m pytest -q tests/test_training_config.py tests/test_training_end_to_end.py
+
+# Source organization and public entry points.
+python -m pytest -q tests/test_repository_organization.py tests/test_workload_catalog_validation.py
+```
+
+Model-specific jobs under `.github/workflows/` list their dependency versions and
+test commands. Some source-navigation tests need pinned historical Git objects;
+the Skill workflow shows the fetch step. Do not install all model extras into one
+environment. Report tests that could not run and the missing dependencies or hardware.
+
+## Performance and source-sensitive changes
+
+Preserve workload semantics, gradients, optimizer/EMA updates and data order.
+Compare performance using the same workload, hardware, warmup and timing scope;
+include numerical checks for the affected path. A CPU test does not establish a
+GPU speedup. Changes to the algorithm or precision need an explicit description
+and their own comparison baseline.
+
+Some native paths bind source or plan identities. When changing those paths,
+update the relevant versioned contract and source-layout record as documented in
+[repository organization](docs/architecture/repository_organization.md). Keep
+original experiment receipts unchanged; add a correction or new measurement.
+
+## Pull requests
+
+Describe the user-visible change and how it was tested. Keep unrelated refactors
+separate, use readable code rather than compressed one-line statements, and link
+to shared documentation instead of copying it into several guides. AI-assisted
+contributions are reviewed under the same correctness and maintenance standards.
+Keep licenses and source attribution. Weights, datasets, raw traces, optimizer
+states and private conversations belong outside Git.

@@ -142,7 +142,16 @@ def test_independent_nogan_ci_requires_real_warm_restart_and_new_prompt_output()
     assert value['env']['CUDA_VISIBLE_DEVICES'] == ''
     assert value['strategy']['matrix']['python'] == ['3.10', '3.12']
     assert 'tests' in value['env']['PYTHONPATH'].split(':')
-    assert 'runner.temp' in value['env']['HELIOS_NOGAN_PUBLIC_FIXTURE']
+    # runner.temp is unavailable in job-level env. The actual runner binds it
+    # through GITHUB_ENV before any fixture-consuming step.
+    runs = [step.get('run', '') for step in value['steps']]
+    bind = next(i for i, command in enumerate(runs) if
+                'HELIOS_NOGAN_PUBLIC_FIXTURE=$RUNNER_TEMP/helios-nogan-reference' in command
+                and '>> "$GITHUB_ENV"' in command)
+    train = next(i for i, command in enumerate(runs) if
+                 'pytest' in command and 'test_training_helios_nogan_public_cpu.py' in command)
+    assert bind < train
+    assert 'HELIOS_NOGAN_PUBLIC_FIXTURE' not in value['env']
     assert "'.[train,test,helios-reference]'" in commands
     assert 'torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu' in commands
     assert all(name in commands for name in (

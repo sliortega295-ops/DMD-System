@@ -1,27 +1,45 @@
 # Documentation
 
-## Current use
+## Start here
 
-- [Installation and environment selection](guides/installation.md), [troubleshooting](guides/troubleshooting.md).
-- [Framework architecture](architecture/framework.md), [training and recovery](guides/training.md),
-  [data preparation](guides/data.md), [new-model extension](guides/extensions.md),
-  [native integration](guides/native_workloads.md), and [support matrix](guides/support_matrix.md).
-- [Complete offline media-to-training example](../examples/framework/README.md).
-- [Current framework and original-model CPU acceptance](status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md).
-- [Original Wan Full5 public training/restart/current-G output acceptance](status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md).
-- [Original H3 current-Student export and installed-wheel acceptance](status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md).
-- [Earlier source-scoped framework acceptance](status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md).
-- [Original W2/W5 reference lifecycle and CPU evidence](status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md).
-- [Original W4 reference lifecycle and reviewed CPU boundaries](status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md).
-- [Six workload guides](../recipes/README.md) and `distillctl workloads list`.
-- [Shared native planning](runbooks/native_planner_workflow.md), [Wan compute/state](runbooks/wan_compute_state_planning_v1.md), [LiveWan C51](runbooks/livewan_c51_planner_v1.md), [original H3 AR](runbooks/original_h3_ar_native.md).
-- [Open workload Program](workloads/open_workload_program.md) and [role pools](workloads/open_role_pools.md).
-- [Repository organization](architecture/repository_organization.md).
+| Task | Guide |
+| --- | --- |
+| Install the framework | [Installation](guides/installation.md), [model-specific environments](guides/model_families.md) |
+| Run a first example | [CPU training tutorial](../examples/framework/README.md) |
+| Select a model and workflow | [Recipes](../recipes/README.md), [support matrix](guides/support_matrix.md) |
+| Prepare inputs | [Data formats and preparation](guides/data.md) |
+| Train, save, resume and export | [Training lifecycle](guides/training.md) |
+| Use optimized official workflows | [DMD2 and Self-Forcing](guides/official_optimized_training.md) |
+| Optimize another project with Codex | [Optimizer Skill](guides/optimizer_skill.md) |
+| Diagnose a failed run | [Troubleshooting](guides/troubleshooting.md) |
 
-## Results and provenance
+## Development and execution
 
-Read the [r46 mechanism erratum](status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md) together with the frozen [six-workload corrections](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md) before the [A100/planner source index](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and [H100 source index](status/H100_SOURCE_SNAPSHOT_20261019.md). The r46 experiment restored metadata reads (0→350 per rank/cycle); the old summary incorrectly said it removed them. Historical runbook `NOT_RUN` statements describe their original source and date; later archived receipts do not silently update those frozen records.
+[Architecture](architecture/framework.md) explains code ownership.
+[Extensions](guides/extensions.md) covers model, algorithm and execution plugins;
+[CONTRIBUTING](../CONTRIBUTING.md) describes how to submit and test changes.
 
-[Unlinked fixed-date documentation snapshots](architecture/retired_unlinked_reports_20261031.md) were retired from the current tree; original bytes and their validation scope remain in pinned Git history.
+For distributed policies and automatic planning, see
+[execution capabilities](guides/optimization_capabilities.md),
+[Program](workloads/open_workload_program.md), [role pools](workloads/open_role_pools.md)
+and [native planning](runbooks/native_planner_workflow.md).
+The [repository map](architecture/repository_organization.md) lists developer tools.
 
-[Legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md) describe the later FSDP2/native compatibility cohorts. Earlier Route-A/Route-B launchers and offload prototypes have been [retired](architecture/legacy_route_retirement.md); recover their evidence from the pinned Git history only. Numerical REVIEW, genuine FAIL and missing quality results remain explicit.
+## Validation and research records
+
+The [support matrix](guides/support_matrix.md) links current validation records.
+Dated reports under `status/` describe the code, hardware and test scope at the
+time of each run; they are not a substitute for the current recipe guides.
+
+Historical performance and source indexes are available for
+[A100 and saved-plan experiments](status/GITHUB_SOURCE_SNAPSHOT_20261019.md) and
+[H100 experiments](status/H100_SOURCE_SNAPSHOT_20261019.md).
+Read the [six-workload results](status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md)
+with the [W6 metadata correction](status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md):
+r46 restored metadata reads, rather than removing them. These records retain
+numerical REVIEW/FAIL states and distinguish matched measurements from historical comparisons.
+
+[Legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md),
+[retired Route-A/Route-B implementations](architecture/legacy_route_retirement.md)
+and [retired unlinked reports](architecture/retired_unlinked_reports_20261031.md)
+remain documented for historical investigations. Their provenance is preserved.

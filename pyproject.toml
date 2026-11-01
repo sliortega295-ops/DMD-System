@@ -25,6 +25,11 @@ license-files = [
 authors = [{name = "DistillSchedule contributors"}]
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/sliortega295-ops/DMD-System"
+Documentation = "https://github.com/sliortega295-ops/DMD-System/blob/main/docs/README.md"
+Issues = "https://github.com/sliortega295-ops/DMD-System/issues"
+
 [project.optional-dependencies]
 config = ["omegaconf>=2.3"]
 helios = ["omegaconf>=2.3"]
