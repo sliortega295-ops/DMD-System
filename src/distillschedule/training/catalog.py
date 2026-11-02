@@ -192,13 +192,14 @@ for _name, _module, _model_id, _revision, _construction in (
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),
         description='Pinned native T2I FP32; explicit post-backward B1 replication; flow DMD, not official DMD2',
         execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
+        compute_precisions=['fp32', 'bf16-mixed'],
         construction_constraint=_construction,
         source=dict(model_id=_model_id, revision=_revision, license='Apache-2.0'),
         validation=dict(source='AUDITED', cpu='SYNTHETIC_TEST_ONLY', gpu='NOT_RUN', replicated='NOT_RUN', quality='NOT_RUN'),
         compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
             devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
             model_parameters=['assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
-                'scheduler_gamma', 'ema_decay', 'generation_sigmas', *(['construction'] if _construction else [])]))
+                'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision', *(['construction'] if _construction else [])]))
 
 
 register_model('wan22-ti2v5b-t2v', factory='distillschedule.training.wan22:build_model',
@@ -236,6 +237,9 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
     """
     entries = [row for row in _registry('model').values() if row['factory'] == model.get('factory')]
     for entry in entries:
+        precision = model.get('parameters', {}).get('compute_precision', 'fp32')
+        if 'compute_precisions' in entry and (type(precision) is not str or precision not in entry['compute_precisions']):
+            raise ValueError('unsupported native compute precision: ' + model['factory'])
         if 'native_owner_compatibility' in entry:
             _validate_native_request(entry['native_owner_compatibility'], model, algorithm, trainer, execution or {})
         replicated = ('distributed' in trainer and 'replicated' in entry.get('execution_constraints', {}))
@@ -243,7 +247,7 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
         if construction is not None:
             constraint = entry.get('construction_constraint')
             devices = (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', trainer.get('device', 'cpu')))
-            if (not constraint or construction != constraint['recipe'] or not replicated
+            if (not constraint or construction != constraint['recipe'] or not replicated or precision != 'fp32'
                     or any(value != constraint['device'] for value in devices)
                     or trainer['distributed'].get('backend') != constraint['backend']
                     or set(execution or {}) - {'adapter', 'mode', 'implementation'}

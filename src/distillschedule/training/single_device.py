@@ -1,4 +1,4 @@
-"""Small FP32 placement scopes and explicit replica admission; no offload."""
+"""Owned FP32 state placement, explicit native compute and replica admission."""
 from contextlib import contextmanager, nullcontext
 
 
@@ -63,6 +63,29 @@ def execution_policy_matches(execution, constraints):
 def _require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def native_compute_context(precision, device, *, require=_require):
+    """Scope native matmuls only; flow/sampling math and master state stay FP32.
+
+    Never cast an owned Module: complex rotary buffers, model-native norm
+    precision, Parameters, optimizer slots and EMA retain their identities and
+    dtypes. No autocast cache survives the native call or a parameter update.
+    """
+    import torch
+    require(type(precision) is str and precision in ('fp32', 'bf16-mixed'),
+            'compute precision must be fp32 or bf16-mixed')
+    require(torch.get_default_dtype() == torch.float32 and not torch.is_autocast_enabled('cpu')
+            and not torch.is_autocast_enabled('cuda'), 'native compute rejects ambient precision/autocast')
+    if precision == 'fp32':
+        return nullcontext()
+    require(device.type in ('cpu', 'cuda') and torch.amp.autocast_mode.is_autocast_available(device.type),
+            'BF16 autocast is unavailable on the owned device')
+    if device.type == 'cuda':
+        with torch.cuda.device(device):
+            require(torch.cuda.is_bf16_supported(including_emulation=False),
+                    'BF16 compute requires native device support; select fp32 on this GPU')
+    return torch.autocast(device.type, dtype=torch.bfloat16, cache_enabled=False)
 
 
 def admit_fp32(parameters, *, require=_require, allow_replicated=False):

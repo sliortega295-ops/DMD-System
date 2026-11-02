@@ -127,10 +127,11 @@ class Role(common.ImageRole):
         context = feeds['context'] if conditional else feeds['null_context']
         mask = feeds['context_mask'] if conditional else feeds['null_context_mask']
         shapes = [[tuple(value)] for value in feeds['img_shapes'].tolist()]
-        value = self.native(hidden_states=sample['image'], encoder_hidden_states=context,
-            encoder_hidden_states_mask=mask, timestep=sigma, img_shapes=shapes, guidance=None, return_dict=False)[0]
+        with self.compute_context():
+            value = self.native(hidden_states=sample['image'], encoder_hidden_states=context,
+                encoder_hidden_states_mask=mask, timestep=sigma, img_shapes=shapes, guidance=None, return_dict=False)[0]
         require(value.shape == sample['image'].shape and bool(torch.isfinite(value).all()), 'invalid native Qwen flow output')
-        return {'image': value}
+        return {'image': value.float()}
 
 
 def build_model(parameters):

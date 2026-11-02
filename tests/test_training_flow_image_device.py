@@ -159,9 +159,10 @@ def test_adapter_admission_uses_same_exact_manual_policy(module, monkeypatch):
     monkeypatch.setattr(owner, '_admit_device' if module == 'ltx' else 'admit_fp32',
                         lambda *args, **kwargs: torch.device('cuda:0'))
     schedule = [1., .75, .5, .25, 0.]
-    state = {name: SimpleNamespace(device=torch.device('cuda:0'), binding='test', generation_sigmas=schedule)
+    state = {name: SimpleNamespace(device=torch.device('cuda:0'), binding='test', generation_sigmas=schedule,
+                                  compute_precision='fp32')
              for name in ('student', 'fake', 'teacher', 'media')}
-    request = SimpleNamespace(trainer=dict(device='cuda:0'), execution=CUDA_MANUAL, data={},
+    request = SimpleNamespace(trainer=dict(device='cuda:0'), execution=CUDA_MANUAL, data={}, model={'parameters': {}},
         algorithm=dict(factory='distillschedule.training.dmd:build_algorithm',
                        parameters=dict(teacher_cfg=1, fake_cfg=1, fake_updates=5, rollout_sigmas=schedule)))
     if module == 'ltx':

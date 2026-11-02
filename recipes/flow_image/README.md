@@ -1,17 +1,12 @@
 # Native image flow-DMD: shared reference and replicated lifecycle
 
-**Implemented, not a production GPU claim:** actual local Diffusers Transformer,
-native Qwen text encoder/tokenizer and native VAE; unmerged same-family LoRA;
-the existing `training.dmd` Program; real G1/F5 AdamW, per-role schedulers and EMA;
-complete-cycle restart; current-Student export and decoded new-input images.
-No second trainer, kernel search, inference LoRA merge, or approximate cache.
-The first admitted recipe is batch-one for raw, prompt-only and preencoded
-inputs alike; unsupported preencoded batching is rejected before training.
-The tests use randomly initialized **actual upstream tiny classes**, explicitly
-`SYNTHETIC_TEST_ONLY`. Both families have actual A100 FP32 reference update,
-restart and new-input output evidence. Full pretrained execution/capacity,
-long-run quality, AMP/sharded ownership and performance are **NOT_RUN**, not inferred
-from those tests.
+Train FLUX.2 klein Base or Qwen-Image through the common `training.dmd` Program:
+native text/VAE components, unmerged LoRA, G1/F5 AdamW, per-role schedulers,
+EMA, complete-cycle recovery and current-Student image export.
+Choose FP32 or BF16 autocast and reference or immutable-sharing execution.
+Raw images, prompt-only and preencoded inputs use local batch one.
+The executable fixture uses actual upstream small model classes and marks its
+procedural inputs and random weights `SYNTHETIC_TEST_ONLY`.
 
 Read the family contracts: [FLUX.2 klein Base](../flux_dmd/README.md) and
 [original Qwen-Image](../qwen_image_dmd/README.md).
@@ -182,6 +177,13 @@ the binding and invalidates old prepared features.
 
 ## Mathematics and execution contract
 
+Set `model.parameters.compute_precision` to `"bf16-mixed"` for native BF16
+autocast, or `"fp32"` (default). Model-native normalization and rotary precision
+are preserved; flow/sampling math, trainable master weights, Adam and EMA remain
+FP32. The option applies to reference and immutable-sharing execution, including
+post-backward replicas, and is retained by checkpoints and portable exports.
+Text/VAE preparation remains FP32. BF16 CUDA compute requires native GPU support.
+
 This is explicitly configured **No-GAN rectified-flow DMD**, not official DMD2,
 Self-Forcing, or an official FLUX/Qwen distillation reproduction. For
 `z=(1-sigma)*x0+sigma*epsilon`, native output is `v=epsilon-x0` and
@@ -209,7 +211,7 @@ check real storage reduction, actual aliases and exact loss/gradient/update/
 Adam/scheduler/EMA/Teacher equality against an unshared control. No approximate
 cache, guessed normalization kernel or inference weight merging is added.
 
-That exact policy is also admitted on the single-CUDA FP32 path; it installs
+That exact policy is also admitted on the single-CUDA path; it installs
 sharing on the persistent live owner without CUDA trial cloning. See the
 [shared CUDA policy and capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
 All roles still materialize before sharing; this does not lower construction

@@ -109,10 +109,11 @@ class Role(common.ImageRole):
         ids = feeds['txt_ids'] if conditional else feeds['null_txt_ids']
         # Native forward multiplies sigma by 1000 itself. Never pass 1000*sigma
         # or the embedded-guidance tensor used by other FLUX variants.
-        value = self.native(hidden_states=sample['image'], encoder_hidden_states=context, timestep=sigma,
-            img_ids=feeds['img_ids'], txt_ids=ids, guidance=None, return_dict=False)[0]
+        with self.compute_context():
+            value = self.native(hidden_states=sample['image'], encoder_hidden_states=context, timestep=sigma,
+                img_ids=feeds['img_ids'], txt_ids=ids, guidance=None, return_dict=False)[0]
         require(value.shape == sample['image'].shape and bool(torch.isfinite(value).all()), 'invalid native klein flow output')
-        return {'image': value}
+        return {'image': value.float()}
 
 
 def build_model(parameters):

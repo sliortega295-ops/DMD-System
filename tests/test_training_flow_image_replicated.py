@@ -12,7 +12,7 @@ import sys
 import pytest
 
 
-def native_replica_case(tmp_path, family, device):
+def native_replica_case(tmp_path, family, device, *, compute_precision='fp32'):
     from native_flow_replicated import request, lifecycle
     repo = Path(__file__).resolve().parents[1]
     recipe = repo/'recipes/flow_image/create_cpu_fixture.py'
@@ -22,6 +22,10 @@ def native_replica_case(tmp_path, family, device):
     assert result.returncode == 0, result.stdout+result.stderr
     files = json.loads(result.stdout)
     config = request(files['config'],tmp_path/'replicated.json',device)
+    if compute_precision != 'fp32':
+        value = json.loads(config.read_text())
+        value['model']['parameters']['compute_precision'] = compute_precision
+        config.write_text(json.dumps(value))
     command = [sys.executable,'-m','torch.distributed.run','--standalone','--nproc_per_node','2',
         str(repo/'tests/native_flow_replicated.py'),'oracle','--config',str(config),'--output',str(tmp_path/'oracle')]
     result = subprocess.run(command,capture_output=True,text=True,timeout=600,
@@ -32,6 +36,7 @@ def native_replica_case(tmp_path, family, device):
     assert len(proof['ranks']) == 2 and all(row['average_before_clip_adam'] for row in proof['ranks'])
     assert all(row['oracle_cycles'] == 3 and row['later_student_gradient_nonzero'] for row in proof['ranks'])
     assert all(len(record['cycles']) == 3 for row in proof['ranks'] for record in row['records'])
+    assert all(row['compute_precision'] == compute_precision for row in proof['ranks'])
     lifecycle(config,tmp_path/'lifecycle',ranks=2)
 
 
@@ -40,3 +45,10 @@ def native_replica_case(tmp_path, family, device):
 @pytest.mark.parametrize('family',['flux2-klein-base','qwen-image'])
 def test_actual_native_flow_gloo2_independent_oracle_and_fresh_cli(tmp_path,family):
     native_replica_case(tmp_path,family,'cpu')
+
+
+@pytest.mark.skipif(os.environ.get('DMD_MODERN_FLOW_CPU') != '1' or os.environ.get('DMD_NATIVE_FLOW_REPLICATED') != '1',
+    reason='opt in to actual native BF16 Gloo2 with the isolated modern-flow stack')
+@pytest.mark.parametrize('family', ['flux2-klein-base', 'qwen-image'])
+def test_actual_native_bf16_flow_gloo2_independent_oracle_and_fresh_cli(tmp_path, family):
+    native_replica_case(tmp_path, family, 'cpu', compute_precision='bf16-mixed')

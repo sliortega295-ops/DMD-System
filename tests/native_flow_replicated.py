@@ -224,6 +224,7 @@ def oracle(config_path, output):
             gc.collect()
         proof = dict(evidence_kind='SYNTHETIC_TEST_ONLY', rank=rank, world_size=world, device=str(device),
             torch_version=torch.__version__, family=identity['model_metadata']['family'], independent_b1_gradient_mean=True,
+            compute_precision=identity['model_metadata'].get('compute_precision', 'fp32'),
             average_before_clip_adam=True, oracle_cycles=ORACLE_CYCLES, later_student_gradient_nonzero=True,
             reference_manual_exact=True, records=records, quality='NOT_RUN', pretrained_capacity='NOT_RUN', performance='NOT_RUN')
         distributed.checked(lambda: _write(root/f'rank-{rank:05d}.json', proof), 'rank-native proof')

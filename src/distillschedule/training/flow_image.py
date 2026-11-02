@@ -21,7 +21,7 @@ from .adapters import InferenceProjection, ModelComponents
 from .dmd import FlowDMDMethods
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
-from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
+from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state, native_compute_context
 from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches,
     FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
 
@@ -125,6 +125,7 @@ def admit_frozen_teacher_construction(*, parameters, request, budget, factory, b
         return None
     def admit():
         require(choice == FROZEN_TEACHER_CONSTRUCTION and budget is None
+                and parameters.get('compute_precision', 'fp32') == 'fp32'
                 and parameters.get('device', 'cpu') == request.trainer.get('device', 'cpu') == 'cpu'
                 and rank_world()[1] >= 2 and torch.distributed.get_backend() == 'gloo'
                 and request.trainer.get('distributed', {}).get('backend') == 'gloo'
@@ -661,7 +662,8 @@ def qualify_trial_roles(state, evidence_kind):
 
 
 class ImageRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
-    def __init__(self, native, *, api, config, media_config, binding, empty, trainable, schedule):
+    def __init__(self, native, *, api, config, media_config, binding, empty, trainable, schedule,
+                 compute_precision='fp32'):
         super().__init__()
         self.native = native
         self.api_entry = api.ENTRY  # deepcopy-safe immutable import identity
@@ -670,12 +672,16 @@ class ImageRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
         self.binding = binding
         self.trainable_config = deepcopy(trainable)
         self.generation_sigmas = tuple(schedule)
+        self.compute_precision = compute_precision
         self.register_buffer('empty_context', empty[0].detach().clone())
         self.register_buffer('empty_context_mask', empty[1].detach().clone())
 
     @property
     def device(self):
         return next(self.native.parameters()).device
+
+    def compute_context(self):
+        return native_compute_context(self.compute_precision, self.device, require=require)
 
     def __deepcopy__(self, memo):
         require(self.device.type != 'cuda', CUDA_TRIAL_LIMIT)
@@ -727,7 +733,7 @@ class ImageRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
 
 
 def _metadata(api, descriptor, *, replicated=False):
-    return dict(schema_version='distillschedule.native_flow_image.v1', family=api.FAMILY,
+    metadata = dict(schema_version='distillschedule.native_flow_image.v1', family=api.FAMILY,
         source=dict(model_id=api.MODEL_ID, revision=api.REVISION, license='Apache-2.0'),
         **deepcopy(descriptor),
         **(dict(precision='FP32_NATIVE_RANK_LOCAL_REPLICATED', replication='EXPLICIT_EQUAL_RANK_LOCAL_B1_POST_BACKWARD_MEAN')
@@ -736,6 +742,9 @@ def _metadata(api, descriptor, *, replicated=False):
         prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
         algorithm='EXPLICIT_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA')
+    if descriptor.get('compute_precision', 'fp32') == 'bf16-mixed':
+        metadata['precision'] = 'BF16_AUTOCAST_FP32_STATE_' + ('RANK_LOCAL_REPLICATED' if replicated else 'SINGLE_DEVICE')
+    return metadata
 
 
 def _components(api, state, descriptor, *, training, construction=None):
@@ -830,15 +839,16 @@ def build_family(parameters, api, *, construction=None):
     from .dmd import sigmas, training_state
     local = construction.local if construction is not None else lambda function, label: function()
     def preflight():
-        allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
+        allowed = {'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr', 'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision'}
         effective = parameters if construction is None else {key: value for key, value in parameters.items() if key != 'construction'}
         require(isinstance(effective, dict) and set(effective) <= allowed
-                and allowed - {'device', 'seed'} <= effective.keys(), 'complete explicit native image model parameters required; unknown options rejected')
+                and allowed - {'device', 'seed', 'compute_precision'} <= effective.keys(), 'complete explicit native image model parameters required; unknown options rejected')
         if construction is not None:
             require(type(construction) is _FrozenTeacherConstruction
                     and parameters.get('construction') == FROZEN_TEACHER_CONSTRUCTION,
                     'frozen Teacher requires the admitted construction provider')
         device = admit_fp32(effective, require=require, allow_replicated=True)
+        native_compute_context(effective.get('compute_precision', 'fp32'), device, require=require)
         require(type(effective.get('seed', 0)) is int, 'integer construction seed required')
         require(isinstance(effective['trainable'], dict) and effective['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
         return device, sigmas(effective['generation_sigmas'])
@@ -874,7 +884,8 @@ def build_family(parameters, api, *, construction=None):
                 if role != 'teacher' or construction is None:
                     place_module(native, device, require=require)
                 return dict(api=api, config=current, media_config=media_config,
-                    binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule)
+                    binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule,
+                    compute_precision=parameters.get('compute_precision', 'fp32'))
             kwargs = local(prepare_role, 'native image role preparation')
             roles[role] = (construction.wrap_teacher(api.Role, **kwargs) if role == 'teacher' and construction is not None
                 else local(lambda: api.Role(native, **kwargs), 'native image role ownership'))
@@ -890,6 +901,11 @@ def build_family(parameters, api, *, construction=None):
     descriptor = dict(architecture=config, media_config=media_config, binding=binding, runtime=runtime,
         trainable=deepcopy(parameters['trainable']), generation_sigmas=list(schedule), evidence_kind=manifest['evidence_kind'],
         asset_identity=dict(manifest_sha256=file_sha256(Path(parameters['assets'])),roles=deepcopy(manifest['roles']),media=deepcopy(manifest['media'])))
+    if parameters.get('compute_precision', 'fp32') != 'fp32':
+        descriptor['compute_precision'] = parameters['compute_precision']
+        # Explicit owned state binds compute semantics into the existing
+        # Program, saved-plan and complete-cycle identities, not metadata only.
+        state['flow_compute_precision'] = parameters['compute_precision']
     # Recheck all immutable files after materialization; no silent cache reuse.
     def finish():
         for name, spec in {**manifest['roles'], **manifest['media']}.items():
@@ -905,6 +921,11 @@ def admit_training(api, *, state, request, prepared_identity, prepared_manifest)
     replicated = rank_world()[1] > 1
     require(all(state[name].device == device for name in ('student', 'fake', 'teacher', 'media')),
             'matching rank-local FP32 device ownership required')
+    precision = request.model.get('parameters', {}).get('compute_precision', 'fp32')
+    require(all(state[name].compute_precision == precision for name in ('student', 'fake', 'teacher')),
+            'native role compute precision differs from the training request')
+    require(state.get('flow_compute_precision', 'fp32') == precision,
+            'native owned compute precision differs from the training request')
     if replicated:
         require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
                 and request.data.get('sharding') == 'rank_strided',
@@ -943,6 +964,8 @@ def generate(api, state, feeds, parameters):
 def project_current_generator(api, components, effective_training_parameters):
     descriptor = {key: deepcopy(components.metadata[key]) for key in ('architecture', 'media_config', 'binding',
         'runtime', 'trainable', 'generation_sigmas', 'evidence_kind')}
+    if 'compute_precision' in components.metadata:
+        descriptor['compute_precision'] = components.metadata['compute_precision']
     state = {name: components.state[name] for name in ('student', 'media')}
     return InferenceProjection(components=_components(api, state, descriptor, training=False),
         factory=api.ENTRY + ':build_inference_model', parameters=descriptor)
@@ -951,10 +974,13 @@ def project_current_generator(api, components, effective_training_parameters):
 def build_inference_family(parameters, api):
     from .dmd import sigmas
     keys = {'architecture', 'media_config', 'binding', 'runtime', 'trainable', 'generation_sigmas', 'evidence_kind'}
-    require(isinstance(parameters, dict) and keys <= parameters.keys() and set(parameters) <= keys | {'device', 'seed'},
+    require(isinstance(parameters, dict) and keys <= parameters.keys() and set(parameters) <= keys | {'device', 'seed', 'compute_precision'},
             'export reconstructs only CURRENT Student and codecs, not training/base paths')
     device = admit_fp32(parameters, require=require)
+    native_compute_context(parameters.get('compute_precision', 'fp32'), device, require=require)
     descriptor = {k: deepcopy(parameters[k]) for k in keys}
+    if parameters.get('compute_precision', 'fp32') != 'fp32':
+        descriptor['compute_precision'] = parameters['compute_precision']
     require(descriptor['runtime'] == runtime_identity(api), 'export native source/runtime changed')
     config = descriptor['architecture']; media_config = descriptor['media_config']; api.validate_architecture(config, media_config)
     native_cls, vae_cls, text_cls, _ = api.classes()
@@ -976,5 +1002,6 @@ def build_inference_family(parameters, api):
         empty = (torch.empty(empty_shape, dtype=torch.float32, device=device),
                  torch.empty(empty_shape[:2], dtype=torch.bool, device=device))
         role = api.Role(native, api=api, config=config, media_config=media_config, binding=descriptor['binding'], empty=empty,
-            trainable=descriptor['trainable'], schedule=sigmas(descriptor['generation_sigmas']))
+            trainable=descriptor['trainable'], schedule=sigmas(descriptor['generation_sigmas']),
+            compute_precision=descriptor.get('compute_precision', 'fp32'))
     return _components(api, {'student': role, 'media': media}, descriptor, training=False)

@@ -1,9 +1,8 @@
-# Original Qwen-Image T2I: native flow-DMD slice
+# Original Qwen-Image T2I: flow DMD
 
-Fixed source candidate:
+Model source:
 [Qwen/Qwen-Image](https://huggingface.co/Qwen/Qwen-Image/tree/75e0b4be04f60ec59a75f475837eced720f823b6),
-revision `75e0b4be04f60ec59a75f475837eced720f823b6`, source-audited Apache-2.0.
-This does not admit Qwen-Image Edit, later image generations or their conditions.
+revision `75e0b4be04f60ec59a75f475837eced720f823b6`, Apache-2.0.
 
 The adapter executes actual Diffusers 0.37.1 `QwenImageTransformer2DModel`,
 `AutoencoderKLQwenImage`, `QwenImagePipeline.encode_prompt`, Transformers5
@@ -28,13 +27,12 @@ different prompt lengths through persistent common training.
 
 Transformers5's original-format text checkpoint key changes use its **actual
 WeightRenaming/PrefixChange operations**, not guessed aliases; every selected
-safe weight key/shape/dtype remains exact. Unknown converters/config fields,
-reference-image/edit, causal/KV, full-parameter, AMP and unsupported distributed requests
-fail closed. Explicit single-device FP32 CUDA reference training is qualified
-on actual tiny classes, including complex RoPE ownership. The exact direct
+safe weight key/shape/dtype remains exact.
+`compute_precision: "bf16-mixed"` selects native autocast while
+preserving FP32 master/update state and complex rotary buffers; FP32 is the default.
+The direct
 [immutable-sharing policy](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
-uses the same persistent owner; CUDA trial planning and other optimization
-policies still reject unbounded role cloning.
+uses the same persistent owner.
 Explicit equal-B1 post-backward replication on CPU/Gloo or CUDA/NCCL reuses
 the shared lifecycle and can retain exact frozen-state sharing. It does not
 wrap private role methods in DDP or shard model memory. Follow the
@@ -42,5 +40,4 @@ wrap private role methods in DDP or shard model memory. Follow the
 for rank-specific data/noise and complete same-topology checkpoint recovery.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
-`qwen-image`. Source/actual tiny CPU and A100 reference behavior is not full pretrained V3–V5
-qualification; those gates remain **NOT_RUN**, including quality/convergence.
+`qwen-image`.

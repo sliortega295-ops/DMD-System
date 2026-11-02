@@ -13,8 +13,8 @@ An execution policy selects physical placement, communication and state reuse. T
 | SDXL / official DMD2 | Dual CLIP, added conditions, backward simulation; four-step or explicitly initialized single-step | Both tokenizers; native VAE, pooled and unconditional conditions | `train,dmd2` |
 | Official Self-Forcing Wan | Causal random-exit block rollout, KV state, DMD loss, native G/C and EMA clocks | Native T5 prompt encoding or pinned embeddings; native full-step causal inference and VAE video | `train,self-forcing-official` |
 | LTX-2.5 / generic No-GAN DMD | Native AV LTX Transformer; explicit rectified-flow surrogate and Fake regression policy | Gemma4/connectors, native video/audio VAEs, vocoder; AV or explicit latents | isolated `train,ltx25`, Python >=3.11 |
-| FLUX.2 klein Base 4B / explicit flow DMD | Flux2 Transformer with normalized sigma | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`; CPU/CUDA FP32, local B1 |
-| Original Qwen-Image T2I / explicit flow DMD | QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`; CPU/CUDA FP32, local B1 |
+| FLUX.2 klein Base 4B / explicit flow DMD | Flux2 Transformer with normalized sigma | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`; FP32 or BF16 autocast, local B1 |
+| Original Qwen-Image T2I / explicit flow DMD | QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`; FP32 or BF16 autocast, local B1 |
 | Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Wan Transformer, expanded normalized timestep, CFG=1 | UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
 | HunyuanVideo-1.5 T2V / explicit flow DMD | Hunyuan15 Transformer, dual text encoders and temporal4 VAE | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
 | Existing W1–W6 | Their respective native rollout, loss and update rules | See each recipe and six-workload support matrix | Model-specific environments |
@@ -177,7 +177,7 @@ saved-plan execution, export and new-input generation outside the checkout.
 
 FLUX.2 klein Base and Qwen-Image use common flow DMD with unmerged LoRA,
 four explicit Euler rollout steps and G1/F5 updates. The recipes provide
-CPU/single-CUDA FP32 reference training, manual frozen-state sharing and
+CPU/single-CUDA FP32/BF16-autocast reference training, manual frozen-state sharing and
 post-backward replicas through the shared lifecycle. The initial recipes use
 local B1 and Teacher/Fake CFG=1.
 
