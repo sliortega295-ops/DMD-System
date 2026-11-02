@@ -3,33 +3,33 @@
 `generate --weights` consumes prepared inputs. For adapters with an explicit
 export-input capability, the existing `data prepare --preparer` entrypoint can
 now create those inputs **from the export itself**, including its actual text
-encoders, tokenizers and VAE. It does not reopen a training bundle or checkpoint.
+encoders, tokenizers and media codecs. It does not reopen a training bundle or
+checkpoint.
 Choose only trusted exports and adapter code, as with all explicit Python plugins.
 
 ## Supported extent
 
-The implemented native capabilities are FLUX.2 klein Base T2I, original
-Qwen-Image T2I, Wan2.2 TI2V-5B's **T2V subpath**, and HunyuanVideo-1.5 T2V.
-They retain their existing pinned `modern-flow`, CPU1/FP32/B1, unmerged-LoRA,
-four-step generation and native geometry/tokenizer/codec admission contracts.
-Other adapters (including SD, official Self-Forcing and LTX) have no such hook
-yet and **refuse**, even if their separate asset-based preparer works.
+| Native capability | Prompt-record geometry |
+| --- | --- |
+| FLUX.2 klein Base T2I | `latent_shape`, BCHW |
+| Original Qwen-Image T2I | `latent_shape`, BCHW |
+| Wan2.2 TI2V-5B's **T2V subpath** | `latent_shape`, BCFHW |
+| HunyuanVideo-1.5 T2V | `latent_shape`, BCFHW |
+| LTX-2.5 audio–video | [`geometry`: FPS, AV latent shapes and conditioning](../../recipes/ltx25/README.md#generate-new-audiovideo) |
 
-Actual tiny upstream model classes are tested end to end: train an updated
-Student, export Student plus codecs, copy the package/export to a non-repository
-directory, **delete all original assets and training checkpoints**, prepare a
-never-used prompt and newly created raw media through public commands, then
-decode with the current Student. The decoded result matches the native restored
-current Student exactly. No hand-published conditional features are used.
-This is **SYNTHETIC_TEST_ONLY** CPU functionality. Full pretrained execution,
-full-model capacity, production geometries, GPU/AMP/distributed execution,
-performance, convergence and quality are **NOT_RUN**. It is not mature-release
-or pretrained-family acceptance. Existing family configuration limits still apply.
+Input preparation runs on CPU and restores the export's native codecs, text
+encoders and tokenizers. Each export retains its recipe's geometry, precision,
+tokenizer and pinned-source contracts. LTX uses its separately pinned native runtime.
+
+Tiny upstream CPU lifecycle checks cover preparing new prompts and raw media
+from a current Student export without the original training assets.
 
 ## 1. Make an explicit new-input manifest
 
 Save `new-inputs.json` next to `export/`. There is no model-name field; the
 validated export supplies its factory and native encoding capability.
+The image/video example below uses `latent_shape`; LTX uses the linked AV
+`geometry` contract and complete manifest in its recipe.
 
 ```json
 {
@@ -51,8 +51,9 @@ guessed. Prompt-mode zero latents are explicit geometry/noise templates, not
 invented images or conditional features. Empty text is allowed only as an
 explicit string and is encoded by the real native empty-prompt path.
 
-For `"mode": "raw"`, replace `latent_shape` with exactly one native media
-reference: `"image": {"path": "new.png", "sha256": "ACTUAL_FILE_SHA256"}` for
+For these image/video families, `"mode": "raw"` replaces `latent_shape` with
+exactly one native media reference:
+`"image": {"path": "new.png", "sha256": "ACTUAL_FILE_SHA256"}` for
 images, or `"video": {"path": "new-frames", "sha256": "ACTUAL_INVENTORY_SHA256"}`
 for video files/frame directories. Retain `id` and `prompt`. Frame inventory
 hashes use the existing `data.manifest.source_identity(path, frames=True)`
@@ -96,21 +97,24 @@ prefer an installed importable adapter module for portable deployments.
 Create an ordinary `distillschedule.training.v1` inference configuration. Copy
 the `model.factory` and **exact** `model.parameters` from `export/export.json`,
 use `algorithm: {"name":"dmd"}`, `data.prepared` pointing to the new manifest,
-`execution: {"mode":"reference"}`, and a CPU trainer with an independent seed,
-one cycle and an unused output directory. This is not the old training request;
-do not add asset paths, Teacher/Fake, base reloads or training checkpoint state.
+and `execution: {"mode":"reference"}`. Use the recipe's supported `trainer.device`
+and precision policy, an independent seed, one cycle and an unused output
+directory. Keep this inference request separate from training assets,
+Teacher/Fake, base reloads and training checkpoint state.
 
 ```sh
 distillctl generate inference.json --weights export \
   --prepared new-prepared/manifest.json --output generated --output-kind image
-# For the admitted video adapters, use --output-kind video.
+# For Wan/Hunyuan, use --output-kind video.
+# For LTX-2.5, use --output-kind audio_video.
 ```
 
-Images are actual decoded PNGs. Video output is an actual decoded **PNG frame
-sequence** plus THWC uint8 tensors: no FPS, playable-container or quality claim
-is invented. See the [shared image recipe](../../recipes/flow_image/README.md),
+Images are decoded PNGs. Video output is a decoded **PNG frame sequence** plus
+THWC uint8 tensors. See the [shared image recipe](../../recipes/flow_image/README.md),
 [Wan recipe](../../recipes/wan22_dmd/README.md), and
 [Hunyuan recipe](../../recipes/hunyuan_video_dmd/README.md).
+The [LTX recipe](../../recipes/ltx25/README.md#generate-new-audiovideo) describes
+its native RGB frame and PCM WAV output.
 
 ## Adapter extension contract
 

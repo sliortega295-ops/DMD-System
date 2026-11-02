@@ -1,294 +1,42 @@
 # Official Self-Forcing (not LiveWan)
 
-Opt-in external [Self-Forcing](https://github.com/guandeh17/Self-Forcing) at
-`33593df3e81fa3ec10239271dd2c100facac6de1`, Apache-2.0. Source and weights are
-not vendored. `fetch_source.py OUTPUT` fetches the small hash-locked source
-closure and license only. It never downloads model weights or installs anything.
+Train the actual upstream causal Wan Generator and noncausal Fake Score with
+native random-exit rollout, DMD losses, full trainable parameters and cached
+block attention. This is **official Self-Forcing**, separate from
+[W4 LiveWan](../self_forcing/README.md). Single-device CPU/`cuda:N` uses FP32 MATH
+SDPA; explicit world16 FSDP2 profiles use BF16 compute with FP32 masters/reduction
+and native FlashAttention-2.
 
-`create_cpu_fixture.py OUTPUT --source-root SOURCE` creates RANDOM tiny assets
-of the actual upstream CausalWanModel, WanModel, and WanVAE_ classes and a
-common Program configuration. This proves numerical/lifecycle plumbing, not
-pretrained quality or CUDA performance. Its explicit randomly drawn native
-embedding assets are NOT described as prompt encodings.
+## Source, environment and assets
 
-Factory defaults are derived from the ORIGINAL pinned merge of
-`configs/default_config.yaml` and `configs/self_forcing_dmd.yaml`, not just
-constructor fallbacks. The official recipe uses score `timestep_shift=5`,
-generator wrapper scheduler shift5, `ts_schedule=false`, G LR `2e-6`, C LR
-`4e-7`, real CFG3/fake CFG0, G1/C5, EMA.99 starting at200, block3 and21 latent
-frames. Its actual teacher is Wan14B, generator/fake Wan1.3B with explicit
-`ode_init.pt` initialization; public assets must supply the matching native
-configs and strict local states. This owner does not silently manufacture
-those pretrained states or download them. Documented CPU-only exceptions are
-FP32 instead of mixed precision, native gradient checkpointing disabled by default, no
-FSDP/global batch64 claim, and explicit local prepared conditioning/weights.
-The RANDOM tiny fixture additionally changes architecture/spatial size, both
-LRs, EMA start/decay, and negative-conditioning provenance for test speed;
-its temporal random-exit/CFG/flow/update equations remain original.
-
-## Native contract and public lifecycle
-
-- Actual `DMD.generator_loss`, detached double-precision target MSE, original
-  CFG/normalizer, original flow fake-score loss and scheduler.
-- Native random-exit cached causal training, prefix no-grad / final grad,
-  context-noise RNG draws and KV/RoPE/end-index writes. Critic samples a NEW
-  self-rollout and consumes its OWN prompt record, never a cached G sample.
-- Each atomic common Program call is one G1/C5 macrocycle: G at native steps
-  divisible by five (including zero), C on every native step. Settings can
-  explicitly change the ratio. There are six distinct prompt records per
-  default cycle, split into `generator` (one) and `critic` (five) streams.
-- Native AdamW ordering and original EMA_FSDP arithmetic. EMA initializes
-  AFTER incrementing to `ema_start_step` (default 200); only subsequent G
-  commits update an existing EMA. No invented LR scheduler is added.
-- Common `distillctl train`, checkpoint/resume, eval, export and generate.
-  Export is CURRENT G + native VAE only, not EMA, teacher, fake or optimizers.
-  Generation runs every exported step of the actual CausalInferencePipeline,
-  not the training random exit. Native VAE decoding produces the video.
-
-The factory references are `distillschedule.training.self_forcing:build_model`
-and `distillschedule.training.self_forcing:build_self_forcing` (catalog names
-are `self-forcing-wan` / `self-forcing` when registered by the host integration).
-The generated JSON uses explicit factories so it is independently runnable.
-
-## Explicit local inputs/assets
-
-The `distillschedule.official_self_forcing_assets.v1` manifest contains four
-roles (`generator`, `real_score`, `fake_score`, `vae`), each with the ACTUAL
-native class `config` and a `weights` object `{ "path": ..., "sha256": ... }`.
-It also requires a pinned `negative_prompt_embeds` file in native `1,L,C`
-layout. Weights are loaded strictly from these files, never implicit hub paths.
-All roles, source closure, local bridge files and numerical dependency versions
-enter restart identity. The fixture is a complete readable example.
-
-`distillschedule.data.self_forcing_inputs.prepare_inputs` accepts a manifest
-with `schema_version: distillschedule.official_self_forcing_inputs.v1`:
-
-- `mode: preencoded`: records contain unique `id` and pinned `embedding`
-  `{path, sha256}` files. They contain EXACT native FP32 `B,L,C` prompt embeddings;
-  no scaling, tokenization, dtype conversion or synthesized conditioning occurs.
-- `mode: prompts`: records contain unique `id` and raw `prompt` strings (or
-  string batches). The manifest must additionally contain `encoder` with
-  `source_root`, actual native `T5Encoder` constructor `config`, pinned local
-  `weights`, local `tokenizer` directory, and `text_len`. Preparation invokes
-  the ORIGINAL WanTextEncoder.forward, ORIGINAL T5Encoder layers and ORIGINAL
-  HuggingfaceTokenizer with `local_files_only=True`. Its only forward port is
-  the explicit CPU device property. Use the same `encode_text` API to produce
-  and pin the matching negative-prompt embedding for the model asset manifest.
-  Optional `tokenizer_use_fast` is forwarded to that ORIGINAL tokenizer API
-  (default true, as upstream). The tiny actual SentencePiece/T5 qualification
-  uses explicit false, avoiding protobuf conversion of a slow-only tokenizer
-  without inventing an encoder or installing another dependency.
-
-By default prompt preparation requires native **FP32 checkpoint / FP32 encoder
-output**, with the original FP32 path unchanged. For an existing native BF16
-T5 checkpoint, opt in explicitly in the manifest's `encoder` object:
-
-```json
-"precision": {"weights": "bfloat16", "output": "float32"}
-```
-
-The actual native T5 parameters are declared BF16 before strict loading; the
-checkpoint must already have that exact dtype, keys and shapes. No checkpoint
-is recast, repacked or downloaded. Original `WanTextEncoder.forward` and
-`T5Encoder` produce native BF16 conditioning, including original padding; only
-that result is widened exactly to FP32 at the public prepared-embedding
-boundary, without scaling, resizing or normalization. `encode_text` applies
-the same declaration when preparing the matching negative prompt. Explicit
-`{"weights": "float32", "output": "float32"}` is also accepted; other
-precision/output values, missing or unknown precision fields, and checkpoint
-dtype mismatches are rejected before publication. The complete declaration
-is bound into prepared encoder provenance and its parameter hash, alongside
-the original local checkpoint/tokenizer/source identities. Preencoded inputs
-still require FP32 and never gain an implicit dtype conversion.
-
-BF16 encoding is an explicit data-preparation precision choice, not a claim
-of bitwise equivalence to FP32 encoding. It does not change training precision,
-attention backends or exported inference precision, or establish pretrained
-encoder capacity, GPU performance, generated-video quality or convergence.
-
-Raw prompt text becomes model conditioning during explicit data preparation;
-training and exported inference accept the exact prepared embedding boundary.
-New prompts can be prepared separately and used by exported inference without
-the training dataset or training model assets.
-
-## Qualification boundary
-
-The source path accepts one explicit `cpu` or `cuda:N` device, FP32 MATH SDPA,
-batch1 only; no autocast or distributed layout. Actual random-tiny CUDA
-oracle, lifecycle and attention tests passed on A100/Torch 2.10 under an
-explicit deterministic test policy; the CPU-only lane alone still cannot
-establish CUDA execution. Native T2V, exactly 21 latent
-frames, BFCHW layout, 16 latent channels; whole native frame blocks. Longer-frame
-training, I2V, independent first frame and uncached causal/flex training are
-explicitly rejected, not emulated. The checkpoint-ON reference below is an
-explicit, separately identified source policy, not a replacement for the default.
-
-Single-device compatibility ports are private, source-locked and explicit: constructor
-asset injection, true-singleton broadcast, FP32 math SDPA attention (native
-layers/cache body unchanged), geometry-derived allocations, and exactly six
-training-boundary `.cuda()` lookups changed to `noise.device`. Uncached causal
-execution is rejected rather than quietly removing its causal mask. No global
-Torch/CUDA/module monkeypatches are installed. Full pretrained GPU training
-and media quality remain `NOT_RUN`; tiny tests are not quality evidence. See
-GPU acceptance scope (source checkout: `docs/guides/performance_validation.md`).
-
-Modules, native non-buffer schedules, complex128 RoPE, VAE normalization and
-negative/unconditional embeddings are resident before AdamW construction.
-Placement does not cast native plain tensor dtypes: upstream FP64 conversion
-and target-loss arithmetic remain FP64, and RoPE remains complex128. The
-runtime identity records matmul/cuDNN TF32, float32 matmul precision and
-determinism policies without changing caller-global settings; live training
-and inference reject policy drift. FP32 storage/MATH SDPA does not imply TF32
-is disabled, and is not native FA/BF16 qualification. The
-original `EMA_FSDP` shadow deliberately stays detached CPU FP32, as do Adam's
-noncapturable scalar step and host RNG metadata. CPU construction and updates
-never initialize or seed unrelated CUDA generators; a CUDA owner scopes only
-its own current device and generator. Offline native T5 preparation stays CPU.
-
-The common Program moves prepared embeddings to the explicitly selected
-trainer device. Direct owner/inference calls must already supply exact native
-embeddings on that device; wrong-device rows are rejected, never silently
-copied. Factory and trainer device identity must agree. Checkpoints restore
-only the same training device/topology and complete G/C cycle; scheduler aliases,
-native plain tensors, moments, negative context and RNG are validated before
-mutation, while ephemeral rollout caches are rebuilt. Only current-G/VAE
-inference exports allow an explicit device relocation.
-
-The exact tiny Generator-ON profile also has an opt-in
-[budgeted resident lifecycle](../../docs/guides/resident_owner_training.md):
-manual Fake checkpoint policy, measured `auto`, saved `plan` and same-device
-fresh-process resume use one persistent native owner. Construction and trial
-capacities are explicit. Without that admission, CUDA auto/plan/owner-selected
-trials are rejected before model allocation; whole-owner CUDA copies remain
-forbidden. This portfolio does not qualify pretrained/AMP/BF16/native-FA,
-distributed or generation-quality support. Optional actual
-tiny CUDA regressions are in `tests/gpu/test_training_self_forcing_lifecycle.py`;
-CPU-only Torch reports their deliberate `NOT_RUN` skips.
-
-## Explicit checkpoint-ON reference and Fake-only physical policy
-
-Set `model.parameters.settings.gradient_checkpointing` to `true` to choose
-the actual native Generator/Fake checkpoint-ON reference. The default remains
-`false`, including the existing `training.json` and fixture generator. **Never
-treat Generator ON/OFF as equivalent physical strategies:** the pinned causal
-source passes different cross-attention-cache arguments in those branches and
-changes the gradient path. The bound setting is algorithm/source identity and
-cannot be overridden by a plan or mixed across resumable checkpoints.
-
-The pinned models have the old `_set_gradient_checkpointing(module, value)`
-signature, which newer Diffusers enable APIs cannot call. During native model
-construction only, a private instance-local enable adapter invokes the original
-setter through `Module.apply`; it is removed even on failure. No source file,
-global Diffusers/Torch method, native forward, or checkpoint function is patched.
-
-For the actual random tiny fixture's exact architecture, 21x4x4 latent geometry,
-G1/C5 block3/official denoising schedule and qualified CPU1 FP32 stack
-(Torch2.10, Diffusers0.37.1, Transformers4.51.3, einops0.8.1), the ON reference
-offers **only noncausal Fake checkpoint OFF** as a physical alternative. Put
-this in the same config's `execution` field after selecting the ON reference:
-
-```json
-{
-  "adapter": "program",
-  "mode": "manual",
-  "implementation": {
-    "backend": "torch-callable-resident-v1",
-    "share_immutable": false,
-    "checkpoint_bindings": [],
-    "owner_execution": {"native_cycle": {"fake_gradient_checkpointing": false}}
-  }
-}
-```
-
-Explicit `fake_gradient_checkpointing: true` is also measurable against that
-same ON reference. `mode: auto` with `memory_limit_bytes`, `max_candidates: 2`,
-`samples: 2`, `max_program_runs: 5` uses the common measured planner; its saved
-`planning/selected-plan.json` is reusable via `mode: plan` and `plan: PATH` for
-the same initial bound workload. The winner may remain reference: it is never
-preselected by model name. Manual, auto, saved-plan and continued-cycle execution
-all use this one owner capability, the same runner and the same reference gate.
-After resuming an optimized policy, its first real update is paired again from
-the restored state. Calibration never advances live model/RNG/data state.
-
-The scoped option changes only the actual Fake flag and installs read-only
-block pre-hooks. Counters identify actual entry from the original native
-`custom_forward` called by Torch `checkpoint` versus its backward `recompute_fn`
-using inspected code objects. They do not infer requests from the option, or
-replay the optimizer-containing macrocall. OFF requires zero checkpoint/recompute
-entries **and actual direct grad-enabled Fake block execution**. Hooks and flags
-are restored on normal exit and errors; no modes, args, cache policy or RNG
-semantics are rewritten.
-
-Tests execute three actual tiny native cycles against the source's own
-`Trainer.train`: exact losses/gradients, model/Adam/EMA, rollout/cache traces,
-clocks and RNG. Public fresh-process manual restart and measured common planning
-are separately checked. This is **tiny CPU functional evidence only**, not
-pretrained, GPU capacity, memory savings, quality or speedup evidence. Other
-settings/architectures/runtimes expose baseline only; explicit unsupported
-overrides fail without silently changing the reference. CUDA copying and
-auto/plan/owner-execution trial guards remain unchanged.
-
-## Unified runnable entry
-
-For the independent consumed-cache lifetime policy, copy
-[`training.consumed-kv.json`](training.consumed-kv.json) and fill the same local
-assets/input paths as `training.json`. Its only model change is
-`native_cache_lifetime: "release-after-commit-v1"`; the reference default remains
-unchanged. It drops rollout-cache references after each completed native
-backward/clip and Adam/EMA commit, never during attention or checkpoint replay.
-Real release counters appear in cycle metrics. Bytes count relinquished owner
-references, not measured freed HBM. CPU native three-cycle and new-process
-restore checks pass; this public policy's CUDA/performance acceptance is not
-established. See [policy details](../../docs/guides/native_owner_backends.md#official-self-forcing-release-consumed-rollout-kv).
-
-Use the separate `.[train,self-forcing-official]` environment (add `test` only
-for development). The public training entry is the same as every other model:
+Use a separate `train,self-forcing-official` environment; see
+[installation](../../docs/guides/installation.md). External
+[guandeh17/Self-Forcing](https://github.com/guandeh17/Self-Forcing) is pinned at
+`33593df3e81fa3ec10239271dd2c100facac6de1`, Apache-2.0. The optional helper fetches
+the hash-locked source closure and license, not weights:
 
 ```sh
-export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 python recipes/self_forcing_official/fetch_source.py /PROJECT/dependencies/Self-Forcing
-python recipes/self_forcing_official/create_cpu_fixture.py /PROJECT/random-native-fixture \
-  --source-root /PROJECT/dependencies/Self-Forcing --cycles 3
-
-distillctl train /PROJECT/random-native-fixture/training.json --cycles 1 \
-  --output /PROJECT/partial
-distillctl train /PROJECT/random-native-fixture/training.json --cycles 3 \
-  --resume /PROJECT/partial/checkpoints/cycle-000001 --output /PROJECT/resumed
-distillctl export /PROJECT/random-native-fixture/training.json \
-  --checkpoint /PROJECT/resumed/checkpoints/cycle-000003 --output /PROJECT/current-G
 ```
 
-This helper creates explicitly random original-class assets/embeddings, **not
-pretrained quality data**. For real raw prompts, fill
-`inputs.prompts.template.json` with the actual local native T5 architecture,
-checkpoint SHA and tokenizer directory, then use
-`distillctl data prepare ... --preparer distillschedule.data.self_forcing_inputs:prepare_inputs`.
-The template declares the native BF16 UMT5-XXL checkpoint and exact FP32 output
-widening. For an FP32 checkpoint, explicitly set `encoder.precision.weights` to
-`float32`; the loader never converts a checkpoint to make its declared dtype fit.
-Its T5 dimensions describe the pinned native constructor, not a tiny substitute.
-The complete 5.68B-parameter BF16 encoder has also prepared new raw prompts
-through this public path on CPU; the bounded tests use a separately labeled
-small T5.
-`inputs.preencoded.template.json` supplies exact already-native embeddings.
-The static `training.json` selects the actual registered model/workflow and
-independent G1/C5 streams; fill its explicit paths before use.
+Set `model.parameters.source_root` and supply an explicit
+`distillschedule.official_self_forcing_assets.v1` manifest. Its `generator`,
+`real_score`, `fake_score` and `vae` entries contain actual native constructor
+`config` plus `weights: {"path":"...","sha256":"..."}`. Pin the matching
+`negative_prompt_embeds` in native `1,L,C` layout. The fixture below is a readable
+complete example. Set `BUNDLE` to your asset directory and `RUN` to a separate
+project-local run directory. Inventory files separately from native admission:
 
-For exported inference, use the exact `model.factory` and `model.parameters`
-from `export.json` in the inference request, a newly prepared input manifest
-and explicit inference seed. `distillctl generate ... --weights /PROJECT/current-G
---prepared NEW/manifest.json --output-kind video --output NEW/generated` runs
-the native full-step causal inference + actual VAE. This is a model-only
-projection; old training assets, optimizer or prepared training prompts are
-not required. The [common guide](../../docs/guides/training.md#generate-and-export)
-explains checkpoint versus inference identity.
+```sh
+distillctl assets prepare --local-dir "$BUNDLE" --output "$RUN/source.json"
+distillctl assets verify "$RUN/source.json"
+```
 
-## Optimized distributed configuration
-
-Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.
-
-Both native world16 FSDP2 configurations use these role architectures:
+Explicit Hub acquisition uses the shared [pinned prepare/materialize
+workflow](../../docs/guides/model_families.md#prepare-model-assets). A downloaded
+source snapshot does not construct the native role manifest or `ode_init.pt`
+initialization: supply the strict native states/configs and preserve asset terms.
+The official role architectures are:
 
 | Role | Native class | Blocks / width |
 |---|---|---|
@@ -296,14 +44,135 @@ Both native world16 FSDP2 configurations use these role architectures:
 | Teacher / Real Score | `WanModel` | 40 / 5120 (Wan14B) |
 | Fake Score | `WanModel` | 30 / 1536 (Wan1.3B) |
 
-The public constructor checks these boundaries on meta tensors before loading
-role payloads. A 1.3B Teacher is not a substitute for this profile. Supply native
-FP32 role checkpoints in the ZIP format written by the default `torch.save`.
-The distributed loader maps the read-only source pages, then copies into each
-role's independent parameters before sharding; training never mutates the asset
-file. This avoids a second private full-Teacher input allocation on every rank.
-The ordinary single-device reference still accepts its existing legacy format.
+World16 constructors check these shapes on meta tensors before loading. Supply
+FP32 role states in default `torch.save` ZIP format; the distributed loader maps
+read-only pages, then copies to independent parameters before sharding. The
+single-device loader also accepts its existing legacy format.
 
-The native A100 path requires a matching FlashAttention-2 package importable as
-`flash_attn`. Provider availability is checked before allocating the role
-models. The CPU reference does not require this optional GPU dependency.
+## Native training contract
+
+Defaults come from the pinned merge of `default_config.yaml` and
+`self_forcing_dmd.yaml`: score and Generator scheduler shift 5, `ts_schedule=false`,
+G LR `2e-6`, C LR `4e-7`, real CFG3/fake CFG0, G1/C5, EMA .99 starting at step 200,
+block size 3 and 21 latent frames. Single-device defaults explicitly use FP32 and
+checkpointing off. T2V uses B1, BFCHW/16-channel/21-frame latents and whole frame
+blocks. The random tiny fixture changes architecture/spatial size, LRs, EMA
+settings and conditioning provenance explicitly, not the rollout/update equations.
+
+- Native `DMD.generator_loss`, detached double-precision target MSE, original
+  CFG/normalizer, flow fake-score loss and scheduler.
+- Random-exit cached causal training: prefix no-grad/final grad, native
+  context-noise draws and KV/RoPE/end-index writes. Critic samples a **new**
+  self-rollout using its **own** prompt, not a cached Generator sample.
+- One common macrocycle is G1/C5: G at steps divisible by five (including zero),
+  C every step. Independent streams consume one `generator` and five `critic`
+  prompt records; an explicit ratio change changes the required stream counts.
+- Native AdamW ordering and `EMA_FSDP` arithmetic: EMA initializes after the step
+  reaches 200, and subsequent G commits update it. No LR scheduler is invented.
+- Native FP64 target arithmetic and complex128 RoPE remain intact; single-device
+  EMA shadows, noncapturable Adam step metadata and RNG retain host ownership.
+
+## Prepare prompts or native embeddings
+
+[inputs.prompts.template.json](inputs.prompts.template.json) supplies the native
+T5 constructor, pinned local weights/tokenizer, text length and raw prompts.
+Preparation calls original `WanTextEncoder.forward`, `T5Encoder` and
+`HuggingfaceTokenizer` with local files only:
+
+```sh
+distillctl data prepare /PROJECT/inputs.json --output /PROJECT/prepared \
+  --preparer distillschedule.data.self_forcing_inputs:prepare_inputs
+```
+
+The template declares native BF16 UMT5-XXL storage/output widened exactly to FP32:
+`"precision":{"weights":"bfloat16","output":"float32"}`. For an FP32 checkpoint,
+select `"weights":"float32"`; strict loading requires the declared dtype rather
+than recasting the checkpoint. `encode_text` uses the same declaration for the
+matching negative prompt. This is a preparation precision choice, separate from
+training precision. The complete 5.68B-parameter BF16 encoder has prepared new
+raw prompts through this public CPU path.
+
+[inputs.preencoded.template.json](inputs.preencoded.template.json) instead pins
+exact native FP32 `B,L,C` embedding files by unique record ID and SHA256.
+Training/inference consume this prepared boundary without implicit tokenization,
+scaling or conversion. Source, tokenizer/encoder and precision provenance remain
+bound to the prepared rows.
+
+## Train, save, resume and export
+
+Fill the source/assets and independent Generator/Critic stream paths in
+[training.json](training.json), then select the owned `trainer.device`.
+For FSDP2, use [training.fsdp2-reference.json](training.fsdp2-reference.json);
+[training.optimized.json](training.optimized.json) enables phase-weight/text-KV
+retention, Critic checkpoint-result reuse and native kernel/CFG specializations.
+The [shared launch and optimization guide](../../docs/guides/official_optimized_training.md)
+contains the exact world16 environment, `flash_attn` requirement, mechanisms
+and performance results. Both FSDP2 profiles use B1/global16, 368×640/81 output
+frames, G1/C5/EMA0 and `NCCL_CROSS_NIC=1`.
+
+```sh
+# Single-device example; retain the world16 launcher for FSDP2 commands.
+distillctl train /PROJECT/train.json --cycles 1 --output /PROJECT/partial
+distillctl train /PROJECT/train.json --cycles 3 \
+  --resume /PROJECT/partial/checkpoints/cycle-000001 --output /PROJECT/resumed
+distillctl export /PROJECT/train.json \
+  --checkpoint /PROJECT/resumed/checkpoints/cycle-000003 --output /PROJECT/current-G
+```
+
+Use returned checkpoint paths. Training resume requires the same device/topology
+and complete G/C cycle; ephemeral rollout caches rebuild from persistent state.
+The [common lifecycle](../../docs/guides/training.md) covers checkpoint publication.
+For a small random actual CausalWanModel/WanModel/WanVAE_ starter:
+
+```sh
+python recipes/self_forcing_official/create_cpu_fixture.py /PROJECT/random-native-fixture \
+  --source-root /PROJECT/dependencies/Self-Forcing --cycles 3
+distillctl train /PROJECT/random-native-fixture/training.json
+```
+
+## Explicit checkpoint-ON reference and Fake-only physical policy
+
+`model.parameters.settings.gradient_checkpointing: true` selects the native
+Generator/Fake checkpoint-ON reference; the default is `false`. Generator ON/OFF
+are different source policies: causal cross-attention-cache arguments and the
+gradient path differ, so a plan cannot switch them or mix their checkpoints.
+
+For the exact random tiny 21x4x4/G1C5/block3 ON reference on the qualified one-thread CPU1
+FP32 Torch2.10/Diffusers0.37.1/Transformers4.51.3/einops0.8.1 stack, only
+**noncausal Fake checkpointing** is a physical option. Set `execution` to:
+
+```json
+{"adapter":"program","mode":"manual","implementation":{
+  "backend":"torch-callable-resident-v1","share_immutable":false,"checkpoint_bindings":[],
+  "owner_execution":{"native_cycle":{"fake_gradient_checkpointing":false}}}}
+```
+
+Explicit `true` measures Fake ON against the same Generator-ON reference.
+`auto` with `memory_limit_bytes`, `max_candidates:2`, `samples:2`,
+`max_program_runs:5` uses the common measured planner; reuse
+`planning/selected-plan.json` through `mode:plan`. Native execution counters and
+paired reference admission verify the option, including the first resumed update.
+Flags/hooks restore after normal exit or errors. [Budgeted resident
+execution](../../docs/guides/resident_owner_training.md) defines separate
+snapshot/restore admission for its exact tiny CUDA profile.
+
+The independent [consumed-KV template](training.consumed-kv.json) sets
+`native_cache_lifetime: "release-after-commit-v1"`. It releases owner rollout-cache
+references after completed backward/clip and Adam/EMA commit, not during attention
+or checkpoint replay; [policy details](../../docs/guides/native_owner_backends.md#official-self-forcing-release-consumed-rollout-kv)
+explain counters and restart. Relinquished reference bytes are not freed-HBM measurements.
+
+## Generate new prompts
+
+Export contains **current Generator + native VAE**, not EMA/Teacher/Fake or
+optimizer state. Use the export's exact factory/parameters and a new prepared
+prompt manifest with the [common inference-request builder](../../docs/guides/training.md#generate-and-export):
+
+```sh
+distillctl generate /PROJECT/inference.json --weights /PROJECT/current-G \
+  --prepared /PROJECT/new-prepared/manifest.json --output /PROJECT/generated --output-kind video
+```
+
+This runs all exported steps of the original `CausalInferencePipeline` and native
+VAE decode, not a random training exit. Old training assets/checkpoints/prompts
+are unnecessary; the external source and compatible runtime remain required.

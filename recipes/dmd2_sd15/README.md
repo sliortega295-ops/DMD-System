@@ -1,239 +1,163 @@
 # Official DMD2 / Stable Diffusion 1.5
 
-This recipe uses the actual `SDUniModel`, `SDGuidance`, epsilon losses and
-classifier implementation from [tianweiy/DMD2](https://github.com/tianweiy/DMD2)
-at `8d8fa55633d47cfb81bbc7a892e7248f9518763f`. It does not use the framework's
-toy DMD example, Helios/Wan mathematics, or a shape-compatible substitute.
+Train actual upstream `SDUniModel`/`SDGuidance` Generator and Fake Score with
+native epsilon losses and optional classifier/GAN. The primary distributed
+reference is [world16 FSDP2](training.fsdp2.json); the
+[optimized Resident/DDP profile](training.optimized.json) preserves the same
+SD1.5 GAN workload. Single-device FP32 and native FP32 role-DDP are additional
+profiles, not substitutes for the FSDP2 performance baseline.
 
-## Source and local assets
+## Source, environment and local assets
 
-Upstream DMD2 is CC-BY-NC-SA-4.0, **not Apache-2.0**. Its five complete numerical
-source files and original license remain outside the package. Review that
-license before use. This explicit helper fetches pinned source only:
+Use a separate `train,dmd2` environment; see [installation](../../docs/guides/installation.md)
+for dependency setup. The complete extra includes native CLIP's `ftfy==6.3.1`.
+[tianweiy/DMD2](https://github.com/tianweiy/DMD2) is pinned at
+`8d8fa55633d47cfb81bbc7a892e7248f9518763f`, under **CC-BY-NC-SA-4.0**, not
+framework Apache-2.0. Its five numerical source files and license stay external.
+This optional helper fetches and hash-verifies source only:
 
 ```sh
 python recipes/dmd2_sd15/fetch_source.py /PROJECT/dependencies/DMD2 --with-test-oracle
 ```
 
-It verifies each complete file's SHA256, preserves the upstream bytes, and
-never fetches weights. Runtime imports rewrite only upstream import roots into
-a private namespace. Only the exact original `get_x0_from_noise`, `NoOpContext`
-and `DummyNetwork` definitions are extracted from `main/utils.py`, avoiding its
-unrelated plotting/LMDB imports. The optional trainer file is test-only oracle
-source; it is not part of the runtime numerical closure.
-
-Set `source_root` explicitly. Set `model_id` to your **local** pretrained
-SD1.5 bundle containing `unet/`, `scheduler/`, `vae/`, `text_encoder/` and
-`tokenizer/`. No model IDs are resolved remotely by this adapter. Assets,
-source hashes, settings and actual model-library versions enter restart
-identity. Model/dataset licenses remain separate.
-
-## Input preparation and training
-
-`inputs.template.json` contains new prompt records, not embeddings copied from
-training. Use the same public data entrypoint:
+Runtime imports use a private namespace; the optional trainer file is a test
+oracle, not the runtime trainer. Set `model.parameters.source_root` explicitly.
+Set `model_id` to a local bundle with `unet/`, `scheduler/`, `vae/`,
+`text_encoder/` and `tokenizer/`. Preserve model/dataset licenses separately.
+Set `BUNDLE` to that directory and `RUN` to a separate project-local run directory.
+Inventory the bundle before training:
 
 ```sh
-distillctl data prepare inputs.json --output /PROJECT/prepared \
+distillctl assets prepare --local-dir "$BUNDLE" --output "$RUN/source.json"
+distillctl assets verify "$RUN/source.json"
+```
+
+For a new Hub bundle, select its immutable revision through the [explicit
+prepare/materialize workflow](../../docs/guides/model_families.md#prepare-model-assets).
+The native SD loader then binds actual component files, source and library
+versions; it does not resolve remote model IDs or require a separate locker.
+
+## Prepare inputs and choose the workload
+
+Use [inputs.template.json](inputs.template.json) for native prompt batches or
+[images.template.json](images.template.json) for raw RGB:
+
+```sh
+distillctl data prepare /PROJECT/inputs.json --output /PROJECT/prepared \
   --preparer distillschedule.data.sd_inputs:prepare_inputs
 ```
 
-Each record is a native batch: `prompt`
-may be one string or a list of strings. Tokens remain int64 B1L. Optional
-`latents: {path, sha256}` loads an existing FP32 B4HW tensor unchanged; this
-adapter never secretly encodes, resizes or renormalizes image latents.
-Such supplied latents require the source manifest's explicit
-`"preencoded_vae_compatibility": "PREENCODED_LATENTS_MATCH_LOCAL_VAE"`
-assertion: the caller declares compatibility with this local bundle's actual
-VAE weights/configuration/scaling. The preparer pins those bytes but **does
-not claim to have encoded or independently verified the supplied latents**.
+Each record's `prompt` is a string or string list; tokens are int64 B1L. Optional
+`latents: {path, sha256}` supplies exact FP32 B4HW tensors unchanged and requires
+`"preencoded_vae_compatibility":"PREENCODED_LATENTS_MATCH_LOCAL_VAE"` in the
+source manifest. This is a caller compatibility assertion, not an encoding step.
+Raw `images: [{path, sha256}, ...]` aligns with prompts and is mutually exclusive
+with `latents`. Declare exact RGB/latent geometry, `posterior: sample` or `mode`,
+independent integer seed and FP32 in `vae_encoding`. Native VAE encoding uses
+[-1,1] pixels and the actual `scaling_factor`, with no implicit resize, crop,
+rotation or color conversion. Posterior sampling uses a separate record-ID-bound
+CPU RNG. Prepared schema v2 binds every row to tokenizer/VAE/source bytes;
+older unbound rows must be prepared again.
 
-For raw local images, use `images.template.json` with the same preparer. Its
-explicit `vae_encoding` declares `[height, width]`, `[channels, latent_height,
-latent_width]`, `posterior: sample` or `mode`, independent integer `seed`, and
-`dtype: float32`. Each record's `images: [{path, sha256}, ...]` aligns exactly
-with its prompt batch; `images` and `latents` are mutually exclusive. Only
-single-frame eight-bit RGB files at the **exact** declared size are admitted:
-no resizing, cropping, EXIF rotation or RGB conversion is implicit. Pixels
-normalize to [-1,1], then the actual local `AutoencoderKL` posterior is scaled
-by its actual `scaling_factor`. Declared geometry is checked against both the
-native VAE configuration and actual encoded output, never an assumed scale8.
-Sampling uses a separate CPU generator seeded by the explicit seed plus
-unique record ID; reordering records does not change samples or consume the
-training RNG. Local tokenizer/VAE weights, encoder source, image bytes and
-source manifest are hashed into provenance and rechecked before publication.
-Only VAE and native CLIP tokenizers are loaded; no Teacher/Fake is constructed.
-SD input schema v2 requires a path-independent preprocessing binding in both
-prepared metadata and every tensor row. Training admission checks every stream;
-the native owner checks again before any update. Checkpoint evaluation and
-inference-only generation check each input row before any forward/RNG draw.
-Same-shaped different CLIP vocabulary mappings or VAE weights/configuration
-are incompatible, not silently accepted. Old prepared v1 rows without these
-bindings must be prepared again; supplied latent tensors remain bitwise unchanged.
-Raw-image encoding and caller-declared preencoded compatibility have distinct
-`latent_origin` labels, never a fabricated encoder receipt.
+[training.json](training.json) is the single-device, full-parameter, GAN-off
+starter: ten native iterations per macrocycle, G at step zero/once per ten,
+guidance and both schedulers every iteration, EMA off. Independent streams
+consume `generator: 1` and `guidance: 9` batches; fresh noise/prompts are drawn
+each native iteration. Guidance uses detached images cached **before** the G
+commit, although the G optimizer commits first.
 
-Fill the explicit paths in `training.json`, then use the existing common
-`distillctl train`, `export` and `generate` lifecycle. A cycle performs ten
-native iterations: G at step zero then once per ten steps, guidance every
-iteration, both LR schedulers every iteration, and no EMA. Independent
-`generator` (1) and `guidance` (9) records are consumed per cycle. Noise and
-prompts are fresh every native iteration. Guidance uses the detached image
-cached **before** the G commit, even though the G optimizer commits first.
+[training.gan.json](training.gan.json) adds the original 1280-channel,
+52,437,761-parameter classifier and `real: 10` native latent/prompt batches.
+Its classifier loss weights and diffusion-GAN options are explicit template
+choices. Prepare the real stream from RGB or pinned compatible latents.
+SD1.5 trains full Generator parameters; upstream Generator LoRA is
+[SDXL-only](../dmd2_sdxl/README.md).
 
-Full-GAN is the actual upstream optional head: set `cls_on_clean_image`, supply
-`real` stream with ten native latent/prompt records per cycle, and explicitly
-choose `gen_cls_loss`, `gen_cls_loss_weight`, `guidance_cls_loss_weight` and
-optional diffusion-GAN settings. The 1280-channel, 52,437,761-parameter SD1.5
-head is not resized to fit a tiny fixture. The default recipe leaves GAN off;
-it is not a reproduction claim for a paper's complete training configuration.
-`training.gan.json` is a concrete GAN-enabled template with independent
-`generator: 1`, `guidance: 9`, `real: 10` native streams and explicit nonzero
-generator/guidance classifier weights. These example weights are declared
-choices, not a claim to reproduce a paper configuration. Prepare the `real`
-stream from `images.template.json` or pinned latents, and replace all paths.
-The separate 1280-channel GAN-head forward/backward test is **not** full-GAN
-training acceptance; full-GAN/pretrained quality remain NOT_RUN.
+## Train, save and resume
 
-## CPU starter and evidence boundary
+Fill the chosen recipe's source, bundle, prepared streams and output paths.
+Single-device recipes use `trainer.device: cpu` or an explicit owned `cuda:N`
+and FP32 reference execution. FSDP2 uses FP32 masters/Adam, BF16 gradient compute
+and Teacher, FP16 VAE, FP32 text/classifier heads. See the [FSDP2 launch,
+collective export and same-topology recovery guide](../../docs/guides/dmd2_fsdp2_reference.md).
+The [optimized guide](../../docs/guides/official_optimized_training.md) supplies
+its Resident/DDP launch policy, mechanisms and unchanged performance results.
+
+```sh
+# Single-device example; use the profile's distributed launcher for FSDP2/DDP.
+distillctl train /PROJECT/train.json --cycles 1 --output /PROJECT/partial
+distillctl train /PROJECT/train.json --cycles 3 \
+  --resume /PROJECT/partial/checkpoints/cycle-000001 --output /PROJECT/resumed
+distillctl export /PROJECT/train.json \
+  --checkpoint /PROJECT/resumed/checkpoints/cycle-000003 --output /PROJECT/export
+```
+
+Use checkpoint paths returned by `train`; `checkpoint_every` controls saves.
+See the [shared lifecycle](../../docs/guides/training.md) for complete-cycle state.
+
+<a id="cpu-starter-and-evidence-boundary"></a>
+## Small native starter
 
 ```sh
 python recipes/dmd2_sd15/create_cpu_fixture.py /PROJECT/random-sd15 \
   --source-root /PROJECT/dependencies/DMD2
 distillctl train /PROJECT/random-sd15/training.json
-DMD2_SOURCE_ROOT=/PROJECT/dependencies/DMD2 pytest -q tests/test_training_dmd2*.py
 ```
 
-The helper constructs local **random tiny real Diffusers UNet/CLIP/VAE** assets
-and tokenizers. It does not download a pretrained model and does not establish
-image quality, training convergence, throughput, or production parity.
-
-CPU1 FP32 and the separately tested random-tiny single-device CUDA FP32
-reference are validated within their documented scope. Explicitly select
-`trainer.device: "cuda:0"` (or the owned CUDA index) and `execution.mode:
-"reference"`. It places all native modules, scheduler/conditioning tensors,
-inputs and restored Adam moments on that device; RNG and noncapturable Adam
-step metadata stay on the host. Current-G generation and portable inference
-reload use their explicitly selected CPU/CUDA placement. The A100 acceptance
-passed native-oracle and fresh-process continuation checks under an explicit
-deterministic test policy; production defaults were not changed. This is
-**not full pretrained CUDA validation**: production capacity, pretrained
-quality and performance remain NOT_RUN; AMP and FSDP ownership remain rejected.
-A separate opt-in [FP32 native role DDP reference](../../docs/guides/native_owner_backends.md#persistent-native-dmd2-role-ddp)
-has actual CPU2 training and fresh-process continuation evidence; it does not
-qualify GAN or the measured mixed-precision GPU portfolio. See
-acceptance scope (source checkout: `docs/guides/performance_validation.md`).
-The common backend consumes the owner's live
-`runtime_tensors()` placement seam, excluding host RNG/Adam-step metadata and
-including native plain conditioning/scheduler tensors.
-
-For source-qualified tiny native profiles, an explicit
-[`execution.resident_budget`](../../docs/guides/resident_owner_training.md)
-connects direct checkpoint policy, measured `auto`, saved-plan execution and
-fresh-process continuation to the common lifecycle. Trials retain the native
-owner and snapshot/restore within declared construction, host and device
-budgets. Without this admission, CUDA auto/plan/`owner_execution` remain
-rejected before model allocation; whole-owner CUDA copies remain forbidden.
-Optional
-`tests/gpu/test_training_dmd2_lifecycle.py` uses the existing random tiny actual
-fixtures for native-source parity, host-checkpoint restore, new-process resume
-and current-G export/reload. It skips on CPU-only Torch and is not pretrained
-or full-GAN GPU evidence.
-
-Before update or checkpoint save, live mathematical settings, initially
-frozen Teacher/CLIP/VAE/base-LoRA tensors and native conditioning/scheduler
-tables must match their initial fingerprints. Upstream's post-first-guidance
-`requires_grad=True` behavior is preserved; the Teacher still never enters
-the optimizer. Mutable G/Fake weights are not incorrectly treated as frozen.
-Install the complete `dmd2` extra: it explicitly pins `ftfy==6.3.1`, used in
-the qualified native CLIP preprocessing. Installing Transformers alone may
-silently select its different BasicTokenizer fallback; that is not the
-documented reference environment.
+The helper builds random tiny actual Diffusers UNet/CLIP/VAE assets and local
+tokenizers; it does not download pretrained weights. The same single-device
+entry accepts explicit CUDA placement. Source-sensitive numerical checks and
+hardware-specific tests are described in [validation](../../docs/guides/performance_validation.md).
 
 ## Optional native UNet checkpoint policy
 
-The common capability inventory can measure the original DMD2 generator and
-fake-UNet checkpoint option. The optimizer-containing `external_grad` macrocall
-remains atomic and **not replay safe**. This is not ordinary call checkpointing:
+The common executor can control native Generator/Fake UNet checkpointing;
+the optimizer-containing macrocall itself remains atomic and is not replayed.
+For the qualified CPU1 FP32 Torch2.10/Diffusers0.37.1/Transformers4.51.3/PEFT0.17.1
+profile, set `execution` explicitly:
 
 ```json
-{
-  "adapter": "program",
-  "mode": "manual",
-  "implementation": {
-    "backend": "torch-callable-resident-v1",
-    "share_immutable": false,
-    "checkpoint_bindings": [],
-    "owner_execution": {"native_cycle": {"gradient_checkpointing": true}}
-  }
-}
+{"adapter":"program","mode":"manual","implementation":{
+  "backend":"torch-callable-resident-v1","share_immutable":false,"checkpoint_bindings":[],
+  "owner_execution":{"native_cycle":{"gradient_checkpointing":true}}}}
 ```
 
-Omit `owner_execution` to keep the model's declared baseline unchanged. An
-explicit `false` can temporarily disable a declared checkpoint-enabled baseline.
-Neither option rewrites model settings, identity, native RNG, masks, modes or
-optimizer ownership. Both original model/guidance flags and all affected UNet
-checkpoint flags/callbacks are restored after each complete macrocycle, also on
-exceptions. Teacher, CLIP and VAE are never checkpointed by this option.
+Omit `owner_execution` to retain the model's declared baseline. Explicit `false`
+temporarily disables checkpointing. Flags/callbacks are restored after each
+macrocycle, including exceptions; Teacher/CLIP/VAE are outside the option.
+The same source-bound option participates in measured `auto`, saved `plan`
+and paired-reference admission after restart. [Budgeted resident
+execution](../../docs/guides/resident_owner_training.md) documents construction,
+snapshot/restore and device admission rather than whole-owner CUDA copies.
 
-`auto` uses the same bounded candidate budget, measured calibration and shared
-solver; `plan` reexecutes the same source-bound measured option. A lower tracked
-storage budget may select checkpointing even when its measured CPU time is
-longer. Enabled options require observed generator **and** fake checkpoint
-requests and real callable recomputations on every run; explicit disabled
-options require verified disabled flags and zero requests. Unexercised options
-are pruned during calibration and rejected for manual/saved-plan execution.
+Additional independent profiles are [component checkpointing](training.component-checkpoint.json)
+(Generator checkpointed, Fake epsilon activations retained) and
+[native FP32 role-DDP](training.ddp-fp32.json). Their [owner guide](../../docs/guides/native_owner_backends.md)
+defines per-role effects and restart behavior.
 
-New manual owner policies receive full preupdate reference admission on
-independent clones, including model/Adam/schedulers/native clocks/RNG and
-outputs. Only the selected clone is adopted. The first continued optimized
-update after process restart is similarly re-admitted; ordinary steady-state
-cycles do not execute duplicate reference updates. Provider descriptors, owner
-class code, native sources and helper-file hashes bind plans and restart policy.
-Malformed, changed or incompatible selections fail closed.
+## Generate and reuse Generator weights
 
-This capability is limited to actual checkpoint-capable native UNets on the
-verified Torch 2.10.0 / Diffusers 0.37.1 / Transformers 4.51.3 / PEFT 0.17.1
-CPU1/FP32 closure. Tiny SD1.5/SDXL tests validate native effect and restart
-semantics; CPU tracked-storage and timing are diagnostics, **not** GPU memory,
-throughput, pretrained quality, AMP/FSDP or production-validation claims.
-An otherwise admitted reference on a different numerical-library stack keeps
-its declared baseline: its descriptor marks this optional capability unavailable
-and offers no owner override. This does not silently qualify checkpointing on
-that stack. Runtime drift relative to an already constructed owner still fails.
+Export contains **current G + CLIP + VAE**, native configs and tokenizer/VAE
+hashes, without Teacher/Fake/Adam/EMA. Use byte-identical tokenizer files at any
+local path to prepare new prompts with this recipe's SD preparer; raw/preencoded
+image inputs additionally require matching VAE bytes. The common export-only
+input preparer is not used for SD. Follow the [inference-request builder](../../docs/guides/training.md#generate-and-export)
+with the completed export and new prepared manifest:
 
-Export projects **current G + CLIP + VAE only**, with architecture configs and
-named module weights. `distillschedule.training.sd:build_inference_model`
-does not construct a teacher/fake UNet or optimizer and never calls
-`from_pretrained`. It can generate on new prepared prompts after deleting the
-original base bundle, restart checkpoints, and training inputs. The explicit
-external source root remains necessary. Select `--output-kind image` to write
-the native VAE decode as an RGB image; `latents` remains available.
-Exports retain tokenizer/VAE file hashes, not their old asset paths. New prompt
-preparation needs byte-identical local `tokenizer/` (and SDXL `tokenizer_2/`)
-files, which may be copied to a different directory independently of the old
-base weights. Tokenizer-only input preparation does not load or require a VAE.
-New raw/preencoded image inputs additionally bind the matching VAE bytes.
+```sh
+distillctl generate /PROJECT/inference.json --weights /PROJECT/export \
+  --prepared /PROJECT/new-prepared/manifest.json --output /PROJECT/generated --output-kind image
+```
 
-For this SD1.5 recipe and [SDXL](../dmd2_sdxl/README.md), follow the
-[common inference-request builder and generation steps](../../docs/guides/training.md#generate-and-export)
-after export and native preparation of new prompts. Supply your original
-training request, the completed export and the new prepared manifest to create
-`inference.json`, then generate with `--output-kind image`. Do not reuse the
-training request's `sd15`/`sdxl` name or training factory: use only the exact
-inference factory and parameters from the verified export, preserving the
-explicit external source root. Keep an independent inference seed in the
-trainer section. The common export-only **input preparer** is not admitted for
-SD; continue to use this recipe's native SD input preparation.
+Inference uses the export's exact factory/parameters and external source root,
+not the training `sd15` factory; old base weights/checkpoints are not needed.
+`--output-kind latents` selects latent diagnostics.
 
 ### Official generator-weight mapping
 
-The common export's `weights.pt` is a named mapping: `generator` contains the
-**unmodified native `feedforward_model.state_dict()`**, `text_encoder` contains
-native CLIP (dual CLIP on SDXL), and `vae` contains the native VAE. There is no
-framework prefix renaming, dtype conversion, EMA substitution or LoRA merge.
-To initialize an upstream-compatible generator checkpoint, extract this exact
-mapping from a completed, hash-verified export:
+The hash-verified export's `weights.pt` maps `generator` to the unmodified native
+`feedforward_model.state_dict()`, `text_encoder` to CLIP and `vae` to the VAE.
+To initialize a native generator checkpoint without merging LoRA or substituting EMA:
 
 ```python
 from pathlib import Path
@@ -245,35 +169,7 @@ weights = torch.load(root / 'weights.pt', map_location='cpu', weights_only=True)
 torch.save(weights['generator'], Path('/PROJECT/native_generator.pt'))
 ```
 
-Set `model.parameters.generator_checkpoint` to that file to initialize the
-same native architecture through `distillctl train`. SDXL LoRA needs the same
-native LoRA settings; its separate base/A/B tensors remain separate. Strict
-key and shape checking rejects incompatible models. This mapping is tested
-with real updated SD1.5, SDXL and SDXL-LoRA exports and new native owners.
-It imports **weights only**, starts new optimizer/scheduler/native clocks and
-does not resume Fake Score, RNG or data positions. Only a complete framework
-checkpoint supplied to `train --resume` restores the training trajectory.
-
-## Additional explicit owner profiles
-
-The [component checkpoint template](training.component-checkpoint.json) keeps
-Generator checkpointing and retains Fake epsilon activations, with independent
-real execution counters. The [FP32 role-DDP template](training.ddp-fp32.json)
-uses actual persistent native role wrappers and the common per-rank full-state
-checkpoint lifecycle. They are independent opt-ins, not interchangeable flags
-or the full measured GPU optimization portfolio. Read the
-[scope, restart clocks and refusals](../../docs/guides/native_owner_backends.md)
-before selecting either.
-
-## Optimized distributed configuration
-
-Use [`training.optimized.json`](training.optimized.json) for the integrated optimization bundle. See the [launch, mechanisms and baseline/optimized performance guide](../../docs/guides/official_optimized_training.md). This uses the same continuous-training and checkpoint commands as the reference configuration.
-
-### FSDP2 reference
-
-`training.fsdp2.json` uses the original SD1.5 GAN workload with world16 FSDP2
-role ownership, native mixed-precision exceptions and the common checkpoint
-lifecycle. It does not enable the Resident optimization bundle. See
-[the FSDP2 guide](../../docs/guides/dmd2_fsdp2_reference.md) for launch, same-topology
-resume and collective export. The source integration is opt-in; public GPU
-lifecycle qualification is tracked separately from the historical measurement.
+Set `model.parameters.generator_checkpoint` to that file for strict native
+weight initialization. SDXL LoRA requires matching native LoRA settings. This
+starts new optimizer/scheduler/clocks; only `train --resume` restores the full
+training trajectory, including Fake/RNG/data positions.

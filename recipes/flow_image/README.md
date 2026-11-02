@@ -1,328 +1,195 @@
 # Native image flow-DMD: shared reference and replicated lifecycle
 
-Train FLUX.2 klein Base or Qwen-Image through the common `training.dmd` Program:
-native text/VAE components, unmerged LoRA, G1/F5 AdamW, per-role schedulers,
-EMA, complete-cycle recovery and current-Student image export.
-Choose FP32 or BF16 autocast and reference or immutable-sharing execution.
-Raw images, prompt-only and preencoded inputs use local batch one.
-The executable fixture uses actual upstream small model classes and marks its
-procedural inputs and random weights `SYNTHETIC_TEST_ONLY`.
+Train FLUX.2 klein Base or original Qwen-Image using native Transformer, text and
+VAE classes, unmerged Student/Fake LoRA and the common No-GAN `dmd` algorithm.
+Both families support local B1, FP32 or BF16 autocast, complete-cycle recovery,
+current-Student image export, immutable sharing and equal-B1 replication.
 
-Read the family contracts: [FLUX.2 klein Base](../flux_dmd/README.md) and
-[original Qwen-Image](../qwen_image_dmd/README.md).
+| Family | Native components and source |
+| --- | --- |
+| `flux2-klein-base` | `Flux2Transformer2DModel`, `AutoencoderKLFlux2`, Qwen3 text; [pinned source and conditioning](../flux_dmd/README.md) |
+| `qwen-image` | `QwenImageTransformer2DModel`, `AutoencoderKLQwenImage`, Qwen2.5-VL text; [pinned source and conditioning](../qwen_image_dmd/README.md) |
 
-## Isolated dependency lane
+Both model sources are Apache-2.0; preserve model, tokenizer and dependency
+notices. Their native prediction/packing/conditioning contracts remain distinct.
 
-Use Python 3.12 (the qualified CPU interpreter), CPU Torch 2.10.0 and the
-`modern-flow` extra in a separate environment. Exact pins are recorded in
-[environment.json](environment.json). Do not upgrade/combine existing DMD2,
-Self-Forcing or Helios Transformers4 / PEFT0.17 lanes. PEFT0.18.1 is required
-for the qualified Diffusers/Transformers5 import lane; trainable LoRA itself
-uses the framework's explicit native Linear `W*x + (alpha/r)*B(A*x)`.
+## Environment and model files
 
-For the CPU path set `CUDA_VISIBLE_DEVICES=''`, `HF_HUB_OFFLINE=1`,
-`TRANSFORMERS_OFFLINE=1`, `OMP_NUM_THREADS=1`, and `MKL_NUM_THREADS=1`.
-That path does not initialize CUDA. Neither path downloads assets or installs
-dependencies. Autocast and unsupported distributed policies are rejected. Catalog and
-known-compatibility queries do not import Torch.
+Use an isolated `train,modern-flow` environment with the exact pins in
+[environment.json](environment.json), independently of DMD2/Self-Forcing/Helios.
+`PY` denotes its Python; `RUN` is a new project-local or scratch directory.
+CPU uses `trainer.device: cpu`; CUDA uses the owned `cuda:N` device and a
+compatible Torch 2.10 build. Preparation runs on CPU. Ordinary training and
+model discovery use local files and do not download weights.
 
-### Explicit single-GPU reference
-
-Use the same pinned packages with a compatible CUDA Torch2.10 build, keep the
-offline settings, and expose the GPU you own. The acceptance environment was
-Python3.13.11 / Torch2.10.0+cu128 on one A100-40GB. Prepare inputs on CPU as below;
-set `trainer.device` to `cuda:0` in a copy of the recipe and retain
-`execution.mode: reference`. If `model.parameters.device` is also specified,
-it must agree. The same `distillctl train`, resume, export and generate commands
-then use the owned device; no separate trainer or experimental launcher is needed.
-
-CUDA reference owns all role/media tensors, Adam state and EMA, including
-Qwen's complex RoPE buffers without a lossy dtype conversion. Automatic
-planning, saved plans and manual policies other than exact immutable sharing still
-**fail closed**: the current whole-role trial copies are not capacity-bounded.
-CPU planning remains independently supported for the documented tiny fixtures.
-Do not infer full pretrained models fit merely from the parameter-count budget.
-
-The exact acceptance receipt (source checkout: `artifacts/framework/20261024/modern_image_cuda_acceptance.json`)
-records native-oracle loss/gradient/Adam/EMA checks, new-process C1-to-C3 restart,
-and current-Student new-prompt PNG generation with training assets removed.
-Exact CUDA comparisons use an explicit deterministic **test** policy, not a
-changed production default or a promise of default-kernel determinism.
-
-## First run with actual tiny native classes
-
-`PY` denotes the Python executable in that isolated environment; `RUN` must be
-a new project-local/scratch run directory. Choose exactly one family:
+A local bundle needs native `transformer/`, `vae/`, `text_encoder/` and
+`tokenizer/` folders with complete safe-format checkpoints/configs. Inventory
+and verify the source **before** creating the recipe manifest:
 
 ```sh
-"$PY" recipes/flow_image/create_cpu_fixture.py "$RUN/fixture" \
-  --family flux2-klein-base --cycles 3
-# Alternative: --family qwen-image
-"$PY" -m distillschedule train "$RUN/fixture/train.json" --cycles 1 --output "$RUN/first"
-"$PY" -m distillschedule train "$RUN/fixture/train.json" --cycles 3 \
-  --resume "$RUN/first/checkpoints/cycle-000001" --output "$RUN/resumed"
-"$PY" -m distillschedule export "$RUN/fixture/train.json" \
-  --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/export"
-```
-
-Use the **exact checkpoint path returned by each command** if the installed
-lifecycle's output naming differs. The fixture creates procedural RGB inputs,
-real native text/empty-prompt features, strictly saved native safe-format assets
-and an explicit training recipe. It changes Fake's saved output projection only
-to exercise nonzero first-cycle gradients; that is fixture evidence, not a
-pretrained initialization recipe or speedup claim.
-
-## Already-present pretrained-format assets
-
-Obtain and license assets independently; these recipes never fetch them. The
-bundle must contain the exact family's `transformer/`, `vae/`, `text_encoder/`
-and `tokenizer/` folders, with actual native `config.json`, complete safetensors
-(or complete indexed shards), and tokenizer files. Check the family’s fixed
-repository revision yourself. A declared repository name plus file hashes does
-**not** authenticate remote pretrained provenance, which remains
-`LOCAL_PRETRAINED_UNVERIFIED` until independently established.
-
-```sh
+distillctl assets prepare --local-dir "$BUNDLE" --output "$RUN/source.json"
+distillctl assets verify "$RUN/source.json"
 "$PY" recipes/flow_image/lock_local_assets.py "$BUNDLE" --family flux2-klein-base \
   --cpu-max-parameters "$EXPLICIT_PER_COMPONENT_CPU_BUDGET" --text-max-length 512
 ```
 
-The default `strict_fp32` rejects non-FP32 floating storage. An explicitly chosen
-`--dtype-policy bf16_or_fp32_to_fp32` permits only BF16/F32 stored floating
-weights and converts BF16 **exactly** to FP32 compute. Source hashes and policy
-are manifest-bound; FP16, FP8, quantized, missing, malformed and nonfinite
-weights have no fallback. This is not BF16 compute or GPU qualification.
-Budgets are parameter-count limits, **not** a promise that three large models,
-Adam, EMA, text/VAE and temporary loading state fit your RAM. Full pretrained
-multi-billion-parameter CPU construction has not been exercised.
+For Hub files, select the family's full pinned revision and use the [explicit
+prepare/materialize workflow](../../docs/guides/model_families.md#prepare-model-assets)
+instead of local inventory. Then run the same native locker. For Qwen, select
+`--family qwen-image` and an explicit supported text width.
+`--student`, `--fake`, `--teacher` can select different subdirectories inside
+the bundle; their native architectures must match.
 
-The strict text loader admits the pinned public legacy JSON ABI through the
-actual native Config parser: Qwen RoPE aliases, Qwen2.5-VL flat text fields and
-the audited T5/UMT5 encoder metadata. Unknown fields, conflicting aliases and
-unsupported metadata values are refused before weight payload loading. Widths
-come from parsed native configs, not assumed JSON nesting. Original config bytes
-and hashes remain asset-bound; export reconstruction retains the raw document,
-including T5's legacy tying/decoder-scaling intent, rather than normalizing and
-reparsing `Config.to_dict()`. Native config classes and compatibility source are
-also runtime-bound, so old prepared data/exports need regeneration when that
-source identity changes.
+The default `strict_fp32` requires FP32 floating storage. Add
+`--dtype-policy bf16_or_fp32_to_fp32` to admit BF16 storage converted to FP32
+owned state; this is separate from runtime BF16 autocast. Native loaders check
+safe shards, tied-parameter ownership, keys, shapes and finite values while
+retaining original config bytes. Parameter budgets bound constructors, not total
+RAM for all roles, optimizer/EMA and loading temporaries.
 
-Native safe saves can omit redundant tied keys (for example T5/UMT5
-`encoder.embed_tokens.weight`). Completion is allowed only when the actual
-constructor proves the slots hold the **identical Parameter object**. At least
-one tensor per alias group must exist, and all supplied aliases must agree
-exactly. Independent equal-shaped/equal-valued tensors are never filled. Exact
-indices, headers, dtype policy and finite payload checks still apply; ordinary
-optimizer enumeration remains unique. This format compatibility is not video
-training, pretrained-weight execution, GPU or quality qualification.
+## Prepare native inputs
 
-Copy the family's `training.template.json`, replace the three absolute asset/data/output
-paths, and select actual existing native Linear LoRA targets. Its explicit
-G1/F5/four-step policy is a CPU reference recipe, not tuned pretrained quality.
-
-Optional `--student`, `--fake`, `--teacher` choose separate folders **inside**
-the bundle. The first recipe requires matching native role architectures.
-With identical base checkpoints and zero-initialized LoRA B, the first G
-surrogate may be zero before Fake diverges; no random production fallback is
-introduced to hide that fact. CPU1 LoRA is admitted; full-parameter image
-training and other family variants are not.
-
-## Native offline preparation
-
-Use the existing trusted preparer plugin, not a new global CLI option:
+Both family templates use finite sampling by default: one record per complete
+single-device cycle. Before preparation, supply at least three distinct records
+for the three-cycle lifecycle below; the raw manifest shows just one record.
+To intentionally reuse records instead, set `data.sampling` to
+`{"kind":"epochs","shuffle":false}` in the training config **before the first run**
+and keep it unchanged on resume.
 
 ```sh
-"$PY" -m distillschedule data prepare "$RUN/inputs.json" --output "$RUN/prepared" \
+distillctl data prepare "$RUN/inputs.json" --output "$RUN/prepared" \
   --preparer distillschedule.data.flow_image_inputs:prepare_inputs
 ```
 
-A raw manifest is:
+For example, raw RGB input uses:
 
 ```json
 {
-  "schema_version": "distillschedule.flow_image_inputs.v1",
-  "family": "flux2-klein-base",
-  "assets": "/absolute/bundle/assets.json",
-  "mode": "raw",
-  "records": [{"id": "sample-0", "prompt": "a red bird", "image": {
-    "path": "input.png", "sha256": "REPLACE_WITH_ACTUAL_IMAGE_SHA256"
-  }}]
+  "schema_version":"distillschedule.flow_image_inputs.v1",
+  "family":"flux2-klein-base", "assets":"/absolute/bundle/assets.json", "mode":"raw",
+  "records":[{"id":"sample-0","prompt":"a red bird","image":{
+    "path":"input.png","sha256":"REPLACE_WITH_ACTUAL_IMAGE_SHA256"}}]
 }
 ```
 
-Raw images must be actual RGB with geometry divisible by native VAE scale times
-2; no resizing, color conversion, padding or sampled VAE posterior is silently
-introduced. Encoding uses the native posterior **mode** and each family's exact
-normalization/packing. There is one T2I record per complete cycle; use a real
-finite cohort or an explicitly supported common sampling policy.
+Images retain exact RGB geometry divisible by native VAE scale times 2. Encoding
+uses posterior mode and native normalization/packing, without implicit resizing,
+color conversion or padding. In `mode: prompts`, replace `image` with
+`latent_shape: [1,C,H,W]` in unpatched VAE BCHW units; it defines noise geometry.
+In `mode: preencoded`, records contain `id` and
+`features: {"path":"row.pt","sha256":"..."}` with complete tensor-only rows.
+All modes bind source, codec, geometry, dtype, masks and genuine encoded
+empty-prompt conditions. FLUX retains native fixed-length Qwen3 features;
+Qwen uses crop34 and fixed right padding with the native boolean mask.
+Overlength text is not silently truncated.
 
-For `mode: "prompts"`, replace `image` with `latent_shape: [1,C,H,W]` in **native
-unpatched VAE BCHW units**. The zeros created for that mode are explicit
-noise-generation geometry templates, never conditional features or real images.
-Prompt and empty-prompt features are always encoded by the actual native text
-model. For `mode: "preencoded"`, records instead contain only `id` and
-`features: {"path": "row.pt", "sha256": "..."}`. Complete tensor-only rows,
-family/config/source/codec/dtype binding, masks, geometry and the exact genuine
-empty-prompt features must match. Wrong-family same-shape tensors, stale codecs,
-unknown/cache/edit fields and invented null contexts are refused.
+## Training policy and single-device execution
 
-Use one explicit text width for a cohort. FLUX retains native fixed-length
-Qwen3 hidden states without an arbitrary denoiser mask. Qwen-Image uses native
-crop34 features plus **fixed right padding with a native boolean mask**; only
-masked padding is zero. Neither path silently truncates an overlength prompt.
-The tests compare the padded Qwen native forward against the native unpadded
-forward and train three different-length prompt records through the common
-shape-bound lifecycle. Changing the padding/text/codec/source policy changes
-the binding and invalidates old prepared features.
+Copy the family's [FLUX template](../flux_dmd/training.template.json) or
+[Qwen template](../qwen_image_dmd/training.template.json), fill asset/data/output
+paths and choose existing native Linear LoRA targets. LoRA keeps frozen bases
+and separate trainable A/B; full-parameter image training is outside this recipe.
+Identical initial bases with zero LoRA B can produce zero first-G surrogate
+before Fake diverges.
 
-## Mathematics and execution contract
+The configured No-GAN policy is `z=(1-sigma)*x0+sigma*epsilon`,
+`v=epsilon-x0`, `x0=z-sigma*v`, with no output negation. Four Euler steps
+`[1,.75,.5,.25,0]`, G1/F5, teacher/fake CFG=1, AdamW (`betas=.9,.999`,
+`eps=1e-8`, no weight decay), per-actual-update exponential LR clocks and
+optional EMA are explicit in the recipe. This is common flow DMD, not official
+DMD2/Self-Forcing or the model vendors' distillation algorithms.
 
-Set `model.parameters.compute_precision` to `"bf16-mixed"` for native BF16
-autocast, or `"fp32"` (default). Model-native normalization and rotary precision
-are preserved; flow/sampling math, trainable master weights, Adam and EMA remain
-FP32. The option applies to reference and immutable-sharing execution, including
-post-backward replicas, and is retained by checkpoints and portable exports.
-Text/VAE preparation remains FP32. BF16 CUDA compute requires native GPU support.
+`model.parameters.compute_precision` selects `fp32` (default) or `bf16-mixed`.
+Native Transformer autocast preserves model normalization/rotary precision;
+master weights, Adam/EMA, flow/sampling math and text/VAE preparation remain
+FP32. Checkpoints and inference exports retain the setting.
 
-This is explicitly configured **No-GAN rectified-flow DMD**, not official DMD2,
-Self-Forcing, or an official FLUX/Qwen distillation reproduction. For
-`z=(1-sigma)*x0+sigma*epsilon`, native output is `v=epsilon-x0` and
-`x0=z-sigma*v`; there is **no output negation**. The first recipe uses four
-explicit Euler steps `[1,.75,.5,.25,0]`, G1/F5, teacher/fake CFG=1, actual
-AdamW (`betas=.9,.999`, `eps=1e-8`, no weight decay), per-actual-update exponential
-LR clocks and explicit optional EMA. Loss/noise/normalizer/gradient/Fake policies
-are all present in the generated training JSON and owned by common `dmd`.
-
-Reference mode needs no optimization. To exercise the **existing exact frozen
-parameter sharing** mechanism, set:
+Reference mode needs no optimization. For exact frozen-base sharing, replace
+`execution` with:
 
 ```json
-{"mode": "manual", "implementation": {
-  "backend": "torch-callable-resident-v1", "share_immutable": true,
-  "checkpoint_bindings": []
-}}
+{"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
-Replace only the training JSON’s `execution` section. Frozen Teacher/media and
-unmerged LoRA bases declare immutable subtrees. All named immutable **slots**
-remain content-checked even when equal norm/bias parameters alias inside one
-subtree; optimizer ownership still counts unique trainable Parameters. Tests
-check real storage reduction, actual aliases and exact loss/gradient/update/
-Adam/scheduler/EMA/Teacher equality against an unshared control. No approximate
-cache, guessed normalization kernel or inference weight merging is added.
-
-That exact policy is also admitted on the single-CUDA path; it installs
-sharing on the persistent live owner without CUDA trial cloning. See the
-[shared CUDA policy and capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
-All roles still materialize before sharing; this does not lower construction
-capacity requirements. CUDA auto/saved-plan trials remain refused.
+Equal frozen Teacher/media/LoRA bases may alias; trainables remain independent.
+All roles initially materialize. This direct policy also works on single-device
+CUDA without trial clones; [capacity and policy details](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+cover supported selection. CPU tiny fixtures additionally support measured
+planning; CUDA uses reference or direct sharing.
 
 ## Explicit replicated training, not model sharding
 
-FLUX and Qwen-Image can use the existing post-backward replica backend. Each
-rank owns complete Student, Fake Score and Teacher models; each consumes one
-distinct prepared record per cycle. Gradients are averaged across ranks **before**
-clipping and the single optimizer commit. Per-call noise has a deterministic
-rank/world namespace, without advancing the outer training RNG. The original
-single-rank seed stream is unchanged. This is equal-global-batch replication,
-not FSDP, tensor parallelism or a way to fit an oversized model.
-
-Copy a normal reference recipe and change only these sections:
+Each rank owns complete Student/Fake/Teacher models and consumes one distinct
+record per complete cycle (local B1). The global batch is
+`world_size = NNODES * GPUS_PER_NODE` records per cycle, not global B1.
+Gradients are averaged **before** clipping and one Adam commit.
+Rank/world-specific noise leaves the single-rank seed stream unchanged. Copy
+a reference recipe, retain its model/algorithm, and set:
 
 ```json
 {
-  "data": {"prepared": "/absolute/prepared/manifest.json", "sharding": "rank_strided"},
-  "execution": {"mode": "reference"},
-  "trainer": {
-    "cycles": 3, "seed": 17, "device": "cuda",
-    "distributed": {"backend": "nccl", "timeout_seconds": 180},
-    "output_dir": "/absolute/run"
-  }
+  "data":{"prepared":"/absolute/prepared/manifest.json","sharding":"rank_strided"},
+  "execution":{"mode":"reference"},
+  "trainer":{"cycles":3,"seed":17,"device":"cuda",
+    "distributed":{"backend":"nccl","timeout_seconds":180},"output_dir":"/absolute/run"}
 }
 ```
 
-Retain the recipe's model and algorithm sections. Prepare at least
-`world_size * cycles` distinct records; incomplete cohorts fail rather than
-padding, duplicating or dropping samples. Each record remains local B1; the
-global batch is the number of ranks. `cuda` resolves to the actual local rank;
-do not force every process to `cuda:0`.
-
-For example, run the following on **each** of two allocated eight-GPU nodes,
-with `NODE_RANK` set to 0/1 and a shared configuration/output filesystem:
+For finite sampling, prepare at least `world_size * cycles` distinct records;
+incomplete cohorts are not padded or duplicated. `cuda` resolves to each
+process's local rank. Choose the same positive `NNODES` and `GPUS_PER_NODE`
+counts on all nodes for your allocated, compatible NVIDIA GPUs; each selected
+GPU must fit a complete replica. On each node, set `NODE_RANK` from `0` through
+`NNODES-1`, with shared files and the same rendezvous address/port:
 
 ```sh
-"$PY" -m torch.distributed.run --nnodes=2 --nproc-per-node=8 \
+"$PY" -m torch.distributed.run --nnodes="$NNODES" --nproc-per-node="$GPUS_PER_NODE" \
   --node-rank="$NODE_RANK" --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \
   --module distillschedule train "$RUN/train.json" --cycles 1 --output "$RUN/partial"
-# Repeat the same torchrun prefix in new processes:
-# ... --module distillschedule train "$RUN/train.json" --cycles 3 \
-#       --resume "$RUN/partial/checkpoints/cycle-000001" --output "$RUN/resumed"
-# ... --module distillschedule export "$RUN/train.json" \
-#       --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/export"
 ```
 
-Use the checkpoint path returned by the CLI. Resume/export require the **same
-topology** and all rank shards; `generate --weights` uses the exported Student
-in its separate single-device inference owner. CPU/Gloo follows the same path
-with `device: cpu` and `backend: gloo`.
-
-To combine replication with the already-supported exact frozen-state sharing,
-replace `execution` with this explicit policy:
+Repeat the same launcher for resumed training and collective export below.
+They require the same topology and all checkpoint shards; portable generation
+uses a separate single-device inference owner. CPU/Gloo uses `device: cpu`,
+`backend: gloo`. To share immutable state inside each replica, use:
 
 ```json
-{"mode": "manual", "implementation": {
-  "backend": "torch-callable-replicated-v1",
-  "reduction": "post_backward", "bucket_cap_mb": 0,
-  "local": {"backend": "torch-callable-resident-v1",
-            "share_immutable": true, "checkpoint_bindings": []}
-}}
+{"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
 ```
 
-The effective receipt must show completed gradient reductions, replica state
-consensus and, for manual mode, real shared aliases. Private native rollout and
-denoise methods do not pass through a role's `forward`; DDP-overlap wrappers,
-FSDP/HSDP, auto/saved-plan trials, autocast and unrelated caches remain explicitly
-refused. Construction still materializes all roles. Tiny-model replica tests
-cannot establish that pretrained 4B/20B configurations fit or converge; see the
-acceptance status (source checkout: `docs/guides/performance_validation.md`).
+This is post-backward replication, not DDP-forward overlap or model sharding.
+The same pattern applies to the [Wan](../wan22_dmd/README.md) and
+[Hunyuan](../hunyuan_video_dmd/README.md) local-B1 recipes.
 
-## New input and portable output
-
-After exporting, the [common export-only preparer](../../docs/guides/export_inputs.md)
-can encode new prompts/raw RGB using restored native codecs even after deleting
-all training assets/checkpoints. The existing image asset-based preparer below
-remains available and still explicitly requires its original asset bundle.
-
-Prepare genuinely new prompts with the same codec binding, then export the
-restored current Student. Use the
-[common inference-request builder](../../docs/guides/training.md#generate-and-export)
-with your training request, completed export and new prepared manifest to create
-`inference.json`. It copies the export's exact `build_inference_model` factory
-and parameters, with an independent inference RNG seed in the trainer section,
-instead of reusing the training factory or its assets/streams. Run:
+## Train, resume, export and generate
 
 ```sh
-"$PY" -m distillschedule generate "$RUN/inference.json" --weights "$RUN/export" \
+distillctl train "$RUN/train.json" --cycles 1 --output "$RUN/partial"
+distillctl train "$RUN/train.json" --cycles 3 \
+  --resume "$RUN/partial/checkpoints/cycle-000001" --output "$RUN/resumed"
+distillctl export "$RUN/train.json" \
+  --checkpoint "$RUN/resumed/checkpoints/cycle-000003" --output "$RUN/export"
+```
+
+Use the exact returned checkpoint paths. The export contains current unmerged
+Student and native VAE/text/tokenizer codecs. Prepare new prompts/raw RGB with
+the [export-only preparer](../../docs/guides/export_inputs.md), then create an
+inference request using the [common builder](../../docs/guides/training.md#generate-and-export).
+It uses the export's factory/parameters and independent inference seed, not the
+training assets or factory:
+
+```sh
+distillctl generate "$RUN/inference.json" --weights "$RUN/export" \
   --prepared "$RUN/new-prepared/manifest.json" --output "$RUN/generated" --output-kind image
 ```
 
-The export contains current unmerged Student plus actual native VAE/text/tokenizer
-codecs, not Teacher, Fake, Adam, EMA, a base checkpoint path or training inputs.
-The tests hide all training assets and checkpoints during a fresh-process
-portable generation and compare it exactly against the current restored Student.
-Actual RGB PNG output is a decoded **diagnostic**, not pretrained quality proof.
-`--output-kind latents` instead produces explicitly labeled native normalized
-latent diagnostics (FLUX is still BN-normalized patchified BCHW at that boundary).
-
-## Focused validation
+Output is native VAE-decoded RGB PNG; `--output-kind latents` selects explicit
+native normalized latent diagnostics. To exercise the lifecycle with small
+random actual-class assets instead of pretrained files:
 
 ```sh
-DMD_MODERN_FLOW_CPU=1 "$PY" -m pytest -q \
-  tests/test_training_flow_images_cpu.py tests/test_training_native_text_assets_cpu.py \
-  tests/test_training_model_algorithm_compatibility.py
+"$PY" recipes/flow_image/create_cpu_fixture.py "$RUN/fixture" \
+  --family flux2-klein-base --cycles 3
+# Alternative family: qwen-image. The helper writes fixture/train.json.
+distillctl train "$RUN/fixture/train.json"
 ```
-
-Opt-in missing dependencies are failures, not hidden skips. Outside the isolated
-lane, the CPU-native test file is explicitly skipped; lightweight compatibility
-checks remain runnable. V1/source and synthetic CPU lifecycle evidence does not
-complete the plan's U12/U13 V3–V5 pretrained/GPU/quality gates.

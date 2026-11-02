@@ -1,59 +1,60 @@
 # Wan2.2 TI2V-5B: text-to-video flow DMD
 
-This recipe uses the native `WanTransformer3DModel`, residual `AutoencoderKLWan`,
-`UMT5EncoderModel` and T5 tokenizer through the common DMD-System lifecycle.
-Student, Teacher and Fake Score use the same model family. Training uses unmerged
-LoRA, four Euler steps, G1/F5 updates, local batch one and CFG=1.
+Train native `WanTransformer3DModel` Student/Fake LoRA with frozen Teacher,
+`AutoencoderKLWan`, UMT5 and T5 tokenizer. This is the T2V subpath with common
+No-GAN flow DMD: four Euler steps `[1,.75,.5,.25,0]`, G1/F5, local B1 and CFG=1.
+FP32 is the default; `model.parameters.compute_precision: "bf16-mixed"` selects
+native Transformer autocast while master weights, Adam/EMA, codecs and
+flow/sampling math remain FP32. The setting is checkpoint/export-bound.
 
 ## Environment and assets
 
-Install the separate `modern-flow` dependency group using
-[environment.json](environment.json). Model/config revisions and Apache-2.0
-attribution are recorded in [source.json](source.json).
-
-Place the native `transformer/`, `vae/`, `text_encoder/` and `tokenizer/`
-directories in one local bundle, then inventory the files:
+Use the isolated `train,modern-flow` environment in [environment.json](environment.json).
+[source.json](source.json) pins `Wan-AI/Wan2.2-TI2V-5B-Diffusers` and its
+Apache-2.0 model/config attribution; preserve tokenizer, ftfy and sentencepiece
+notices. Training uses explicit local files. Provide `transformer/`, `vae/`,
+`text_encoder/` and `tokenizer/` in `BUNDLE`; set `RUN` to a separate project-local
+run directory:
 
 ```sh
-python recipes/wan22_dmd/lock_local_assets.py /ABSOLUTE/local-wan22 \
+distillctl assets prepare --local-dir "$BUNDLE" --output "$RUN/source.json"
+distillctl assets verify "$RUN/source.json"
+python recipes/wan22_dmd/lock_local_assets.py "$BUNDLE" \
   --cpu-max-parameters YOUR_PER_COMPONENT_LIMIT
 ```
 
-The limit bounds each native constructor before weight loading; choose it for
-available memory. Student/Fake/Teacher can select distinct subdirectories with
-`--student`, `--fake` and `--teacher`, retaining a common architecture. The loader
-checks file hashes, safe shards, shapes and finite values. For BF16-stored
-checkpoints, add `--dtype-policy bf16_or_fp32_to_fp32`; this explicitly converts
-stored weights to the FP32 owned training state.
+For Hub files, use the revision in `source.json` with the [explicit pinned
+prepare/materialize workflow](../../docs/guides/model_families.md#prepare-model-assets),
+verify it, then run the locker. Its `assets.json` adds native component admission.
+`--student`, `--fake`, `--teacher` select distinct same-architecture directories
+inside the bundle. Add `--dtype-policy bf16_or_fp32_to_fp32` for BF16-stored
+weights explicitly converted to FP32 owned state. Constructor budgets are
+per-component limits, not total host/device capacity estimates.
 
 ## Prepare inputs
 
-Use the [raw](inputs.raw.template.json), [prompt](inputs.prompts.template.json)
-or [preencoded](inputs.preencoded.template.json) template. RGB frame directories
-use Pillow; container video decoding also needs `ffmpeg` and `ffprobe` on PATH.
-Keep the original resolution and frame rate: `Fraw=(Flatent-1)*4+1`, with height
-and width divisible by32. The native spatial16 VAE and spatial2 Transformer
-patches operate on BCFHW latents; do not patchify RGB twice.
-
-Offline preparation uses the native posterior mode, VAE mean/std normalization,
-226-row UMT5 text features, native zero padding and genuine empty-prompt features.
-Prompt-only records specify latent geometry as a noise template. Preencoded
-records retain all context, masks, geometry and encoder-binding fields. Sample
-IDs, original source hashes and data cursors survive training and recovery.
+Choose the [raw](inputs.raw.template.json), [prompt](inputs.prompts.template.json)
+or [preencoded](inputs.preencoded.template.json) template. RGB directories use
+Pillow; video containers also need `ffmpeg`/`ffprobe`. Preserve source geometry:
+`Fraw=(Flatent-1)*4+1`, height/width divisible by32. The spatial16 VAE and spatial2
+Transformer patches operate on BCFHW latents; do not patchify RGB twice.
 
 ```sh
 distillctl data prepare /ABSOLUTE/inputs.json --output /ABSOLUTE/prepared \
   --preparer distillschedule.data.wan22_inputs:prepare_inputs
 ```
 
+Preparation uses native posterior mode, VAE mean/std normalization, 226-row UMT5
+features, native zero padding and genuinely encoded empty-prompt conditions.
+Prompt-only geometry defines a noise template; preencoded rows retain exact
+contexts, masks, geometry and codec/source binding. Native velocity is
+`v=epsilon-x0`; the Transformer receives `1000*sigma` expanded over patches,
+with the original Euler sign.
+
 ## Train, resume and export
 
-Copy [training.lora.json](training.lora.json) and set the asset, prepared-data and
-output paths. Select the owned device with `trainer.device` (`cpu` or `cuda:N`).
-The default native compute is FP32. For BF16 compute, add
-`"compute_precision":"bf16-mixed"` to `model.parameters`: native Transformer
-calls use BF16 autocast, while master weights, Adam, EMA, codecs and flow/sampling
-math stay FP32. Checkpoints, saved plans and inference exports bind this setting.
+Copy [training.lora.json](training.lora.json), fill asset/prepared/output paths,
+and set `trainer.device` to `cpu` or the owned `cuda:N`:
 
 ```sh
 distillctl train /ABSOLUTE/train.json --cycles 2 --output /ABSOLUTE/run
@@ -63,63 +64,31 @@ distillctl export /ABSOLUTE/train.json --checkpoint /ABSOLUTE/FINAL_CHECKPOINT \
   --output /ABSOLUTE/export
 ```
 
-Use the checkpoint path returned by `train`. Complete-cycle recovery retains
-parameters, Adam, schedulers, EMA, RNG, data progress and role/update clocks.
-The native velocity is `v=epsilon-x0`; the Transformer consumes `1000*sigma`
-expanded over patches, and the four-step Euler rollout keeps its original sign.
-
-## Execution strategies
-
-Use `{"mode":"reference"}` for the reference implementation. The existing
-frozen-state sharing capability uses this single-device policy:
+Use returned checkpoint paths. The [common lifecycle](../../docs/guides/training.md)
+handles complete-cycle save/restore. Reference mode is `{"mode":"reference"}`;
+exact immutable-base sharing uses:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
-For explicitly launched equal-rank B1 replicas, set
-`data.sharding="rank_strided"`, a matching `trainer.distributed.backend`
-(`gloo` on CPU or `nccl` on CUDA), and each process's actual local device.
-Reference mode uses the shared post-backward reducer. Its manual sharing variant is:
-
-```json
-{"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
-```
-
-Gradients are averaged before clipping and one Adam commit; each rank consumes
-independent records and RNG. Sharing aliases only immutable bases after role
-construction, retaining disjoint Student/Fake trainables. See
-[execution capabilities](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
-for the actual policy/capacity conditions.
+Sharing retains disjoint Student/Fake trainables and occurs after role
+construction. For equal-B1 replicas, use the shared [rank-strided data,
+Gloo/NCCL launch and replicated sharing policy](../flow_image/README.md#explicit-replicated-training-not-model-sharding).
+See [capacity conditions](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
 
 ## Generate with the current Student
 
-The portable export contains the current Student, VAE, UMT5 and tokenizer.
-Use its returned factory/parameters in an inference config, prepare a new prompt
-with the [export-only preparer](../../docs/guides/export_inputs.md), then run:
+Export contains current Student, VAE, UMT5 and tokenizer. Prepare new prompts
+with the [export-only preparer](../../docs/guides/export_inputs.md), and create an
+inference request with the [common builder](../../docs/guides/training.md#generate-and-export):
 
 ```sh
 distillctl generate /ABSOLUTE/inference.json --weights /ABSOLUTE/export \
   --prepared /ABSOLUTE/new-prepared/manifest.json --output /ABSOLUTE/generated --output-kind video
 ```
 
-Output contains decoded THWC uint8 RGB and a PNG frame sequence. Portable inference
-can run on CPU independently of the original training bundle and checkpoints.
-
-## Tests and provenance
-
-```sh
-DMD_MODERN_FLOW_CPU=1 python recipes/wan22_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture
-DMD_MODERN_FLOW_CPU=1 python -m pytest -q tests/test_training_wan22_cpu.py tests/test_training_flow_precision.py
-DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
-```
-
-The fixtures use actual upstream small model classes. Tests compare native
-forward/gradients, text/VAE/Euler behavior, reference/sharing updates, saved plans,
-fresh-process recovery and new-prompt output. The Gloo2 oracle independently
-averages sequential B1 gradients. Historical native FP32 CUDA acceptance is at
-`artifacts/framework/20261024/native_video_cuda_acceptance.json`; CPU fixture
-results are separate from pretrained-model GPU measurements.
-
-Wan model/config sources, Diffusers and Transformers retain Apache-2.0 attribution;
-keep tokenizer, ftfy and sentencepiece notices. No pretrained weights are bundled.
+Output is decoded THWC uint8 RGB plus PNG frames, independently of the original
+training bundle/checkpoints. For a small random native-class starter, run
+`python recipes/wan22_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture` in the
+isolated environment.

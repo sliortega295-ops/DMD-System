@@ -1,84 +1,84 @@
 # Official DMD2 / Stable Diffusion XL
 
-Read [the shared source, license, preparation and evidence contract](../dmd2_sd15/README.md).
-The same exact pinned upstream source is used; restricted source is external,
-and model assets must be explicit local pretrained bundles.
+Train actual upstream SDXL `SDUniModel`/`SDGuidance` with full Generator parameters
+or native Generator LoRA, native epsilon losses and optional full-size GAN head.
+Single-device CPU/`cuda:N` uses FP32. Source, isolated `train,dmd2` dependencies,
+CC-BY-NC-SA-4.0 license, pinned revision and explicit local/Hub asset preparation
+are shared with [SD1.5](../dmd2_sd15/README.md#source-environment-and-local-assets).
 
-SDXL additionally requires local `text_encoder_2/` and `tokenizer_2/`. The
-original `SDXLTextEncoder` joins both penultimate CLIP hidden states, uses the
-second encoder's pooled projection, passes native size/crop/target time IDs,
-and uses zero unconditional token/pooled embeddings for classifier-free
-guidance. This is not single-CLIP SD1.5 conditioning with different shapes.
+## SDXL assets and native conditioning
 
-`training.json` uses native four-step backward simulation, schedule
-`[999, 749, 499, 249]`, and ratio five. One common macrocycle consumes
-`generator: 1`, `guidance: 4`, and independently sampled `denoising: 5` prompt
-batches; original prefix simulation and renoising remain inside SDUniModel.
-The initially drawn denoising indices are still consumed before backward
-simulation overwrites them, and t999 is overwritten with pure outer noise.
-Both LR schedulers step five times; G commits once and guidance five times.
+The local bundle additionally requires `text_encoder_2/` and `tokenizer_2/`.
+Native `SDXLTextEncoder` joins both penultimate CLIP hidden states, uses the
+second encoder's pooled projection and passes size/crop/target time IDs. CFG
+uses zero unconditional token/pooled embeddings. Both tokenizers are required
+for prompt and raw-image preparation.
 
-To train from real preencoded denoising latents instead, set
-`backward_simulation: false` and provide their exact FP32 B4HW tensors in every
-`denoising` record. The source manifest must explicitly declare
-`"preencoded_vae_compatibility": "PREENCODED_LATENTS_MATCH_LOCAL_VAE"`;
-both tokenizer inventories and the asserted VAE bytes must match the actual
-owner. This assertion does not claim that the preparer encoded supplied latents.
-Full-GAN adds `real: 5` native latent/prompt batches, the
-actual 1280-channel, 104,874,241-parameter head and explicitly chosen loss
-weights. Nothing resizes that head for CPU tests. Generator LoRA uses the
-upstream target modules and masks, not a substitute adapter architecture.
+## Choose a training policy
 
-Single-step SDXL is **not** inferred from a base SDXL bundle: an explicit
-`generator_checkpoint` is mandatory. The original `conditioning_timestep:399`
-case is admitted only together with that actual single-step checkpoint; set
-`denoising:false`, `backward_simulation:false`, `num_denoising_step:1` for that
-pure-generation path. `training.single_step.json` supplies this actual
-configuration template: independent `generator: 1` and `guidance: 4` streams,
-no denoising stream, the explicit local initializing generator checkpoint,
-and native timestep399. The checkpoint must contain the actual strict native
-generator state for that case, not just a base SDXL bundle or an owner restart
-checkpoint. Its bytes are stream-hashed before and after loading. No checkpoint
-is downloaded or invented, and no pretrained-quality claim is made.
+[training.json](training.json) uses four-step backward simulation with schedule
+`[999, 749, 499, 249]` and ratio five. Each macrocycle consumes independent
+`generator: 1`, `guidance: 4` and `denoising: 5` prompt batches. Native prefix
+simulation/renoising remain inside SDUniModel: initial denoising-index draws
+are consumed before simulation overwrites them, and t999 becomes pure outer
+noise. Both LR schedulers step five times; G commits once and guidance five times.
 
-`images.template.json` uses the shared explicit offline actual-VAE intake for
-1024-square RGB batches (or other explicitly declared compatible geometry).
-Both native local CLIP tokenizers are mandatory even for raw-image records;
-omitting `tokenizer_2` fails rather than substituting a single CLIP tokenizer.
-Pinned preencoded latents remain an unchanged alternative.
+For real preencoded denoising latents, set `backward_simulation: false` and put
+exact FP32 B4HW latents in every denoising record. The source manifest must assert
+`"preencoded_vae_compatibility":"PREENCODED_LATENTS_MATCH_LOCAL_VAE"`, binding
+both tokenizer inventories and matching VAE bytes. This asserts compatibility,
+not that preparation encoded those latents.
+
+Full-GAN adds `real: 5` native latent/prompt batches and the actual 1280-channel,
+104,874,241-parameter head, with explicitly chosen classifier loss weights.
+Generator LoRA uses upstream target modules/masks and separate unmerged base/A/B
+parameters; the classifier is not resized for tiny models.
+
+[training.single_step.json](training.single_step.json) requires an actual strict
+native `generator_checkpoint` for `conditioning_timestep:399`, not just base
+SDXL weights or a framework restart checkpoint. It sets `denoising:false`,
+`backward_simulation:false`, `num_denoising_step:1`, with independent
+`generator: 1`/`guidance: 4` streams and no denoising stream.
+
+## Prepare, train and export
+
+Use [inputs.template.json](inputs.template.json) for prompts/pinned latents or
+[images.template.json](images.template.json) for explicit actual-VAE encoding
+at 1024-square or another declared compatible geometry. Native RGB encoding,
+posterior seed and exact preprocessing binding follow the [shared SD input
+contract](../dmd2_sd15/README.md#prepare-inputs-and-choose-the-workload).
+Fill all local paths in a copy of the selected training template:
+
+```sh
+distillctl data prepare /PROJECT/inputs.json --output /PROJECT/prepared \
+  --preparer distillschedule.data.sd_inputs:prepare_inputs
+distillctl train /PROJECT/train.json --cycles 1 --output /PROJECT/partial
+distillctl train /PROJECT/train.json --cycles 3 \
+  --resume /PROJECT/partial/checkpoints/cycle-000001 --output /PROJECT/resumed
+distillctl export /PROJECT/train.json \
+  --checkpoint /PROJECT/resumed/checkpoints/cycle-000003 --output /PROJECT/export
+```
+
+Use returned checkpoint paths. [Native UNet checkpoint policy](../dmd2_sd15/README.md#optional-native-unet-checkpoint-policy)
+and [component-v1](../../docs/guides/native_owner_backends.md#per-role-dmd2-checkpoint-policy)
+also apply to qualified CPU FP32 SDXL: Generator checkpointing may coexist with
+Fake epsilon activation retention. They preserve denoising/conditioning/update
+semantics; Teacher, dual CLIP and VAE stay outside the option.
+
+Export contains current Generator, dual CLIP and native VAE. Prepare new prompts
+with matching tokenizer files and the native SD preparer, then use the
+[common inference-request builder](../../docs/guides/training.md#generate-and-export):
+
+```sh
+distillctl generate /PROJECT/inference.json --weights /PROJECT/export \
+  --prepared /PROJECT/new-prepared/manifest.json --output /PROJECT/generated --output-kind image
+```
+
+For random tiny actual dual-CLIP/UNet/VAE assets, use the shared fixture helper
+with `--variant sdxl`; its generated training request is directly runnable:
 
 ```sh
 python recipes/dmd2_sd15/create_cpu_fixture.py /PROJECT/random-sdxl \
   --source-root /PROJECT/dependencies/DMD2 --variant sdxl
 distillctl train /PROJECT/random-sdxl/training.json
 ```
-
-This explicitly builds random tiny **actual** dual-CLIP/UNet/VAE assets. The
-CPU tests cover both variants, native-source loss/gradient/cache/RNG parity,
-real Program new-process restart, and inference-only current-G/CLIP/VAE export
-on new prompt inputs after removal of training/base assets. The original GAN
-heads are tested separately, not claimed as tiny full-GAN end-to-end training.
-CPU integration is not pretrained quality, CUDA, or distributed validation.
-The shared [single-device CUDA FP32 reference source path](../dmd2_sd15/README.md#cpu-starter-and-evidence-boundary)
-also places SDXL's actual dual CLIP, time IDs, denoising schedule and restored
-optimizer moments on the selected device. Its actual random-tiny CUDA
-oracle and lifecycle tests passed on A100/Torch 2.10 with an explicit
-deterministic test policy. They remain NOT_RUN on CPU-only Torch. No AMP,
-distributed, production-capacity, pretrained-quality or full-GAN GPU result
-is implied. See acceptance scope (source checkout: `docs/guides/performance_validation.md`).
-
-The shared [native UNet checkpoint policy](../dmd2_sd15/README.md#optional-native-unet-checkpoint-policy)
-also applies to SDXL's actual generator/fake UNets, including backward-simulation
-prefixes and native non-G disable/re-enable turns. It changes no denoising
-schedule, conditioning, update ratio, optimizer or RNG semantics. The same
-manual/auto/saved-plan admission and first-postrestart paired reference gate
-apply **on the qualified CPU FP32 stack only**; Teacher, dual CLIP and VAE remain
-outside the option. CUDA optimized trials are rejected until capacity-bounded
-resident snapshot/restore also covers frozen state and CPU staging.
-
-The independent `component-v1` checkpoint profile also applies to actual SDXL:
-Generator retains checkpointing while Fake epsilon activations may be retained,
-with separate per-role effect evidence. See the
-[native owner guide](../../docs/guides/native_owner_backends.md). Role-DDP
-implementation is separate and does not inherit the single-device CUDA or
-component-profile qualification.
