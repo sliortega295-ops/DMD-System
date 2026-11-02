@@ -50,7 +50,9 @@ def admit_run_controls(config):
             manifest_sha = file_sha256(root / "manifest.json")
             if (root / "_SUCCESS").read_text().strip() != manifest_sha:
                 raise ValueError("resume checkpoint is not complete or its manifest changed")
-        return {"cycles": trainer["cycles"], "checkpoint_every": trainer.get("checkpoint_every", 1),
+        from dataclasses import asdict
+        from .checkpoint import CheckpointPolicy
+        return {"cycles": trainer["cycles"], "checkpoint_policy": asdict(CheckpointPolicy.from_trainer(trainer)),
                 "output_root": str(Path(trainer["output_dir"]).resolve()),
                 "resume_manifest_sha256": manifest_sha}
 

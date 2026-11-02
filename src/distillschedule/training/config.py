@@ -50,15 +50,16 @@ class TrainingConfig:
             raise ValueError("trainer.seed must be an integer in [0, 2**63)")
         if not trainer.get("output_dir"):
             raise ValueError("trainer.output_dir is required")
-        if type(trainer.get("checkpoint_every", 1)) is not int or trainer.get("checkpoint_every", 1) < 0:
-            raise ValueError("checkpoint_every must be a nonnegative integer")
+        from .checkpoint import CheckpointPolicy
+        CheckpointPolicy.from_trainer(trainer)
         if execution.get("adapter", "program") == "program":
             allowed = {
                 "model": {"name", "factory", "parameters"}, "data": {"prepared", "streams", "sharding", "validation_prepared", "sampling"},
                 "algorithm": {"name", "factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
                               "max_candidates", "samples", "max_program_runs", "max_states", "resident_budget"},
-                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "resume_from", "device", "distributed", "validation"},
+                "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "checkpoint_interval_seconds",
+                            "checkpoint_keep_last", "resume_from", "device", "distributed", "validation"},
             }
             for key, names in allowed.items():
                 if set(parts[key]) - names:
@@ -167,7 +168,8 @@ class TrainingConfig:
         # complete-cycle restart's mathematical state. Everything else does.
         value = self.to_dict()
         value["trainer"] = {key: val for key, val in value["trainer"].items()
-                            if key not in ("output_dir", "resume_from", "cycles", "checkpoint_every")}
+                            if key not in ("output_dir", "resume_from", "cycles", "checkpoint_every",
+                                           "checkpoint_interval_seconds", "checkpoint_keep_last")}
         return digest(value)
 
 

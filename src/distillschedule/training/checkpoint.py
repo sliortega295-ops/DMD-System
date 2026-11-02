@@ -5,8 +5,10 @@ this same-topology atomic writer, with one safe local shard per actual rank.
 """
 from __future__ import annotations
 from copy import deepcopy
+from dataclasses import dataclass
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -19,6 +21,82 @@ from .tensor_state import pack, decode, layout, live_meshes
 
 SCHEMA = "distillschedule.training_checkpoint.v2"
 _STORAGE_VISIBILITY_TIMEOUT = 30.0
+
+
+@dataclass(frozen=True)
+class CheckpointPolicy:
+    every_cycles: int | None = None
+    interval_seconds: float = 1800.
+    keep_last: int = 3
+
+    @classmethod
+    def from_trainer(cls, trainer):
+        every = trainer.get('checkpoint_every')
+        interval = trainer.get('checkpoint_interval_seconds', 1800.)
+        keep = trainer.get('checkpoint_keep_last', 3)
+        if 'checkpoint_every' in trainer and (type(every) is not int or every < 0):
+            raise ValueError('checkpoint_every must be a nonnegative integer')
+        if type(interval) not in (int, float) or not math.isfinite(interval) or interval <= 0:
+            raise ValueError('checkpoint_interval_seconds must be positive and finite')
+        if type(keep) is not int or keep < 0:
+            raise ValueError('checkpoint_keep_last must be a nonnegative integer (0 keeps all)')
+        return cls(every, float(interval), keep)
+
+    def due(self, *, cycle, total, elapsed):
+        if self.every_cycles == 0:
+            return False
+        return cycle == total or (cycle % self.every_cycles == 0 if self.every_cycles is not None
+                                  else elapsed >= self.interval_seconds)
+
+
+def prune_checkpoints(root, *, identity, keep_last):
+    """Remove only this run's completed publications; the caller owns rank zero.
+
+    No model-sized tensor reads are needed. Incomplete, foreign and symlinked
+    paths are never retention candidates, including unpublished staging trees.
+    """
+    if type(keep_last) is not int or keep_last < 0:
+        raise ValueError('checkpoint retention must be a nonnegative integer')
+    root = Path(root)
+    if keep_last == 0 or not root.exists():
+        return []
+    if root.is_symlink():
+        raise ValueError('checkpoint retention root must not be a symlink')
+    completed = []
+    for path in root.iterdir():
+        if path.is_symlink() or not path.is_dir():
+            continue
+        suffix = path.name.removeprefix('cycle-')
+        if not path.name.startswith('cycle-') or not suffix.isdecimal():
+            continue
+        try:
+            # Retention runs on rank zero after collective publication. Do not
+            # call read_manifest here: its topology admission is collective.
+            manifest_path = path / 'manifest.json'
+            if (path / '_SUCCESS').read_text().strip() != _sha(manifest_path):
+                continue
+            manifest = json.loads(manifest_path.read_text())
+            if (manifest.get('schema_version') != SCHEMA or manifest.get('identity') != identity
+                    or manifest.get('kind') != 'RESUMABLE_COMPLETE_CYCLE'):
+                continue
+            world = manifest['topology']['world_size']
+            if type(world) is not int or world < 1:
+                continue
+            expected = {'state.pt'} if world == 1 else {f'rank-{r:05d}.pt' for r in range(world)}
+            if (set(manifest['files']) != expected
+                    or any(not (path / name).is_file() for name in expected)):
+                continue
+            if 'native_checkpoint' in manifest:
+                _native_inventory(path, manifest['native_checkpoint'])
+        except (ValueError, OSError, KeyError, TypeError):
+            continue
+        if manifest['cycle'] == int(suffix):
+            completed.append((manifest['cycle'], path))
+    removed = []
+    for _, path in sorted(completed)[:-keep_last]:
+        shutil.rmtree(path)
+        removed.append(str(path))
+    return removed
 
 
 def _await_shared_paths(paths, label, *, directory=False, hashes=None):
@@ -471,7 +549,8 @@ def read_manifest(path, *, identity):
     if (path / "_SUCCESS").read_text().strip() != _sha(path / "manifest.json"):
         raise ValueError("checkpoint manifest hash changed")
     manifest = json.loads((path / "manifest.json").read_text())
-    if manifest.get("schema_version") != SCHEMA or manifest.get("identity") != identity:
+    from .compatibility import same_training_identity
+    if manifest.get("schema_version") != SCHEMA or not same_training_identity(manifest.get("identity"), identity):
         raise ValueError("checkpoint identity changed")
     if manifest["topology"] != allocated:
         raise ValueError("checkpoint topology changed")

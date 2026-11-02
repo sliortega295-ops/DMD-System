@@ -134,7 +134,8 @@ def test_public_train_keeps_constructed_provider_through_owned_scope(constructio
     from distillschedule.training import session
     fixture = construction_provider
 
-    def use_provider(config, components, *_):
+    def use_provider(config, components, *_, job_started=None):
+        assert isinstance(job_started, float) and job_started >= 0
         assert components is fixture.components
         assert fixture.closed == []
         components.state['owner'](torch.ones(1))

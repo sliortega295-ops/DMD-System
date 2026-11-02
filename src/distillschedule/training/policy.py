@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from .config import digest
+from .compatibility import EXECUTION_CONTRACT, execution_source_compatible
 
 
 def cycle_structure(workload):
@@ -62,6 +63,7 @@ class CyclePolicy:
         self.bound = None
         self.session = None
         self._owner_readmission = False
+        self._active_source = None
 
     def _resident(self, workload):
         if 'resident_budget' not in self.execution:
@@ -112,11 +114,12 @@ class CyclePolicy:
         self._resident(workload)
         def admit():
             self._admit_owner_request()
-            if (self.bound["source"] != source_identity()
+            if (not execution_source_compatible(self.bound, source_identity())
                     or self.bound["structure"] != cycle_structure(workload)
                     or self.bound["mode"] != self.execution.get("mode", "reference")):
                 raise ValueError("checkpoint execution source or structure changed")
         backend.validated(admit, "checkpoint execution policy admission")
+        self._active_source = source_identity()
         self.session = backend.session(self.bound["implementation"], copy_state=False, persistent=True)
         return self.session
 
@@ -130,7 +133,8 @@ class CyclePolicy:
             current_structure = cycle_structure(workload)
             if self.bound is not None:
                 self._admit_owner_request()
-                if self.bound["source"] != source_identity() or self.bound["structure"] != current_structure:
+                if (source_identity() != (self._active_source or self.bound["source"])
+                        or self.bound["structure"] != current_structure):
                     raise ValueError("training policy source, workload, model precision or input structure changed")
                 if self.bound["mode"] != self.execution.get("mode", "reference"):
                     raise ValueError("checkpoint execution policy changed")
@@ -168,6 +172,7 @@ class CyclePolicy:
                     raise ValueError("selected plan numerical admission needs review; training did not commit")
                 self.bound = {"schema_version": "distillschedule.cycle_policy.v1",
                               "mode": mode, "source": source_identity(), "structure": current_structure,
+                              "resume_contract": EXECUTION_CONTRACT,
                               "implementation": deepcopy(document["selected"]["implementation"]),
                               "order": list(document["selected"]["order"]),
                               "plan_sha256": document["plan_sha256"],
@@ -206,6 +211,7 @@ class CyclePolicy:
                     outputs = session.run(order)
             self.bound = {"schema_version": "distillschedule.cycle_policy.v1", "mode": mode,
                           "source": source_identity(), "structure": current_structure,
+                          "resume_contract": EXECUTION_CONTRACT,
                           "implementation": deepcopy(implementation),
                           "order": list(order or (*[c.id for c in workload.program.calls], "__open_finish__")),
                           "initial_reference_gate": gate}

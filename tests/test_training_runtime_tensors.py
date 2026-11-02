@@ -28,3 +28,16 @@ def test_runtime_tensor_protocol_rejects_non_tensor_values():
             yield 'not a live tensor'
     with pytest.raises(ValueError, match='runtime_tensors'):
         list(tensors(BadOwner()))
+
+
+def test_finite_checks_scan_unique_tensors_and_read_one_scalar_per_device(monkeypatch):
+    from distillschedule.training.session import _finite
+    a, b = torch.ones(4), torch.tensor([2., float('nan')])
+    reads = []
+    real_bool = torch.Tensor.__bool__
+    def observe(value):
+        reads.append(value.device)
+        return real_bool(value)
+    monkeypatch.setattr(torch.Tensor, '__bool__', observe)
+    assert _finite({'a': a, 'again': a, 'b': b}, {}) is False
+    assert len(reads) == 1

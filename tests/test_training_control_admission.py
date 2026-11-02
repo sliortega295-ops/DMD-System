@@ -26,11 +26,33 @@ def construction_sentinel(parameters):
     raise AssertionError("CPU_TEST_ONLY: factory reached before training control admission")
 
 
-def _worker(rank, port, source, requests, results):
+def _worker(rank, port, source, requests, results, clock_skew=False):
     torch.set_num_threads(1)
     os.environ.update(WORLD_SIZE="2", RANK=str(rank), LOCAL_RANK=str(rank),
                       LOCAL_WORLD_SIZE="2", GROUP_RANK="0", MASTER_ADDR="127.0.0.1", MASTER_PORT=str(port))
     from distillschedule.training.session import train
+    checkpoint_decisions = []
+    if clock_skew:
+        # CPU_TEST_ONLY deterministic clocks, never performance measurements.
+        # Rank zero crosses 30 minutes at C1; the peer does not. After a real
+        # collective checkpoint, C2 must see only ten new seconds on both ranks.
+        from types import SimpleNamespace
+        from distillschedule.training import session
+        from distillschedule.training.checkpoint import CheckpointPolicy
+        from distillschedule.training.policy import CyclePolicy
+        clock, runs = [0.], [0]
+        original_run, original_due = CyclePolicy.run, CheckpointPolicy.due
+        def timed_run(self, *args, **kwargs):
+            value = original_run(self, *args, **kwargs)
+            clock[0] += (1801. if rank == 0 else 0.) if runs[0] == 0 else 10.
+            runs[0] += 1
+            return value
+        def observe_due(self, **kwargs):
+            due = original_due(self, **kwargs)
+            checkpoint_decisions.append(dict(kwargs, due=due))
+            return due
+        session.time = SimpleNamespace(perf_counter=lambda: clock[0])
+        CyclePolicy.run, CheckpointPolicy.due = timed_run, observe_due
     config = TrainingConfig.from_dict(requests[rank], source=source)
     result, error = None, None
     try:
@@ -43,16 +65,17 @@ def _worker(rank, port, source, requests, results):
         "status": "CPU_TEST_ONLY", "error": error, "result": result,
         "factory_entered": Path(results, f"factory-{rank}.txt").exists(),
         "output_exists": Path(config.trainer["output_dir"]).exists(),
+        "checkpoint_decisions": checkpoint_decisions,
     }))
 
 
-def _run_ranks(root, config, requests):
+def _run_ranks(root, config, requests, *, clock_skew=False):
     root.mkdir()
     # This is a local test rendezvous, never a cluster launcher or GPU request.
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
-    processes = mp.spawn(_worker, args=(port, str(config.source), requests, str(root)),
+    processes = mp.spawn(_worker, args=(port, str(config.source), requests, str(root), clock_skew),
                          nprocs=2, join=False)
     deadline = time.monotonic() + 60
     try:
@@ -69,6 +92,21 @@ def _run_ranks(root, config, requests):
                 process.kill()
                 process.join(timeout=5)
     return [json.loads((root / f"rank-{rank}.json").read_text()) for rank in range(2)]
+
+
+def test_elapsed_checkpoint_agrees_across_skewed_ranks_and_resets_timer(tmp_path):
+    config, raw = _fixture(tmp_path / 'media')
+    raw['trainer'].pop('checkpoint_every')
+    raw['trainer'].update(cycles=3, output_dir=str(tmp_path / 'timed'))
+    rows = _run_ranks(tmp_path / 'workers', config, [raw, deepcopy(raw)], clock_skew=True)
+    assert all(row['error'] is None for row in rows), rows
+    decisions = [row['checkpoint_decisions'] for row in rows]
+    assert decisions[0][0]['due'] and not decisions[1][0]['due']
+    assert all(not steps[1]['due'] and steps[1]['elapsed'] == 10. for steps in decisions)
+    assert all(steps[2]['due'] for steps in decisions)
+    assert sorted(p.name for p in (tmp_path / 'timed/checkpoints').iterdir()) == [
+        'cycle-000001', 'cycle-000003']
+    assert all(row['result']['completed_cycles'] == 3 for row in rows)
 
 
 def _fixture(root):
@@ -92,7 +130,8 @@ def _synthetic_manifest(path, *, cycle=1):
 
 
 @pytest.mark.parametrize("case", [
-    "cycles", "checkpoint_every", "resume_presence", "manifest_contents", "manifest_bytes", "missing_manifest",
+    "cycles", "checkpoint_every", "checkpoint_every_default", "checkpoint_interval_seconds", "checkpoint_keep_last",
+    "resume_presence", "manifest_contents", "manifest_bytes", "missing_manifest",
     "unpublished_manifest", "changed_success", "unreadable_manifest", "output_root",
 ])
 def test_control_disagreement_rejects_collectively_before_factory_or_output(tmp_path, case):
@@ -106,6 +145,12 @@ def test_control_disagreement_rejects_collectively_before_factory_or_output(tmp_
         requests[1]["trainer"]["cycles"] = 3
     elif case == "checkpoint_every":
         requests[1]["trainer"]["checkpoint_every"] = 0
+    elif case == "checkpoint_every_default":
+        requests[1]["trainer"].pop("checkpoint_every")
+    elif case == "checkpoint_interval_seconds":
+        requests[1]["trainer"]["checkpoint_interval_seconds"] = 60.
+    elif case == "checkpoint_keep_last":
+        requests[1]["trainer"]["checkpoint_keep_last"] = 5
     elif case == "output_root":
         requests[1]["trainer"]["output_dir"] = str(tmp_path / "also-never-created")
     else:
@@ -156,8 +201,10 @@ def test_byte_identical_resume_mount_aliases_run_the_real_training_lifecycle(tmp
     for rank, request in enumerate(requests):
         request["trainer"].update(output_dir=str(tmp_path / "resumed"),
                                   resume_from=str(checkpoint if rank == 0 else alias))
-    # Default cadence 1 and an explicitly supplied 1 select the same branches.
-    del requests[1]["trainer"]["checkpoint_every"]
+    # Explicit default seconds/retention and omitted defaults are equivalent.
+    for request in requests:
+        del request['trainer']['checkpoint_every']
+    requests[0]['trainer'].update(checkpoint_interval_seconds=1800., checkpoint_keep_last=3)
     resumed = _run_ranks(tmp_path / "resume-workers", config, requests)
     assert all(row["error"] is None for row in resumed), resumed
     whole = deepcopy(raw)

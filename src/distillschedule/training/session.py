@@ -19,10 +19,12 @@ from distillschedule.workloads.best_known.registry import file_sha256
 from . import distributed
 from .adapters import InferenceProjection, ModelComponents
 from .checkpoint import (
+    CheckpointPolicy,
     _read_collective_checkpoint,
     cpu_tree,
     read_checkpoint,
     read_manifest,
+    prune_checkpoints,
     restore_checkpoint,
     save_checkpoint,
     unpack_state,
@@ -158,8 +160,10 @@ def construct(config, *, include_validation=False):
             components.admit_training(state=components.state, request=config,
                                       prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
         validation = Validation.prepare(config, components)
+        from .compatibility import TRAINING_CONTRACT
         identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
                     "algorithm": algorithm_source, "framework": _source(),
+                    "resume_contract": TRAINING_CONTRACT,
                     "model_metadata": dict(components.metadata)}
         if validation is not None:
             identity["validation"] = validation.identity
@@ -231,8 +235,34 @@ def _finite(state, outputs):
     import torch
 
     from distillschedule.open_workload.torch_backend import physical_tensor, tensors
-    return all(bool(torch.isfinite(physical_tensor(tensor)).all()) for tensor in tensors((state, outputs))
-               if tensor.is_floating_point() or tensor.is_complex())
+    checks, seen = {}, {}
+    with torch.no_grad():
+        for tensor in tensors((state, outputs)):
+            if id(tensor) in seen or not (tensor.is_floating_point() or tensor.is_complex()):
+                continue
+            seen[id(tensor)] = tensor
+            value = physical_tensor(tensor)
+            finite = torch.isfinite(value).all()
+            if value.device in checks:
+                checks[value.device].logical_and_(finite)
+            else:
+                checks[value.device] = finite
+        # One device-to-host scalar read per device, rather than per parameter,
+        # gradient or optimizer tensor. Coverage and check frequency are unchanged.
+        return all([bool(check) for check in checks.values()])
+
+
+def _preflight_output(config):
+    root = Path(config.trainer['output_dir'])
+    if os.path.lexists(root):
+        raise FileExistsError(f'training output already exists: {root}')
+    parent = root.parent
+    while not parent.exists() and parent != parent.parent:
+        parent = parent.parent
+    if not parent.is_dir():
+        raise NotADirectoryError(f'training output parent is not a directory: {parent}')
+    if not os.access(parent, os.W_OK | os.X_OK):
+        raise PermissionError(f'training output parent is not writable: {parent}')
 
 
 def train(config: TrainingConfig):
@@ -262,15 +292,19 @@ def _checked_construct(config, label, *, include_validation=False):
 def _train(config: TrainingConfig):
     # Reject unsupported collective validation before constructing any model,
     # installing a wrapper, updating state or creating output.
+    started = time.perf_counter()
     distributed.checked(lambda: admit_scope(config), "validation scope admission")
     distributed.admit_run_controls(config)
+    distributed.checked(lambda: _preflight_output(config), "training output preflight")
     components, dataset, algorithm, identity, validation = _checked_construct(
         config, "training construction", include_validation=True)
     with components.managed():
-        return _train_owned(config, components, dataset, algorithm, identity, validation)
+        return _train_owned(config, components, dataset, algorithm, identity, validation,
+                            job_started=started)
 
 
-def _train_owned(config, components, dataset, algorithm, identity, validation):
+def _train_owned(config, components, dataset, algorithm, identity, validation, *, job_started=None):
+    job_started = time.perf_counter() if job_started is None else job_started
     rank, world = distributed.rank_world()
     if any(row != identity for row in distributed.gather(identity)):
         raise ValueError("ranks disagree on training configuration, source or dataset identity")
@@ -315,19 +349,30 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
     validation_runs = 0
     last_validation = None
     latest = Path(config.trainer["resume_from"]).resolve() if config.trainer.get("resume_from") else None
+    checkpoint_policy = CheckpointPolicy.from_trainer(config.trainer)
+    last_checkpoint_at = time.perf_counter()
+    totals = {'setup': last_checkpoint_at - job_started, 'build': 0., 'execution': 0.,
+              'finite_check': 0., 'validation': 0., 'metrics': 0., 'checkpoint': 0.,
+              'publication': 0., 'logging': 0.}
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
+            cycle_started = time.perf_counter()
             position = sampling.position(cursor + rank)
             workload = distributed.checked(lambda: build_cycle(
                 config, components, dataset, algorithm, cycle=cycle, cursor=position.sample_index,
                 versions=versions), "cycle construction")
             started = time.perf_counter()
+            timings = {'build': started - cycle_started}
             session, outputs = policy.run(workload, root)
             wall = time.perf_counter() - started
+            timings['execution'] = wall
+            started = time.perf_counter()
             if not all(distributed.gather(_finite(session.state, outputs))):
                 raise ValueError(f"nonfinite training state/output at cycle {cycle + 1}")
+            timings['finite_check'] = time.perf_counter() - started
             components.state.update({key: session.state[key] for key in components.state})
             versions = session.receipt["dispatcher"]["final_versions"]
+            started = time.perf_counter()
             if validation is not None and (cycle + 1) % validation.settings["every_cycles"] == 0:
                 validation_row = validation.run(config, session.state, cycle=cycle + 1)
                 distributed.checked(lambda: _append_json(rank_root / "validation.jsonl", validation_row),
@@ -339,6 +384,8 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
                 validation_runs += 1
                 distributed.primary(lambda last_validation=last_validation: _json(root / "validation-summary.json", last_validation),
                                     "validation summary publication")
+            timings['validation'] = time.perf_counter() - started
+            started = time.perf_counter()
             metrics = distributed.checked(lambda: _training_metrics(components, outputs), "training metric collection")
             cursor += world
             row = {"cycle": cycle + 1, "rank": rank, "sample_id": dataset.sample_id(position.sample_index), "cursor": cursor,
@@ -350,14 +397,34 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
             if data_progress(dataset, cursor) is not None:
                 row['data_progress'] = data_progress(dataset, cursor)
             completed_cycles_this_process += 1
-            distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
-                                "training metrics publication")
-            every = config.trainer.get("checkpoint_every", 1)
-            if every and ((cycle + 1) % every == 0 or cycle + 1 == config.trainer["cycles"]):
+            timings['metrics'] = time.perf_counter() - started
+            started = time.perf_counter()
+            due = checkpoint_policy.due(cycle=cycle + 1, total=config.trainer['cycles'],
+                                        elapsed=started - last_checkpoint_at)
+            # Only wall-clock cadence needs agreement. Fixed-cycle/disabled
+            # policies already matched in the preconstruction control exchange.
+            if checkpoint_policy.every_cycles is None:
+                due = any(distributed.gather(due))
+            if due:
                 latest = save_checkpoint(root / "checkpoints" / f"cycle-{cycle + 1:06d}", session.state,
                                          identity=identity, cycle=cycle + 1, cursor=cursor,
                                          versions=versions, policy=policy.bound, data_progress=data_progress(dataset, cursor))
-            distributed.primary(lambda: _json(root / "effective-policy.json", policy.bound), "policy publication")
+                distributed.primary(lambda: prune_checkpoints(root / 'checkpoints', identity=identity,
+                    keep_last=checkpoint_policy.keep_last), 'checkpoint retention')
+                last_checkpoint_at = time.perf_counter()
+            timings['checkpoint'] = time.perf_counter() - started
+            started = time.perf_counter()
+            if completed_cycles_this_process == 1:
+                distributed.primary(lambda: _json(root / "effective-policy.json", policy.bound), "policy publication")
+            timings['publication'] = time.perf_counter() - started
+            row.update(cycle_wall_s=time.perf_counter() - cycle_started, timings_s=timings,
+                       cycle_timing_scope='CYCLE_THROUGH_CHECKPOINT_AND_POLICY_PUBLICATION')
+            started = time.perf_counter()
+            distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
+                                "training metrics publication")
+            totals['logging'] += time.perf_counter() - started
+            for key, seconds in timings.items():
+                totals[key] += seconds
         rank_results = distributed.gather({"rank": rank, "completed_cycles": config.trainer["cycles"],
                                            "cursor": cursor, "versions": versions})
         result = {"schema_version": "distillschedule.training_result.v1", "status": "COMPLETE",
@@ -372,6 +439,8 @@ def _train_owned(config, components, dataset, algorithm, identity, validation):
                   "sampling": sampling.describe(),
                   "world_size": world, "rank_count": len(rank_results), "ranks": rank_results,
                   "policy": policy.bound, "gpu_execution": session.receipt["gpu_execution"]}
+        result.update(job_wall_s=time.perf_counter() - job_started, timings_s=totals,
+                      job_timing_scope='SETUP_AND_ALL_CYCLES_THROUGH_FINAL_RANK_COLLECTION')
         distributed.primary(lambda: _json(root / "summary.json", result), "training summary publication")
         return result
     except BaseException as exc:
