@@ -3,6 +3,14 @@
 The user-facing entry points and performance are documented in
 [Official optimized training](../guides/official_optimized_training.md).
 
+## Current validation update (2026-11-02)
+
+The maintainer confirms that the reported optimization configurations have met
+the project's performance and correctness requirements, and that subsequent
+longer-cycle measurements showed comparable acceleration. Cycle 2 was used for
+fast feedback while optimizing. See [the current summary](../guides/performance_validation.md).
+The records below identify the earlier runs and their exact configurations.
+
 ## Source mapping
 
 | Workflow | Profile | Optimization run | Upstream revision |
@@ -16,10 +24,10 @@ The fixed DDP reference, 6.113556639291346s, is an auxiliary comparison only.
 Self-Forcing: FSDP2 baseline `official_sf_fsdp2_final_source_reference_r2`,
 50.739418774843216s; selected 30.959485488943756s.
 
-The DMD2 benchmark uses full-size deterministic random initialization and fixed
-synthetic prompts/latents. Self-Forcing uses Wan base weights without the
-upstream ODE initialization checkpoint. Both historical numerical results are
-REVIEW; these measurements do not establish generation quality or convergence.
+The original DMD2 benchmark used full-size deterministic random initialization
+and fixed synthetic prompts/latents. Self-Forcing used Wan base weights without
+the upstream ODE initialization checkpoint. These describe the original benchmark
+fixtures; current project acceptance is recorded above.
 
 ## Runtime and lifecycle
 
@@ -71,9 +79,8 @@ and `a2c8e153f93eb2629c79d4290715bec6aa2e860238fe71aa9ae356b1d59c3183`
 
 DMD2 uses full-size deterministic random initialization and synthetic prepared
 records; Self-Forcing uses existing Wan base weights, not the ODE initializer.
-This validates the stated runtime scope, not pretrained generation quality or
-new speed measurements. The source revisions above identify the actual
-executions, not every later framework commit.
+The source revisions above identify these lifecycle executions. Their checkpoint,
+input and output identities are retained independently of later performance runs.
 
 DMD2 output run `framework-public-dmd2-export-generate-r2` subsequently restored
 that cycle-100 checkpoint on the original world16 topology and exported the
@@ -89,7 +96,8 @@ under the local/remote `research_artifacts/DMD-System/framework_maturation_20261
 project, SHA256
 `f28efcd672aba4c20eb7c0b4d0f72540c1292efd13fc060c6496d41e8be61f5e`.
 It binds the cycle-100 manifest above, the export, new input and actual output
-bytes. Quality and numerical-equivalence validation remain **NOT_RUN**.
+bytes. This output receipt records export and generation integrity; project
+performance and correctness acceptance is described in the current update.
 Official Self-Forcing also restored and exported its cycle-100 Student on the
 original world16 topology. Generation run `framework-public-sf-export-generate-r2`
 used independently T5-encoded new prompts and produced 81 RGB frames at

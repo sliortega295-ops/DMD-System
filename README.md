@@ -94,6 +94,9 @@ experiments. Personal continuity uses available, authorized Codex history and
 project logs. See the [Skill guide](docs/guides/optimizer_skill.md) for updates
 and lookup commands.
 
+For reported performance, accepted configurations and the relationship between
+Cycle 2 screening and longer training, see [Performance and validation](docs/guides/performance_validation.md).
+
 ## Development
 
 The main code boundaries are [models/data, algorithms, training state and

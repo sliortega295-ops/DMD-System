@@ -2,53 +2,40 @@
 
 **Original protocol:** DMD + GAN-G/GAN-D; G1/C5/EMA1.
 
-No merged-LoRA promotion. N70-OFF timing has a preserved post-timer FAIL and numerical REVIEW; historical 113.59 s is N70-ON.
+The optimized bundle uses world16 FSDP2, chunk2048/window5, SM80 FA3,
+frozen-down replay, separate GAN heads and LoRA-B fusion. LoRA stays unmerged;
+runtime merge counters must remain zero.
 
-## Inspect the actual adapter (no GPU execution)
+## Choose a training path
 
-Run from the repository root:
+- [`training.json`](training.json): `helios_gan.fa3_down40_nomerge.v1`, the
+  original two-cycle fixed-input comparison preset.
+- [Native stream](NATIVE_STREAM.md): full-bundle continuous updates, complete
+  G/C/GAN-head state, checkpoint and restart.
+- [CPU reference](REFERENCE_TRAINING_CPU.md): original model and GAN update
+  logic through the common training lifecycle.
+
+Supply the matching model, input and hardware configuration. Use the native
+stream for long training and checkpoint recovery.
+
+## Inspect and run
 
 ```bash
 python scripts/distillctl.py workloads candidates --workload helios14b_gan_best --include-helios-gan-manual
 ```
 
-Continue through the existing [native runbook](../../docs/runbooks/native_planner_workflow.md) for asset qualification, measured calibration, planning and saved-plan execution. Source identity, original update counts, precision, capacity policy and numerical checks remain mandatory. This guide does not pre-fill a winner, create a new trainer or resume a stopped queue.
+The [native runbook](../../docs/runbooks/native_planner_workflow.md) covers
+manual and saved-plan execution. [Native output](NATIVE_OUTPUT.md) covers the
+current unmerged Student, Wan2.1 VAE and new-prompt video generation; the
+[CPU output path](PORTABLE_INFERENCE_CPU.md) is documented separately.
 
-## Code ownership
+## Implementation and results
 
-- source checkout: `src/distillschedule/search/helios_model_adapter.py`
-- source checkout: `src/distillschedule/runtime/helios_gan_manual/__init__.py`
+The code is in `src/distillschedule/search/helios_model_adapter.py` and
+`src/distillschedule/runtime/helios_gan_manual/`.
+[Direct presets](../../docs/guides/native_presets.md) describe the source and
+configuration bindings.
 
-The compatibility profile `helios14b_gan_best` is preserved but is not silently substituted for this guide's explicit cohort.
-
-Shared integration origin: `ea29129342741b54e59c4773e07454f541fadcc7`. Subsequent organization commits are not historical training identities.
-
-## Hardware/evidence
-
-A100 manual/saved-plan evidence: source-bound record (source checkout: `artifacts/publications/20261019/evidence/planner/six_workload_native_match.json`), status `REUSED_MATCHED_DIAGNOSTIC_TARGET_MET`. Its fixed training source is `5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed`.
-
-H100 measured source: `sliortega295-ops/DMD-System@624515e7c8d1511aa688e95e69cf94f1a2a273f7`. Published source: `624515e7c8d1511aa688e95e69cf94f1a2a273f7`. This is a separately pinned implementation, not automatic proof of this checkout's H100 runtime. The archived measurement index (source checkout: `artifacts/publications/20261019/h100/measured_results.csv`) defines the actual denominator and numerical status.
-
-Read the six-workload correction (source checkout: `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`) before interpreting any number. No new GPU or quality result is created by this recipe.
-
-## Public training configuration
-
-[`training.json`](training.json) selects `helios_gan.fa3_down40_nomerge.v1` with explicit
-`mode: manual` and `execution.preset`; supply your qualified original assets
-and output directory, **not a historical saved plan**. The existing typed
-implementation is bound against the current source/assets and enters the same
-native runner and gates. This is exactly two fixed-contract cycles with no
-checkpoint/resume, not continuous training. REVIEW; merged-LoRA/N70 remains off and runtime merge counts must be zero.
-
-Read the [direct preset guide](../../docs/guides/native_presets.md) for the
-complete source/mechanism/runtime mapping and the
-[native training guide](../../docs/guides/native_workloads.md) for separate
-reference/fresh-input and saved-plan paths. CPU admission does not certify
-GPU execution, numerical parity, quality or speedup.
-
-For the full fresh-stream recipe, complete native checkpoint → current
-unmerged Student + Wan2.1 VAE → independent new-prompt decoded video:
-[NATIVE_OUTPUT.md](NATIVE_OUTPUT.md). This includes source/CPU acceptance;
-pretrained world16/GPU output and generation quality are separate checks.
-The older CPU-only diagnostic remains at
-[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md).
+See [current performance and validation](../../docs/guides/performance_validation.md).
+Earlier N70-on/off trials keep their original measurements in the research
+records; their different LoRA settings must not be combined into one comparison.

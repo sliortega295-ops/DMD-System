@@ -42,6 +42,12 @@ A cycle is the workload's complete logical G/Score/optimizer/EMA update unit,
 not one forward call or a common iteration count across different algorithms.
 Use the existing runner and record the timing scope in WORK_LOG.
 
+For an adopted DMD-System configuration with completed longer-cycle validation,
+reuse that matching evidence: Cycle 2 was the quick optimization measurement,
+not the whole validation run. Comparable long-cycle acceleration does not require
+restarting the warmup study on every unchanged trial. Keep each table's original
+timing definition instead of relabeling Cycle 2 seconds as a long-run average.
+
 **First establish representativeness.** For a new workload or materially changed
 setup, start with 3–4 consecutive complete cycles after one initialization.
 Compare Cycle 2 with Cycle 3 and, when available, Cycle 4; inspect compilation,

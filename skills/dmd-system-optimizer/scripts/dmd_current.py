@@ -254,9 +254,20 @@ def lookup(query, repo=None, limit=4, index=INDEX):
         caps = [(len(query_terms & terms(json.dumps(c, ensure_ascii=False))), c)
                 for c in data.get("capabilities", []) if compatible_capability(c)]
         caps = [c for score, c in sorted(caps, key=lambda pair: (-pair[0], pair[1]["id"])) if score > 0][:3]
+        # A source registry's archived verdict is not current recipe acceptance.
+        caps = [{**{key: value for key, value in cap.items() if key != "evidence"},
+                 "historical_evidence_source": STRATEGIES,
+                 "validation_guide": "docs/guides/performance_validation.md"}
+                if "HISTORICAL_NATIVE_GPU_REVIEW" in cap.get("evidence", "") else cap
+                for cap in caps]
         shown = []
         for row in matches[:limit]:
-            shown.append({**row, "checks": row["checks"][:4], "check_count": row.get("check_count", len(row["checks"])),
+            shown.append({**row,
+                "profiles": [{key: value for key, value in profile.items() if key != "numerical_status"}
+                             for profile in row.get("profiles", [])],
+                "validation_guide": "docs/guides/performance_validation.md",
+                "profile_history_source": PROFILES,
+                "checks": row["checks"][:4], "check_count": row.get("check_count", len(row["checks"])),
                 "recipe_counts": {k: len(v) for k, v in row["recipes"].items()},
                 "recipes": {k: v[:4] for k, v in row["recipes"].items()}})
         return {"status": source, "source_revision": data.get("source_revision"),

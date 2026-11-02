@@ -7,9 +7,17 @@ framework lifecycle.
 
 ## Implementations and measured performance
 
-16 × A100-40GB, global batch 16. Each measurement executes two consecutive
-cycles after one initialization; the table reports cycle 2 without a profiler.
-A DMD2 cycle contains G1/C10, and a Self-Forcing cycle contains G1/C5.
+The reported optimized configurations meet the project's performance and
+correctness requirements. The maintainer's updated conclusion and measurement
+scopes are in [Performance and validation](performance_validation.md).
+
+The table uses the fast comparison window from optimization: Cycle 1 warms the
+path and Cycle 2 is timed without a profiler. Subsequent longer-cycle checks
+showed comparable acceleration. The listed seconds remain the original Cycle 2
+measurements, not newly computed long-run averages.
+
+Hardware: 16 × A100-40GB, global batch 16. A DMD2 cycle contains G1/C10, and
+a Self-Forcing cycle contains G1/C5.
 
 FSDP2 is the primary baseline for both workflows.
 
@@ -20,9 +28,8 @@ FSDP2 is the primary baseline for both workflows.
 
 DMD2 also has an auxiliary Resident/DDP comparison: 6.114 → 3.475 s (1.759×).
 
-These optimization-run measurements are separate from the lifecycle validation
-below. Implementation details and verification records are in the
-[validation appendix](../status/official_optimized_framework.md).
+Implementation details, original measurement identities and the continuous
+training records are in the [validation appendix](../status/official_optimized_framework.md).
 
 ## Current public runtime status
 
@@ -33,9 +40,10 @@ new-prompt generation: a 512 × 512 image for DMD2 and an 81-frame, 368 × 640
 video for official Self-Forcing. Output tensor/PNG integrity and both node
 cleanups passed. See the
 [exact sources and output receipts](../status/official_optimized_framework.md#public-native-lifecycle-validation-2026-10-29).
-DMD2 uses random initialization/synthetic records; Self-Forcing uses Wan base
-weights, not the ODE initializer. These are runtime checks, not pretrained
-quality or new performance measurements.
+The archived lifecycle fixtures use deterministic random initialization and
+synthetic records for DMD2, and Wan base weights for Self-Forcing. Their run
+configuration is preserved in the appendix; the current performance and
+correctness conclusion is summarized above.
 
 ## Choose a configuration
 

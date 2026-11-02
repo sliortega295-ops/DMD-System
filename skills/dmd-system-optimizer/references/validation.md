@@ -4,6 +4,12 @@ Use the project's adequate checker and its real output, whether JSON, JUnit or
 text. Do not build a new acceptance system around it. Existing project requirements
 still apply; never lower tolerances merely because a candidate failed.
 
+When the project has completed its performance and correctness acceptance,
+report that conclusion directly with the configuration and validation scope.
+Do not add an old numerical-review label to an accepted current combination.
+Reuse completed long-cycle checks; revalidate changed behavior, not the existence
+of the report. An actual failed check remains a failure until resolved.
+
 ## During exploration
 
 Choose the cheapest check that addresses the changed path. Source tests can catch

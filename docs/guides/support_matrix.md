@@ -40,6 +40,9 @@ Fresh-stream recipes retain role state across cycles and save at complete-cycle
 boundaries. The original **two-cycle** presets remain available for performance
 reproduction. Existing **100-cycle** official-workflow runs include a fresh-process
 restart at cycle 50 and current-Student export; their records are linked below.
+The maintainer's [current performance and correctness summary](performance_validation.md)
+also records comparable acceleration in subsequent longer-cycle measurements.
+Cycle 2 is the quick optimization window, not a two-cycle training limitation.
 
 Portable inference weights carry the current Student and its required components.
 Training checkpoints additionally retain optimizer, scheduler, EMA, RNG, input

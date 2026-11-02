@@ -16,8 +16,11 @@ implementation paths, applicable registry metadata and related test paths.
 unoptimized. `has_optimized_recipe=false` means no explicitly named/profile-bound
 optimized recipe was found, not that the framework lacks optimization mechanisms.
 Related generic capabilities require checking the chosen recipe's actual guards.
-Tests are navigation only, never a new PASS. A stored profile's numerical REVIEW
-is preserved, and no historical timing becomes current performance.
+The result links `validation_guide` for the current project conclusion and
+`profile_history_source` for original profile metadata. Archived numerical
+labels are not displayed as the current recipe's validation state. Related
+capabilities with those archived labels link `historical_evidence_source` instead.
+Listing a test still means where to check, not that the lookup command executed it.
 
 ## Keep one source of truth
 
