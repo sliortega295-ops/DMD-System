@@ -1,246 +1,127 @@
-# HunyuanVideo-1.5 T2V: bounded native flow-DMD reference
+# HunyuanVideo-1.5: text-to-video flow DMD
 
-**Not pretrained capacity or quality acceptance.** The admitted slice is CPU1
-or single-CUDA FP32 reference,
-batch1, same-family unmerged LoRA, four Euler steps, G1/F5 and CFG=1, through
-the existing common `training.dmd` Program, checkpoint and export interfaces.
-This is not official DMD2, Self-Forcing, I2V, meanflow or a distilled variant.
-No model-name branch was added to the trainer, planner or controller.
+This recipe uses the native `HunyuanVideo15Transformer3DModel`, temporal4
+`AutoencoderKLHunyuanVideo15`, Qwen2.5 primary text encoder and T5/ByT5 glyph
+conditioning through the common DMD-System lifecycle. Student, Teacher and Fake
+Score use the same model family, unmerged LoRA, four Euler steps, G1/F5, local
+batch one and CFG=1.
 
-## Source and license
+## Environment, source and license
 
-The source-only candidate is
+Use the separate `modern-flow` dependency group and [environment.json](environment.json).
+The pinned model/config source is
 [HunyuanVideo-1.5-Diffusers-480p_t2v at 286be7c](https://huggingface.co/hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v/tree/286be7ce72277246578a3e3cc2487e95ddae5bcf).
-Its model assets use **Tencent Hunyuan Community terms**, repository license
-tag `other`, **not Apache-2.0**. Review the original terms and all text/tokenizer
-and data obligations before use. Framework/dependency implementation licenses
-do not grant asset redistribution. Full upstream configs/weights are not
-vendored here; small constructor choices are source-derived test fixtures.
-[source.json](source.json) retains hashes and the stale upstream example ID's
-401 audit failure; it is not a reason to retry/authenticate another account.
+[source.json](source.json) records its exact identity. Model assets retain the
+**Tencent Hunyuan Community License** and their text/tokenizer terms; these are
+separate from Apache-licensed framework/dependency implementations. No pretrained
+weights are bundled or relicensed.
 
-Actual imports: Diffusers0.37.1 `HunyuanVideo15Transformer3DModel`,
-`AutoencoderKLHunyuanVideo15`, `HunyuanVideo15Pipeline`; Transformers5.14.1
-`Qwen2_5_VLTextModel`, `T5EncoderModel`, `Qwen2TokenizerFast`, **slow**
-`ByT5Tokenizer`. This uses the separate [modern-flow environment](environment.json),
-not a Transformers4/PEFT0.17 environment. Use Python3.12 and install the
-`modern-flow`, `train`, `test` extras only in a new isolated environment; never
-upgrade a historical experiment lane in place. Construction installs nothing.
+## Local assets and inputs
 
-## Already-local assets only
-
-Provide complete native safe-serialized directories `transformer`, `vae`,
-`text_encoder`, `text_encoder_2`, `tokenizer`, `tokenizer_2` in one local bundle.
-Separate Student/Fake/Teacher native directories may be selected explicitly.
-Inventory creation does not download, load or authenticate pretrained weights:
+Provide native `transformer/`, `vae/`, `text_encoder/`, `text_encoder_2/`,
+`tokenizer/` and `tokenizer_2/` directories in one bundle. Inventory them with:
 
 ```sh
 python recipes/hunyuan_video_dmd/lock_local_assets.py /ABSOLUTE/local-hunyuan15 \
-  --cpu-max-parameters EXPLICIT_PER_COMPONENT_PARAMETER_LIMIT
+  --cpu-max-parameters YOUR_PER_COMPONENT_LIMIT
 ```
 
-The explicit parameter limit is mandatory. Runtime sizes **all three roles
-and every VAE/text encoder on meta before any concrete model/weight load**;
-portable reconstruction repeats that gate. This is not full-model capacity
-qualification: large native CPU layouts and pretrained execution are NOT_RUN.
-Strict F32 storage is default; the explicit `--dtype-policy
-bf16_or_fp32_to_fp32` admits only exact BF16/F32-storage to FP32-compute
-conversion, not BF16 runtime/AMP/GPU qualification. FP16, missing/contradictory
-tied aliases, missing shards, unrecorded files, unknown configs, unsafe paths
-and hash/source/version drift reject. Production never substitutes random
-initialization. Raw legacy Qwen RoPE config bytes and native T5 tied ownership
-are retained, not normalized back through a lossy serialized config.
+This bounds all role/codec constructors before weight loading and records safe
+shards, hashes and shapes. Distinct Student/Fake/Teacher subdirectories are
+selectable with `--student`, `--fake` and `--teacher`. For BF16-stored checkpoints,
+add `--dtype-policy bf16_or_fp32_to_fp32` to convert weights to FP32 owned state.
+Native config bytes, T5 tied ownership and both tokenizers' options are retained.
 
-## Native math, conditions and data
+Choose the [raw](inputs.raw.template.json), [prompt](inputs.prompts.template.json)
+or [preencoded](inputs.preencoded.template.json) template. RGB directories require
+Pillow; video containers also require `ffmpeg` and `ffprobe`. Keep source geometry:
+`Fraw=(Flatent-1)*4+1`, with height/width divisible by the actual VAE spatial ratio.
+The VAE uses its posterior mode times `scaling_factor`, with the exact inverse at
+decode. Prompt geometry uses output/VAE channels, not the concatenated Transformer
+input width. Preparation retains source hashes, IDs and codec/conditioning binding.
 
-The common contract is `v=epsilon-x0`,
-`z=(1-sigma)*x0+sigma*epsilon`, `x0=z-sigma*v`, with no sign change.
-The actual Transformer receives `[z, zeros_like(z), one-channel zero mask]`,
-`timestep=sigma*1000` and legitimate native zero image semantic embeddings
-`[1,729,image_embed_dim]`. No reference image, extra condition, forced attention
-backend, causal cache or inference-only hook is invented.
-
-Primary conditioning calls the native `_get_mllm_prompt_embeds` with the native
-system/chat template, crop108, hidden layer-3, max1000. Its mask **must** be
-nonempty, including the actual empty-prompt encoding. Secondary conditioning
-calls native `_get_byt5_prompt_embeds`, including native quoted-glyph extraction,
-max256. With no quoted text, native **zeros + allfalse mask** is a valid
-sentinel. Glyph features are never fabricated; Unicode quotes/bytes execute
-the real encoder. Both native tokenizers, options, added-token state and source
-identities travel with export. Overflow rejects rather than silently truncates.
-
-Copy one [raw](inputs.raw.template.json), [prompts](inputs.prompts.template.json)
-or [preencoded](inputs.preencoded.template.json) input manifest and replace
-every placeholder. Raw RGB videos/frame directories must have
-Pillow available for RGB frame directories; container video files additionally
-require both **ffmpeg and ffprobe** on PATH. Missing tools fail, never trigger a
-download, guessed frame rate or optional skip. Their geometry must have
-`Fraw=(Flatent-1)*4+1`, H/W divisible by the actual VAE spatial compression;
-no crop/resize/frame truncation/resampling. The native VAE encodes its posterior
-mode times `scaling_factor` and decodes the exact inverse. Tiny CPU fixture:
-`[1,3,5,16,16] -> [1,4,2,4,4] -> RGB5`, spatial4/**temporal4**, not temporal1.
-Prompt geometry uses **output/VAE** channels, never the concatenated native
-Transformer input width. The template's 32 channels refer to the public source
-config, not a tested full pretrained run; use 4 for the tiny fixture.
+Primary text uses the native Qwen chat template, crop108 and max1000 features.
+Glyph text uses the native quoted-text extraction and slow ByT5 tokenizer,
+max256. With no quoted glyphs, native zero features plus an all-false glyph mask
+are valid. Empty-prompt conditions come from the actual encoders.
 
 ```sh
 distillctl data prepare /ABSOLUTE/inputs.json --output /ABSOLUTE/prepared \
   --preparer distillschedule.data.hunyuan_video_inputs:prepare_inputs
 ```
 
-Prepared records preserve stable IDs, media/file SHA256s and native source,
-text/tokenizer/VAE/dtype binding. Preencoded `.pt` intake is weights-only and
-requires all real primary/glyph and genuine empty-prompt fields; invented or
-stale features reject. Raw, prompts and preencoded share the same validator.
+## Train, resume and export
 
-## Training, recovery, sharing and portable output
-
-Copy [training.lora.json](training.lora.json), set assets/prepared/output paths,
-then use the same public lifecycle as existing models:
+Copy [training.lora.json](training.lora.json) and fill the asset, prepared-data
+and output paths. Set `trainer.device` to `cpu` or the owned `cuda:N`. Native
+compute defaults to FP32; add `"compute_precision":"bf16-mixed"` to
+`model.parameters` for BF16 Transformer autocast. Master parameters, Adam/EMA,
+codecs and flow/sampling math stay FP32; checkpoints, saved plans and portable
+exports retain the compute setting.
 
 ```sh
-distillctl train /ABSOLUTE/train.json --cycles 1 --output /ABSOLUTE/first
-distillctl train /ABSOLUTE/train.json --cycles 3 --resume /ABSOLUTE/COMPLETE_CHECKPOINT_FROM_FIRST \
-  --output /ABSOLUTE/resumed
-distillctl export /ABSOLUTE/train.json --checkpoint /ABSOLUTE/FINAL_COMPLETE_CHECKPOINT \
-  --output /ABSOLUTE/current-student-export
+distillctl train /ABSOLUTE/train.json --cycles 2 --output /ABSOLUTE/run
+distillctl train /ABSOLUTE/train.json --cycles 3 \
+  --resume /ABSOLUTE/COMPLETE_CHECKPOINT --output /ABSOLUTE/resumed
+distillctl export /ABSOLUTE/train.json --checkpoint /ABSOLUTE/FINAL_CHECKPOINT \
+  --output /ABSOLUTE/export
 ```
 
-Use the exact checkpoint path returned by `train`. Complete boundaries preserve real Adam,
-schedulers, EMA, RNG, data position/IDs, clocks and role versions. Teacher and
-all codecs remain frozen; Student/Fake own distinct trainable LoRA parameters.
-For explicit single-device CUDA reference training, set `trainer.device` to
-`cuda:0` (or another available local index), retain `execution.mode: reference`,
-and use that device for complete-cycle training resume. Roles, both text
-encoders, VAE, Adam and EMA are owned by the requested device. Offline input
-preparation stays on CPU; its exact null-text/glyph conditions move to the owned
-device rather than being recomputed with potentially different arithmetic.
-Portable inference exports can relocate to CPU, unlike training checkpoints.
-CUDA auto/saved plans, other manual policies, trial cloning, AMP and distributed execution remain
-explicitly refused; native single-device reference support does not establish
-pretrained-model capacity.
+Use the checkpoint path returned by `train`. Recovery retains all role parameters,
+Adam, schedulers, EMA, RNG, sample position and native update clocks. The velocity
+is `v=epsilon-x0`; native T2V receives the original zero image channels/mask and
+semantic tokens, dual-text conditions and `1000*sigma`. The Euler sign is unchanged.
 
-To execute the existing immutable-sharing optimization on CPU or the admitted
-single-CUDA FP32 owner, explicitly replace
-`execution` with the following; do not share mutable LoRA parameters:
+## Execution strategies
+
+The reference policy is `{"mode":"reference"}`. For single-device immutable-base
+sharing, use:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
-The [CUDA policy/capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
-retains full-role construction and excludes CUDA trial cloning. The native CPU
-tests actually execute shared and unshared cycles and compare
-all gradients/Adam/schedulers/EMA/outputs, measure actual shared aliases and
-bytes, resume sharing in a fresh process and reject immutable mutation.
-
-### Measured planning on the native tiny fixture
-
-The same `train` entry can calibrate its real admissible candidates, select a
-plan, and execute it, rather than reverting to the manual command above:
-
-```json
-{"mode":"auto","memory_limit_bytes":200000000,"max_candidates":4,"samples":1,"max_program_runs":5}
-```
-
-Use this `execution` object with the **random tiny CPU fixture**, not with a
-full pretrained checkpoint. The explicit 200 MB test limit covers selected
-tracked tensor storage for its long text/glyph attention; it is **not** a host
-RSS, trial-copy, construction or GPU capacity guarantee. Unqualified pretrained
-whole-role trial copies reject before execution. Reference/manual training has
-its own existing asset and parameter-capacity admission.
-
-`train` writes `planning/selected-plan.json`; another run can use
-`{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}`. A resumed complete
-checkpoint reuses its bound policy without recalibrating. The shared CPU tests
-check three fresh samples, actual gradients, all role/Adam/scheduler/EMA state,
-RNG and clocks, source/hardware/input drift refusal, and **six fresh CLI
-processes** for auto, saved-plan and uninterrupted/resumed comparisons. The
-selected candidate need not win over the reference; these are execution and
-recovery proofs, not performance claims.
-
-Prepare a **new** prompt manifest with a novel ID/prompt/geometry before
-removing training assets. Export projects current Student + all native codecs
-and both tokenizers, not EMA/Teacher/Fake/base-reload fallback. The returned
-export factory/parameters form the inference model configuration; then:
-
-```sh
-distillctl generate /ABSOLUTE/inference.json --weights /ABSOLUTE/current-student-export \
-  --prepared /ABSOLUTE/new-prepared/manifest.json --output /ABSOLUTE/generated --output-kind video
-```
-
-Portable generation requires neither original assets nor training checkpoints;
-it outputs decoded THWC uint8 RGB plus a PNG frame sequence (no invented FPS).
-The Hunyuan asset-based preparer still requires the original explicit assets.
-For new prompts/raw media **after deleting assets and all checkpoints**, use the
-separate [common export-only public preparer](../../docs/guides/export_inputs.md).
-Its actual tiny native CPU proof does not qualify pretrained/GPU/quality use.
-
-## Reproduce the synthetic CPU proofs
-
-```sh
-export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 DMD_MODERN_FLOW_CPU=1
-python recipes/hunyuan_video_dmd/create_cpu_fixture.py /ABSOLUTE/NEW_TEST_ONLY_DIRECTORY
-python -m pytest -q tests/test_training_hunyuan_video_cpu.py tests/test_training_modern_flow_planning_cpu.py
-```
-
-The explicitly random actual-class fixture is **SYNTHETIC_TEST_ONLY**. Native
-forward/gradient/text/codec/Euler oracles, exact three-cycle fresh-process
-recovery, real sharing and portable novel-input decoding are bounded interface
-and lifecycle evidence, not long training or convergence. Full pretrained CPU,
-AMP, full-model capacity, production video geometries,
-performance and quality gates V3–V5 remain **NOT_RUN**. This does not complete
-the mature-framework plan or full U15 acceptance.
-
-The separate native CUDA acceptance (source checkout: `artifacts/framework/20261024/native_video_cuda_acceptance.json`)
-covers three actual tiny HunyuanVideo tests, including a non-default owned CUDA
-device, native forward/gradient/Euler/text/VAE comparison, complete-state
-fresh-process restart and current-Student video export. New-prompt export
-generation also relocates to CPU and matches an independently reconstructed CPU
-Student after original assets/checkpoints are retired. The explicit deterministic
-test policy is not a change to production defaults. This is functional proof,
-not pretrained training or a speedup measurement.
-
-## Explicit replicated local-B1 contract
-
-The adapter also admits the existing Program's explicit equal-rank local-B1
-contract: CPU/Gloo or CUDA/NCCL with `data.sharding="rank_strided"` and a matching
-`trainer.distributed.backend`. CUDA device ownership must equal the actual
-torchrun `LOCAL_RANK`; launching/allocating GPUs remains operator-owned. Every
-rank retains native BCFHW batch one, dual-text/glyph masks, native zero T2V image
-channels and temporal4 codec behavior. No concatenated-batch approximation,
-generic substitute architecture or private-method `forward` wrapper is used.
-
-Use `{"mode":"reference"}` or the exact existing immutable-sharing policy:
+Explicit equal-rank B1 replicas use `data.sharding="rank_strided"`, the actual
+local device and a matching `trainer.distributed.backend` (`gloo` on CPU or
+`nccl` on CUDA). Reference mode performs post-backward gradient averaging before
+clipping/Adam. The replicated sharing policy is:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
 ```
 
-The common post-backward reducer averages B1 gradients before clipping and one
-Adam commit. Rank-strided records and independent rank noise coexist with the
-unchanged single-process RNG path. All native roles are constructed before
-sharing; Student/Fake trainables remain disjoint actual optimizer owners.
-Complete same-topology checkpoints require every rank shard; export inference
-uses an explicit single-device owner. DDP wrappers, FSDP/AMP, auto/plan trials,
-other reduction/order/local policies, wrong ranks/devices/backends and native
-family/source/shape/codec/cache drift remain refusals, not fallbacks.
+Each rank retains independent records and RNG. Sharing applies to immutable
+bases after construction, not mutable LoRA parameters. The actual policy and
+capacity conditions are in [execution capabilities](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
+The CPU tiny fixture also exercises calibration and saved-plan execution through
+this same lifecycle.
+
+## New-prompt output
+
+Export projects the current Student, VAE, both text encoders and tokenizers.
+Use the returned factory/parameters in an inference config, prepare a new prompt
+with the [export-only preparer](../../docs/guides/export_inputs.md), then generate:
 
 ```sh
-DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
-# Only with two explicitly owned GPUs and the pinned modern-flow environment:
-DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/gpu/test_training_flow_video_replica_gpu.py
+distillctl generate /ABSOLUTE/inference.json --weights /ABSOLUTE/export \
+  --prepared /ABSOLUTE/new-prepared/manifest.json --output /ABSOLUTE/generated --output-kind video
 ```
 
-The shared native acceptance chain requires three complete cycles, an independent
-sequential B1 gradient-mean oracle with later nonzero Student gradients,
-reference/manual exact state and RNG, and fresh CLI partial/resume/uninterrupted
-runs with per-rank full-state checks and missing-shard refusal. A new quoted-glyph
-prompt then uses the exported CURRENT Student plus native VAE/dual codecs to
-produce **five RGB frames**, compared exactly with independent restored output.
-`create_cpu_fixture.py --samples 6` adds explicit distinct records without
-changing the default three-cycle, three-record fixture. External torchrun can
-reuse `tests/native_flow_replicated.py`; multi-node launch remains caller-owned.
-This is a **SYNTHETIC_TEST_ONLY** test route, not a GPU/multi-node acceptance
-receipt or pretrained capacity, quality, performance, or plan-completion claim.
+Output is decoded THWC uint8 RGB plus a PNG frame sequence. CPU portable inference
+uses the exported current Student/codecs without the original training assets or
+checkpoints, including native quoted-glyph conditioning.
+
+## Tests and provenance
+
+```sh
+DMD_MODERN_FLOW_CPU=1 python recipes/hunyuan_video_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture
+DMD_MODERN_FLOW_CPU=1 python -m pytest -q tests/test_training_hunyuan_video_cpu.py tests/test_training_flow_precision.py
+DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
+```
+
+Tests use actual upstream small configs and compare native text/codec/velocity,
+real updates, reference/sharing state, saved-plan execution, fresh-process recovery
+and current-Student output. Gloo2 uses an independent sequential B1 gradient-mean
+oracle. Historical native FP32 CUDA acceptance is at
+`artifacts/framework/20261024/native_video_cuda_acceptance.json`; CPU fixture
+results remain distinct from pretrained-model GPU measurements.

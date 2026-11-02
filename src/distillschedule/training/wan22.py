@@ -1,7 +1,7 @@
 """Pinned Wan2.2 TI2V-5B T2V through the existing common flow-DMD lifecycle.
 
-FP32 local B1, single-device or explicit post-backward replicas; four Euler steps,
-G1/F5, unmerged LoRA. Not Wan2.1,
+FP32 owned state; optional native BF16 compute. Local B1, single-device or
+explicit post-backward replicas; four Euler steps, G1/F5, unmerged LoRA. Not Wan2.1,
 A14B/high-low experts, I2V or official Self-Forcing/DMD2. Production loads only
 hash-bound local native safe assets. Random weights belong to the labeled fixture.
 """
@@ -20,7 +20,7 @@ from .adapters import InferenceProjection, ModelComponents
 from .flow_image import require
 from .low_rank import TrainableLowRankLinear, trainable_scope
 from .prediction import PredictionSpec
-from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state
+from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state, native_compute_context
 from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 
@@ -183,7 +183,7 @@ class Media(nn.Module):
 
 
 class Role(safe.QualifiedNativeFlowTrials, nn.Module):
-    def __init__(self, native, *, config, media_config, binding, empty, trainable, schedule):
+    def __init__(self, native, *, config, media_config, binding, empty, trainable, schedule, compute_precision='fp32'):
         super().__init__()
         self.native = native
         self.architecture = deepcopy(config)
@@ -191,12 +191,16 @@ class Role(safe.QualifiedNativeFlowTrials, nn.Module):
         self.binding = binding
         self.trainable_config = deepcopy(trainable)
         self.generation_sigmas = tuple(schedule)
+        self.compute_precision = compute_precision
         self.register_buffer('empty_context', empty[0].detach().clone())
         self.register_buffer('empty_context_mask', empty[1].detach().clone())
 
     @property
     def device(self):
         return next(self.native.parameters()).device
+
+    def compute_context(self):
+        return native_compute_context(self.compute_precision, self.device, require=require)
 
     def __deepcopy__(self, memo):
         require(self.device.type != 'cuda', safe.CUDA_TRIAL_LIMIT)
@@ -233,9 +237,10 @@ class Role(safe.QualifiedNativeFlowTrials, nn.Module):
         # consumes 1000*sigma at every spatial/temporal patch, without sign flip.
         timestep = (1000*sigma[:,None]).expand(b,f*(h//2)*(w//2))
         context = feeds['context'] if conditional else feeds['null_context']
-        output = self.native(hidden_states=value,timestep=timestep,encoder_hidden_states=context,return_dict=False)[0]
+        with self.compute_context():
+            output = self.native(hidden_states=value,timestep=timestep,encoder_hidden_states=context,return_dict=False)[0]
         require(output.shape == value.shape and bool(torch.isfinite(output).all()), 'native Wan velocity shape/values changed')
-        return {'video': output}
+        return {'video': output.float()}
 
     def rollout(self, feeds, rollout_sigmas, gradient_policy):
         from .dmd import sigmas
@@ -321,6 +326,8 @@ def _components(state, descriptor, *, training):
         prediction='v=epsilon-x0; z=(1-sigma)*x0+sigma*epsilon; x0=z-sigma*v; NO_NEGATION',
         algorithm='COMMON_FLOW_DMD_NOT_OFFICIAL_DMD2_OR_SELF_FORCING',generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA',
         gpu_execution='NOT_RUN',pretrained_quality='NOT_RUN',quality_validation='NOT_RUN')
+    if descriptor.get('compute_precision', 'fp32') == 'bf16-mixed':
+        metadata['precision'] = 'BF16_AUTOCAST_FP32_STATE_' + ('RANK_LOCAL_REPLICATED' if replica_caps else 'SINGLE_DEVICE')
     return ModelComponents(state=state,immutable_modules=tuple(immutable),metadata=metadata,
         prediction=PredictionSpec('flow'),capabilities=('video','flow','lora','dmd_flow_v1',*replica_caps),
         generate=generate,decode=state['media'].decode,inference_projection=project_current_generator if training else None,
@@ -330,15 +337,19 @@ def _components(state, descriptor, *, training):
 
 def build_model(parameters):
     from .dmd import sigmas,training_state
-    allowed = {'assets','device','seed','trainable','student_lr','fake_lr','scheduler_gamma','ema_decay','generation_sigmas'}
-    require(isinstance(parameters,dict) and set(parameters) <= allowed and allowed-{'device','seed'} <= parameters.keys(),
-            'complete explicit Wan2.2 model parameters required; variant/backend/precision overrides refused')
+    allowed = {'assets','device','seed','trainable','student_lr','fake_lr','scheduler_gamma','ema_decay','generation_sigmas','compute_precision'}
+    require(isinstance(parameters,dict) and set(parameters) <= allowed and allowed-{'device','seed','compute_precision'} <= parameters.keys(),
+            'complete explicit Wan2.2 model parameters required; variant/backend overrides refused')
     device = admit_fp32(parameters, require=require, allow_replicated=True)
+    native_compute_context(parameters.get('compute_precision', 'fp32'), device, require=require)
     require(type(parameters.get('seed',0)) is int, 'integer construction seed required')
     require(isinstance(parameters['trainable'],dict) and parameters['trainable'].get('mode') == 'lora', 'initial native Wan recipe is exact unmerged LoRA only')
     schedule = sigmas(parameters['generation_sigmas'])
     require(len(schedule) == 5, 'initial native Wan recipe requires four Euler steps')
-    media,manifest,roots,runtime,binding,media_config,empty,documents = load_media_bundle(parameters['assets'],device=device)
+    # Cold tokenizer/progress imports also use Python RNG, before native
+    # loading's Torch-only guard. Keep all media setup outside training RNG.
+    with construction_rng(torch.device('cpu'), 0):
+        media,manifest,roots,runtime,binding,media_config,empty,documents = load_media_bundle(parameters['assets'],device=device)
     with construction_rng(device, parameters.get('seed',0)), torch.device('cpu'):
         # Prepared features retain their genuine CPU empty-prompt encoding;
         # moving it is exact, recomputing it on CUDA need not be bitwise equal.
@@ -351,7 +362,7 @@ def build_model(parameters):
             native.eval().requires_grad_(False) if name == 'teacher' else trainable_scope(native,parameters['trainable'])
             native.train(name != 'teacher')
             roles[name] = Role(native,config=config,media_config=media_config,binding=binding,empty=empty,
-                trainable=parameters['trainable'],schedule=schedule)
+                trainable=parameters['trainable'],schedule=schedule,compute_precision=parameters.get('compute_precision', 'fp32'))
             place_module(roles[name], device, require=require)
             roles[name].train(name != 'teacher')
         with torch.device(device):
@@ -364,6 +375,11 @@ def build_model(parameters):
         cpu_parameter_limits=dict(student=manifest['roles']['student']['max_parameters'],
             vae=manifest['media']['vae']['max_parameters'],text_encoder=manifest['media']['text_encoder']['max_parameters']),
         asset_identity=dict(manifest_sha256=file_sha256(Path(parameters['assets'])),roles=deepcopy(manifest['roles']),media=deepcopy(manifest['media'])))
+    if parameters.get('compute_precision', 'fp32') != 'fp32':
+        descriptor['compute_precision'] = parameters['compute_precision']
+        # Bind native arithmetic into existing Program/plan/checkpoint state,
+        # rather than relying on metadata or an untracked module attribute.
+        state['flow_compute_precision'] = parameters['compute_precision']
     for name,spec in {**manifest['roles'],**manifest['media']}.items():
         safe.asset_files(Path(parameters['assets']).resolve().parent,spec)
     require(safe.json_object(parameters['assets']) == manifest, 'asset manifest changed during load')
@@ -375,6 +391,11 @@ def admit_training(*,state,request,prepared_identity,prepared_manifest):
     device = admit_fp32({'device':request.trainer.get('device','cpu')}, require=require, allow_replicated=True)
     require(all(state[name].device == device for name in ('student','fake','teacher','media')),
             'matching rank-local FP32 device ownership required')
+    precision = request.model.get('parameters', {}).get('compute_precision', 'fp32')
+    require(all(state[name].compute_precision == precision for name in ('student','fake','teacher')),
+            'native role compute precision differs from the training request')
+    require(state.get('flow_compute_precision', 'fp32') == precision,
+            'native owned compute precision differs from the training request')
     if rank_world()[1] > 1:
         require(request.trainer.get('distributed',{}).get('backend') == torch.distributed.get_backend()
                 and request.data.get('sharding') == 'rank_strided',
@@ -410,6 +431,8 @@ _DESCRIPTOR = {'architecture','media_config','binding','runtime','trainable','ge
 
 def project_current_generator(components,effective_training_parameters):
     descriptor = {key:deepcopy(components.metadata[key]) for key in _DESCRIPTOR}
+    if 'compute_precision' in components.metadata:
+        descriptor['compute_precision'] = components.metadata['compute_precision']
     state = {name:components.state[name] for name in ('student','media')}
     return InferenceProjection(components=_components(state,descriptor,training=False),
         factory=ENTRY+':build_inference_model',parameters=descriptor)
@@ -417,11 +440,14 @@ def project_current_generator(components,effective_training_parameters):
 
 def build_inference_model(parameters):
     from .dmd import sigmas
-    require(isinstance(parameters,dict) and _DESCRIPTOR <= parameters.keys() and set(parameters) <= _DESCRIPTOR|{'device','seed'}
+    require(isinstance(parameters,dict) and _DESCRIPTOR <= parameters.keys() and set(parameters) <= _DESCRIPTOR|{'device','seed','compute_precision'}
             and type(parameters.get('seed',0)) is int,
             'export reconstructs CURRENT Student and codecs only; training paths/backend overrides rejected')
     device = admit_fp32(parameters, require=require)
+    native_compute_context(parameters.get('compute_precision', 'fp32'), device, require=require)
     descriptor = {key:deepcopy(parameters[key]) for key in _DESCRIPTOR}
+    if parameters.get('compute_precision', 'fp32') != 'fp32':
+        descriptor['compute_precision'] = parameters['compute_precision']
     require(descriptor['runtime'] == runtime_identity(), 'export native source/runtime/cleaner changed')
     config,media_config = descriptor['architecture'],descriptor['media_config']
     validate_architecture(config,media_config)
@@ -447,6 +473,7 @@ def build_inference_model(parameters):
         place_module(media, device, require=require)
         empty = (torch.empty(1,226,config['text_dim'],device=device),torch.empty(1,226,dtype=torch.bool,device=device))
         role = Role(native,config=config,media_config=media_config,binding=descriptor['binding'],empty=empty,
-            trainable=descriptor['trainable'],schedule=descriptor['generation_sigmas'])
+            trainable=descriptor['trainable'],schedule=descriptor['generation_sigmas'],
+            compute_precision=descriptor.get('compute_precision', 'fp32'))
         place_module(role, device, require=require)
     return _components({'student':role,'media':media},descriptor,training=False)

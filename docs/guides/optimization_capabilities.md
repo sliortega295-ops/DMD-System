@@ -150,9 +150,11 @@ remain separate. The reference mathematical program and common searcher do not
 branch on the model name. Full-parameter reference training remains independent
 of LoRA-specific sharing.
 
-Clone-based trials admit only the declared **SYNTHETIC_TEST_ONLY CPU1 FP32**
-layout (or the explicit LTX random-native fixture above) and verified owned
-alias/module state. A local asset manifest labeled
+Clone-based trials use declared **SYNTHETIC_TEST_ONLY CPU1** fixtures with FP32
+owned state (or the explicit LTX random-native fixture above) and verified
+alias/module state. The four image/video adapters retain their explicit FP32 or
+BF16-autocast compute selection during calibration and saved-plan execution.
+A local asset manifest labeled
 `LOCAL_PRETRAINED_UNVERIFIED` is not proof of model size, source authenticity or
 snapshot safety: auto/plan trial cloning refuses it **before copying or
 executing**. Its independently admitted non-clone reference/manual lifecycle
@@ -172,7 +174,7 @@ is an admitted CUDA fallback. See [bounded release notes](release_notes.md).
 
 The five modern flow adapters (LTX-2.5, FLUX.2 klein Base, original Qwen-Image,
 Wan2.2 T2V and HunyuanVideo-1.5 T2V) also admit this **exact** explicit policy
-with an already-supported single-CUDA FP32 configuration:
+with a supported single-CUDA configuration and FP32 owned state:
 
 ```json
 {
@@ -197,9 +199,10 @@ training state; export still owns the current Student, not a merged weight.
 **Capacity boundary:** all original roles are constructed before aliasing.
 Reduced tracked live storage is not a reduced construction peak, allocator
 capacity guarantee or a speedup claim. Admit the full original model construction
-on the target device first. This policy does not enable AMP, distributed roles,
-checkpoint replay, reordering or CUDA auto/saved-plan calibration. Such requests
-still fail rather than dropping fields or falling back to a fixed recipe.
+on the target device first. Compute precision is selected separately through
+`model.parameters.compute_precision`: the four image/video adapters compose
+`bf16-mixed` with sharing, retaining FP32 master/optimizer/EMA state. This policy
+itself changes neither role placement, checkpoint replay nor call order.
 
 Manual training retains `initial_reference_gate.status=NOT_RUN`: it does not
 manufacture a per-user paired numerical admission. The separately recorded
@@ -214,10 +217,12 @@ uses the existing post-backward replica backend with distinct local-B1 samples
 and rank-specific noise. It averages gradients before clipping/Adam and keeps
 every role resident on each rank. Exact manual immutable sharing composes with
 this path; real alias/reduction counters and all-rank checkpoints are required.
-Actual tiny-class Gloo2 and A100 NCCL2 oracle/restart/export evidence is recorded
-separately. World16 is not yet accepted. This is not model sharding or support
-for DDP-forward hooks around private denoise methods. CUDA planning, AMP and
-full pretrained capacity remain unsupported or unqualified as documented.
+The [Wan2.2](../../recipes/wan22_dmd/README.md) and
+[HunyuanVideo](../../recipes/hunyuan_video_dmd/README.md) recipes use this same
+local-B1 reducer with their native video methods. Explicit BF16 compute composes
+with reference/manual replicas. Actual tiny-class Gloo2 and historical A100
+NCCL2 oracle/restart/export evidence is recorded separately. This is replica
+parallelism rather than model sharding or DDP hooks around private methods.
 
 ## Atomic native-owner policies
 

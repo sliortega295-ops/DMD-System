@@ -15,8 +15,8 @@ An execution policy selects physical placement, communication and state reuse. T
 | LTX-2.5 / generic No-GAN DMD | Native AV LTX Transformer; explicit rectified-flow surrogate and Fake regression policy | Gemma4/connectors, native video/audio VAEs, vocoder; AV or explicit latents | isolated `train,ltx25`, Python >=3.11 |
 | FLUX.2 klein Base 4B / explicit flow DMD | Flux2 Transformer with normalized sigma | Native Qwen3 layers 9/18/27, patch/BN VAE, exact immutable sharing, restart and current-Student decoded images | isolated `train,modern-flow`; FP32 or BF16 autocast, local B1 |
 | Original Qwen-Image T2I / explicit flow DMD | QwenImage Transformer, native text mask/img_shapes; CFG=1 only | Qwen2.5-VL template/crop34, fixed masked right padding, native VAE, exact restart/current-Student images | isolated `train,modern-flow`; FP32 or BF16 autocast, local B1 |
-| Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Wan Transformer, expanded normalized timestep, CFG=1 | UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
-| HunyuanVideo-1.5 T2V / explicit flow DMD | Hunyuan15 Transformer, dual text encoders and temporal4 VAE | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`; CPU/CUDA FP32, local B1 |
+| Wan2.2 TI2V-5B T2V subpath / explicit flow DMD | Wan Transformer, expanded normalized timestep, CFG=1 | UMT5/T5 and residual patch2/temporal4 VAE, raw video/features, exact restart/current-Student RGB | isolated `modern-flow`; FP32 or BF16 autocast, local B1 |
+| HunyuanVideo-1.5 T2V / explicit flow DMD | Hunyuan15 Transformer, dual text encoders and temporal4 VAE | Native text-only Qwen2.5 + T5/ByT5, video/features and current-Student RGB; Tencent asset terms | isolated `modern-flow`; FP32 or BF16 autocast, local B1 |
 | Existing W1–W6 | Their respective native rollout, loss and update rules | See each recipe and six-workload support matrix | Model-specific environments |
 
 Choose the model and algorithm together, then an execution policy:
@@ -193,10 +193,13 @@ patch2/temporal4 VAE. HunyuanVideo-1.5 T2V uses its native Transformer,
 Qwen2.5 text conditions, T5/ByT5 glyph conditions and temporal4 VAE.
 
 Both recipes reuse the common flow-DMD lifecycle: unmerged LoRA, four Euler
-rollout steps, G1/F5, local B1 and CFG=1. They expose CPU/single-CUDA FP32
+rollout steps, G1/F5, local B1 and CFG=1. They expose CPU/single-CUDA FP32/BF16-autocast
 reference training, manual frozen-state sharing and explicit local-B1 replica
 interfaces. Raw videos or frames and prompts are prepared into source-bound
 features; generation decodes the current Student through the native VAE.
+Set `model.parameters.compute_precision: bf16-mixed` for native BF16 compute;
+master parameters, optimizer/EMA state and flow/sampling math stay FP32. The
+same setting is retained by checkpoints, saved plans and portable exports.
 
 The [export-only input preparer](export_inputs.md) encodes new prompts/media
 using exported inference components. See the [Wan2.2 recipe](../../recipes/wan22_dmd/README.md)

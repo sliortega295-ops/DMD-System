@@ -72,6 +72,10 @@ jobs:
             python scripts/check_cpu_receipt.py native-image-replicated.xml \
               --require 'test_actual_native_bf16_flow_gloo2_independent_oracle_and_fresh_cli[flux2-klein-base]' \
               --require 'test_actual_native_bf16_flow_gloo2_independent_oracle_and_fresh_cli[qwen-image]'
+          else
+            python scripts/check_cpu_receipt.py native-video-replicated.xml \
+              --require 'test_actual_native_bf16_video_gloo2_independent_oracle_and_fresh_cli[wan22]' \
+              --require 'test_actual_native_bf16_video_gloo2_independent_oracle_and_fresh_cli[hunyuan_video]'
           fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -118,6 +122,16 @@ jobs:
             --require 'test_native_bf16_complete_checkpoint_resume_and_portable_export[qwen-image]' \
             --require 'test_native_bf16_calibration_saved_plan_and_real_execution[flux2-klein-base]' \
             --require 'test_native_bf16_calibration_saved_plan_and_real_execution[qwen-image]' \
+            --require 'test_native_bf16_forward_gradient_updates_and_immutable_sharing[wan22-ti2v5b-t2v]' \
+            --require 'test_native_bf16_forward_gradient_updates_and_immutable_sharing[hunyuan15-t2v]' \
+            --require 'test_native_bf16_complete_checkpoint_resume_and_portable_export[wan22-ti2v5b-t2v]' \
+            --require 'test_native_bf16_complete_checkpoint_resume_and_portable_export[hunyuan15-t2v]' \
+            --require 'test_native_bf16_calibration_saved_plan_and_real_execution[wan22-ti2v5b-t2v]' \
+            --require 'test_native_bf16_calibration_saved_plan_and_real_execution[hunyuan15-t2v]' \
+            --require 'test_cold_native_factory_preserves_all_caller_rng[wan22-ti2v5b-t2v-fp32]' \
+            --require 'test_cold_native_factory_preserves_all_caller_rng[wan22-ti2v5b-t2v-bf16-mixed]' \
+            --require 'test_cold_native_factory_preserves_all_caller_rng[hunyuan15-t2v-fp32]' \
+            --require 'test_cold_native_factory_preserves_all_caller_rng[hunyuan15-t2v-bf16-mixed]' \
             --require test_native_tensor_placement_preserves_complex_rope_and_parameter_owners \
             --require test_ema_restoration_validates_every_tensor_before_mutation \
             --require 'test_catalog_admits_only_single_cpu_cuda_reference_or_exact_manual[wan22-ti2v5b-t2v-wan22]' \

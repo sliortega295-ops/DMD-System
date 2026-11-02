@@ -1,195 +1,125 @@
-# Wan2.2 TI2V-5B, T2V-only common-flow DMD
+# Wan2.2 TI2V-5B: text-to-video flow DMD
 
-This independently named recipe uses **actual** `WanTransformer3DModel`, residual
-`AutoencoderKLWan`, `UMT5EncoderModel`, native T5 fast tokenizer and
-`WanPipeline._get_t5_prompt_embeds` through the existing common Program lifecycle.
-It is not Wan2.1/W1, official Self-Forcing or an official DMD2 equivalence claim.
-Source/revision/Apache-2.0 attribution is in [source.json](source.json).
+This recipe uses the native `WanTransformer3DModel`, residual `AutoencoderKLWan`,
+`UMT5EncoderModel` and T5 tokenizer through the common DMD-System lifecycle.
+Student, Teacher and Fake Score use the same model family. Training uses unmerged
+LoRA, four Euler steps, G1/F5 updates, local batch one and CFG=1.
 
-## Verified boundary
+## Environment and assets
 
-CPU1 or single-CUDA FP32 reference, batch one; same-family Teacher/Student/Fake; exact unmerged LoRA;
-four explicit Euler steps; one Student/five Fake updates per complete cycle;
-Adam, scheduler, EMA, RNG/data order/clocks; independent current-Student export;
-THWC uint8 video decoded by the actual residual VAE. Tests create random tiny
-native weights under **SYNTHETIC_TEST_ONLY**, not pretrained or quality evidence.
-The example learning rates/rank are fixture settings, not quality recommendations.
+Install the separate `modern-flow` dependency group using
+[environment.json](environment.json). Model/config revisions and Apache-2.0
+attribution are recorded in [source.json](source.json).
 
-Full pretrained memory capacity/training/quality and AMP are **NOT_RUN**.
-Explicit local-B1 replication has the separate bounded contract below; it is
-not blanket distributed/backend or full-model acceptance. CUDA auto/saved-plan
-execution, other manual policies and resident trial cloning,
-expert/high-low/A14B, Wan2.1, I2V, image/causal/cache fields,
-other codecs and incompatible algorithms explicitly reject. No automatic download,
-weight conversion to another family, implicit image condition or fallback trainer.
-
-## Isolated environment and local assets
-
-Use the separate `modern-flow` extra and [environment.json](environment.json).
-Do not merge it into the Transformers4/PEFT0.17 DMD2/Self-Forcing lanes. Native
-cleaning uses pinned ftfy, not a replacement cleaner. Install/setup is an operator
-step; this recipe never installs dependencies or downloads models at runtime.
-
-Place already-acquired native safetensors/config directories inside one local
-bundle: `transformer/`, `vae/`, `text_encoder/`, `tokenizer/`. The operator is
-responsible for source authenticity and aggregate RAM. Inventory/hash everything:
+Place the native `transformer/`, `vae/`, `text_encoder/` and `tokenizer/`
+directories in one local bundle, then inventory the files:
 
 ```sh
 python recipes/wan22_dmd/lock_local_assets.py /ABSOLUTE/local-wan22 \
-  --cpu-max-parameters YOUR_EXPLICIT_PER_COMPONENT_LIMIT
+  --cpu-max-parameters YOUR_PER_COMPONENT_LIMIT
 ```
 
-The locker neither loads weights nor grants capacity. Runtime validates each actual
-native constructor's meta parameter budget **before any concrete component is
-allocated**, then validates all safe shard names/headers/shapes/finite values.
-The default storage policy is strict FP32. `--dtype-policy
-bf16_or_fp32_to_fp32` admits only exact BF16→FP32 storage conversion, not BF16
-compute/GPU qualification. Pick a budget for available host RAM; no claim that
-three full 5B roles plus optimizer/text/VAE fit on the current host. Student,
-Fake and Teacher may use distinct `--student/--fake/--teacher` subdirectories,
-but architecture/latent domain must match. Source identity remains explicitly
-`LOCAL_PRETRAINED_UNVERIFIED`, not automatically authenticated to the public pin.
+The limit bounds each native constructor before weight loading; choose it for
+available memory. Student/Fake/Teacher can select distinct subdirectories with
+`--student`, `--fake` and `--teacher`, retaining a common architecture. The loader
+checks file hashes, safe shards, shapes and finite values. For BF16-stored
+checkpoints, add `--dtype-policy bf16_or_fp32_to_fp32`; this explicitly converts
+stored weights to the FP32 owned training state.
 
-## Inputs and public lifecycle
+## Prepare inputs
 
-RGB frame directories require Pillow. Container video files additionally require
-**both ffmpeg and ffprobe** already on PATH; a missing tool is an error, not a
-download, guessed frame rate or optional skip.
+Use the [raw](inputs.raw.template.json), [prompt](inputs.prompts.template.json)
+or [preencoded](inputs.preencoded.template.json) template. RGB frame directories
+use Pillow; container video decoding also needs `ffmpeg` and `ffprobe` on PATH.
+Keep the original resolution and frame rate: `Fraw=(Flatent-1)*4+1`, with height
+and width divisible by32. The native spatial16 VAE and spatial2 Transformer
+patches operate on BCFHW latents; do not patchify RGB twice.
 
-Copy/edit the raw, prompt or preencoded templates. Raw input is a self-contained
-video supported by existing ffmpeg/ffprobe, or a sorted RGB frame directory; no
-resize/crop/frame resample. Raw `F=(Flatent-1)*4+1`; H/W divisible by32 (native
-spatial16 codec and spatial2 Transformer patches). The VAE patchifies internally:
-never patchify RGB twice. Latents are native BCFHW, normalized by actual VAE
-mean/std; mode encoding is deterministic. Prompt-only zeros are explicitly
-geometry/noise templates, **not** fabricated conditions. Real UMT5 text is fixed
-226 rows with the native zero padding; overflow rejects, not silent truncation.
-Empty-prompt features are genuine native encodings. Preencoded rows must include
-all native context/mask/geometry/codec-binding fields from this preparer.
-
-File SHA256 is required. For a frame directory, obtain its sorted inventory
-fingerprint with `distillschedule.data.manifest.source_identity(path, frames=True)`.
-Payload hashes, original source identities, sample IDs and cursor are retained.
+Offline preparation uses the native posterior mode, VAE mean/std normalization,
+226-row UMT5 text features, native zero padding and genuine empty-prompt features.
+Prompt-only records specify latent geometry as a noise template. Preencoded
+records retain all context, masks, geometry and encoder-binding fields. Sample
+IDs, original source hashes and data cursors survive training and recovery.
 
 ```sh
-python -m distillschedule models show wan22-ti2v5b-t2v
-python -m distillschedule data prepare /ABSOLUTE/inputs.raw.json \
-  --preparer distillschedule.data.wan22_inputs:prepare_inputs --output /ABSOLUTE/prepared
-# Edit training.lora.json paths before running; the fixed common recipe is G1/F5.
-python -m distillschedule train /ABSOLUTE/training.lora.json --output /ABSOLUTE/run
-python -m distillschedule train /ABSOLUTE/training.lora.json \
-  --resume /ABSOLUTE/run/checkpoints/cycle-000001 --cycles 3 --output /ABSOLUTE/resumed
-python -m distillschedule export /ABSOLUTE/training.lora.json \
-  --checkpoint /ABSOLUTE/resumed/checkpoints/cycle-000003 --output /ABSOLUTE/export
+distillctl data prepare /ABSOLUTE/inputs.json --output /ABSOLUTE/prepared \
+  --preparer distillschedule.data.wan22_inputs:prepare_inputs
 ```
 
-Use the actual checkpoint path returned by the command (do not assume its name).
-For the single-device CUDA reference path, set `trainer.device` explicitly to
-`cuda:0` (or another available local CUDA index), keep `execution.mode` as
-`reference`, and use the same device for training and complete-cycle resume.
-Adam, scheduler, EMA and all native media/role tensors retain their owned device;
-the common DMD algorithm and update clocks are unchanged. Offline data preparation
-remains CPU-based. CUDA inference can also relocate a portable export to CPU;
-this is different from cross-device training-checkpoint resume, which is not
-admitted. No automatic precision conversion or distributed launch is implied.
+## Train, resume and export
 
-An inference config uses the returned export `model.factory`/`model.parameters`;
-prepare a **new** prompt with explicit compatible latent geometry, then generate
-with `--weights /ABSOLUTE/export --prepared /ABSOLUTE/new-prepared/manifest.json
---output /ABSOLUTE/generated --output-kind video`. The portable export owns the
-CURRENT Student (not base, Teacher or EMA), native VAE/UMT5 weights and the exact
-native tokenizer backend/class/extra IDs/options. It does not need the original
-training asset bundle, Teacher/Fake or a training checkpoint. Source/runtime
-fingerprints must still match. A resumable complete-cycle checkpoint and a
-portable inference export are distinct artifacts, not interchangeable.
+Copy [training.lora.json](training.lora.json) and set the asset, prepared-data and
+output paths. Select the owned device with `trainer.device` (`cpu` or `cuda:N`).
+The default native compute is FP32. For BF16 compute, add
+`"compute_precision":"bf16-mixed"` to `model.parameters`: native Transformer
+calls use BF16 autocast, while master weights, Adam, EMA, codecs and flow/sampling
+math stay FP32. Checkpoints, saved plans and inference exports bind this setting.
 
-To execute the existing immutable-base optimization on CPU or the admitted
-single-CUDA FP32 owner, explicitly select:
+```sh
+distillctl train /ABSOLUTE/train.json --cycles 2 --output /ABSOLUTE/run
+distillctl train /ABSOLUTE/train.json --cycles 3 \
+  --resume /ABSOLUTE/COMPLETE_CHECKPOINT --output /ABSOLUTE/resumed
+distillctl export /ABSOLUTE/train.json --checkpoint /ABSOLUTE/FINAL_CHECKPOINT \
+  --output /ABSOLUTE/export
+```
+
+Use the checkpoint path returned by `train`. Complete-cycle recovery retains
+parameters, Adam, schedulers, EMA, RNG, data progress and role/update clocks.
+The native velocity is `v=epsilon-x0`; the Transformer consumes `1000*sigma`
+expanded over patches, and the four-step Euler rollout keeps its original sign.
+
+## Execution strategies
+
+Use `{"mode":"reference"}` for the reference implementation. The existing
+frozen-state sharing capability uses this single-device policy:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}
 ```
 
-See the [CUDA policy/capacity boundary](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing):
-all roles materialize before sharing, and CUDA auto/saved-plan trials still refuse.
-This uses existing frozen-base capability inventory and runtime alias checks,
-not fixture hand-aliasing or merged LoRA. Teacher is frozen and Student/Fake
-optimizers own disjoint trainables. Immutable mutation invalidates execution;
-there is no silent downgrade to a different strategy.
-
-## Reproducible CPU-only synthetic check
-
-The [common export-only preparer](../../docs/guides/export_inputs.md) additionally
-encodes new prompts/raw video using this export's restored native codecs after
-all training assets/checkpoints are deleted. The Wan asset-based preparer remains
-separate and still requires its original bundle. Output is a PNG frame sequence,
-not an inferred-FPS playable container or pretrained-quality result.
-
-```sh
-DMD_MODERN_FLOW_CPU=1 python recipes/wan22_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture
-DMD_MODERN_FLOW_CPU=1 python -m pytest -q tests/test_training_wan22_cpu.py
-```
-
-The tests use actual native tiny models, raw5×32×32 RGB → latent2×2×2 → raw5;
-manual native velocity/Euler/text/codec equality; real gradients and optimizer
-updates; shared/unshared parity; fresh-process exact complete restart; new-prompt
-portable decode while original assets are hidden and training checkpoints deleted;
-and explicit refusal cases. No fake denoiser/codec stands in for end-to-end proof.
-
-The separate native CUDA acceptance (source checkout: `artifacts/framework/20261024/native_video_cuda_acceptance.json`)
-covers three actual tiny Wan2.2 tests on a non-default owned CUDA device:
-native forward/gradient/Euler/text/VAE comparison; complete DMD/Adam/EMA/RNG
-state; and new-process restart plus export-only new-prompt RGB video generation.
-CPU inference relocation matches an independent CPU current-Student reference.
-The same explicit deterministic test policy applies to oracle and CLI processes;
-it does not change production defaults or establish pretrained quality/capacity.
-
-## Explicit replicated local-B1 contract
-
-The existing Program may own independent B1 records on explicitly launched
-CPU/Gloo or CUDA/NCCL ranks with `data.sharding="rank_strided"` and a matching
-`trainer.distributed.backend`. CUDA ownership must match each actual torchrun
-`LOCAL_RANK`; this recipe does not launch or acquire devices. Native BCFHW stays
-`B=1` on each rank. No concatenated-batch approximation or `forward` wrapper is
-used for the native private denoising/rollout methods.
-
-Use `{"mode":"reference"}` or exactly this existing immutable-sharing policy:
+For explicitly launched equal-rank B1 replicas, set
+`data.sharding="rank_strided"`, a matching `trainer.distributed.backend`
+(`gloo` on CPU or `nccl` on CUDA), and each process's actual local device.
+Reference mode uses the shared post-backward reducer. Its manual sharing variant is:
 
 ```json
 {"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
 ```
 
-The common reducer averages equal-rank B1 gradients **before** clipping and
-one Adam commit. Each rank has distinct sample IDs and a rank-independent noise
-namespace; ordinary single-process RNG semantics remain unchanged. Complete
-same-topology checkpoints require every rank shard, while portable inference
-returns to an explicit single-device owner. Sharing still materializes all roles
-first and never aliases Student/Fake trainables. DDP private-method wrappers,
-FSDP/AMP, auto/plan trials, changed order/reduction/local policy and wrong process,
-backend, native family/source/codec/cache/shape ownership fail closed.
+Gradients are averaged before clipping and one Adam commit; each rank consumes
+independent records and RNG. Sharing aliases only immutable bases after role
+construction, retaining disjoint Student/Fake trainables. See
+[execution capabilities](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+for the actual policy/capacity conditions.
 
-The reusable acceptance harness executes three complete cycles against an
-independent sequential-native B1 gradient mean, requires a later nonzero Student
-gradient, compares reference/manual states and outer RNG, and exercises fresh
-CLI partial/resume/uninterrupted runs, every rank shard, missing-shard refusal,
-and new-prompt current-Student native VAE decoding to **five RGB frames**:
+## Generate with the current Student
+
+The portable export contains the current Student, VAE, UMT5 and tokenizer.
+Use its returned factory/parameters in an inference config, prepare a new prompt
+with the [export-only preparer](../../docs/guides/export_inputs.md), then run:
 
 ```sh
-DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
-# Only with two explicitly owned GPUs and the pinned modern-flow environment:
-DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/gpu/test_training_flow_video_replica_gpu.py
+distillctl generate /ABSOLUTE/inference.json --weights /ABSOLUTE/export \
+  --prepared /ABSOLUTE/new-prepared/manifest.json --output /ABSOLUTE/generated --output-kind video
 ```
 
-`create_cpu_fixture.py --samples 6` supplies distinct records without changing
-its default three-cycle, three-record fixture. The harness also accepts external
-torchrun via `tests/native_flow_replicated.py`; multi-node allocation remains
-operator-owned. This defines a reproducible **SYNTHETIC_TEST_ONLY** acceptance
-route, not a receipt claiming GPU/multi-node success, pretrained capacity,
-convergence, quality, speedup, or mature-framework completion.
+Output contains decoded THWC uint8 RGB and a PNG frame sequence. Portable inference
+can run on CPU independently of the original training bundle and checkpoints.
 
-## Third-party notice
+## Tests and provenance
 
-Model/config source: Wan-AI/Wan2.2-TI2V-5B-Diffusers at the exact revision in
-`source.json` (Apache-2.0). Implementations come from pinned Hugging Face Diffusers
-and Transformers (Apache-2.0), native tokenizer/tokenizers and ftfy/sentencepiece;
-retain their licenses when redistributing. No pretrained weights are bundled.
+```sh
+DMD_MODERN_FLOW_CPU=1 python recipes/wan22_dmd/create_cpu_fixture.py /ABSOLUTE/NEW-fixture
+DMD_MODERN_FLOW_CPU=1 python -m pytest -q tests/test_training_wan22_cpu.py tests/test_training_flow_precision.py
+DMD_MODERN_FLOW_CPU=1 DMD_NATIVE_FLOW_REPLICATED=1 python -m pytest -q tests/test_training_flow_video_replicated.py
+```
+
+The fixtures use actual upstream small model classes. Tests compare native
+forward/gradients, text/VAE/Euler behavior, reference/sharing updates, saved plans,
+fresh-process recovery and new-prompt output. The Gloo2 oracle independently
+averages sequential B1 gradients. Historical native FP32 CUDA acceptance is at
+`artifacts/framework/20261024/native_video_cuda_acceptance.json`; CPU fixture
+results are separate from pretrained-model GPU measurements.
+
+Wan model/config sources, Diffusers and Transformers retain Apache-2.0 attribution;
+keep tokenizer, ftfy and sentencepiece notices. No pretrained weights are bundled.

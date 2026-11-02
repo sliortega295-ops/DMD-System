@@ -853,8 +853,11 @@ def build_family(parameters, api, *, construction=None):
         require(isinstance(effective['trainable'], dict) and effective['trainable'].get('mode') == 'lora', 'initial admitted image recipe is same-family unmerged LoRA only')
         return device, sigmas(effective['generation_sigmas'])
     device, schedule = local(preflight, 'native image construction parameters')
-    media, manifest, roots, runtime, binding, media_config, empty, documents = local(
-        lambda: load_media_bundle(parameters['assets'], api, device=device), 'native image media construction')
+    # Include cold tokenizer/progress imports, not just native weight loading,
+    # in the existing construction RNG isolation boundary.
+    with construction_rng(torch.device('cpu'), 0):
+        media, manifest, roots, runtime, binding, media_config, empty, documents = local(
+            lambda: load_media_bundle(parameters['assets'], api, device=device), 'native image media construction')
     native_cls = api.classes()[0]
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
         # Offline preparation owns the exact CPU null-prompt encoding. Move it,

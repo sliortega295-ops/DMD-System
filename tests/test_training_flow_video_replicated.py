@@ -97,9 +97,9 @@ def test_video_rank_data_policy_and_family_binding_remain_exact(family,module,mo
     api = importlib.import_module('distillschedule.training.' + module)
     _owned_group(monkeypatch)
     schedule = [1.,.75,.5,.25,0.]
-    state = {name:SimpleNamespace(device=torch.device('cpu'),binding='exact',generation_sigmas=schedule)
+    state = {name:SimpleNamespace(device=torch.device('cpu'),binding='exact',generation_sigmas=schedule,compute_precision='fp32')
              for name in ('student','fake','teacher','media')}
-    request = SimpleNamespace(trainer=dict(device='cpu',distributed=dict(backend='gloo')),
+    request = SimpleNamespace(model=dict(parameters={}),trainer=dict(device='cpu',distributed=dict(backend='gloo')),
         data=dict(sharding='rank_strided'),execution=dict(mode='reference'),
         algorithm=dict(factory='distillschedule.training.dmd:build_algorithm',parameters=dict(
             teacher_cfg=1,fake_cfg=1,fake_updates=5,rollout_sigmas=schedule)))
@@ -197,7 +197,7 @@ def test_portable_replica_cases_keep_image_proofs_and_native_video_geometry():
     with pytest.raises(AssertionError): _portable_case('ltx25')
 
 
-def native_video_replica_case(tmp_path,module,device):
+def native_video_replica_case(tmp_path,module,device,*,compute_precision='fp32'):
     from native_flow_replicated import request, lifecycle
     repo = Path(__file__).resolve().parents[1]
     recipe = repo/f'recipes/{module}_dmd/create_cpu_fixture.py'
@@ -208,6 +208,10 @@ def native_video_replica_case(tmp_path,module,device):
     assert result.returncode == 0,result.stdout+result.stderr
     files = json.loads(result.stdout)
     config = request(files['config'],tmp_path/'replicated.json',device)
+    if compute_precision != 'fp32':
+        value = json.loads(config.read_text())
+        value['model']['parameters']['compute_precision'] = compute_precision
+        config.write_text(json.dumps(value))
     command = [sys.executable,'-m','torch.distributed.run','--standalone','--nproc_per_node','2',
         str(repo/'tests/native_flow_replicated.py'),'oracle','--config',str(config),'--output',str(tmp_path/'oracle')]
     result = subprocess.run(command,capture_output=True,text=True,timeout=600,
@@ -218,6 +222,7 @@ def native_video_replica_case(tmp_path,module,device):
     assert len(proof['ranks']) == 2 and all(row['average_before_clip_adam'] for row in proof['ranks'])
     assert all(row['oracle_cycles'] == 3 and row['later_student_gradient_nonzero'] for row in proof['ranks'])
     assert all(len(record['cycles']) == 3 for row in proof['ranks'] for record in row['records'])
+    assert all(row['compute_precision'] == compute_precision for row in proof['ranks'])
     lifecycle(config,tmp_path/'lifecycle',ranks=2)
 
 
@@ -226,3 +231,10 @@ def native_video_replica_case(tmp_path,module,device):
 @pytest.mark.parametrize('module',['wan22','hunyuan_video'])
 def test_actual_native_video_gloo2_independent_oracle_and_fresh_cli(tmp_path,module):
     native_video_replica_case(tmp_path,module,'cpu')
+
+
+@pytest.mark.skipif(os.environ.get('DMD_MODERN_FLOW_CPU') != '1' or os.environ.get('DMD_NATIVE_FLOW_REPLICATED') != '1',
+    reason='opt in to actual native video BF16 Gloo2 with the isolated modern-flow stack')
+@pytest.mark.parametrize('module',['wan22','hunyuan_video'])
+def test_actual_native_bf16_video_gloo2_independent_oracle_and_fresh_cli(tmp_path,module):
+    native_video_replica_case(tmp_path,module,'cpu',compute_precision='bf16-mixed')

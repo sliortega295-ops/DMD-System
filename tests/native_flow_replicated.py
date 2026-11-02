@@ -151,7 +151,10 @@ def oracle(config_path, output):
             model, dataset, algorithm, _ = distributed.checked(lambda: construct(request), 'runtime construction')
             def check_initial():
                 _assert_native(model)
-                assert equal(initial, pack_state(model.state)) and equal(initial_rng, rng_state(device=device))
+                current = pack_state(model.state)
+                assert equal(initial, current), ('initial native state changed',
+                    [key for key in initial if not equal(initial[key], current.get(key))])
+                assert equal(initial_rng, rng_state(device=device)), 'initial native outer RNG changed'
             distributed.checked(check_initial, 'same initial native owner and RNG')
             session, versions, mode_cycles = None, None, []
             for cycle, expected in enumerate(expected_cycles):
