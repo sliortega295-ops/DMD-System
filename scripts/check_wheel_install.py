@@ -34,7 +34,7 @@ def main() -> int:
         subprocess.run([str(python), "-I", "-m", "pip", "install", "--no-index", "--no-deps",
                         "--force-reinstall", str(wheel_files[0])], check=True, cwd=work, env=env)
         probe = r'''
-import importlib.util, json, sys, sysconfig
+import importlib.util, json, subprocess, sys, sysconfig
 from pathlib import Path
 import distillschedule, runtime, runtime.host_admission
 from distillschedule.workloads.catalog import load_catalog
@@ -50,8 +50,16 @@ for retired in ('runtime.frozen_block_streaming', 'runtime.routeb_full5',
 from distillschedule.cli import main
 for command in ('models', 'algorithms', 'strategies', 'capabilities'):
     assert main([command, 'list']) == 0
-assert 'torch' not in sys.modules, 'discovery unexpectedly imported Torch'
-print(json.dumps({'status':'PASS_ISOLATED_WHEEL','workloads':6,'gpu_execution':'NOT_RUN'}))
+source = Path('local-assets').resolve()
+source.mkdir()
+(source / 'config.json').write_text('{"fixture": "source-bytes-only"}')
+receipt = Path('source-receipt.json').resolve()
+assert main(['assets', 'prepare', '--local-dir', str(source), '--output', str(receipt)]) == 0
+verified = subprocess.run([sys.executable, '-I', '-m', 'distillschedule',
+    'assets', 'verify', str(receipt)], check=True, text=True, capture_output=True)
+assert json.loads(verified.stdout) == json.loads(receipt.read_text())
+assert not any(name in sys.modules for name in ('torch', 'huggingface_hub')), 'inspection imported an optional dependency'
+print(json.dumps({'status':'PASS_ISOLATED_WHEEL','workloads':6,'asset_prepare_verify':True,'gpu_execution':'NOT_RUN'}))
 '''
         subprocess.run([str(python), "-I", "-c", probe], check=True, cwd=work, env=env)
     return 0

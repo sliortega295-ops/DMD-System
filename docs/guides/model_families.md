@@ -38,7 +38,32 @@ Official Self-Forcing and W4 LiveWan have separate recipes. W4 uses a
 W5 is full-sequence H3 with an approximate Grid1000 schedule;
 W6 is autoregressive previous/current H3 with continuous sigma.
 
-## Explicit local assets
+## Prepare model assets
+
+Use an existing model directory, or explicitly download a pinned Hugging Face
+revision into the shared cache:
+
+```sh
+# Existing files: hash in place, without copying weights.
+distillctl assets prepare --local-dir "$BUNDLE" --output "$RUN/source.json"
+
+# Hub source: install the optional assets dependency group, then prepare once.
+distillctl assets prepare --hf-repo "$MODEL_ID" --revision "$COMMIT_SHA" \
+  --cache-dir "$CACHE" --materialize-dir "$BUNDLE" --output "$RUN/source.json"
+distillctl assets verify "$RUN/source.json"
+```
+
+`COMMIT_SHA` is the full 40-character revision from the selected recipe.
+Materialization creates regular files for native loaders, using hardlinks when
+possible and copies across filesystems. Keep linked weights unchanged. Verify
+the downloaded source first, then run the recipe's native asset locker on
+`$BUNDLE` and prepare inputs. The locker adds its model manifest; training uses
+that manifest and the local bundle. The source receipt records the exact file
+set at preparation time. Existing directories and receipts are never overwritten.
+Training and model discovery do not download weights.
+`--tree-timeout SECONDS` bounds the complete paginated Hub file tree (default 60).
+Exact pinned files then use the Hub's finite metadata/streaming timeouts and
+retries, with no whole-payload transfer deadline or duplicate repository discovery.
 
 The optional providers use hash-locked upstream source, supplied locally, with
 its original license. They never download model weights. The source-only fetch

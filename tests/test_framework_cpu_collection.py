@@ -71,6 +71,19 @@ def test_native_attention_capture_seam_is_in_actual_common_lane_and_triggers_ci(
     assert name in workflow['on']['pull_request']['paths']
 
 
+def test_asset_preparation_is_collected_in_both_dependency_lanes():
+    import yaml
+    name = 'tests/test_asset_preparation.py'
+    assert name in _api()['test_files'](ROOT)
+    workflow = yaml.load((ROOT / '.github/workflows/framework-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert name in workflow['on']['pull_request']['paths']
+    assert any('assets' in step.get('run', '') and 'pip install' in step.get('run', '')
+               for step in workflow['jobs']['lifecycle']['steps'])
+    modern = yaml.load((ROOT / '.github/workflows/modern-flow-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    assert name in modern['on']['pull_request']['paths']
+    assert any(name in step.get('run', '') for job in modern['jobs'].values() for step in job['steps'])
+
+
 def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_silently_skip():
     import yaml
     files = _api()['test_files'](ROOT)

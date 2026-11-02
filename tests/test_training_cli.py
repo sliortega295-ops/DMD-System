@@ -15,7 +15,7 @@ def test_doctor_does_not_import_torch_or_initialize_cuda(command):
     result = subprocess.run([sys.executable, "-c",
         "import sys; from distillschedule.cli import main; "
         f"assert main([{command!r}]) == 0; assert 'torch' not in sys.modules; "
-        "assert 'diffusers' not in sys.modules"],
+        "assert 'diffusers' not in sys.modules; assert 'huggingface_hub' not in sys.modules"],
         env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     parsed = json.loads(result.stdout)

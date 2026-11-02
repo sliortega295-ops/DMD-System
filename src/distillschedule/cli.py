@@ -31,6 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ('algorithms', 'discover registered distillation workflows'),
         ('strategies', 'describe supported physical execution paths'),
         ('capabilities', 'describe optimization conditions and actual implementations'),
+        ('assets', 'prepare explicit local or pinned Hub sources; verify source byte receipts'),
         ("data", "prepare raw media or import native features"),
         ("config", "validate or show a public training configuration"),
         ("train", "train continuously and save/resume complete cycles"),
@@ -145,6 +146,9 @@ def _run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] == 'assets':
+        from distillschedule.assets import main as assets_main
+        return assets_main(argv[1:])
     if argv and argv[0] in {"models", "algorithms", "strategies", "capabilities", "doctor", "data", "train", "evaluate", "export", "import-weights", "generate", "decode", "config"}:
         from distillschedule.training.cli import main as training_main
         return training_main(argv)

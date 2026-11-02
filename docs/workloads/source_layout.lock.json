@@ -668,6 +668,14 @@
       "integrated_sha256": "c7e3e06bad84a91a6fa8fd61a1b1606927a4b30397c99319ee55993126d686fc",
       "source_commit": "0bd8822d6282e505143015e4cf914d9b0c2c8013",
       "change": "Test-only Python 3.13 AST serialization portability: explicitly retain empty fields, preserving the original B2 AST fingerprint and all training code. Exact test bytes committed at 0bd8822; original import map and earlier overlays remain unchanged. CPU/source check only, no new GPU qualification."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/cli.py",
+      "previous_sha256": "fa1a12ae87a5131e1ef107ae37d171776d161b544f140db4c211f2ea993fe700",
+      "integrated_sha256": "c923887be77b7f88e379b56cce0b47bc09b4e4575e40927389c58b99ad0799a5",
+      "source_commit": "8a556b7e7fc41facf4bb0c833629b5646e033bdf",
+      "change": "Add the explicit assets prepare/verify public entrypoint; existing training/workload dispatch, numerical policies and native asset loaders are unchanged. Source commit records the integration base; exact new CLI bytes are bound by this append-only overlay. Original imports and previous receipts remain intact."
     }
   ]
 }
