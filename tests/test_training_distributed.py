@@ -1,8 +1,10 @@
 """Real Gloo training/restart, not simulated ranks or a GPU performance claim."""
 from datetime import timedelta
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -13,6 +15,209 @@ from distillschedule.data import prepare
 from distillschedule.examples.tiny_av import build_fixture
 from distillschedule.training.config import TrainingConfig, load_training_config
 from test_training_end_to_end import equal
+
+
+def _resource_context_worker(rank, rendezvous, output, nodes):
+    """Real Gloo admission only: never construct a model, even on old code."""
+    from distillschedule.training import distributed
+
+    world = sum(map(len, nodes))
+    node = next(index for index, members in enumerate(nodes) if rank in members)
+    launcher = dict(WORLD_SIZE=str(world), RANK=str(rank),
+                    LOCAL_RANK=str(nodes[node].index(rank)),
+                    LOCAL_WORLD_SIZE=str(len(nodes[node])), GROUP_RANK=str(node))
+    os.environ.update(launcher)
+    torch.set_num_threads(1)
+    dist.init_process_group("gloo", init_method="file://" + rendezvous,
+                            rank=rank, world_size=world, timeout=timedelta(seconds=15))
+    try:
+        cases = ["embedding", "requested"]
+        if world == 2:
+            cases += ["rank", "missing_rank", "malformed_rank", "world", "missing_world", "malformed_world", "backend",
+                      "device", "unsupported_device", "malformed_device", "sharding"]
+        reports = {}
+        for case in cases:
+            os.environ.update(launcher)
+            config = SimpleNamespace(trainer={"device": "cpu"}, data={"sharding": "rank_strided"})
+            if case == "requested":
+                config.trainer["distributed"] = {"backend": "gloo"}
+            if rank == 1:
+                if case == "rank":
+                    os.environ["RANK"] = "0"
+                elif case == "missing_rank":
+                    del os.environ["RANK"]
+                elif case == "malformed_rank":
+                    os.environ["RANK"] = "not-a-rank"
+                elif case == "world":
+                    os.environ["WORLD_SIZE"] = "3"
+                elif case == "missing_world":
+                    del os.environ["WORLD_SIZE"]
+                elif case == "malformed_world":
+                    os.environ["WORLD_SIZE"] = "not-a-world"
+                elif case == "backend":
+                    config.trainer["distributed"] = {"backend": "nccl"}
+                elif case == "device":
+                    config.trainer["device"] = "cuda:1"
+                elif case == "unsupported_device":
+                    config.trainer["device"] = "meta"
+                elif case == "malformed_device":
+                    config.trainer["device"] = "not-a-device"
+                elif case == "sharding":
+                    config.data.clear()
+            entered, error, topology = False, None, None
+            try:
+                with distributed.context(config) as binding:
+                    entered = True
+                    assert binding == (rank, world)
+                    if case in {"embedding", "requested"}:
+                        topology = distributed.topology()["node_groups"]
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+            assert dist.is_initialized(), "resource admission destroyed the embedding group"
+            probe = torch.tensor(rank + 1)
+            dist.all_reduce(probe)
+            assert probe.item() == world * (world + 1) // 2, "embedding group no longer usable"
+            reports[case] = {"entered": entered, "error": error, "topology": topology}
+        Path(output, f"resource-rank-{rank}.json").write_text(json.dumps(reports))
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize("nodes", [[[0, 1]], [[0], [1, 2]]])
+def test_real_gloo_context_admits_resources_before_models_and_preserves_embedding_group(tmp_path, nodes):
+    world = sum(map(len, nodes))
+    mp.spawn(_resource_context_worker, args=(str(tmp_path / "resources-rdzv"), str(tmp_path), nodes),
+             nprocs=world, join=True)
+    reports = [json.loads((tmp_path / f"resource-rank-{rank}.json").read_text()) for rank in range(world)]
+    assert all(report == reports[0] for report in reports)
+    for case in ("embedding", "requested"):
+        assert reports[0][case] == {"entered": True, "error": None, "topology": nodes}
+    for case, message in {"rank": "ranks differ", "missing_rank": "RANK", "malformed_rank": "RANK",
+                          "world": "world sizes differ", "missing_world": "WORLD_SIZE", "malformed_world": "WORLD_SIZE",
+                          "backend": "trainer.distributed",
+                          "device": "CPU/Gloo or CUDA/NCCL", "unsupported_device": "CPU/Gloo or CUDA/NCCL",
+                          "malformed_device": "device", "sharding": "rank_strided"}.items():
+        if case in reports[0]:
+            result = reports[0][case]
+            assert not result["entered"], (case, result)
+            assert result["error"] and "training resource contract" in result["error"], (case, result)
+            assert message in result["error"], (case, result)
+
+
+def _synthetic_cuda_context(monkeypatch, *, external, fail_selection=False):
+    """Synthetic CUDA/NCCL branches, not real CUDA or GPU qualification."""
+    state = {"initialized": external, "device": 3}
+    events, metadata = [], object()
+    monkeypatch.setenv("WORLD_SIZE", "2")
+    monkeypatch.setenv("RANK", "1")
+    monkeypatch.setenv("LOCAL_RANK", "1")
+    monkeypatch.setattr(dist, "is_initialized", lambda: state["initialized"])
+    monkeypatch.setattr(dist, "get_rank", lambda group=None: 1)
+    monkeypatch.setattr(dist, "get_world_size", lambda group=None: 2)
+    monkeypatch.setattr(dist, "get_backend", lambda group=None: "gloo" if group is metadata else "nccl")
+    monkeypatch.setattr(dist, "is_gloo_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: state["device"])
+
+    def initialize(backend, **kwargs):
+        assert backend == "nccl" and state["device"] == 1
+        events.append("initialize")
+        state["initialized"] = True
+
+    def new_group(**kwargs):
+        assert kwargs["backend"] == "gloo"
+        events.append("metadata")
+        return metadata
+
+    def destroy(group=None):
+        events.append("destroy-metadata" if group is metadata else "destroy-world")
+        if group is None:
+            state["initialized"] = False
+
+    def all_gather(rows, value, group=None):
+        assert group is metadata, "resource admission sent metadata through NCCL"
+        rows[:] = [None, value]
+
+    def set_device(device):
+        state["device"] = int(device)
+        events.append("unscoped-set-device")
+
+    @contextmanager
+    def selected(device):
+        assert torch.device(device) == torch.device("cuda:1")
+        if fail_selection:
+            raise RuntimeError("injected local CUDA selection failure")
+        previous, state["device"] = state["device"], 1
+        events.append("enter-device")
+        try:
+            yield
+        finally:
+            events.append("exit-device")
+            state["device"] = previous
+
+    monkeypatch.setattr(dist, "init_process_group", initialize)
+    monkeypatch.setattr(dist, "new_group", new_group)
+    monkeypatch.setattr(dist, "destroy_process_group", destroy)
+    monkeypatch.setattr(dist, "all_gather_object", all_gather)
+    monkeypatch.setattr(torch.cuda, "set_device", set_device)
+    monkeypatch.setattr(torch.cuda, "device", selected)
+    return state, events
+
+
+@pytest.mark.parametrize("external", [False, True])
+@pytest.mark.parametrize("device", ["cuda", "cuda:1"])
+@pytest.mark.parametrize("body_error", [False, True])
+def test_synthetic_cuda_context_binds_device_through_group_cleanup(monkeypatch, external, device, body_error):
+    from distillschedule.training.distributed import context
+
+    state, events = _synthetic_cuda_context(monkeypatch, external=external)
+    config = SimpleNamespace(trainer={"device": device, "distributed": {"backend": "nccl"}},
+                             data={"sharding": "rank_strided"})
+    try:
+        with context(config) as binding:
+            assert binding == (1, 2) and state["device"] == 1
+            events.append("body")
+            if body_error:
+                raise RuntimeError("injected body failure")
+    except RuntimeError as exc:
+        assert body_error and str(exc) == "injected body failure"
+    assert state == {"initialized": external, "device": 3}
+    assert "unscoped-set-device" not in events
+    assert events.index("enter-device") < events.index("body") < events.index("destroy-metadata")
+    assert events[-1] == "exit-device"
+    if external:
+        assert "initialize" not in events and "destroy-world" not in events
+    else:
+        assert events.index("enter-device") < events.index("initialize")
+        assert events.index("destroy-metadata") < events.index("destroy-world") < events.index("exit-device")
+
+
+@pytest.mark.parametrize("external", [False, True])
+@pytest.mark.parametrize("device,message", [("cpu", "CPU/Gloo or CUDA/NCCL"), ("cuda:0", "LOCAL_RANK")])
+def test_synthetic_nccl_context_rejects_wrong_trainer_device_before_yield(monkeypatch, external, device, message):
+    from distillschedule.training.distributed import context
+
+    state, events = _synthetic_cuda_context(monkeypatch, external=external)
+    config = SimpleNamespace(trainer={"device": device, "distributed": {"backend": "nccl"}},
+                             data={"sharding": "rank_strided"})
+    with pytest.raises(ValueError, match=message):
+        with context(config):
+            pytest.fail("invalid device binding reached construction")
+    assert state == {"initialized": external, "device": 3}
+    assert events.count("destroy-metadata") == 1
+    assert ("destroy-world" in events) is not external
+
+
+def test_synthetic_external_nccl_device_selection_failure_preserves_embedding_group(monkeypatch):
+    from distillschedule.training.distributed import context
+
+    state, events = _synthetic_cuda_context(monkeypatch, external=True, fail_selection=True)
+    config = SimpleNamespace(trainer={"device": "cuda"}, data={"sharding": "rank_strided"})
+    with pytest.raises(ValueError, match="injected local CUDA selection failure"):
+        with context(config):
+            pytest.fail("failed CUDA selection reached construction")
+    assert state == {"initialized": True, "device": 3}
+    assert events == ["metadata", "destroy-metadata"]
 
 
 def _worker(rank, rendezvous, config_path, output, cycles, reduction, resume, world=2):

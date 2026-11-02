@@ -119,54 +119,76 @@ def context(config):
     import torch
     import torch.distributed as dist
     requested = config.trainer.get("distributed")
-    world = int(os.environ.get("WORLD_SIZE", "1"))
     owned = False
     metadata_group = None
-    if not dist.is_initialized() and world > 1:
-        if not requested:
-            raise ValueError("torchrun training requires explicit trainer.distributed configuration")
-        backend = requested["backend"]
-        if backend == "nccl":
-            if not torch.cuda.is_available() or not dist.is_gloo_available():
-                raise ValueError("NCCL training requires CUDA and a Gloo metadata backend")
-            local_rank = int(os.environ["LOCAL_RANK"])
-            torch.cuda.set_device(local_rank)
-        dist.init_process_group(backend, timeout=timedelta(seconds=requested.get("timeout_seconds", 180)))
-        owned = True
-    try:
-        rank, actual_world = rank_world()
-        if actual_world > 1 and str(dist.get_backend()) == "nccl":
-            metadata_group = dist.new_group(backend="gloo", timeout=timedelta(
-                seconds=requested.get("timeout_seconds", 180) if requested else 180))
-        with ExitStack() as stack:
-            # Single-process indexed CUDA owns the same current-device scope
-            # as a launched rank, including checkpoint RNG and output work.
-            if actual_world == 1:
-                device = torch.device(config.trainer.get("device", "cpu"))
-                if device.type == "cuda":
-                    if not torch.cuda.is_available():
-                        raise ValueError("requested single-process CUDA device is unavailable")
-                    stack.enter_context(torch.cuda.device(device))
+    selected_device = None
+
+    def launcher_integer(name):
+        try:
+            return int(os.environ[name])
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"distributed training requires explicit integer {name}") from exc
+
+    with ExitStack() as stack:
+        try:
+            if not dist.is_initialized() and int(os.environ.get("WORLD_SIZE", "1")) > 1:
+                if not requested:
+                    raise ValueError("torchrun training requires explicit trainer.distributed configuration")
+                backend = requested["backend"]
+                if backend == "nccl":
+                    if not torch.cuda.is_available() or not dist.is_gloo_available():
+                        raise ValueError("NCCL training requires CUDA and a Gloo metadata backend")
+                    selected_device = torch.device("cuda", launcher_integer("LOCAL_RANK"))
+                    stack.enter_context(torch.cuda.device(selected_device))
+                dist.init_process_group(backend, timeout=timedelta(seconds=requested.get("timeout_seconds", 180)))
+                owned = True
+            rank, actual_world = rank_world()
+            if actual_world > 1 and str(dist.get_backend()) == "nccl":
+                metadata_group = dist.new_group(backend="gloo", timeout=timedelta(
+                    seconds=requested.get("timeout_seconds", 180) if requested else 180))
             if metadata_group is not None:
                 from distillschedule.open_workload.replicated import control_plane
                 stack.enter_context(control_plane(metadata_group))
+
             def validate():
+                device = torch.device(config.trainer.get("device", "cpu"))
                 if actual_world > 1:
-                    if world != actual_world:
+                    if launcher_integer("WORLD_SIZE") != actual_world:
                         raise ValueError("launcher and initialized process-group world sizes differ")
-                    if requested and str(dist.get_backend()) != requested["backend"]:
+                    if launcher_integer("RANK") != rank:
+                        raise ValueError("launcher and initialized process-group ranks differ")
+                    backend = str(dist.get_backend())
+                    if requested and backend != requested["backend"]:
                         raise ValueError("initialized process group differs from trainer.distributed")
+                    if (device.type, backend) not in (("cpu", "gloo"), ("cuda", "nccl")):
+                        raise ValueError("training requires CPU/Gloo or CUDA/NCCL with one device per rank")
+                    if device.type == "cuda":
+                        if not torch.cuda.is_available() or not dist.is_gloo_available():
+                            raise ValueError("NCCL training requires CUDA and a Gloo metadata backend")
+                        local_rank = launcher_integer("LOCAL_RANK")
+                        if local_rank < 0 or device.index not in (None, local_rank):
+                            raise ValueError("trainer CUDA device must match launcher LOCAL_RANK")
+                        device = torch.device("cuda", local_rank)
                     if config.data.get("sharding") != "rank_strided":
                         raise ValueError("distributed training requires explicit data.sharding=rank_strided")
                 elif requested:
                     raise ValueError("trainer.distributed requires at least two explicitly launched ranks")
-            checked(validate, "training resource contract")
+                elif device.type == "cuda" and not torch.cuda.is_available():
+                    raise ValueError("requested single-process CUDA device is unavailable")
+                return device
+
+            device = checked(validate, "training resource contract")
+            if device.type == "cuda" and selected_device != device:
+                # Scope embedding groups too. Admission and selection failures
+                # travel over Gloo before any rank reaches a model factory.
+                checked(lambda: stack.enter_context(torch.cuda.device(device)), "training device selection")
             yield rank, actual_world
-    finally:
-        # Do not destroy a group owned by an embedding application/native adapter.
-        try:
-            if metadata_group is not None:
-                dist.destroy_process_group(metadata_group)
         finally:
-            if owned:
-                dist.destroy_process_group()
+            # Keep the selected device through teardown, then restore the
+            # caller's device. Never destroy an embedding application's group.
+            try:
+                if metadata_group is not None:
+                    dist.destroy_process_group(metadata_group)
+            finally:
+                if owned:
+                    dist.destroy_process_group()
