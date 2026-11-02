@@ -179,6 +179,7 @@ for _name, _factory, _caps, _description in (
 
 register_model('ltx25', factory='distillschedule.training.ltx:build_model',
     capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video',
+    compute_precisions=['fp32', 'bf16-mixed'],
     execution_constraints={'cuda': FLOW_CUDA_EXECUTION})
 
 # Source-qualified image families. Validation levels remain distinct: actual

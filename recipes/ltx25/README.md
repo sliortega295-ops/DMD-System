@@ -3,8 +3,9 @@
 Train actual LTX audio–video Transformers with full parameters or independent,
 unmerged Student/Fake LoRA. The common `dmd` algorithm supplies G1/F5 flow DMD;
 native video/audio VAEs, vocoder, Gemma4 and connectors supply inputs and decoded
-output. This integration uses FP32 on one CPU or explicit `cuda:N` device and
-bounded native architectures (1..16 layers, video/audio head inner widths <=1024).
+output. Use FP32 or explicit native BF16 compute on one CPU or `cuda:N` device,
+with FP32 training state and bounded native architectures (1..16 layers,
+video/audio head inner widths <=1024).
 
 ## Source, environment and assets
 
@@ -134,7 +135,14 @@ additive 0/-finfo.max.
 
 Copy [training.json](training.json) or [training.lora.json](training.lora.json),
 fill source/assets/data/output paths, and select `trainer.device`. Reference
-mode works on CPU or single-device CUDA FP32. The LoRA owner also supports exact
+mode works on CPU or single-device CUDA. Set
+`model.parameters.compute_precision` to `"bf16-mixed"` for scoped native
+Transformer autocast; the default is `"fp32"`. Flow/sampling math, codecs,
+parameters, gradients, Adam and EMA remain FP32. Native norm/RoPE behavior is
+preserved, and no autocast weight cache survives a forward or update. This
+compute choice is bound to checkpoints, saved plans and current-Student exports;
+it is separate from the original-checkpoint storage conversion above.
+The LoRA owner also supports exact
 immutable sharing with this `execution` object:
 
 ```json
@@ -147,8 +155,9 @@ remain independent. Roles initially load before sharing; see the shared
 For the random native CPU fixture, measured planning is available with
 `{"mode":"auto","memory_limit_bytes":100000000,"max_candidates":4,"samples":1,"max_program_runs":5}`.
 Reuse its selected policy with `{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}`.
-Whole-role trial copies are restricted to the CPU1 FP32 random fixture; CUDA
-uses reference or the direct sharing policy, without clone-based trials.
+Whole-role trial copies use the CPU1 random fixture with FP32 owned tensors and
+retain the configured compute policy. CUDA uses reference or direct sharing,
+without clone-based trials.
 
 ```sh
 distillctl train "$RUN/train.json" --cycles 1 --output "$RUN/partial"

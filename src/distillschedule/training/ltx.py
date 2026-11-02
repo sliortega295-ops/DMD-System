@@ -1,6 +1,7 @@
 """Actual pinned LTX-2.5 AV models through the common training lifecycle.
 
-Explicit CPU/single-CUDA FP32 reference route. No LightX2V, architecture substitute,
+Explicit CPU/single-CUDA reference with FP32 state and optional native BF16 compute.
+No LightX2V, architecture substitute,
 22B guessed defaults, online loader, new trainer or model-name solver branch.
 All media/text codecs are actual upstream classes; portable exports retain the
 CURRENT Student and those owned codecs, not a reloaded base/Teacher/EMA.
@@ -21,7 +22,7 @@ from .dmd import FlowDMDMethods
 from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
 from .prediction import PredictionSpec
-from .single_device import admit_fp32, construction_rng, resident_flow_state
+from .single_device import admit_fp32, construction_rng, resident_flow_state, native_compute_context
 from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
 from .single_device import ResidentEMA as _ResidentEMA
 
@@ -247,7 +248,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
 class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
     """Model-owned native ABI, conditioning and differentiable Euler rollout."""
     def __init__(self, native, source, *, architecture, media_architecture, binding, empty_context,
-                 generation_sigmas, trainable):
+                 generation_sigmas, trainable, compute_precision='fp32'):
         super().__init__()
         self.native = native
         self.device = next(native.parameters()).device
@@ -257,9 +258,13 @@ class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
         self.binding = binding
         self.generation_sigmas = tuple(generation_sigmas)
         self.trainable_config = deepcopy(trainable)
+        self.compute_precision = compute_precision
         self.register_buffer('empty_video_context', empty_context['video'].detach().clone())
         self.register_buffer('empty_audio_context', empty_context['audio'].detach().clone())
         self.register_buffer('empty_context_mask', empty_context['mask'].detach().clone().bool())
+
+    def compute_context(self):
+        return native_compute_context(self.compute_precision, self.device, require=require)
 
     def __deepcopy__(self, memo):
         require(self.device.type != 'cuda', CUDA_TRIAL_LIMIT)
@@ -314,11 +319,12 @@ class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
             modalities[name] = api.Modality(latent=sample[name], sigma=sigma,
                 timesteps=api.TokenTimesteps(times), positions=feeds['positions'][name],
                 context=contexts[name], context_mask=native_mask, keyframes_mask=keyframes)
-        video, audio = self.native(video=modalities['video'], audio=modalities['audio'], perturbations=None)
+        with self.compute_context():
+            video, audio = self.native(video=modalities['video'], audio=modalities['audio'], perturbations=None)
         require(type(video) is torch.Tensor and type(audio) is torch.Tensor
                 and video.shape == sample['video'].shape and audio.shape == sample['audio'].shape,
                 'native model must return both unmodified AV token layouts')
-        return {'video': video, 'audio': audio}
+        return {'video': video.float(), 'audio': audio.float()}
 
     def rollout(self, feeds, rollout_sigmas, gradient_policy):
         from .dmd import sigmas
@@ -339,9 +345,9 @@ def _runtime():
     return {name: importlib.metadata.version(name) for name in ('torch', 'transformers', 'tokenizers', 'torchaudio')}
 
 
-def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas):
+def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas, compute_precision='fp32'):
     from .ltx_media import encoding_sources
-    return dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
+    metadata = dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
         architecture=deepcopy(architecture), media_architecture=deepcopy(media_architecture),
         media_binding=binding, encoding_sources=encoding_sources(),
         trainable=deepcopy(trainable), generation_sigmas=list(generation_sigmas),
@@ -349,16 +355,22 @@ def _metadata(api, *, architecture, media_architecture, binding, trainable, gene
         pretrained_quality='UNVERIFIED_LOCAL_WEIGHTS_OR_RANDOM_NATIVE_FIXTURE',
         generation='CURRENT_STUDENT_NOT_BASE_TEACHER_OR_EMA',
         scope='BOUNDED_CPU1_OR_CUDA1_REFERENCE; NO_AMP_DISTRIBUTED_OR_FULL_PRETRAINED_22B_CLAIM')
+    if compute_precision != 'fp32':
+        metadata.update(compute_precision=compute_precision, precision='BF16_AUTOCAST_FP32_STATE_SINGLE_DEVICE',
+            scope='BOUNDED_CPU1_OR_CUDA1_REFERENCE; NO_DISTRIBUTED_OR_FULL_PRETRAINED_22B_CLAIM')
+    return metadata
 
 
 def build_model(parameters):
     from .dmd import sigmas, training_state
     from .ltx_media import load_media, media_binding, strict_load, asset_file, place_module
     allowed = {'source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
-               'scheduler_gamma', 'ema_decay', 'generation_sigmas'}
+               'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
-            and allowed - {'seed', 'device'} <= parameters.keys(), 'complete explicit native LTX model parameters required')
+            and allowed - {'seed', 'device', 'compute_precision'} <= parameters.keys(), 'complete explicit native LTX model parameters required')
     device = _admit_device(parameters)
+    precision = parameters.get('compute_precision', 'fp32')
+    native_compute_context(precision, device, require=require)
     require(type(parameters.get('seed', 0)) is int, 'explicit integer initialization seed required')
     schedule = sigmas(parameters['generation_sigmas'])
     api = original(parameters['source_root'])
@@ -403,12 +415,16 @@ def build_model(parameters):
             place_module(native, device)
             roles[name] = LTXRole(native, api.source, architecture=architecture,
                 media_architecture=media.architecture, binding=binding, empty_context=empty_context,
-                generation_sigmas=schedule, trainable=parameters['trainable'])
+                generation_sigmas=schedule, trainable=parameters['trainable'], compute_precision=precision)
         with torch.device(device):
             state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
                 fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
         resident_flow_state(state, device, ema_class=ResidentEMA)
     state['media'] = media
+    if precision != 'fp32':
+        # Bind arithmetic to actual Program/plan/checkpoint state, not just an
+        # untracked module attribute. The existing FP32 envelope is unchanged.
+        state['flow_compute_precision'] = precision
     # Keep the original evidence label in public metadata. Whole-role trial
     # copies are qualified only for our explicit random actual-class fixture;
     # this provenance label is not a pretrained/host-RSS capacity guarantee.
@@ -419,7 +435,7 @@ def build_model(parameters):
         immutable.extend(role+'.'+path+'.base' for path, module in state[role].named_modules()
                          if isinstance(module, TrainableLowRankLinear))
     metadata = _metadata(api, architecture=architecture, media_architecture=media.architecture, binding=binding,
-        trainable=parameters['trainable'], generation_sigmas=schedule)
+        trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision)
     metadata.update(asset_identity={**identity, 'roles': role_receipts},
                     placement={'device': str(device), 'world_size': 1, 'precision': 'FP32'},
                     optimizer_execution='NATIVE_ADAMW_CAPTURABLE' if device.type == 'cuda' else 'NATIVE_ADAMW_CPU',
@@ -439,6 +455,11 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
     require('distributed' not in request.trainer and rank_world()[1] == 1
             and all(state[role].device == device for role in ('student', 'fake', 'teacher')),
             'LTX requires matching single-device role ownership; distributed execution is not admitted')
+    precision = request.model.get('parameters', {}).get('compute_precision', 'fp32')
+    require(all(state[name].compute_precision == precision for name in ('student', 'fake', 'teacher')),
+            'native role compute precision differs from the training request')
+    require(state.get('flow_compute_precision', 'fp32') == precision,
+            'native owned compute precision differs from the training request')
     require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
     require(request.execution.get('adapter', 'program') == 'program'
             and request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm',
@@ -463,16 +484,20 @@ def generate(state, feeds, parameters):
 
 
 def _inference_parameters(student):
-    return dict(source_root=str(student.source.root), architecture=deepcopy(student.architecture),
+    parameters = dict(source_root=str(student.source.root), architecture=deepcopy(student.architecture),
         media_architecture=deepcopy(student.media_architecture), binding=student.binding,
         trainable=deepcopy(student.trainable_config), generation_sigmas=list(student.generation_sigmas))
+    if student.compute_precision != 'fp32':
+        parameters['compute_precision'] = student.compute_precision
+    return parameters
 
 
 def _inference_components(api, student, media, parameters):
     from distillschedule.data.ltx_inputs import encode_export_input
     return ModelComponents(state={'student': student, 'media': media}, immutable_modules=('media',),
         metadata=_metadata(api, architecture=parameters['architecture'], media_architecture=parameters['media_architecture'],
-            binding=parameters['binding'], trainable=parameters['trainable'], generation_sigmas=parameters['generation_sigmas']),
+            binding=parameters['binding'], trainable=parameters['trainable'], generation_sigmas=parameters['generation_sigmas'],
+            compute_precision=parameters.get('compute_precision', 'fp32')),
         prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1'),
         generate=generate, decode=media.decode, encode_input=encode_export_input).validate()
 
@@ -489,11 +514,14 @@ def project_current_generator(components, effective_training_parameters):
 def build_inference_model(parameters):
     from .dmd import sigmas
     from .ltx_media import NativeMedia, place_module
-    allowed = {'source_root', 'architecture', 'media_architecture', 'binding', 'trainable', 'generation_sigmas', 'seed', 'device'}
+    allowed = {'source_root', 'architecture', 'media_architecture', 'binding', 'trainable', 'generation_sigmas', 'seed', 'device',
+               'compute_precision'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
-            and allowed - {'seed', 'device'} <= parameters.keys(),
+            and allowed - {'seed', 'device', 'compute_precision'} <= parameters.keys(),
             'explicit exported native LTX architecture required, no training/base bundle')
     device = _admit_device(parameters)
+    precision = parameters.get('compute_precision', 'fp32')
+    native_compute_context(precision, device, require=require)
     require(type(parameters.get('seed', 0)) is int, 'explicit integer initialization seed required')
     api = original(parameters['source_root']); schedule = sigmas(parameters['generation_sigmas'])
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
@@ -506,7 +534,8 @@ def build_inference_model(parameters):
                  'audio': torch.zeros(1, length, p['text_processor']['audio_dim'], device=device),
                  'mask': torch.zeros(1, length, dtype=torch.bool, device=device)}
         student = LTXRole(native, api.source, architecture=parameters['architecture'], media_architecture=p,
-            binding=parameters['binding'], empty_context=empty, generation_sigmas=schedule, trainable=parameters['trainable'])
+            binding=parameters['binding'], empty_context=empty, generation_sigmas=schedule, trainable=parameters['trainable'],
+            compute_precision=precision)
     # Only layout is reconstructed here. The common export loader MUST strictly
     # replace every buffer/parameter before validation or generation can succeed.
     return _inference_components(api, student, media, parameters)

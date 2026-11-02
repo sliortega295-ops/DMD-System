@@ -72,8 +72,8 @@ calibration.
 
 **All original roles are constructed before sharing.** The full construction
 must fit the target device; lower tracked live storage does not lower that peak.
-LTX remains single-device FP32 in its separate pinned runtime, with ≤16 layers
-and video/audio attention widths ≤1024. The other four adapters accept
+LTX remains single-device in its separate pinned runtime, with ≤16 layers
+and video/audio attention widths ≤1024. All five adapters accept
 `model.parameters.compute_precision: "fp32"` or `"bf16-mixed"` on supported
 CPU/CUDA devices: native Transformer autocast keeps FP32 master/Adam/EMA state
 and flow/sampling math, without changing model-native norm/rotary precision.
@@ -97,7 +97,8 @@ The four image/video flow adapters admit whole-role calibration copies only for
 declared `SYNTHETIC_TEST_ONLY` CPU1 fixtures with FP32 owned tensors; the chosen
 FP32/BF16 compute policy is retained. LTX uses its explicit
 `RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED` CPU fixture in the isolated
-LTX environment. Alias/module-state checks still apply. A
+LTX environment, retaining the configured FP32/BF16 compute policy.
+Alias/module-state checks still apply. A
 `LOCAL_PRETRAINED_UNVERIFIED` manifest does not establish size, authenticity or
 copy safety and is refused before trial copying; independently admitted
 non-clone reference/manual execution remains available.
