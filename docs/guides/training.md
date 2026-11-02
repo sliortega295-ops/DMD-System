@@ -154,10 +154,15 @@ restored before reading local checkpoint tensors.
 | `failure.json` | Failure and last complete checkpoint |
 
 Distributed metrics live under `ranks/rank-NNNNN/`. Existing `wall_s` measures
-Program execution, including initial plan admission. `cycle_wall_s` additionally
-includes input/build, checks, validation, metric collection, checkpoint and
-policy publication. `timings_s` separates these costs; summary totals also include
-logging. `job_wall_s` includes setup and all cycles through final rank collection.
+Program execution, including initial plan admission. Metrics must be serialized,
+appended and closed on every rank before checkpoint publication, retention or
+effective-policy publication. Rows therefore use `prepublication_wall_s` instead
+of the former checkpoint-inclusive `cycle_wall_s`: this window and row `timings_s`
+cover the completed prepublication stages, not subsequent logging, checkpoint or
+policy publication. Summary `cycles_wall_s` sums full completed cycles, including
+logging, checkpoint publication/retention and policy publication; summary
+`timings_s` retains the full costs of those stages separately. `job_wall_s` includes
+setup and all cycles through final rank collection.
 Historical native benchmark timers keep their own reported windows.
 
 ## Optional periodic held-out validation

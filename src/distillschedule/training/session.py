@@ -354,6 +354,7 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
     totals = {'setup': last_checkpoint_at - job_started, 'build': 0., 'execution': 0.,
               'finite_check': 0., 'validation': 0., 'metrics': 0., 'checkpoint': 0.,
               'publication': 0., 'logging': 0.}
+    cycles_wall = 0.
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
             cycle_started = time.perf_counter()
@@ -405,6 +406,16 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
             # policies already matched in the preconstruction control exchange.
             if checkpoint_policy.every_cycles is None:
                 due = any(distributed.gather(due))
+            checkpoint_decision_s = time.perf_counter() - started
+            row.update(prepublication_wall_s=time.perf_counter() - cycle_started, timings_s=dict(timings),
+                       cycle_timing_scope='CYCLE_PREPUBLICATION_BEFORE_METRICS_CHECKPOINT_AND_POLICY_PUBLICATION')
+            started = time.perf_counter()
+            # Finish real serialization, append and close on every rank before
+            # publishing new recovery state or pruning the previous checkpoint.
+            distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
+                                "training metrics publication")
+            totals['logging'] += time.perf_counter() - started
+            started = time.perf_counter()
             if due:
                 latest = save_checkpoint(root / "checkpoints" / f"cycle-{cycle + 1:06d}", session.state,
                                          identity=identity, cycle=cycle + 1, cursor=cursor,
@@ -412,19 +423,14 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
                 distributed.primary(lambda: prune_checkpoints(root / 'checkpoints', identity=identity,
                     keep_last=checkpoint_policy.keep_last), 'checkpoint retention')
                 last_checkpoint_at = time.perf_counter()
-            timings['checkpoint'] = time.perf_counter() - started
+            timings['checkpoint'] = checkpoint_decision_s + time.perf_counter() - started
             started = time.perf_counter()
             if completed_cycles_this_process == 1:
                 distributed.primary(lambda: _json(root / "effective-policy.json", policy.bound), "policy publication")
             timings['publication'] = time.perf_counter() - started
-            row.update(cycle_wall_s=time.perf_counter() - cycle_started, timings_s=timings,
-                       cycle_timing_scope='CYCLE_THROUGH_CHECKPOINT_AND_POLICY_PUBLICATION')
-            started = time.perf_counter()
-            distributed.checked(lambda: _append_json(rank_root / "metrics.jsonl", row),
-                                "training metrics publication")
-            totals['logging'] += time.perf_counter() - started
             for key, seconds in timings.items():
                 totals[key] += seconds
+            cycles_wall += time.perf_counter() - cycle_started
         rank_results = distributed.gather({"rank": rank, "completed_cycles": config.trainer["cycles"],
                                            "cursor": cursor, "versions": versions})
         result = {"schema_version": "distillschedule.training_result.v1", "status": "COMPLETE",
@@ -439,7 +445,8 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
                   "sampling": sampling.describe(),
                   "world_size": world, "rank_count": len(rank_results), "ranks": rank_results,
                   "policy": policy.bound, "gpu_execution": session.receipt["gpu_execution"]}
-        result.update(job_wall_s=time.perf_counter() - job_started, timings_s=totals,
+        result.update(job_wall_s=time.perf_counter() - job_started, cycles_wall_s=cycles_wall, timings_s=totals,
+                      cycles_timing_scope='ALL_COMPLETED_CYCLES_THROUGH_METRICS_CHECKPOINT_AND_POLICY_PUBLICATION',
                       job_timing_scope='SETUP_AND_ALL_CYCLES_THROUGH_FINAL_RANK_COLLECTION')
         distributed.primary(lambda: _json(root / "summary.json", result), "training summary publication")
         return result

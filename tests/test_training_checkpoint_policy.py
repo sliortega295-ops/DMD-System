@@ -85,11 +85,73 @@ def test_default_run_saves_final_only_and_explicit_retention_preserves_training(
     assert equal(a, b)
     rows = [json.loads(line) for line in (root / 'frequent/metrics.jsonl').read_text().splitlines()]
     for row in rows:
-        assert row['cycle_wall_s'] >= row['wall_s'] >= 0
-        assert row['timings_s']['checkpoint'] > 0
+        assert row['prepublication_wall_s'] >= row['wall_s'] >= 0
+        assert row['cycle_timing_scope'] == 'CYCLE_PREPUBLICATION_BEFORE_METRICS_CHECKPOINT_AND_POLICY_PUBLICATION'
+        assert 'checkpoint' not in row['timings_s'] and 'publication' not in row['timings_s']
         assert row['timings_s']['finite_check'] >= 0
-    assert frequent['job_wall_s'] >= sum(r['cycle_wall_s'] for r in rows)
+    assert frequent['timings_s']['checkpoint'] > 0
+    assert frequent['job_wall_s'] >= frequent['cycles_wall_s'] >= sum(r['prepublication_wall_s'] for r in rows)
     assert frequent['timings_s']['logging'] >= 0
+
+
+def test_prepublication_metrics_keep_full_cycle_and_job_costs_in_summary(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from distillschedule.training import session
+
+    root, config = fixture(tmp_path)
+    raw = config.to_dict()
+    raw['trainer'].update(cycles=2, checkpoint_every=1, checkpoint_keep_last=1, output_dir=str(root / 'timed'))
+    clock = [0.]
+    monkeypatch.setattr(session, 'time', SimpleNamespace(perf_counter=lambda: clock[0]))
+    original_run = session.CyclePolicy.run
+    original_append, original_save = session._append_json, session.save_checkpoint
+    original_prune, original_json = session.prune_checkpoints, session._json
+
+    def run(*args, **kwargs):
+        value = original_run(*args, **kwargs)
+        clock[0] += 2.
+        return value
+
+    def append(path, value):
+        original_append(path, value)
+        if path.name == 'metrics.jsonl':
+            clock[0] += 7.
+
+    def save(*args, **kwargs):
+        value = original_save(*args, **kwargs)
+        clock[0] += 11.
+        return value
+
+    def prune(*args, **kwargs):
+        value = original_prune(*args, **kwargs)
+        clock[0] += 13.
+        return value
+
+    def publish(path, value):
+        original_json(path, value)
+        if path.name == 'effective-policy.json':
+            clock[0] += 17.
+
+    monkeypatch.setattr(session.CyclePolicy, 'run', run)
+    monkeypatch.setattr(session, '_append_json', append)
+    monkeypatch.setattr(session, 'save_checkpoint', save)
+    monkeypatch.setattr(session, 'prune_checkpoints', prune)
+    monkeypatch.setattr(session, '_json', publish)
+    result = train(TrainingConfig.from_dict(raw, source=config.source))
+    rows = [json.loads(line) for line in (root / 'timed/metrics.jsonl').read_text().splitlines()]
+    assert [row['wall_s'] for row in rows] == [2., 2.]
+    assert [row['prepublication_wall_s'] for row in rows] == [2., 2.]
+    assert all(row['cycle_timing_scope'] == 'CYCLE_PREPUBLICATION_BEFORE_METRICS_CHECKPOINT_AND_POLICY_PUBLICATION'
+               and 'cycle_wall_s' not in row and 'checkpoint' not in row['timings_s']
+               and 'publication' not in row['timings_s'] for row in rows)
+    assert result['timings_s']['execution'] == 4.
+    assert result['timings_s']['logging'] == 14.
+    assert result['timings_s']['checkpoint'] == 48.
+    assert result['timings_s']['publication'] == 17.
+    assert result['cycles_this_process'] == 2
+    assert result['cycles_wall_s'] == result['job_wall_s'] == 83.
+    assert result['cycles_timing_scope'] == 'ALL_COMPLETED_CYCLES_THROUGH_METRICS_CHECKPOINT_AND_POLICY_PUBLICATION'
+    assert json.loads((root / 'timed/summary.json').read_text()) == result
 
 
 def test_output_conflict_is_rejected_before_model_factory(tmp_path, monkeypatch):

@@ -1,6 +1,7 @@
 """CPU_TEST_ONLY: metadata and resume failures with real caller-owned Gloo."""
 from copy import deepcopy
 from datetime import timedelta
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -42,7 +43,7 @@ class _FailingStream:
             raise OSError("injected rank1 metrics close failure")
 
 
-def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report):
+def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report, fail_cycle=1):
     from distillschedule.training import session
 
     torch.set_num_threads(1)
@@ -52,7 +53,7 @@ def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report):
                             rank=rank, world_size=2, timeout=timedelta(seconds=10))
     root = Path(output)
     try:
-        checkpoint = None
+        checkpoint = checkpoint_files = None
         if fault == "resume":
             raw["algorithm"]["factory"] = str(Path(__file__).resolve()) + ":resume_algorithm"
             raw["algorithm"]["parameters"]["failure_flag"] = str(root / "fail-resume")
@@ -67,9 +68,32 @@ def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report):
         report_attempts = []
         with pytest.MonkeyPatch.context() as patch:
             original_open, original_write_text = Path.open, Path.write_text
+            original_append = session._append_json
+            metrics_attempts = 0
+
+            def append(path, value):
+                nonlocal metrics_attempts
+                if path.name == "metrics.jsonl":
+                    metrics_attempts += 1
+                return original_append(path, value)
+
+            patch.setattr(session, "_append_json", append)
+            if fail_cycle > 1:
+                original_save = session.save_checkpoint
+
+                def save(*args, **kwargs):
+                    nonlocal checkpoint, checkpoint_files
+                    saved = original_save(*args, **kwargs)
+                    if checkpoint is None:
+                        checkpoint = str(saved)
+                        checkpoint_files = {str(path.relative_to(saved)): hashlib.sha256(path.read_bytes()).hexdigest()
+                                            for path in saved.rglob("*") if path.is_file()}
+                    return saved
+
+                patch.setattr(session, "save_checkpoint", save)
             if rank == 1 and fault in {"open", "write", "close"}:
                 def open_with_fault(path, *args, **kwargs):
-                    if path.name == "metrics.jsonl":
+                    if path.name == "metrics.jsonl" and metrics_attempts == fail_cycle:
                         if fault == "open":
                             raise OSError("injected rank1 metrics open failure")
                         return _FailingStream(original_open(path, *args, **kwargs), fault)
@@ -78,7 +102,8 @@ def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report):
             elif rank == 1 and fault == "serialize":
                 original_metrics = session._metrics
                 patch.setattr(session, "_metrics", lambda values: {
-                    **original_metrics(values), "non_json_value": object()})
+                    **original_metrics(values),
+                    **({"non_json_value": object()} if metrics_attempts + 1 == fail_cycle else {})})
             if fail_report:
                 def write_text_with_fault(path, *args, **kwargs):
                     if path.name == "failure.json.tmp":
@@ -110,7 +135,8 @@ def _failure_worker(rank, rendezvous, output, source, raw, fault, fail_report):
         (root / f"rank-{rank}.json").write_text(json.dumps({
             "status": "CPU_TEST_ONLY", "error": error, "elapsed": elapsed, "result": result,
             "group_initialized": group_initialized, "group_error": group_error, "probe": probe.item(),
-            "failure_report_attempts": report_attempts, "prior_checkpoint": checkpoint}))
+            "failure_report_attempts": report_attempts, "prior_checkpoint": checkpoint,
+            "prior_checkpoint_files": checkpoint_files}))
     finally:
         dist.destroy_process_group()
 
@@ -164,6 +190,31 @@ def test_rank_local_initial_resume_construction_failure_precedes_collectives_and
     assert (checkpoint / "_SUCCESS").is_file()
     assert json.loads((checkpoint.parent.parent / "summary.json").read_text())["status"] == "COMPLETE"
     assert not (checkpoint.parent / "cycle-000002").exists()
+
+
+@pytest.mark.parametrize("fault", ["open", "write", "close", "serialize"])
+def test_later_metrics_failure_preserves_prior_checkpoint_before_retention(tmp_path, fault):
+    config, raw = _fixture(tmp_path / "media")
+    output = tmp_path / "failed-later"
+    raw["trainer"].update(cycles=2, checkpoint_every=1, checkpoint_keep_last=1, output_dir=str(output))
+    rows = _run_workers(tmp_path / "workers", _failure_worker, str(config.source), raw, fault, False, 2)
+    message = "not JSON serializable" if fault == "serialize" else f"injected rank1 metrics {fault} failure"
+    _assert_common_failure(rows, message)
+    assert "training metrics publication" in rows[0]["error"], rows
+    checkpoint = output / "checkpoints/cycle-000001"
+    assert all(row["prior_checkpoint"] == str(checkpoint) for row in rows), rows
+    assert sorted(path.name for path in checkpoint.parent.iterdir()) == ["cycle-000001"]
+    saved = {str(path.relative_to(checkpoint)): hashlib.sha256(path.read_bytes()).hexdigest()
+             for path in checkpoint.rglob("*") if path.is_file()}
+    assert all(row["prior_checkpoint_files"] == saved for row in rows), rows
+    manifest = json.loads((checkpoint / "manifest.json").read_text())
+    assert (checkpoint / "_SUCCESS").read_text().strip() == saved["manifest.json"]
+    assert json.loads((output / "effective-policy.json").read_text()) == manifest["policy"]
+    assert not (output / "summary.json").exists()
+    for rank in range(2):
+        report = json.loads((output / f"ranks/rank-{rank:05d}/failure.json").read_text())
+        assert report["completed_cycles_this_process"] == 2
+        assert report["last_complete_checkpoint"] == str(checkpoint)
 
 
 @pytest.mark.parametrize("metadata", ["metrics.jsonl", "validation.jsonl"])
