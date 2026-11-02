@@ -1,21 +1,33 @@
-# Official native owners: checkpoint policy and role replicas
+# Official native owners: execution policies
 
-The official DMD2 flow owns backward, clipping, Adam and native scheduler
-updates inside one atomic `Program` call. Replaying that whole call would
-duplicate training. The common runtime therefore preserves its existing owner
-and cycle/checkpoint lifecycle rather than treating it as an ordinary pure
-forward or adding a second gradient reducer.
+Official DMD2 and Self-Forcing own backward, clipping, Adam and native
+scheduler/EMA clocks inside an atomic Program call. The common lifecycle does
+not replay that update or add a second gradient reducer. Visible pure-Call
+policies are a separate interface.
 
-The independent opt-in integrations below do **not** change
-existing recipes or promote the separately measured mixed-precision native
-benchmark portfolio into a fully integrated public training backend.
+## Complete official profiles
+
+For SD1.5 GAN, [native FSDP2](dmd2_fsdp2_reference.md) is the primary reference;
+FP32 role-DDP below is supplemental. The full optimized profiles are
+`optimization_profile: "dmd2-sd15-resident-tree-v1"` (Resident/DDP, fused AdamW,
+activation retention, classifier packing and update-scoped casts) and
+`"self-forcing-wan-fsdp2-r6-v1"` (native FSDP2, phase/text-KV retention,
+checkpoint reuse, fused operations and paired Teacher CFG blocks).
+Official Self-Forcing is not W4 LiveWan. Use [the complete configurations and
+launch policy](official_optimized_training.md) for these A100 world16 profiles;
+source locks, geometry, precision, updates and same-topology recovery remain
+owner-enforced.
 
 ## Per-role DMD2 checkpoint policy
 
-Use `model.parameters.native_checkpoint_policy: "component-v1"` and the
-original `settings.gradient_checkpointing: true`. The reference retains
-checkpointing on both Generator and Fake. A manual policy can keep Generator
-checkpointing but retain the Fake epsilon forward's activations:
+On the pinned Torch2.10/Diffusers0.37.1/Transformers4.51.3/PEFT0.17.1 CPU1 FP32
+stack, the SD1.5/SDXL owner exposes scoped UNet checkpoint options. Default
+`coupled-v1` uses `owner_execution.native_cycle.gradient_checkpointing` for
+both roles. For independent flags, set
+`model.parameters.native_checkpoint_policy: "component-v1"` and retain the
+original `settings.gradient_checkpointing: true`. The reference checkpoints
+both roles; this manual `execution` retains Generator checkpointing and Fake
+epsilon activations:
 
 ```json
 {
@@ -35,107 +47,77 @@ checkpointing but retain the Fake epsilon forward's activations:
 }
 ```
 
-See [the complete SD1.5 template](../../recipes/dmd2_sd15/training.component-checkpoint.json).
-The same model option applies to the actual SDXL owner, not a substitute UNet.
-The existing bounded CPU calibration/search and saved-plan path use this same
-descriptor. Independent preupdate admission and first-resumed-cycle admission
-compare native loss, gradients, Adam, schedulers, clocks and RNG.
+See [the SD1.5 template](../../recipes/dmd2_sd15/training.component-checkpoint.json)
+and [SDXL recipe](../../recipes/dmd2_sdxl/README.md). With `coupled-v1`, replace
+the native option with `{"gradient_checkpointing": true}`. CPU manual,
+bounded auto and saved-plan execution use the same descriptor, paired preupdate
+reference comparison and first-resumed-cycle admission.
 
-Effects are checked separately: Generator must actually request checkpointing
-and recompute; Fake must actually execute grad-enabled epsilon forwards with
-zero checkpoint/recompute calls and retained activations. Unused, malformed or
-contradictory counters fail closed. No-grad Teacher and classifier-only calls
-are not counted as Fake epsilon retention. Original flags, callbacks and hooks
-are restored on success and exceptions. No full-loop replay is introduced.
+Actual Generator requests/recomputes and Fake grad-enabled epsilon retention
+are checked separately; no-grad Teacher/classifier-only calls do not count.
+Unused or contradictory counters fail, and flags/callbacks/hooks are restored
+on success or exceptions. This CPU policy is separate from mixed-precision,
+distributed and production-GAN profile admission. For source-qualified tiny
+single-device snapshot planning, use [resident budgets](resident_owner_training.md),
+not an opaque-owner CUDA copy.
 
-This profile is qualified on the pinned Torch2.10/Diffusers0.37.1 CPU1/FP32
-closure with actual tiny SD1.5/SDXL classes and fresh-process continuation.
-GPU owner overrides, AMP, GAN production geometry, native role replicas and
-FSDP2 are **not** qualified by these CPU results. The default `coupled-v1`
-checkpoint ABI and its old boolean selection remain unchanged.
+Official Self-Forcing exposes only
+`owner_execution.native_cycle.fake_gradient_checkpointing` on its exact tiny
+CPU1 FP32 profile. Keep `settings.gradient_checkpointing: true`: Generator
+ON/OFF references have distinct identities because their causal
+cross-attention-cache/gradient behavior differs; this is not a searched toggle.
+The [Fake-only checkpoint recipe](../../recipes/self_forcing_official/README.md#explicit-checkpoint-on-reference-and-fake-only-physical-policy)
+specifies the source/runtime/profile and actual replay counters.
 
 ## Persistent native DMD2 role DDP
 
-`model.parameters.native_role_backend: "ddp-fp32-v1"` is a separate explicit
-reference backend. It installs actual persistent DDP wrappers on the native
-Generator and complete guidance role, once per process. The native owner still
-performs backward/clip/optimizer updates; the generic runtime does not reduce
-those gradients a second time. Native trainable/frozen ownership remains
-checked, and the original rank0 DDP bootstrap synchronizes role weights and
-buffers before training. Only the native random unused DummyNetwork may differ
-before that bootstrap; pretrained frozen tensors must already agree.
+`model.parameters.native_role_backend: "ddp-fp32-v1"` installs persistent actual
+DDP on Generator and the complete guidance role. Native backward/clip/Adam
+remain the only update loop. Rank0 bootstrap synchronizes role weights/buffers;
+pretrained frozen tensors must already agree. The backend admits CPU/Gloo or
+owned CUDA/NCCL with FP32 state, not the optimized mixed-precision bundle.
 
 Start from [the CPU/Gloo template](../../recipes/dmd2_sd15/training.ddp-fp32.json),
-replace all explicit local paths and supply enough independent prepared input
-records for every rank. For example:
+replace local paths and provide independent rank-strided prepared inputs:
 
 ```sh
 torchrun --standalone --nproc-per-node=2 -m distillschedule.cli train training.ddp-fp32.json
 ```
 
-The template uses CPU/Gloo, FP32, original iteration order and rank-strided
-sampling; actual global batch is per-rank native batch multiplied by world
-size, **not** duplicated samples. The model and trainer devices must agree.
-The source also admits explicit owned CUDA/NCCL placement (`trainer.device:
-"cuda"` with `trainer.distributed.backend: "nccl"`); that new public path has
-not received its own GPU qualification. It is not the measured native BF16,
-FSDP2 or fused-Adam speed configuration. Do not infer production capacity or a
-speedup from CPU tests.
+Model/trainer devices must agree; CUDA uses `trainer.device: "cuda"` and
+`trainer.distributed.backend: "nccl"` with actual local-rank ownership. Global
+batch is native per-rank batch × world size, never duplicated samples. Each
+rank saves complete role/optimizer state, native/outer RNG, input progress and
+clocks. Same-source/topology resume reinstalls wrappers before loading and
+rebuilds buckets; `.module` is not part of the checkpoint ABI. Adam commits
+once per native update, while both schedulers keep the original Accelerate
+world-size multiplier.
 
-The common lifecycle saves one complete canonical role/optimizer checkpoint
-per rank plus native/outer RNG, input progress and both clocks. DDP's `.module`
-prefix is not part of the checkpoint ABI. Resume uses the same topology and
-source, reinstalls actual wrappers before loading state, and rebuilds temporary
-buckets. Native Adam updates remain once per actual update; both schedulers
-retain the original Accelerate world-size multiplier. Wrapper forward counters
-cover the current process, whereas optimizer counters cover persistent native
-training clocks; receipts identify that distinction.
-
-Reference mode or the exact direct manual native-owner backend are supported.
-Auto/plan clone trials, arbitrary owner overrides, per-role checkpoint
-overrides, GAN ownership, mixed precision, FSDP2 and topology-changing restart
-are rejected, not silently downgraded. The visible-module FSDP/replica
-capabilities do not automatically apply to an opaque optimizer-containing owner.
+Only reference or the exact direct-manual `torch-callable-native-owner-v1`
+policy is admitted. Clone-based auto/plan, owner/checkpoint overrides, GAN,
+mixed precision, FSDP2 and topology-changing restart are rejected by this
+FP32 backend. Its native state/restart tests use CPU/Gloo; CUDA/NCCL capacity
+needs its own qualification.
 
 ## Official Self-Forcing: release consumed rollout KV
 
 The [explicit template](../../recipes/self_forcing_official/training.consumed-kv.json)
-adds only `model.parameters.native_cache_lifetime: "release-after-commit-v1"`.
-The unchanged default is `native-v1`. This is a bound model profile, not a
-searched owner-execution option or an automatic CUDA optimization.
+sets `model.parameters.native_cache_lifetime: "release-after-commit-v1"`;
+the default is `native-v1`. This resident-owner profile is not a searched toggle.
+FSDP2 reference/R6 require `native-v1`; R6's earlier Critic release is separate.
 
-The owner drops its two self-attention KV caches and cross-attention cache
-only **after** the corresponding native forward/backward/clip and Adam/EMA
-commit. It does not shorten a causal sequence or release saved tensors during
-checkpoint replay. The next original native rollout allocates fresh caches.
-The release helper does not collect tensor values on CPU, clear the allocator,
-or synchronize CUDA. Cache lifetime is part of checkpoint/source identity;
-resume rebuilds temporary caches rather than serializing them as training state.
+The owner releases its two self-attention KV caches and cross-attention cache
+only after native backward/clip and the corresponding Adam/EMA commit. It does
+not shorten causal attention or release tensors during replay/backward. The
+next native rollout rebuilds caches; source/checkpoint identity binds the
+policy, while checkpoints omit transient caches. Release does not read tensor
+values on CPU, clear the allocator or synchronize CUDA.
 
-Per-cycle receipts require one actual Generator release and the configured
-number of Critic releases (five by default). The reported byte count sums
-deduplicated **owner storage references relinquished per commit**, not memory
-freed by the allocator or a measured HBM reduction; an observer can retain
-aliases. Metrics use the common float-only collector contract.
+Receipts require one Generator release and the configured Critic count per
+cycle (five by default). Bytes count deduplicated owner storage references
+relinquished per commit, not allocator-freed memory; other observers may hold
+aliases. Native checkpoint-ON/OFF state and restart coverage is CPU-scoped.
 
-Actual tiny native CPU tests compare three cycles with checkpointing OFF and
-ON, including losses, gradients, Adam, EMA, native clocks, input progress and
-RNG. A separate public new-process resume matches uninterrupted full state.
-These tests qualify the CPU integration, not pretrained quality, performance
-or this new public policy's CUDA capacity. The separately measured native GPU
-implementation and the complete native speed portfolio remain distinct.
-
-## Evidence boundary
-
-- Actual native SD1.5 and SDXL CPU2/Gloo training completed three cycles and exact
-  fresh-process resume vs uninterrupted state comparison, including Adam,
-  schedulers, RNG and input progress. This is implementation evidence, not
-  pretrained quality or distributed GPU evidence.
-- The component policy completed actual SD1.5/SDXL native three-cycle and
-  restart checks on Torch2.10 without CUDA initialization.
-- Full measured native optimization migration remains incomplete: production
-  mixed precision/GAN, fused Adam, FSDP2 and the remaining native Self-Forcing portfolio
-  still need their own continuous-lifecycle integration and qualification.
-
-These opt-ins are capability/source-bound implementations within the existing
-framework, not extra public trainers or historical run-id launchers.
+See [model environments and test lanes](model_families.md#verification-lanes)
+and [performance/source records](performance_validation.md) for validation of
+each selected recipe.

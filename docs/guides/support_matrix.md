@@ -1,23 +1,12 @@
 # Supported models, workflows and execution
 
-DMD-System uses one **`distillctl`** interface for input preparation, training,
-checkpoint recovery, strategy selection and Student generation.
-Choose a model family and its execution recipe below.
-
-## Common framework capabilities
-
-| Capability | Available functionality |
-| --- | --- |
-| Configuration and discovery | Model, data, algorithm, execution and trainer sections; lightweight model/workflow/capability discovery |
-| Data | Raw images, video, audio and text; prompt-only inputs; preencoded features; independent data streams and sample cursors |
-| Training | Persistent Student, Teacher and Fake Score; algorithm-owned native clocks; optimizer, scheduler and EMA updates |
-| Save and recover | Complete-cycle, same-topology checkpoints; atomic all-rank shard publication; parameters, optimizer, RNG, data progress and versions |
-| Generation | Current-Student evaluation, portable weight export and new-input image/video/audio generation through model-specific codecs |
-| Execution | Explicit reference/manual strategies and measured automatic/saved-plan execution through the same runtime |
-| Extension | Model/data adapters, distillation Programs and execution capabilities registered independently |
-
-See [training and recovery](training.md), [data preparation](data.md),
-[model environments](model_families.md) and [extension interfaces](extensions.md).
+DMD-System uses one **`distillctl`** interface for data preparation, persistent
+training, complete-cycle recovery and current-Student generation. Choose the
+model/workflow below, then use its recipe's source, assets, environment and
+hardware contract. [Training](training.md), [data preparation](data.md) and
+[extension interfaces](extensions.md) describe the common lifecycle; the
+[execution capability map](optimization_capabilities.md#choose-an-execution-path)
+lists physical strategies without implying every model supports each one.
 
 ## Six native workloads
 
@@ -36,13 +25,11 @@ through [raw AV preparation](h3_audio_video_encode.md) and [AV codecs](h3_audio_
 
 ## Native continuity and output
 
-Fresh-stream recipes retain role state across cycles and save at complete-cycle
-boundaries. The original **two-cycle** presets remain available for performance
-reproduction. Existing **100-cycle** official-workflow runs include a fresh-process
-restart at cycle 50 and current-Student export; their records are linked below.
-The maintainer's [current performance and correctness summary](performance_validation.md)
-also records comparable acceleration in subsequent longer-cycle measurements.
-Cycle 2 is the quick optimization window, not a two-cycle training limitation.
+Fresh-stream recipes retain role state and save at complete-cycle boundaries.
+The **two-cycle** presets remain the quick performance-reproduction window,
+not a training-length limit. The [performance and correctness summary](performance_validation.md)
+links the **100-cycle** official-workflow runs, cycle-50 fresh-process restart,
+current-Student export and longer-cycle measurements.
 
 Portable inference weights carry the current Student and its required components.
 Training checkpoints additionally retain optimizer, scheduler, EMA, RNG, input
@@ -53,34 +40,34 @@ progress and execution versions. Use `train --resume` for training recovery and
 
 | Integration | Model and distillation support | Execution and output |
 | --- | --- | --- |
-| Official SD1.5 DMD2 | Native UNet/CLIP/VAE, single-step DMD2, optional original GAN branch and independent generator/guidance/real-image streams | CPU/CUDA reference; native FSDP2 and optimized Resident/DDP recipes; checkpoint recovery and current-G image export |
-| Official SDXL DMD2 | Dual CLIP, additional conditioning, four-step and initialized single-step399; full or unmerged-LoRA Student | FP32 reference, explicit role-DDP and budgeted resident planning; complete-state recovery and image generation |
-| Official Self-Forcing | Causal Wan chunk rollout, random gradient exit, native KV cache, DMD loss and EMA/update clocks | FSDP2 reference/optimized recipes; budgeted resident policies; checkpoint recovery and current-G video |
-| LTX-2.5 | Native AV Transformer, Gemma/connectors and AV codecs; common G1/F5 flow DMD; full parameters or LoRA | CPU/CUDA reference, single-CUDA manual immutable sharing and CPU measured planning; raw-media input, restart and AV generation |
-| FLUX.2 klein Base 4B T2I | Flux2/Qwen3/VAE, common flow DMD and unmerged LoRA | CPU/CUDA reference, immutable sharing, post-backward replicas and CPU measured planning; current-Student PNG output |
-| Original Qwen-Image T2I | QwenImage/Qwen2.5-VL/VAE, native text masks, common flow DMD and LoRA | CPU/CUDA reference, immutable sharing, post-backward replicas and CPU measured planning; current-Student PNG output |
-| Wan2.2 TI2V-5B T2V | Wan/UMT5/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, single-CUDA manual sharing, explicit local-B1 replica interface and CPU measured planning; decoded video |
-| HunyuanVideo-1.5 T2V | Hunyuan15, dual text encoders and temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, single-CUDA manual sharing, explicit local-B1 replica interface and CPU measured planning; decoded video |
+| [Official SD1.5 DMD2](../../recipes/dmd2_sd15/README.md) | Native UNet/CLIP/VAE, single-step DMD2, optional original GAN branch and independent generator/guidance/real-image streams | CPU/CUDA reference; native FSDP2 and optimized Resident/DDP; recovery and current-G image export |
+| [Official SDXL DMD2](../../recipes/dmd2_sdxl/README.md) | Dual CLIP, additional conditioning, four-step and initialized single-step399; full or unmerged-LoRA Student | FP32 reference, native role-DDP and budgeted tiny resident planning; recovery and image generation |
+| [Official Self-Forcing](../../recipes/self_forcing_official/README.md) | Causal Wan chunk rollout, random gradient exit, native KV cache and DMD/EMA clocks; not W4 LiveWan | Native FSDP2 reference/R6 optimized; budgeted tiny resident policies; recovery and current-G video |
+| [LTX-2.5](../../recipes/ltx25/README.md) | Bounded native AV Transformer, Gemma/connectors/codecs; common G1/F5 flow DMD; full parameters or LoRA | FP32 CPU/single-CUDA reference, direct immutable sharing and CPU tiny-fixture planning; restart and AV generation |
+| [FLUX.2 klein Base 4B T2I](../../recipes/flux_dmd/README.md) | Flux2/Qwen3/VAE, common flow DMD and unmerged LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; PNG output |
+| [Original Qwen-Image T2I](../../recipes/qwen_image_dmd/README.md) | QwenImage/Qwen2.5-VL/VAE, native text masks, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; PNG output |
+| [Wan2.2 TI2V-5B T2V](../../recipes/wan22_dmd/README.md) | Wan/UMT5/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; decoded video |
+| [HunyuanVideo-1.5 T2V](../../recipes/hunyuan_video_dmd/README.md) | Hunyuan15, dual text encoders/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; decoded video |
 
-Use each [family recipe](model_families.md#choose-a-compatible-integration) with
-its pinned environment and local assets. The common [export-only preparer](export_inputs.md)
-encodes new prompts/media for the modern-flow image and video adapters.
+The four image/video flow families support `fp32` or explicit `bf16-mixed`
+compute with FP32 master/Adam/EMA state, including CPU/Gloo and CUDA/NCCL
+replicas. LTX stays FP32 in its separate runtime. See the [sharing, replica and
+clone-safety conditions](optimization_capabilities.md#direct-single-cuda-immutable-sharing)
+and [compatible environments](model_families.md#choose-a-compatible-integration).
+The [export-only preparer](export_inputs.md) encodes new modern-flow prompts/media.
 
 ## Integrated official optimization profiles
 
-- **SD1.5 FSDP2:** `recipes/dmd2_sd15/training.fsdp2.json` — native block/root
-  sharding, G1/C10/EMA0, mixed compute precision and FP32 master/Adam state.
-- **SD1.5 optimized:** `recipes/dmd2_sd15/training.optimized.json` —
-  Resident/DDP execution, fused Adam, activation retention, classifier packing
-  and weight-cast scopes.
-- **Official Self-Forcing:** `recipes/self_forcing_official/training.fsdp2-reference.json`
-  and `training.optimized.json` — native FSDP2 reference and complete R6
-  optimization, preserving causal rollout and native updates.
+- **SD1.5:** [FSDP2 primary reference](../../recipes/dmd2_sd15/training.fsdp2.json)
+  and [complete optimized Resident/DDP](../../recipes/dmd2_sd15/training.optimized.json);
+  FP32 role-DDP is a supplemental reference, not the FSDP2 baseline.
+- **Official Self-Forcing:** [FSDP2 reference](../../recipes/self_forcing_official/training.fsdp2-reference.json)
+  and [complete R6 optimization](../../recipes/self_forcing_official/training.optimized.json).
 
-The [official workflow guide](official_optimized_training.md) provides the
-launch, save, resume and output commands. [Native-owner policies](native_owner_backends.md)
-and [resident planning](resident_owner_training.md) describe additional explicit
-checkpoint, lifetime and planning choices.
+The [official workflow guide](official_optimized_training.md) provides launch,
+save, resume and output commands. [Native-owner alternatives](native_owner_backends.md)
+cover CPU component checkpointing, FP32 role-DDP and post-commit cache release;
+[resident planning](resident_owner_training.md) covers tiny snapshot-safe owners.
 
 ## Hardware
 
@@ -94,3 +81,4 @@ Execution uses each recipe's device, dtype, topology and capacity settings.
 - [Official optimized training and recovery](../status/official_optimized_framework.md)
 - [Model environments and test lanes](model_families.md#verification-lanes)
 - [Public resident lifecycle](resident_owner_training.md)
+- [Source and asset licenses](../../THIRD_PARTY.md)
