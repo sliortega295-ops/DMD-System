@@ -1,4 +1,4 @@
-"""SYNTHETIC_TEST_ONLY native image/video replicated acceptance harness.
+"""SYNTHETIC_TEST_ONLY native image/video/AV replicated acceptance harness.
 
 External launch (same entry works for Gloo2, CUDA2 or a parent-owned NCCL16):
   torchrun ... tests/native_flow_replicated.py oracle --config REQUEST --output ROOT
@@ -45,10 +45,35 @@ def _frozen(state):
                            if not parameter.requires_grad} for role in ('student', 'fake', 'teacher', 'media')})
 
 
+def _family(metadata):
+    if metadata.get('schema_version') == 'distillschedule.native_ltx25.v1':
+        return 'ltx25'
+    return metadata['family']
+
+
 def _assert_native(components):
     from distillschedule.training.flow_image import ImageRole
+    family = _family(components.metadata)
+    if family == 'ltx25':
+        from distillschedule.training.ltx import LTXRole
+        from distillschedule.training.ltx_media import NativeMedia
+        assert components.metadata['evidence_kind'] == 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED'
+        source = components.state['student'].source
+        native = source.import_module('ltx_core.model.transformer.model').LTXModel
+        assert all(type(components.state[role]) is LTXRole and type(components.state[role].native) is native
+                   for role in ('student', 'fake', 'teacher'))
+        media = components.state['media']
+        assert type(media) is NativeMedia
+        assert type(media.video_encoder) is source.import_module('ltx_core.model.video_vae.video_vae').VideoEncoder
+        assert type(media.video_decoder) is source.import_module('ltx_core.model.video_vae.conv_video_decoder').ConvVideoDecoder
+        audio = source.import_module('ltx_core.model.audio_vae.audio_vae')
+        assert type(media.audio_encoder) is audio.AudioEncoder and type(media.audio_decoder) is audio.AudioDecoder
+        assert type(media.vocoder) is source.import_module('ltx_core.model.audio_vae.vocoder').Vocoder
+        from transformers import Gemma4UnifiedForConditionalGeneration
+        assert type(media.text_encoder.model) is Gemma4UnifiedForConditionalGeneration
+        assert type(media.text_processor.feature_extractor).__name__ == 'FeatureExtractorV2'
+        return
     assert components.metadata['evidence_kind'] == 'SYNTHETIC_TEST_ONLY'
-    family = components.metadata['family']
     if family in ('wan22-ti2v5b-t2v', 'hunyuan15-t2v'):
         import importlib
         from transformers import T5TokenizerFast, Qwen2TokenizerFast, ByT5Tokenizer
@@ -226,7 +251,8 @@ def oracle(config_path, output):
             del model, dataset, algorithm, workload, backend, session, actual, outputs
             gc.collect()
         proof = dict(evidence_kind='SYNTHETIC_TEST_ONLY', rank=rank, world_size=world, device=str(device),
-            torch_version=torch.__version__, family=identity['model_metadata']['family'], independent_b1_gradient_mean=True,
+            torch_version=torch.__version__, family=_family(identity['model_metadata']), independent_b1_gradient_mean=True,
+            native_evidence_kind=identity['model_metadata']['evidence_kind'],
             compute_precision=identity['model_metadata'].get('compute_precision', 'fp32'),
             average_before_clip_adam=True, oracle_cycles=ORACLE_CYCLES, later_student_gradient_nonzero=True,
             reference_manual_exact=True, records=records, quality='NOT_RUN', pretrained_capacity='NOT_RUN', performance='NOT_RUN')
@@ -294,11 +320,18 @@ def portable_output(config_path, root, mode):
     _, exported = read_export(folder/'export')
     assert set(exported['model']['modules']) == {'student','media'}
     assert 'assets' not in exported['model']['parameters']
-    family = exported['model']['metadata']['family']
-    output_kind, shape, decoded_shape, prompt = _portable_case(family)
+    family = _family(exported['model']['metadata'])
     from distillschedule.data.export_inputs import SCHEMA
+    if family == 'ltx25':
+        output_kind, decoded_shape = 'audio_video', (3,8,8,3)
+        record = dict(id='new-replica-prompt', prompt='a dog rests by a river', geometry=dict(
+            fps=8., video_shape=[1,128,2,2,2], audio_shape=[1,8,11,16],
+            conditioning=dict(video_prefix_latent_frames=0, audio_prefix_latent_frames=0)))
+    else:
+        output_kind, shape, decoded_shape, prompt = _portable_case(family)
+        record = dict(id='new-replica-prompt', prompt=prompt, latent_shape=shape)
     source = dict(schema_version=SCHEMA, weights=str(folder/'export'), mode='prompts',
-                  records=[dict(id='new-replica-prompt', prompt=prompt, latent_shape=shape)])
+                  records=[record])
     _write(folder/'new-prompt.json', source)
     _single_cli(folder, 'prepare-new-prompt', 'data','prepare',folder/'new-prompt.json','--output',folder/'new-prepared',
         '--preparer','distillschedule.data.export_inputs:prepare_inputs')
@@ -313,7 +346,7 @@ def portable_output(config_path, root, mode):
     result = _single_cli(folder, 'generate-new-prompt', 'generate',folder/'inference.json','--weights',folder/'export',
         '--prepared',prepared,'--output',folder/'generated','--output-kind',output_kind)
     artifact = torch.load(result['artifact'], weights_only=True, map_location='cpu')
-    assert artifact['decoded'][output_kind].shape == decoded_shape
+    assert artifact['decoded']['video' if output_kind == 'audio_video' else output_kind].shape == decoded_shape
     if output_kind == 'image':
         assert Path(result['image']['path']).is_file()
     else:
@@ -321,6 +354,16 @@ def portable_output(config_path, root, mode):
         frames = artifact['decoded']['video']
         assert frames.dtype == torch.uint8 and len(list(Path(result['video']['frames']).glob('*.png'))) == frames.shape[0]
         assert torch.equal(_video(Path(result['video']['frames'])), frames), 'published RGB frames differ from native decode'
+        if output_kind == 'audio_video':
+            import wave
+            import numpy as np
+            audio = artifact['decoded']['audio']
+            assert audio['samples'].dtype == torch.float32 and audio['samples'].shape == (9840,2)
+            assert audio['sample_rate'] == 24000
+            with wave.open(result['audio']['path'], 'rb') as stream:
+                assert (stream.getnframes(), stream.getnchannels(), stream.getframerate()) == (9840,2,24000)
+                pcm = stream.readframes(stream.getnframes())
+            assert pcm == np.rint(audio['samples'].numpy() * 32767).astype('<i2').tobytes()
     # The selected export must carry CURRENT Student, not Teacher/base/EMA.
     from distillschedule.training.plugins import load_callable
     from distillschedule.training.inference import restore_modules
@@ -371,7 +414,20 @@ def lifecycle(config_path, output, ranks=2):
             fresh_cli(request,folder/(name+'.log'),ranks,*args)
         checkpoint = verify_restart(root, mode, ranks)
         fresh_cli(request,folder/'export.log',ranks,'export',request,'--checkpoint',checkpoint,'--output',folder/'export')
-        generated = portable_output(request,root,mode)
+        # Native AV acceptance must not silently reload training weights/data.
+        # Keep only the source/runtime and the current-Student portable export.
+        retired = []
+        try:
+            if value['model']['factory'] == 'distillschedule.training.ltx:build_model':
+                for path in (Path(value['model']['parameters']['assets']).parent,
+                             Path(value['data']['prepared']).parent,
+                             Path(value['model']['parameters']['assets']).parent.parent/'raw'):
+                    hidden = path.with_name(path.name + '-retired')
+                    path.rename(hidden); retired.append((hidden,path))
+            generated = portable_output(request,root,mode)
+        finally:
+            for hidden,path in reversed(retired):
+                hidden.rename(path)
         # All file manifests must be complete even if only rank one is absent.
         shard = checkpoint/'rank-00001.pt'; hidden = shard.with_suffix('.hidden')
         shard.rename(hidden)

@@ -3,8 +3,9 @@
 Train actual LTX audio–video Transformers with full parameters or independent,
 unmerged Student/Fake LoRA. The common `dmd` algorithm supplies G1/F5 flow DMD;
 native video/audio VAEs, vocoder, Gemma4 and connectors supply inputs and decoded
-output. Use FP32 or explicit native BF16 compute on one CPU or `cuda:N` device,
-with FP32 training state and bounded native architectures (1..16 layers,
+output. Use FP32 or explicit native BF16 compute on CPU or `cuda:N`, with
+single-device execution or explicit rank-local replicas, FP32 training state
+and bounded native architectures (1..16 layers,
 video/audio head inner widths <=1024).
 
 ## Source, environment and assets
@@ -171,6 +172,42 @@ distillctl export "$RUN/train.json" \
 
 Use the checkpoint paths returned by `train`. The [common lifecycle
 guide](../../docs/guides/training.md) covers save/resume and measured-plan identity.
+
+### Explicit local-B1 replicas
+
+The same G1/F5 AV policy supports CPU/Gloo or CUDA/NCCL replicas. Every rank
+holds complete roles and consumes a distinct B1 record; global batch equals
+world size. Gradients are averaged after backward, before clipping and Adam.
+Keep your model/algorithm parameters and set:
+
+```json
+{
+  "data":{"prepared":"/absolute/prepared/manifest.json","sharding":"rank_strided"},
+  "execution":{"mode":"reference"},
+  "trainer":{"cycles":3,"seed":17,"device":"cuda",
+    "distributed":{"backend":"nccl","timeout_seconds":180},"output_dir":"/absolute/run"}
+}
+```
+
+Prepare at least `world_size * cycles` records for finite sampling. Each selected
+GPU must fit complete roles and codecs, including construction. On each node:
+
+```sh
+"$PY" -m torch.distributed.run --nnodes="$NNODES" --nproc-per-node="$GPUS_PER_NODE" \
+  --node-rank="$NODE_RANK" --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \
+  --module distillschedule train "$RUN/train.json" --cycles 1 --output "$RUN/partial"
+```
+
+Use the same launcher/topology for resume and collective export. Single-device
+portable generation is unchanged. CPU execution uses `device: cpu` and
+`backend: gloo`. For exact frozen sharing inside each replica, select:
+
+```json
+{"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"post_backward","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":true,"checkpoint_bindings":[]}}}
+```
+
+Replicas support both compute precisions, not model sharding or clone-based
+planning. Same-topology recovery requires every rank's checkpoint shard.
 
 ## Generate new audio–video
 

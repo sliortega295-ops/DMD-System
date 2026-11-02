@@ -178,9 +178,13 @@ for _name, _factory, _caps, _description in (
                    **({'native_owner_compatibility': _OFFICIAL_REQUESTS[_name]} if _name in _OFFICIAL_REQUESTS else {}))
 
 register_model('ltx25', factory='distillschedule.training.ltx:build_model',
-    capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video',
+    capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video, explicit post-backward B1 replicas',
     compute_precisions=['fp32', 'bf16-mixed'],
-    execution_constraints={'cuda': FLOW_CUDA_EXECUTION})
+    execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
+    compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
+        devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
+        model_parameters=['source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
+            'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision']))
 
 # Source-qualified image families. Validation levels remain distinct: actual
 # tiny native CPU fixtures are not pretrained/GPU/quality acceptance.

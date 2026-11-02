@@ -22,7 +22,7 @@ def sequential_b1_oracle(state, feeds_by_rank, policy, seed):
     world = len(feeds_by_rank)
     device = next(student.parameters()).device
     assert world >= 2 and policy['fake_sample_policy'] == 'reuse_student'
-    assert policy['teacher_cfg'] == policy['fake_cfg'] == 1
+    assert policy['fake_cfg'] == 1
     losses = [{} for _ in feeds_by_rank]
     generated, masks, trace, stochastic = [], [], [], []
 
@@ -77,6 +77,10 @@ def sequential_b1_oracle(state, feeds_by_rank, policy, seed):
         noisy, sigma, _ = noised(rank, generated[-1], 'dmd.c0.noise')
         with torch.no_grad(), rank_scope(seed, 'dmd.c0.teacher', device, rank, world):
             teacher_velocity = teacher.denoise(noisy, sigma, feeds, conditional=True)
+            if policy['teacher_cfg'] != 1:
+                unconditional = teacher.denoise(noisy, sigma, feeds, conditional=False)
+                teacher_velocity = {key: unconditional[key] + policy['teacher_cfg'] * (value - unconditional[key])
+                                    for key, value in teacher_velocity.items()}
             teacher_x0 = {key: value - expand(sigma, value) * teacher_velocity[key] for key, value in noisy.items()}
         with torch.no_grad(), rank_scope(seed, 'dmd.c0.fake', device, rank, world):
             fake_velocity = fake.denoise(noisy, sigma, feeds, conditional=True)

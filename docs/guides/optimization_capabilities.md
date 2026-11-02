@@ -72,15 +72,15 @@ calibration.
 
 **All original roles are constructed before sharing.** The full construction
 must fit the target device; lower tracked live storage does not lower that peak.
-LTX remains single-device in its separate pinned runtime, with ≤16 layers
+LTX uses its separate pinned runtime, with ≤16 layers
 and video/audio attention widths ≤1024. All five adapters accept
 `model.parameters.compute_precision: "fp32"` or `"bf16-mixed"` on supported
 CPU/CUDA devices: native Transformer autocast keeps FP32 master/Adam/EMA state
 and flow/sampling math, without changing model-native norm/rotary precision.
 
-### Local-B1 image and video replicas
+### Local-B1 image, video and AV replicas
 
-FLUX/Qwen, Wan2.2 and HunyuanVideo use the same explicit replica contract:
+LTX, FLUX/Qwen, Wan2.2 and HunyuanVideo use the same explicit replica contract:
 CPU/Gloo or CUDA/NCCL, rank-strided distinct inputs, local B1 and global batch
 equal to world size. Every rank holds complete roles; gradients are averaged
 after backward and before clipping/Adam. This is not model sharding or DDP
@@ -89,7 +89,8 @@ compose with reference/direct-manual replicas; exact manual immutable sharing
 is applied inside each replica. Recovery requires the same topology and all
 rank shards. See the [replica configuration and launch sequence](../../recipes/flow_image/README.md#explicit-replicated-training-not-model-sharding),
 [Wan2.2](../../recipes/wan22_dmd/README.md) and
-[HunyuanVideo](../../recipes/hunyuan_video_dmd/README.md) recipes.
+[HunyuanVideo](../../recipes/hunyuan_video_dmd/README.md) and
+[LTX AV](../../recipes/ltx25/README.md#explicit-local-b1-replicas) recipes.
 
 ## Measured planning and clone safety
 

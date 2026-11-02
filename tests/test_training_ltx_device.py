@@ -59,10 +59,11 @@ def test_ltx_execution_constraints_are_declarative_and_cpu_discovery_stays_open(
     from distillschedule.training.catalog import resolve, validate_compatibility
     declaration = resolve('model', 'ltx25')
     assert declaration['execution_constraints']['cuda']['modes'] == ['reference', 'manual']
+    algorithm = {'factory': 'distillschedule.training.dmd:build_algorithm'}
     for mode in ('reference', 'auto', 'manual', 'plan'):
-        validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cpu'}, {'mode': mode})
-    validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, {'mode': 'reference'})
-    validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, CUDA_MANUAL)
+        validate_compatibility({'factory': declaration['factory']}, algorithm, {'device': 'cpu'}, {'mode': mode})
+    validate_compatibility({'factory': declaration['factory']}, algorithm, {'device': 'cuda:0'}, {'mode': 'reference'})
+    validate_compatibility({'factory': declaration['factory']}, algorithm, {'device': 'cuda:0'}, CUDA_MANUAL)
     for execution in CUDA_UNSUPPORTED:
         with pytest.raises(ValueError, match='CUDA execution requires'):
             validate_compatibility({'factory': declaration['factory']}, {}, {'device': 'cuda:0'}, execution)
@@ -76,14 +77,15 @@ def test_ltx_execution_constraints_are_declarative_and_cpu_discovery_stays_open(
 def test_ltx_rank_environment_rejected_before_source_or_allocation(monkeypatch, key, value):
     ltx = _forbid_source(monkeypatch)
     monkeypatch.setenv(key, value)
-    with pytest.raises(ValueError, match='single|one actual process|rank|distributed'):
+    with pytest.raises(ValueError, match='single|one actual process|rank|distributed|torchrun'):
         ltx.build_model(_parameters())
 
 
 def test_ltx_active_distributed_owner_rejected_before_source_or_allocation(monkeypatch):
     ltx = _forbid_source(monkeypatch)
     monkeypatch.setattr(torch.distributed, 'is_initialized', lambda: True)
-    with pytest.raises(ValueError, match='distributed'):
+    monkeypatch.setattr(torch.distributed, 'get_world_size', lambda: 2)
+    with pytest.raises(ValueError, match='distributed|torchrun'):
         ltx.build_model(_parameters())
 
 

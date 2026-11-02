@@ -1,6 +1,7 @@
 """Actual pinned LTX-2.5 AV models through the common training lifecycle.
 
-Explicit CPU/single-CUDA reference with FP32 state and optional native BF16 compute.
+Explicit CPU/CUDA reference or post-backward rank-local replicas, FP32 state
+and optional native BF16 compute.
 No LightX2V, architecture substitute,
 22B guessed defaults, online loader, new trainer or model-name solver branch.
 All media/text codecs are actual upstream classes; portable exports retain the
@@ -23,7 +24,7 @@ from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, resident_flow_state, native_compute_context
-from .single_device import FLOW_CUDA_EXECUTION, execution_policy_matches
+from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
 from .single_device import ResidentEMA as _ResidentEMA
 
 
@@ -36,8 +37,8 @@ CUDA_TRIAL_LIMIT = ('CUDA LTX trial cloning requires a capacity-bounded snapshot
                     'auto/plan/calibration and CUDA owner cloning remain unsupported')
 
 
-def _admit_device(parameters):
-    return admit_fp32(parameters, require=require)
+def _admit_device(parameters, *, allow_replicated=False):
+    return admit_fp32(parameters, require=require, allow_replicated=allow_replicated)
 
 
 class ResidentEMA(_ResidentEMA):
@@ -345,7 +346,8 @@ def _runtime():
     return {name: importlib.metadata.version(name) for name in ('torch', 'transformers', 'tokenizers', 'torchaudio')}
 
 
-def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas, compute_precision='fp32'):
+def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas,
+              compute_precision='fp32', replicated=False):
     from .ltx_media import encoding_sources
     metadata = dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
         architecture=deepcopy(architecture), media_architecture=deepcopy(media_architecture),
@@ -358,17 +360,30 @@ def _metadata(api, *, architecture, media_architecture, binding, trainable, gene
     if compute_precision != 'fp32':
         metadata.update(compute_precision=compute_precision, precision='BF16_AUTOCAST_FP32_STATE_SINGLE_DEVICE',
             scope='BOUNDED_CPU1_OR_CUDA1_REFERENCE; NO_DISTRIBUTED_OR_FULL_PRETRAINED_22B_CLAIM')
+    if replicated:
+        metadata.update(replication='EXPLICIT_EQUAL_RANK_LOCAL_B1_POST_BACKWARD_MEAN',
+            precision=('BF16_AUTOCAST_FP32_STATE' if compute_precision != 'fp32' else 'FP32_MATH_SDPA')
+                      + '_RANK_LOCAL_REPLICATED',
+            scope='BOUNDED_RANK_LOCAL_FULL_MODEL_REPLICAS; NO_SHARDING_OR_FULL_PRETRAINED_22B_CLAIM')
     return metadata
+
+
+def _training_placement(device, world):
+    # Checkpoint identity is global; actual CUDA index ownership is checked by
+    # admit_fp32. Different LOCAL_RANK indices must not split that identity.
+    return {'device': device.type if world > 1 else str(device), 'world_size': world, 'precision': 'FP32'}
 
 
 def build_model(parameters):
     from .dmd import sigmas, training_state
+    from .distributed import rank_world
     from .ltx_media import load_media, media_binding, strict_load, asset_file, place_module
     allowed = {'source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
                'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
             and allowed - {'seed', 'device', 'compute_precision'} <= parameters.keys(), 'complete explicit native LTX model parameters required')
-    device = _admit_device(parameters)
+    device = _admit_device(parameters, allow_replicated=True)
+    world = rank_world()[1]
     precision = parameters.get('compute_precision', 'fp32')
     native_compute_context(precision, device, require=require)
     require(type(parameters.get('seed', 0)) is int, 'explicit integer initialization seed required')
@@ -435,15 +450,16 @@ def build_model(parameters):
         immutable.extend(role+'.'+path+'.base' for path, module in state[role].named_modules()
                          if isinstance(module, TrainableLowRankLinear))
     metadata = _metadata(api, architecture=architecture, media_architecture=media.architecture, binding=binding,
-        trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision)
+        trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision, replicated=world > 1)
     metadata.update(asset_identity={**identity, 'roles': role_receipts},
-                    placement={'device': str(device), 'world_size': 1, 'precision': 'FP32'},
+                    placement=_training_placement(device, world),
                     optimizer_execution='NATIVE_ADAMW_CAPTURABLE' if device.type == 'cuda' else 'NATIVE_ADAMW_CPU',
                     evidence_kind=manifest['evidence_kind'],
                     optimizer='AdamW(beta=.9,.999; eps=1e-8; weight_decay=0); scheduler per ACTUAL role update',
                     ema_decay=parameters['ema_decay'])
     return ModelComponents(state=state, immutable_modules=tuple(immutable), metadata=metadata,
-        prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1'),
+        prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1',
+            *(('dmd_flow_private_replicated_b1_v1',) if world > 1 else ())),
         generate=generate, decode=media.decode, inference_projection=project_current_generator,
         admit_training=admit_training).validate()
 
@@ -451,16 +467,23 @@ def build_model(parameters):
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
     from .distributed import rank_world
     from distillschedule.data.ltx_inputs import SCHEMA
-    device = _admit_device({'device': request.trainer.get('device', 'cpu')})
-    require('distributed' not in request.trainer and rank_world()[1] == 1
-            and all(state[role].device == device for role in ('student', 'fake', 'teacher')),
-            'LTX requires matching single-device role ownership; distributed execution is not admitted')
+    device = _admit_device({'device': request.trainer.get('device', 'cpu')}, allow_replicated=True)
+    require(all(state[role].device == device for role in ('student', 'fake', 'teacher')),
+            'LTX requires matching rank-local role ownership')
     precision = request.model.get('parameters', {}).get('compute_precision', 'fp32')
     require(all(state[name].compute_precision == precision for name in ('student', 'fake', 'teacher')),
             'native role compute precision differs from the training request')
     require(state.get('flow_compute_precision', 'fp32') == precision,
             'native owned compute precision differs from the training request')
-    require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
+    if rank_world()[1] > 1:
+        require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
+                and request.data.get('sharding') == 'rank_strided',
+                'explicit distributed backend and rank_strided data required')
+        require(execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+                'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
+    else:
+        require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')
+        require(device.type != 'cuda' or execution_policy_matches(request.execution, FLOW_CUDA_EXECUTION), CUDA_TRIAL_LIMIT)
     require(request.execution.get('adapter', 'program') == 'program'
             and request.algorithm['factory'] == 'distillschedule.training.dmd:build_algorithm',
             'actual shared No-GAN flow DMD factory required, not official DMD2/GAN/Self-Forcing substitution')
