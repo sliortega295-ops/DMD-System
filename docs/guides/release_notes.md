@@ -55,9 +55,8 @@ see [installation](installation.md), [model families](model_families.md) and
 
 ## Usage and integration records
 
-- [Feature overview](../status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
 - [Supported models and execution](support_matrix.md)
 - [Training and checkpoint recovery](training.md)
 - [Official optimized workflow records](../status/official_optimized_framework.md)
-- [Detailed validation and migration records](validation_records_20261030.md)
+- [Performance and source records](performance_validation.md)
 - [Licenses and third-party notices](../../THIRD_PARTY.md)

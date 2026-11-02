@@ -88,12 +88,9 @@ A100/H100 recipe identities can be inspected with
 `distillctl workloads describe --workload Wn --hardware a100|h100`.
 Execution uses each recipe's device, dtype, topology and capacity settings.
 
-## Integration records
+## Results and verification
 
-- [Framework feature overview](../status/FRAMEWORK_MAIN_INTEGRATION_20261030.md)
-- [Official optimized 100-cycle, restart and generation records](../status/official_optimized_framework.md)
-- [Public resident lifecycle records](../status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md)
-- [Detailed model/backend validation records](validation_records_20261030.md)
-
-The detailed records retain the exact model sizes, source revisions and test
-conditions for the integrations listed here.
+- [Performance and source records](performance_validation.md)
+- [Official optimized training and recovery](../status/official_optimized_framework.md)
+- [Model environments and test lanes](model_families.md#verification-lanes)
+- [Public resident lifecycle](resident_owner_training.md)

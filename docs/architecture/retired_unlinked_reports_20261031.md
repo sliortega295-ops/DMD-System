@@ -1,9 +1,10 @@
-# Retired unlinked documentation snapshots (2026-10-31)
+# Retired documentation and helpers
 
-These fixed-date snapshots had no inbound references from the current checked-in source,
-guide, Skill index, test, packaging manifest or workflow when reviewed.
+The first group below contains unreferenced fixed-date snapshots. The second
+group consolidates earlier acceptance narratives into the maintained guides;
+incoming guide and packaging references were updated at retirement.
 They are not current operating instructions; the maintained [framework architecture](framework.md),
-[current guides](../README.md) and immutable machine receipts remain authoritative.
+[current guides](../guides/support_matrix.md) and immutable machine receipts remain authoritative.
 
 The original bytes remain recoverable from Git at
 [pre-cleanup main `447f261`](https://github.com/sliortega295-ops/DMD-System/tree/447f2613631a7271a0a4b294bc838df6ecdacd5e).
@@ -36,3 +37,25 @@ as a technique or any public runtime API.
 | --- | --- |
 | `scripts/distillschedule/critic_only_protocol.py` | `9a46b3a87c6367e937c9c877befde4583beea10fb41b064911e2ac44789b18f9` |
 | `scripts/distillschedule/compare_zero1_checkpoints.py` | `702ee0db15f57cbaaa566f6b1288102f83eba7ef0c2b3dbf7e4e92a24933e9f1` |
+
+## Consolidated acceptance narratives (2026-11-02)
+
+Current instructions and results are maintained in the [guides](../guides/support_matrix.md).
+The following duplicate/process reports are recoverable from
+[main `3ca90fa9`](https://github.com/sliortega295-ops/DMD-System/tree/3ca90fa91ca8e8bf433474c1acf3160ee1430635).
+Machine-readable evidence and historical source indexes remain in the repository.
+
+| Retired path | SHA-256 |
+| --- | --- |
+| `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md` | `4da6d516b8fa2a4539fce96a825d7861e3bb652e4f59a5c53cb69d94989e8aab` |
+| `docs/status/FRAMEWORK_CPU_ACCEPTANCE_20261021.md` | `e7e5aa0a3fbd672feb202a5a87cfade2df55b4b89104151198bf9baf36c90f1a` |
+| `docs/status/FRAMEWORK_LIVEWAN_REFERENCE_20261021.md` | `069ddce3fca685138890bbbd4c8e26e83a315ed10faa34ef59c00127d7e85a21` |
+| `docs/status/FRAMEWORK_MAIN_INTEGRATION_20261030.md` | `026a49a776ecec1ace27056d25cabaf6a08c4e918b26db42c0ba1168bded0c52` |
+| `docs/status/FRAMEWORK_MODEL_EXPANSION_CPU_20261023.md` | `c12a9d94877839069bf6407c739b35a54843d548fc62332758c96b9e399f4724` |
+| `docs/status/FRAMEWORK_NATIVE_LIFECYCLE_20261021.md` | `543e1e43482b6b12f3e2b32fb8218b7249ca3de67c319daa6eff3b3840f89725` |
+| `docs/status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md` | `35cc9d4b20e1f30a5f0c34b5ae6b54c4e5da4ef7dbd2c54555c96ea74225372b` |
+| `docs/status/H3_CURRENT_STUDENT_CPU_ACCEPTANCE_20261022.md` | `4b84367f19009e84cd9aa9cfac43471ccdeb8c9d821435cfd38ccfdd42354d1e` |
+| `docs/status/PLANNER_SCHEDULER_INTEGRATION_20261015.md` | `12f02b158e582e3e595d6c419bdf5cf289a41cae03e78c6b4fff2ea500a78808` |
+| `docs/status/WAN_ORIGINAL_CPU_ACCEPTANCE_20261023.md` | `ba36747a20a75c958034b8c2fa1f64f54691f55c004c989b7cbf600bb59596e4` |
+| `docs/status/WAN_PARAMETERIZED_BRIDGE_20261012.md` | `3e0c1a5937e9678692e32c87e0f5415f4ddfdf9ffc9a19270fb486dc9252997a` |
+| `docs/guides/validation_records_20261030.md` | `8f06613d6f324ae978d94c9bda9b0c9e1e964ca68afd67b03493e89423c800c2` |

@@ -10,8 +10,7 @@ finite fresh-data training, complete-cycle checkpoint and restart.
 preset `h3_fullseq.cpu_staged_trim.v1`: exactly two fixed-contract cycles with
 no checkpoint/resume interface.
 
-The legacy preset retains its recorded sampled-backward issue and native numerical check.
-This is a specific candidate limitation, not a verdict on every H3 path.
+The preset uses CPU-staged, trimmed FA3 checkpoint replay with native numerical checks.
 
 ## Inspect and run
 
@@ -33,12 +32,8 @@ native checkpoint export and new-process generation of AV tokens. Use
 [`export.native.template.json`](export.native.template.json) and a compatible
 codec manifest for decoded audio/video. This uses the W5 sampler, not W6's.
 
-## Results and historical comparison
+## Results
 
-See [current project performance and validation](../../docs/guides/performance_validation.md).
-The archived manual/saved-plan comparison at source
-`07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1` recorded
-`DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN`.
-Its record remains in `artifacts/publications/20261019/evidence/planner/six_workload_native_match.json`.
-The original-reference lifecycle and this legacy optimization candidate are
-separate implementations; the latter's runtime check remains active.
+[Performance and source records](../../docs/guides/performance_validation.md)
+include the full-sequence result and its baseline. The original-reference
+lifecycle and the two-cycle optimization preset retain separate configurations.

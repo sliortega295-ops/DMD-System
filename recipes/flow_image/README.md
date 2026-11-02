@@ -282,7 +282,7 @@ denoise methods do not pass through a role's `forward`; DDP-overlap wrappers,
 FSDP/HSDP, auto/saved-plan trials, autocast and unrelated caches remain explicitly
 refused. Construction still materializes all roles. Tiny-model replica tests
 cannot establish that pretrained 4B/20B configurations fit or converge; see the
-acceptance status (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
+acceptance status (source checkout: `docs/guides/performance_validation.md`).
 
 ## New input and portable output
 

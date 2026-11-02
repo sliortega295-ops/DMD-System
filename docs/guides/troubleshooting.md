@@ -33,20 +33,6 @@ operator's persistent storage unless transfer is actually required.
 
 ## A known distributed CPU qualification limit
 
-Hosted CI has observed a native child `SIGABRT` with
-`terminate called without an active exception`. It appeared in an HSDP parity
-test and, on another revision, a metadata-only collective worker. Unchanged local
-runs with native observation passed, but did **not** identify the hosted cause.
-This is not a verified framework fix, a proven infrastructure flake or evidence
-that a failed rank completed its assertions. No test is disabled to hide it.
-
-A useful diagnosis needs the first failing rank's stage and a native fatal-signal
-backtrace on the reproducing runtime. Python exit code0 elsewhere, normal local
-GDB runs, a different Torch version or an additional cleanup/barrier does not
-establish the cause. Preserve the original failed job and source identity.
-Published acceptance reports (source checkout: `docs/status/FRAMEWORK_ORIGINAL_CPU_ACCEPTANCE_20261022.md`)
-retain this limit rather than claiming universal hosted-CI success.
-
 ## Checkpoint versus inference weights
 
 A training checkpoint includes optimizer/scheduler/EMA, RNG, data progress and

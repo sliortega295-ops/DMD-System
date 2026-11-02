@@ -70,10 +70,10 @@ Grid1000 uses an approximate schedule; H3 AR keeps continuous sigma sampling.
 The [support matrix](docs/guides/support_matrix.md) distinguishes available
 execution paths and the scope of their tests.
 
-For official SD1.5 DMD2 and Self-Forcing, the
-[optimized training guide](docs/guides/official_optimized_training.md) includes
-reference/optimized configurations and source-bound performance results.
-Other recipes document their own configurations and measurements.
+The [performance overview](docs/guides/performance_validation.md) collects all six
+workloads, official DMD2/Self-Forcing and H100 results. Use the
+[native presets](docs/guides/native_presets.md) or
+[official optimized recipes](docs/guides/official_optimized_training.md) for direct training.
 
 ## Optimize an existing project with Codex
 

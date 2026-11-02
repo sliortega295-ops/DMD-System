@@ -350,7 +350,7 @@ shard** has been written and hashed. State I/O is separately recorded outside
 the original compute timer. A failed write is not a valid checkpoint.
 CPU tests exercise original dispatch/cursor logic and actual engine/Adam
 restart. W1's existing world16 two-cohort continuation and fresh-process
-restore are documented in the acceptance record (source checkout: `docs/status/FRAMEWORK_A100_ACCEPTANCE_20261024.md`).
+restore are documented in the acceptance record (source checkout: `docs/guides/performance_validation.md`).
 The original baseline/Resident 50-cycle training records are reused; only new
 output or lifecycle behavior needs additional checks, not another long run.
 

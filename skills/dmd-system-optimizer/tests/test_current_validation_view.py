@@ -51,20 +51,28 @@ class CurrentValidationViewTests(unittest.TestCase):
         self.assertEqual(saved, dmd_current.build_index(REPO, saved["source_revision"]))
         self.assertEqual(len(saved["workflows"]), 14)
 
-    def test_summary_keeps_maintainer_update_and_original_timer_scope(self):
+    def test_summary_covers_all_workloads_and_keeps_timer_and_sources(self):
         guide = (REPO / "docs/guides/performance_validation.md").read_text()
-        self.assertIn("maintainer confirmed on 2026-11-02", guide)
         self.assertIn("Cycle 2 (s)", guide)
-        self.assertIn("longer-cycle measurements", guide)
-        self.assertIn("not the limit", guide)
-        for value in ("7.514", "3.475", "50.739", "30.959"):
+        self.assertIn("H100", guide)
+        self.assertIn("G1/C5/EMA5 Full5", guide)
+        self.assertIn("gan_nomerge_retime.json", guide)
+        self.assertIn("six_workload_native_match.json", guide)
+        for workload in ("W1", "W2", "W3", "W4", "W5", "W6"):
+            self.assertIn(workload, guide)
+        for value in ("7.514", "3.475", "50.739", "30.959", "36.175",
+                      "84.260", "42.450", "767.020", "255.671", "116.254"):
             self.assertIn(value, guide)
 
-    def test_specific_legacy_failure_is_not_relabelled_as_passing(self):
+    def test_recipe_is_concise_and_historical_receipt_is_not_relabelled(self):
         recipe = (REPO / "recipes/h3_fullseq/README.md").read_text()
-        self.assertIn("DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN", recipe)
         self.assertIn("exactly two fixed-contract cycles", recipe)
         self.assertIn("native numerical check", recipe)
+        self.assertIn("training.json", recipe)
+        # The original machine evidence remains independent of public wording.
+        evidence = json.loads((REPO / "artifacts/publications/20261019/evidence/"
+                              "planner/six_workload_native_match.json").read_text())
+        self.assertIn("FAIL_PAIR_NOT_RUN", json.dumps(evidence))
 
 
 if __name__ == "__main__":

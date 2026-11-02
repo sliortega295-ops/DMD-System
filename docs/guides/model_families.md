@@ -109,7 +109,7 @@ image adapters write PNGs; video adapters write decoded frames; audio adapters
 write native-rate WAVs. Audio-video output includes both frame files and audio.
 Latent export retains an explicitly named native tensor layout.
 
-The [integration records](validation_records_20261030.md) link the model-specific
+The [performance and source records](performance_validation.md) link the model-specific
 source and execution checks, and the [official workflow records](../status/official_optimized_framework.md)
 cover continuous optimized training, recovery and new-input generation.
 
