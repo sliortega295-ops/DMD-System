@@ -42,6 +42,15 @@ investigate state-version, cache-lifetime and synchronization issues early.
 Do not run 100 steps solely because results differ bitwise. Profile again when
 the bottleneck changes or the measurement contradicts the hypothesis.
 
+For a new workload/setup, observe 3–4 consecutive complete cycles first, or reuse
+matching evidence that already compares Cycle 2 with later cycles. Once Cycle 2
+is representative, use Cycle 1 for warmup and Cycle 2 for quick comparisons.
+Cycle 2 alone does not establish steady state. Recheck later cycles when warmup
+behavior changes or timing is suspicious; confirm small/noise-sized gains with
+matched A/B repeats. Respect native cycle limits and resource caps. See the
+[cycle timing policy](references/experiment-protocol.md#cycle-2-timing) for scope
+and measurement details; use the existing runner, not a new timing service.
+
 Keep correct, reproducible 1% or smaller gains. Treat a single noisy pair as
 unresolved. Memory savings can remain optional with their latency tradeoff
 stated. Revert incorrect or clearly slower defaults, retain their results, and
