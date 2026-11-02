@@ -41,18 +41,25 @@ def select(candidates, *, max_states=50000, beam_width=0, timeout_seconds=60, pr
     require(type(timeout_seconds) in (float,int) and 0<timeout_seconds<=600,'invalid total search budget',path='search.service')
     ranked=[];rejected=[];pending=[]
     started=time.monotonic()
-    for candidate in candidates:
+    for index, candidate in enumerate(candidates):
         remaining=timeout_seconds-(time.monotonic()-started)
         if remaining<=0:
             pending.append(candidate.id);continue
+        # Reserve a share for every unvisited candidate. An expensive early
+        # layout must not consume the entire CPU planning budget before another
+        # executable layout gets a chance; unused time flows to later choices.
+        budget=remaining/(len(candidates)-index)
         c=candidate
+        candidate_started=time.monotonic()
         result=schedule_frontier(c.graph,c.rules,c.costs,states=c.states,lifetimes=c.lifetimes,
             memory_limits=c.memory_limits,max_states=max_states,beam_width=beam_width,
-            timeout_seconds=remaining,prune=prune)
+            timeout_seconds=budget,prune=prune)
         row={**result,'candidate_id':c.id,'implementation':dict(c.implementation),
-             'executable_backend':c.executable_backend}
+             'executable_backend':c.executable_backend,'candidate_budget_seconds':budget,
+             'candidate_search_seconds':time.monotonic()-candidate_started}
         (ranked if result['status']=='PASS_CPU_SCHEDULE' else rejected).append(row)
     ranked.sort(key=lambda r:(r['predicted_makespan_ns'],max(x['peak_bytes'] for x in r['memory']),r['candidate_id']))
     return {'status':'PLAN_FOUND' if ranked else 'NO_ADMITTED_PLAN', 'ranked':ranked,'rejected':rejected,
             'pending':pending,'candidate_count':len(candidates),'search_wall_seconds':time.monotonic()-started,
+            'budget_allocation':'equal_share_of_remaining_time',
             'scope':'backend_admitted_discrete_candidates','gpu_execution':'NOT_RUN_BY_SEARCH'}

@@ -23,6 +23,24 @@ def make(durations,pools,edges):
     return graph,bindings,costs
 
 
+def test_shared_search_budget_covers_later_candidates_when_first_uses_its_slice(monkeypatch):
+    from distillschedule.search import service
+    graph, rules, costs = make([1], [0], [])
+    candidates = [service.BoundCandidate(str(i), {}, graph, rules, costs, (), (), {0: 100}, 'cpu')
+                  for i in range(3)]
+    clock, budgets = [0.], []
+    monkeypatch.setattr(service.time, 'monotonic', lambda: clock[0])
+    def exhaust_slice(*args, **kwargs):
+        budget = kwargs['timeout_seconds']; budgets.append(budget); clock[0] += budget
+        return {'status': 'PASS_CPU_SCHEDULE', 'predicted_makespan_ns': 1,
+                'memory': [{'peak_bytes': 1}]}
+    monkeypatch.setattr(service, 'schedule_frontier', exhaust_slice)
+    result = service.select(candidates, timeout_seconds=60.)
+    assert [r['candidate_id'] for r in result['ranked']] == ['0', '1', '2']
+    assert budgets == [20., 20., 20.]
+    assert result['pending'] == [] and result['search_wall_seconds'] == 60.
+
+
 def serial_order_oracle(durations,pools,edges):
     # Independently enumerate every topological task order and apply resource
     # append scheduling. For these small resource-only, nonpreemptive fixtures,
