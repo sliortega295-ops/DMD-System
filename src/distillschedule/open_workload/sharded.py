@@ -78,14 +78,14 @@ class _FrozenRootHandoff:
                 local.untyped_storage().data_ptr(),
                 hashlib.sha256(local.detach().contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest())
 
-    def load(self, cls, base, spec, *, config_transform=None):
+    def load(self, cls, base, spec, *, config_transform=None, constant_materializer=None):
         checked(lambda: require(self.status == 'new',
             'frozen construction can load only one new root', path='open.fsdp'), 'frozen construction load ownership')
         from distillschedule.training.flow_image import _load_native_frozen_shards, _native_shard_constants
         self.status = 'loading'
         try:
             self.native, config = _load_native_frozen_shards(cls, base, spec, self.mesh,
-                                                            config_transform=config_transform)
+                config_transform=config_transform, constant_materializer=constant_materializer)
             from torch.distributed.fsdp import FSDPModule, fully_shard
             def bind_loaded():
                 require(type(self.native).__bases__ == (FSDPModule, cls)

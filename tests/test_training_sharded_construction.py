@@ -61,10 +61,12 @@ def _assets(root, family):
 def _build_model(parameters, *, construction=None):
     from distillschedule.training.low_rank import trainable_scope
     from distillschedule.training.single_device import construction_rng
-    cls, _ = _case(parameters['family'])
     scope = dict(mode='lora', rank=1, alpha=1., targets=['x_embedder'])
     roles = {}
     with construction_rng(torch.device('cpu'), parameters.get('seed', 0)):
+        # Actual lazy Diffusers resolution can consume Python RNG too. It is
+        # part of fixture construction, not something to exclude from the gate.
+        cls, _ = _case(parameters['family'])
         for name in ('student', 'fake', 'teacher'):
             if name == 'teacher' and construction is not None:
                 native, _ = construction.load_teacher(cls, parameters['assets'], parameters['spec']['teacher'])
@@ -110,17 +112,29 @@ def _admit(**kwargs):
 build_model.admit_construction = _admit
 
 
-def _observe_teacher_reads(patch, root):
+def _observe_teacher_reads(patch, root, *, construction_scope=False):
     import safetensors
     import safetensors.torch
     from torch.distributed.tensor import DTensor
     safe_open, load_file = safetensors.safe_open, safetensors.torch.load_file
     reads = []
+    active = [False]
+    if construction_scope:
+        load_teacher = flow_image._load_native_frozen_shards
+        def load_scoped(*args, **kwargs):
+            active[0] = True
+            try:
+                return load_teacher(*args, **kwargs)
+            finally:
+                active[0] = False
+        patch.setattr(flow_image, '_load_native_frozen_shards', load_scoped)
+    def teacher(path):
+        return active[0] if construction_scope else Path(path).parent == root / 'teacher'
     def open_local(path, *args, **kwargs):
         handle = safe_open(path, *args, **kwargs)
-        return _SafeOpen(handle, reads) if Path(path).parent == root / 'teacher' else handle
+        return _SafeOpen(handle, reads) if teacher(path) else handle
     def load_dense(path, *args, **kwargs):
-        assert Path(path).parent != root / 'teacher', 'Teacher read a full checkpoint payload'
+        assert not teacher(path), 'Teacher read a full checkpoint payload'
         return load_file(path, *args, **kwargs)
     def no_full(*args, **kwargs):
         raise AssertionError('construction or rejected handoff performed a full-tensor gather')
@@ -491,33 +505,191 @@ def test_asymmetric_cached_construction_mesh_rejected_before_new_cohort(tmp_path
              nprocs=2, join=True)
 
 
-def test_actual_flux2_public_factory_train_and_new_process_resume(tmp_path):
+def _logical_values(state):
+    from distillschedule.training.checkpoint import cpu_tree
+    # Physical classes/shadow envelopes differ by design; compare every logical
+    # parameter/buffer, optimizer slot, EMA entry, scheduler and native clock.
+    def logical(value):
+        if isinstance(value, torch.nn.Module):
+            result = dict(value.state_dict())
+            result.update(value.named_buffers())
+            # Dense place_module registers Qwen's plain complex constants;
+            # shard-first retains the upstream plain attributes. Compare both
+            # representations under the same names, never omit the constants.
+            for path, child in value.named_modules():
+                for name, tensor in vars(child).items():
+                    if type(tensor) is torch.Tensor:
+                        result[(path + '.' + name).lstrip('.')] = tensor
+            return dict(sorted(result.items()))
+        return dict(value) if isinstance(value, dict) else (
+            value.state_dict() if callable(getattr(value, 'state_dict', None)) else value)
+    return {key: cpu_tree(logical(value)) for key, value in state.items()}
+
+
+def _public_native_oracle_worker(rank, rendezvous, path):
+    from distillschedule.training.config import load_training_config
+    from distillschedule.training.session import construct, build_cycle, _construct_model, _model_parameters
+    from distillschedule.training.plugins import load_callable
+    from distillschedule.training.checkpoint import cpu_tree, rng_state
+    from distillschedule.open_workload.execution import ExecutionBackend
+    from flow_replica_oracle import sequential_b1_oracle, observe_gradients
+    from native_flow_replicated import _close, deterministic, _student_mean_norm
+    from torch.distributed.tensor import DTensor
+    deterministic()
+    _init(rank, rendezvous)
+    try:
+        request = load_training_config(path)
+        root = Path(path).parent
+        factory, source = load_callable(request.model['factory'])
+        with pytest.raises(ValueError, match='factory source changed'):
+            _construct_model(request, source={**source, 'sha256': '0' * 64})
+        parameters = _model_parameters(request)
+        provider = factory.admit_construction(parameters=parameters, request=request, budget=None)
+        before = rng_state(device='cpu')
+        try:
+            changed = {**parameters, 'seed': parameters['seed'] + 1}
+            with pytest.raises(ValueError, match='bound to effective parameters'):
+                provider.construct(factory, changed)
+            assert equal(before, rng_state(device='cpu'))
+        finally:
+            provider.close()
+        dense_model = deepcopy(request.model)
+        dense_model['parameters'].pop('construction')
+        reference = replace(request, model=dense_model, execution=dict(mode='reference'))
+        model, dataset, algorithm, _ = construct(reference)
+        initial, initial_rng = _logical_values(model.state), rng_state(device='cpu')
+        expected = []
+        for cycle in range(3):
+            w = build_cycle(reference, model, dataset, algorithm, cycle=cycle, cursor=cycle * 2 + rank)
+            indices = range(cycle * 2, cycle * 2 + 2)
+            feeds = [dataset.sample(index) for index in indices]
+            trace = sequential_b1_oracle(model.state, feeds, request.algorithm['parameters'], w.seed)
+            assert any(not equal(row['local'][0], row['local'][1]) for row in trace['gradients'])
+            assert not equal(trace['stochastic'][0][3], trace['stochastic'][1][3])
+            expected.append(dict(state=_logical_values(model.state), losses=trace['losses'],
+                gradients=[{key: value for key, value in row.items() if key != 'local'} for row in trace['gradients']],
+                sample_ids=[dataset.sample_id(index) for index in indices]))
+        assert any(_student_mean_norm(row['gradients']) > 0 for row in expected[1:])
+        del model, dataset, algorithm
+        reference_versions, receipts = [], []
+        for mode, config in (('reference', reference), ('construction', request)):
+            with pytest.MonkeyPatch.context() as patch:
+                reads = _observe_teacher_reads(patch, root, construction_scope=True)
+                model, dataset, algorithm, _ = construct(config)
+            current = _logical_values(model.state)
+            assert equal(initial, current), (mode, 'initial logical state',
+                [key for key in initial if not equal(initial[key], current[key])],
+                [(key, equal(value, current['teacher'].get(key))) for key, value in initial['teacher'].items()
+                 if not equal(value, current['teacher'].get(key))])
+            assert equal(initial_rng, rng_state(device='cpu')), (mode, 'initial outer RNG')
+            if mode == 'construction':
+                coverage = [None, None]
+                dist.all_gather_object(coverage, sum(row['elements'] for row in reads))
+                count = sum(p.numel() for p in model.state['teacher'].parameters())
+                assert reads and 0 < coverage[rank] < count and sum(coverage) == count
+                assert all(isinstance(p, DTensor) and not p.requires_grad for p in model.state['teacher'].parameters())
+                if model.state['student'].api.FAMILY == 'qwen-image':
+                    witness = model.metadata['construction']['constant_materialization']
+                    assert witness['callable'].endswith(':materialize_frozen_constants') and witness['code']
+            session, versions, handles = None, None, []
+            rows = []
+            for cycle, oracle in enumerate(expected):
+                w = build_cycle(config, model, dataset, algorithm, cycle=cycle, cursor=cycle * 2 + rank, versions=versions)
+                backend = ExecutionBackend(w)
+                if session is None:
+                    option = implementation() if mode == 'construction' else backend.inventory(1)['candidates'][0]
+                    if mode == 'construction':
+                        from distillschedule.open_workload.replicated import make_session
+                        with pytest.MonkeyPatch.context() as patch:
+                            def no_full(*args, **kwargs):
+                                raise AssertionError('rejected clone attempted a full-tensor gather')
+                            patch.setattr(DTensor, 'full_tensor', no_full)
+                            with pytest.raises(ValueError, match='cannot be cloned'):
+                                make_session(w, option, copy_state=True, persistent=True)
+                            if model.state['student'].api.FAMILY == 'qwen-image':
+                                native = model.state['teacher'].native
+                                constant = vars(native.pos_embed)['pos_freqs']
+                                saved = constant.clone()
+                                if rank == 0:
+                                    constant.real[0, 0] += .125
+                                try:
+                                    with pytest.raises(ValueError, match='constant values/layout changed'):
+                                        make_session(w, option, copy_state=False, persistent=True)
+                                finally:
+                                    constant.copy_(saved)
+                                original_class = type(native)
+                                if rank == 0:
+                                    native.__class__ = type('ForeignQwenOwner', (original_class,), {})
+                                try:
+                                    with pytest.raises(ValueError, match='class/MRO/method/state identity changed'):
+                                        make_session(w, option, copy_state=False, persistent=True)
+                                finally:
+                                    native.__class__ = original_class
+                    session = backend.session(option, copy_state=False, persistent=True)
+                    gradients, handles = observe_gradients(session)
+                else:
+                    session.bind_cycle(w, graph=backend.graph(option))
+                before, offset = rng_state(device='cpu'), len(gradients)
+                outputs = session.run()
+                model.state.update({key: session.state[key] for key in model.state})
+                versions = session.receipt['dispatcher']['final_versions']
+                _close(oracle['state'], _logical_values(model.state))
+                _close(oracle['losses'][rank], cpu_tree(outputs))
+                _close(oracle['gradients'], gradients[offset:])
+                assert equal(before, rng_state(device='cpu'))
+                assert dataset.sample_id(cycle * 2 + rank) == oracle['sample_ids'][rank]
+                assert model.state['dmd_counters'].tolist() == [cycle + 1, cycle + 1, 5 * (cycle + 1)]
+                if mode == 'reference':
+                    reference_versions.append(deepcopy(versions))
+                else:
+                    assert versions == reference_versions[cycle]
+                    assert session.effects['construction_owned_frozen_roots'] == ['teacher']
+                assert session.effects['lifecycle_installations'] == 1
+                rows.append(dict(cycle=cycle, sample_id=oracle['sample_ids'][rank], versions=versions))
+            for handle in handles:
+                handle.remove()
+            receipts.append(dict(mode=mode, cycles=rows, teacher_slice_reads=reads,
+                independent_loss_preclip_gradients_adam_scheduler_ema=True))
+            if model.close is not None:
+                model.close()
+        (root / f'oracle-{rank}.json').write_text(json.dumps(dict(records=receipts,
+            rank=rank, common_g1_f5=True, caller_rng_preserved=True, stale_source_provider_and_trials_rejected=True,
+            cuda_initialized=torch.cuda.is_initialized())))
+        assert not torch.cuda.is_initialized()
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('family', ['flux2-klein-base', 'qwen-image'])
+def test_actual_native_public_factory_train_and_new_process_resume(tmp_path, family):
     """Target gate: actual model/media/data factory, no fixture-role replacement."""
-    _case('flux2')  # Missing actual class is explicitly deferred, never substituted.
-    assert torch.__version__.split('+')[0] == '2.10.0', 'public FLUX.2 factory requires its existing pinned target lane'
+    assert torch.__version__.split('+')[0] == '2.10.0', 'public native factory requires its existing pinned target lane'
     from distillschedule.training.plugins import load_callable
     recipe = Path(__file__).resolve().parents[1] / 'recipes/flow_image/create_cpu_fixture.py'
     builder, _ = load_callable(str(recipe) + ':build_fixture')
-    assets = builder(tmp_path / 'native', 'flux2-klein-base', cycles=2, samples=4)
+    assets = builder(tmp_path / 'native', family, cycles=3, samples=6)
     raw = json.loads(assets['config'].read_text())
     raw['model']['parameters']['construction'] = CONSTRUCTION
     raw['data']['sharding'] = 'rank_strided'
     raw['trainer']['distributed'] = dict(backend='gloo', timeout_seconds=90)
     raw['execution'] = dict(mode='manual', implementation=implementation())
-    path = tmp_path / 'public.json'
+    folder = tmp_path / 'manual'
+    folder.mkdir()
+    path = folder / 'request.json'
     path.write_text(json.dumps(raw))
-    from native_flow_replicated import fresh_cli
-    for name, cycles, resume in (('whole', 2, None), ('partial', 1, None),
-                                ('resumed', 2, tmp_path / 'partial/checkpoints/cycle-000001')):
-        args = ['train', path, '--cycles', cycles, '--output', tmp_path / name]
+    mp.spawn(_public_native_oracle_worker, args=(str(tmp_path / 'oracle-rdzv'), str(path)), nprocs=2, join=True)
+    from native_flow_replicated import fresh_cli, verify_restart, portable_output
+    for name, cycles, resume in (('whole', 3, None), ('partial', 1, None),
+                                ('resumed', 3, folder / 'partial/checkpoints/cycle-000001')):
+        args = ['train', path, '--cycles', cycles, '--output', folder / name]
         if resume is not None:
             args += ['--resume', resume]
-        fresh_cli(path, tmp_path / (name + '.log'), 2, *args)
+        fresh_cli(path, folder / (name + '.log'), 2, *args)
     # The producer keeps identity in the common manifest, not each rank payload.
     # This parent is outside the two-rank group, so verify the published files
     # offline instead of asking the live-topology restart loader to impersonate it.
     import hashlib
-    checkpoints = [tmp_path / name / 'checkpoints/cycle-000002' for name in ('whole', 'resumed')]
+    checkpoints = [folder / name / 'checkpoints/cycle-000003' for name in ('whole', 'resumed')]
     manifests = []
     for checkpoint in checkpoints:
         manifest_bytes = (checkpoint / 'manifest.json').read_bytes()
@@ -530,21 +702,57 @@ def test_actual_flux2_public_factory_train_and_new_process_resume(tmp_path):
     assert equal({key: value for key, value in manifests[0].items() if key != 'files'},
                  {key: value for key, value in manifests[1].items() if key != 'files'})
     for rank in range(2):
-        whole, resumed = [torch.load(tmp_path / name / 'checkpoints/cycle-000002' /
+        whole, resumed = [torch.load(folder / name / 'checkpoints/cycle-000003' /
             f'rank-{rank:05d}.pt', weights_only=True) for name in ('whole', 'resumed')]
         assert equal(whole, resumed), 'complete rank payload after new-process restore'
-        summary = json.loads((tmp_path / 'resumed/summary.json').read_text())
+        summary = json.loads((folder / 'resumed/summary.json').read_text())
+        assert not (folder / f'resumed/ranks/rank-{rank:05d}/summary.json').exists()
         assert manifests[1]['identity'] == summary['identity']
         assert summary['status'] == 'COMPLETE' and summary['finite'] and summary['world_size'] == 2
         assert summary['identity']['model_metadata']['construction']['schema_version'] == CONSTRUCTION
         assert summary['policy']['implementation'] == implementation()
-        records = (tmp_path / f'resumed/ranks/rank-{rank:05d}/metrics.jsonl').read_text().splitlines()
+        records = (folder / f'resumed/ranks/rank-{rank:05d}/metrics.jsonl').read_text().splitlines()
         effects = json.loads(records[0])['execution']['effects']
         assert effects['construction_owned_frozen_roots'] == ['teacher']
         assert effects['lifecycle_installations'] == 1
         (tmp_path / f'public-proof-{rank}.json').write_text(json.dumps(dict(
-            actual_family='flux2-klein-base', public_cli_train=True, fresh_process=True,
+            actual_family=family, public_cli_train=True, fresh_process=True,
             state_rng_identity_policy_exact=True)))
+    checkpoint = verify_restart(tmp_path, 'manual', 2, shared_parameters=False)
+    fresh_cli(path, folder / 'export.log', 2, 'export', path, '--checkpoint', checkpoint, '--output', folder / 'export')
+    students = [torch.load(checkpoint / f'rank-{rank:05d}.pt', weights_only=True)['state']['student']['value']
+                for rank in range(2)]
+    checkpoint_student = {}
+    for key, value in students[0].items():
+        if isinstance(value, dict) and '_tensor_kind' in value:
+            assert value['layout']['mesh'] == [0, 1]
+            assert value['layout']['placements'] == [{'kind': 'shard', 'dim': 0}]
+            restored = torch.cat([row[key]['local'] for row in students], dim=0)
+            assert list(restored.shape) == value['layout']['shape']
+            checkpoint_student[key] = restored
+        else:
+            assert equal(value, students[1][key])
+            checkpoint_student[key] = value
+    # Neither new-prompt preparation nor generation can reload the training
+    # bundle/dataset; only the source-bound portable Student/media export exists.
+    retired = assets['root'].with_name('native-hidden')
+    assets['root'].rename(retired)
+    try:
+        generated = portable_output(path, tmp_path, 'manual', checkpoint_student=checkpoint_student)
+        from PIL import Image
+        with Image.open(generated['image']['path']) as image:
+            assert image.size == (8, 8) and image.mode == 'RGB'
+    finally:
+        retired.rename(assets['root'])
+    shard = checkpoint / 'rank-00001.pt'
+    hidden = shard.with_suffix('.hidden')
+    shard.rename(hidden)
+    try:
+        fresh_cli(path, folder / 'missing-shard.log', 2, 'train', path, '--cycles', 3,
+            '--resume', checkpoint, '--output', folder / 'must-not-exist', expected_error='shard')
+        assert not (folder / 'must-not-exist').exists()
+    finally:
+        hidden.rename(shard)
 
 
 def _disposal_worker(rank, rendezvous, directory, family, spec):
@@ -596,10 +804,11 @@ def test_default_dense_identity_retains_exact_legacy_model_code():
     assert model.sharded_construction is None and w.replica_semantics is None
 
 
+@pytest.mark.parametrize('factory', ['flux', 'qwen_image'])
 @pytest.mark.parametrize('fault', ['cuda', 'cuda_model', 'auto', 'hsdp', 'no_group', 'recipe', 'order', 'other_family'])
-def test_public_catalog_refuses_unsupported_construction_before_assets_or_cuda(fault):
+def test_public_catalog_refuses_unsupported_construction_before_assets_or_cuda(fault, factory):
     from distillschedule.training.catalog import validate_compatibility
-    model = dict(factory='distillschedule.training.flux:build_model',
+    model = dict(factory='distillschedule.training.' + factory + ':build_model',
                  parameters=dict(assets='/MUST-NOT-READ', construction=CONSTRUCTION))
     trainer = dict(device='cpu', distributed={'backend': 'gloo'})
     execution = dict(mode='manual', implementation=implementation())
@@ -618,7 +827,7 @@ def test_public_catalog_refuses_unsupported_construction_before_assets_or_cuda(f
     elif fault == 'order':
         execution['order'] = []
     else:
-        model['factory'] = 'distillschedule.training.qwen_image:build_model'
+        model['factory'] = 'distillschedule.training.wan22:build_model'
     with pytest.raises(ValueError, match='unsupported construction'):
         validate_compatibility(model, dict(factory='distillschedule.training.dmd:build_algorithm'), trainer, execution)
     assert not torch.cuda.is_initialized()

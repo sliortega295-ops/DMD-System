@@ -41,3 +41,24 @@ for rank-specific data/noise and complete same-topology checkpoint recovery.
 
 Follow the [shared executable recipe](../flow_image/README.md) with family
 `qwen-image`.
+
+## Opt-in frozen-Teacher shard-first construction
+
+`model.parameters.construction: "cpu-fsdp2-frozen-teacher-v1"` reuses the
+existing FLUX construction provider and local safetensor-slice loader. It
+requires CPU/Gloo, rank-strided local-B1 data and explicit manual
+`torch-callable-replicated-v1` / `fsdp2_reshard` execution: `bucket_cap_mb: 0`, local
+`torch-callable-resident-v1`, `share_immutable: false`, and empty
+`checkpoint_bindings`. Student/Fake dense initialization and LoRA draw order
+remain unchanged. Omitting `construction` retains the default dense path.
+
+Only the native frozen Teacher parameters are constructed on meta and loaded
+directly into local DTensor shards. Qwen's plain complex `pos_freqs` and
+`neg_freqs` are rebuilt by the actual CPU `QwenEmbedRope` constructor, with
+source/code/content hashes in the construction receipt. Unknown or class-owned
+constants, changed owners and unsupported layouts still reject. The common
+G1/F5 loss, masks, RNG, Adam, scheduler and full-parameter EMA are unchanged.
+
+Native two-rank CPU tests cover loss, pre-clip gradients, updates, exact
+fresh-process recovery and current-Student PNG output from a new prompt.
+Training assets are not required by the portable export.

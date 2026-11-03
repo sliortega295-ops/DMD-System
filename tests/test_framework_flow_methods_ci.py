@@ -303,6 +303,9 @@ NATIVE_LOADER_FILE = 'tests/test_training_flow_sharded_weight_loading.py'
 NATIVE_LOADER_PROOFS = [
     'test_actual_native_frozen_shard_loader_cpu2[flux2-float32]',
     'test_class_and_inherited_tensor_constants_rejected_without_descriptors_cpu2',
+    'test_actual_native_frozen_shard_loader_cpu2[qwen-image-float32]',
+    'test_qwen_materializer_retains_generic_owner_source_and_unknown_constant_guards_cpu2',
+    'test_native_shard_errors_are_collective_and_poison_unpublished_target[qwen-image]',
 ]
 
 
@@ -347,7 +350,7 @@ def test_native_shard_loader_ci_real_receipt_gate_refuses_false_green(tmp_path, 
 
 NATIVE_CONSTRUCTION_HANDOFF_LANE = {
     'flux2': ('modern-flow-cpu.yml', 'native-media-lifecycle',
-        'Actual FLUX2 construction-provider lifecycle and fresh-process restore',
+        'Actual image frozen-Teacher construction lifecycle and fresh-process restore',
         'flux2-construction-handoff-cpu.xml'),
 }
 NATIVE_CONSTRUCTION_HANDOFF_FILE = 'tests/test_training_sharded_construction.py'
@@ -355,17 +358,18 @@ NATIVE_CONSTRUCTION_HANDOFF_PROOFS = [
     'test_caller_pre_sharded_actual_native_root_still_rejected[flux2]',
     'test_public_provider_actual_native_teacher_adopt_update_and_new_process_restore[flux2]',
     'test_real_frozen_handoff_refusals_are_collective_before_gather_or_update[flux2]',
-    'test_actual_flux2_public_factory_train_and_new_process_resume',
+    'test_actual_native_public_factory_train_and_new_process_resume[flux2-klein-base]',
     'test_failed_new_construction_expires_unpublished_root_without_rebinding_live_state[flux2]',
     'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[native_forward-flux2]',
     'test_issued_native_and_child_forward_rebinding_rejected_before_signatures[child_forward-flux2]',
     'test_asymmetric_cached_construction_mesh_rejected_before_new_cohort[flux2]',
     'test_wrapped_custom_method_rebinding_rejected_before_update[wrapped_method-flux2]',
     'test_wrapped_custom_method_rebinding_rejected_before_update[installed_wrapped_method-flux2]',
+    'test_actual_native_public_factory_train_and_new_process_resume[qwen-image]',
 ]
 
 
-def test_native_construction_handoff_ci_reuses_modern_lane_and_requires_actual_flux2_proofs():
+def test_native_construction_handoff_ci_reuses_modern_lane_and_requires_actual_image_proofs():
     workflow, job, step, receipt = _lane('flux2', NATIVE_CONSTRUCTION_HANDOFF_LANE)
     _, original_job, _, _ = _lane('flux2-klein-base')
     assert job == original_job
@@ -407,4 +411,5 @@ def test_native_construction_handoff_ci_real_receipt_gate_refuses_false_green(tm
     """SYNTHETIC_TEST_ONLY metadata; not a new native model qualification."""
     _, _, step, receipt = _lane('flux2', NATIVE_CONSTRUCTION_HANDOFF_LANE)
     _assert_receipt_gate(tmp_path, step, receipt, NATIVE_CONSTRUCTION_HANDOFF_PROOFS, mutation,
-                         [name.replace('flux2', 'flux1') for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS])
+                         [name.replace('flux2', 'flux1').replace('qwen-image', 'unqualified-qwen')
+                          for name in NATIVE_CONSTRUCTION_HANDOFF_PROOFS])

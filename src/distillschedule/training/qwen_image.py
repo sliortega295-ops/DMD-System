@@ -5,6 +5,8 @@ Qwen2.5-VL model. Native CFG norm-rescaling is NOT the common algorithm's linear
 CFG; the first admitted recipe therefore requires teacher_cfg=fake_cfg=1.
 """
 from copy import deepcopy
+import inspect
+from pathlib import Path
 import sys
 
 import torch
@@ -34,6 +36,42 @@ def transformer_config(config):
         # field as unused. No model parameter/input consumes it.
         require(type(value) is int and value == 768, 'unsupported historical Qwen pooled_projection_dim metadata')
     return result
+
+
+def materialize_frozen_constants(model, config):
+    """Re-run only the pinned native RoPE constructor, not transformer weights."""
+    import hashlib
+    from diffusers.models.transformers.transformer_qwenimage import QwenEmbedRope
+    from distillschedule.workloads.best_known.registry import file_sha256
+    native = classes()[0]
+    rope = model.get_submodule('pos_embed')
+    require(type(model) is native and type(rope) is QwenEmbedRope
+            and inspect.getfile(QwenEmbedRope) == inspect.getfile(native)
+            and not rope._parameters and not rope._buffers and not rope._modules
+            and 'forward' not in vars(rope) and 'rope_params' not in vars(rope),
+            'frozen Qwen constants require the exact native transformer/RoPE classes')
+    axes = list(model.config.axes_dims_rope)
+    require(rope.theta == 10000 and rope.axes_dim == axes and rope.scale_rope is True
+            and config.get('use_layer3d_rope', False) is False
+            and {name for name, value in vars(rope).items() if isinstance(value, torch.Tensor)}
+                == {'pos_freqs', 'neg_freqs'}, 'unsupported frozen Qwen RoPE configuration/constants')
+    # Use the real source-bound constructor with its original theta, axes and
+    # scale. Plain complex attributes are intentional upstream, not buffers:
+    # converting them with Module.float/to would discard their imaginary part.
+    with torch.device('cpu'):
+        concrete = QwenEmbedRope(theta=rope.theta, axes_dim=deepcopy(axes), scale_rope=rope.scale_rope)
+    constants = {}
+    for name in ('pos_freqs', 'neg_freqs'):
+        old, value = vars(rope)[name], vars(concrete)[name]
+        require(type(old) is torch.Tensor and old.is_meta and not old.requires_grad
+                and type(value) is torch.Tensor and value.device.type == 'cpu'
+                and value.dtype == old.dtype == torch.complex64 and value.shape == old.shape
+                and torch.isfinite(value).all(), 'unsupported frozen Qwen rotary constant layout')
+        setattr(rope, name, value)
+        constants['pos_embed.' + name] = dict(shape=list(value.shape), dtype=str(value.dtype),
+            sha256=hashlib.sha256(value.contiguous().reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest())
+    return dict(native_class=native.__module__ + '.' + native.__qualname__,
+                source_sha256=file_sha256(Path(inspect.getfile(QwenEmbedRope))), constants=constants)
 
 
 def validate_architecture(config, media):
@@ -136,6 +174,17 @@ class Role(common.ImageRole):
 
 def build_model(parameters):
     return common.build_family(parameters, sys.modules[__name__])
+
+
+def _build_owned(parameters, *, construction):
+    return common.build_family(parameters, sys.modules[__name__], construction=construction)
+
+
+def _admit_construction(**kwargs):
+    return common.admit_frozen_teacher_construction(**kwargs, factory=build_model, builder=_build_owned)
+
+
+build_model.admit_construction = _admit_construction
 
 
 def build_inference_model(parameters):

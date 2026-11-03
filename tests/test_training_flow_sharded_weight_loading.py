@@ -17,6 +17,11 @@ pytestmark = pytest.mark.skipif(os.environ.get('DMD_MODERN_FLOW_CPU') != '1',
 
 def _case(family):
     import diffusers
+    if family == 'qwen-image':
+        return diffusers.QwenImageTransformer2DModel, dict(patch_size=2, in_channels=16, out_channels=4,
+            num_layers=1, num_attention_heads=2, attention_head_dim=16, joint_attention_dim=16,
+            axes_dims_rope=[4, 6, 6], guidance_embeds=False, zero_cond_t=False,
+            use_additional_t_cond=False, use_layer3d_rope=False)
     if family == 'flux2':
         cls = getattr(diffusers, 'Flux2Transformer2DModel', None)
         if cls is None:
@@ -35,6 +40,11 @@ def _case(family):
 
 def _arguments(family):
     import torch
+    if family == 'qwen-image':
+        return dict(hidden_states=torch.linspace(-.5, .5, 64).reshape(1, 4, 16),
+            encoder_hidden_states=torch.linspace(-.2, .7, 48).reshape(1, 3, 16),
+            encoder_hidden_states_mask=torch.tensor([[True, True, False]]),
+            timestep=torch.tensor([.4]), img_shapes=[[(1, 2, 2)]], guidance=None, return_dict=False)
     if family == 'flux2':
         return dict(hidden_states=torch.linspace(-.5, .5, 64).reshape(1, 4, 16),
             encoder_hidden_states=torch.linspace(-.2, .7, 144).reshape(1, 3, 48),
@@ -177,7 +187,12 @@ def _happy_worker(rank, root, family, spec):
         before = rng_state(device='cpu')
         with pytest.MonkeyPatch.context() as patch:
             reads, owners = _observe(patch)
-            model, actual_raw = _load_native_frozen_shards(cls, root, spec, mesh)
+            materializer = None
+            if family == 'qwen-image':
+                from distillschedule.training.qwen_image import materialize_frozen_constants
+                materializer = materialize_frozen_constants
+            model, actual_raw = _load_native_frozen_shards(cls, root, spec, mesh,
+                constant_materializer=materializer)
             assert actual_raw == raw and len(owners) == 1 and owners[0][0] is model
             _assert_rng(before)
             assert not model.training and all(not p.requires_grad and p.grad is None for p in model.parameters())
@@ -190,10 +205,18 @@ def _happy_worker(rank, root, family, spec):
                 assert torch.equal(p.to_local(), dense.state_dict()[name][slices])
                 empty |= p.to_local().numel() == 0
                 uneven |= p.shape[0] % 2 != 0
-            assert reads and uneven
+            assert reads
+            if family != 'qwen-image':
+                assert uneven
+            if family == 'qwen-image':
+                for name in ('pos_freqs', 'neg_freqs'):
+                    assert torch.equal(vars(model.pos_embed)[name], vars(dense.pos_embed)[name])
+                assert model._native_shard_constant_materialization['witness']['constants'].keys() == {
+                    'pos_embed.pos_freqs', 'pos_embed.neg_freqs'}
             coverage = [None, None]
             dist.all_gather_object(coverage, dict(elements=sum(r['elements'] for r in reads), empty=empty))
-            assert any(row['empty'] for row in coverage)
+            if family != 'qwen-image':
+                assert any(row['empty'] for row in coverage)
             assert sum(row['elements'] for row in coverage) == sum(v.numel() for v in dense.state_dict().values())
             with torch.no_grad():
                 actual = model(**_arguments(family))[0]
@@ -208,14 +231,14 @@ def _happy_worker(rank, root, family, spec):
 
 
 @pytest.mark.parametrize('dtype', ['float32', 'bfloat16'])
-@pytest.mark.parametrize('family', ['flux1', 'flux2'])
+@pytest.mark.parametrize('family', ['flux1', 'flux2', 'qwen-image'])
 def test_actual_native_frozen_shard_loader_cpu2(tmp_path, family, dtype):
     import torch.multiprocessing as mp
     spec = _checkpoint(tmp_path, family, dtype)
     mp.spawn(_happy_worker, args=(str(tmp_path), family, spec), nprocs=2, join=True)
 
 
-@pytest.mark.parametrize('family', ['flux1', 'flux2'])
+@pytest.mark.parametrize('family', ['flux1', 'flux2', 'qwen-image'])
 def test_default_native_load_constructor_rng_and_failure_unchanged(tmp_path, family):
     import torch
     from safetensors.torch import load_file, save_file
@@ -258,6 +281,10 @@ def _failure_worker(rank, root, family, jobs):
     try:
         mesh = init_device_mesh('cpu', (2,))
         cls, _ = _case(family)
+        materializer = None
+        if family == 'qwen-image':
+            from distillschedule.training.qwen_image import materialize_frozen_constants
+            materializer = materialize_frozen_constants
         rows = []
         for kind, choices in jobs.items():
             spec = choices[rank]
@@ -282,7 +309,8 @@ def _failure_worker(rank, root, family, jobs):
                     original_hash = flow_image.file_sha256
                     patch.setattr(flow_image, 'file_sha256', lambda path: '0' * 64 if owners else original_hash(path))
                 with pytest.raises(ValueError, match='rank failures|ranks.*differ') as failure:
-                    _load_native_frozen_shards(cls, root, spec, selected_mesh, config_transform=transform)
+                    _load_native_frozen_shards(cls, root, spec, selected_mesh, config_transform=transform,
+                        constant_materializer=materializer)
                 if kind == 'asymmetric-placement':
                     assert 'unsupported actual native shard mesh/placement' in str(failure.value)
                 _assert_rng(before)
@@ -294,7 +322,8 @@ def _failure_worker(rank, root, family, jobs):
                 rows.append(dict(kind=kind, error=str(failure.value), reads=len(reads), poisoned=len(owners)))
             # All ranks reach this after each failure; no rank is left in FSDP collectives.
             dist.barrier()
-        model, _ = _load_native_frozen_shards(cls, root, jobs['asymmetric-io'][rank], mesh)
+        model, _ = _load_native_frozen_shards(cls, root, jobs['asymmetric-io'][rank], mesh,
+            constant_materializer=materializer)
         with torch.no_grad():
             assert bool(torch.isfinite(model(**_arguments(family))[0]).all())
         (root / f'failures-rank-{rank}.json').write_text(json.dumps(rows, indent=2))
@@ -303,7 +332,7 @@ def _failure_worker(rank, root, family, jobs):
         dist.destroy_process_group()
 
 
-@pytest.mark.parametrize('family', ['flux1', 'flux2'])
+@pytest.mark.parametrize('family', ['flux1', 'flux2', 'qwen-image'])
 def test_native_shard_errors_are_collective_and_poison_unpublished_target(tmp_path, family):
     from copy import deepcopy
     import shutil
@@ -312,7 +341,10 @@ def test_native_shard_errors_are_collective_and_poison_unpublished_target(tmp_pa
     from safetensors.torch import load_file, save_file
     good = _checkpoint(tmp_path, family)
     jobs = {}
-    for kind in ('wronghash', 'shape', 'dtype', 'missing', 'nonfinite', 'asymmetric-io',
+    escaped = deepcopy(good)
+    escaped['path'] = '..'
+    jobs['foreign-root'] = [good, escaped]
+    for kind in ('wronghash', 'shape', 'dtype', 'missing', 'missing-file', 'nonfinite', 'asymmetric-io',
                  'asymmetric-mesh', 'asymmetric-placement', 'asymmetric-rehash', 'asymmetric-effective-config'):
         if kind.startswith('asymmetric-'):
             jobs[kind] = [good, good]
@@ -322,6 +354,11 @@ def test_native_shard_errors_are_collective_and_poison_unpublished_target(tmp_pa
         path = next(target.glob('*.safetensors'))
         payload = load_file(path)
         key = next(iter(payload))
+        if kind == 'missing-file':
+            bad = _spec(tmp_path, target)
+            path.unlink()
+            jobs[kind] = [good, bad]
+            continue
         if kind == 'wronghash':
             bad = deepcopy(good)
             bad['files'][path.name] = '0' * 64
@@ -341,6 +378,84 @@ def test_native_shard_errors_are_collective_and_poison_unpublished_target(tmp_pa
         bad = _spec(tmp_path, target)
         jobs[kind] = [bad, bad] if kind == 'nonfinite' else [good, bad]
     mp.spawn(_failure_worker, args=(str(tmp_path), family, jobs), nprocs=2, join=True)
+
+
+def _qwen_constant_guard_worker(rank, root, spec):
+    import torch
+    import torch.distributed as dist
+    from torch.distributed.device_mesh import init_device_mesh
+    from diffusers.models.transformers.transformer_qwenimage import QwenEmbedRope
+    from distillschedule.training.qwen_image import materialize_frozen_constants
+    from distillschedule.training.flow_image import _load_native_frozen_shards
+    from distillschedule.training.checkpoint import rng_state
+    root = Path(root)
+    _init(rank, root)
+    try:
+        mesh = init_device_mesh('cpu', (2,))
+        cls, _ = _case('qwen-image')
+        receipts = []
+        for kind, message in (
+                ('foreign-root', 'exact native transformer/RoPE'),
+                ('foreign-rope', 'exact native transformer/RoPE'),
+                ('unknown-meta', 'configuration/constants'),
+                ('unknown-container', 'tensor container'),
+                ('class-owned', 'class-owned native tensor'),
+                ('parameter', 'Parameter ownership/layout'),
+                ('dense-parameter', 'Parameter ownership/layout'),
+                ('forward', 'modules or forwards'),
+                ('module', 'modules or forwards'),
+                ('buffer', 'registered buffers'),
+                ('config', 'changed config or code'),
+                ('native-config', 'changed config or code'),
+                ('asymmetric-source', 'ranks differ in native frozen shard source/layout')):
+            def materialize(model, config):
+                import torch
+                from distillschedule.training.qwen_image import materialize_frozen_constants
+                if kind == 'foreign-root':
+                    model.__class__ = type('ForeignQwen', (type(model),), {})
+                elif kind == 'foreign-rope':
+                    model.pos_embed.__class__ = type('ForeignRope', (type(model.pos_embed),), {})
+                elif kind == 'unknown-meta':
+                    model.pos_embed.foreign_constant = torch.empty(1, device='meta')
+                elif kind == 'unknown-container':
+                    model.pos_embed.foreign_constant = [torch.empty(1, device='meta')]
+                witness = materialize_frozen_constants(model, config)
+                if kind in ('parameter', 'dense-parameter'):
+                    model.proj_out.weight = torch.nn.Parameter(torch.empty_like(model.proj_out.weight,
+                        device='cpu' if kind == 'dense-parameter' else 'meta'))
+                elif kind == 'forward':
+                    model.proj_out.forward = lambda value: value
+                elif kind == 'module':
+                    model.transformer_blocks[0] = torch.nn.Identity()
+                elif kind == 'buffer':
+                    model.register_buffer('foreign_buffer', torch.ones(1))
+                elif kind == 'config':
+                    config['guidance_embeds'] = True
+                elif kind == 'native-config':
+                    model.register_to_config(guidance_embeds=True)
+                return witness
+            before = rng_state(device='cpu')
+            with pytest.MonkeyPatch.context() as patch:
+                reads, owners = _observe(patch)
+                if kind == 'class-owned':
+                    patch.setattr(QwenEmbedRope, 'foreign_constant', torch.ones(1), raising=False)
+                hook = materialize_frozen_constants if kind == 'asymmetric-source' and rank == 0 else materialize
+                with pytest.raises(ValueError, match=message) as failure:
+                    _load_native_frozen_shards(cls, root, spec, mesh, constant_materializer=hook)
+                assert not reads and not owners, 'bad constants must reject before FSDP allocation/payload loading'
+                _assert_rng(before)
+                receipts.append(dict(kind=kind, error=str(failure.value), payload_reads=len(reads)))
+            dist.barrier()
+        (root / f'qwen-constants-refused-{rank}.json').write_text(json.dumps(receipts, indent=2))
+        assert not torch.cuda.is_initialized()
+    finally:
+        dist.destroy_process_group()
+
+
+def test_qwen_materializer_retains_generic_owner_source_and_unknown_constant_guards_cpu2(tmp_path):
+    import torch.multiprocessing as mp
+    spec = _checkpoint(tmp_path, 'qwen-image')
+    mp.spawn(_qwen_constant_guard_worker, args=(str(tmp_path), spec), nprocs=2, join=True)
 
 
 def _slot_class():

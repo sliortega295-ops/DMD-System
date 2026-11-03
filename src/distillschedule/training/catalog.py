@@ -193,7 +193,8 @@ register_model('ltx25', factory='distillschedule.training.ltx:build_model',
 for _name, _module, _model_id, _revision, _construction in (
     ('flux2-klein-base', 'flux', 'black-forest-labs/FLUX.2-klein-base-4B', 'a3b4f4849157f664bdbc776fd7453c2783562f4d',
      dict(recipe=FROZEN_TEACHER_CONSTRUCTION, device='cpu', backend='gloo', execution=FLOW_FROZEN_TEACHER_EXECUTION)),
-    ('qwen-image', 'qwen_image', 'Qwen/Qwen-Image', '75e0b4be04f60ec59a75f475837eced720f823b6', None),
+    ('qwen-image', 'qwen_image', 'Qwen/Qwen-Image', '75e0b4be04f60ec59a75f475837eced720f823b6',
+     dict(recipe=FROZEN_TEACHER_CONSTRUCTION, device='cpu', backend='gloo', execution=FLOW_FROZEN_TEACHER_EXECUTION)),
 ):
     register_model(_name, factory='distillschedule.training.' + _module + ':build_model',
         capabilities=('image', 'flow', 'lora', 'dmd_flow_v1'),

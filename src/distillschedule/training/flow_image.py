@@ -57,8 +57,9 @@ class _FrozenTeacherConstruction:
             self.close()
             raise
 
-    def load_teacher(self, cls, base, spec, *, config_transform=None):
-        return self.handoff.load(cls, base, spec, config_transform=config_transform)
+    def load_teacher(self, cls, base, spec, *, config_transform=None, constant_materializer=None):
+        return self.handoff.load(cls, base, spec, config_transform=config_transform,
+                                 constant_materializer=constant_materializer)
 
     def wrap_teacher(self, role_class, **kwargs):
         def construct_root():
@@ -90,6 +91,9 @@ class _FrozenTeacherConstruction:
                 teacher_constructor_rng='NOT_DENSE_CONSTRUCTOR_STREAM_EQUIVALENCE',
                 caller_training_rng='PRESERVED_BY_CONSTRUCTION_SCOPE',
                 scope='CPU_GLOO_1D_MANUAL_ONLY_NOT_ALL_ROLE_MEMORY_SOLVED')}
+            materialization = getattr(self.handoff.native, '_native_shard_constant_materialization', None)
+            if materialization is not None:
+                components.metadata['construction']['constant_materialization'] = deepcopy(materialization)
             self.components = components
             self.attached = True
         self.local(admit, 'frozen Teacher construction attachment')
@@ -426,7 +430,63 @@ def _unpublished_native_shard_forward(module, inputs):
     require(module._native_shard_load_status == 'ready', 'frozen shard construction not published; discard owner')
 
 
-def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
+def _materialize_native_constants(model, config, materializer):
+    """A trusted model hook may initialize plain meta constants, never owners.
+
+    The ordinary constant scanner still runs afterward, including its refusal
+    of class-owned tensors, containers and any unrecognized meta state.
+    """
+    from distillschedule.open_workload.torch_backend import code_signature
+    require(inspect.isfunction(materializer), 'native constant materializer must be an inspectable model function')
+    code = code_signature(materializer)
+    modules = dict(model.named_modules())
+    forwards = {name: (type(child), type(child).forward, vars(child).get('forward'), child.training)
+                for name, child in modules.items()}
+    parameters = dict(model.named_parameters(remove_duplicate=False))
+    layouts = {name: (tuple(p.shape), tuple(p.stride()), p.dtype, p.device, p.requires_grad, p.grad is None)
+               for name, p in parameters.items()}
+    buffers = {name: (value, value.detach().clone()) for name, value in model.named_buffers(remove_duplicate=False)}
+    attributes = {(name, key): value for name, child in modules.items()
+                  for key, value in vars(child).items() if isinstance(value, torch.Tensor)}
+    concrete = {key: value.detach().clone() for key, value in attributes.items() if not value.is_meta}
+    constant_layouts = {key: (tuple(value.shape), tuple(value.stride()), value.dtype, value.is_meta)
+                        for key, value in attributes.items()}
+    configuration = deepcopy(config)
+    native_config = deepcopy(dict(model.config)) if hasattr(model, 'config') else None
+    witness = materializer(model, configuration)
+    require(configuration == config and code_signature(materializer) == code
+            and (dict(model.config) if hasattr(model, 'config') else None) == native_config,
+            'native constant materializer changed config or code')
+    actual = dict(model.named_modules())
+    require(actual.keys() == modules.keys() and all(actual[name] is child and
+            (type(child), type(child).forward, vars(child).get('forward'), child.training) == forwards[name]
+            for name, child in modules.items()), 'native constant materializer changed modules or forwards')
+    actual = dict(model.named_parameters(remove_duplicate=False))
+    require(actual.keys() == parameters.keys() and all(actual[name] is p and p.is_meta and
+            (tuple(p.shape), tuple(p.stride()), p.dtype, p.device, p.requires_grad, p.grad is None) == layouts[name]
+            for name, p in parameters.items()), 'native constant materializer changed Parameter ownership/layout')
+    actual = dict(model.named_buffers(remove_duplicate=False))
+    require(actual.keys() == buffers.keys() and all(actual[name] is value and
+            value.shape == saved.shape and value.stride() == saved.stride()
+            and value.dtype == saved.dtype and value.device == saved.device
+            and (value.is_meta or torch.equal(value, saved)) for name, (value, saved) in buffers.items()),
+            'native constant materializer changed registered buffers')
+    actual = {(name, key): value for name, child in modules.items()
+              for key, value in vars(child).items() if isinstance(value, torch.Tensor)}
+    require(actual.keys() == attributes.keys() and all(
+            (tuple(value.shape), tuple(value.stride()), value.dtype) == constant_layouts[key][:3]
+            and (constant_layouts[key][3] or (value is attributes[key] and torch.equal(value, concrete[key])))
+            for key, value in actual.items()),
+            'native constant materializer changed plain constant inventory/layout')
+    # Only JSON data crosses publication. Source identity is included even when
+    # a model hook returns the same values through different implementation code.
+    witness = json.loads(json.dumps(witness, allow_nan=False))
+    require(isinstance(witness, dict) and witness, 'native constant materializer needs an observable witness')
+    model._native_shard_constant_materialization = dict(
+        callable=materializer.__module__ + ':' + materializer.__qualname__, code=code, witness=witness)
+
+
+def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None, constant_materializer=None):
     """Internal CPU/Gloo construction-owned frozen native FSDP loading seam.
 
     The only target is constructed here: no caller module, optimizer, EMA,
@@ -450,6 +510,7 @@ def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
     from torch.distributed.tensor._utils import compute_local_shape_and_global_offset
     from distillschedule.open_workload.replicated import checked, gather
     from .checkpoint import rng_state, restore_rng
+    from distillschedule.open_workload.torch_backend import code_signature
 
     require(dist.is_initialized() and dist.get_world_size() >= 2 and dist.get_backend() == 'gloo',
             'frozen native shard construction requires an existing CPU/Gloo world')
@@ -471,11 +532,15 @@ def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
         root, source = checked(admit, 'native frozen shard source admission')
         model, config, effective_config, layout, alias_groups, rename, weights, headers = source
         dtype_policy = spec.get('dtype_policy', 'strict_fp32')
+        materializer_code = checked(lambda: None if constant_materializer is None else code_signature(constant_materializer),
+                                    'native frozen constant materializer source')
         identity = dict(cls=cls.__module__ + '.' + cls.__qualname__, config=config,
             effective_config=effective_config, files=spec['files'],
             budget=spec['max_parameters'], dtype_policy=dtype_policy,
             layout={key: (list(value.shape), str(value.dtype)) for key, value in layout.items()},
             aliases=sorted(sorted(group) for group in alias_groups))
+        if materializer_code is not None:
+            identity['constant_materializer'] = materializer_code
         identities = gather(checked(lambda: fingerprint(identity), 'native frozen shard identity'))
         require(all(value == identities[0] for value in identities), 'ranks differ in native frozen shard source/layout')
 
@@ -483,6 +548,8 @@ def _load_native_frozen_shards(cls, base, spec, mesh, *, config_transform=None):
             parameters = dict(model.named_parameters(remove_duplicate=False))
             require(parameters.keys() == layout.keys() and all(p.is_meta and p.ndim > 0 for p in parameters.values()),
                     'frozen shard target requires meta Parameters only; persistent buffers/scalars unsupported')
+            if constant_materializer is not None:
+                _materialize_native_constants(model, effective_config, constant_materializer)
             constants = _native_shard_constants(model)
             model.eval().requires_grad_(False)
             model._native_shard_load_status = 'constructing'
@@ -871,7 +938,8 @@ def build_family(parameters, api, *, construction=None):
                 # random draws remain in their original exact order.
                 native, current = construction.load_teacher(native_cls,
                     Path(parameters['assets']).resolve().parent, manifest['roles'][role],
-                    config_transform=getattr(api, 'transformer_config', None))
+                    config_transform=getattr(api, 'transformer_config', None),
+                    constant_materializer=getattr(api, 'materialize_frozen_constants', None))
             else:
                 native, current = local(lambda: load_native(native_cls, roots[role], manifest['roles'][role]['max_parameters'],
                     dtype_policy=manifest['roles'][role].get('dtype_policy', 'strict_fp32'),

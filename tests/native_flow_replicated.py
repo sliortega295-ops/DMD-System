@@ -276,7 +276,7 @@ def fresh_cli(config, output, ranks, *args, expected_error=None):
         assert result.returncode == 0, result.stdout + result.stderr
 
 
-def verify_restart(root, mode, world):
+def verify_restart(root, mode, world, *, shared_parameters=None):
     """Read every rank shard; never infer success from rank zero alone."""
     from distillschedule.data import PreparedDataset
     folder = Path(root)/mode
@@ -294,7 +294,8 @@ def verify_restart(root, mode, world):
         for row in rows:
             effects = row['execution']['effects']
             assert effects['lifecycle_installations'] == 1 and effects['replica_state_consensus']
-            assert (effects['shared_parameter_aliases'] > 0) == (mode == 'manual')
+            assert (effects['shared_parameter_aliases'] > 0) == (
+                mode == 'manual' if shared_parameters is None else shared_parameters)
             assert effects['checkpoint_calls'] == effects['recompute_calls'] == 0
     checkpoint = folder/'resumed/checkpoints/cycle-000003'
     manifest = json.loads((checkpoint/'manifest.json').read_text())
@@ -313,7 +314,7 @@ def _single_cli(root, name, *args):
     return json.loads(result.stdout)
 
 
-def portable_output(config_path, root, mode):
+def portable_output(config_path, root, mode, *, checkpoint_student=None):
     """A fresh export-only process encodes an unseen prompt with owned codecs."""
     root = Path(root); folder = root/mode
     from distillschedule.training.inference import read_export
@@ -371,7 +372,8 @@ def portable_output(config_path, root, mode):
     components = factory(exported['model']['parameters'])
     restore_modules(components, folder/'export', exported)
     checkpoint = torch.load(folder/'resumed/checkpoints/cycle-000003/rank-00000.pt', weights_only=True, map_location='cpu')
-    assert equal(cpu_tree(components.state['student'].state_dict()), checkpoint['state']['student']['value'])
+    assert equal(cpu_tree(components.state['student'].state_dict()),
+                 checkpoint['state']['student']['value'] if checkpoint_student is None else checkpoint_student)
     from distillschedule.data import PreparedDataset
     from distillschedule.training.session import _generate_values
     request = load_training_config(folder/'inference.json')
