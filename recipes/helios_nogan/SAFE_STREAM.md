@@ -3,7 +3,7 @@
 This separate opt-in connects the complete W2 SafeBundle to the **original
 native** finite stream owner. It is not the CPU reference, not a widened old
 two-cycle plan, and not a stable/recommended training recipe. Read the
-[versioned contract](../../docs/contracts/helios_nogan_safe_stream_v1.md).
+[versioned contract](../../docs/contracts/helios_native.md#helios_nogan_safe_stream_v1).
 
 Prepare 2..100 fresh original No-GAN33/222/B1 cohorts using the unchanged
 [reference input preparation](REFERENCE_TRAINING.md) workflow. Supply your own

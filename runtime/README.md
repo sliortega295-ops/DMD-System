@@ -4,7 +4,7 @@
 DMD-System training paths, source-audited adapters or tests. It is **not** a
 second public training API. Use `distillctl`, current `recipes/`, and the
 `src/distillschedule/` training, Program and physical execution interfaces for
-new integrations; see [framework ownership](../docs/architecture/framework.md).
+new integrations; see [framework ownership](../docs/architecture/repository_organization.md#framework).
 
 Current module families include:
 
@@ -20,7 +20,7 @@ Current module families include:
 This is an inventory, not a guarantee that every module is exercised by each
 current recipe. Check actual imports and entrypoints before reusing a mechanism.
 The pre-2026-08-15 Route-A/Route-B launchers and exclusive offload prototypes
-have been [retired](../docs/architecture/legacy_route_retirement.md); do not
+have been [retired](../docs/architecture/repository_organization.md#legacy_route_retirement); do not
 resurrect them from Git as defaults. Some smaller source-compatibility helpers
 remain at their original paths because audited imports/fixtures still need them.
 

@@ -13,9 +13,9 @@
 
 原[机器回执](../../artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json)
 使用`actual_native_metadata_reads_per_rank_cycle`记录0→350。
-[归档实现](../../artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py)
+归档实现 (source checkout: `artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py`)
 启用`restore-native-cu-metadata-barrier.v1`后执行`cu_q.tolist()`；
-[worker](../../artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py)
+worker (source checkout: `artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py`)
 使用`--restore-native-barrier`。
 
 因此这是同FA3实现下**恢复原生metadata读取/同步**的单次配对，观察到约8.644秒改善。
@@ -24,4 +24,4 @@
 
 这里的barrier指host可见的metadata读取，不是新增跨rank的distributed barrier。
 完整的经验分类、实现范围及内容回归见
-[Optimizer测量身份与勘误](../../skills/dmd-system-optimizer/references/knowledge/measurement-identity.md)。
+Optimizer测量身份与勘误 (source checkout: `skills/dmd-system-optimizer/references/knowledge/measurement-identity.md`)。

@@ -1,15 +1,10 @@
-# Train through the six original native integrations
+# Train original native and official workflows
 
-`execution.adapter: native` lowers a public training configuration to the
-existing original-model runtime. It does **not** replace those algorithms with
-the small Program example, infer a historical winner, invent costs, reserve
-GPUs, or change native numerical gates. For the extensible model/algorithm
-factory lifecycle, use the Program training adapter instead.
-
-The six default `training.json` recipes explicitly select
-[versioned manual optimization presets](native_presets.md), without requiring
-a saved plan. They remain bounded two-cycle research bindings; W5's numerical
-FAIL is unresolved. Reference and saved-plan modes below remain separate.
+The native adapter lowers public requests to existing original-model owners.
+It does not replace algorithms, choose a historical winner or allocate devices.
+Use a clean source checkout and the recipe's separate dependency lane. Original
+benchmark presets remain two-cycle research bindings; W5's optimized backward
+numerical FAIL remains unresolved. Fresh-stream lifecycles are separate.
 
 ## Start with an explicit request
 
@@ -76,92 +71,51 @@ modified. Direct training does not need a saved plan.
 | W5 | [original Grid reference](../../recipes/h3_fullseq/training.original-reference.json); `h3_grid_training` | 2..64 finite cached-condition cycles | Both LoRAs, original Adam/schedulers, sampler and RNG; [h3-grid-original-training.md](../../recipes/h3-grid-original-training.md) |
 | W6 | [native AR stream](../../recipes/h3_ar/training.native-stream.json); `h3_ar_training` | 2..100 fresh cycles | Original ZeRO-3 model/master Adam and native clocks; [NATIVE_CONTINUATION.md](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
 
-W2 also supports its direct-reference fresh stream. W5's original reference
-continues to admit 2..64 finite Grid1000 G1/F5 cycles; its optimized numerical
-backward issue remains open. The W4 reference input owner is still separately
-available; it is not the full C51 schema or a substitute for dual-pool recovery.
+W2 also has a direct-reference fresh stream. W4's original-reference input owner
+is not full C51. W5 remains approximate Grid1000; its reference lifecycle does
+not waive the optimized backward failure. W3's explicit
+[native-history policy](../contracts/helios_native.md#helios_gan_native_history_v1)
+keeps full GAN and original detached-rollout persistence; full-size capacity and
+restart require their own native evidence.
 
-W3 additionally exposes an explicit [native-history stream](../contracts/helios_gan_native_history_v1.md)
-for the original rank-local amplified-history branch. It retains the full GAN
-bundle and original detached-rollout persistence; its aligned G phase has
-source/CPU validation, with full-size GPU capacity and restart still unverified.
+### Native current-Student output
 
-For W1/W2, native current-G video export uses the complete native checkpoint and
-explicit Wan2.1 VAE policy. W3 has the same output consumer but retains its own
-GAN restore owner and ABI, with N70 OFF. See [W1 output](../../recipes/wan_ar/NATIVE_OUTPUT.md),
-[W2 output](../../recipes/helios_nogan/NATIVE_OUTPUT.md) and
-[W3 output](../../recipes/helios_gan/NATIVE_OUTPUT.md). The emitted independent
-Program config generates new-prompt video without old training payloads.
-W4's [full C51 output](livewan_native_output.md) restores both role pools but
-exports only the current Generator and uses its original four-step streamer.
-W5's [Grid Student output](h3_grid_inference.md) retains the four required
-frozen AdaLN table entries and original converted-model sampler. W6's
-[AR Student output](h3_ar_native_inference.md) retains its eight-step
-previous/current audio-video schedule. Each path connects to its original
-codecs; inference exports remain distinct from resumable checkpoints.
-For new H3 AR inputs, use [raw previous/current AV preparation](h3_audio_video_encode.md)
-with supplied original text features. W5 continues to use its separate
-text-condition inventory, not the W6 input format.
+| Workload | Output path and unchanged computation |
+| --- | --- |
+| W1/W2/W3 | [W1](../../recipes/wan_ar/NATIVE_OUTPUT.md), [W2](../../recipes/helios_nogan/NATIVE_OUTPUT.md), [W3](../../recipes/helios_gan/NATIVE_OUTPUT.md): native complete restore, current unmerged G, real Wan2.1 VAE; W3 keeps GAN restore and N70 OFF |
+| W4 | [Full C51](training.md#livewan_native_output): both role pools restored, only current G exported; original four-step streamer |
+| W5 | [Grid output](training.md#h3_grid_inference): current LoRA plus four frozen AdaLN entries and converted-model four-step sampler |
+| W6 | [AR output](training.md#h3_ar_native_inference): original eight-step previous/current AV sampler; [new raw AV inputs](data.md#h3_audio_video_encode) use original encoders/text features |
 
-Reuse existing completed training runs of **50 or more complete DMD cycles**;
-do not repeat them just to validate a new framework revision. W1 already has
-complete-incumbent world16 continuation and fresh-process restart evidence,
-and LiveWan already has baseline/full 100-cycle training records. Keep each
-record's source and mechanism scope. Check only changed public lifecycle or
-output endpoints with bounded integration tests. W3/C51/W6 public continuity
-and six current-Student output paths have source/CPU coverage where recorded;
-that does not fill a missing native GPU endpoint. An individual Critic update
-must not be relabelled as a complete DMD cycle.
+Exports are inference weights, not resumable checkpoints. Reuse recorded runs
+of50+ complete cycles, including W1 continuation and LiveWan100-cycle records;
+do not repeat long training to check a changed endpoint. Source/CPU output or
+restart coverage does not complete a missing native GPU endpoint.
 
-## Explicit presets, reference or saved plans; no hidden winner
+## Choose reference, manual or saved execution
 
-W1 and W6 have real direct-reference entrypoints:
+- W1 [reference](../../recipes/wan_ar/training.reference.json) supplies the
+  [original FSDP strategy](../../recipes/wan_ar/reference_strategy.json), lowering
+  to `benchmark-manual --implementation ... --cycles 2`.
+- W6 [reference](../../recipes/h3_ar/training.reference.json) selects `zero3-native`;
+  AP is only explicit `zero3-ap` or a measured selected plan.
+- W2 [reference](../../recipes/helios_nogan/REFERENCE_TRAINING.md), W4
+  [zero-step reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) and W5
+  [original-config reference](../../recipes/h3-grid-original-training.md) do not
+  inherit a historical optimized winner.
+- W2-W5 presets use manual mode. For resolved reference candidates and measured
+  controls use [native calibration](../runbooks/native_planner_workflow.md).
+  W4 C51 requires `c51_full_v1`; C34 is never a fallback.
+- Plan mode consumes the saved selection unchanged: no search/rebind/run-ID
+  rewrite. Use the native replay/rebind workflow first. W2-W5 recompile node
+  commands and validate candidate/profile/semantics/request/assets; W1/W6 verify
+  source/cost/order/version/capacity. CPU fixture costs cannot launch GPU work.
 
-* [W1 reference configuration](../../recipes/wan_ar/training.reference.json)
-  explicitly supplies [the original FSDP strategy](../../recipes/wan_ar/reference_strategy.json).
-  It lowers to `benchmark-manual --implementation ... --cycles 2`.
-* [W6 reference configuration](../../recipes/h3_ar/training.reference.json)
-  explicitly supplies `zero3-native`; it lowers to `benchmark-manual` with the
-  exact native capacity policy. `zero3-ap` is available only as an explicit
-  manual implementation or as a selected measured plan.
-
-These commands execute **inside** an already configured world16 torchrun rank
-environment on each of two eight-GPU nodes. The training binding does not
-invent rendezvous settings, change CUDA visibility, switch allocator policy,
-fall back to ZeRO-2, or launch nodes for them. Follow the original
-[Wan runbook](../runbooks/wan_compute_state_planning_v1.md) and
-[W6 runbook](../runbooks/original_h3_ar_native.md).
-
-W2 also has a [direct reference recipe](../../recipes/helios_nogan/REFERENCE_TRAINING.md)
-without a historical trace or node manifest; W4 has a
-[fresh reference recipe](../../recipes/self_forcing/REFERENCE_TRAINING.md) with
-independently inventoried genuine initial weights; W5 has an [original-config reference
-lifecycle](../../recipes/h3-grid-original-training.md). None inherits a
-measured winner. Each requires its own qualified original assets and data,
-and execute inside an operator-owned world16 allocation, not a shell launcher.
-
-W2-W5 additionally accept explicit manual presets through the
-[direct preset path](native_presets.md). To run their corresponding bounded
-reference first, explicitly resolve the intended generated reference candidate
-through the existing [native calibration workflow](../runbooks/native_planner_workflow.md),
-then provide its source-bound resolved receipt for W2/W3/W5. W4's public C51
-recipe accepts the full C51 selection only; run its matched control through
-the existing calibration workflow, not by relabeling C34 as C51. An optimized
-candidate is never substituted when a reference or measurement is unavailable.
-
-Plan mode consumes `execution.plan` **as saved**. It does not run a search,
-choose a best-known profile, rebind a run ID, or overwrite an earlier run. Make
-any fresh run ID using the existing native replay/rebind workflow **before**
-providing the plan here. W2-W5 rederive source/runtime node commands with the
-original compiler, verify registered candidate/profile/semantic/request/asset
-bindings, and dispatch the same object to `run_plan`. W1/W6 use their original
-selected-plan validators, including hashed costs, source, operation order,
-versions and measured capacity. A CPU-fixture plan cannot launch a GPU worker.
-
-W4 requires an explicit `c51_full_v1` selected implementation; the old C34
-compatibility profile is not a fallback. A saved selection remains authoritative for its mesh, retention, precision
-and kernel policy. Direct presets explicitly bind the versioned implementation
-instead; neither path silently selects the other.
+W1/W6 commands execute inside operator-owned world16 torchrun ranks on two
+8-GPU nodes. W2-W5 use their native dispatcher/node manifest. No rendezvous,
+visibility, allocator or ZeRO fallback is invented by the public training API.
+See [Wan planning](../runbooks/native_planner_workflow.md#wan_compute_state_planning_v1) and
+[W6 planning](#original_h3_ar_native).
 
 ## Required inputs and portable configuration
 
@@ -180,83 +134,44 @@ instead; neither path silently selects the other.
 | `trainer.cycles` | Actual supported native count, checked against selected contract; not a timing normalization |
 | `trainer.checkpoint_every` | Explicit fresh-input lifecycles support complete-cycle saves, including full GAN/C51/native AR; frozen benchmark bindings require `0` |
 
-For W2-W5 direct presets, supply a qualified native dispatcher asset manifest
-matching the exact preset's required assets. No historic plan is needed. For
-saved-plan mode, use its exact `asset_config`; do not edit a path in a saved
-receipt to make it fit another machine. Asset locations
-inside a native manifest follow its original API (usually explicit absolute
-paths), not the training-config path rules. Existing original asset preparation
-remains authoritative: Wan asset template (source checkout: `configs/distillschedule/original_wan/assets.template.json`),
-W6 `workloads native prepare-assets`, and the workload runbooks. Assets carry
-real SHA256 identities, not placeholder zero hashes or a claim that a directory
-exists. Physical source/runtime, upstream revision, full tensor/trace, allocated
-hardware and live capacity gates still execute on the original worker before
-model construction; CPU doctor reports that deferred scope explicitly.
+Preset assets must match that preset; plan assets must equal saved `asset_config`
+as JSON. Native asset paths follow their original API, usually absolute, not
+generic request-path rules. Use original Wan assets (source checkout:
+`configs/distillschedule/original_wan/assets.template.json`), W6
+`workloads native prepare-assets` and the linked recipes. Actual source/runtime,
+weights/trace/shape, topology and capacity are checked before model construction.
 
-W1 fresh training uses `data.prepared` **only** with
-`data.input_kind: original_wan_cohort_stream.v1`: the manifest prepared by the
-original `workloads native prepare-stream` API. The number of complete,
-distinct RNG-qualified cohorts must match `trainer.cycles`; the selected
-compatible policy is reused, not its old trace's time/capacity prediction.
-This is not the generic PreparedDataset manifest. To deliberately replay a
-fixed trace, omit `prepared` and `input_kind` and explicitly set
-`data.replay_fixed_trace: true`; that is replay evidence, not fresh-data training.
+| Lifecycle | Required prepared input and seed/state |
+| --- | --- |
+| W1 fresh | `original_wan_cohort_stream.v1`, exact distinct cohort count; compatible selected/manual/reference policy, not historical timing. Fixed replay instead omits prepared/kind and explicitly sets `replay_fixed_trace:true` |
+| W2 reference | `original_helios_cohort_stream.v1`, five rank/step feature sets per cohort; used model/precast/bootstrap/negative/EMA assets and warm G2/C10/EMA10, not cold Step0 |
+| W3 | Full GAN/native-history stream and its own checkpoint identity; never W2 relabeling |
+| W4 reference | `original_livewan_teacher_cohorts.v1`, `algorithm.name: original_self_forcing_reference.v1`, reference mode, actual zero-step G0/C0/EMA0 assets, exact finite horizon/seed/capacity |
+| W5 reference | `original_h3_grid_latent_dataset.v1`, genuine cached conditions, resolved native config/source/dependencies/order and exact original seed; Grid1000 approximate objective |
+| W6 | Versioned per-rank cache/parser/source metadata, including rank6 audio94. Arbitrary cache relocation needs a new reviewed input contract, not edits to historical locks |
 
-W2 direct training requires `data.input_kind: original_helios_cohort_stream.v1`
-and its prepared `stream.json`. The source inventory contains five real
-step/rank-qualified feature sets per cohort, not a recycled benchmark trace.
-Its [portable asset template](../../recipes/helios_nogan/assets.reference.template.json)
-pins only used model/pre-cast/bootstrap/negative roles, including the actual
-EMA manifest. The original Step10 optimizer/EMA boundary remains mandatory;
-cold-start Step0 and arbitrary checkpoint versions are not supported.
+Native streams are not generic PreparedDataset/statistics-encoder manifests.
+Unrecognized prepared data or RNG overrides reject, not get ignored. Only the
+explicit W4/W5 bindings use their separately supplied original seed; otherwise
+source/bootstrap/stream owns RNG. Reprepare source-bound inputs for changed
+geometry or RNG; do not rehash captured old traces.
 
-W5 original training requires `data.input_kind: original_h3_grid_latent_dataset.v1`
-and an inventory of genuine original cached conditions. The fully resolved
-native config, source/dependency identities, target horizon and data order are
-explicit. `trainer.seed` must equal the supplied original config. This is still
-the Grid1000 **approximate** objective, not continuous sigma.
+## Actual-original CPU references and model provider
 
-W4 reference training requires `data.input_kind: original_livewan_teacher_cohorts.v1`,
-explicit `algorithm.name: original_self_forcing_reference.v1` and `mode: reference`.
-Supply the separate real asset/capacity documents, exact finite prepared input
-horizon and explicit matching seed. The reference initializes G0/C0/EMA0; it
-does not relabel a historical systems-only or selected C51 bootstrap.
+| Reference | Owner and lifecycle |
+| --- | --- |
+| [W1 CPU Full5](../../recipes/wan_ar/CPU_REFERENCE.md) | Original parameterized cycle/P0, mixed BF16/FP32 and FP32 LoRA, cold-zero Adam/EMA, atomic nonreplayable Program call; common checkpoint/current-G export; CPU1 source-rank0 is not global-B16 reduction parity |
+| [W2 warm No-GAN](../../recipes/helios_nogan/CPU_REFERENCE.md) | Full constructor, original mixed precision/LoRA256 and real G2/C10/EMA10; original updates and common restart/current-G output, not CUDA/world16 qualification |
+| [W3 GAN CPU](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) | Full original transformer/PEFT/history19, actual G1/C5/GAN/EMA curriculum; `data prepare-helios-gan-reference`, train/resume and [unmerged-G output](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md) |
+| [W6 cached AV CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Licensed cached-only original50-block/8-step/G1F1/LoRA64 trainer/Adam, flat or split parser; `data prepare-h3-cached-reference`, train/resume and [Student output](../../recipes/h3_ar/PORTABLE_INFERENCE_CPU.md) |
 
-Other W2-W6 data remains qualified inside native assets; generic prepared data
-is rejected rather than ignored. Except for W5's explicit original-config
-and W4's separately versioned fresh-reference bindings, native RNG is bound by the source/bootstrap/prepared trace and
-`trainer.seed` overrides reject. Reprepare inputs and the matching policy to
-change RNG or geometry. Native feature inventories are not the generic
-PreparedDataset format and do not use the tiny statistics encoder.
+These FP32/CPU1 references require genuine pinned local assets, immutable finite
+inputs and explicit configs; unsupported distributed/auto/manual/plan/epoch
+modes reject. Tiny deterministic random fixtures are not pretrained or quality
+evidence. The cached-only derivative retains per-file origins/AST/license,
+not a claim to redistribute a full DiffSynth install or silently stub codecs.
 
-W6's v2 rank-input contract additionally pins original per-rank cache paths,
-parser/source hashes and shape metadata, including rank 6's native audio94.
-The public template has no personal/site paths, but **does not make arbitrary
-W6 cache relocation valid**. A relocation needs a new reviewed versioned input
-contract and matched admission; do not crop, pad or rewrite historical locks.
-
-## Explicit full-original Helios model reference
-
-W2 has an independent [warm No-GAN CPU Program reference](../../recipes/helios_nogan/CPU_REFERENCE.md).
-It uses the original full-model constructor, mixed native BF16/FP32 precision,
-FP32 LoRA256, real G2/C10/EMA10 warm state and original subsequent No-GAN
-actions. The common checkpoint and current-G output APIs are connected;
-fresh-process CPU continuation is tested. Its CPU1 source-rank0 execution is
-not a new FSDP2/CUDA backend or world16 numerical qualification. The existing
-direct native reference and selected plans retain their separate contracts.
-
-W1 additionally has a separately versioned [CPU1 original Full5 reference](../../recipes/wan_ar/CPU_REFERENCE.md).
-It calls the original parameterized Wan cycle and P0 helpers through one
-nonreplayable Program call, preserving native mixed BF16/FP32 parameters,
-FP32 LoRA and genuine cold-zero Adam/EMA. Its complete-cycle save/recovery
-and current-G export are common lifecycle operations, not a CUDA native
-benchmark extension. The complete world16 input trace is admitted, but actual
-CPU execution is only source-rank0 per-sample; it does not claim global-B16
-reduction parity. Neither W2's Step10 warm bootstrap nor W3's GAN state is
-silently substituted.
-
-The separate model provider imports the **whole unchanged original**
-`HeliosTransformer3DModel`, not an extracted head or a stand-in model:
+The separate full Helios model provider imports the unchanged model:
 
 ```python
 from distillschedule.adapters.helios.reference_model import (
@@ -267,118 +182,311 @@ identity = reference_model_identity(backend="torch-sdpa")  # No Torch/model impo
 HeliosTransformer3DModel = load_reference_model_class(backend="torch-sdpa")
 ```
 
-Use a source checkout and the separate `[train,helios-reference]` public
-runtime; add `[test]` for `tests/test_helios_reference_model_cpu.py`. Its Diffusers
-0.37.1 pin does **not** replace `test-helios`'s 0.34.0 or `native-wan`'s 0.35.2;
-these are separate environments, not extras to combine.
+Use `[train,helios-reference]` (Diffusers0.37.1), not the separate .34 test or
+.35 native-Wan lane. Both APIs recheck all83 frozen files, manifest/backend bytes
+and private imports. Four private modules compile admitted source directly,
+never timestamp-valid/unchecked bytecode; the scoped importer is removed and
+failed new namespaces cleaned for retry. Only explicit `torch-sdpa` uses the
+original dense fallback; NaViT/varlen refuses. Identity discovery imports no
+Torch; class loading constructs no model, optimizer or download. Native CUDA
+`helios.*` imports remain separate.
 
-Both APIs recheck all 83 frozen source files, the pinned manifest, maintained
-backend bytes, and any admitted private import cache. The identity includes the
-full transformer path/SHA256, original source-tree identity, actual private
-namespace and backend path/SHA256. The original file is loaded by normal Python
-package imports under `distillschedule.adapters.helios._reference.modules`.
-The four private modules compile their admitted source bytes directly: existing
-timestamp-valid or unchecked-hash bytecode is neither executed nor rewritten.
-The scoped importer is removed on success or failure; failed admission removes
-only the new private namespace and permits a clean retry.
-Native `helios.*` imports, CUDA dispatch and benchmark APIs are not replaced.
-Only explicitly requested `torch-sdpa` is admitted, using the original dense
-SDPA fallback expression; NaViT/varlen execution raises rather than falling
-back. Source discovery does not import Torch or construct a model. Class loading
-does not construct models, fetch weights, or create optimizers.
-
-Tests exercise the full tiny FP32 CPU flow/GAN backward, real PEFT and original
-critic-loss Adam/restart through existing state helpers, and normal
-`save_pretrained`/`from_pretrained` in fresh processes. Nonzero-output fixtures
-are explicitly deterministic random weights, **not pretrained checkpoints**.
-The subsequent CPU Program reference owns the full original W3 lifecycle as
-described below. Neither that proof nor this model provider establishes
-pretrained generation/quality, world16/FSDP equivalence, GPU validation or a
-performance result. Historical native REVIEW boundaries stay unchanged.
-
-## Separate actual-original CPU Program references
-
-The bounded native benchmark adapters above remain unchanged. Two explicit
-reference factories also exercise the actual original models through the
-**existing Program/common lifecycle**, not a substituted generic DMD algorithm:
-
-| Reference | Actual owners and data | Public operations and limits |
-| --- | --- | --- |
-| [Helios GAN CPU](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) | Full original transformer and true PEFT; original history19 primary/secondary producer; original G1/C5/GAN/EMA curriculum | `data prepare-helios-gan-reference`, `train`, complete-cycle common checkpoint/new-process resume; [full unmerged current-G export](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md) and explicit original zero-history native latent generation |
-| [Cached H3 AR CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Maintained licensed cached-only original H3 source; actual 8-step G1F1/LoRA64/continuous-sigma trainer/Adam; clean previous/current AV, original flat or split-packed parser | `data prepare-h3-cached-reference`, `train`, complete-cycle common checkpoint/new-process resume; [current full unmerged Student export and original AV latent generation](../../recipes/h3_ar/PORTABLE_INFERENCE_CPU.md); no bundled AV codec |
-
-Both use operator-supplied, content-pinned local assets and a finite immutable
-input inventory. Missing files never become random data or model weights.
-Tests explicitly label their tiny deterministic fixture checkpoints as
-**not pretrained or quality evidence**. Runtime FP32/CPU1, exact source and
-native algorithm/config/update/curriculum boundaries are part of admission.
-These routes reject distributed, auto/manual/plan or silently recycled epochs
-that they do not implement. Their source/CPU evidence does not qualify a new
-world16 strategy or change historical numerical REVIEW/FAIL records.
-
-W6's cached-only source closure is included with its original license and
-per-file origins/AST identities. It is an explicitly maintained derivative,
-not a claim that the partial historical archive was a full installable
-DiffSynth distribution. Full-SFT loaders, VAE/text/audio codecs and control
-branches are not invented or silently stubbed. Discovery still imports no
-model or CUDA. Use the separate dependency groups in the linked guides.
-
-## Lifecycle and evidence are not interchangeable
-
-W1 fresh cohort streams can opt into periodic complete-cycle restart:
+## Complete-cycle recovery and evidence
 
 ```json
 {"trainer": {"cycles": 6, "checkpoint_every": 2, "output_dir": "training-run"}}
 ```
 
-Merge those trainer fields into a complete native training configuration, with
-`data.prepared` pointing to the six-cohort native stream. Reference/manual
-strategies use that same original worker without requiring calibration; saved
-plans retain their source/strategy admission. At restart, keep the **same full
-stream and target count**, set `trainer.resume_from` (or CLI `--resume`) to
-`training-run/checkpoints/cycle-000002`, and use a new output directory.
-Do not recapture inputs or change the source, bootstrap, runtime or layout.
-Use a shared persistent checkpoint filesystem and explicit torchrun `GROUP_RANK`.
+For W1 merge those fields into the full six-cohort request. Resume from
+`training-run/checkpoints/cycle-000002` into a new output with the same full
+stream/target/source/bootstrap/runtime/layout. Use shared persistent storage and
+explicit torchrun `GROUP_RANK`; W4/W5/W2 fixed-horizon owners retain their own
+restrictions, not a general target-extension promise.
 
-The restart state is a view of the original engines, not a substitute trainer:
-optimizer-owned trainable weights/buffers, named Adam groups and moments,
-schedulers, EMA shadows/counter, engine clocks, absolute cohort cursor and
-per-rank Python/NumPy/Torch/owned-device CUDA RNG. Frozen weights are rebound by
-their original asset hashes; temporary rollout/attention caches are rebuilt.
-Only zero-gradient complete cycles publish a manifest after **every rank's
-shard** has been written and hashed. State I/O is separately recorded outside
-the original compute timer. A failed write is not a valid checkpoint.
-CPU tests exercise original dispatch/cursor logic and actual engine/Adam
-restart. W1's existing world16 two-cohort continuation and fresh-process
-restore are documented in the acceptance record (source checkout: `docs/guides/performance_validation.md`).
-The original baseline/Resident 50-cycle training records are reused; only new
-output or lifecycle behavior needs additional checks, not another long run.
+The original owner saves trainables/buffers, named Adam/groups/moments,
+schedulers, EMA/counter, native clocks, absolute cursor and per-rank
+Python/NumPy/Torch/owned-device RNG only at drained zero-gradient boundaries.
+All rank files are hashed before manifest/`_SUCCESS`; frozen bases rebind by
+hash and temporary caches rebuild. State I/O stays outside native compute
+windows. Final-state fingerprints or `wan_worker.save_final_state` are evidence,
+not a complete resumable checkpoint.
 
-W2/W4's direct references and W5's original-config reference also expose atomic
-complete-cycle restart over actual original owners. Their guides specify
-distinct fixed-horizon/data/topology restrictions; do not apply W1's CLI
-target-extension example to them. All three start metadata admission before model
-construction and reject a borrowed application process group. Tests exercise
-real original helpers, persistent CPU optimizer owners and real Gloo control
-collectives; topology/CUDA/model-construction fixtures are explicitly synthetic,
-not world16 GPU evidence.
+Native W3 finalization/REVIEW, W4 REVIEW and W5 sampled-backward FAIL remain in
+the [source correction](../status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md).
+Use recipe-specific acceptance receipts; dry-runs and CPU helpers establish no
+new large-model quality, capacity or speedup.
 
-Selected benchmark bindings retain their two-cycle/no-restart scope. The
-explicit fresh-stream owners above expose complete restart through the same
-front door, with algorithm-specific physical owners. All six expose their
-current-Student output paths above through `distillctl export`; W5 uses only
-its original reference owner, not the numerically held optimized candidate.
+<a id="native_presets"></a>
+## Direct native optimization presets
 
-Historical final state/fingerprint JSON is still evidence, not a resumable
-checkpoint. Use the new owner's complete manifest, every required shard and
-`_SUCCESS`; do not substitute `wan_worker.save_final_state` or sampled state
-JSON for that complete-cycle publication.
+For example, the `execution` section of [W3](../../recipes/helios_gan/training.json):
 
-Historical W3 finalization failure/REVIEW, W4 REVIEW and W5 sampled-backward
-FAIL boundaries remain unchanged. Existing correctness receipt bindings and
-native gates are not waived by this front door. Read the
-six-workload correction (source checkout: `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`).
-CPU binding tests and dry-runs create no new large-model quality or speedup
-result. Reuse the named existing W1 and historical native GPU receipts; the
-newly connected GAN/C51/AR continuation and decoded-output paths still need
-their own native GPU acceptance.
+```json
+{
+  "adapter": "native",
+  "mode": "manual",
+  "preset": "helios_gan.fa3_down40_nomerge.v1",
+  "task": "task.json",
+  "assets": "qualified-native-assets.json"
+}
+```
+
+Replace asset placeholders and choose a new output directory outside the source
+checkout, then inspect and launch on the allocated devices:
+
+```bash
+distillctl doctor --config /project/recipe/training.json
+distillctl train /project/recipe/training.json --dry-run
+distillctl train /project/recipe/training.json
+```
+
+W1/W6 use world16 torchrun across two eight-GPU nodes. W2–W5 use the native
+two-node dispatcher and the supplied node manifest.
+
+### Preset mapping
+
+| Workload / preset | Main mechanisms | Continuation |
+| --- | --- | --- |
+| W1 `wan_ar.incumbent21a.v1` | Resident, chunk2048, LoRA/norm fusion, G rollout/cast and C gradient graphs; retain4 disabled | [Incumbent stream](../../recipes/wan_ar/INCUMBENT_STREAM.md) |
+| W2 `helios_nogan.safe_ed8.v1` | Node-HSDP, chunk512/window5, SafeBundle normalization/LoRA/replay reuse; warm No-GAN bootstrap | [Safe stream](../../recipes/helios_nogan/SAFE_STREAM.md) |
+| W3 `helios_gan.fa3_down40_nomerge.v1` | World16 FSDP, chunk2048/window5, SM80 FA3, down40 replay, separate GAN heads; LoRA unmerged | [GAN stream](../../recipes/helios_gan/NATIVE_STREAM.md) |
+| W4 `self_forcing.c51.v1` | Full C51 8G+8Score pipeline with C34 prerequisites | [C51 continuation](../../recipes/self_forcing/C51_CONTINUATION.md) |
+| W5 `h3_fullseq.cpu_staged_trim.v1` | Grid1000 CPU-staged trimmed FA3 replay, depth2/N128 | [Original-reference lifecycle](../../recipes/h3-grid-original-training.md) |
+| W6 `h3_ar.zero3_ap.v1` | ZeRO-3, selected-cache/unit prefetch, CPU-staged replay, fusion and communication overlap | [Native AR continuation](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
+
+The original six presets require exactly two native cycles,
+`checkpoint_every: 0`, no resume and the original fixed-input contract. They
+provide quick comparisons and benchmark reproduction. For long training and
+checkpoint recovery, choose the corresponding continuation entry above.
+
+Use only manual+preset, not `plan`, `implementation` or `transport` together.
+`training.native_presets` owns typed factories/current-source binding; reference
+and saved-plan selection remain explicit. Original worker numeric/state/capacity
+checks still apply.
+
+<a id="official_optimized_training"></a>
+## Official Self-Forcing and DMD2 optimized training
+
+The complete public profiles share `distillctl` train/checkpoint/resume metrics.
+FSDP2 is the primary baseline for both. On16×A100-40GB/globalB16, the original
+unprofiled C2 window (C1 warmup), not a new long-run average, reports:
+
+| Workflow | FSDP2 seconds | Optimized seconds | Speedup |
+| --- | ---: | ---: | ---: |
+| DMD2 SD1.5 GAN512×512, G1/C10 | 7.514 | 3.475 | 2.162× |
+| Official Self-Forcing368×640×81, G1/C5 | 50.739 | 30.959 | 1.639× |
+
+Auxiliary DMD2 Resident/DDP is6.114→3.475s(1.759×). Both optimized public paths
+also completed100cycles, a cycle50 checkpoint/fresh-process continuation,
+same-source world16 Student export and independent new-prompt image/video;
+output tensor/PNG and both-node cleanup checks passed. Original fixture/data
+scope, later longer-cycle records and exact receipt identities remain in the
+[validation appendix](../status/official_optimized_framework.md) and
+[performance guide](performance_validation.md), not reinterpreted here.
+
+| Workflow | Explicit reference | Complete optimized |
+| --- | --- | --- |
+| SD1.5 | `training.fsdp2.json`; single-device FP32 `training.gan.json`; supplemental FP32 `training.ddp-fp32.json` | [DMD2](../../recipes/dmd2_sd15/README.md) `training.optimized.json` |
+| Official Self-Forcing | `training.json` / native `training.fsdp2-reference.json` | [Self-Forcing](../../recipes/self_forcing_official/README.md) `training.optimized.json` |
+
+Fill owned source/assets/input/output paths and use separate environments.
+Self-Forcing retains upstream FA2/compatible Triton; encode prompts offline,
+not T5 on workers. The distinct DMD2 native reference is below.
+
+```bash
+pip install -e '.[dmd2]'
+# Or, in the Self-Forcing environment:
+pip install -e '.[self-forcing-official]'
+```
+
+```bash
+distillctl config validate /path/to/training.optimized.json
+distillctl doctor --config /path/to/training.optimized.json
+distillctl capabilities show official-dmd2-resident
+distillctl capabilities show official-self-forcing-fsdp2
+```
+
+```bash
+# DMD2: set these before torchrun initializes the NCCL group.
+export NCCL_ALGO=allreduce:Tree
+export NCCL_MIN_CTAS=16
+
+torchrun --nnodes=2 --nproc-per-node=8 --node-rank="$NODE_RANK" \
+  --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \
+  -m distillschedule train /path/to/dmd2.training.optimized.json
+```
+
+```bash
+# Set this before torchrun initializes the NCCL group, for either FSDP2 recipe.
+export NCCL_CROSS_NIC=1
+
+torchrun --nnodes=2 --nproc-per-node=8 --node-rank="$NODE_RANK" \
+  --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \
+  -m distillschedule train /path/to/self-forcing.training.optimized.json
+```
+
+```bash
+# Use the same torchrun topology/environment as the initial invocation.
+# Replace the final `train ...` arguments with:
+distillctl train /path/to/training.optimized.json \
+  --resume /path/to/run/checkpoints/cycle-000100 \
+  --cycles 200 --output /path/to/resumed-run
+```
+
+Launch on each of two8-GPU nodes with one resolved config. DMD2 requires the
+explicit Tree/min16 settings above **before** group initialization. Self-Forcing
+FSDP2 reference/R6 instead requires `NCCL_CROSS_NIC=1`; do not inherit DMD2's
+settings. The library validates, never mutates, that environment.
+
+`trainer.cycles` is the final target; `checkpoint_every` sets cadence. Resume
+on the same topology. Native role/Adam/RNG/data/clocks persist, while KV/replay
+caches rebuild. The complete profiles, not independently searched toggles, bind:
+
+- `dmd2-sd15-resident-tree-v1`: resident ready-bucket DDP, fused AdamW with FP32
+  masters/moments, retained Fake epsilon, packed classifier trunks with original
+  separate B1 heads/losses, update-version-scoped BF16 casts. No-grad G/heads
+  remain FP32, gradient/Teacher BF16 and VAE FP16.
+- `self-forcing-wan-fsdp2-r6-v1`: native FSDP2 phase/text-KV retention, Critic
+  attention/FFN-down/projection replay reuse, Score-before-KV release and G
+  backward/commit release, host integer positions, context hoisting/fusions and
+  paired conditional/unconditional Teacher block gathers.
+
+Direct Program execution calls the native owner; it requires no old benchmark
+script/run directory/plan. Official Self-Forcing is not W4 LiveWan.
+
+<a id="dmd2_fsdp2_reference"></a>
+## SD1.5 DMD2: native FSDP2 reference
+
+Use `recipes/dmd2_sd15/training.fsdp2.json` for the SD1.5 reference that shards
+Generator and the native guidance tree (Teacher, Fake Score and classifier)
+across 16 A100 GPUs. Use `training.optimized.json` for the current optimized
+Resident/DDP combination. Both use `distillctl train`, the same upstream DMD2
+model/loss classes and the common continuous-training/checkpoint lifecycle.
+
+### Train and resume
+
+Fill in the pinned DMD2 source, local SD1.5 bundle and prepared prompt/real-image
+streams in the recipe. No assets are downloaded implicitly. Launch with the
+existing distributed environment (`Torch 2.10`, `diffusers 0.37.1`,
+`transformers 4.51.3`, `peft 0.17.1`):
+
+```bash
+torchrun <your-16-rank-launch-options> --no-python \
+  distillctl train /project/training.fsdp2.json
+```
+
+For continuation, set `trainer.cycles` to the final cycle number and
+`trainer.resume_from` to a completed checkpoint, then launch on the same
+topology. A checkpoint includes each rank's trainable/master shards, Adam
+moments, scheduler clocks, native RNG and data-stream positions. Publication
+requires all rank shards. Cached execution weights are reconstructed; they are
+not saved as persistent replicas.
+
+Model and asset construction is local until every rank passes admission.
+The native preparation stage then shards the roles and binds the existing,
+still-empty Adam parameter groups to their new shards before any update.
+Optimizer and scheduler objects, group order and learning-rate clocks stay
+unchanged. A rank-local load failure cannot enter another rank's sharding
+collective.
+
+`distillctl export` materializes full inference Generator weights collectively
+on every rank, then only rank 0 publishes the portable image model. Training
+checkpoints and inference exports are different formats. Checkpoint generation
+also runs on all ranks; do not invoke a sharded Generator from rank 0 alone.
+
+### Contract
+
+- SD1.5, 512×512, B1/rank, global B16; G1/C10/EMA0 per cycle.
+- Native precision: FP32 Generator/Fake masters and Adam, BF16 gradient compute
+  and Teacher, FP16 VAE, FP32 text encoder/classifier heads; no outer AMP.
+- Block-level and root FSDP2 with `reshard_after_forward=True`; no CPU offload.
+- Original native update/RNG/sample order and world-scaled scheduler clocks.
+- The classifier's original direct `.forward(...)` becomes a module call to
+  execute FSDP hooks. The numerical function and its arguments are unchanged;
+  the reversible source transform is scoped to one owner.
+- No fused Adam, classifier packing, activation-retention or cast-cache bundle
+  is enabled. Automatic calibration/clone-based trials and SDXL FSDP are not
+  admitted by this versioned backend.
+
+The baseline's exact placement/classifier ABI and source checks are retained.
+Use [current public validation](../status/official_optimized_framework.md), rather
+than treating a CPU FSDP/Adam fixture as new timing or pretrained GPU evidence.
+
+<a id="original_h3_ar_native"></a>
+## W6 task-native planner workflow
+
+Use the [versioned H3 contracts](../contracts/h3_native.md) and one clean source
+for CPU/I/O admission, calibration, save and execution. The external coordinator
+owns allocation, two-node torchrun/UUID/rendezvous, leases, cancellation, resource
+sampling and cleanup; output belongs in remote persistent project storage.
+
+```bash
+python scripts/distillctl.py workloads native list-adapters
+python scripts/distillctl.py workloads native validate \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json
+```
+
+```bash
+python scripts/distillctl.py workloads native prepare-assets \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json \
+  --native-manifest /share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/steady_two_cycle_20261012_r1/configs/world16_r1_manifest.json \
+  --checkpoint-audit /REMOTE/RUN/artifacts/checkpoint-audit.json \
+  --output /REMOTE/RUN/configs/assets.json
+```
+
+```bash
+python scripts/distillctl.py workloads native calibrate \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json \
+  --assets /REMOTE/RUN/configs/assets.json \
+  --capacity-policy /REMOTE/RUN/configs/capacity.json \
+  --implementation zero3-ap --output /REMOTE/RUN/calibration-ap --execute
+```
+
+```bash
+python scripts/distillctl.py workloads native assemble \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json \
+  --rank-receipts /REMOTE/RUN/calibration-ap/rank_*.json \
+  --output /REMOTE/RUN/assembled-ap
+python scripts/distillctl.py workloads native plan \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json \
+  --calibration /REMOTE/RUN/assembled-native/collection.json /REMOTE/RUN/assembled-ap/collection.json \
+  --output /REMOTE/RUN/artifacts/selected-plan.json
+```
+
+```bash
+python scripts/distillctl.py workloads native run \
+  --task configs/distillschedule/original_h3_ar/w6_reference.json \
+  --assets /REMOTE/RUN/configs/assets.json \
+  --capacity-policy /REMOTE/RUN/configs/capacity.json \
+  --plan /REMOTE/RUN/artifacts/selected-plan.json \
+  --output /REMOTE/RUN/selected-execution --execute
+```
+
+1. `prepare-assets` reads the accepted **two-cycle** manifest to locate pinned
+   source/helpers/cache/libraries, never to execute its old command. Checkpoint
+   payloads hash once; an unchanged stat-bound audit is reused. Keep assets/audit
+   immutable and regenerate fresh owner startup/UUID receipts if hosts change.
+2. Freeze scalar-v1 capacity's four explicit byte fields or the
+   [v2 node map](../contracts/h3_native.md#original_h3_ar_capacity_v2). With no
+   `memory.peak`, require each node's exact fresh finite hard limit, maintained
+   reserve0 and unchanged OOM counters; sampled current cannot prove a smaller
+   limit/positive reserve. The64GiB startup headroom is independent, not sustained.
+3. Serially calibrate `zero3-native` and `zero3-ap` under owned2×8 torchrun.
+   Set `DIFFSYNTH_ATTENTION_IMPLEMENTATION=torch`; before Torch import, set both
+   supplied allocator variables to exactly `expandable_segments:True` for native
+   or `expandable_segments:True,pinned_use_cuda_host_register:True,pinned_num_register_threads:4`
+   for AP. Keep Torch2.10.0+cu128/native offline/USE_TF/USE_FLAX/NCCL policy;
+   WORLD_SIZE16/LOCAL_WORLD_SIZE8 and eight fresh receipt UUIDs in original order.
+4. Assemble all16 rank receipts per arm, then plan from both collections. Missing,
+   mixed or edited receipts reject. The common search may select either arm;
+   historical255.670644s is not a cost on this source.
+5. Read `selected.implementation`, install its allocator environment, execute
+   saved plan; compare an explicit `benchmark-manual --implementation zero3-ap`
+   arm at identical task/source/assets/capacity/environment/two-cycle boundary.
+   Validate all16 native census/Adam/versions/cache epochs/backend witnesses,
+   resource/OOM/cleanup and matched rank inputs/state/numerics before comparing
+   max16C2. Search/exit0 does not prove≤3% matching, parity or speedup.
+
+No default capacity numbers are supplied. Do not import GAN's1GiB reserve or
+turn H3's64GiB entry guard into a maintained floor; historical provenance is in
+the contract. Driver reserve checks are sampled, not continuous-extrema proof.

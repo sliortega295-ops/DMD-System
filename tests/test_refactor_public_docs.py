@@ -9,31 +9,92 @@ from urllib.parse import unquote, urlsplit
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_actual_documentation_file_budget():
+    """Count every Markdown page, including contracts and immutable evidence."""
+    pages = sorted((ROOT / 'docs').rglob('*.md'))
+    assert 30 <= len(pages) <= 40, f'actual docs/**/*.md count is {len(pages)}'
+
+
 PAGES = (
-    'README.md', 'CONTRIBUTING.md', 'docs/README.md', 'recipes/README.md',
-    'docs/architecture/framework.md', 'docs/architecture/repository_organization.md',
+    'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'docs/README.md', 'recipes/README.md',
+    'docs/architecture/repository_organization.md',
     'docs/runbooks/native_planner_workflow.md', 'docs/workloads/open_role_pools.md',
-    'docs/workloads/hardware_native_planning.md', 'docs/workloads/helios_component_planning.md',
-    'docs/guides/resident_owner_training.md',
+    'docs/workloads/hardware_native_planning.md', 'docs/contracts/helios_native.md',
+    'docs/guides/native_owner_backends.md',
     'docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md',
     'third_party/helios_compat/README.md',
     'skills/dmd-system-optimizer/SKILL.md',
 )
+PAGES = tuple(dict.fromkeys((*PAGES, *(str(path.relative_to(ROOT))
+    for directory in ('docs', 'recipes')
+    for path in sorted((ROOT / directory).rglob('*.md'))))))
 
 
 def links(page):
     return re.findall(r'\]\(([^)\s]+)\)', (ROOT / page).read_text(encoding='utf-8'))
 
 
+def anchors(path):
+    text = path.read_text(encoding='utf-8')
+    result = set(re.findall(r'<a id="([^"]+)"></a>', text))
+    # Shell/Python comments inside examples are not Markdown headings.
+    prose = re.sub(r'^```[^\n]*\n.*?^```', '', text, flags=re.M | re.S)
+    counts = {}
+    for heading in re.findall(r'^#{1,6} +(.+)$', prose, re.M):
+        slug = re.sub(r'[^\w\- ]', '', heading.lower()).replace(' ', '-')
+        ordinal = counts.get(slug, 0)
+        counts[slug] = ordinal + 1
+        result.add(slug + (f'-{ordinal}' if ordinal else ''))
+    return result
+
+
 @pytest.mark.parametrize('page', PAGES)
 def test_public_entry_links_resolve(page):
     for href in links(page):
         target = urlsplit(href)
-        if target.scheme or target.netloc or not target.path:
+        if target.scheme or target.netloc:
             continue
-        path = (ROOT / page).parent / unquote(target.path)
+        path = ((ROOT / page).parent / unquote(target.path)) if target.path else ROOT / page
         assert path.resolve().is_relative_to(ROOT), (page, href)
         assert path.exists(), f'{page} links to missing {href}'
+        if target.fragment and path.suffix == '.md':
+            assert unquote(target.fragment) in anchors(path), (page, href)
+
+
+def test_consolidated_layout_counts_actual_pages_not_only_guides():
+    counts = {directory: len(list((ROOT / 'docs' / directory).rglob('*.md')))
+              for directory in ('architecture', 'contracts', 'guides', 'runbooks', 'status', 'workloads')}
+    assert counts == dict(architecture=1, contracts=6, guides=9, runbooks=2, status=5, workloads=16)
+
+
+@pytest.mark.parametrize('page,sections,requirements', [
+    ('native_output',
+     'WAN_NATIVE_OUTPUT_V1 HELIOS_NATIVE_OUTPUT_V1 HELIOS_GAN_NATIVE_OUTPUT_V1 PRIMARY_EXPORT_STAGING_V1 W1_W2_NATIVE_STREAM_HORIZON_V1',
+     ('(4/3) I4 - (1/3) ones(4,4)', 'first eight bytes big-endian',
+      'primary_only=True', 'G102/C510/EMA510', '2..100')),
+    ('helios_native',
+     'helios_gan_native_history_v1 helios_gan_native_history_checkpoint_cpu_v1 helios_nogan_native_history_v1 helios_nogan_native_history_safe_v1 helios_nogan_native_checkpoint_inputs_cpu_v1 helios_nogan_safe_stream_v1 helios_original_bounded_requests_v1 original_helios_record_epochs_v1',
+     ('7,593,984,000', '60,751,872,000', '649,920,512',
+      'FSDP2_ALIGNED_MATERIALIZATION_WITH_ORIGINAL_REDUCE_AND_STEP', '80 * cycles')),
+    ('h3_native',
+     'h3_attention_tuple_capture_v2 minimax_h3_bounded_requests_v1 original_h3_ar_capacity_v2 original_h3_ar_continuation_v1 original_h3_ar_native_v1 original_h3_ar_native_v2 original_h3_ar_record_epochs_v1',
+     ('37,727', 'num_frames % 17 == 5', 'host_limits',
+      '[2,32,94]', 'exclude_frozen_parameters=True', '800 logical draws')),
+    ('livewan_native',
+     'original_livewan_reference_training_v1 original_livewan_teacher_cohorts_v1 original_livewan_teacher_epochs_v1',
+     ('[16,21,46,80]', '1 <= N <= 64', 'Gk/C5k/EMA0', '80 * cycles')),
+    ('state_retention',
+     'frozen_teacher_construction_handoff_v1 wan_rollout_shared_scratch_v1 wan_tail6_retention_v1 wan_tail8_retention_v1',
+     ('cpu-fsdp2-frozen-teacher-v1', 'shared-scratch.v1', 'Critic24–29', 'blocks22..29', '20.324208')),
+])
+def test_consolidated_contracts_retain_versioned_sections_and_unique_constraints(page, sections, requirements):
+    path = ROOT / 'docs/contracts' / (page + '.md')
+    content = path.read_text()
+    assert set(sections.split()) <= anchors(path)
+    for value in requirements:
+        assert value in content, (page, value)
 
 
 def test_public_documentation_keeps_results_not_experiment_process_reports():
@@ -85,7 +146,7 @@ def test_readme_cpu_example_uses_the_installed_cli():
 
 
 @pytest.mark.parametrize('page', (
-    'docs/architecture/framework.md', 'docs/architecture/repository_organization.md',
+    'docs/architecture/repository_organization.md',
 ))
 def test_architecture_entry_links_have_installed_targets(page):
     try:

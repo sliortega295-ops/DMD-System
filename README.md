@@ -6,11 +6,11 @@ model-specific execution strategy without changing the training algorithm.
 The Python package is named `distillschedule`.
 
 [Documentation](docs/README.md) · [Recipes](recipes/README.md) ·
-[Supported configurations](docs/guides/support_matrix.md) ·
-[Optimizer Skill](docs/guides/optimizer_skill.md) · [Contributing](CONTRIBUTING.md)
+[Supported configurations](docs/guides/model_families.md#support_matrix) ·
+[Optimizer Skill](docs/guides/optimization_capabilities.md#optimizer_skill) · [Contributing](CONTRIBUTING.md)
 
 **Research software:** model support, hardware requirements and validation vary
-by recipe. Start with the [support matrix](docs/guides/support_matrix.md) and its
+by recipe. Start with the [support matrix](docs/guides/model_families.md#support_matrix) and its
 linked validation records before a large training run.
 
 ## Get started
@@ -49,7 +49,7 @@ distillctl export "$DEMO/train.json" --checkpoint "$CP" --output "$DEMO/exported
 Continue with the [end-to-end tutorial](examples/framework/README.md) for
 new-input generation, or choose a model below. See
 [installation](docs/guides/installation.md) for CPU-only dependencies and
-[troubleshooting](docs/guides/troubleshooting.md) for common setup issues.
+[troubleshooting](docs/guides/installation.md#troubleshooting) for common setup issues.
 
 ## Models and workflows
 
@@ -67,13 +67,13 @@ new-input generation, or choose a model below. See
 W1–W6 identify the original benchmark protocols, not the limit of model support.
 Official Self-Forcing and cross-scale LiveWan have separate recipes. H3
 Grid1000 uses an approximate schedule; H3 AR keeps continuous sigma sampling.
-The [support matrix](docs/guides/support_matrix.md) distinguishes available
+The [support matrix](docs/guides/model_families.md#support_matrix) distinguishes available
 execution paths and the scope of their tests.
 
 The [performance overview](docs/guides/performance_validation.md) collects all six
 workloads, official DMD2/Self-Forcing and H100 results. Use the
-[native presets](docs/guides/native_presets.md) or
-[official optimized recipes](docs/guides/official_optimized_training.md) for direct training.
+[native presets](docs/guides/native_workloads.md#native_presets) or
+[official optimized recipes](docs/guides/native_workloads.md#official_optimized_training) for direct training.
 
 ## Optimize an existing project with Codex
 
@@ -91,7 +91,7 @@ existing implementations first, measure end-to-end changes, and keep a WORK_LOG.
 
 The Skill includes a public library of successful, failed and unresolved
 experiments. Personal continuity uses available, authorized Codex history and
-project logs. See the [Skill guide](docs/guides/optimizer_skill.md) for updates
+project logs. See the [Skill guide](docs/guides/optimization_capabilities.md#optimizer_skill) for updates
 and lookup commands.
 
 For reported performance, accepted configurations and the relationship between
@@ -100,7 +100,7 @@ Cycle 2 screening and longer training, see [Performance and validation](docs/gui
 ## Development
 
 The main code boundaries are [models/data, algorithms, training state and
-execution](docs/architecture/framework.md). Model factories and workflow
+execution](docs/architecture/repository_organization.md#framework). Model factories and workflow
 interfaces are documented in the [extension guide](docs/guides/extensions.md).
 Automatic planning is optional; supported recipes also provide reference or
 manual execution policies.

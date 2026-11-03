@@ -12,7 +12,7 @@ files contain placeholders; copy and edit them before launching training.
 | [SDXL DMD2](dmd2_sdxl/README.md) | Four-step or explicitly initialized single-step DMD2 |
 | [Official Self-Forcing](self_forcing_official/README.md) | Causal Wan rollout, native KV cache and update schedule |
 
-The [official optimization guide](../docs/guides/official_optimized_training.md)
+The [official optimization guide](../docs/guides/native_workloads.md#official_optimized_training)
 contains the measured SD1.5 and Self-Forcing configurations.
 
 ## Flow DMD models
@@ -24,7 +24,7 @@ contains the measured SD1.5 and Self-Forcing configurations.
 | Audio–video | [LTX-2.5](ltx25/README.md) |
 
 These recipes reuse the flow-DMD workflow with model-specific prediction,
-conditioning and codec adapters. The [support matrix](../docs/guides/support_matrix.md)
+conditioning and codec adapters. The [support matrix](../docs/guides/model_families.md#support_matrix)
 records which execution and output paths are available for each model.
 
 ## Native benchmark workflows
@@ -43,7 +43,7 @@ six protocols; `distillctl models list` also lists the additional models above.
 The default native `training.json` files select two-cycle performance presets.
 For continuous training and recovery, use the stream/continuation recipe linked
 from each guide. W5's native optimized preset still has an unresolved numerical
-failure; see [native presets](../docs/guides/native_presets.md).
+failure; see [native presets](../docs/guides/native_workloads.md#native_presets).
 
 ## Before running
 

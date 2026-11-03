@@ -1,7 +1,7 @@
 # Native checkpoint → current Student → new-prompt video
 
 Use this with the full fresh-stream [GAN recipe](NATIVE_STREAM.md). The
-CPU-reference diagnostic remains separate. The [output contract](../../docs/contracts/HELIOS_GAN_NATIVE_OUTPUT_V1.md)
+CPU-reference diagnostic remains separate. The [output contract](../../docs/contracts/native_output.md#HELIOS_GAN_NATIVE_OUTPUT_V1)
 defines the checkpoint, precision and output semantics.
 
 1. Keep the complete checkpoint's source, runtime, original task/assets, input

@@ -22,7 +22,7 @@ The [six-workload data](https://github.com/sliortega295-ops/DMD-System/blob/main
 also includes Resident/offload and static-layout baselines.
 The [W3 retiming record](https://github.com/sliortega295-ops/DMD-System/blob/main/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json)
 provides the unmerged-LoRA result used above. Launch with the
-[native presets](native_presets.md) and the corresponding recipe.
+[native presets](native_workloads.md#native_presets) and the corresponding recipe.
 
 ## Official DMD2 and Self-Forcing
 
@@ -35,7 +35,7 @@ provides the unmerged-LoRA result used above. Launch with the
 
 Both workflows completed 100 cycles, cycle-50 save and fresh-process
 continuation, Student export and new-input generation. See
-[configuration and commands](official_optimized_training.md) and
+[configuration and commands](native_workloads.md#official_optimized_training) and
 [run records](../status/official_optimized_framework.md).
 
 ## H100

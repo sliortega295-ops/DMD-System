@@ -63,7 +63,7 @@ distillctl data prepare-livewan-c51-inputs \
 
 Omit `--input-policy` for the original disjoint-record policy. Both paths use
 the same native `TeacherLatents` reader and existing training owner. See the
-[input policy](../../docs/contracts/original_livewan_teacher_epochs_v1.md) for
+[input policy](../../docs/contracts/livewan_native.md#original_livewan_teacher_epochs_v1) for
 the exact permutation, progress and checkpoint identity.
 
 Cached original Teacher data is allowed. Supplied archive metadata does **not**
@@ -156,7 +156,7 @@ Supply an explicit capacity policy with schema
 `host_reserve_bytes` gates. There are no fabricated default budgets or disabled
 numerical/capacity checks. Large checkpoint staging must fit the admitted host
 reserve. For current-Student export and new-input generation, use the
-[native output guide](../../docs/guides/livewan_native_output.md) with a
+[native output guide](../../docs/guides/training.md#livewan_native_output) with a
 complete checkpoint from this adapter.
 
 ## Horizon 100, stop at 50, fresh-process restore

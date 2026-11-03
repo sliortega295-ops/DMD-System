@@ -41,7 +41,7 @@ inventory template. Each cohort has an explicit seed and five lists of sixteen
 **distinct actual pre-encoded feature files** (one per source step/rank). There
 are 80 source files per cohort. In the default single-pass policy, supply at
 least 2 and at most 100 globally distinct cohorts. To reuse a normal finite
-dataset across epochs, use the explicit [feature-pool policy](../../docs/guides/helios_feature_epochs.md)
+dataset across epochs, use the explicit [feature-pool policy](../../docs/guides/data.md#helios_feature_epochs)
 instead; never substitute an old captured trace. Each file contains
 native `vae_latent`, `prompt_embed` and `attention_mask` data. Use your original
 feature encoder/data preparation; this command does not turn raw video into

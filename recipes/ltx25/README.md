@@ -267,7 +267,7 @@ The export contains current Student + native codecs/Gemma/connectors and inline
 tokenizer config. The pinned external source and isolated runtime remain needed;
 training weights, Teacher/Fake, optimizer and old inputs are not needed.
 Use the [inference-request builder](../../docs/guides/training.md#generate-and-export)
-and [export-only preparer](../../docs/guides/export_inputs.md) for new inputs.
+and [export-only preparer](../../docs/guides/data.md#export_inputs) for new inputs.
 Save `$RUN/new-inputs.json` beside `export/` with this complete prompt manifest
 for the tiny fixture:
 

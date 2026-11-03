@@ -156,12 +156,11 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/recipes/wan22_dmd" = ["recipes/wan22_dmd/*.md", "recipes/wan22_dmd/*.json", "recipes/wan22_dmd/*.py"]
 "share/distillschedule/recipes/wan_ar" = ["recipes/wan_ar/*.md", "recipes/wan_ar/*.json"]
 "share/distillschedule/docs/guides" = ["docs/guides/*.md"]
-"share/distillschedule/docs/contracts" = ["docs/contracts/*.md"]
+"share/distillschedule/docs/contracts" = ["docs/contracts/*.md", "docs/contracts/*.json"]
 "share/distillschedule/docs/runbooks" = ["docs/runbooks/*.md"]
-"share/distillschedule/docs/architecture" = ["docs/architecture/*.md"]
-"share/distillschedule/docs/status" = [
-    "docs/status/official_optimized_framework.md",
-]
+"share/distillschedule/docs/architecture" = ["docs/architecture/*.md", "docs/architecture/*.json"]
+"share/distillschedule/docs" = ["docs/README.md"]
+"share/distillschedule/docs/status" = ["docs/status/*.md"]
 "share/distillschedule/artifacts/framework/20261030" = [
     "artifacts/framework/20261030/livewan_native_recovery_scope.json",
 ]
@@ -174,12 +173,46 @@ include = ["distillschedule*", "runtime*"]
 ]
 "share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
 
-# Public guide dependencies; repository-only CI/source/evidence remain outside this set.
-"share/distillschedule" = ["THIRD_PARTY.md"]
-"share/distillschedule/docs/workloads" = [
-    "docs/workloads/open_role_pools.md",
-    "docs/workloads/open_workload_program.md",
-    "docs/workloads/original_wan_fresh_training.md",
-    "docs/workloads/hardware_native_planning.md",
-    "docs/workloads/helios_component_planning.md",
+# Maintained pages; historical source/patch/trace inventories stay source-only.
+"share/distillschedule" = ["README.md", "AGENTS.md", "CONTRIBUTING.md", "THIRD_PARTY.md"]
+"share/distillschedule/docs/workloads" = ["docs/workloads/*.md"]
+"share/distillschedule/docs/workloads/runbooks" = ["docs/workloads/runbooks/*.md"]
+"share/distillschedule/docs/workloads/evidence" = [
+    "docs/workloads/evidence/*.md",
+    "docs/workloads/evidence/livewan_c34_20260906.json",
+    "docs/workloads/evidence/profile_guided_search_20260906.json",
+    "docs/workloads/evidence/profile_guided_search_20260906.csv",
+]
+
+# Direct evidence companions of the source-bound results page, not raw inventories.
+"share/distillschedule/artifacts/publications/20261019/results_correction" = [
+    "artifacts/publications/20261019/results_correction/results.json",
+    "artifacts/publications/20261019/results_correction/A100_user_reported_main_table.csv",
+]
+"share/distillschedule/artifacts/publications/20261019/results_correction/evidence/gan_nomerge" = [
+    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.md",
+    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/post_timer_schema_bug_fix_CPU.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r1" = [
+    "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r34" = [
+    "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r36" = [
+    "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r46" = [
+    "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/livewan_r3/reports" = [
+    "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+]
+"share/distillschedule/artifacts/publications/20261019/h100" = [
+    "artifacts/publications/20261019/h100/measured_results.csv",
+    "artifacts/publications/20261019/h100/source_manifest.json",
+]
+"share/distillschedule/artifacts/publications/20261019/evidence/planner" = [
+    "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
 ]

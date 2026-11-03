@@ -26,7 +26,7 @@
 | PP＋FSDP＋DP 原型 | [7cde0ff8](https://github.com/sliortega295-ops/DMD-System/tree/7cde0ff8101725d8bab2843c52dcde127b09525a) | `codex/wan-grid-static-shared-20261014` | PP2×shard4×replica2、TP1 的 CPU 原型；不是旧 TP4 实测，不宣称六任务 GPU 完成 |
 | 已否决 merged-LoRA 研究源码 | [c6987619](https://github.com/sliortega295-ops/DMD-System/tree/c69876197aeaccbab19b515b54d1022f07634422) | `codex/wan13b-shadow-noise30-20261012` | 30-cycle 轨迹/舍入研究，保留负结果，不能当作有效加速或默认候选 |
 
-机器可读索引：[source_manifest.json](../../artifacts/publications/20261019/source_manifest.json)。
+机器可读索引：source_manifest.json (source checkout: `artifacts/publications/20261019/source_manifest.json`)。
 这些是**可追溯的不同源**，不是一个已经合并并重新验收的最终二进制。源码被上传也不表示某候选获准晋级默认值。
 
 H100 adapter 还固定依赖独立原生源码 [8fc70e8](https://github.com/sliortega295-ops/DMD-System/tree/8fc70e8ce9f6e0243604812120119c9f4c078e55)，一并上传到 `agent/h100-helios-nograd-retain-20261014`。仅在本地读取与做 CPU 协议验证，没有连接或恢复 H100 队列。
@@ -45,7 +45,7 @@ H100 adapter 还固定依赖独立原生源码 [8fc70e8](https://github.com/slio
 | W5 H3 Full-Sequence/Grid1000 | NOT_RUN | NOT_RUN | — | sampled 数值 FAIL 未解决，未绕过门做速度配对 |
 | W6 H3 AR/DiffSynth | 255.501369 | 255.442535 | −0.0230% | 16/16，REVIEW，原容量政策 |
 
-[逐行 source 与证据](../../artifacts/publications/20261019/evidence/planner/six_workload_native_match.json)，[CSV](../../artifacts/publications/20261019/planner_native_matches.csv)。
+[逐行 source 与证据](../../artifacts/publications/20261019/evidence/planner/six_workload_native_match.json)，CSV (source checkout: `artifacts/publications/20261019/planner_native_matches.csv`)。
 C34 的 46.8943／47.1225s 另存，只是历史注册入口配对，不能替代 C51。
 H100 仅接入代码和 CPU 验证，本次没有接触或补跑 H100 GPU。
 
@@ -64,7 +64,7 @@ H100 仅接入代码和 CPU 验证，本次没有接触或补跑 H100 GPU。
 - `scripts/distillctl.py` 的 `workloads native` 命令
 
 原源码 runbook 的 NOT_RUN 表示编写时状态；本次归档的后续实际回执为更新后的测量依据。
-[Wan r18 保存计划与资格资料](../../artifacts/publications/20261019/evidence/planner/wan_retain4/)。
+Wan r18 保存计划与资格资料 (source checkout: `artifacts/publications/20261019/evidence/planner/wan_retain4`)。
 参数、任务、计划 SHA 与两节点 effective contract 必须匹配，不允许降级成固定手工入口冒充计划执行。
 
 ## 3. 最近 W4 仅 A／完整仅 B 的结果
@@ -79,7 +79,7 @@ H100 仅接入代码和 CPU 验证，本次没有接触或补跑 H100 GPU。
 | 完整仅 B：原 FSDP16 顺序，18项 C51 B 作用域适配 | 053bdcad | 42.123914 | 15.48 / 38.38 |
 | 既有联合完整系统（未重跑） | a62cafee | 42.407027 | 35.16 / 38.07 |
 
-[完整 R3 报告](../../artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.md)、[原生 summary 与实际计数](../../artifacts/publications/20261019/evidence/livewan_r3/)。
+完整 R3 报告 (source checkout: `artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.md`)、原生 summary 与实际计数 (source checkout: `artifacts/publications/20261019/evidence/livewan_r3`)。
 新两格同源；旧 baseline/full 不是在新源重跑，因此跨源比率只是描述性诊断。
 完整 B 终态 driver-free 最低采样4.375MiB，不是整个周期的最小余量，也不是有宽裕容量的证明。
 调用、版本、有限值、缓存生命周期检查通过，严格数值仍 REVIEW；没有用 finite 冒充全状态/长期轨迹等价。
@@ -90,7 +90,7 @@ W1 FSDP兼容 B 为28.477869s，是明确的子集，数值原状态 NOT_RUN 不
 
 ## 4. Git 之外的真实实验源码也补齐
 
-[manual_packets](../../artifacts/publications/20261019/manual_packets/) 保存逐字节原始脚本、SHA 与配置：
+manual_packets (source checkout: `artifacts/publications/20261019/manual_packets`) 保存逐字节原始脚本、SHA 与配置：
 - Wan r30 流提交／r34 原始 EMA recurrence 的 CUDA Graph 手工组合；r34 C2 19.720700→19.549642s，**仅已知 EMA steps11–20 两周期**，不宣称生产通用支持。
 - H3 AR r46 metadata barrier：同 FA3 路径262.384847→253.740367s，数值 REVIEW；历史 SDPA 255.528303s只是另一批 provenance。
 
@@ -110,4 +110,4 @@ python3 scripts/distillschedule/check_source_publication.py
 该检查只验证发布文件与已归档 source/SHA/六任务范围，不触碰 GPU，也不替代训练或集群验收。
 历史报告中的 `push=false` / `no_push=true` 是**实验结束当时**的冻结记录；本次后续上传不追改这些原始回执。
 
-本次发布前的聚焦 CPU 校验：LiveWan151通过；规划器182通过（另12项因缺显式native root先skip，随后绑定8fc原生源码的专门回归13/13通过）；外部脚本35通过；归档检查3通过。[机器回执](../../artifacts/publications/20261019/publication_validation.json)。这些是 CPU 检查，不替代 GPU 或数值验收。
+本次发布前的聚焦 CPU 校验：LiveWan151通过；规划器182通过（另12项因缺显式native root先skip，随后绑定8fc原生源码的专门回归13/13通过）；外部脚本35通过；归档检查3通过。机器回执 (source checkout: `artifacts/publications/20261019/publication_validation.json`)。这些是 CPU 检查，不替代 GPU 或数值验收。

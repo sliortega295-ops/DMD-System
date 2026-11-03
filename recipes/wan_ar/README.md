@@ -25,7 +25,7 @@ has no checkpoint/resume interface. The native bundle keeps retain4 disabled.
 python scripts/distillctl.py workloads native validate --task configs/distillschedule/original_wan/full5_reference.json
 ```
 
-The [native runbook](../../docs/runbooks/wan_compute_state_planning_v1.md) covers
+The [native runbook](../../docs/runbooks/native_planner_workflow.md#wan_compute_state_planning_v1) covers
 manual and saved-plan execution. `--include-incumbent-bundle --include-critic-retention`
 exposes the relevant candidates in the compatible native/Triton environment.
 See [native output](NATIVE_OUTPUT.md) for current-Student export and Wan2.1 VAE decoding.
@@ -33,7 +33,7 @@ See [native output](NATIVE_OUTPUT.md) for current-Student export and Wan2.1 VAE 
 ## Implementation and results
 
 The entrypoints are `src/distillschedule/strategies/wan_cli.py`, `wan_worker.py`
-and `wan_planning.py`. [Direct presets](../../docs/guides/native_presets.md)
+and `wan_planning.py`. [Direct presets](../../docs/guides/native_workloads.md#native_presets)
 map them to the public configuration. A100 and H100 use their corresponding
 hardware configuration.
 

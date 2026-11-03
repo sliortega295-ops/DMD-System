@@ -1,6 +1,6 @@
 # Official optimized workflows: source and run records
 
-[Training commands](../guides/official_optimized_training.md) ·
+[Training commands](../guides/native_workloads.md#official_optimized_training) ·
 [Performance overview](../guides/performance_validation.md)
 
 ## Performance sources

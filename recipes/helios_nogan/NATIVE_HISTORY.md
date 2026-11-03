@@ -40,6 +40,6 @@ This route materializes the complete Generator at each aligned action boundary,
 retains its parameters through G backward, and releases them before the original
 optimizer step. It is not the existing detached-rollout persistence switch.
 Full-size memory capacity is not established by CPU admission. See the
-[versioned execution contract](../../docs/contracts/helios_nogan_native_history_v1.md)
+[versioned execution contract](../../docs/contracts/helios_native.md#helios_nogan_native_history_v1)
 for required topology, work census and validation scope. The old reference and
 SafeBundle routes retain their original input contracts and checks.

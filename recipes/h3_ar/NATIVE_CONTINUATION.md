@@ -2,7 +2,7 @@
 
 Status: source/CPU protocol integration only; native world16 continuation is
 **NOT_RUN**. This is not a pretrained quality or decoded-AV tutorial. See
-[`original_h3_ar_continuation_v1.md`](../../docs/contracts/original_h3_ar_continuation_v1.md).
+[`original_h3_ar_continuation_v1.md`](../../docs/contracts/h3_native.md#original_h3_ar_continuation_v1).
 
 Use existing, licensed original native source/model/helper/library assets and
 the exact supported environment. No asset/environment download, GPU reservation
@@ -71,7 +71,7 @@ assets, not duplicated in checkpoints. Never restore untrusted native pickles.
 ## Explicit epochs over a finite cached dataset
 
 To train for more cycles than the cached dataset has distinct records, select
-the [versioned record-epoch policy](../../docs/contracts/original_h3_ar_record_epochs_v1.md)
+the [versioned record-epoch policy](../../docs/contracts/h3_native.md#original_h3_ar_record_epochs_v1)
 instead of duplicating files or inventing fresh record IDs. Supply a source list
 with `rank`, `record_id`, `path`, `sha256` and `sources`, but no `cycle` or
 caller-authored `metadata`. Each original rank needs at least one genuine
@@ -97,8 +97,8 @@ The same native export entry accepts either declared input kind.
 Use the same training identity with an explicit output policy to export a
 complete intermediate or terminal checkpoint. The native owner restores all
 state but executes zero additional cycles. See the
-[native export and independent inference guide](../../docs/guides/h3_ar_native_inference.md)
+[native export and independent inference guide](../../docs/guides/training.md#h3_ar_native_inference)
 and `export.native.template.json`. Independent generation accepts new original
-AV conditions; [decode](../../docs/guides/h3_audio_video_decode.md) uses the actual
+AV conditions; [decode](../../docs/guides/training.md#h3_audio_video_decode) uses the actual
 video/audio codecs as a separate step. Native GPU output qualification and
 pretrained quality remain separate from source/CPU acceptance.

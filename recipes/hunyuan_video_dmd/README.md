@@ -83,7 +83,7 @@ See [capacity conditions](../../docs/guides/optimization_capabilities.md#direct-
 ## Generate new prompts
 
 Export contains current Student, VAE, both text encoders and tokenizers. Prepare
-new prompts with the [export-only preparer](../../docs/guides/export_inputs.md),
+new prompts with the [export-only preparer](../../docs/guides/data.md#export_inputs),
 then create an inference request with the [common builder](../../docs/guides/training.md#generate-and-export):
 
 ```sh

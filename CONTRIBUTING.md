@@ -35,7 +35,7 @@ environment. The standalone Skill uses only the standard library.
 | Optimizer Skill | `skills/dmd-system-optimizer/` |
 | User configurations and guides | `recipes/`, `docs/guides/` |
 
-See [architecture](docs/architecture/framework.md) and
+See [architecture](docs/architecture/repository_organization.md#framework) and
 [extensions](docs/guides/extensions.md) before adding a model or backend.
 Top-level `runtime/` still contains components used by current recipes; check
 callers before moving them. Legacy Route-A/Route-B runners are retired.

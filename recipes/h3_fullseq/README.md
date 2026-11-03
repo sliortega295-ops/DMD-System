@@ -19,14 +19,14 @@ python scripts/distillctl.py workloads candidates --workload minimax_h3_grid1000
 ```
 
 The [native runbook](../../docs/runbooks/native_planner_workflow.md) and
-[direct preset guide](../../docs/guides/native_presets.md) describe asset,
+[direct preset guide](../../docs/guides/native_workloads.md#native_presets) describe asset,
 hardware and execution requirements. The code is in
 `src/distillschedule/search/h3_action_model_adapter.py` and
 `src/distillschedule/backends/training/minimax_h3/trainer_loop.py`.
 
 ## Current-Student output
 
-The [Grid inference guide](../../docs/guides/h3_grid_inference.md) covers the
+The [Grid inference guide](../../docs/guides/training.md#h3_grid_inference) covers the
 frozen-base/current-LoRA/four-table representation, original four-step sampler,
 native checkpoint export and new-process generation of AV tokens. Use
 [`export.native.template.json`](export.native.template.json) and a compatible

@@ -34,7 +34,7 @@ covers checkpoint export and new-prompt decoded video.
 ## Implementation and results
 
 The adapter entrypoints are `src/distillschedule/search/helios_model_adapter.py`
-and `workflow_cli.py`; [direct presets](../../docs/guides/native_presets.md)
+and `workflow_cli.py`; [direct presets](../../docs/guides/native_workloads.md#native_presets)
 identify their implementation and input bindings.
 
 See [current performance and validation](../../docs/guides/performance_validation.md).

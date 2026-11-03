@@ -16,7 +16,7 @@
       "protocol": "Helios hierarchical AR; No-GAN; G1/C5/EMA5",
       "legacy_profile": "wan13b_nogan_resident_best",
       "task": "configs/distillschedule/original_wan/full5_reference.json",
-      "runbook": "docs/runbooks/wan_compute_state_planning_v1.md",
+      "runbook": "docs/runbooks/native_planner_workflow.md",
       "code": [
         "src/distillschedule/strategies/wan_cli.py",
         "src/distillschedule/strategies/wan_worker.py",
@@ -140,7 +140,7 @@
       "protocol": "14B teacher -> 1.3B student; continuous sigma; G1/C5/EMA0",
       "legacy_profile": "livewan_crossscale_pipeline_best",
       "task": null,
-      "runbook": "docs/runbooks/livewan_c51_planner_v1.md",
+      "runbook": "docs/runbooks/native_planner_workflow.md",
       "code": [
         "src/distillschedule/search/livewan_implementation.py",
         "src/distillschedule/runtime/livewan_crossscale_worker.py"
@@ -215,7 +215,7 @@
       "protocol": "Previous+current AV chunks; continuous sigma; 8-step; G1/F1; LoRA64",
       "legacy_profile": null,
       "task": "configs/distillschedule/original_h3_ar/w6_reference.json",
-      "runbook": "docs/runbooks/original_h3_ar_native.md",
+      "runbook": "docs/runbooks/native_planner_workflow.md",
       "code": [
         "src/distillschedule/strategies/h3_ar_cli.py",
         "src/distillschedule/strategies/h3_ar_session.py",

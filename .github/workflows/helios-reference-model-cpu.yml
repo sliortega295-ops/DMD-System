@@ -16,7 +16,7 @@ on:
       - 'tests/test_training_helios_checkpoint_inputs_cpu.py'
       - 'recipes/helios_nogan/**'
       - 'recipes/helios_nogan/training.native-history-safe.json'
-      - 'docs/contracts/helios_nogan_native_history_safe_v1.md'
+      - 'docs/contracts/helios_native.md'
       - 'tests/helios_rollout_liveness_fixtures.py'
       - 'tests/test_helios_rollout_liveness_cpu.py'
       - 'tests/test_refactor_helios_compat_source.py'

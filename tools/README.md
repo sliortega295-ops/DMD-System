@@ -2,7 +2,7 @@
 
 `install_optimizer_skill.py` installs the self-contained Codex optimization
 skill without replacing an existing version. See the
-[optimizer guide](../docs/guides/optimizer_skill.md).
+[optimizer guide](../docs/guides/optimization_capabilities.md#optimizer_skill).
 
 `assets/` owns standalone trace/data/bootstrap preparation. `profiling/` owns Nsight parsing, plots, profiling commands and transfer probes. These are explicit developer tools, not alternative training implementations.
 

@@ -47,6 +47,8 @@ def test_w5_failure_and_no_new_hardware_result_are_preserved():
 
 def test_catalog_sources_and_evidence_files_exist_and_match():
     assert verify_checkout(ROOT)['status'] == 'PASS_SOURCE_CATALOG'
+    for workload in ('W1', 'W4', 'W6'):
+        assert describe(workload)['runbook'] == 'docs/runbooks/native_planner_workflow.md'
 
 
 @pytest.mark.parametrize('args,expected', [

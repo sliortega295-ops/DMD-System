@@ -39,7 +39,7 @@ W5 CPU-boundary Resident 为 637.204307s；纯 Resident 的 Fake2 backward OOM �
 
 ## 3. Git 外实际使用的执行代码也归档
 
-[source_packets/campaign](../../artifacts/publications/20261019/h100/source_packets/campaign/) 保存原脚本的逐字节副本，SHA256、来源及每行证据绑定在 manifest；不只上传计时报告：
+source_packets/campaign (source checkout: `artifacts/publications/20261019/h100/source_packets/campaign`) 保存原脚本的逐字节副本，SHA256、来源及每行证据绑定在 manifest；不只上传计时报告：
 
 - W1：`scripts/run_wan_resident_matched_r1.py` 与原 Resident 两臂 launcher／资格逻辑。
 - W2／W3：`scripts/run_helios_official_swap_matched_r1.py`，以及 `artifacts/helios_h100_rollout_fence_probe_20261015_r1/scripts/run_retained_fence_single_pair_r1.py`。
@@ -59,5 +59,5 @@ python3 -m unittest discover -s tests -p test_h100_source_publication.py
 ```
 
 这些只验证归档完整性／范围，不导入训练运行器、不初始化 CUDA，也不表示新 source 在 H100 上重新通过。
-原 H100 队列保持 **USER_STOPPED_NO_AUTOMATIC_RESUME**；[R48 停机交接](../../artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md) 覆盖 R47 的续跑建议。此次发布不恢复队列，不改变训练源码、默认值、数值门或 main。
+原 H100 队列保持 **USER_STOPPED_NO_AUTOMATIC_RESUME**；R48 停机交接 (source checkout: `artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md`) 覆盖 R47 的续跑建议。此次发布不恢复队列，不改变训练源码、默认值、数值门或 main。
 历史记录中的 `push=false` 是当时状态，不追改；本次后续发布与历史测量严格分开。

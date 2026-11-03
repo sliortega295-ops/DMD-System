@@ -2,11 +2,14 @@
 import json
 import os
 from pathlib import Path
+import posixpath
+import re
 import shlex
 import tarfile
 import subprocess
 import sys
 import zipfile
+from urllib.parse import unquote, urlsplit
 
 from test_training_packaging import framework_wheel, wheel_metadata
 
@@ -199,6 +202,9 @@ def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework
                 if path.is_file() and path.suffix in ('.py', '.json', '.md', '.yaml', '.yml')}
     assert {'recipes/wan_ar/training.incumbent-stream.json', 'recipes/wan_ar/INCUMBENT_STREAM.md'} <= expected.keys()
     assert 'recipes/h3_fullseq/training.original-reference.json' in expected
+    documents = {str(path.relative_to(ROOT)): path for path in (ROOT/'docs').rglob('*.md')}
+    assert 30 <= len(documents) <= 40
+    expected.update(documents)
     with zipfile.ZipFile(framework_wheel) as wheel:
         prefix = next(name.split('.data/', 1)[0] + '.data/data/share/distillschedule/'
                       for name in wheel.namelist() if '.data/data/share/distillschedule/recipes/' in name)
@@ -207,6 +213,23 @@ def test_wheel_and_sdist_ship_exact_curated_recipes_not_model_payloads(framework
             if path.suffix in ('.json', '.yaml', '.yml'):
                 for private in (b'/home/', b'/tmp/lyy-', b'/share/project/', b'api_key', b'password'):
                     assert private not in wheel.read(prefix + relative), (relative, private)
+        # Check the actual archive, including source/evidence pages. A guide-only
+        # source check can pass while an installed historical page has dead links.
+        for name in wheel.namelist():
+            if not name.startswith(prefix) or not name.endswith('.md'):
+                continue
+            relative = name[len(prefix):]
+            if relative.split('/', 1)[0] not in {'docs', 'recipes', 'artifacts'}:
+                continue
+            for href in re.findall(r'\]\(([^)\s]+)\)', wheel.read(name).decode()):
+                link = urlsplit(href)
+                if link.scheme or link.netloc or not link.path:
+                    continue
+                target = posixpath.normpath(posixpath.join(posixpath.dirname(relative), unquote(link.path)))
+                assert prefix + target in wheel.namelist(), (relative, href, target)
+                assert wheel.read(prefix + target) == (ROOT / target).read_bytes(), target
+        assert not any(name.startswith(prefix + 'artifacts/publications/20261019/manual_packets/')
+                       for name in wheel.namelist())
         assert not any(name.endswith(('.pt', '.pth', '.safetensors', '.nsys-rep', '.sqlite', '.env'))
                        for name in wheel.namelist())
     result = subprocess.run([sys.executable, '-B', '-c',

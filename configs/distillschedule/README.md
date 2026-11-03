@@ -13,5 +13,5 @@ python scripts/distillctl.py show configs/distillschedule/plans/generic_autoregr
 
 This generic example is plan-only; it does not launch a model. Route-A/Route-B,
 their legacy Helios launch adapter and manual tail-block/offload presets are
-[retired](../../docs/architecture/legacy_route_retirement.md). They are not
+[retired](../../docs/architecture/repository_organization.md#legacy_route_retirement). They are not
 fallbacks for current FSDP2 workloads.

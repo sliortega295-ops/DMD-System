@@ -73,7 +73,7 @@ class TenUserJourneys(unittest.TestCase):
         self.assertTrue(entry.is_symlink())
         self.assertEqual(entry.resolve(), SKILL.resolve())
         guide = (ROOT / "AGENTS.md").read_text()
-        self.assertIn("docs/architecture/framework.md", guide)
+        self.assertIn("docs/architecture/repository_organization.md", guide)
         self.assertLess(len(guide.splitlines()), 60)
 
     def test_04_chinese_user_gets_decision_help_not_a_wrong_kernel(self):

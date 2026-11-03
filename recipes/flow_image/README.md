@@ -173,7 +173,7 @@ distillctl export "$RUN/train.json" \
 
 Use the exact returned checkpoint paths. The export contains current unmerged
 Student and native VAE/text/tokenizer codecs. Prepare new prompts/raw RGB with
-the [export-only preparer](../../docs/guides/export_inputs.md), then create an
+the [export-only preparer](../../docs/guides/data.md#export_inputs), then create an
 inference request using the [common builder](../../docs/guides/training.md#generate-and-export).
 It uses the export's factory/parameters and independent inference seed, not the
 training assets or factory:

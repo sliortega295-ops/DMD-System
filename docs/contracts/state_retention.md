@@ -1,10 +1,17 @@
-# Frozen Teacher construction handoff v1
+# Construction and state-retention contracts
+
+These explicit opt-ins change physical ownership/lifetime, not DMD mathematics.
+They do not make CPU fixtures evidence of large-model CUDA fit or speedup.
+Source, capacity, gradient, RNG and checkpoint gates remain mandatory.
+
+<a id="frozen_teacher_construction_handoff_v1"></a>
+## Frozen Teacher construction handoff v1
 
 Schema/opt-in: `model.parameters.construction = "cpu-fsdp2-frozen-teacher-v1"`.
 This is a narrow experimental CPU construction/lifecycle contract, not a
 large-model, CUDA, pretrained-quality, performance or release qualification.
 
-## Supported request
+### Supported request
 
 The registered FLUX.2 klein Base adapter uses its existing pinned modern-flow
 stack, real local native assets, same-family Student/Fake LoRA and frozen
@@ -38,7 +45,7 @@ The existing per-component parameter budgets and asset/hash admission remain
 mandatory. This recipe does not supply a new capacity budget or relax an
 existing native owner, source, purity, cache or generation gate.
 
-## Ownership and construction order
+### Ownership and construction order
 
 1. The existing `factory.admit_construction` hook validates the request before
    assets, then owns the factory's optional `construct(factory, parameters)`
@@ -79,7 +86,7 @@ factories still have to provide dense contiguous Parameters. Closing a provider
 expires its own lifetime and removes its registry entry; it does not rebind or
 poison an existing optimizer, EMA or published parameter payload.
 
-## Initialization, source and persistence
+### Initialization, source and persistence
 
 The construction scope restores caller Python/NumPy/Torch RNG, including on
 failure. Student/Fake dense constructors and LoRA draws retain their original
@@ -107,7 +114,7 @@ codec for modules, Adam, schedulers, full EMA, clocks, data position and trainin
 RNG. The ephemeral certificate/cohort is renewed, not deserialized or reused.
 Failure before publication discards/expires only that newly constructed owner.
 
-## Evidence boundaries
+### Evidence boundaries
 
 `tests/test_training_sharded_construction.py` includes actual tiny FLUX.1
 compatibility probes and separate actual FLUX.2 cases. Missing FLUX.2 is an
@@ -121,3 +128,58 @@ EMA is still dense. Other native lifecycle integrity signatures may still
 materialize full tensors. Thus **three-role large-model construction,
 bounded end-to-end integrity/export, LTX construction, CUDA/GPU memory,
 throughput and quality remain unqualified** by this contract.
+
+<a id="wan_rollout_shared_scratch_v1"></a>
+## Experimental Wan Generator independent graph scratch pool
+
+Default `isolated.v1` remains unchanged. The opt-in typed strategy
+`rollout_graph_pool_policy=shared-scratch.v1` requires the original Resident
+incumbent bundle and exactly retained Critic blocks26–29. Existing tail6/tail8
+OOM evidence is not overridden and those combinations are rejected.
+
+Only independent no-grad Generator rollout graph temporary storage is shared.
+Capture uses one stream and one explicit pool. Replay is restricted to one host
+thread/device/CUDA stream and rejects grad-enabled or nested-capture execution.
+Original inputs are copied into each signature's static inputs; each output is
+freshly cloned before another replay can overwrite graph-private storage.
+Critic forward/backward graph pools, reduction, optimizer, EMA, LoRA precision,
+parameters, sample/RNG streams, update versions and workload calls are unchanged.
+
+An actual receipt must bind the selected pool policy and verify every graph's
+real pool identity. No memory or speed claim follows from CPU policy tests.
+Requires a real original-model CUDA output/input/version/lifetime primitive
+before matched native two-cycle testing. Default main/profile settings unchanged.
+
+<a id="wan_tail6_retention_v1"></a>
+## Wan Critic tail6 autograd retention, experimental v1
+
+This optional policy admits exactly Critic24–29 for original autograd storage.
+It does not change model, precision, loss, RNG, updates, EMA, application calls,
+input trace or globalB16. Existing default retain4.v1 still rejects >4 blocks;
+tail8.v1 remains distinct and its actual CUDA OOM evidence is retained.
+
+Only explicit manual native strategy mode is allowed, never inherited old
+calibration or an automatic planner optimum claim. Compare on the same source
+against retained26–29, two continuous cycles, C2 only. Keep original node owner,
+2GiB allocated margin and64GiB host reserve. Actual capacity/semantic failure
+ends this bounded direction; do not retry other block counts by changing IDs.
+CPU output/gradient/Adam/RNG tests are synthetic and do not prove realGPU parity.
+No canonical/default configuration is changed. Pending target/GPU validation.
+
+<a id="wan_tail8_retention_v1"></a>
+## Experimental Resident Critic tail8 state retention
+
+Explicit `retention_policy=tail8.v1`, exact blocks22..29 only. The original
+retain4.v1 default, dictionary bytes, IDs and rejection of >4 blocks remain.
+Same audited normal-autograd restoration wrapper as retain4; no new kernels,
+math, checkpoint/data/dtype/global-batch/optimizer/RNG changes. Application
+calls remain unchanged; only eight Critic blocks avoid checkpoint recompute.
+No automatic search admission or historical cost reuse is enabled.
+
+The earlier actual retain4 pair20.324208→20.002455s and allocated23.409→26.692GiB
+motivate one bounded tail8 pair, after covering all six workloads. Capacity is
+only a prediction (roughly30GiB allocated), not a fit claim. Original2GiB
+allocated headroom and64GiB startup host reserve remain. Existing2 W1 launches
+stay charged; at most2 additional same-source control/child native C2 launches
+within W1cap4 and campaigncap24. Full-state comparison retains REVIEW and the
+original thresholds; no strict/long-trajectory equivalence claim.

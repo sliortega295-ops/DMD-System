@@ -22,12 +22,12 @@ wants the unified lifecycle and the existing adapter/recipe fits.
 | Need | Repository-relative source |
 | --- | --- |
 | Current workload catalog | `src/distillschedule/workloads/catalog.json` |
-| Support scope | `docs/guides/support_matrix.md` |
+| Support scope | `docs/guides/model_families.md` |
 | Training command and recovery | `docs/guides/training.md`, `recipes/` |
 | Physical capability seams | `docs/guides/optimization_capabilities.md` |
 | Existing implementation registry | `src/distillschedule/search/implementation_library.py` |
 | Saved-plan workflow | `docs/runbooks/native_planner_workflow.md` |
-| Ownership and extension | `docs/architecture/framework.md`, `docs/guides/extensions.md` |
+| Ownership and extension | `docs/architecture/repository_organization.md`, `docs/guides/extensions.md` |
 | Historical evidence interpretation | `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md` |
 
 At the packaged source snapshot there are six preserved native workloads:

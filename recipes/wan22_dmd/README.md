@@ -80,7 +80,7 @@ See [capacity conditions](../../docs/guides/optimization_capabilities.md#direct-
 ## Generate with the current Student
 
 Export contains current Student, VAE, UMT5 and tokenizer. Prepare new prompts
-with the [export-only preparer](../../docs/guides/export_inputs.md), and create an
+with the [export-only preparer](../../docs/guides/data.md#export_inputs), and create an
 inference request with the [common builder](../../docs/guides/training.md#generate-and-export):
 
 ```sh

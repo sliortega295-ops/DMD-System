@@ -105,7 +105,7 @@ Fill the source/assets and independent Generator/Critic stream paths in
 For FSDP2, use [training.fsdp2-reference.json](training.fsdp2-reference.json);
 [training.optimized.json](training.optimized.json) enables phase-weight/text-KV
 retention, Critic checkpoint-result reuse and native kernel/CFG specializations.
-The [shared launch and optimization guide](../../docs/guides/official_optimized_training.md)
+The [shared launch and optimization guide](../../docs/guides/native_workloads.md#official_optimized_training)
 contains the exact world16 environment, `flash_attn` requirement, mechanisms
 and performance results. Both FSDP2 profiles use B1/global16, 368×640/81 output
 frames, G1/C5/EMA0 and `NCCL_CROSS_NIC=1`.
@@ -153,7 +153,7 @@ Explicit `true` measures Fake ON against the same Generator-ON reference.
 `planning/selected-plan.json` through `mode:plan`. Native execution counters and
 paired reference admission verify the option, including the first resumed update.
 Flags/hooks restore after normal exit or errors. [Budgeted resident
-execution](../../docs/guides/resident_owner_training.md) defines separate
+execution](../../docs/guides/native_owner_backends.md#resident_owner_training) defines separate
 snapshot/restore admission for its exact tiny CUDA profile.
 
 The independent [consumed-KV template](training.consumed-kv.json) sets

@@ -10,7 +10,7 @@ checkpoint mechanics only. Pretrained CUDA/FSDP capacity and cross-reference
 numerical qualification remain **NOT_RUN**. The known optimized W5 sampled
 backward numerical **FAIL remains FAIL**. This route cannot select, time,
 calibrate, export, or bless that candidate. This **reference** owner supports
-[current-Student export, original four-step generation and AV decoding](../docs/guides/h3_grid_inference.md).
+[current-Student export, original four-step generation and AV decoding](../docs/guides/training.md#h3_grid_inference).
 
 ## Explicit inputs and original config
 
@@ -180,7 +180,7 @@ Historical `h3-a100-shared-backbone-v1`, cursorless `trainer_state.pt`, partial
 directories, benchmark receipts and completed-target checkpoints are not exact
 resume inputs. Changing target/horizon or resharding still requires a separate
 contract. For inference export, restore a complete reference checkpoint through
-the [output-only owner](../docs/guides/h3_grid_inference.md#export-an-original-reference-native-checkpoint);
+the [output-only owner](../docs/guides/training.md#h3_grid_inference--export-an-original-reference-native-checkpoint);
 a terminal checkpoint is legal for export, not for training beyond its horizon.
 AdaLN/attention/layout caches and
 diagnostic counters are rebuildable runtime state, not optimizer checkpoints.

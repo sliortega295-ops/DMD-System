@@ -25,7 +25,7 @@ requires its separate saved-plan contract and remains bounded to two cycles.
 ## Prepare genuine inputs and assets
 
 1. Prepare 80 distinct original TeacherLatents records per requested cycle,
-   following [the native input guide](../../docs/guides/livewan_inputs.md).
+   following [the native input guide](../../docs/guides/data.md#livewan_inputs).
    Use the same explicit seed and horizon in preparation and training.
 2. Supply clean source checkouts at the repository's pinned LiveWan and Wan2.1
    gitlinks. Inspect those origins rather than substituting another package.
@@ -162,7 +162,7 @@ G/C/EMA versions, RNG identity, source/runtime origins and capacity observations
 They are not a formal performance or cross-reference numerical qualification.
 The separate [full C51 continuation](C51_CONTINUATION.md) implements its
 physical drain, shadow and two-slot recovery. Its
-[native output bridge](../../docs/guides/livewan_native_output.md) exports the
+[native output bridge](../../docs/guides/training.md#livewan_native_output) exports the
 current Student and generates on new inputs. These are explicit adapters,
 not optimizations silently enabled by this reference route; their native GPU
 qualification is recorded separately.

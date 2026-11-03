@@ -8,11 +8,11 @@ new text features. See the
 The reused Generator was saved at G4; this is output/lifecycle acceptance,
 not a 50-cycle model-quality result.
 W2/W3/W5/W6 output work is separate. See the
-[versioned contract](../../docs/contracts/WAN_NATIVE_OUTPUT_V1.md).
+[versioned contract](../../docs/contracts/native_output.md#WAN_NATIVE_OUTPUT_V1).
 
 If you have only an original native final-Generator trainables payload rather
 than a complete training checkpoint, use the separate
-[weights initialization/import](../../docs/guides/wan_weights_initialization.md)
+[weights initialization/import](../../docs/guides/data.md#wan_weights_initialization)
 path. It combines the pinned original frozen base and trained unmerged adapter
 into the same portable inference format without running more training.
 

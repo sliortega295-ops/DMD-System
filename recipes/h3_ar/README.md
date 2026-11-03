@@ -24,8 +24,8 @@ entrypoints; choose the latter for long training.
 python scripts/distillctl.py workloads native validate --task configs/distillschedule/original_h3_ar/w6_reference.json
 ```
 
-The [native runbook](../../docs/runbooks/original_h3_ar_native.md) covers execution.
-[Raw AV preparation](../../docs/guides/h3_audio_video_encode.md) converts frame
+The [native runbook](../../docs/guides/native_workloads.md#original_h3_ar_native) covers execution.
+[Raw AV preparation](../../docs/guides/data.md#h3_audio_video_encode) converts frame
 directories, stereo32kHz PCM WAV and preencoded text to the original cached-input
 representation. Use the supplied `encoder.native.template.json` and
 `raw.native.template.json` with your local model assets.
@@ -33,8 +33,8 @@ representation. Use the supplied `encoder.native.template.json` and
 ## Implementation and results
 
 The code is in `src/distillschedule/strategies/h3_ar_cli.py`, `h3_ar_session.py`
-and `h3_ar_planning.py`. See [direct presets](../../docs/guides/native_presets.md),
-[current-Student output](../../docs/guides/h3_ar_native_inference.md) and
+and `h3_ar_planning.py`. See [direct presets](../../docs/guides/native_workloads.md#native_presets),
+[current-Student output](../../docs/guides/training.md#h3_ar_native_inference) and
 [current performance and validation](../../docs/guides/performance_validation.md).
 Earlier A100/H100 trials retain their original source and measurement scope;
 W6 does not use W5's Grid1000 sampler.

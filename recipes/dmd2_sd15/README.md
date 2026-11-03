@@ -79,8 +79,8 @@ Fill the chosen recipe's source, bundle, prepared streams and output paths.
 Single-device recipes use `trainer.device: cpu` or an explicit owned `cuda:N`
 and FP32 reference execution. FSDP2 uses FP32 masters/Adam, BF16 gradient compute
 and Teacher, FP16 VAE, FP32 text/classifier heads. See the [FSDP2 launch,
-collective export and same-topology recovery guide](../../docs/guides/dmd2_fsdp2_reference.md).
-The [optimized guide](../../docs/guides/official_optimized_training.md) supplies
+collective export and same-topology recovery guide](../../docs/guides/native_workloads.md#dmd2_fsdp2_reference).
+The [optimized guide](../../docs/guides/native_workloads.md#official_optimized_training) supplies
 its Resident/DDP launch policy, mechanisms and unchanged performance results.
 
 ```sh
@@ -127,7 +127,7 @@ temporarily disables checkpointing. Flags/callbacks are restored after each
 macrocycle, including exceptions; Teacher/CLIP/VAE are outside the option.
 The same source-bound option participates in measured `auto`, saved `plan`
 and paired-reference admission after restart. [Budgeted resident
-execution](../../docs/guides/resident_owner_training.md) documents construction,
+execution](../../docs/guides/native_owner_backends.md#resident_owner_training) documents construction,
 snapshot/restore and device admission rather than whole-owner CUDA copies.
 
 Additional independent profiles are [component checkpointing](training.component-checkpoint.json)

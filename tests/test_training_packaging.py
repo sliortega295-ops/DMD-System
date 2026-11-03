@@ -38,7 +38,7 @@ def test_helios_notice_keeps_original_notices_and_identifies_modified_source():
     assert b"source_manifest.json" in changes
 
 
-def test_public_guide_dependencies_have_installed_data_file_destinations():
+def test_public_document_dependencies_have_installed_data_file_destinations():
     try:
         import tomllib
     except ModuleNotFoundError:  # Python 3.10: pytest's TOML dependency.
@@ -48,9 +48,8 @@ def test_public_guide_dependencies_have_installed_data_file_destinations():
     installed = {destination: {path for pattern in patterns for path in ROOT.glob(pattern)}
                  for destination, patterns in data_files.items()}
     guides = {path for paths in installed.values() for path in paths
-              if path.suffix == ".md" and (path.relative_to(ROOT).parts[0] == "recipes"
-                  or path.relative_to(ROOT).parts[:2] == ("docs", "guides"))}
-    assert guides, "public recipes and guides must be declared as package data"
+              if path.suffix == ".md" and path.relative_to(ROOT).parts[0] in {"recipes", "docs", "artifacts"}}
+    assert guides, "public recipes and documentation must be declared as package data"
     dependencies = set()
     for guide in sorted(guides):
         for href in re.findall(r"\]\(([^)\s]+)\)", guide.read_text()):
@@ -64,11 +63,21 @@ def test_public_guide_dependencies_have_installed_data_file_destinations():
             assert target.is_file(), f"{guide.relative_to(ROOT)} links to missing {source}"
             dependencies.add(source)
     # Independent regression: the packaged H3 continuation recipe needs this policy.
-    assert Path("docs/contracts/original_h3_ar_record_epochs_v1.md") in dependencies
+    assert Path("docs/contracts/h3_native.md") in dependencies
+    # Consolidation must ship the actual maintained pages, not stale paths or
+    # guide-only coverage that leaves normative contracts/evidence behind.
+    packaged = {path for paths in installed.values() for path in paths}
+    assert set((ROOT / 'docs').rglob('*.md')) <= packaged
+    assert {ROOT / 'docs/contracts' / name for name in (
+        'native_output.md', 'helios_native.md', 'h3_native.md',
+        'livewan_native.md', 'state_retention.md', 'python_dependency_overlays_v1.md',
+    )} <= packaged
+    assert all(list(ROOT.glob(pattern))
+               for patterns in data_files.values() for pattern in patterns)
     missing = [str(source) for source in sorted(dependencies)
                if ROOT / source not in installed.get(
                    (Path("share/distillschedule") / source.parent).as_posix(), set())]
-    assert not missing, f"public guide dependencies lack their installed data-file destination: {missing}"
+    assert not missing, f"public document dependencies lack their installed data-file destination: {missing}"
 
 
 def test_public_source_checkout_references_keep_real_paths_without_payload_links():

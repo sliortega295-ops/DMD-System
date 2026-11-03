@@ -129,9 +129,9 @@ def inspect(repo: Path) -> dict[str, Any]:
         except (InputError, OSError, subprocess.SubprocessError):
             warnings.append("Git metadata is incomplete; do not assume a clean committed source.")
     native = (repo / "src/distillschedule").is_dir()
-    anchors = ["AGENTS.md", "CONTRIBUTING.md", "pyproject.toml", "docs/guides/support_matrix.md",
+    anchors = ["AGENTS.md", "CONTRIBUTING.md", "pyproject.toml", "docs/guides/model_families.md",
                "src/distillschedule/workloads/catalog.json", "recipes/README.md",
-               "docs/architecture/framework.md", "docs/guides/optimizer_skill.md"]
+               "docs/architecture/repository_organization.md", "docs/guides/optimization_capabilities.md"]
     return {"repo": str(repo), "head": head, "git_status": status,
             "clean_status": not status if status is not None else None,
             "mode": "dmd-system" if native else "external-source",

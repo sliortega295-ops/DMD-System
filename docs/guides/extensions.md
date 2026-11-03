@@ -309,7 +309,7 @@ random initial parameter values or old payload locations. Native nonpersistent
 buffers must still be initialized by the model's actual constructor.
 
 An optional read-only `encode_input` capability permits the
-[common export-only preparer](export_inputs.md#adapter-extension-contract) to
+[common export-only preparer](data.md#export_inputs--adapter-extension-contract) to
 encode new prompts/raw media from those restored codecs. The model owns its
 record, shape, conditioning and source contracts. Missing capability refuses;
 no training-bundle fallback or generic family-name branch is introduced.

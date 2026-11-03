@@ -156,7 +156,7 @@ def build_index(repo, revision=None):
             row[key] = sorted(set(row[key]))
         row["profiles"] = list({p["id"]: p for p in row["profiles"]}.values())
         guide = folder / "README.md"
-        row["guide"] = guide.relative_to(root).as_posix() if guide.is_file() else "docs/guides/support_matrix.md"
+        row["guide"] = guide.relative_to(root).as_posix() if guide.is_file() else "docs/guides/model_families.md"
         try:
             lines = read(row["guide"]).splitlines()
             require(bool(lines) and bool(lines[0].strip("# ")), "guide has no title")
@@ -276,7 +276,7 @@ def lookup(query, repo=None, limit=4, index=INDEX):
                 "automatic_application": False, "notice": data["notice"]}
     except (OSError, ValueError, TypeError, KeyError, SyntaxError, AttributeError, IndexError) as exc:
         return {"status": "NAVIGATION_UNAVAILABLE", "matches": [], "warning": str(exc),
-                "automatic_application": False, "read_next": "Read current recipes/ and docs/guides/support_matrix.md; historical recall remains usable."}
+                "automatic_application": False, "read_next": "Read current recipes/ and docs/guides/model_families.md; historical recall remains usable."}
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 Use this with the native [reference](REFERENCE_TRAINING.md) or
 [SafeBundle stream](SAFE_STREAM.md) recipe. The CPU-reference diagnostic remains
-separate. The [output contract](../../docs/contracts/HELIOS_NATIVE_OUTPUT_V1.md)
+separate. The [output contract](../../docs/contracts/native_output.md#HELIOS_NATIVE_OUTPUT_V1)
 defines the checkpoint, precision and output semantics.
 
 1. Keep the complete checkpoint's source, runtime, original task/assets, input

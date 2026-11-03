@@ -6,7 +6,7 @@ trainer, planner or experiment-management layer.
 - **Optimize an existing workload:** use `skills/dmd-system-optimizer/SKILL.md`.
   The repository's `.agents/skills/` entry points to that same copy. Use the
   project's runner/checker and WORK_LOG; the experience library is optional help.
-- **Change training:** use [framework ownership](docs/architecture/framework.md)
+- **Change training:** use [framework ownership](docs/architecture/repository_organization.md#framework)
   and the relevant recipe. Public lifecycle is in `src/distillschedule/training/`,
   Program execution in `open_workload/`, physical selection in `search/`, and
   model-native compatibility remains at its audited paths.

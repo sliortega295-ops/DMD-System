@@ -33,7 +33,7 @@ current unmerged Student, Wan2.1 VAE and new-prompt video generation; the
 
 The code is in `src/distillschedule/search/helios_model_adapter.py` and
 `src/distillschedule/runtime/helios_gan_manual/`.
-[Direct presets](../../docs/guides/native_presets.md) describe the source and
+[Direct presets](../../docs/guides/native_workloads.md#native_presets) describe the source and
 configuration bindings.
 
 See [current performance and validation](../../docs/guides/performance_validation.md).

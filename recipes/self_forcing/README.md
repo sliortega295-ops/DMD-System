@@ -26,15 +26,15 @@ C34. Use the continuation recipe when checkpoint/resume is needed.
 python scripts/distillctl.py workloads candidates --workload livewan_crossscale_pipeline_best --include-livewan-c51
 ```
 
-The [C51 runbook](../../docs/runbooks/livewan_c51_planner_v1.md) describes manual
-and saved-plan execution. The [native output guide](../../docs/guides/livewan_native_output.md)
+The [C51 runbook](../../docs/runbooks/native_planner_workflow.md#livewan_c51_planner_v1) describes manual
+and saved-plan execution. The [native output guide](../../docs/guides/training.md#livewan_native_output)
 uses the current Student, original streamer and Wan VAE for new inputs.
 
 ## Implementation and results
 
 The implementation is in `src/distillschedule/search/livewan_implementation.py`
 and the native worker (source checkout: `src/distillschedule/runtime/livewan_crossscale_worker.py`).
-See [direct presets](../../docs/guides/native_presets.md) and
+See [direct presets](../../docs/guides/native_workloads.md#native_presets) and
 [current performance and validation](../../docs/guides/performance_validation.md).
 Historical C34, C51 and A100/H100 measurements retain their own configuration
 and timing definitions in the research records.

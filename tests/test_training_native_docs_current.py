@@ -39,12 +39,12 @@ def test_native_stream_documentation_matches_current_descriptors(workload, recip
 
 
 def test_native_output_docs_link_real_current_generator_media_paths():
-    matrix = (ROOT / "docs/guides/support_matrix.md").read_text()
+    matrix = (ROOT / "docs/guides/model_families.md").read_text()
     for family in ("wan_ar", "helios_nogan", "helios_gan"):
         assert "../../recipes/" + family + "/NATIVE_OUTPUT.md" in matrix
     native = (ROOT / "docs/guides/native_workloads.md").read_text()
-    for guide in ("livewan_native_output.md", "h3_grid_inference.md",
-                  "h3_ar_native_inference.md", "h3_audio_video_encode.md"):
+    for guide in ("training.md#livewan_native_output", "training.md#h3_grid_inference",
+                  "training.md#h3_ar_native_inference", "data.md#h3_audio_video_encode"):
         assert guide in matrix and guide in native, guide
     for workload, recipe, _, _ in STREAMS:
         report = describe_native(load_training_config(ROOT / "recipes" / recipe))
@@ -55,12 +55,12 @@ def test_native_output_docs_link_real_current_generator_media_paths():
         assert "W3/W4/W6 full optimized native long\n  lifecycles are **not complete**" not in text
     grid = (ROOT / "recipes/h3-grid-original-training.md").read_text()
     assert "Generation/export are unsupported" not in grid
-    assert "h3_grid_inference.md" in grid
+    assert "training.md#h3_grid_inference" in grid
     assert "C51's physical drain/save/resume seam remains unsupported" not in (ROOT / "docs/guides/native_workloads.md").read_text()
 
 
 def test_current_docs_preserve_frozen_benchmark_and_actual_gpu_boundaries():
-    docs = [ROOT / "docs/guides" / name for name in ("support_matrix.md", "native_workloads.md")]
+    docs = [ROOT / "docs/guides" / name for name in ("model_families.md", "native_workloads.md")]
     for path in docs:
         text = path.read_text()
         assert "two-cycle" in text and "Grid1000" in text and "100-cycle" in text
