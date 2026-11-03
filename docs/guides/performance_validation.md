@@ -2,7 +2,7 @@
 
 ## A100: six DMD workloads
 
-16 A100-40GB GPUs, global batch 16. Times are complete update cycles;
+16 A100-40GB GPUs, global batch 16. DMD-System times are measured complete update cycles;
 Cycle 1 warms up the process and Cycle 2 is the reported comparison window.
 Each table retains its baseline definition and uses the adopted DMD-System result.
 
@@ -18,7 +18,7 @@ Each table retains its baseline definition and uses the adopted DMD-System resul
 | W6 Autoregressive Audio–Video DMD | 320.000 | 255.671 | 1.252× |
 
 W1–W5 use G1/F5; W6 uses eight rollout steps and G1/F1. Current H3
-recipes use continuous sigma; W5 retains its previously reported cycle timings. W3 uses unmerged LoRA. W6's denominator
+recipes use continuous sigma. W3 uses unmerged LoRA. W6's denominator
 is the reported FSDP2 reference.
 
 ### Resident / offload baseline

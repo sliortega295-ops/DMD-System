@@ -121,13 +121,7 @@
     "a100": {
       "physical_gpus": 16,
       "global_batch": 16,
-      "window": "C2_AFTER_C1_WARMUP",
-      "w5_timing_source": {
-        "revision": "102782ef61c991cc663181e8d4edbdb472fe7447",
-        "path": "artifacts/results/a100.csv",
-        "row": "W5",
-        "reuse": "previously_reported_C2_not_a_new_measurement"
-      }
+      "window": "C2_AFTER_C1_WARMUP"
     },
     "official": {
       "physical_gpus": 16,

@@ -63,13 +63,12 @@ class CurrentValidationViewTests(unittest.TestCase):
         for value in ("7.514", "3.475", "50.739", "30.959", "36.175",
                       "84.260", "42.450", "255.671", "116.254", "911.770", "767.020"):
             self.assertIn(value, guide)
-        self.assertIn("previously reported cycle timings", guide)
+        self.assertIn("DMD-System times are measured complete update cycles", guide)
         manifest = json.loads((REPO / "artifacts/results/manifest.json").read_text())
-        source = manifest["measurement_scope"]["a100"]["w5_timing_source"]
-        self.assertEqual(source["revision"], "102782ef61c991cc663181e8d4edbdb472fe7447")
-        self.assertEqual(source["path"], "artifacts/results/a100.csv")
-        self.assertEqual(source["row"], "W5")
-        self.assertEqual(source["reuse"], "previously_reported_C2_not_a_new_measurement")
+        scope = manifest["measurement_scope"]["a100"]
+        self.assertEqual(scope["window"], "C2_AFTER_C1_WARMUP")
+        self.assertEqual(scope["physical_gpus"], 16)
+        self.assertEqual(scope["global_batch"], 16)
 
     def test_recipe_is_concise_and_continuous_results_do_not_relabel_old_timing(self):
         recipe = (REPO / "recipes/h3_fullseq/README.md").read_text()
