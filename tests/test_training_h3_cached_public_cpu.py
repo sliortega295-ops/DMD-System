@@ -458,14 +458,17 @@ def test_corrupt_common_restore_leaves_all_live_and_outer_rng_unchanged(tmp_path
     components, *_ = construct(request(tmp_path / "fresh", assets, prepared, 3))
     owner = components.state["native_update"]
     initial, outer = owner.state_dict(), rng_state()
-    for corruption in ("marker", "missing_shard", "source", "data", "topology", "progress", "version", "slot_dtype"):
+    for corruption in ("marker", "missing_shard", "source", "framework", "resume_contract",
+                       "data", "topology", "progress", "version", "slot_dtype"):
         target = tmp_path / ("corrupt-" + corruption)
         shutil.copytree(result["checkpoint"], target)
         manifest = json.loads((target / "manifest.json").read_text())
         payload = torch.load(target / "state.pt", weights_only=True)
         if corruption == "marker": (target / "_SUCCESS").unlink()
         elif corruption == "missing_shard": (target / "state.pt").unlink()
-        elif corruption == "source": manifest["identity"]["framework"] = "0" * 64
+        elif corruption == "source": manifest["identity"]["model"]["sha256"] = "0" * 64
+        elif corruption == "framework": manifest["identity"]["framework"] = "invalid-source-hash"
+        elif corruption == "resume_contract": manifest["identity"]["resume_contract"] = "unsupported-epoch"
         elif corruption == "data": payload["state"]["native_update"]["value"]["consumed"][0]["identity"] = "0" * 64
         elif corruption == "topology": manifest["topology"]["world_size"] = 2
         elif corruption == "progress": manifest["cursor"] = payload["cursor"] = 1
@@ -482,6 +485,27 @@ def test_corrupt_common_restore_leaves_all_live_and_outer_rng_unchanged(tmp_path
             restore_checkpoint(target, components.state, identity=result["identity"])
         equal_tree(initial, owner.state_dict())
         equal_tree(outer, rng_state())
+
+
+def test_compatible_framework_fix_restores_actual_original_state_exactly(tmp_path):
+    from distillschedule.data.h3_cached_inputs import prepare_inputs
+    from distillschedule.training.session import train, construct
+    from distillschedule.training.checkpoint import restore_checkpoint, rng_state
+
+    assets, sources = make_case(tmp_path)
+    prepared = prepare_inputs(sources, tmp_path / "prepared")
+    result = train(request(tmp_path / "run", assets, prepared, 2))
+    payload, expected = read_owner(result["checkpoint"], result["identity"])
+    components, *_ = construct(request(tmp_path / "fresh", assets, prepared, 3))
+    current_identity = deepcopy(result["identity"])
+    current_identity["framework"] = "a" * 64
+    assert current_identity["framework"] != result["identity"]["framework"]
+
+    restored = restore_checkpoint(result["checkpoint"], components.state, identity=current_identity)
+
+    assert restored["cycle"] == components.state["native_update"].cycle == 2
+    equal_tree(expected, components.state["native_update"].state_dict())
+    equal_tree(payload["rng"], rng_state())
 
 
 def test_public_discovery_imports_no_torch_or_heavy_models():
