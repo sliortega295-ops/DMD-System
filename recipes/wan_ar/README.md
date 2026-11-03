@@ -39,5 +39,4 @@ hardware configuration.
 
 [Current performance and validation](../../docs/guides/performance_validation.md)
 explains Cycle 2 screening and subsequent longer-cycle validation. Original
-per-run measurements remain in `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md`
-and `artifacts/publications/20261019/`.
+measurements are collected in the [performance page](../../docs/guides/performance_validation.md).

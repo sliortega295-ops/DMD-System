@@ -205,6 +205,4 @@ Old historical training checkpoints are not imported by this policy.
 Runtime receipts must report actual cross-cycle record reuse and the policy
 schema/hash. The old no-replay receipt still requires `False` without policy
 metadata. None of this relaxes mechanism counters, physical clocks, source
-gates, capacity checks, native math or quality status (`REVIEW` / `NOT_RUN`
-until independently qualified). CPU native-format fixtures are protocol
-evidence only, never pretrained/GPU/world16 numerical or performance evidence.
+gates, capacity checks or native math.

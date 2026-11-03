@@ -1,0 +1,3 @@
+id,name,baseline_s,system_s,resolution,frames,updates,profile,baseline_run,system_run,upstream
+DMD2-SD15,Official SD1.5 DMD2 GAN,7.513676069,3.475052982,512x512,1,G1/C10,dmd2-sd15-resident-tree-v1,official_dmd2_fsdp2_reference_r2,official_dmd2_min16_tree_r10,8d8fa55633d47cfb81bbc7a892e7248f9518763f
+SELF-FORCING,Official Self-Forcing Wan,50.739418775,30.959485489,368x640,81,G1/C5,self-forcing-wan-fsdp2-r6-v1,official_sf_fsdp2_final_source_reference_r2,official_sf_teacher_pair_r6,33593df3e81fa3ec10239271dd2c100facac6de1

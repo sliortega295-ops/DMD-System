@@ -11,6 +11,7 @@ REPO = SKILL.parents[1]
 sys.path.insert(0, str(SKILL / "scripts"))
 import dmd_knowledge as knowledge
 import dmd_navigation as navigation
+from dmd_sources import verify_references
 
 
 class ExperienceContentTests(unittest.TestCase):
@@ -72,8 +73,12 @@ class ExperienceContentTests(unittest.TestCase):
         self.assertEqual(correction["correct_intervention"], "restore_native_metadata_barrier")
         self.assertEqual(correction["reads_per_rank_cycle"], {"control": 0, "candidate": 350})
         self.assertFalse(source["automatic_application"])
-        self.assertTrue((REPO / correction["erratum_path"]).is_file())
-        self.assertEqual(hashlib.sha256((REPO / source["path"]).read_bytes()).hexdigest(), source["sha256"])
+        self.assertTrue(correction["erratum_path"].endswith("SIX_WORKLOAD_RESULTS_ERRATA_20261031.md"))
+        # Historical presentation pages are locally archived; the unchanged
+        # source resolver authenticates their pinned Git bytes, not a live guide.
+        checked = verify_references([source], repo=REPO)
+        self.assertFalse(checked["evidence_errors"])
+        self.assertEqual(checked["evidence_checks"][0]["status"], "HASH_MATCH")
 
     def test_w6_tail_cache_is_output_storage_not_parameter_residency(self):
         c = self.case("helios-w6-retention-r1")

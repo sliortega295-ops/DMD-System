@@ -17,9 +17,9 @@ class H100PublicationTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        self.rel = Path('artifacts/publications/20261019/h100')
+        self.rel = Path('artifacts/results')
         shutil.copytree(ROOT / self.rel, self.root / self.rel)
-        self.manifest = self.root / self.rel / 'source_manifest.json'
+        self.manifest = self.root / self.rel / 'h100_sources.json'
         self.data = json.loads(self.manifest.read_text())
 
     def update(self):

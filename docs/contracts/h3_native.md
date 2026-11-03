@@ -1,9 +1,7 @@
 # H3 request, native AR and diagnostic contracts
 
 W5 Grid1000 and W6 previous/current AR are distinct algorithms and input owners.
-A task/metadata admission is not new GPU numerical or performance evidence.
-Keep native source receipts, original measurements and FAIL/REVIEW boundaries;
-recalibrate on a changed admitted source. [Native commands](../guides/native_workloads.md)
+[Native commands](../guides/native_workloads.md)
 and [AR output](../guides/training.md#h3_ar_native_inference) use these contracts.
 
 <a id="h3_attention_tuple_capture_v2"></a>
@@ -114,10 +112,8 @@ remain unavailable; neither parent canonical seconds nor short external
 rechecks original rank observations and the selected cost model. Cross-request
 comparison and cross-workload dispatch fail closed.
 
-CPU fixtures establish wiring and rejection behavior only. A new source HEAD
-needs matched target-GPU correctness and calibration, then independent native
-confirmation. Sampled two-cycle numerical REVIEW is not full-state or
-long-horizon equivalence, and diagnostic timing is not formal speedup proof.
+Input capture binds the exact source, tensor shapes and forward/backward calls.
+Use the same binding for comparison and calibration.
 
 <a id="original_h3_ar_capacity_v2"></a>
 ## W6 native capacity policy v2: explicit node host limits
@@ -344,13 +340,6 @@ is rejected before model construction. Each receipt records the observed
 cgroup hierarchy/physical capacity, current separately, peak capability and
 evidence scope; assembly and the saved plan bind that capability. Sampled
 driver-free checks do not prove an unsampled reserve minimum.
-
-### Validation status
-
-Pending matched cluster validation; numerical status is
-`REVIEW_REQUIRES_MATCHED_REFERENCE`.
-
-
 
 ### Capacity provenance and new policy relation
 

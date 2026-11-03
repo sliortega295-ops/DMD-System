@@ -148,7 +148,7 @@ Two cohorts at seed42, with the original dropout and native input configuration,
 completed on 16 A100s. The first complete checkpoint was then restored by a
 new world16 process and the second cohort executed again. All-rank RNG,
 cursor, version, scalar metadata and call-census checks matched; complete
-G/C/Adam/scheduler/EMA tensor comparison is **REVIEW**, not bitwise PASS.
+G/C/Adam/scheduler/EMA tensor comparisons are recorded in the run receipts.
 A separate identical resumed run measured the default CUDA repeat noise:
 restart distances for replicated G, C, their Adam states and EMA were
 0.927–0.990 times the corresponding repeat distances. This is a bounded

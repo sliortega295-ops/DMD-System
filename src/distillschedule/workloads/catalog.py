@@ -109,7 +109,7 @@ def describe(workload: str, *, hardware: str | None = None) -> dict[str, Any]:
     result["inspection_command"] = (shlex.join(["distillctl", *result["inspect_args"]])
                                     if hardware != "h100" else None)
     if hardware == "h100":
-        result["hardware_guide"] = "docs/status/H100_SOURCE_SNAPSHOT_20261019.md"
+        result["hardware_guide"] = "docs/guides/performance_validation.md"
     result["requested_hardware"] = hardware
     result["discovery_only"] = True
     result["native_execution"] = "NOT_RUN"

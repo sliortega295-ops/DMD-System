@@ -9,10 +9,6 @@ The Python package is named `distillschedule`.
 [Supported configurations](docs/guides/model_families.md#support_matrix) ·
 [Optimizer Skill](docs/guides/optimization_capabilities.md#optimizer_skill) · [Contributing](CONTRIBUTING.md)
 
-**Research software:** model support, hardware requirements and validation vary
-by recipe. Start with the [support matrix](docs/guides/model_families.md#support_matrix) and its
-linked validation records before a large training run.
-
 ## Get started
 
 Use Python 3.10 or later in a dedicated environment. From a source checkout:
@@ -93,9 +89,6 @@ The Skill includes a public library of successful, failed and unresolved
 experiments. Personal continuity uses available, authorized Codex history and
 project logs. See the [Skill guide](docs/guides/optimization_capabilities.md#optimizer_skill) for updates
 and lookup commands.
-
-For reported performance, accepted configurations and the relationship between
-Cycle 2 screening and longer training, see [Performance and validation](docs/guides/performance_validation.md).
 
 ## Development
 

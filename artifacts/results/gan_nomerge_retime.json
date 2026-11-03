@@ -1,0 +1,34 @@
+{
+  "schema": "dmd.measured_result.v1",
+  "workload": "W3",
+  "source_head": "ba52a2446b7f090cd31af9504679e68770d32603",
+  "run_id": "gan_nomerge_down40_native_c2_world16_20261013_r1",
+  "native_C2_s": 116.25352301541716,
+  "reported_C2_s": 116.254,
+  "merge_counts": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "world_size": 16,
+  "cycles": 2,
+  "profiled": false,
+  "origin": {
+    "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+    "path": "artifacts/publications/20261019/results_correction/results.json",
+    "sha256": "fb011a80ccc709ff310d6bc4d3dc9d8a2956bbe69964f0ee2cb5c286cd93bfe8"
+  }
+}

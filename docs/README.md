@@ -36,14 +36,9 @@ Use the recipe's exact policy, not a similarly named model's ABI:
 [construction and retention](contracts/state_retention.md), and
 [dependency overlays](contracts/python_dependency_overlays_v1.md).
 
-## Results and source records
+## Performance
 
-[Performance](guides/performance_validation.md) collects the six workloads,
-official workflows and H100 measurements, with baseline definitions and sources.
-[A100 source records](status/GITHUB_SOURCE_SNAPSHOT_20261019.md),
-[H100 source records](status/H100_SOURCE_SNAPSHOT_20261019.md) and the
-[W6 metadata correction](status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md)
-provide the historical source mapping.
-
-Developer history: [legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md),
-[retired implementation recovery](architecture/repository_organization.md#legacy_route_retirement).
+[Performance](guides/performance_validation.md) contains the six workloads,
+official workflows and H100 measurements, grouped by baseline definition.
+For profile inspection and reproducible commands, use the
+[versioned profile guide](workloads/BEST_KNOWN_WORKLOADS.md).

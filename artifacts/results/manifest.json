@@ -1,0 +1,137 @@
+{
+  "schema": "dmd.public_results.v1",
+  "source_revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+  "files": [
+    {
+      "path": "artifacts/results/a100.csv",
+      "bytes": 570,
+      "sha256": "2f8d27857124bb3609fdda63a9ad6058d0d6520a63fd933038554224c017b6e2"
+    },
+    {
+      "path": "artifacts/results/h100.csv",
+      "bytes": 1848,
+      "sha256": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881"
+    },
+    {
+      "path": "artifacts/results/official.csv",
+      "bytes": 527,
+      "sha256": "c58af02251de7d6cf37fc8c4c4107d5276ec256ff6c34748f198d77fcbc71c1c"
+    },
+    {
+      "path": "artifacts/results/gan_nomerge_retime.json",
+      "bytes": 682,
+      "sha256": "20abb59127571c626460072452aef109063bc4bc8af1fe81e7405e2a0efe6039"
+    },
+    {
+      "path": "artifacts/results/h100_sources.json",
+      "bytes": 7775,
+      "sha256": "5b7f5e3ba13fe7790e253b297d1e3acb1fe6c30c5e841615365c6046121705b6"
+    },
+    {
+      "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+      "bytes": 8091,
+      "sha256": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842"
+    }
+  ],
+  "branches": [
+    {
+      "role": "planner_search_scheduler",
+      "branch": "codex/wan-state-policy-planner-20261017",
+      "head": "ea29129342741b54e59c4773e07454f541fadcc7"
+    },
+    {
+      "role": "livewan_full_b_reselected_a",
+      "branch": "codex/livewan-r2-capacity-offload-20261019",
+      "head": "053bdcad2cf0e5388738156599f96a6ec5905518"
+    },
+    {
+      "role": "wan_factorial_fsdp_compatible_b",
+      "branch": "codex/w1-r2-fsdp-compatible-b-20261019",
+      "head": "7fa27ff8cab0a483a65fd857e0df762d46194d6d"
+    },
+    {
+      "role": "wan_large_attention",
+      "branch": "codex/wan-large-attention-backend-20261018",
+      "head": "a5b550af56b3eb7e8b5f570be94540134fc49ad5"
+    },
+    {
+      "role": "helios_nogan_retention",
+      "branch": "codex/nogan-partial-parameter-retention-20261018",
+      "head": "e2374f084977a31ef1fd06a2e81a5e9582af818c"
+    },
+    {
+      "role": "helios_gan_retention",
+      "branch": "codex/state-retention-six-20261017",
+      "head": "155ffbb585356a29b544573a391eb456b790a15a"
+    },
+    {
+      "role": "h3_ar_fa3_bank",
+      "branch": "codex/h3-ar-uncached-rollout-fa3-20261018",
+      "head": "69a9464997de16deafd5786338f538ba7930d9a5"
+    },
+    {
+      "role": "h3_full_numeric_diagnostic",
+      "branch": "codex/h3-full-local-state-diagnostic-20261018",
+      "head": "285b31e3ec4789d7f98816265f19f7853827b3e2"
+    },
+    {
+      "role": "livewan_tail4_candidate",
+      "branch": "codex/livewan-c51-tail4-census-20261017",
+      "head": "0dfce74b66499419fdf38ec40b5e621544d8b904"
+    },
+    {
+      "role": "pp_fsdp_dp_cpu_prototype",
+      "branch": "codex/wan-grid-static-shared-20261014",
+      "head": "7cde0ff8101725d8bab2843c52dcde127b09525a"
+    },
+    {
+      "role": "wan_merged_lora_negative_evidence",
+      "branch": "codex/wan13b-shadow-noise30-20261012",
+      "head": "c69876197aeaccbab19b515b54d1022f07634422"
+    },
+    {
+      "role": "h100_native_pinned_dependency",
+      "branch": "agent/h100-helios-nograd-retain-20261014",
+      "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55"
+    }
+  ],
+  "origins": [
+    {
+      "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "path": "artifacts/publications/20261019/results_correction/results.json",
+      "sha256": "fb011a80ccc709ff310d6bc4d3dc9d8a2956bbe69964f0ee2cb5c286cd93bfe8"
+    },
+    {
+      "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "path": "docs/status/official_optimized_framework.md",
+      "sha256": "da6b6af35da30e17d8f78d9743db352f17fa0d0a97708f8945f417222e237d14"
+    },
+    {
+      "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "path": "artifacts/publications/20261019/h100/source_manifest.json",
+      "sha256": "05a2610973ea52d14207cb774e3520984aa266bd04dca002960d45c751c7e92b"
+    },
+    {
+      "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "path": "artifacts/publications/20261019/source_manifest.json",
+      "sha256": "27384b391ec23eb9f31b778c867df12bf0b0ac45716eea876aee9851f58254e4"
+    }
+  ],
+  "measurement_scope": {
+    "a100": {
+      "physical_gpus": 16,
+      "global_batch": 16,
+      "window": "C2_AFTER_C1_WARMUP"
+    },
+    "official": {
+      "physical_gpus": 16,
+      "global_batch": 16,
+      "window": "C2_AFTER_C1_WARMUP"
+    },
+    "h100": {
+      "physical_gpus": 8,
+      "global_batch": 16,
+      "window": "PER_ROW_TIMER_CONTRACT"
+    }
+  }
+}

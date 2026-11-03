@@ -18,22 +18,19 @@ python scripts/distillschedule/run_best_known_workload.py run --workload <id> --
 
 Asset templates are in `configs/distillschedule/best_known/assets_examples/`. Models, checkpoints, traces, Grid manifests and Python environments remain explicit external assets.
 
-| Profile | Semantics | Historical provenance | Timer boundary | Integrated GPU status |
-|---|---|---:|---|---|
-| `wan13b_nogan_resident_best` | `source_equivalent_numerical_drift_reported` | 26.227822833 s | world-max No-GAN Full5 G1/C5/EMA5 (single unprofiled diagnostic) | NOT_RUN_ON_INTEGRATION_BRANCH |
-| `helios14b_nogan_best` | `source_equivalent_strict_correctness_pass` | 94.461699722 s | world-max Full5 G1/C5/EMA5 (single unprofiled correctness-gated trial) | NOT_RUN_ON_INTEGRATION_BRANCH |
-| `minimax_h3_grid1000_best` | `approximate_grid1000` | 772.332 s | rank0 train-start through post-world16 matched-workload receipt; Student1+Fake5 (single unprofiled matched run; approximate Grid1000) | NOT_RUN_ON_INTEGRATION_BRANCH |
-| `helios14b_gan_best` | `source_equivalent_strict_correctness_pass` | 125.258735931 s | world-max Full5 G1/C5/EMA1 (single unprofiled C25 trial) | NOT_RUN_ON_INTEGRATION_BRANCH |
-| `livewan_crossscale_pipeline_best` | `continuous_sigma_source_equivalent_numerical_drift_reported` | 47.018683594 s | same-process cycle2 only; cycle1 excluded; G2/C10/EMA0 (one matched native observation; strict numeric REVIEW) | NOT_RUN_ON_INTEGRATION_BRANCH |
+| Profile | Execution policy | Workload guide |
+| --- | --- | --- |
+| `wan13b_nogan_resident_best` | Resident, asynchronous gradient reduction, chunk2048 | [Wan](runbooks/wan13b_nogan_resident_best.md) |
+| `helios14b_nogan_best` | No-GAN sharding and fused modulation | [Helios No-GAN](runbooks/helios14b_nogan_best.md) |
+| `helios14b_gan_best` | GAN calls, retained rollout weights and replay | [Helios GAN](runbooks/helios14b_gan_best.md) |
+| `livewan_crossscale_pipeline_best` | C34 persistent 8G + 8Score pipeline | [LiveWan C34](runbooks/livewan_crossscale_pipeline_best.md) |
+| `minimax_h3_grid1000_best` | Shared backbone, Grid1000 and staged attention cache | [H3 full-sequence](runbooks/minimax_h3_grid1000_best.md) |
 
-Do not compare the seconds across rows as model speed: models, topology and timer scopes differ. LiveWan 54.291817154 s is a B32-derived B16-equivalent normalization and is intentionally not the canonical actual-B16 number.
-
-LiveWan v2 selects C34. The former C24 54.441603646 s profile is preserved in `history/livewan_c24_profile_v1.json`; its three-cycle timing is not an isolated C24-to-C34 A/B. C34 uses `--mode diagnostic-timing`, not strict `timing`; native two-cycle gate and numeric drift records remain required. See `runbooks/livewan_crossscale_pipeline_best.md`.
+These are versioned compatibility profiles. The current six-workload entry and
+public continuous training are described in [native workloads](../guides/native_workloads.md).
+C34 remains distinct from the C51 recipe and W6 is a separate AR workload.
+Measurements are collected on the [performance page](../guides/performance_validation.md).
 
 ## Profile-guided search
 
 The opt-in [registered-plan search](profile_guided_search.md) reuses this compiler and dispatcher. It preserves canonical defaults and separates measured search results from historical evidence.
-
-[World16 pilot results](evidence/profile_guided_search_20260906.md) now demonstrate
-the search/execute/confirm loop for Wan and LiveWan. They are source-bound
-diagnostic rankings, not strict numerical approval or replacement canonical times.

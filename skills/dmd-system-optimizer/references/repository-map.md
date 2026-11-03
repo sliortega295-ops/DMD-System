@@ -28,7 +28,7 @@ wants the unified lifecycle and the existing adapter/recipe fits.
 | Existing implementation registry | `src/distillschedule/search/implementation_library.py` |
 | Saved-plan workflow | `docs/runbooks/native_planner_workflow.md` |
 | Ownership and extension | `docs/architecture/repository_organization.md`, `docs/guides/extensions.md` |
-| Historical evidence interpretation | `docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md` |
+| Current measurements and source bindings | `docs/guides/performance_validation.md` |
 
 At the packaged source snapshot there are six preserved native workloads:
 W1 Wan No-GAN, W2 Helios No-GAN, W3 Helios GAN, W4 LiveWan cross-scale,

@@ -36,10 +36,8 @@ passed a GPU experiment. Catalog `NOT_RUN` fields are conservative registration
 labels, not a mutable experiment database. Actual validation belongs to a
 source/assets-bound search result. Unintegrated recipes fail before launch.
 
-The [first world16 pilot report](evidence/profile_guided_search_20260906.md)
-records measured Wan and LiveWan searches, their numerical REVIEW boundary and
-independent confirmations. It does not change a canonical profile or claim to
-reproduce historical winner times.
+See [measured planning results](../guides/performance_validation.md#planning-and-reproduction)
+for native manual/selected-plan comparisons.
 
 Wan's FSDP -> Resident Tree edge changes a registered bundle (placement and
 gradient reduction implementation); it is **not a pure placement ablation**.
@@ -169,38 +167,15 @@ stops execution; it is not inferred to be OOM. Only explicit native CUDA or host
 cgroup capacity evidence can be a capacity failure. Ambiguous/interrupted runs
 require reconciliation and are not automatically retried under the same ID.
 
-The trajectory comparator's existing coarse PASS/REVIEW policy is retained.
-It does not establish strict P0 numerical parity. Normalized native observations
-therefore remain `numerical_status=REVIEW` with the raw comparator status and
-metrics preserved. `diagnostic_winner` and `strict_winner` are separate; strict
-winner remains null without a true strict gate. No threshold is relaxed merely
-to select a faster recipe.
+Search results preserve the comparator's original status and metrics.
+`diagnostic_winner` and `strict_winner` are separate; the latter is populated
+only after the applicable numerical gate accepts the candidate.
 
 Outputs include immutable `search.json`, profile/identity, fsynced selection
 journal, preparation receipts, RPC logs, per-trial plans/native measurements,
 resource observations, all candidate failures, confirmation and `result.json`.
 The result reports **best tested within budget**, not universal best or a
-publication-ready speed claim when numerical eligibility is REVIEW.
-
-## Source closure and current validation boundary
-
-The integrated main checkout lacked a dynamic dependency:
-`probe_static_fsdp2_full5_world16.py`, and its imported
-`StaticFSDP2Full5NsightRange`. Both were restored from measured C25 source
-`d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d`. No profiling is enabled by the restore.
-
-Wan's genuine two-cycle/trajectory workers and their cache/deferred-finite
-helper APIs were ported from `7fa5b866c544594094b8d3c421959bbc64bf9206`, preserving
-newer integrated Helios helpers. Search arm selection is a default-off opt-in;
-canonical winner flags and profile lock hashes stay fixed. The import map keeps
-both original provenance and adaptation hashes rather than attributing new code
-to historical measured commits. CPU acceptance now also checks dynamic file
-imports; a fresh no-weight remote import gate remains necessary.
-
-CPU tests cover contract/tamper rejection, all five registrations, resume,
-budget, REVIEW/strict separation, per-device SQLite unions, native adapter
-routing and preparation serialization. GPU results must be read from an exact
-run's receipts; compilation, unit fixtures, or import success are not GPU PASS.
+a global optimum beyond the measured candidates.
 
 <a id="hierarchical_planner"></a>
 ## Hierarchical planning: first integrated algorithm slice

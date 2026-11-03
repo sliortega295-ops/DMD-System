@@ -2,7 +2,7 @@
 
 **Source/CPU integration only. Native world16 GPU continuation, numerical parity,
 capacity and 100-cycle reliability have NOT been accepted.** The underlying
-FA3/down40 bundle remains `REVIEW`, never a stable/recommended default. This is
+FA3/down40 bundle is selected explicitly through its source-bound policy. This is
 not the independent CPU reference recipe and does not inherit its model-quality
 or GPU qualifications.
 

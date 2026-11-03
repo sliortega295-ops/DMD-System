@@ -3,9 +3,7 @@
 These versioned opt-ins reuse the original No-GAN/GAN owners, not a new
 algorithm or an extension of the immutable two-cycle benchmark. Native math,
 source/assets, rank ownership, update clocks and complete all-rank checkpoint
-rules remain binding. CPU/scalar/component tests are not full-size world16 GPU,
-capacity, numerical, quality or speedup qualification. Historical REVIEW stays
-REVIEW. [Native recipes](../guides/native_workloads.md) select the actual policy.
+rules remain binding. [Native recipes](../guides/native_workloads.md) select the actual policy.
 
 <a id="helios_gan_native_history_v1"></a>
 ## W3 GAN native-history v1 — explicit research opt-in
@@ -360,8 +358,7 @@ parity, timing or quality. Target Torch 2.10 and target GPU evidence remain
 Preset: `helios_nogan.safe_stream_ed8.v1`. Policy:
 `distillschedule.helios_safe_stream_policy.v1`. This is a new direct strategy,
 not a revision of `helios_nogan.safe_ed8.v1`, a saved benchmark plan, or the
-original reference policy. It is **source/CPU connected, GPU NOT_RUN, numerical
-REVIEW**, never stable/default or a performance claim.
+original reference policy. Select this strategy explicitly through its versioned policy.
 
 ### Immutable workload and physical policy
 

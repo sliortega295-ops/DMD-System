@@ -3,10 +3,10 @@
   "source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
   "scope": "SIX_PROTOCOLS_NOT_SIX_NEW_STRICT_GPU_RELEASES",
   "evidence_files": {
-    "artifacts/publications/20261019/h100/measured_results.csv": "1a644dd33a8e26d32a52180d03b68e344a7492886881c6b5ce04f1a9864d71cf",
     "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842",
-    "artifacts/publications/20261019/results_correction/results.json": "fb011a80ccc709ff310d6bc4d3dc9d8a2956bbe69964f0ee2cb5c286cd93bfe8",
-    "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50"
+    "artifacts/results/a100.csv": "2f8d27857124bb3609fdda63a9ad6058d0d6520a63fd933038554224c017b6e2",
+    "artifacts/results/h100.csv": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881",
+    "artifacts/results/gan_nomerge_retime.json": "20abb59127571c626460072452aef109063bc4bc8af1fe81e7405e2a0efe6039"
   },
   "workloads": [
     {
@@ -42,7 +42,7 @@
         "measured_source": "7a668bcb12ad37d831dced3aca1be4ec7be0a2fe",
         "published_source": "97b8ecc9cf7747d93619acad1a6083f98faae084",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "Resident reference, not FSDP baseline",
         "numerical_status": "NOT_RUN"
       },
@@ -89,7 +89,7 @@
         "measured_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
         "published_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "Same-head retained-G control; only interior fence policy differs",
         "numerical_status": "NOT_RUN_FULL_STATE"
       },
@@ -127,7 +127,7 @@
         "measured_source": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
         "published_source": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "official whole-role swap; GPU ZeRO1 optimizer/EMA; no activation/gradient/optimizer offload",
         "numerical_status": "NOT_RUN"
       },
@@ -165,7 +165,7 @@
         "measured_source": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
         "published_source": "1b8236c243323ff21023935f3b8192ab3e5d136d",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "H100 Resident vs Teacher-resident candidate; not A100 C51",
         "numerical_status": "REVIEW_UNCHANGED_NOT_STRICT_PASS"
       },
@@ -202,7 +202,7 @@
         "measured_source": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
         "published_source": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "Same-source Grid1000 FSDP control vs GPU attention cache",
         "numerical_status": "NOT_RUN_FULL_STATE"
       },
@@ -241,7 +241,7 @@
         "measured_source": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
         "published_source": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/publications/20261019/h100/measured_results.csv",
+        "evidence": "artifacts/results/h100.csv",
         "baseline_definition": "Same-source native FSDP vs candidate; not ZeRO-3 renamed FSDP",
         "numerical_status": "NOT_RUN"
       },

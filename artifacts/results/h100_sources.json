@@ -1,0 +1,180 @@
+{
+  "schema": "dmd.h100_measured_results.v1",
+  "source_refs": [
+    {
+      "repository": "DMD-System",
+      "branch": "agent/h100-wan13b-rankcache-20261015",
+      "head": "97b8ecc9cf7747d93619acad1a6083f98faae084",
+      "scope": "W1 measured parent plus CPU-only norm candidate",
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/97b8ecc9cf7747d93619acad1a6083f98faae084"
+    },
+    {
+      "repository": "DMD-System",
+      "branch": "agent/h100-helios-nograd-retain-20261014",
+      "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+      "scope": "W2 latest measured retained-G fence pair; already published",
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/8fc70e8ce9f6e0243604812120119c9f4c078e55"
+    },
+    {
+      "repository": "DMD-System",
+      "branch": "agent/h100-helios-official-lowvram-20261014",
+      "head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+      "scope": "W3 original official-swap matched pair; also ancestor of W2",
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/624515e7c8d1511aa688e95e69cf94f1a2a273f7"
+    },
+    {
+      "repository": "DMD-System",
+      "branch": "agent/h100-livewan-teacher-resident-20261015",
+      "head": "1b8236c243323ff21023935f3b8192ab3e5d136d",
+      "scope": "W4 measured4d7c589 plus later analysis/profiling fixes, not a new faster run",
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/1b8236c243323ff21023935f3b8192ab3e5d136d"
+    },
+    {
+      "repository": "DMD-System",
+      "branch": "agent/h100-w6-resident-adaln-staging-20261015",
+      "head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "scope": "W6 native continuous AR8 FA2 same-source three-arm matrix",
+      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/0419b96b9ed9a8dd76737042e6c5020c80f6673a"
+    },
+    {
+      "repository": "H3-DMD-for-A100",
+      "branch": "agent/h100-h3-three-arm-20261014",
+      "head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+      "scope": "W5 approximate Grid1000 matched FSDP/GPU-cache pair",
+      "github_commit_url": "https://github.com/sliortega295-ops/H3-DMD-for-A100/tree/9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71"
+    },
+    {
+      "repository": "H3-DMD-for-A100",
+      "branch": "agent/h100-h3-resident-boundary-contract-20261014",
+      "head": "d81ebb2014af9ea3a84011e3be198818e63cb1e7",
+      "scope": "W5 named Resident CPU-boundary capacity fallback; not pure GPU Resident",
+      "github_commit_url": "https://github.com/sliortega295-ops/H3-DMD-for-A100/tree/d81ebb2014af9ea3a84011e3be198818e63cb1e7"
+    }
+  ],
+  "workloads": [
+    {
+      "id": "W1",
+      "name": "Wan1.3B",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "DMD-System",
+      "measured_training_head": "7a668bcb12ad37d831dced3aca1be4ec7be0a2fe",
+      "baseline_seconds": 52.066607125103474,
+      "optimized_seconds": 37.669794753193855,
+      "observed_ratio": 1.3821845185575101,
+      "baseline_definition": "Resident reference, not FSDP baseline",
+      "timer_contract": "same-process two cycles; only cycle2 timed",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "latest_norm_end_to_end": "NOT_RUN",
+      "published_head": "97b8ecc9cf7747d93619acad1a6083f98faae084",
+      "main_merged": false
+    },
+    {
+      "id": "W2",
+      "name": "Helios No-GAN",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "DMD-System",
+      "measured_training_head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+      "baseline_seconds": 95.53463149257004,
+      "optimized_seconds": 94.31143263261765,
+      "observed_ratio": 1.0129697834695954,
+      "baseline_definition": "Same-head retained-G control; only interior fence policy differs",
+      "timer_contract": "Native G1/C5/EMA5 Full5; original outer timer fences kept",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "published_head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
+      "main_merged": false
+    },
+    {
+      "id": "W3",
+      "name": "Helios GAN-on",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "DMD-System",
+      "measured_training_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+      "baseline_seconds": 192.98604553751647,
+      "optimized_seconds": 117.3435074267909,
+      "observed_ratio": 1.644624826455933,
+      "baseline_definition": "official whole-role swap; GPU ZeRO1 optimizer/EMA; no activation/gradient/optimizer offload",
+      "timer_contract": "one GAN G1/C5/EMA1 Full5",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "published_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
+      "main_merged": false
+    },
+    {
+      "id": "W4",
+      "name": "Self-Forcing DMD / LiveWan",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "DMD-System",
+      "measured_training_head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
+      "baseline_seconds": 45.3613984375,
+      "optimized_seconds": 45.257226562499994,
+      "observed_ratio": 1.0023017732837902,
+      "baseline_definition": "H100 Resident vs Teacher-resident candidate; not A100 C51",
+      "timer_contract": "Same-process two cycles; native C2 only; immutable hardware re-audit, not baseline rerun",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "published_head": "1b8236c243323ff21023935f3b8192ab3e5d136d",
+      "main_merged": false
+    },
+    {
+      "id": "W5",
+      "name": "Audio-Video DMD (Full-Sequence / Grid1000)",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "H3-DMD-for-A100",
+      "measured_training_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+      "baseline_seconds": 638.522138278,
+      "optimized_seconds": 539.7183830337599,
+      "observed_ratio": 1.1830653880804722,
+      "baseline_definition": "Same-source Grid1000 FSDP control vs GPU attention cache",
+      "timer_contract": "Native C2; separate cold/warm cycles; Grid1000 approximate on BOTH arms",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "semantics": "GRID1000_APPROXIMATE_NOT_EXACT_CONTINUOUS",
+      "published_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
+      "main_merged": false
+    },
+    {
+      "id": "W6",
+      "name": "Autoregressive Audio-Video DMD / DiffSynth",
+      "physical_ranks": 8,
+      "independent_logical_slots": 16,
+      "repository": "DMD-System",
+      "measured_training_head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "baseline_seconds": 320.66605521179736,
+      "optimized_seconds": 278.88644194882363,
+      "observed_ratio": 1.149808692638563,
+      "baseline_definition": "Same-source native FSDP vs candidate; not ZeRO-3 renamed FSDP",
+      "timer_contract": "Native C2; continuous sigma, AR8 G1/F1 LoRA64; FA2, not FA3",
+      "replications": 1,
+      "profiled": false,
+      "formal_speedup_eligible": false,
+      "attention_backend": "FA2",
+      "fa3_status": "FAIL_UNWAIVED_NOT_ACCEPTED",
+      "published_head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
+      "main_merged": false
+    }
+  ],
+  "files": [
+    {
+      "path": "artifacts/results/h100.csv",
+      "bytes": 1848,
+      "sha256": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881"
+    }
+  ],
+  "provenance": {
+    "revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+    "path": "artifacts/publications/20261019/h100/source_manifest.json",
+    "sha256": "05a2610973ea52d14207cb774e3520984aa266bd04dca002960d45c751c7e92b"
+  }
+}

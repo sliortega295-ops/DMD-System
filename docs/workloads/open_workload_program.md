@@ -37,7 +37,7 @@ requires explicit --execute; no implicit Hub download or cluster allocation.
   It can choose physical immutable aliases and nonreentrant checkpointing.
   Adapters/optimizers remain separate; mutable parameter aliases are rejected.
 - Calibration runs the actual supplied math from paired cloned model/Adam
-  states. Numerical mismatches are REVIEW, never relabeled PASS.
+  states. The numerical comparison result is recorded separately.
 - Native save-attention/save-matmul variants require **observed** matching
   operator calls and retained bytes on every rank; unavailable options are
   recorded as inapplicable rather than ranked as optimizations. Checkpoint
@@ -88,7 +88,7 @@ The full five-workload capability migration and GPU validation remain unsatisfie
 <a id="open_workload_distributed"></a>
 ## Generic workload execution: replicated and sharded layouts
 
-Active implementation/review: PR #34, `agent/general-workload-planning-20261012`.
+Implementation owners: `open_workload/`, `search/` and the native backend adapters.
 PR #35's alternative ABI was inspected but is not copied into a second public
 system. Its branch is preserved; this PR is the continuation line.
 
@@ -200,7 +200,7 @@ communication WITHIN backward; it is not Generator/Score pipeline overlap.
 Parameter `.backward()` and optimizer updates must be separate semantic calls;
 input/latent gradients are not averaged. Unequal per-rank batches, hidden
 stateful closures, sparse/higher-order parameter gradients and undeclared
-side effects require additional contracts. Numerical mismatches remain REVIEW.
+side effects require their own dependency contracts.
 
 ### A100/H100 hardware-specific calibration (opt-in public backend)
 

@@ -474,6 +474,76 @@
       "integrated_sha256": "1ca66d05037dfeb128f13439a84d54918b0116e94c992187403274bf1e18e4bd",
       "source_commit": "30535e5ad2e5dc88d04cab9fc8a5f222682295c7",
       "change": "opt_in_original_W5_complete_cycle_data_cursor_and_canonical_state_hooks_legacy_observer_unchanged; canonical_math_and_original_benchmark_path_unchanged"
+    },
+    "docs/workloads/BEST_KNOWN_MIGRATION.md": {
+      "original_integrated_sha256": "3edc8e9fed136a26c4c49b22fd727fabf64c632be34a065aec9abad906400a8f",
+      "target": "docs/guides/native_workloads.md",
+      "integrated_sha256": "d49a21c291b41ebaaa3ad43fa6c7fa5b2a2bd2a849fa658fb1df3936fe90f29b",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/BEST_KNOWN_SOURCE_MAP.md": {
+      "original_integrated_sha256": "9b9159bafdaec1e2125dc8efd4538b465e56dfe628366cb9652e118bb8983cca",
+      "target": "docs/architecture/repository_organization.md",
+      "integrated_sha256": "8be11a481e6fcd5f9df9f40f8b6c6c2e321562c0e054221ae7cc2fe276b4bf2e",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/BEST_KNOWN_WORKLOADS.md": {
+      "original_integrated_sha256": "ba71b562a4784211e85b4752e7f20e1d163d9c395ffd0405e816f0207c710fd4",
+      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
+      "integrated_sha256": "602fa5cd7531465f4f29db960ef5e7cf4a0c60884141fffbb30b860a1e3c6572",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/SERVER_REVALIDATION_CHECKLIST.md": {
+      "original_integrated_sha256": "5b2bfcc5a2f9fe792bdf15d2d59dd69240883ed5cb936fe4f4aaa3d10724ec6f",
+      "target": "docs/guides/installation.md",
+      "integrated_sha256": "8681c7f8805a5ab8ec6438c62d41bcc995de87a2381a7d87d3d985982d35c33f",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/runbooks/helios14b_gan_best.md": {
+      "original_integrated_sha256": "36294a2c20aa09f1f0b90d36d2df2dd060ae86548a6b16aed28bdad20d647f25",
+      "target": "docs/workloads/runbooks/helios14b_gan_best.md",
+      "integrated_sha256": "df1f63c6044ada54e288e0abed629bf9665ff681e604b7ccd9df278580210c82",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/runbooks/helios14b_nogan_best.md": {
+      "original_integrated_sha256": "f453f1b3cdb7103dcfc5ac5c5fb98c5a3562a33244f68b7878b0af109902ec3b",
+      "target": "docs/workloads/runbooks/helios14b_nogan_best.md",
+      "integrated_sha256": "b954ec3703f4384565ef6708127bd42ec2f657c58938bfaec45507a93a48ac86",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md": {
+      "original_integrated_sha256": "0ce7c1cb4caab909b35d29c939c69a5d1622ca658f58fed30d2290aa782c200d",
+      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
+      "integrated_sha256": "646fa4281452b8715561dc2b9e3b0fb854a3bbe2e167bc0b7822004a96582203",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/runbooks/minimax_h3_grid1000_best.md": {
+      "original_integrated_sha256": "30793114bbe70a3129f6e30439d710fe0e8ec95c3e2246f4987a5abafe0c3412",
+      "target": "docs/workloads/runbooks/minimax_h3_grid1000_best.md",
+      "integrated_sha256": "7a2019478f7d623b5727fcd226946c96f51aa64009b29ef1ff307207e7cd953f",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/runbooks/wan13b_nogan_resident_best.md": {
+      "original_integrated_sha256": "2e2da284b9b0b85a7784292792637a89f012d68e3df8b651289b25b6783831c5",
+      "target": "docs/workloads/runbooks/wan13b_nogan_resident_best.md",
+      "integrated_sha256": "4ac1b4c5c1062898b3a112d38c79a313ce384a8a9a302bd319df6245e2ca51f6",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "docs/workloads/evidence/livewan_c34_integration_20260906.md": {
+      "original_integrated_sha256": "6384647b74e5596e71726c7c0158a8f7e65db64ffb3acdaf6f68c568d07d0513",
+      "target": "docs/contracts/livewan_native.md",
+      "integrated_sha256": "4ad4280d12d04fc244499033c5493961cfc5f2bd3a5a81cb126842313e45697d",
+      "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
+      "change": "User-approved public documentation consolidation; executable imports unchanged."
     }
   },
   "integration_overlays": [

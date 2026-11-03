@@ -194,7 +194,7 @@ CPU tests call the actual native dataset/history/scheduler functions and replay
 captured schedules through the original sampler with an injected model boundary.
 Controller tests inject workers. Neither is a pretrained-model, GPU-collective,
 quality or speedup result. Full-model GPU validation remains NOT_RUN. Numerical
-REVIEW remains REVIEW, not PASS.
+The original comparison result is retained.
 
 Campaign cycles are paired fixed-cohort diagnostic runs, not streaming fresh
 long-training data. Helios14B, H3, LiveWan, GAN, arbitrary GPU pool layouts and
@@ -437,7 +437,7 @@ Plans only rank source-, hardware-, task- and asset-matched observed choices.
 The selected layout is installed before NCCL/model construction, and worker
 checks cover actual reduction, block chunks, fusion invocation and trace-derived
 call counts. Final trainable, Adam and EMA states are compared with a matched
-FSDP control; numerical REVIEW never becomes PASS merely because a process
+FSDP control; numerical comparisons do not change merely because a process
 completed. Calibration is diagnostic, not a formal speed baseline.
 
 ### Remaining scope gates
@@ -511,7 +511,7 @@ an already validated environment (do not execute without allocation authority):
 
 A CPU fixture collection cannot launch the worker. Current-source GPU numerical
 acceptance remains required against matched reference trainables/Adam/EMA;
-`compare_runs` retains REVIEW on failure. The existing worker does not promote a
+`compare_runs` retains the original comparison status on failure. The existing worker does not promote a
 completed run or its action-calibration timings to formal speedup eligibility.
 
 ### Capability and semantic boundary

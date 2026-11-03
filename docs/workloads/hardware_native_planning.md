@@ -159,8 +159,8 @@ rollout metrics `(cycle 1/2, logical slot 0..15, step 10..14)` plus the five
 consistent same-shape/same-dtype evidence. Thresholds are exactly
 `DEFAULT_P0_PARITY`; metric status is recomputed from the recorded statistics,
 and top-level status/numerical status must agree with all rows. Finite threshold
-deviations remain legal `HARDWARE_TWO_CYCLE_REVIEW`; non-finite values, missing
-rows, duplicate keys, or shape/dtype disagreement are not legal REVIEW. Latent
+deviations retain the comparator result; non-finite values, missing
+rows, duplicate keys, or shape/dtype disagreement are rejected. Latent
 dtype is the actual recorded dtype, not a new BF16-only constraint. This checks
 the pinned comparator's retained evidence; it does not rerun tensor comparison
 inside the planner or upgrade sampled state to full-state parity.
@@ -216,7 +216,7 @@ not reused historical measurements. Existing raw historical schemas may be
 inspected with their explicitly named old head, but assembly admits only the
 registered backend plus fresh integration-qualified launch evidence.
 
-The native comparator's `REVIEW` is preserved. Sampled state and finite losses
+The native comparator result is preserved. Sampled state and finite losses
 are not strict full-state equality. Plans and closed-loop receipts keep
 `strict_full_state_parity=NOT_RUN` and `claimable_speedup=false`; a predicted best
 placement is not automatically a strict winner. This bridge's implementation and

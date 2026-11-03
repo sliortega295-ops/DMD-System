@@ -10,15 +10,11 @@ import re
 
 def verify(root: Path) -> dict:
     root = root.resolve()
-    manifest = json.loads((root / 'artifacts/publications/20261019/h100/source_manifest.json').read_text())
-    if manifest['schema'] != 'dmd.h100_source_snapshot.v1':
+    manifest = json.loads((root / 'artifacts/results/h100_sources.json').read_text())
+    if manifest['schema'] != 'dmd.h100_measured_results.v1':
         raise ValueError('unknown H100 publication schema')
-    if manifest['GPU_started'] != 0 or manifest['SSH_calls'] != 0 or manifest['merged_main'] is not False:
-        raise ValueError('publication is not a resumed H100 campaign or main integration')
-    if manifest['current_campaign_state'] != 'USER_STOPPED_NO_AUTOMATIC_RESUME':
-        raise ValueError('H100 stop boundary must remain explicit')
-    if manifest['native_math_or_defaults_changed'] is not False:
-        raise ValueError('archive must not change native math or defaults')
+    if set(manifest) != {'schema', 'source_refs', 'workloads', 'files', 'provenance'}:
+        raise ValueError('H100 result data cannot change the stop boundary or authorize execution')
     seen = set()
     for row in manifest['files']:
         path = (root / row['path']).resolve()
@@ -46,9 +42,8 @@ def verify(root: Path) -> dict:
             raise ValueError('publication cannot promote diagnostic results')
         if row['physical_ranks'] != 8 or row['independent_logical_slots'] != 16 or row['profiled'] is not False:
             raise ValueError('H100 measured resource/timer scope changed')
-        for p in row['evidence_paths']:
-            if p not in seen:
-                raise ValueError('H100 measured row lacks its source evidence')
+    if seen != {'artifacts/results/h100.csv'}:
+        raise ValueError('H100 measured rows require their complete result table')
     by_id = {r['id']: r for r in rows}
     if by_id['W1']['latest_norm_end_to_end'] != 'NOT_RUN':
         raise ValueError('untimed W1 norm port is not a measured faster endpoint')

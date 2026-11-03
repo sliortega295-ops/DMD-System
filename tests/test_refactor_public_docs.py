@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_actual_documentation_file_budget():
-    """Count every Markdown page, including contracts and immutable evidence."""
+    """Count actual maintained pages, including the versioned contracts."""
     pages = sorted((ROOT / 'docs').rglob('*.md'))
     assert 30 <= len(pages) <= 40, f'actual docs/**/*.md count is {len(pages)}'
 
@@ -23,7 +23,7 @@ PAGES = (
     'docs/runbooks/native_planner_workflow.md', 'docs/workloads/open_role_pools.md',
     'docs/workloads/hardware_native_planning.md', 'docs/contracts/helios_native.md',
     'docs/guides/native_owner_backends.md',
-    'docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md',
+    'docs/guides/performance_validation.md',
     'third_party/helios_compat/README.md',
     'skills/dmd-system-optimizer/SKILL.md',
 )
@@ -66,7 +66,7 @@ def test_public_entry_links_resolve(page):
 def test_consolidated_layout_counts_actual_pages_not_only_guides():
     counts = {directory: len(list((ROOT / 'docs' / directory).rglob('*.md')))
               for directory in ('architecture', 'contracts', 'guides', 'runbooks', 'status', 'workloads')}
-    assert counts == dict(architecture=1, contracts=6, guides=9, runbooks=2, status=5, workloads=16)
+    assert counts == dict(architecture=1, contracts=6, guides=9, runbooks=2, status=0, workloads=11)
 
 
 @pytest.mark.parametrize('page,sections,requirements', [
@@ -98,13 +98,30 @@ def test_consolidated_contracts_retain_versioned_sections_and_unique_constraints
 
 
 def test_public_documentation_keeps_results_not_experiment_process_reports():
-    assert {path.name for path in (ROOT / 'docs/status').glob('*.md')} == {
-        'GITHUB_SOURCE_SNAPSHOT_20261019.md', 'H100_SOURCE_SNAPSHOT_20261019.md',
-        'SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md',
-        'SIX_WORKLOAD_RESULTS_ERRATA_20261031.md', 'official_optimized_framework.md',
-    }
+    assert not list((ROOT / 'docs/status').glob('*.md'))
+    assert not list((ROOT / 'docs/workloads/evidence').glob('*.md'))
     assert not list((ROOT / 'docs/experiments').rglob('*.md'))
     assert not (ROOT / 'docs/guides/release_notes.md').exists()
+    assert not (ROOT / 'artifacts/experiments').exists()
+
+
+def test_one_performance_page_contains_current_three_baseline_comparisons():
+    page = (ROOT / 'docs/guides/performance_validation.md').read_text()
+    for title in ('FSDP2 baseline', 'Resident / offload baseline', 'RealHF-like baseline'):
+        assert f'### {title}' in page
+    for value in ('116.254', '7.514', '3.475', '50.739', '30.959', '255.671', 'H100'):
+        assert value in page
+    assert '113.59' not in page
+    readme = (ROOT / 'README.md').read_text()
+    assert 'docs/guides/performance_validation.md' in readme
+    assert not re.search(r'^\|.*\|\s*\d+\.\d+\s*(?:s|×)?\s*\|', readme, re.M)
+
+
+def test_current_usage_pages_do_not_repeat_historical_review_status():
+    pages = [ROOT / 'README.md', *(ROOT / 'docs').rglob('*.md'),
+             *(ROOT / 'recipes').rglob('*.md')]
+    for path in pages:
+        assert not re.search(r'\bREVIEW\b', path.read_text()), str(path.relative_to(ROOT))
 
 
 def test_readme_and_recipe_index_cover_discoverable_training_families():

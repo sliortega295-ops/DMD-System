@@ -160,16 +160,11 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/runbooks" = ["docs/runbooks/*.md"]
 "share/distillschedule/docs/architecture" = ["docs/architecture/*.md", "docs/architecture/*.json"]
 "share/distillschedule/docs" = ["docs/README.md"]
-"share/distillschedule/docs/status" = ["docs/status/*.md"]
 "share/distillschedule/artifacts/framework/20261030" = [
     "artifacts/framework/20261030/livewan_native_recovery_scope.json",
 ]
 "share/distillschedule/artifacts/framework/20261029" = [
     "artifacts/framework/20261029/wan_portable_output_acceptance.json",
-]
-"share/distillschedule/artifacts/experiments/joint_planner_helios_components_20260908" = [
-    "artifacts/experiments/joint_planner_helios_components_20260908/nogan_closure.json",
-    "artifacts/experiments/joint_planner_helios_components_20260908/gan_closure.json",
 ]
 "share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
 
@@ -178,41 +173,14 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/workloads" = ["docs/workloads/*.md"]
 "share/distillschedule/docs/workloads/runbooks" = ["docs/workloads/runbooks/*.md"]
 "share/distillschedule/docs/workloads/evidence" = [
-    "docs/workloads/evidence/*.md",
     "docs/workloads/evidence/livewan_c34_20260906.json",
     "docs/workloads/evidence/profile_guided_search_20260906.json",
     "docs/workloads/evidence/profile_guided_search_20260906.csv",
 ]
 
-# Direct evidence companions of the source-bound results page, not raw inventories.
-"share/distillschedule/artifacts/publications/20261019/results_correction" = [
-    "artifacts/publications/20261019/results_correction/results.json",
-    "artifacts/publications/20261019/results_correction/A100_user_reported_main_table.csv",
-]
-"share/distillschedule/artifacts/publications/20261019/results_correction/evidence/gan_nomerge" = [
-    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.md",
-    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
-    "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/post_timer_schema_bug_fix_CPU.json",
-]
-"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r1" = [
-    "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-]
-"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r34" = [
-    "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
-]
-"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r36" = [
-    "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-]
-"share/distillschedule/artifacts/publications/20261019/evidence/state_retention/r46" = [
-    "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
-]
-"share/distillschedule/artifacts/publications/20261019/evidence/livewan_r3/reports" = [
-    "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-]
-"share/distillschedule/artifacts/publications/20261019/h100" = [
-    "artifacts/publications/20261019/h100/measured_results.csv",
-    "artifacts/publications/20261019/h100/source_manifest.json",
-]
+# Current result data and its exact source bindings; process logs stay local.
 "share/distillschedule/artifacts/publications/20261019/evidence/planner" = [
     "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
 ]
+
+"share/distillschedule/artifacts/results" = ["artifacts/results/*.csv", "artifacts/results/*.json"]

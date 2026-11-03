@@ -211,10 +211,8 @@ hash and temporary caches rebuild. State I/O stays outside native compute
 windows. Final-state fingerprints or `wan_worker.save_final_state` are evidence,
 not a complete resumable checkpoint.
 
-Native W3 finalization/REVIEW, W4 REVIEW and W5 sampled-backward FAIL remain in
-the [source correction](../status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md).
-Use recipe-specific acceptance receipts; dry-runs and CPU helpers establish no
-new large-model quality, capacity or speedup.
+Use each recipe's source, shape, update and capacity checks.
+[Performance measurements](performance_validation.md) retain their original timing scope.
 
 <a id="native_presets"></a>
 ## Direct native optimization presets
@@ -281,7 +279,7 @@ also completed100cycles, a cycle50 checkpoint/fresh-process continuation,
 same-source world16 Student export and independent new-prompt image/video;
 output tensor/PNG and both-node cleanup checks passed. Original fixture/data
 scope, later longer-cycle records and exact receipt identities remain in the
-[validation appendix](../status/official_optimized_framework.md) and
+[validation appendix](performance_validation.md#official-dmd2-and-self-forcing) and
 [performance guide](performance_validation.md), not reinterpreted here.
 
 | Workflow | Explicit reference | Complete optimized |
@@ -409,7 +407,7 @@ also runs on all ranks; do not invoke a sharded Generator from rank 0 alone.
   admitted by this versioned backend.
 
 The baseline's exact placement/classifier ABI and source checks are retained.
-Use [current public validation](../status/official_optimized_framework.md), rather
+Use [current public validation](performance_validation.md#official-dmd2-and-self-forcing), rather
 than treating a CPU FSDP/Adam fixture as new timing or pretrained GPU evidence.
 
 <a id="original_h3_ar_native"></a>

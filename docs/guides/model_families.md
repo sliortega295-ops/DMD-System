@@ -135,7 +135,7 @@ write native-rate WAVs. Audio-video output includes both frame files and audio.
 Latent export retains an explicitly named native tensor layout.
 
 The [performance and source records](performance_validation.md) link the model-specific
-source and execution checks, and the [official workflow records](../status/official_optimized_framework.md)
+source and execution checks, and the [official workflow records](performance_validation.md#official-dmd2-and-self-forcing)
 cover continuous optimized training, recovery and new-input generation.
 
 ## Separate installation lanes
@@ -315,7 +315,7 @@ Execution uses each recipe's device, dtype, topology and capacity settings.
 ### Results and verification
 
 - [Performance and source records](performance_validation.md)
-- [Official optimized training and recovery](../status/official_optimized_framework.md)
+- [Official optimized training and recovery](performance_validation.md#official-dmd2-and-self-forcing)
 - [Model environments and test lanes](#verification-lanes)
 - [Public resident lifecycle](native_owner_backends.md#resident_owner_training)
 - [Source and asset licenses](../../THIRD_PARTY.md)

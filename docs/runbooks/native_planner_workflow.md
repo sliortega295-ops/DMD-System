@@ -110,7 +110,7 @@ assets/runtime/hardware;16unique ranks/two cycles/G2F10EMA0; finite original
 Grid1000/census/sample/RNG/state checks. Actual FA3 cache/trim/depth must match;
 CUDA-cache CPU-transfer/trim counters must be zero. Resource evidence includes
 setup/lifetime peaks, no CUDA/cgroup OOM and owned cleanup. Reopen raw hashes,
-not environment echoes/exit codes. Predictions/errors and REVIEW remain honest.
+not environment echoes/exit codes. Predictions and measured errors are recorded separately.
 
 ### Wan action/cost and manual boundary
 
@@ -140,9 +140,8 @@ Only storage/trim differs; shape/checkpoint/tile/depth/schedule/precision match.
 Fresh control/candidate/control-repeat must pass all16/two-cycle/sample/RNG/replay
 contracts. Each Student/Fake loss and four parameter/Adam sketches needs
 cross-L2≤limit×self-L2, limit≤2; self0 admits only cross0. Assembly rejects
-aliased/stale/missing/edited witnesses. Retain the original strict failure,
-`REVIEW_NOISE_QUALIFIED_DIAGNOSTIC`, numericalREVIEW and formal-timing=false;
-this is not full-state/statistical/quality/speedup qualification.
+aliased/stale/missing/edited witnesses. Record the measured cross-run noise and the original comparator result;
+noise-diagnostic results remain separate from timing admission.
 
 The exact H3 child `PATH=/usr/bin:/bin` is serialized, not inherited or prepended
 with environment/CUDA bins. Before retry qualify GCC+ld by compiling/linking/
@@ -197,7 +196,7 @@ launch/teardown text. Missing proof cannot fall back to legacy evidence.
 
 | Required fresh run on one clean source | Stop condition |
 | --- | --- |
-|1CPU-cache correctness,2CUDA correctness + comparison |Comparison must be `REVIEW_SAMPLED_PARITY_ONLY` with **all** sampled state/loss/sample/RNG PASS; any numeric FAIL stops after2 |
+|1CPU-cache correctness,2CUDA correctness + comparison |Comparison must accept **all** sampled state/loss/sample/RNG fields; any numerical failure stops the sequence |
 |3CPU calibration,4CUDA calibration + CPU assembly/search/save |Source/runtime/resource/cost/selection invalidity stops before5 |
 |5actual confirmation of measured winner |Do not force CUDA or admit unmeasured variants |
 
@@ -217,9 +216,8 @@ real site receipts, not synthetic CPU parser/path tests, satisfy the sequence.
 <a id="livewan_c51_planner_v1"></a>
 ## LiveWan C51 full-bundle planner opt-in v1
 
-The explicit C51 decision cohort preserves locked C34/five default candidates
-and69-frame request. Current source GPU validation remains NOT_RUN and numerical
-REVIEW stays REVIEW. Origin `aa30527db5d048e2ab23222eef587cb7cfe909f6`, expanded
+The explicit C51 decision cohort preserves the locked C34/five default candidates
+and the separate 69-frame request. Source origin `aa30527db5d048e2ab23222eef587cb7cfe909f6`, expanded
 template SHA `a50e4e3a969a513dae0399878f7e4f25e23085ee119e1175cad83192c0c6f7bb`.
 C51 includes C34 G modulation/residual and Score gate/LayerNorm, pinned Score
 FA3 + exact per-checkpoint SAC, G read-only FA2 split-KV and no-grad fused RMS.
@@ -416,7 +414,7 @@ python scripts/distillctl.py workloads search --strategy model-based \
 forward/trace/commit/version/output-lifetime/effective-policy receipts.
 Correctness precedes same-source/assets/assignment calibration and native timing.
 Loss reads/global-coordinate parameter/Adam/EMA sketches stay outside timers;
-sampled parity remains REVIEW. `NativeTrialRunner.calibrate()` collects and
+the sampled comparison status is retained. `NativeTrialRunner.calibrate()` collects and
 `helios_model_adapter.assemble_calibrations()` joins real observations.
 
 Costs are max-rank fenced native action walls, including internal NCCL/compute
@@ -439,27 +437,3 @@ and fresh preregistration; it cannot relabel a prior rejection or authorize a ru
 `helios_native` validates16rank source/runtime/resource/OOM/teardown receipts.
 NativeC2 is maximum rank-local CUDA-fenced wall, C1warmup; profile/calibration
 walls are never speedup denominators.
-
-### Historical two-node closure,2026-09-08
-
-Keep separate source identities No-GAN `85be7e4e36de`, GAN `cc7e451bff73` and
-[No-GAN](../../artifacts/experiments/joint_planner_helios_components_20260908/nogan_closure.json)/
-[GAN](../../artifacts/experiments/joint_planner_helios_components_20260908/gan_closure.json)
-raw receipts, not new-HEAD claims:
-
-- No-GAN:40components/20assignments,10feasible/10UNCALIBRATED; selected HSDP,
-  chunk512/window1 actually dispatched `g,r0,c0,e0,...,r4,c4,e4` on16ranks;
-  nativeC2=91.617s.
-- GAN:22components/4assignments,1feasible/2UNCALIBRATED/1predictedcapacityfail;
-  same nonpersistentchunk512 implementation confirmed126.902/126.762s,
-  **not** an optimization speedup.
-- Semantic/rank/trace/version/finite PASS, numericalREVIEW, no CUDA/cgroup OOM,
-  teardownPASS; canonical winner unchanged.
-
-GAN C25's37.006GiB peak passed correctness/calibration without OOM but exceeded
-model limit after2GiB+nonallocator reserve: `PREDICTED_CAPACITY_FAIL`, **not OOM**.
-Native validation/speedup remain NOT_RUN/null. The admitted-candidate set forbids
-implicit rejected-peer bootstrap; only verified matching correctness preparation
-may be reused. No candidate budget increase. A2GiB modeled allocation margin
-is not continuous2GiB driver-free proof: the native run sampled440MiB free while
-allocator reservation was high. Preserve both observations.

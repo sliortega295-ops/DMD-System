@@ -11,7 +11,7 @@
 | `tests/` | Unit, integration, CPU and opt-in GPU tests |
 | `docs/guides/` | Current user documentation |
 | `docs/contracts/`, `docs/runbooks/` | Native execution contracts and operating procedures |
-| `docs/status/`, `artifacts/` | Dated validation reports and curated experiment records |
+| `artifacts/results/` | Measured results and their source identities |
 | `tools/`, `scripts/` | Developer utilities and command-line helpers |
 | `benchmarks/`, `profiling/` | Isolated performance tests and profiling tools |
 | `third_party/`, `licenses/` | Third-party sources, attribution and licenses |
@@ -149,9 +149,9 @@ source tree or the source checkout; the common Program lifecycle also works
 from an installed wheel. The [installation guide](../guides/installation.md)
 describes the dependency groups and packaging boundaries.
 
-Historical source maps and measurement receipts are kept for reproduction.
-Changes to source-locked paths use the documented source-layout update procedure;
-current guides link historical results rather than rewriting them as new tests.
+Current source maps and measured result data are retained for reproduction.
+Changes to source-locked paths use the source-layout update procedure.
+Old experiment reports and process receipts are archived outside the published tree.
 
 ### Design references
 
@@ -162,38 +162,10 @@ They are not runtime dependencies. See [extensions](../guides/extensions.md) for
 DMD-System's own model, workflow and capability interfaces.
 
 <a id="legacy_route_retirement"></a>
-## Retired Route-A/Route-B and historical recovery
+## Retired execution routes
 
-The pre-2026-08-15 Route-A/Route-B offload and fixed-role pipeline experiments
-are no longer part of the current delivery. Start from [current recipes](../../recipes/README.md)
-and `distillctl workloads list`. This retirement does not deprecate FSDP2,
-activation offload, or multi-role scheduling as mechanisms.
-
-Removed paths include the old route launchers, their exclusive runtime modules,
-manual frozen-block streaming and pinned-materialization helpers, old plans and
-runbooks, and tests whose only subject was those retired runners. The old Helios
-typed launch adapter, which forced the Route-A CPU-offload policy, is also removed
-from the default registry. Current Helios reference helpers and public/native
-training entrypoints remain.
-
-The optimizer Skill removes the same lineage from its case pack, implementation
-map and fallback source index: 25 cases, 6 implementation entries and 25 source
-entries. It retains 109 scoped entries, including current framework/FSDP2-era
-work, all 16 H100 entries and all 25 ResearchBoost entries. No embedding or
-runtime exclusion heuristic is needed to hide the old recommendations: their
-content is absent from the distributed indexes.
-
-Age alone does not determine removal. Current training still uses older
-checkpoint readers, negative-prompt and trace helpers, sparse EMA, official GAN
-loss bindings, and bootstrap/precast preparation. These stay at their audited
-paths. The immutable upstream source snapshot and source-import/publication
-receipts retain their bytes. The adapter registry change has an explicit appended
-source-layout hash-chain entry.
-
-[The retirement manifest](legacy_route_retirement.json) records each removed
-path and its previous SHA-256, retired experience/implementation IDs, and concrete
-shared dependencies retained. It is an audit inventory, not a retrieval source.
-Recover the previous files only for an explicit historical investigation from
-[commit f14447c7](https://github.com/sliortega295-ops/DMD-System/tree/f14447c7d733a31fcb5ed4ce4de4ca0bfeeaad1e).
-This is a source retirement, not a parity-certified replacement or a new GPU
-performance result.
+Start from [current recipes](../../recipes/README.md) and `distillctl workloads list`.
+Retired Route-A/Route-B runners are not part of the public runtime. Current shared
+checkpoint, offload and multi-role helpers remain at their audited paths.
+The [retirement manifest](legacy_route_retirement.json) records removed paths,
+checksums and retained dependencies for source maintenance.

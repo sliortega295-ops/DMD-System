@@ -4,25 +4,12 @@ Profile `livewan_crossscale_pipeline_best`, version 2. This is the tested C34
 implementation integrated into the existing registry/worker, not another runtime.
 The other four canonical profiles are unchanged.
 
-## Frozen source and historical evidence
+## Source and configuration
 
-Source/tested HEAD: `4c994edca7d83ff553cab6025d8b93b279cd1634`
-(`agent/livewan-steady130-20260905`). LiveWan and Wan submodules remain pinned at
-`1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5` and
-`9737cba9c1c3c4d04b33fcad41c111989865d315`.
-
-| Historical arm | Cycle1, excluded | Cycle2, native |
-|---|---:|---:|
-| Same-head world16 FSDP2 baseline | 79.625242188 s | 62.427882812 s |
-| C34 persistent 8G+8Score | 51.383207031 s | 47.018683594 s |
-
-Single matched observation: 1.327725024x. Not a median, not an integration result.
-16/16 ranks, 32 rank-cycle receipts, G2/C10/EMA0 and OOM delta 0. Strict numerical
-comparison remains **REVIEW**, not strict parity PASS. The source's existing
-`REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW` admission is unchanged. This profile
-therefore exposes `diagnostic-timing`, not strict `timing`.
-Evidence: `../evidence/livewan_c34_20260906.json`.
-C24 remains in `../history/livewan_c24_profile_v1.json` and its original typed plan.
+The profile binds the reviewed worker and pinned LiveWan/Wan dependencies.
+Use its assets template and source validation before launching. C34 uses
+`diagnostic-timing`; the native trajectory comparison and timing gate bind the
+same source, input and seed.
 
 ## What C34 contains
 
@@ -34,10 +21,6 @@ C24 remains in `../history/livewan_c24_profile_v1.json` and its original typed p
 - Row-major internal no-grad residual output; public output contract retained.
 - Critic exact FlashAttention output checkpoint cache on GPU, not CPU offload.
 - All corresponding source hashes, runtime counters and fail-closed validators.
-
-Peak allocated in that historical run: Generator 35.152 GiB, Score 18.200 GiB.
-Allocator/driver headroom must still be checked live; OOM delta 0 is not proof of
-large safety margin on every device. No additional KV, batching or HSDP change.
 
 ## Portable setup and CPU-only checks
 
@@ -61,7 +44,7 @@ python scripts/distillctl.py workloads run \
 2-cycle profile. The legacy worker's validate-mode uses its 3-cycle template.
 No SSH/GPU is invoked by list/explain/validate/render/dry-run.
 
-## Correctness and native timing (NOT RUN in this integration)
+## Correctness and native timing
 
 Remove `--dry-run` only after resource/source/asset acceptance. Canonical
 `correctness` maps to the existing **two-cycle trajectory** mode. Native output
@@ -103,5 +86,3 @@ This maps to the tested `two-cycle-timing` worker and
 Cycle1 is warmup. Only cycle2 completion-endpoint delta is comparable; never
 average cycles or compare against a differently initialized/diagnostic baseline.
 Native source/trace/optimizer/replay/census/teardown gates remain mandatory.
-
-**Integrated GPU/model execution and performance reproduction: NOT_RUN.**

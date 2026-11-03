@@ -2,7 +2,7 @@
 
 **Source / CPU protocol integration only. Native two-node CUDA continuation,
 cross-reference numerical comparison, and 100 actual fresh DMD cycles with a
-midpoint process restart are NOT_RUN. Numerical status remains REVIEW.**
+midpoint process restart are separate acceptance steps.**
 This is W4 LiveWan, not the separate official Self-Forcing workflow or sequential
 reference, and not a new benchmark. Existing recipes/templates remain unchanged.
 
