@@ -14,11 +14,11 @@ Each table retains its baseline definition and uses the adopted DMD-System resul
 | W2 Helios No-GAN | 109.170 | 82.990 | 1.315× |
 | W3 Helios GAN | 164.300 | 116.254 | 1.413× |
 | W4 Self-Forcing DMD / LiveWan | 84.260 | 42.450 | 1.985× |
-| W5 Audio–Video DMD, full-sequence | — | — | — |
+| W5 Audio–Video DMD, full-sequence | 911.770 | 767.020 | 1.189× |
 | W6 Autoregressive Audio–Video DMD | 320.000 | 255.671 | 1.252× |
 
-W1–W5 use G1/F5; W6 uses eight rollout steps and G1/F1. Both H3
-workloads use continuous sigma. W3 uses unmerged LoRA. W6's denominator
+W1–W5 use G1/F5; W6 uses eight rollout steps and G1/F1. Current H3
+recipes use continuous sigma; W5 retains its previously reported cycle timings. W3 uses unmerged LoRA. W6's denominator
 is the reported FSDP2 reference.
 
 ### Resident / offload baseline
@@ -29,7 +29,7 @@ is the reported FSDP2 reference.
 | W2 Helios No-GAN | 688.730 | 82.990 | 8.299× |
 | W3 Helios GAN | 762.440 | 116.254 | 6.558× |
 | W4 Self-Forcing DMD / LiveWan | 69.250 | 42.450 | 1.631× |
-| W5 Audio–Video DMD, full-sequence | — | — | — |
+| W5 Audio–Video DMD, full-sequence | — | 767.020 | — |
 | W6 Autoregressive Audio–Video DMD | — | 255.671 | — |
 
 W2 and W3 use the role-swap/offload reference; W1 and W4 use their resident
@@ -43,7 +43,7 @@ reference. A dash means no measurement is recorded for that baseline.
 | W2 Helios No-GAN | 156.250 | 82.990 | 1.883× |
 | W3 Helios GAN | 203.740 | 116.254 | 1.753× |
 | W4 Self-Forcing DMD / LiveWan | 62.380 | 42.450 | 1.469× |
-| W5 Audio–Video DMD, full-sequence | — | — | — |
+| W5 Audio–Video DMD, full-sequence | — | 767.020 | — |
 | W6 Autoregressive Audio–Video DMD | — | 255.671 | — |
 
 RealHF-like identifies the static-layout comparison, not a run of the ReaLHF

@@ -4,8 +4,8 @@
   "files": [
     {
       "path": "artifacts/results/a100.csv",
-      "bytes": 535,
-      "sha256": "e224bbfadb05e057933cbb0b9d3d04cb93b27859f5fac147c5f4b8502b04d010"
+      "bytes": 554,
+      "sha256": "c0546c7ab999f3ba90919df0ca9a48a0043a771813cd0b23b404212610b22acf"
     },
     {
       "path": "artifacts/results/h100.csv",
@@ -121,7 +121,13 @@
     "a100": {
       "physical_gpus": 16,
       "global_batch": 16,
-      "window": "C2_AFTER_C1_WARMUP"
+      "window": "C2_AFTER_C1_WARMUP",
+      "w5_timing_source": {
+        "revision": "102782ef61c991cc663181e8d4edbdb472fe7447",
+        "path": "artifacts/results/a100.csv",
+        "row": "W5",
+        "reuse": "previously_reported_C2_not_a_new_measurement"
+      }
     },
     "official": {
       "physical_gpus": 16,

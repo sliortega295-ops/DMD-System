@@ -61,9 +61,15 @@ class CurrentValidationViewTests(unittest.TestCase):
         for workload in ("W1", "W2", "W3", "W4", "W5", "W6"):
             self.assertIn(workload, guide)
         for value in ("7.514", "3.475", "50.739", "30.959", "36.175",
-                      "84.260", "42.450", "255.671", "116.254"):
+                      "84.260", "42.450", "255.671", "116.254", "911.770", "767.020"):
             self.assertIn(value, guide)
-        self.assertNotIn("767.020", guide)  # Retired approximate timing is not continuous evidence.
+        self.assertIn("previously reported cycle timings", guide)
+        manifest = json.loads((REPO / "artifacts/results/manifest.json").read_text())
+        source = manifest["measurement_scope"]["a100"]["w5_timing_source"]
+        self.assertEqual(source["revision"], "102782ef61c991cc663181e8d4edbdb472fe7447")
+        self.assertEqual(source["path"], "artifacts/results/a100.csv")
+        self.assertEqual(source["row"], "W5")
+        self.assertEqual(source["reuse"], "previously_reported_C2_not_a_new_measurement")
 
     def test_recipe_is_concise_and_continuous_results_do_not_relabel_old_timing(self):
         recipe = (REPO / "recipes/h3_fullseq/README.md").read_text()
