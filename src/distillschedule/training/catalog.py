@@ -11,7 +11,8 @@ import json
 import re
 from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches, _exact_value,
     FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
-from .ltx_sharding import CONSTRUCTION as LTX_BLOCK_CONSTRUCTION, EXECUTION as LTX_BLOCK_EXECUTION
+from .ltx_sharding import (CONSTRUCTION as LTX_BLOCK_CONSTRUCTION, EXECUTION as LTX_BLOCK_EXECUTION,
+                          COMPUTE_PRECISIONS as LTX_BLOCK_PRECISIONS)
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -182,7 +183,8 @@ register_model('ltx25', factory='distillschedule.training.ltx:build_model',
     capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video, explicit post-backward B1 replicas',
     compute_precisions=['fp32', 'bf16-mixed'],
     execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
-    construction_constraint=dict(recipe=LTX_BLOCK_CONSTRUCTION, device='cpu', backend='gloo', execution=LTX_BLOCK_EXECUTION),
+    construction_constraint=dict(recipe=LTX_BLOCK_CONSTRUCTION, device='cpu', backend='gloo',
+        compute_precisions=list(LTX_BLOCK_PRECISIONS), execution=LTX_BLOCK_EXECUTION),
     compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
         devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
         model_parameters=['source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
@@ -257,7 +259,8 @@ def validate_compatibility(model, algorithm, trainer, execution=None):
         if construction is not None:
             constraint = entry.get('construction_constraint')
             devices = (trainer.get('device', 'cpu'), model.get('parameters', {}).get('device', trainer.get('device', 'cpu')))
-            if (not constraint or construction != constraint['recipe'] or not replicated or precision != 'fp32'
+            if (not constraint or construction != constraint['recipe'] or not replicated
+                    or precision not in constraint.get('compute_precisions', ['fp32'])
                     or any(value != constraint['device'] for value in devices)
                     or trainer['distributed'].get('backend') != constraint['backend']
                     or set(execution or {}) - {'adapter', 'mode', 'implementation'}

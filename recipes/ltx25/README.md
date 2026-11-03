@@ -257,9 +257,11 @@ child backward hooks see their tensors. Codecs remain frozen and resident;
 full or LoRA updates, optional Student EMA, RNG and G1/F5/CFG math are unchanged.
 Use the same launcher and topology for training, resume, evaluation and export.
 
-This FP32 manual path starts from **dense CPU construction/loading**. Native
-two-block CPU tests cover gradients, Adam/EMA, fresh-process all-rank recovery
-and current-Student AV output. Default post-backward replicas remain unchanged.
+This manual path starts from **dense CPU FP32 construction/loading** and accepts
+`compute_precision: fp32` (default) or `bf16-mixed` for scoped native compute.
+Parameters, gradients, Adam and sharded EMA stay FP32. Native two-block CPU tests
+cover same-precision gradients, Adam/EMA, fresh-process all-rank recovery and
+current-Student AV output. Default post-backward replicas remain unchanged.
 
 ## Generate new audio–video
 

@@ -115,11 +115,17 @@ def test_common_cpu_collector_runs_the_flow_methods_ci_regressions():
 
 
 def test_ltx_native_block_lifecycle_driver_triggers_official_cpu_ci():
-    workflow, _, _, _ = _lane('ltx25')
+    workflow, job, _, _ = _lane('ltx25')
     paths = workflow['on']['pull_request']['paths']
     driver = 'tests/ltx_sharded_lifecycle.py'
     assert driver in paths
     assert any(Path(driver).match(pattern) for pattern in paths)
+    required = [f'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[{mode}-{precision}]'
+        for mode in ('config', 'lora_config') for precision in ('fp32', 'bf16-mixed')]
+    commands = '\n'.join(item.get('run', '') for item in job['steps'])
+    assert all(f"--require '{name}'" in commands for name in required)
+    nodes = [f'tests/test_training_ltx_sharded.py::{name}' for name in required]
+    assert sorted(_collect_command(['python', '-m', 'pytest', '-q', *nodes])) == sorted(nodes)
 
 
 SHARDING_LANES = {

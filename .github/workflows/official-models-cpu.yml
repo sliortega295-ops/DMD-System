@@ -276,8 +276,12 @@ jobs:
                 --require test_ltx_block_constructor_requires_live_public_provider_before_assets \
                 --require test_ltx_block_failed_constructor_closes_single_use_provider \
                 --require test_native_ltx_block_pytree_rejects_conflicting_registration \
-                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[config]' \
-                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[lora_config]' \
+                --require 'test_ltx_block_attach_binds_precision_and_fp32_actual_roots[fp32]' \
+                --require 'test_ltx_block_attach_binds_precision_and_fp32_actual_roots[bf16-mixed]' \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[config-fp32]' \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[config-bf16-mixed]' \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[lora_config-fp32]' \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[lora_config-bf16-mixed]' \
                 --require test_actual_native_ltx_two_block_gloo2_preserves_disabled_ema
               ;;
             livewan-public)

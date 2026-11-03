@@ -35,7 +35,7 @@ def snapshot(state):
     return _snapshot(state if 'student_ema' in state else {**state, 'student_ema': {}})
 
 
-def owner_refusals(model, workload):
+def owner_refusals(model, workload, config, data):
     """Reject foreign owners before the first native group is installed."""
     import pytest
     provider = model.sharded_construction
@@ -46,6 +46,27 @@ def owner_refusals(model, workload):
     with patch.object(ltx_sharding, '_provider_source', lambda: {**receipt, 'sha256': '0' * 64}):
         with pytest.raises(ValueError, match='provider source identity'):
             provider.bind_workload(model, workload)
+    precision = config.model['parameters'].get('compute_precision', 'fp32')
+    other = 'bf16-mixed' if precision == 'fp32' else 'fp32'
+    for role in ROLES:
+        with patch.object(model.state[role], 'compute_precision', other):
+            with pytest.raises(ValueError, match='compute precision'):
+                provider.bind_workload(model, workload)
+    with patch.object(provider, 'compute_precision', other):
+        with pytest.raises(ValueError, match='compute precision'):
+            provider.bind_workload(model, workload)
+    for values in (provider.parameters, model.metadata, model.metadata['construction']):
+        with patch.dict(values, compute_precision=other):
+            with pytest.raises(ValueError, match='compute precision'):
+                provider.bind_workload(model, workload)
+    with patch.dict(model.state, flow_compute_precision=other):
+        with pytest.raises(ValueError, match='compute precision'):
+            provider.bind_workload(model, workload)
+    wrong_request = replace(config, model=dict(config.model,
+        parameters=dict(config.model['parameters'], compute_precision=other)))
+    with pytest.raises(ValueError, match='compute precision'):
+        model.admit_training(state=model.state, request=wrong_request,
+            prepared_identity=data.identity, prepared_manifest=data.manifest)
     root = model.state['student']
     with pytest.raises(ValueError, match='provider/factory/parameters'):
         provider.construct(provider.factory, provider.parameters)
@@ -97,19 +118,23 @@ def assert_sharded(model, session):
     assert effects['reduction'] == 'fsdp2_reshard' and effects['reshard_after_forward']
     assert effects['shared_parameter_aliases'] == 0
     assert not isinstance(model.state['media'], FSDPModule)
+    assert all(p.dtype == torch.float32 for p in model.state['media'].parameters())
     for role in ROLES:
         root = model.state[role]
         assert isinstance(root, FSDPModule) and not isinstance(root.native, FSDPModule)
         assert len(root.native.transformer_blocks) == 2
         assert all(isinstance(block, FSDPModule) for block in root.native.transformer_blocks)
         assert sum(isinstance(child, FSDPModule) for child in root.modules()) == 3
-        assert all(isinstance(p, DTensor) and p.grad is None for p in root.parameters())
+        assert all(isinstance(p, DTensor) and p.grad is None and p.dtype == torch.float32
+                   for p in root.parameters())
         if role == 'teacher':
             assert not any(p.requires_grad for p in root.parameters())
         else:
             optimizer = model.state[role + '_optimizer']
             assert {id(p) for p in root.parameters() if p.requires_grad} == {
                 id(p) for group in optimizer.param_groups for p in group['params']}
+            assert optimizer.state and all(value.dtype == torch.float32 for slot in optimizer.state.values()
+                for value in slot.values() if isinstance(value, torch.Tensor))
     shadows = model.state.get('student_ema')
     if shadows is None:
         return dict(native_groups_per_role=3, actual_child_paths=_boundaries(), ema='DISABLED_UNCHANGED',
@@ -117,7 +142,8 @@ def assert_sharded(model, session):
     assert type(shadows) is ParameterShadows and shadows.owner == 'student'
     assert shadows is session.state['student_ema'] is session.workload.state['student_ema']
     for name, parameter in model.state['student'].named_parameters():
-        assert isinstance(shadows[name], DTensor) and layout(shadows[name]) == layout(parameter)
+        assert (isinstance(shadows[name], DTensor) and layout(shadows[name]) == layout(parameter)
+                and shadows[name].dtype == torch.float32)
     full_bytes = sum(value.numel() * value.element_size() for value in shadows.values())
     local_bytes = sum(value.to_local().numel() * value.element_size() for value in shadows.values())
     assert local_bytes < full_bytes
@@ -136,6 +162,15 @@ def oracle(config_path, output):
     with distributed.context(config):
         rank, world = distributed.rank_world()
         assert world == 2
+        precision = config.model['parameters'].get('compute_precision', 'fp32')
+        import pytest
+        from distillschedule.training.session import _construct_model
+        before_rng = rng_state(device='cpu')
+        mismatched = replace(config, model=dict(config.model, parameters=dict(config.model['parameters'],
+            compute_precision='fp32' if rank == 0 else 'bf16-mixed')))
+        with pytest.raises(ValueError, match='ranks selected different native block compute precision'):
+            _construct_model(mismatched)
+        assert equal(before_rng, rng_state(device='cpu'))
         distributed.primary(lambda: root.mkdir(parents=True, exist_ok=False), 'LTX block oracle output')
         parameters = dict(config.model['parameters']); parameters.pop('construction')
         dense_config = replace(config, model=dict(config.model, parameters=parameters), execution=dict(mode='reference'))
@@ -171,6 +206,17 @@ def oracle(config_path, output):
         session, versions, records = None, None, []
         installed, registered = [], []
         flattened_after = []
+        native_compute = {role: dict(calls=0, bf16_outputs=0, autocast_calls=0) for role in ROLES}
+        def native_linear(role):
+            def hook(module, args, value):
+                row = native_compute[role]
+                row['calls'] += 1
+                row['bf16_outputs'] += int(value.dtype == torch.bfloat16)
+                row['autocast_calls'] += int(torch.is_autocast_enabled('cpu'))
+                assert value.dtype == (torch.bfloat16 if precision == 'bf16-mixed' else torch.float32)
+            return hook
+        compute_handles = [module.register_forward_hook(native_linear(role)) for role in ROLES
+            for module in model.state[role].native.modules() if type(module) is torch.nn.Linear]
         after_hook = model.state['student'].native.transformer_blocks[0].register_forward_hook(observe_flattening(flattened_after))
         fully_shard, register = fsdp.fully_shard, fsdp.register_fsdp_forward_method
         def shard(module, *args, **kwargs):
@@ -185,7 +231,7 @@ def oracle(config_path, output):
                     cursor=cycle * world + rank, versions=versions)
                 backend = ExecutionBackend(workload)
                 if session is None:
-                    owner_refusals(model, workload)
+                    owner_refusals(model, workload, config, data)
                     with patch.object(fsdp, 'fully_shard', shard), patch.object(fsdp, 'register_fsdp_forward_method', method):
                         session = backend.session(deepcopy(EXECUTION['manual_implementation']), copy_state=False, persistent=True)
                     gradients, handles = observe_gradients(session)
@@ -197,6 +243,8 @@ def oracle(config_path, output):
                 outputs = session.run()
                 versions = session.receipt['dispatcher']['final_versions']
                 observed = gradients[offset:]
+                assert all(value.dtype == torch.float32 for value in tree_leaves(observed)
+                           if isinstance(value, torch.Tensor))
                 _close(target['state'], snapshot(model.state))
                 _close(target['trace']['losses'][rank], cpu_tree(outputs))
                 _close([{key: value for key, value in row.items() if key != 'local'}
@@ -213,6 +261,8 @@ def oracle(config_path, output):
                     student_mean_gradient_l2=norms[cycle], effects=deepcopy(session.effects), ownership=ownership))
             assert flattened_after and all(row['tensor_leaves'] > 0 and row['native_tensor_fields'] for row in flattened_after)
             proof = dict(rank=rank, world_size=world, construction=CONSTRUCTION,
+                compute_precision=precision, native_linear_compute=native_compute,
+                fp32_owned_state=True, precision_drift_rejected=True,
                 evidence_kind=model.metadata['evidence_kind'], average_before_clip_adam=True,
                 oracle_cycles=ORACLE_CYCLES, oracle_rtol=ORACLE_RTOL, oracle_atol=ORACLE_ATOL,
                 dense_initial_state_and_rng_exact=True, native_method_registrations=len(registered),
@@ -227,6 +277,8 @@ def oracle(config_path, output):
                 for handle in handles:
                     handle.remove()
             after_hook.remove()
+            for handle in compute_handles:
+                handle.remove()
             if model.close is not None:
                 model.close()
         import pytest
@@ -342,8 +394,16 @@ def lifecycle(config_path, output):
         assert not (root/'must-not-exist').exists()
     finally:
         hidden_shard.rename(shard)
+    precision = config.model['parameters'].get('compute_precision', 'fp32')
+    changed = config.to_dict()
+    changed['model']['parameters']['compute_precision'] = 'bf16-mixed' if precision == 'fp32' else 'fp32'
+    changed_path = root/'wrong-precision.json'; _write(changed_path, changed)
+    fresh_cli(changed_path, root/'wrong-precision.log', 2, 'train', changed_path, '--cycles', 3,
+        '--resume', checkpoint, '--output', root/'wrong-precision-must-not-exist', expected_error='identity')
+    assert not (root/'wrong-precision-must-not-exist').exists()
     _write(root/'proof.json', dict(world_size=2, all_rank_state_rng_data_order_exact=True,
         fresh_process_restore=True, current_student_native_av_export=True, missing_rank_shard_rejected=True,
+        compute_precision=precision, checkpoint_precision_drift_rejected=True,
         quality='NOT_RUN', cuda='NOT_RUN', full22b='NOT_RUN'))
 
 

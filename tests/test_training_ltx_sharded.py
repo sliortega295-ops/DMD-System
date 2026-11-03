@@ -36,10 +36,13 @@ entry = resolve('model', 'ltx25')
 constraint = entry['construction_constraint']
 assert constraint['recipe'] == 'cpu-fsdp2-native-blocks-v1'
 assert entry['execution_constraints']['replicated']['manual_implementation']['reduction'] == 'post_backward'
-validate_compatibility({'factory': entry['factory'], 'parameters': {'construction': constraint['recipe']}},
-    {'factory': 'distillschedule.training.dmd:build_algorithm'},
-    {'device': 'cpu', 'distributed': {'backend': 'gloo'}},
-    {'mode': 'manual', 'implementation': constraint['execution']['manual_implementation']})
+for precision in ('fp32', 'bf16-mixed'):
+    validate_compatibility({'factory': entry['factory'], 'parameters': {
+        'construction': constraint['recipe'], 'compute_precision': precision}},
+        {'factory': 'distillschedule.training.dmd:build_algorithm'},
+        {'device': 'cpu', 'distributed': {'backend': 'gloo'}},
+        {'mode': 'manual', 'implementation': constraint['execution']['manual_implementation']})
+assert constraint['compute_precisions'] == ['fp32', 'bf16-mixed']
 assert not any(name in sys.modules for name in ('torch', 'transformers', 'ltx_core'))
 '''], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -70,18 +73,25 @@ def test_ltx_block_public_policy_rejects_before_data_model_and_rng(tmp_path, mon
         dict(MANUAL, order=[]), dict(MANUAL, trials=1), dict(MANUAL, resident_budget={})]
     for reduction in ('post_backward', 'fsdp2_keep_forward', 'hsdp2_reshard', 'per_module'):
         invalid.append(dict(MANUAL, implementation=dict(MANUAL['implementation'], reduction=reduction)))
-    invalid.append(dict(MANUAL, implementation=dict(MANUAL['implementation'],
-        local=dict(MANUAL['implementation']['local'], share_immutable=True))))
-    for execution in invalid:
+    for local in (dict(MANUAL['implementation']['local'], share_immutable=True),
+                  dict(MANUAL['implementation']['local'], checkpoint_bindings=['student'])):
+        invalid.append(dict(MANUAL, implementation=dict(MANUAL['implementation'], local=local)))
+    for precision in ('fp32', 'bf16-mixed'):
+        selected = replace(config, model=dict(config.model,
+            parameters=dict(config.model['parameters'], compute_precision=precision)))
+        for execution in invalid:
+            with pytest.raises(ValueError, match='construction'):
+                session.construct(replace(selected, execution=execution))
+        for field, value in [('device', 'cuda:0'), ('construction', 'foreign')]:
+            parameters = dict(selected.model['parameters'], **{field: value})
+            with pytest.raises(ValueError, match='construction'):
+                session.construct(replace(selected, model=dict(selected.model, parameters=parameters)))
         with pytest.raises(ValueError, match='construction'):
-            session.construct(replace(config, execution=execution))
-    for field, value in [('compute_precision', 'bf16-mixed'), ('device', 'cuda:0'),
-                         ('construction', 'foreign')]:
-        parameters = dict(config.model['parameters'], **{field: value})
-        with pytest.raises(ValueError, match='construction'):
-            session.construct(replace(config, model=dict(config.model, parameters=parameters)))
-    with pytest.raises(ValueError, match='construction'):
-        session.construct(replace(config, trainer=dict(config.trainer, distributed={'backend': 'nccl'})))
+            session.construct(replace(selected, trainer=dict(selected.trainer, distributed={'backend': 'nccl'})))
+    for precision in ('bf16', True, None, []):
+        with pytest.raises(ValueError, match='compute precision'):
+            session.construct(replace(config, model=dict(config.model,
+                parameters=dict(config.model['parameters'], compute_precision=precision))))
     assert not torch.cuda.is_initialized()
 
 
@@ -151,10 +161,12 @@ def block_assets(tmp_path_factory, source_root):
         return builder(tmp_path_factory.mktemp('ltx-blocks')/'fixture', source_root, cycles=6)
 
 
-def _block_request(assets, output, mode):
+def _block_request(assets, output, mode, precision='fp32'):
     from distillschedule.training.config import load_training_config
     value = load_training_config(assets[mode]).to_dict()
     value['model']['parameters']['construction'] = CONSTRUCTION
+    if precision != 'fp32':
+        value['model']['parameters']['compute_precision'] = precision
     value['algorithm']['parameters']['max_grad_norm'] = 1e-4
     value['data']['sharding'] = 'rank_strided'
     value['trainer'].update(cycles=3, distributed=dict(backend='gloo', timeout_seconds=180))
@@ -163,12 +175,48 @@ def _block_request(assets, output, mode):
     return output
 
 
+@pytest.mark.parametrize('precision', ['fp32', 'bf16-mixed'])
+def test_ltx_block_attach_binds_precision_and_fp32_actual_roots(block_assets, precision):
+    from distillschedule.training.config import load_training_config
+    from distillschedule.training import ltx
+    from distillschedule.training.ltx_sharding import _NativeBlockConstruction
+    parameters = dict(load_training_config(block_assets['lora_config']).model['parameters'],
+        construction=CONSTRUCTION, compute_precision=precision)
+    provider = _NativeBlockConstruction(parameters, ltx.build_model, ltx._build_model)
+    components = provider.construct(ltx.build_model, parameters)
+    other = 'bf16-mixed' if precision == 'fp32' else 'fp32'
+    try:
+        for role in ('student', 'fake', 'teacher'):
+            with pytest.MonkeyPatch.context() as patch:
+                patch.setattr(components.state[role], 'compute_precision', other)
+                with pytest.raises(ValueError, match='compute precision'):
+                    provider.attach(components)
+                assert not provider.attached
+        name, parameter = next(iter(components.state['student'].named_parameters()))
+        parent, leaf = name.rsplit('.', 1)
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(components.state['student'].get_submodule(parent), leaf,
+                torch.nn.Parameter(parameter.detach().to(torch.bfloat16), requires_grad=parameter.requires_grad))
+            with pytest.raises(ValueError, match='dense FP32'):
+                provider.attach(components)
+            assert not provider.attached
+        provider.attach(components)
+        assert provider.attached
+        assert components.metadata['construction'].get('compute_precision', 'fp32') == precision
+        assert components.metadata['precision'] == (
+            'FP32' if precision == 'fp32' else 'BF16_AUTOCAST_FP32_STATE') + '_NATIVE_CPU_BLOCK_FSDP2'
+    finally:
+        provider.close()
+    assert not torch.cuda.is_initialized()
+
+
 @pytest.mark.skipif(os.environ.get('DMD_LTX_SHARDED_CPU') != '1',
     reason='explicit pinned CPU LTX block-FSDP lane required')
+@pytest.mark.parametrize('precision', ['fp32', 'bf16-mixed'])
 @pytest.mark.parametrize('config_key', ['config', 'lora_config'])
-def test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle(block_assets, tmp_path, config_key):
+def test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle(block_assets, tmp_path, config_key, precision):
     from ltx_sharded_lifecycle import lifecycle
-    config = _block_request(block_assets, tmp_path/'request.json', config_key)
+    config = _block_request(block_assets, tmp_path/'request.json', config_key, precision)
     repo = Path(__file__).resolve().parents[1]
     command = [sys.executable, '-m', 'torch.distributed.run', '--standalone', '--nproc_per_node', '2',
         str(repo/'tests/ltx_sharded_lifecycle.py'), 'oracle', '--config', str(config), '--output', str(tmp_path/'oracle')]
@@ -180,6 +228,13 @@ def test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle(
     assert len(proof['ranks']) == 2
     assert all(row['average_before_clip_adam'] and row['oracle_cycles'] == 3 for row in proof['ranks'])
     assert all(row['native_group_installations'] == 9 and row['native_method_registrations'] == 3 for row in proof['ranks'])
+    assert all(row['compute_precision'] == precision and row['fp32_owned_state'] for row in proof['ranks'])
+    assert all(row['precision_drift_rejected'] for row in proof['ranks'])
+    for row in proof['ranks']:
+        for observed in row['native_linear_compute'].values():
+            assert observed['calls'] > 0
+            assert observed['bf16_outputs'] == observed['autocast_calls'] == (
+                observed['calls'] if precision == 'bf16-mixed' else 0)
     lifecycle(config, tmp_path/'lifecycle')
     assert not torch.cuda.is_initialized()
 

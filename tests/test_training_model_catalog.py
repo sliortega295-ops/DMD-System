@@ -22,6 +22,24 @@ print(json.dumps(value))
     assert {'dmd2', 'self-forcing', 'dmd'} <= set(value['algorithms'])
 
 
+@pytest.mark.parametrize('name', ['ltx25', 'qwen-image', 'flux2-klein-base'])
+@pytest.mark.parametrize('precision', ['fp32', 'bf16-mixed'])
+def test_construction_compute_precision_is_capability_scoped(name, precision):
+    from distillschedule.training.catalog import resolve, validate_compatibility
+    entry = resolve('model', name)
+    constraint = entry['construction_constraint']
+    arguments = (dict(factory=entry['factory'], parameters=dict(
+        construction=constraint['recipe'], compute_precision=precision)),
+        dict(factory='distillschedule.training.dmd:build_algorithm'),
+        dict(device='cpu', distributed=dict(backend='gloo')),
+        dict(mode='manual', implementation=constraint['execution']['manual_implementation']))
+    if name == 'ltx25' or precision == 'fp32':
+        validate_compatibility(*arguments)
+    else:
+        with pytest.raises(ValueError, match='unsupported construction'):
+            validate_compatibility(*arguments)
+
+
 def test_registered_model_and_algorithm_resolve_without_importing_models(tmp_path):
     config = TrainingConfig.from_dict({
         'schema_version': 'distillschedule.training.v1',
