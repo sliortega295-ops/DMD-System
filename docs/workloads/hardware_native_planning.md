@@ -221,3 +221,116 @@ are not strict full-state equality. Plans and closed-loop receipts keep
 `strict_full_state_parity=NOT_RUN` and `claimable_speedup=false`; a predicted best
 placement is not automatically a strict winner. This bridge's implementation and
 CPU tests alone do not claim a completed GPU search/execution campaign.
+
+## Separate A100 allocation API
+
+`distillschedule.search.a100_allocation` is an opt-in callable adapter, not an
+extension of the H100-only `workloads hardware` CLI. `make_deployment()` takes
+explicit profile, allocation, native root, environment, assets and site facts;
+`assemble_problem_and_costs()` and `search_and_lower()` use the common planner.
+Only `a100-8-b16` / `a100-16-b16` and measured Resident/FSDP whole-cycle costs are
+admitted. Slots are `(r,r+8)` on eight GPUs and `(r)` on sixteen; half-loss
+scaling on eight preserves logical16 and commits only after both B1 contributions.
+
+The native pin is `8148e84de048820df32f0a12b5657f1d9f530323`, tree
+`83fbc856430dc7b7ab34268ef69bf4754296e482`. Its parent reproduces the published
+7a source tree with reconstructed Git metadata, not claimed Git ancestry.
+Keep real rank/health/source/argv/environment receipts and use an
+allocation-aware owned launcher; do not borrow the H100 launcher. Numerical
+parity remains separate from slot/census admission. Clear inherited NCCL recipe
+knobs: automatic NCCL selection means leaving `NCCL_ALGO` unset; the receipt's
+`AUTO` label is not a valid environment token. No construction-capacity or
+cross-allocation cost transfer is inferred.
+
+## Helios H100 Full5 inspection and audit
+
+`workloads hardware-helios` is a separate CPU control interface pinned to
+`8fc70e8ce9f6e0243604812120119c9f4c078e55`. It compiles the real native launcher
+and reopens raw run evidence; it has no `run`, `resume` or C2 execution verb.
+The stopped H100 campaign must not be resumed by compiling a command.
+
+```bash
+python scripts/distillctl.py workloads hardware-helios inspect-source \
+  --source-root /absolute/clean-8fc-source
+python scripts/distillctl.py workloads hardware-helios compile \
+  --deployment /absolute/deployment.json --arm h100-nograd-retain-nosync \
+  --mode correctness --run-id fresh-full5 --output /absolute/new-plan.json
+python scripts/distillctl.py workloads hardware-helios audit \
+  --plan /absolute/new-plan.json --output /absolute/new-audit.json
+```
+
+The `distillschedule.hardware_helios_deployment.v1` object requires:
+
+- `native_source` with exact head and absolute repo root; `site` with absolute
+  project/Python/Helios/asset/HF-cache paths (HF cache under the asset root).
+- `allocation`: eight observed SM90 UUIDs/capacities on node0, independent B1
+  generator/critic slots `(r,r+8)`, logical16 and physical microbatch1.
+- `asset_gate` and `retention_api` path/SHA references. The registered retention
+  proof SHA is `52f9b287011e681861731055b4b37ea7d65ab4cb39eb8ad0792025a7b0c23966`.
+- `runtime_versions`: exact Python, driver and torch/triton/deepspeed/accelerate/
+  transformers/diffusers/peft/safetensors package versions; explicit
+  `master_port` (1024..65535) and `deadline_seconds` (1..7200).
+
+Arms are `best`, `h100-nograd-retain`, `h100-nograd-retain-nosync`; modes are
+`validate`, `correctness`, `timing`. Timing additionally requires `--correctness`
+with the same-arm/source fresh summary path/SHA object. Outputs are exclusive
+creation. Optional `--source-root` permits a clean identical local source while
+compiling; audit still needs the original raw paths and real host evidence.
+This native path keeps local-FA2, stride2 replay, HSDP2×4, 384×640, half-loss B1
+slots, G1/C5/EMA5 and CUDA EMA/residuals. Full5 seconds must never populate
+`predicted_cycle2_ns` or the Wan-only `hardware_native.*` cost namespace.
+
+## Helios H100 C2 source and plan control
+
+`workloads hardware-helios-c2` provides the separate source-bound C2 control
+path. It reuses the original helper bodies and initialized engines/optimizers/
+schedulers/EMA; it does not rebuild a model or call the old entrypoint twice.
+Source derivation requires explicit authorization:
+
+```bash
+python scripts/distillctl.py workloads hardware-helios-c2 prepare-source \
+  --parent-root /absolute/clean-8fc-source --destination /absolute/new-source \
+  --allow-local-provenance-commit --output /absolute/new-source-proof.json
+python scripts/distillctl.py workloads hardware-helios-c2 rebind-assets \
+  --source-root /absolute/new-source --legacy-gate /absolute/old-gate.json \
+  --asset-root /absolute/existing-assets --arm h100-nograd-retain-nosync \
+  --output /absolute/new-gate.json
+# The legacy deployment must point at the new gate and its SHA.
+python scripts/distillctl.py workloads hardware-helios-c2 bind-deployment \
+  --legacy-deployment /absolute/deployment-with-new-gate.json \
+  --source-proof /absolute/new-source-proof.json --repo-root /absolute/new-source \
+  --output /absolute/new-c2-deployment.json
+python scripts/distillctl.py workloads hardware-helios-c2 compile \
+  --deployment /absolute/new-c2-deployment.json --arm h100-nograd-retain-nosync \
+  --mode correctness --run-id fresh-c2 --enable-native-c2 \
+  --output /absolute/new-c2-plan.json
+python scripts/distillctl.py workloads hardware-helios-c2 dry-run \
+  --plan /absolute/new-c2-plan.json
+```
+
+`dry-run --verify-assets` performs the actual CPU hash/correctness preflight;
+without it assets are `NOT_CHECKED`. Neither form starts the worker. There is
+no run/SSH/resume/install verb. An independently authorized owner may execute
+only the compiled native argv/environment, retaining locks, idle-owner checks,
+deadline and cleanup. The new launcher requires both `C2_OPT_IN=1` and the exact
+plan file/hash. Setting the C2 mode on the old Full5 launcher is not a substitute.
+
+Native admission reopens all eight sealed rank files, exact launch/environment/
+allocation/source/asset proofs, all16 slots, health and teardown. It requires
+`G2/C10/EMA10 → G3/C15/EMA15 → G4/C20/EMA20`, with G backward2/optimizer1/
+scheduler1, C backward10/optimizer5/scheduler5 and EMA5 each cycle. Both cycles
+replay source steps10..14, not fresh steps15..19. Local-FA2, stride2 replay,
+41-unit retain/restore and registered fence behavior remain fixed. Source and
+added bookkeeping checks stay outside the recorded native timer scopes.
+
+After authorized correctness, `compile --mode timing --correctness <summary>`
+binds same-arm/deployment evidence no older than 24 hours. `admit --plan ...
+--summary ...` re-audits the raw proof. `assemble-costs` takes an observations
+object containing `{plan:{path,sha256},summary:{path,sha256}}` references and
+writes `model.json`. `search --model ... --deployment ... --correctness-map ...
+--run-id ... --enable-native-c2 --output ...` uses common hierarchical search;
+the correctness map binds each arm to its own path/SHA reference. Missing costs
+stay `UNCALIBRATED`, and CPU fixtures cannot be native measured costs. Memory
+reserves each whole GPU conservatively; it is not measured peak capacity.
+The separate `helios_h100_native.coupled_cycle` provenance gate binds these
+costs to the native C2 evidence and preserves its recorded validation status.

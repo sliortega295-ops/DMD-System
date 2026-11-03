@@ -130,7 +130,9 @@ plans. A CPU fixture, dry-run, or emitted plan is not GPU success.
 Both adapters have now completed real world16 correctness, component collection,
 common CPU search and native two-cycle validation. This is no longer a CPU-only
 capability inventory. The source-bound results are in
-[the Helios closure report](../experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md).
+the [No-GAN](../../artifacts/experiments/joint_planner_helios_components_20260908/nogan_closure.json)
+and [GAN](../../artifacts/experiments/joint_planner_helios_components_20260908/gan_closure.json)
+receipts.
 
 - No-GAN: 40 observed components, 20 assignments, 10 feasible and 10
   `UNCALIBRATED`. The generated HSDP/chunk512/window1 plan actually dispatches
@@ -166,4 +168,4 @@ is an explicit prerequisite, not a fallback to a historical fixed script.
 
 A 2 GiB **modeled allocation** margin is not a 2 GiB continuously sampled
 **driver-free** guarantee: the GAN native run sampled as little as 440 MiB free
-while allocator reservation was high. The report preserves both measurements.
+while allocator reservation was high. The receipts preserve both measurements.

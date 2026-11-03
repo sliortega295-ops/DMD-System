@@ -36,5 +36,4 @@ official workflows and H100 measurements, with baseline definitions and sources.
 provide the historical source mapping.
 
 Developer history: [legacy profiles](workloads/BEST_KNOWN_WORKLOADS.md),
-[retired implementations](architecture/legacy_route_retirement.md) and
-[retired documentation](architecture/retired_unlinked_reports_20261031.md).
+[retired implementation recovery](architecture/legacy_route_retirement.md).

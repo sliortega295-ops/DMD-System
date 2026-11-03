@@ -91,7 +91,102 @@ it does not download raw files or silently copy metadata from another source.
   files, wrong shape, cost substitution and missing ranks reject before launch.
 - Record prediction error and numerical status honestly. CPU test outputs or
   historical 480x832 cache results are not current-HEAD GPU validation.
-# H3 child toolchain environment
+## Model-based search and Wan action costs
+
+`workloads search --strategy model-based` uses the existing graph, source-bound
+`ComponentContract` costs, resource/lifetime simulator and shared search service.
+Without `--execute-native` it searches metadata only. Missing costs remain
+`UNCALIBRATED`; a CPU fixture cannot become an executable native plan.
+
+Wan's `joint-wan1-*` family uses composite stage envelopes. The prepared-action
+`joint-wan2-{fsdp|resident}-c{chunk}-e{0|1}-w{1..5}` family additionally carries
+the retained-rollout window into the native executor. It invokes the original
+G/rollout/C/EMA helpers, with fixed B1/global16, G1/C5/EMA5 per cycle and unchanged
+sample/RNG/version gates. Window depth is not batching. Prepared graphs reject
+missing handlers, invalid dependencies and cross-pool actions without transport
+lowering; successful dispatch alone is not numerical proof.
+
+```bash
+# Source-only unless --assets-config "$ASSETS" --execute is explicitly added.
+python tools/assets/calibrate_wan_native_stages.py \
+  --implementation joint-wan2-resident-c2048-e1-w5 --expected-head "$HEAD" \
+  --run-id "$NEW_RUN_ID" --output "$OUT/new-collection"
+python tools/assets/assemble_wan_action_calibrations.py \
+  --calibration-result "$FSDP_COMPONENT_RESULT" \
+  --calibration-result "$RESIDENT_COMPONENT_RESULT" \
+  --expected-head "$HEAD" --output "$OUT/new-library"
+python scripts/distillctl.py workloads search --strategy model-based \
+  --workload wan13b_nogan_resident_best \
+  --planning-layout "$LAYOUT" --cost-model "$COSTS" --assets-config "$ASSETS" \
+  --run-id "$NEW_PLAN_ID" --emit-native-plan "$OUT/new-plan.json" \
+  --output "$OUT/new-search.json"
+```
+
+Stage/action fences perturb overlap: calibration walls are costs, not native
+speedup denominators. Reuse requires matching operation work, shape, precision,
+placement, implementation, source, assets, hardware and residency context.
+Changed concurrency or cold optimizer state needs new calibration. A composite
+envelope already includes its internal overlap and retained allocation; do not
+add kernel unions or the same memory a second time. Emitting a plan does not
+launch it. For Helios-specific assignments and native clocks, see
+[component planning](../workloads/helios_component_planning.md).
+
+### Same-source manual Wan reference
+
+`workloads native benchmark-manual` executes an admitted strategy's original
+direct action order without calibration scopes or search:
+
+```bash
+python scripts/distillctl.py workloads native benchmark-manual \
+  --task "$RUN/task.json" --assets "$RUN/assets.json" \
+  --implementation "$RUN/manual-strategy.json" --cycles 2 \
+  --output "$RUN/new-manual-native" --execute
+```
+
+Use only the existing authorized world16 launcher and atomic node owner, not a
+world1 shortcut. Without `--execute`, no assets or model are loaded. This path
+accepts exactly two fixed-trace cycles, not plans or fresh streams. Its receipt
+records `MANUAL_REFERENCE_DIRECT_NATIVE_ORDER`, `search_performed=false` and
+`plan_sha256=null`; it is not saved-plan execution. Compare a separately saved
+plan through `run --plan ... --execute` at identical source, assets, precision,
+hardware and timer, using world-max C2. See the
+[measurement conventions](../guides/performance_validation.md) for baseline
+definitions and timing scopes.
+
+### H3 control-repeat diagnostic policy
+
+The default sampled comparator and `DEFAULT_P0_PARITY` remain unchanged.
+`workloads calibrate --h3-noise-policy policy.json` accepts this explicit
+diagnostic-only schema when both cross-cache and repeated-control comparisons
+fail the strict gate:
+
+```json
+{
+  "schema_version": "distillschedule.h3_noise_diagnostic_policy.v1",
+  "source_head": "<exact current 40-character commit>",
+  "reference_candidate_id": "joint-h3v3-h480-w832-f124-cpu_staged_trim-d2-n128",
+  "candidate_id": "joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128",
+  "max_cross_self_delta_l2_ratio": 2.0,
+  "purpose": "PLANNER_DIAGNOSTIC_ONLY",
+  "formal_timing_eligible": false,
+  "default_gate_unchanged": true
+}
+```
+
+Only cache storage/trim may differ; shape, checkpoint policy, tile, depth,
+schedule and precision remain matched. Fresh control/candidate/control-repeat
+witnesses must each complete all16 ranks, both cycles and sample/RNG/replay
+contracts. For each cycle's Student/Fake loss and four sampled parameter/Adam
+components, cross-cache L2 distance must not exceed the explicit limit times
+control-repeat distance; the limit is at most two, and zero self-distance admits
+only zero cross-distance. Assembly reopens the hash-bound witnesses and rejects
+edited, stale, missing or aliased evidence. The original strict failure remains
+visible with `REVIEW_NOISE_QUALIFIED_DIAGNOSTIC`, numerical REVIEW and
+`formal_timing_eligible=false`. This is not full-state parity, a statistical
+confidence interval or a quality/speedup qualification. Use new immutable run
+IDs; never overwrite a failed attempt.
+
+## H3 child toolchain environment
 
 The resolved H3 child environment explicitly exports `PATH=/usr/bin:/bin`.
 It does not inherit the controller's PATH, prepend an environment/CUDA bin

@@ -12,6 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PAGES = (
     'README.md', 'CONTRIBUTING.md', 'docs/README.md', 'recipes/README.md',
     'docs/architecture/framework.md', 'docs/architecture/repository_organization.md',
+    'docs/runbooks/native_planner_workflow.md', 'docs/workloads/open_role_pools.md',
+    'docs/workloads/hardware_native_planning.md', 'docs/workloads/helios_component_planning.md',
+    'docs/guides/resident_owner_training.md',
+    'docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md',
+    'third_party/helios_compat/README.md',
     'skills/dmd-system-optimizer/SKILL.md',
 )
 
@@ -29,6 +34,16 @@ def test_public_entry_links_resolve(page):
         path = (ROOT / page).parent / unquote(target.path)
         assert path.resolve().is_relative_to(ROOT), (page, href)
         assert path.exists(), f'{page} links to missing {href}'
+
+
+def test_public_documentation_keeps_results_not_experiment_process_reports():
+    assert {path.name for path in (ROOT / 'docs/status').glob('*.md')} == {
+        'GITHUB_SOURCE_SNAPSHOT_20261019.md', 'H100_SOURCE_SNAPSHOT_20261019.md',
+        'SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md',
+        'SIX_WORKLOAD_RESULTS_ERRATA_20261031.md', 'official_optimized_framework.md',
+    }
+    assert not list((ROOT / 'docs/experiments').rglob('*.md'))
+    assert not (ROOT / 'docs/guides/release_notes.md').exists()
 
 
 def test_readme_and_recipe_index_cover_discoverable_training_families():

@@ -161,13 +161,16 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/architecture" = ["docs/architecture/*.md"]
 "share/distillschedule/docs/status" = [
     "docs/status/official_optimized_framework.md",
-    "docs/status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md",
 ]
 "share/distillschedule/artifacts/framework/20261030" = [
     "artifacts/framework/20261030/livewan_native_recovery_scope.json",
 ]
 "share/distillschedule/artifacts/framework/20261029" = [
     "artifacts/framework/20261029/wan_portable_output_acceptance.json",
+]
+"share/distillschedule/artifacts/experiments/joint_planner_helios_components_20260908" = [
+    "artifacts/experiments/joint_planner_helios_components_20260908/nogan_closure.json",
+    "artifacts/experiments/joint_planner_helios_components_20260908/gan_closure.json",
 ]
 "share/distillschedule/examples/framework" = ["examples/framework/*.md", "examples/framework/*.py"]
 
@@ -177,4 +180,6 @@ include = ["distillschedule*", "runtime*"]
     "docs/workloads/open_role_pools.md",
     "docs/workloads/open_workload_program.md",
     "docs/workloads/original_wan_fresh_training.md",
+    "docs/workloads/hardware_native_planning.md",
+    "docs/workloads/helios_component_planning.md",
 ]

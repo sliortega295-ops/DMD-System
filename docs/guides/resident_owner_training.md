@@ -125,6 +125,11 @@ ordinary continuation invalidates that live owner and prevents publishing a
 new checkpoint; restart from the last complete checkpoint. Closing the public
 model lifetime revokes its resident admission.
 
+Inspect `construction-admission.json`, `owner-admission.json` or
+`plan-admission/execution.json`, per-cycle metrics and the complete checkpoint.
+Accepted inputs advance exactly one logical cycle and its native clocks while
+retaining parameter ownership and the declared capacity reserves.
+
 The inference export contains the current Student (not the optimizer or a
 resumable training state). Existing recipe generation and decoding commands
 consume it unchanged.
@@ -139,10 +144,11 @@ Student exports decode to images or video. The shared saved-plan/restart path
 is additionally exercised with SD1.5, including changed-plan rejection.
 
 The tests retain one native owner, check parameters/Adam/scheduler/EMA/RNG/data
-positions and clocks, and leave the unrelated device's RNG unchanged. See the
-[CPU and A100 acceptance record](../status/FRAMEWORK_PUBLIC_RESIDENT_ACCEPTANCE_20261028.md)
-for source and test scope. These checks use small randomly initialized native
-models; they do not measure pretrained quality or performance.
+positions and clocks, and leave the unrelated device's RNG unchanged.
+`tests/test_training_resident_lifecycle.py` covers the CPU path;
+`tests/gpu/test_training_resident_public_gpu.py` is the opt-in CUDA check.
+These checks use small randomly initialized native models; they do not measure
+pretrained quality or performance.
 
 The `official-models-cpu` workflow runs the public resident lifecycle in separate
 DMD2 and Self-Forcing jobs. Their required receipts cover real native updates,

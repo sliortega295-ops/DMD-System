@@ -1,4 +1,4 @@
-# Generic two-role training: capability boundary and current progress
+# Generic two-role training
 
 The workload provides **training facts**, not a layout: a generator function,
 score objective, optimizer factories, input/condition loading and explicitly
@@ -55,11 +55,13 @@ repeated initial-state replays diverge. A declared input/cohort identity and
 inspectable callable source are mandatory. Old costs must match source, hardware,
 training semantics and data identity.
 
-`role_planning.search()` uses the EXISTING shared `search.service.select` and
+In the default `measured_cycle` cost mode, `role_planning.search()` uses the
+shared `search.service.select` and
 event-frontier solver on measured **whole-cycle envelopes** plus source-bound
 physical G/Score state, declared transport occupancy and per-rank capacity. The
 native execution supports bounded FIFO windows; it does **not** lower arbitrary
-DP event interleavings. Internal G/Score overlap comes from native nonblocking
+DP event interleavings. The opt-in component mode below additionally lowers
+selected producer orders. Internal G/Score overlap comes from native nonblocking
 communication and is already INCLUDED in observed cycle wall time. The planned
 cycle is not the sum of serial G/S call times, and no synthetic overlap discount
 is applied. `run_selected()` verifies the ranked choice and source-bound receipts
@@ -301,8 +303,70 @@ four CPU/Gloo processes. `test_open_workload_role_composition.py` covers the
 restricted composition and scalar-VJP rejection. These are CPU/Gloo proofs,
 not A100/H100/NCCL numerical or performance validation (GPU NOT_RUN).
 
+## Original gradients, repeated updates and continuation
 
-### Collective-safe capability rejection
+`RoleFunctions` supplies exactly one Score-gradient interface:
+`score_loss(model, latent_leaf, condition)`, a scalar differentiated with
+`autograd.grad`, or `score_input_gradient(model, latent, condition)`, an original
+algorithm helper called under no-grad that returns a detached latent gradient.
+The runtime applies global-microbatch normalization once; it does not replace
+an original DMD target with the scalar fixture's objective.
+
+For multiple Score updates, `score_update_input(ScoreUpdateContext)` receives
+cycle, update index, logical microbatch, retained latent, conditions and device,
+and returns detached `(latent, conditions)` on that device. Reuse or perturbation
+must be the binding's explicit algorithm. No post-commit Generator rollout is
+invented. Score commits after each globally normalized update, after all G VJPs;
+model/optimizer instances and versions persist across cycles.
+
+A continuing executor requires `sample_at(cycle, index, role, device)` for fresh
+inputs. Each completed `run()` advances Program versions; partial failures
+poison the owner, and a live task/layout cannot be mutated. After producing a
+matching plan with `role-auto`, the public command can continue it in-process:
+
+```bash
+python -m torch.distributed.run --standalone --nproc-per-node=2 \
+  scripts/distillctl.py workloads native program role-run \
+  --factory examples/open_workloads/unseen_score_pipeline.py:build \
+  --parameters examples/open_workloads/unseen_score_pipeline.json \
+  --distributed gloo --memory-limit-bytes 10000000 \
+  --host-memory-limit-bytes 10000000 --plan /tmp/role-auto/plan.json \
+  --cycles 3 --output /tmp/role-continuing --execute
+```
+
+Cycle receipts and `execution.json` describe the live executor, not a restart
+checkpoint. A fresh `role-run` constructs the factory's initial state; it does
+not restore the previous diagnostic confirmation. The example uses a small CPU
+Conv3D workload.
+
+## Component costs and explicit producer dispatch
+
+`role-auto --cost-mode components` predicts supported replicated/resident pools
+from each physical pool's own window-one reference, instrumented anchor and
+per-direction P2P costs. Samples transfer only within the same pool, source,
+input, dtype and hardware identity. A 1G+2Score anchor cannot stand in for
+2G+1Score. FSDP/HSDP/offload retain separate measured-cycle capabilities.
+
+The native-run budget includes `(samples + one unprofiled reference)` per pool
+and one reserved selected-plan confirmation. Deterministic diverse exploration
+does not assume balanced pools are fastest. Execution-equivalent windows are
+deduplicated rather than counted as held-out schedules.
+
+The shared frontier solver may interleave monotonically ordered G forwards and
+FIFO backwards, releasing saved activations before a nominal window fills.
+Its graph includes slot-release, cross-producer Score receive order, transfer
+resources and measured saved-state lifetimes. The chosen order becomes an
+explicit `producer_dispatch` per G rank, executed by the existing
+`RolePoolExecutor`. All ranks agree before model construction; changed orders,
+missing work, wrong owners, early commits and receipt/event mismatches reject.
+Score still runs its FIFO loop; no centralized executor remotely dispatches P2P.
+
+The plan executes the producer order; timestamps remain cost-model estimates.
+Return-before-next-receive edges preserve conservative transport ordering.
+Inspect the recorded dispatch and events to compare the selected order with
+its calibration anchor, including when a larger window selects the same order.
+
+## Collective-safe capability rejection
 
 Before constructing FSDP2 meshes, all allocated ranks agree on the actual
 parameter-owner and requires-grad admission. A mismatched frozen Score layout

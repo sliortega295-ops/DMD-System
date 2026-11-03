@@ -71,8 +71,13 @@ history/current fusion's required SHA (`5d3ffe...`). Resolve the measured C25
 effective setting explicitly; do not remove the source check, silently choose the
 launcher default, or modify this recovered file to satisfy a different default.
 
-See [the integration handoff](../../docs/workloads/HELIOS_SOURCE_RECOVERY_20260905.md)
-for the GitHub consumer pointers and remaining work.
+The pinned consumers are Wan's launcher at
+`631bc082c819d0728059e96663cdf31cd66d5b0b`, No-GAN's
+`helios_modulated_norm_fusion.py` at `9c53d8e75b0981a3a9299e4f3bec2819ea105013`,
+and GAN's `helios_history_current_fusion.py` at
+`a78827099c89795416f9ac6c77284dd5bacb0383`. Source identity is not environment
+qualification; verify the selected worker's imports and external kernel assets
+separately before execution.
 
 ## License and changes
 

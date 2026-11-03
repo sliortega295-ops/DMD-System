@@ -24,4 +24,4 @@
 
 这里的barrier指host可见的metadata读取，不是新增跨rank的distributed barrier。
 完整的经验分类、实现范围及内容回归见
-[Optimizer内容修正记录](OPTIMIZER_EXPERIENCE_CONTENT_REVIEW_20261031.md)。
+[Optimizer测量身份与勘误](../../skills/dmd-system-optimizer/references/knowledge/measurement-identity.md)。
