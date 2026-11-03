@@ -141,7 +141,9 @@ jobs:
           if-no-files-found: error
   actual-model-classes:
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    # The complete LTX native/sharded CPU inventory exceeds the former 40m
+    # deadline. Keep every proof and its subprocess limits; allow it to finish.
+    timeout-minutes: ${{ matrix.family == 'ltx25' && 90 || 40 }}
     strategy:
       fail-fast: false
       matrix:

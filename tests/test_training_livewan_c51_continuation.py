@@ -709,6 +709,9 @@ def test_source_overlay_chain_preserves_frozen_rows_and_rejects_malformed_chains
     shutil.copyfile(root/"docs/workloads/source_import_map.json", docs/"source_import_map.json")
     lock = json.loads((root/"docs/workloads/source_layout.lock.json").read_text())
     lock.pop("integration_overlays", None)
+    # This fixture represents the legacy format before overlays or retirement;
+    # retirement pins describe the final chain, not these historical hashes.
+    lock.pop("retired_imports", None)
     path = docs/"source_layout.lock.json"
     path.write_text(json.dumps(lock))
     before = reviewed_imports(tmp_path)

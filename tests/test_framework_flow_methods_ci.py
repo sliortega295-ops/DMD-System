@@ -116,6 +116,7 @@ def test_common_cpu_collector_runs_the_flow_methods_ci_regressions():
 
 def test_ltx_native_block_lifecycle_driver_triggers_official_cpu_ci():
     workflow, job, _, _ = _lane('ltx25')
+    assert job['timeout-minutes'] == "${{ matrix.family == 'ltx25' && 90 || 40 }}"
     paths = workflow['on']['pull_request']['paths']
     driver = 'tests/ltx_sharded_lifecycle.py'
     assert driver in paths
