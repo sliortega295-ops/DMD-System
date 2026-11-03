@@ -12,12 +12,6 @@
     "safetensors": "0.8.0",
     "accelerate": "1.14.0"
   },
-  "cuda": "PASS_ACTUAL_TINY_A100_REFERENCE_ONLY",
-  "distributed": "NOT_RUN",
-  "amp": "NOT_RUN",
-  "full_pretrained_training_and_quality": "NOT_RUN",
   "cuda_qualified_python": "3.13.11",
-  "cuda_qualified_torch": "2.10.0+cu128",
-  "cuda_planning": "NOT_ADMITTED_UNBOUNDED_TRIAL_SNAPSHOTS",
-  "cuda_receipt": "artifacts/framework/20261024/modern_image_cuda_acceptance.json"
+  "cuda_qualified_torch": "2.10.0+cu128"
 }

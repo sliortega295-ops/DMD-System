@@ -109,23 +109,19 @@ resident codecs and the common training, recovery and export lifecycle.
 
 ## Measured planning and clone safety
 
-The four image/video flow adapters admit whole-role calibration copies only for
-declared `SYNTHETIC_TEST_ONLY` CPU1 fixtures with FP32 owned tensors; the chosen
-FP32/BF16 compute policy is retained. LTX uses its explicit
-`RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED` CPU fixture in the isolated
-LTX environment, retaining the configured FP32/BF16 compute policy.
-Alias/module-state checks still apply. A
-`LOCAL_PRETRAINED_UNVERIFIED` manifest does not establish size, authenticity or
-copy safety and is refused before trial copying; independently admitted
-non-clone reference/manual execution remains available.
+The image/video flow adapters and LTX support measured planning with admitted
+CPU fixtures and FP32 owned tensors. The configured FP32/BF16 compute policy
+is retained; LTX uses its isolated environment. Whole-role calibration copies
+require explicit asset admission and alias/module-state checks. Other assets
+use reference/manual execution without trial copying.
 
 `memory_limit_bytes` bounds selected tracked tensor storage, not process RSS,
 simultaneous trial clones, staging or construction peaks. Flow CUDA execution
 uses reference or exact direct sharing, not whole-role CUDA copies. Native
 SD/Self-Forcing owners likewise cannot use whole-owner CUDA deepcopy: the
 separate [budgeted resident protocol](native_owner_backends.md#resident_owner_training) admits serial
-snapshot/restore only for its source-qualified tiny FP32 single-device profiles,
-not pretrained-size or distributed owners.
+snapshot/restore for its source-qualified, budget-admitted FP32 single-device
+profiles.
 
 ## Model adaptation, not optimization-script copying
 

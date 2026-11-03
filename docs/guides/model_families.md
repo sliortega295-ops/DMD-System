@@ -255,13 +255,13 @@ progress and execution versions. Use `train --resume` for training recovery and
 | Integration | Model and distillation support | Execution and output |
 | --- | --- | --- |
 | [Official SD1.5 DMD2](../../recipes/dmd2_sd15/README.md) | Native UNet/CLIP/VAE, single-step DMD2, optional original GAN branch and independent generator/guidance/real-image streams | CPU/CUDA reference; native FSDP2 and optimized Resident/DDP; recovery and current-G image export |
-| [Official SDXL DMD2](../../recipes/dmd2_sdxl/README.md) | Dual CLIP, additional conditioning, four-step and initialized single-step399; full or unmerged-LoRA Student | FP32 reference, native role-DDP and budgeted tiny resident planning; recovery and image generation |
-| [Official Self-Forcing](../../recipes/self_forcing_official/README.md) | Causal Wan chunk rollout, random gradient exit, native KV cache and DMD/EMA clocks; not W4 LiveWan | Native FSDP2 reference/R6 optimized; budgeted tiny resident policies; recovery and current-G video |
-| [LTX-2.5](../../recipes/ltx25/README.md) | Native AV Transformer, Gemma/connectors/codecs; parameter-budgeted loading; common G1/F5 flow DMD; full parameters or LoRA | FP32 or native BF16 CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; opt-in CPU/Gloo FP32 manual block FSDP with dense initialization; restart and current-Student AV generation |
-| [FLUX.2 klein Base 4B T2I](../../recipes/flux_dmd/README.md) | Flux2/Qwen3/VAE, common flow DMD and unmerged LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; PNG output |
-| [Original Qwen-Image T2I](../../recipes/qwen_image_dmd/README.md) | QwenImage/Qwen2.5-VL/VAE, native text masks, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; opt-in CPU/Gloo FP32 manual frozen-Teacher shard-first construction; restart and current-Student PNG output |
-| [Wan2.2 TI2V-5B T2V](../../recipes/wan22_dmd/README.md) | Wan/UMT5/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; decoded video |
-| [HunyuanVideo-1.5 T2V](../../recipes/hunyuan_video_dmd/README.md) | Hunyuan15, dual text encoders/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU tiny-fixture planning; decoded video |
+| [Official SDXL DMD2](../../recipes/dmd2_sdxl/README.md) | Dual CLIP, additional conditioning, four-step and initialized single-step399; full or unmerged-LoRA Student | FP32 reference, native role-DDP and budgeted resident planning; recovery and image generation |
+| [Official Self-Forcing](../../recipes/self_forcing_official/README.md) | Causal Wan chunk rollout, random gradient exit, native KV cache and DMD/EMA clocks; not W4 LiveWan | Native FSDP2 reference/R6 optimized; budgeted resident policies; recovery and current-G video |
+| [LTX-2.5](../../recipes/ltx25/README.md) | Native AV Transformer, Gemma/connectors/codecs; parameter-budgeted loading; common G1/F5 flow DMD; full parameters or LoRA | FP32 or native BF16 CPU/CUDA reference, sharing, local-B1 replicas and CPU fixture planning; opt-in CPU/Gloo FP32 manual block FSDP with dense initialization; restart and current-Student AV generation |
+| [FLUX.2 klein Base 4B T2I](../../recipes/flux_dmd/README.md) | Flux2/Qwen3/VAE, common flow DMD and unmerged LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU fixture planning; PNG output |
+| [Original Qwen-Image T2I](../../recipes/qwen_image_dmd/README.md) | QwenImage/Qwen2.5-VL/VAE, native text masks, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU fixture planning; opt-in CPU/Gloo FP32 manual frozen-Teacher shard-first construction; restart and current-Student PNG output |
+| [Wan2.2 TI2V-5B T2V](../../recipes/wan22_dmd/README.md) | Wan/UMT5/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU fixture planning; decoded video |
+| [HunyuanVideo-1.5 T2V](../../recipes/hunyuan_video_dmd/README.md) | Hunyuan15, dual text encoders/temporal VAE, common flow DMD and LoRA | CPU/CUDA reference, sharing, local-B1 replicas and CPU fixture planning; decoded video |
 
 LTX and the four image/video flow families support `fp32` or explicit
 `bf16-mixed` compute with FP32 master/Adam/EMA state, CPU/Gloo or CUDA/NCCL
@@ -282,7 +282,7 @@ The [export-only preparer](data.md#export_inputs) encodes new modern-flow prompt
 The [official workflow guide](native_workloads.md#official_optimized_training) provides launch,
 save, resume and output commands. [Native-owner alternatives](native_owner_backends.md)
 cover CPU component checkpointing, FP32 role-DDP and post-commit cache release;
-[resident planning](native_owner_backends.md#resident_owner_training) covers tiny snapshot-safe owners.
+[resident planning](native_owner_backends.md#resident_owner_training) covers budget-admitted snapshot-safe owners.
 
 ### Hardware
 

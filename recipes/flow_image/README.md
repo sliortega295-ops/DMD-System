@@ -114,7 +114,7 @@ Reference mode needs no optimization. For exact frozen-base sharing, replace
 Equal frozen Teacher/media/LoRA bases may alias; trainables remain independent.
 All roles initially materialize. This direct policy also works on single-device
 CUDA without trial clones; [capacity and policy details](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing)
-cover supported selection. CPU tiny fixtures additionally support measured
+cover supported selection. CPU fixtures additionally support measured
 planning; CUDA uses reference or direct sharing.
 
 ## Explicit replicated training, not model sharding

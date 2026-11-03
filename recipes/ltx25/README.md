@@ -60,7 +60,7 @@ attention paths use MATH SDPA. Codecs/Gemma remain explicit local bundle entries
 ### Optional all-component CPU parameter budgets
 
 An explicit top-level `cpu_parameter_limits` object in `assets.json` replaces
-the arbitrary tiny-only constructor ceilings with actual native meta sizing:
+the legacy constructor ceilings with native meta sizing:
 
 ```json
 {
@@ -73,8 +73,8 @@ the arbitrary tiny-only constructor ceilings with actual native meta sizing:
 }
 ```
 
-The example uses small-fixture limits; set all ten positive integers for your
-architecture. Limits count native parameter elements before LoRA, rather than
+Set all ten positive integers for your architecture. Limits count native
+parameter elements before LoRA, rather than
 bytes or peak memory. Native meta constructors size every role and codec before
 weight loading; an over-budget component rejects the bundle. Original-format
 roles also retain their `cpu_max_parameters` limit. Without this object, legacy
@@ -86,10 +86,10 @@ rebuild nonpersistent Gemma buffers. Prepared data and checkpoints remain bound
 to their adapter and asset identities. Loading uses dense CPU staging; select
 device capacity and execution placement separately.
 
-## First run with random native assets
+## Local lifecycle check
 
-This helper creates small actual upstream classes, procedural PNG/video/WAV
-inputs and local text assets in a new directory:
+This helper creates upstream model components, PNG/video/WAV inputs and local
+text assets in a new directory:
 
 ```sh
 "$PY" recipes/ltx25/create_cpu_fixture.py "$RUN/fixture" \
@@ -184,10 +184,10 @@ immutable sharing with this `execution` object:
 Only equal frozen tensors alias; Student/Fake trainables and optimizer state
 remain independent. Roles initially load before sharing; see the shared
 [capacity conditions](../../docs/guides/optimization_capabilities.md#direct-single-cuda-immutable-sharing).
-For the random native CPU fixture, measured planning is available with
+For the CPU fixture, measured planning is available with
 `{"mode":"auto","memory_limit_bytes":100000000,"max_candidates":4,"samples":1,"max_program_runs":5}`.
 Reuse its selected policy with `{"mode":"plan","plan":"/ABSOLUTE/selected-plan.json"}`.
-Whole-role trial copies use the CPU1 random fixture with FP32 owned tensors and
+Whole-role trial copies use the admitted CPU1 fixture with FP32 owned tensors and
 retain the configured compute policy. CUDA uses reference or direct sharing,
 without clone-based trials.
 
@@ -270,8 +270,8 @@ tokenizer config. The pinned external source and isolated runtime remain needed;
 training weights, Teacher/Fake, optimizer and old inputs are not needed.
 Use the [inference-request builder](../../docs/guides/training.md#generate-and-export)
 and [export-only preparer](../../docs/guides/data.md#export_inputs) for new inputs.
-Save `$RUN/new-inputs.json` beside `export/` with this complete prompt manifest
-for the tiny fixture:
+Save `$RUN/new-inputs.json` beside `export/` with a prompt manifest matching
+the exported model's geometry. For the fixture above:
 
 ```json
 {

@@ -7,9 +7,8 @@ revision `75e0b4be04f60ec59a75f475837eced720f823b6`, Apache-2.0.
 The adapter executes actual Diffusers 0.37.1 `QwenImageTransformer2DModel`,
 `AutoencoderKLQwenImage`, `QwenImagePipeline.encode_prompt`, Transformers5
 `Qwen2_5_VLForConditionalGeneration`, and `Qwen2TokenizerFast`. The actual native
-prompt template and **crop34** are retained, not replaced by a short synthetic
-embedding. The tiny fixture includes a real narrow VL class and explicit test
-vocabulary. Actual empty-prompt features and masks are encoded and hash-bound.
+prompt template and **crop34** are retained. Empty-prompt features and masks
+are encoded and hash-bound.
 
 The first recipe disables `zero_cond_t`, `use_additional_t_cond`,
 `use_layer3d_rope` and `guidance_embeds`. Image metadata is natively nested as

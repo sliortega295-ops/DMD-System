@@ -7,7 +7,7 @@ revision `a3b4f4849157f664bdbc776fd7453c2783562f4d`, Apache-2.0.
 The adapter executes actual Diffusers 0.37.1 `Flux2Transformer2DModel`,
 `AutoencoderKLFlux2`, `Flux2KleinPipeline.encode_prompt`, and Transformers5
 `Qwen3ForCausalLM` with `Qwen2TokenizerFast`. It retains hidden-state layers
-**9/18/27 concatenated**, even in the tiny fixture's 28-layer narrow encoder.
+**9/18/27 concatenated**.
 Klein Base has `guidance_embeds=False`; no guidance tensor is passed. Native
 forward accepts normalized sigma and internally multiplies it by 1000.
 
