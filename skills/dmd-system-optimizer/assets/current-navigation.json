@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "sliortega295-ops/DMD-System",
-  "source_revision": "a9b6f0f3eac23f65dbd783637c3a597724ff1760",
+  "source_revision": "4507436368e6626f17c6cca66f7116d466a4f882",
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
@@ -185,6 +185,7 @@
       ],
       "profiles": [],
       "checks": [
+        "tests/test_training_construction.py",
         "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
@@ -192,7 +193,7 @@
       "title": "FLUX.2 klein Base 4B: flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 1
+      "check_count": 2
     },
     {
       "id": "h3_ar",
@@ -354,6 +355,7 @@
       ],
       "profiles": [],
       "checks": [
+        "tests/test_training_construction.py",
         "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
@@ -361,7 +363,7 @@
       "title": "HunyuanVideo-1.5: text-to-video flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 1
+      "check_count": 2
     },
     {
       "id": "ltx25",
@@ -385,6 +387,7 @@
       ],
       "profiles": [],
       "checks": [
+        "tests/test_training_construction.py",
         "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
@@ -392,7 +395,7 @@
       "title": "LTX-2.5: native AV + reusable No-GAN flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 1
+      "check_count": 2
     },
     {
       "id": "qwen_image_dmd",
@@ -415,6 +418,7 @@
       ],
       "profiles": [],
       "checks": [
+        "tests/test_training_construction.py",
         "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
@@ -422,7 +426,7 @@
       "title": "Original Qwen-Image T2I: flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 1
+      "check_count": 2
     },
     {
       "id": "self_forcing",
@@ -557,6 +561,7 @@
       ],
       "profiles": [],
       "checks": [
+        "tests/test_training_construction.py",
         "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
@@ -564,7 +569,7 @@
       "title": "Wan2.2 TI2V-5B: text-to-video flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 1
+      "check_count": 2
     },
     {
       "id": "wan_ar",
