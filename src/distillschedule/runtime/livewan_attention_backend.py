@@ -24,13 +24,7 @@ EXPECTED_PACKAGE_SHA256 = (
 EXPECTED_EXTENSION_SHA256 = (
     "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
 )
-DEFAULT_KERNEL_PATH = Path(
-    "/share/project/shuchenweng/DistillSchedule_assets/"
-    "hf_home_official_torch210/hub/"
-    "models--kernels-community--flash-attn2/snapshots/"
-    "6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/"
-    "torch210-cxx11-cu128-x86_64-linux"
-)
+DEFAULT_KERNEL_PATH = Path("assets/kernels/flash-attn2")
 
 
 def _sha256_file(path: Path) -> str:

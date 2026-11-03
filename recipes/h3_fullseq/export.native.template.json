@@ -1,7 +1,7 @@
 {
   "trainer": {
     "export": {
-      "schema_version": "distillschedule.h3_grid_native_output_request.v1",
+      "schema_version": "distillschedule.h3_fullseq_native_output_request.v1",
       "seed": 20260817,
       "geometry": {
         "height": 768,

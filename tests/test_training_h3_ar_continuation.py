@@ -72,7 +72,7 @@ def test_finite_fresh_order_rank6_geometry_and_legacy_graph_guard(tmp_path):
     with pytest.raises(Exception, match="only two"):
         native_graph(H3ARTask(), cycle=3)
     from distillschedule.strategies.h3_ar_inputs import prepare_rank_input
-    with pytest.raises(Exception, match="manifest identity"):
+    with pytest.raises(Exception, match="cache manifest rejected"):
         prepare_rank_input(H3ARTask(), dict(path=str(path), sha256=file_sha256(path)), None, 0, torch)
 
 

@@ -14,7 +14,7 @@ from .helios_safe_bundle import (PINNED_HELPERS, LORA_COUNTERS, NORM_COUNTERS,
 GAN_BUNDLE_ID = 'gan-fa3-down40-nomerge-v1'
 GAN_BUNDLE_ENV = 'DISTILLSCHEDULE_HELIOS_GAN_MANUAL_BUNDLE'
 SOURCE_HEAD = 'ba52a2446b7f090cd31af9504679e68770d32603'
-ROW_SHA256 = '924e758545a97e6e7e7de1ae7ad3db6733b00a7a6f4797c86ebc4699e886229b'
+ROW_SHA256 = '0195b1230045879289b6f6374b2a7ac274bcfdae2e350f5bba407aad0ce26c00'
 RUNTIME_DIR = 'src/distillschedule/runtime/helios_gan_manual/'
 SOURCE_FILES = tuple(RUNTIME_DIR + p for p in (
     '__init__.py', 'runtime.py', 'backend_library.py', 'backend_abi.py',

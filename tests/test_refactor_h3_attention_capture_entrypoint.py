@@ -173,31 +173,21 @@ def native_boundary(monkeypatch, tmp_path):
     denoiser.transformer_blocks = [object() for _ in range(50)]
     denoiser._gradient_checkpointing_func = lambda function, *a, **k: function(*a)
     trainer.shared_model.denoiser_module = lambda: denoiser
-    controller = SimpleNamespace(payload=dict(grid_size=1000, renoise_sigma_min=0.02, renoise_sigma_max=0.98,
-                                              video_shift=1.0, audio_shift=1.0))
-    trainer.shared_model.adaln_cache = lambda: controller
-    trainer.adaln_grid_manifest = "SYNTHETIC_TEST_ONLY"
-    trainer.adaln_grid_pin_memory = False
-    trainer.dmd_config = {}
-    trainer.video_shift = trainer.audio_shift = 1.0
     trainer.fa3_nograd_split_registration = SimpleNamespace(enabled=True, grad_num_splits=2)
-    grid_registration = trainer.grid_replay_registration
     def install(transformer, **kwargs):
         native_setup_calls.append(kwargs["tuple_capture"])
         result = native_fa3.install_fa3_replay_cache(transformer, **kwargs,
             kernel_config=SimpleNamespace(kernel_fn=lambda *a, **k: None), raw_forward=forward,
             raw_backward=runtime.raw_backward)
         return result
-    setup_node = next(n for n in ast.walk(ast.parse((NATIVE / "grid_adaln.py").read_text()))
-                      if isinstance(n, ast.FunctionDef) and n.name == "trainer_setup")
-    setup_ns = {"Any": object, "original_trainer_setup": lambda self, **kwargs: old_setup(**kwargs),
-        "install_fa3_replay_cache": install,
-        "install_grid_checkpoint_replay_scope": lambda *a, **k: grid_registration,
-        "logger": SimpleNamespace(info=lambda *a, **k: None)}
+    setup_node = next(n for n in ast.walk(ast.parse((NATIVE / "fa3_replay_setup.py").read_text()))
+                      if isinstance(n, ast.FunctionDef) and n.name == "install_configured_fa3_replay")
+    setup_ns = {"install_fa3_replay_cache": install}
     exec(compile(ast.fix_missing_locations(ast.Module(body=[setup_node], type_ignores=[])),
-                 str(NATIVE / "grid_adaln.py"), "exec"), setup_ns)
+                 str(NATIVE / "fa3_replay_setup.py"), "exec"), setup_ns)
     def setup(**kwargs):
-        setup_ns["trainer_setup"](trainer, **kwargs)
+        old_setup(**kwargs)
+        setup_ns["install_configured_fa3_replay"](trainer)
         if native_fa3._RUNTIME.tuple_capture is not None:
             captures.append(native_fa3._RUNTIME.tuple_capture)
     trainer.setup = setup
@@ -210,7 +200,7 @@ def native_boundary(monkeypatch, tmp_path):
                                     "sha256": sha(ROOT / "docs/workloads/source_layout.lock.json")}
     provider = write(tmp_path / "provider.json", {"scope": SCOPE, "actual_FA3": "NOT_RUN"})
     source_files = {str(NATIVE / name): sha(NATIVE / name) for name in
-                    ("attention_tuple_capture.py", "integrated_entrypoint.py", "trainer_loop.py", "grid_adaln.py", "fa3_replay_cache.py")}
+                    ("attention_tuple_capture.py", "integrated_entrypoint.py", "trainer_loop.py", "exact_adaln_replay.py", "fa3_replay_cache.py")}
     packet = {"schema_version": "distillschedule.h3_native_attention_capture_opt_in.v1",
         "selector": "h3.w5.c1.fake0.block10.actualtuple.v1", "run_id": "synthetic-capture",
         "candidate_id": impl.id, "profile": False, "formal_timing_eligible": False, "output_relative": "diagnostics/attention_tuple_rank000",
@@ -311,7 +301,7 @@ def test_capture_modes_rejected_before_native_setup(monkeypatch, native_boundary
     ("provenance", "source_head", "b" * 40), ("provenance", "native_config_sha256", "b" * 64),
     ("provenance", "input_manifest_sha256", "b" * 64), ("provenance", "runtime_identity", {}),
     ("provenance", "provider_schema", ""), ("provenance", "provider_files", {}),
-    (None, "candidate_id", "joint-h3v1-d1-n128"), (None, "selector", "guessed-ordinal"),
+    (None, "candidate_id", "joint-h3c1-d1-n128"), (None, "selector", "guessed-ordinal"),
     (None, "run_id", "another-run"), (None, "source_files", {}), (None, "expected_input", {}),
 ])
 def test_wrong_or_missing_binding_rejected_before_original_train(native_boundary, mutation):

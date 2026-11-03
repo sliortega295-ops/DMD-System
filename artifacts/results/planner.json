@@ -1,0 +1,57 @@
+{
+  "schema_version": "dmd.native_planner_measurements.v1",
+  "timing_window": "Native C2",
+  "original_summary_sha256": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842",
+  "rows": [
+    {
+      "id": "W1",
+      "name": "Wan1.3B with measured retain4 policy",
+      "source": "ea29129342741b54e59c4773e07454f541fadcc7",
+      "manual_C2": 20.040549555,
+      "selected_C2": 20.10377526,
+      "gap_percent": 0.3154888783188481
+    },
+    {
+      "id": "W2",
+      "name": "Helios No-GAN",
+      "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+      "manual_C2": 84.86731821484864,
+      "selected_C2": 84.95865019131452,
+      "gap_percent": 0.10761737072293442,
+      "evidence_sha256": "9321f1d64c29724d680ebe2c943859b20bf3f00b811eab1f20c2c7dbea75791f"
+    },
+    {
+      "id": "W3",
+      "name": "Helios GAN-on",
+      "source": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+      "manual_C2": 116.80552457,
+      "selected_C2": 118.764660094,
+      "gap_percent": 1.6772627246960603
+    },
+    {
+      "id": "W4",
+      "name": "LiveWan C51",
+      "source": "5cdffc2efab969ad35a8f69dd7b94ad061cc8c86",
+      "manual_C2": 42.558984374999994,
+      "selected_C2": 42.49630078124999,
+      "gap_percent": -0.14728639480133715,
+      "evidence_sha256": "9c371393c220e2502bbed6f9a7834e267dc9d0e9aaf286b62c284284b5ce7b7b"
+    },
+    {
+      "id": "W5",
+      "name": "H3 Full-Sequence Continuous",
+      "manual_C2": null,
+      "selected_C2": null,
+      "gap_percent": null
+    },
+    {
+      "id": "W6",
+      "name": "H3 AR / DiffSynth",
+      "source": "e88d21c168ce54be99134cecd195c961319cb45a",
+      "manual_C2": 255.501368846,
+      "selected_C2": 255.442535079,
+      "gap_percent": -0.0230267913106319,
+      "evidence_sha256": "8ee328fa81738c6abb2b6e17ec310c5723b0bc874cdcdf68b16860afacf890e2"
+    }
+  ]
+}

@@ -98,7 +98,7 @@ lightx = pathlib.Path(sys.argv[2])
 required = [
     root / "src/distillschedule/backends/training/minimax_h3/trainer.py",
     root / "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
-    root / "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+    root / "src/distillschedule/backends/training/minimax_h3/entrypoint.py",
     lightx / "lightx2v_train",
 ]
 missing = [str(p) for p in required if not p.exists()]

@@ -118,7 +118,7 @@ def test_old_asset_cost_identity_cannot_admit_new_dependencies(assets, tmp_path)
                     asset_fingerprint=registry.fingerprint(assets['assets']))
     with pytest.raises(ValueError, match='asset identity mismatch'):
         NativeTrialRunner(workload=H3, identity=identity, assets=assets, output=tmp_path,
-            run_prefix='CPU_ONLY', reference_id='joint-h3v1-d2-n128', bootstrap_peer='joint-h3v1-d1-n128')
+            run_prefix='CPU_ONLY', reference_id='joint-h3c1-d2-n128', bootstrap_peer='joint-h3c1-d1-n128')
 
 
 def test_cost_lowering_rejects_changed_overlay_identity(tmp_path):

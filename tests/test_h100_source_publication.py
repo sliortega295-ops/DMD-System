@@ -26,7 +26,7 @@ class H100PublicationTest(unittest.TestCase):
         self.manifest.write_text(json.dumps(self.data))
 
     def test_real_publication(self):
-        self.assertEqual(MODULE.verify(ROOT)['workloads'], 6)
+        self.assertEqual(MODULE.verify(ROOT)['workloads'], 5)
 
     def test_archive_byte_drift_rejected(self):
         p = self.root / self.data['files'][0]['path']
@@ -43,7 +43,7 @@ class H100PublicationTest(unittest.TestCase):
     def test_duplicate_workload_rejected(self):
         self.data['workloads'][-1]['id'] = 'W5'
         self.update()
-        with self.assertRaisesRegex(ValueError, 'six H100 workloads'):
+        with self.assertRaisesRegex(ValueError, 'five measured H100 workloads'):
             MODULE.verify(self.root)
 
     def test_untimed_norm_promotion_rejected(self):
@@ -52,14 +52,14 @@ class H100PublicationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'untimed W1'):
             MODULE.verify(self.root)
 
-    def test_grid_semantics_relabel_rejected(self):
-        self.data['workloads'][4]['semantics'] = 'EXACT_CONTINUOUS'
+    def test_fullseq_semantics_relabel_rejected(self):
+        self.data['workloads'].append(dict(id='W5', semantics='CONTINUOUS', seconds=539.718))
         self.update()
-        with self.assertRaisesRegex(ValueError, 'approximate Grid'):
+        with self.assertRaisesRegex(ValueError, 'five measured H100 workloads'):
             MODULE.verify(self.root)
 
     def test_unwaived_fa3_promotion_rejected(self):
-        self.data['workloads'][5]['attention_backend'] = 'FA3'
+        self.data['workloads'][4]['attention_backend'] = 'FA3'
         self.update()
         with self.assertRaisesRegex(ValueError, 'rejected FA3'):
             MODULE.verify(self.root)

@@ -208,7 +208,7 @@ def _read_assembly(results, *, expected_head):
             if source.suffix != ".json":
                 continue
             raw = _object(source)
-            if workload == H3 and raw.get("schema_version") == "distillschedule.h3_native_two_cycle.v1":
+            if workload == H3 and raw.get("schema_version") == "distillschedule.h3_native_two_cycle.v2":
                 native_h3_rows.append(raw)
             if workload == LIVEWAN and isinstance(raw.get('operation_calibration'), dict):
                 rank = raw['rank']

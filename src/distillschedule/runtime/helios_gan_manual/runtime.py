@@ -35,11 +35,17 @@ def _rows(rank):
     path = Path(__file__).with_name('down40_rows.json')
     require(file_sha256(path) == ROW_SHA256, 'manual GAN shape qualification drift')
     data = json.loads(path.read_text())
-    require(len(data['ranks']) == 16 and {r['rank'] for r in data['ranks']} == set(range(16)),
+    require(data.get('path_binding') == 'DISTILLSCHEDULE_GAN_TRACE_BUNDLE_RELATIVE_FILES_SHA256_V1'
+            and len(data['ranks']) == 16 and {r['rank'] for r in data['ranks']} == set(range(16)),
             'manual GAN row qualification needs all16 ranks')
+    root = Path(os.environ['DISTILLSCHEDULE_GAN_TRACE_BUNDLE']).expanduser().resolve()
     row = next(r for r in data['ranks'] if r['rank'] == rank)
     for value in row['graphs']:
-        require(file_sha256(Path(value['source_entry_path'])) == value['source_entry_sha256'],
+        relative = Path(value['source_entry_path'])
+        require(not relative.is_absolute() and '..' not in relative.parts
+                and (root / relative).resolve().is_relative_to(root),
+                'manual GAN source entry must remain inside the configured trace bundle')
+        require(file_sha256(root / relative) == value['source_entry_sha256'],
                 'manual GAN actual rank-qualified source entry changed')
     result = {(v['logical_step'],v['graph']):v['rows'] for v in row['graphs']}
     require(len(result) == 10, 'manual GAN exact five dual-graph row qualification missing')

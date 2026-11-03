@@ -178,7 +178,7 @@ Hashes/structure are not model compatibility, VAE parity or training quality.
 | W2 | `data prepare-helios-stream --sources ... --training-config ... --output ...`: five steps/world16 cohort, original dataset/history/noise; [reference inputs](../../recipes/helios_nogan/REFERENCE_TRAINING.md) |
 | W3 CPU | `data prepare-helios-gan-reference`: original history19, five primary/secondary rows per G1/C5; [recipe](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) |
 | W4 | [Original TeacherLatents](#livewan_inputs): native InputLoader and80 records/cycle; reference and full C51 use separately versioned lifecycle/input contracts |
-| W5 | `data prepare-h3-grid --native-config ... --output ...`: inventory of genuine encoded JSONL; [original Grid](../../recipes/h3-grid-original-training.md) |
+| W5 | `data prepare-h3-fullseq --native-config ... --output ...`: inventory of genuine encoded JSONL; [original continuous full-sequence](../../recipes/h3-fullseq-original-training.md) |
 | W6 CPU | `data prepare-h3-cached-reference`: original flat/split-packed AV parser, tensor-only equivalence and streamed source loading; [recipe](../../recipes/h3_ar/CPU_REFERENCE.md) |
 
 Distributed native manifests are not generic PreparedDataset. W3/W6 CPU factories

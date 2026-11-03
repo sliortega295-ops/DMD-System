@@ -501,7 +501,7 @@ NATIVE_SELECTOR = "h3.w5.c1.fake0.block10.actualtuple.v1"
 PREPARED_GEOMETRY_SELECTOR = "h3.w5.c1.fake0.block10.actualtuple.v2"
 RAW_BACKWARD_SCHEMA = "_flash_attn3_cuda_373a45c::_flash_attn_backward(Tensor dout, Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor? cu_seqlens_q=None, Tensor? cu_seqlens_k=None, Tensor? sequed_q=None, Tensor? sequed_k=None, SymInt? max_seqlen_q=None, SymInt? max_seqlen_k=None, Tensor(a12!)? dq=None, Tensor(a13!)? dk=None, Tensor(a14!)? dv=None, float? softmax_scale=None, bool is_causal=False, SymInt window_size_left=-1, SymInt window_size_right=-1, float softcap=0., bool deterministic=False, SymInt sm_margin=0) -> Tensor"
 _NATIVE_FILES = ("attention_tuple_capture.py", "integrated_entrypoint.py", "trainer_loop.py",
-                 "grid_adaln.py", "fa3_replay_cache.py")
+                 "exact_adaln_replay.py", "fa3_replay_cache.py")
 
 
 def _exact_json(actual, expected):
@@ -601,7 +601,7 @@ def attach_native_capture(trainer, observer, *, torch, rank):
     # parallel recipe validator. Original train.validate_start also still runs.
     from distillschedule.search.h3_implementation import current_implementation
     impl = current_implementation()
-    require(impl is not None and impl.id == "joint-h3v1-d2-n128", "capture needs exact original generated candidate")
+    require(impl is not None and impl.id == "joint-h3c1-d2-n128", "capture needs exact original generated candidate")
     impl.receipt_binding(trainer.config, env, mode="correctness")
     require(observer.source_head == env.get("EXPECTED_INTEGRATION_HEAD"), "native source admission mismatch")
     require(type(rank) is int and observer.rank == rank and torch.distributed.is_initialized()

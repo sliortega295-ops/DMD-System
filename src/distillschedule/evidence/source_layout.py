@@ -73,4 +73,11 @@ def reviewed_imports(root: Path) -> list[dict]:
             raise ValueError('source integration overlay hash chain is discontinuous, conflicting or repeated')
         effective[target]['integrated_sha256'] = updated
         seen[target].add(updated)
-    return result
+    retired = current.get('retired_imports', {})
+    if not isinstance(retired, dict) or not set(retired) <= set(effective):
+        raise ValueError('retired import must identify an original integrated source')
+    for target, expected in retired.items():
+        if (expected != effective[target]['integrated_sha256']
+                or (root / _relative(target)).exists()):
+            raise ValueError('retired import hash changed or file is still active')
+    return [entry for entry in result if entry['target'] not in retired]

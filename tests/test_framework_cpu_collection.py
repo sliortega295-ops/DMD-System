@@ -122,14 +122,14 @@ def test_variable_forward_phase_proofs_are_in_actual_common_lane_and_cannot_sile
 
 H3_LANES = {
     'grid-output': (
-        'h3-grid-output-cpu.yml', 'original-grid-output',
+        'h3-fullseq-output-cpu.yml', 'original-fullseq-output',
         'Actual converted model, original sampler and current Student outputs',
-        'h3-grid-output-cpu.xml',
-        ['tests/test_training_h3_grid_outputs.py', 'tests/test_training_h3_grid_native_outputs.py'],
-        ['test_grid_original_source_schedule_and_projection_identity',
-         'test_actual_grid_export_restore_four_step_rollout_matches_original_projection',
-         'test_grid_public_export_and_new_process_generate',
-         'test_real_current_grid_callback_common_export_and_source_guard',
+        'h3-fullseq-output-cpu.xml',
+        ['tests/test_training_h3_fullseq_outputs.py', 'tests/test_training_h3_fullseq_native_outputs.py'],
+        ['test_fullseq_original_source_schedule_and_projection_identity',
+         'test_actual_fullseq_export_restore_four_step_rollout_matches_original_projection',
+         'test_fullseq_public_export_and_new_process_generate',
+         'test_real_current_fullseq_callback_common_export_and_source_guard',
          'test_actual_checkpoint_restore_precedes_output_and_performs_zero_updates',
          'test_real_gloo_dtensor_export_gathers_all_current_weight_shards']),
     'consolidation': (
@@ -182,7 +182,7 @@ def test_h3_provider_collection_has_actual_dependency_lane_and_mandatory_receipt
         assert job['env']['DS_ACCELERATOR'] == 'cpu' and job['env']['DS_BUILD_OPS'] == '0'
     else:
         assert "'.[train,test,test-h3-output]'" in installs and 'pip check' in installs
-        assert 'scripts/prepare_h3_grid_output_test_source.py' in installs
+        assert 'scripts/prepare_h3_fullseq_output_test_source.py' in installs
         sources = {step['with']['repository']: step['with']['ref'] for step in job['steps']
                    if 'repository' in step.get('with', {})}
         assert sources == {'ModelTC/LightX2V': 'd034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be',
@@ -215,11 +215,11 @@ def test_migrated_h3_actual_receipt_gate_rejects_false_green(tmp_path, name, mut
     assert (result.returncode == 0) is (mutation is None), result.stdout + result.stderr
 
 
-def test_h3_grid_review_restores_existing_source_identity_without_relabeling_it():
+def test_h3_fullseq_review_restores_existing_source_identity_without_relabeling_it():
     import hashlib
     import json
-    from distillschedule.training.h3_grid_inference import MODEL_SHA, SOURCE_FILES, TRAINER
-    fixture = ROOT / 'tests/fixtures/h3_grid_output_source.json'
+    from distillschedule.training.h3_fullseq_inference import MODEL_SHA, SOURCE_FILES, TRAINER
+    fixture = ROOT / 'tests/fixtures/h3_fullseq_output_source.json'
     review = json.loads(fixture.read_text())
     assert review['trainer'] == TRAINER
     assert review['reviewed_trainer_sha256'] == SOURCE_FILES[TRAINER]
@@ -339,29 +339,29 @@ def test_native_cpu_fixture_preloads_admit_the_real_source_helper_namespace():
         assert keyword.arg == 'source_only' and isinstance(keyword.value, ast.Constant) and keyword.value.value is True
 
 
-def test_operator_grid_codec_target_retains_all_four_actual_source_tests():
+def test_operator_fullseq_codec_target_retains_all_four_actual_source_tests():
     import hashlib
     from test_framework_flow_methods_ci import _collect_command
-    target = 'tests/test_h3_grid_codec_target_cpu.py'
+    target = 'tests/test_h3_fullseq_codec_target_cpu.py'
     text = (ROOT / target).read_text()
-    marker = 'from test_training_h3_grid_outputs import actual_grid_case'
+    marker = 'from test_training_h3_fullseq_outputs import actual_fullseq_case'
     retained = text[text.index(marker):]
-    # Exact pre-migration fixture and assertions; no substitute codec or skip.
-    assert hashlib.sha256(retained.encode()).hexdigest() == '5a52ac84e7dd570af713f67a25d9a3a523fbef8efbd1838617c5b8652975c082'
+    # Exact reviewed continuous namespace fixture and assertions; no substitute codec or skip.
+    assert hashlib.sha256(retained.encode()).hexdigest() == '739a54a0bf816f332b6978419e9cba7f83017ccffe8e3e1e66f179523ec70313'
     assert 'pytest.skip' not in retained and 'importorskip' not in retained
     expected = [f'{target}::test_incompatible_codec_domain_rejected_before_loading_models[{fault}]'
                 for fault in ('frames', 'fps', 'audio_length')]
-    expected.append(f'{target}::test_original_full_grid_sampler_current_student_decodes_in_new_public_process')
+    expected.append(f'{target}::test_original_continuous_sampler_current_student_decodes_in_new_public_process')
     assert sorted(_collect_command(['python', '-m', 'pytest', '-q', target])) == sorted(expected)
     common = _api()['test_files'](ROOT)
-    assert target not in common and 'tests/test_training_h3_grid_codec.py' in common
+    assert target not in common and 'tests/test_training_h3_fullseq_codec.py' in common
 
 
-def test_operator_grid_codec_missing_manifest_is_an_error_not_a_skip():
+def test_operator_fullseq_codec_missing_manifest_is_an_error_not_a_skip():
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(str(ROOT / path) for path in ('src', '.', 'tests')))
-    env.pop('DMD_H3_GRID_CODEC_TEST_MANIFEST', None)
-    script = ('from test_h3_grid_codec_target_cpu import reused_codec; '
+    env.pop('DMD_H3_FULLSEQ_CODEC_TEST_MANIFEST', None)
+    script = ('from test_h3_fullseq_codec_target_cpu import reused_codec; '
               'reused_codec.__wrapped__()')
     result = subprocess.run([sys.executable, '-c', script], cwd=ROOT, env=env,
                             capture_output=True, text=True, timeout=30)
-    assert result.returncode != 0 and "KeyError: 'DMD_H3_GRID_CODEC_TEST_MANIFEST'" in result.stderr
+    assert result.returncode != 0 and "KeyError: 'DMD_H3_FULLSEQ_CODEC_TEST_MANIFEST'" in result.stderr

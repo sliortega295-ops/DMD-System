@@ -2,7 +2,7 @@
 
 The Torch network is an explicitly random, test-only flow network. Wan uses the
 real diffusers WanTransformer3DModel and local checkpoints, never the old
-Helios-pyramid Wan or LightX2V Grid1000 semantics. No network/model downloads.
+Helios-pyramid Wan or LightX2V full-sequence semantics. No network/model downloads.
 """
 from __future__ import annotations
 

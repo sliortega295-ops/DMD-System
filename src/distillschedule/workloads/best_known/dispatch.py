@@ -132,7 +132,7 @@ def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None
             if key == "DISTILLSCHEDULE_HELIOS_PLANNER_MODE" and "search_candidate" in receipt:
                 _require(expected == "off", "Helios planner must default off")
                 expected = "native" if receipt["mode"] == "diagnostic-timing" else receipt["mode"]
-            if (receipt["mode"] == "calibration" and receipt["profile_id"] == "minimax_h3_grid1000_best"
+            if (receipt["mode"] == "calibration" and receipt["profile_id"] == "minimax_h3_continuous_best"
                     and "search_candidate" in receipt and key == "H3_PLANNER_CALIBRATION"):
                 _require(expected == "0", "H3 calibration must have a disabled default")
                 expected = "1"

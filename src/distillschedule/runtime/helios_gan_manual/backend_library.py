@@ -4,7 +4,7 @@ Stdlib import/default plan only. GPU-capable imports require external permit.
 from __future__ import annotations
 import ast,hashlib,inspect,json,os,pathlib,sys,types
 from . import backend_abi as backend
-FA3_ROOT=pathlib.Path('/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux')
+FA3_ROOT=pathlib.Path(os.environ.get('DISTILLSCHEDULE_HELIOS_GAN_FA3_ROOT','assets/kernels/flash-attn3')).expanduser().resolve()
 FA3_PINS={'flash_attn_interface.py':'cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4','_ops.py':'7f392b365cc945a3b3a420e24802ef776a79316c068e6e99e4da682e8927a1f6','_flash_attn3_cuda_373a45c.abi3.so':'8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56'}
 MAX_MAP_BYTES=2<<20;MAX_MAP_ROWS=16384
 

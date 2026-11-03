@@ -149,7 +149,7 @@ def test_search_result_uses_existing_native_wan_lowerer(tmp_path):
 
 
 @pytest.mark.parametrize('workload', ['wan13b_nogan_resident_best','livewan_crossscale_pipeline_best',
- 'minimax_h3_grid1000_best','helios14b_nogan_best','helios14b_gan_best'])
+ 'minimax_h3_continuous_best','helios14b_nogan_best','helios14b_gan_best'])
 def test_all_five_cli_capabilities_accept_hierarchical_without_gpu(workload):
     root=Path(__file__).parents[1]
     p=subprocess.run([sys.executable,str(root/'scripts/distillctl.py'),'workloads','search',
@@ -175,7 +175,7 @@ def test_cli_saved_fixture_replays_and_has_no_native_permission(tmp_path):
     assert r['native_trial_budget']['actual_runs']==0
 
 
-@pytest.mark.parametrize('workload',['livewan_crossscale_pipeline_best','minimax_h3_grid1000_best'])
+@pytest.mark.parametrize('workload',['livewan_crossscale_pipeline_best','minimax_h3_continuous_best'])
 def test_existing_macro_adapter_lowering_with_new_selector(tmp_path,monkeypatch,workload):
     # Reuse the original source-bound synthetic receipt/lowering acceptance.
     # Disable ranking reductions so its full calibrated-subspace assertions

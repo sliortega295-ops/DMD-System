@@ -19,7 +19,7 @@ from typing import Any, Mapping
 SCHEMA = "distillschedule.best_known.v1"
 GPU_NOT_RUN = "NOT_RUN_ON_INTEGRATION_BRANCH"
 CANONICAL_IDS = frozenset({
-    "wan13b_nogan_resident_best", "helios14b_nogan_best", "minimax_h3_grid1000_best",
+    "wan13b_nogan_resident_best", "helios14b_nogan_best", "minimax_h3_continuous_best",
     "helios14b_gan_best", "livewan_crossscale_pipeline_best",
 })
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -94,8 +94,8 @@ def load_profile(workload: str, *, root: Path | None = None) -> dict[str, Any]:
     env = value["runtime"]["environment"]
     _require(all(isinstance(k, str) and isinstance(v, str) for k, v in env.items()), "environment values must be explicit strings")
     _require("${" not in json.dumps(value), "canonical profile contains unresolved environment defaults")
-    if workload == "minimax_h3_grid1000_best":
-        _require(value["semantics"] == "approximate_grid1000", "Grid1000 must remain approximate")
+    if workload == "minimax_h3_continuous_best":
+        _require(value["semantics"] == "continuous", "H3 full-sequence requires continuous sigma")
         _require(env["H3_ACTIVATION_POLICY"] == "none" and env["H3_FA3_REPLAY_CACHE_STORAGE"] == "cpu_staged",
                  "H3 boundary/replay storage policies were conflated")
     if workload == "helios14b_gan_best":
@@ -178,7 +178,7 @@ def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> 
             _require(isinstance(n[k], str) and Path(n[k]).is_absolute(), f"node {k} must be absolute")
         overlays = n.get("python_path_overlays", [])
         _require(isinstance(overlays, list), "python_path_overlays must be an explicit ordered list")
-        _require(not overlays or profile["id"] == "minimax_h3_grid1000_best",
+        _require(not overlays or profile["id"] == "minimax_h3_continuous_best",
                  "dependency overlays currently supported only by the H3 native launcher")
         paths = []
         for overlay in overlays:
@@ -197,7 +197,7 @@ def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> 
         _require(len(paths) == len(set(paths)), "duplicate dependency overlay path")
     for k in ["run_root", "node_local_cache_root"]:
         _require(isinstance(value.get(k), str) and Path(value[k]).is_absolute()
-                 and Path(value[k]) not in (Path('/'), Path('/home/lyy')),
+                 and Path(value[k]) not in (Path('/'), Path.home()),
                  f"{k} must be an explicit project subtree, not a filesystem/home root")
     for node in nodes:
         repo = Path(node["repo_root"]).resolve()
@@ -251,7 +251,7 @@ def _python_path(profile: Mapping[str, Any], node: Mapping[str, Any], env: Mappi
     pp = [str(root / "src"), str(root)]
     if profile["model_family"] in {"helios", "wan2.1"}:
         pp.append(env["HELIOS_RUNTIME_ROOT"])
-    if profile["id"] == "minimax_h3_grid1000_best":
+    if profile["id"] == "minimax_h3_continuous_best":
         pp += [env["LIGHTX2V_ROOT"], str(Path(env["LIGHTX2V_ROOT"]) / "lightx2v_train")]
         if env.get("H3_DIFFUSERS_SOURCE"):
             pp.insert(0, str(Path(env["H3_DIFFUSERS_SOURCE"]) / "src"))
@@ -276,7 +276,7 @@ def validate_resolved_asset_binding(receipt: Mapping[str, Any], profile: Mapping
             key = _original_helios_trace_hash_environment(profile)
             _require(node["environment"].get(key) == helios_trace["bundle_hash"],
                      "resolved ORIGINAL Helios expected trace hash changed")
-        if profile["id"] == "minimax_h3_grid1000_best":
+        if profile["id"] == "minimax_h3_continuous_best":
             _require(node["environment"].get("PATH") == H3_SYSTEM_TOOLCHAIN_PATH,
                      "resolved H3 system toolchain PATH changed")
 
@@ -526,7 +526,7 @@ def _resolve_configuration(profile, *, root, asset_config, run_id, mode, request
             _require(env.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION") == "0",
                      "only source-registered LiveWan candidates support operation calibration")
             env["DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"] = "1"
-        if workload == "minimax_h3_grid1000_best" and mode == "calibration":
+        if workload == "minimax_h3_continuous_best" and mode == "calibration":
             _require(env.get("H3_PLANNER_CALIBRATION") == "0", "H3 calibration requires generated native adapter")
             env["H3_PLANNER_CALIBRATION"] = "1"
         env.update({d["environment"]: assets["assets"][k]["path"] for k, d in profile["required_assets"].items()})
@@ -541,7 +541,7 @@ def _resolve_configuration(profile, *, root, asset_config, run_id, mode, request
             env["HELIOS_RUNTIME_ROOT"] = str(rr/"third_party/helios_compat/source")
             env["DISTILLSCHEDULE_ASSETS"] = str(Path(env["HF_HOME"]).parent)
             env["DISTILLSCHEDULE_GAN_CONFIG"] = str(rr/"configs/distillschedule/templates/helios_stage3_gan_384x640_systems.yaml")
-        if workload == "minimax_h3_grid1000_best":
+        if workload == "minimax_h3_continuous_best":
             env["PATH"] = H3_SYSTEM_TOOLCHAIN_PATH
             env["LIGHTX2V_ROOT"] = str(rr/"third_party/lightx2v")
             env["H3_OUTPUT_DIR"] = str(Path(output)/"h3")

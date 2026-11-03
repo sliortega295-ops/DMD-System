@@ -8,6 +8,7 @@ import os
 import json
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 
 from distillschedule.search.helios_implementation import HeliosImplementation
@@ -91,6 +92,44 @@ class GANManualBundleTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             with manual_runtime_scope(None):
                 pass
+
+    def test_rank_rows_bind_relocated_bundle_and_reject_changed_or_escaped_files(self):
+        """SYNTHETIC_TEST_ONLY: exercises real path/hash admission, not GPU evidence."""
+        from distillschedule.runtime.helios_gan_manual import runtime
+        from distillschedule.workloads.best_known.registry import file_sha256
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / 'relocated-traces'
+            (bundle / 'rank0').mkdir(parents=True)
+            trace = bundle / 'rank0/trace.json'
+            trace.write_text('{}\n')
+            graphs = [dict(logical_step=step, graph=graph, rows=step + 10,
+                           source_entry_path='rank0/trace.json',
+                           source_entry_sha256=file_sha256(trace))
+                      for step in range(5) for graph in ('main', 'gan')]
+            data = dict(path_binding='DISTILLSCHEDULE_GAN_TRACE_BUNDLE_RELATIVE_FILES_SHA256_V1',
+                        ranks=[dict(rank=rank, graphs=deepcopy(graphs)) for rank in range(16)])
+            metadata = root / 'down40_rows.json'
+
+            def read():
+                metadata.write_text(json.dumps(data))
+                with patch.object(runtime, '__file__', str(root / 'runtime.py')), \
+                     patch.object(runtime, 'ROW_SHA256', file_sha256(metadata)), \
+                     patch.dict(os.environ, DISTILLSCHEDULE_GAN_TRACE_BUNDLE=str(bundle)):
+                    return runtime._rows(0)
+
+            self.assertEqual(len(read()), 10)
+            trace.write_text('{"changed":true}\n')
+            with self.assertRaisesRegex(ValueError, 'source entry changed'):
+                read()
+            trace.write_text('{}\n')
+            outside = root / 'outside.json'
+            outside.write_text('{}\n')
+            (bundle / 'link.json').symlink_to(outside)
+            for path in ('../outside.json', str(outside), 'link.json'):
+                data['ranks'][0]['graphs'][0]['source_entry_path'] = path
+                with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'inside the configured trace bundle'):
+                    read()
 
     def test_device_selected_before_any_cuda_identity_query(self):
         from distillschedule.runtime.helios_gan_manual.runtime import manual_runtime_scope

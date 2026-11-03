@@ -4,13 +4,13 @@
   "files": [
     {
       "path": "artifacts/results/a100.csv",
-      "bytes": 570,
-      "sha256": "2f8d27857124bb3609fdda63a9ad6058d0d6520a63fd933038554224c017b6e2"
+      "bytes": 535,
+      "sha256": "e224bbfadb05e057933cbb0b9d3d04cb93b27859f5fac147c5f4b8502b04d010"
     },
     {
       "path": "artifacts/results/h100.csv",
-      "bytes": 1848,
-      "sha256": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881"
+      "bytes": 1591,
+      "sha256": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64"
     },
     {
       "path": "artifacts/results/official.csv",
@@ -24,13 +24,13 @@
     },
     {
       "path": "artifacts/results/h100_sources.json",
-      "bytes": 7775,
-      "sha256": "5b7f5e3ba13fe7790e253b297d1e3acb1fe6c30c5e841615365c6046121705b6"
+      "bytes": 6180,
+      "sha256": "a7a7d945ad54a188e342210e70878fdb5ff48a64dbbeae053d85b54b9b792c6e"
     },
     {
-      "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
-      "bytes": 8091,
-      "sha256": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842"
+      "path": "artifacts/results/planner.json",
+      "bytes": 1841,
+      "sha256": "af24f63fb56af0e6227225db7d666ff34ee35a6e978d56a6edcbe9161529e274"
     }
   ],
   "branches": [

@@ -38,11 +38,17 @@ def _seed_rank(config) -> int:
 
 
 def main():
+    from distillschedule.training.h3_fullseq_training import current_training
+
     args = parse_args()
     config = load_config(args.config)
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
     init_distributed_a100(config)
+    lifecycle = current_training()
+    if lifecycle is not None:
+        lifecycle.admit_loaded_config(config)
+        config = lifecycle.runtime_config(config)
     seed = _seed_rank(config)
     setup_logger(config)
     logger.info("[h3-a100] deterministic matched seed={} global_rank={}", seed, get_rank())
@@ -60,6 +66,8 @@ def main():
         trainer = build_trainer(config)
         trainer.set_model(model)
         trainer.set_data(dataloader_train, dataloader_eval)
+        if lifecycle is not None:
+            trainer.fullseq_training_lifecycle = lifecycle
         trainer.train()
     except Exception:
         logger.exception("H3 A100 training failed")

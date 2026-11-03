@@ -134,10 +134,12 @@ SHARDING_LANES = {
     'ltx25': ('official-models-cpu.yml', 'actual-model-classes',
               'Actual LTX CPU FSDP flow ownership', 'ltx-flow-sharding-cpu.xml'),
 }
-H3_FILES = ['tests/test_training_h3_grid.py', 'tests/test_training_h3_grid_distributed.py',
-            'tests/test_training_h3_grid_stop.py', 'tests/test_training_native_state.py']
+H3_FILES = ['tests/test_h3_continuous_backend.py', 'tests/test_training_h3_fullseq.py', 'tests/test_training_h3_fullseq_distributed.py',
+            'tests/test_training_h3_fullseq_stop.py', 'tests/test_training_native_state.py']
 H3_PROOFS = [
-    'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation',
+    'test_current_profile_and_both_native_entries_use_continuous_sigma',
+    'test_native_checkpoint_replay_restores_exact_continuous_cache_scope',
+    'test_real_original_fullseq_loop_three_cycles_exact_interrupted_continuation',
     'test_actual_gloo_rank_failure_and_complete_original_state[exact_resume]',
     'test_full_lazy_cpu_admission_with_real_pinned_sources_and_identity_only_assets[None]',
     'test_public_horizon50_stop25_keeps_original_identity',
@@ -248,7 +250,7 @@ def test_flow_sharding_ci_actual_receipt_gate_rejects_false_green(tmp_path, fami
 
 
 def _h3_stop_lane():
-    workflow = yaml.load((ROOT / '.github/workflows/h3-grid-native-cpu.yml').read_text(), Loader=yaml.BaseLoader)
+    workflow = yaml.load((ROOT / '.github/workflows/h3-fullseq-native-cpu.yml').read_text(), Loader=yaml.BaseLoader)
     job = workflow['jobs']['original-source-state']
     proof_step = next(step for step in job['steps'] if step.get('name') ==
         'Actual original loop, data cursor, atomic state and rejection tests')
@@ -270,11 +272,11 @@ def test_h3_ci_requires_durable_stop_and_current_original_restart_without_skips(
     assert 'tests/test_framework_flow_methods_ci.py' in paths and 'scripts/check_cpu_receipt.py' in paths
     assert all(any(Path(file).match(pattern) for pattern in paths) for file in H3_FILES)
     proof_command, gate_command = _commands(step)
-    assert proof_command == ['python', '-m', 'pytest', '-q', *H3_FILES, '--junitxml=h3-grid-cpu.xml']
-    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', 'h3-grid-cpu.xml',
+    assert proof_command == ['python', '-m', 'pytest', '-q', *H3_FILES, '--junitxml=h3-fullseq-cpu.xml']
+    assert gate_command == ['python', 'scripts/check_cpu_receipt.py', 'h3-fullseq-cpu.xml',
         *[word for name in H3_PROOFS for word in ('--require', name)]]
     upload = next(item for item in job['steps'] if item.get('uses') == 'actions/upload-artifact@v4')
-    assert upload['if'] == 'always()' and upload['with']['path'] == 'h3-grid-cpu.xml'
+    assert upload['if'] == 'always()' and upload['with']['path'] == 'h3-fullseq-cpu.xml'
     assert upload['with']['if-no-files-found'] == 'error'
 
 
@@ -288,7 +290,7 @@ def test_h3_ci_required_stop_and_restart_names_are_actually_collected():
 @pytest.mark.parametrize('mutation', [None, 'missing-case', 'skipped', 'failure', 'error', 'empty', 'missing-file'])
 def test_h3_ci_actual_stop_receipt_gate_rejects_false_green(tmp_path, mutation):
     _, _, step = _h3_stop_lane()
-    _assert_receipt_gate(tmp_path, step, 'h3-grid-cpu.xml', H3_PROOFS, mutation)
+    _assert_receipt_gate(tmp_path, step, 'h3-fullseq-cpu.xml', H3_PROOFS, mutation)
 
 
 def test_common_cpu_collector_and_triggers_include_sharding_and_ci_regressions():

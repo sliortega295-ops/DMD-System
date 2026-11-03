@@ -96,7 +96,7 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
             "--execution-mode", "pipeline", "--run-kind", receipt["mode"],
             "--trace", env["LIVEWAN_OPERATION_TRACE"], "--plan", str(Path(run)/"resolved_plan.node0.json"),
             "--expected-head", receipt["integration_head"], *tail]
-    if p["id"] == "minimax_h3_grid1000_best" and "search_candidate" in receipt:
+    if p["id"] == "minimax_h3_continuous_best" and "search_candidate" in receipt:
         return prefix + ["-m", "distillschedule.search.h3_native", "summarize",
             "--candidate-id", receipt["search_candidate"]["id"],
             "--expected-head", receipt["integration_head"], *tail]
@@ -130,7 +130,7 @@ def collect(receipt: dict[str, Any]) -> int:
         errors = validate_global_snapshots([r["census"] for r in rows], expected_world_size=16, require_unique_samples=True)
         _require(not errors, f"H3 census failed: {errors}")
         value = {"status":"PASS", "rank_count":16, "mode":receipt["mode"],
-            "semantics":"approximate_grid1000", "claimable_timing":False,
+            "semantics":"continuous", "claimable_timing":False,
             "numerical_comparison":"NOT_RUN", "native_contract_receipts":[str(f) for f in sorted((out/"execution/ranks").glob("rank_*.json"))]}
         write_new_json(native,value)
     # Add metadata, do not replace/waive any native gate or invent a new speedup.

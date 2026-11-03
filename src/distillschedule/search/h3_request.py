@@ -1,4 +1,4 @@
-"""Explicit bounded shapes for the ORIGINAL Grid1000 H3 protocol.
+"""Explicit bounded shapes for the ORIGINAL continuous H3 protocol.
 
 This is not a sixth canonical winner. Every noncanonical request needs its own
 assets, calibration, matched CPU-cache control and target-GPU acceptance.
@@ -10,7 +10,7 @@ import re
 from distillschedule.workloads.best_known.registry import fingerprint, load_profile
 from .contracts import require
 
-H3 = "minimax_h3_grid1000_best"
+H3 = "minimax_h3_continuous_best"
 SCHEMA = "distillschedule.h3_request.v1"
 
 
@@ -53,7 +53,7 @@ class H3Request:
         profile = copy.deepcopy(load_profile(H3, root=root))
         if self == H3Request():
             return profile
-        profile["display_name"] = f"Unvalidated H3 Grid1000 request: {self.id}"
+        profile["display_name"] = f"H3 continuous request: {self.id}"
         profile["contract"]["resolution"] = [self.height, self.width]
         profile["contract"]["frames"] = self.frames
         profile["contract"]["request"] = self.to_dict()

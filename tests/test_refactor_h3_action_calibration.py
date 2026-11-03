@@ -39,7 +39,7 @@ def test_h3_22_actions_and_real_retained_storage_metadata_no_tensor_copies():
         if kind=='r': sample.record_output(Tensor(100+n,20))
     value=c.finish()
     assert value['status']=='PASS' and len(value['stages'])==22
-    assert value['workload']=='minimax_h3_grid1000_best'
+    assert value['workload']=='minimax_h3_continuous_best'
     assert value['precision_fingerprint']==PRECISION
     assert len(value['output_lifetimes'])==10 and value['peak_retained_input_bytes']==60
     assert value['tensor_value_reads']==0

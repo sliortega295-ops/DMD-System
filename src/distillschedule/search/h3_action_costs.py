@@ -15,7 +15,7 @@ from .h3_implementation import H3
 ADAPTER = "h3_prepared_actions_v2"
 RANKS = tuple(range(16))
 PRECISION = fingerprint(dict(base="BF16", trainables="UNCHANGED_PINNED_NATIVE_PEFT_FSDP_POLICY_NOT_A_NEW_DTYPE_PROBE",
-                            attention="_flash_3_hub", sigma="APPROXIMATE_GRID1000"))
+                            attention="_flash_3_hub", sigma="CONTINUOUS"))
 FAMILIES = dict(g="h3.student_update", r="h3.fake_input_preparation", c="h3.fake_update")
 
 

@@ -28,7 +28,7 @@ new offload policies, overlap discounts, or independently selectable kernels.
 Those require additional native lowerers and context-qualified costs. Existing
 worker files and canonical workload defaults are not overwritten.
 
-W2 Helios no-GAN, W3 Helios GAN, W4 LiveWan, W5 H3 Grid1000, W6 native H3 AR,
+W2 Helios no-GAN, W3 Helios GAN, W4 LiveWan, W5 H3 continuous H3, W6 native H3 AR,
 and A100 execution are **NOT_ADMITTED by this adapter**. In particular W5 and
 W6 are different workloads, not interchangeable H3 configurations.
 

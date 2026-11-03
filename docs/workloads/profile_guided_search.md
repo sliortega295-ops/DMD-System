@@ -29,7 +29,7 @@ or start a GPU worker.
 | LiveWan cross-scale | FSDP reference; existing C24--C34 typed pipeline plans | Native trajectory and two-cycle adapters |
 | Helios No-GAN | Canonical reference | CPU registration only; no new GPU search |
 | Helios GAN | Locked C25 reference | CPU registration only; no new GPU search |
-| MiniMax-H3 | Grid1000 canonical reference | CPU registration only; approximate sigma semantics remain explicit |
+| MiniMax-H3 | continuous H3 canonical reference | CPU registration only; approximate sigma semantics remain explicit |
 
 `executable` means an adapter exists, **not** that this integration HEAD has
 passed a GPU experiment. Catalog `NOT_RUN` fields are conservative registration

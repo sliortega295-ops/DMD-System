@@ -57,22 +57,26 @@ class CurrentValidationViewTests(unittest.TestCase):
         self.assertIn("H100", guide)
         self.assertIn("G1/C5/EMA5 Full5", guide)
         self.assertIn("gan_nomerge_retime.json", guide)
-        self.assertIn("six_workload_native_match.json", guide)
+        self.assertIn("artifacts/results/planner.json", guide)
         for workload in ("W1", "W2", "W3", "W4", "W5", "W6"):
             self.assertIn(workload, guide)
         for value in ("7.514", "3.475", "50.739", "30.959", "36.175",
-                      "84.260", "42.450", "767.020", "255.671", "116.254"):
+                      "84.260", "42.450", "255.671", "116.254"):
             self.assertIn(value, guide)
+        self.assertNotIn("767.020", guide)  # Retired approximate timing is not continuous evidence.
 
-    def test_recipe_is_concise_and_historical_receipt_is_not_relabelled(self):
+    def test_recipe_is_concise_and_continuous_results_do_not_relabel_old_timing(self):
         recipe = (REPO / "recipes/h3_fullseq/README.md").read_text()
         self.assertIn("exactly two fixed-contract cycles", recipe)
         self.assertIn("native numerical check", recipe)
         self.assertIn("training.json", recipe)
-        # The original machine evidence remains independent of public wording.
-        evidence = json.loads((REPO / "artifacts/publications/20261019/evidence/"
-                              "planner/six_workload_native_match.json").read_text())
-        self.assertIn("FAIL_PAIR_NOT_RUN", json.dumps(evidence))
+        evidence = json.loads((REPO / "artifacts/results/planner.json").read_text())
+        self.assertEqual(evidence['original_summary_sha256'],
+                         '6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842')
+        w5 = next(row for row in evidence['rows'] if row['id'] == 'W5')
+        self.assertIn('Continuous', w5['name'])
+        self.assertIsNone(w5['manual_C2'])
+        self.assertIsNone(w5['selected_C2'])
 
 
 if __name__ == "__main__":

@@ -93,10 +93,10 @@ def test_launch_asset_binding_cannot_be_relabelled(tmp_path,monkeypatch):
     from distillschedule.search import execution
     monkeypatch.setattr(execution,'validated_profile',lambda *a,**k: {})
     path=tmp_path/'plan.json'
-    path.write_text(json.dumps(dict(mode='calibration',search_candidate={'id':'joint-h3v2-d2-n128-w3'},
+    path.write_text(json.dumps(dict(mode='calibration',search_candidate={'id':'joint-h3c2-d2-n128-w3'},
         integration_head='a'*40,asset_fingerprint='b'*64,workload_semantics_hash='c'*64)))
     layout=dict(execution_receipt=dict(path=str(path),sha256=file_sha256(path)),
-        implementation_id='joint-h3v2-d2-n128-w3',binding=dict(source_head='a'*40,asset_fingerprint='d'*64,
+        implementation_id='joint-h3c2-d2-n128-w3',binding=dict(source_head='a'*40,asset_fingerprint='d'*64,
                                                            semantic_fingerprint='c'*64))
     with pytest.raises(ValueError,match='actual launch'):m._verify_run_binding(layout,[],{},tmp_path)
 

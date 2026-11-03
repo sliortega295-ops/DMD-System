@@ -288,18 +288,16 @@ Budgets include full G/codec/complex-RoPE/KV/attention and host/cgroup reserve;
 its context-local no-grad inference capacity scope does not widen training limits.
 Tiny original-class/Gloo proofs do not qualify production world16 CUDA/quality.
 
-<a id="h3_grid_inference"></a>
-<a id="h3_grid_inference--export-an-original-reference-native-checkpoint"></a>
-## W5: current Grid1000 Student output
+<a id="h3_fullseq_inference"></a>
+<a id="h3_fullseq_inference--export-an-original-reference-native-checkpoint"></a>
+## W5: current continuous H3 Student output
 
-W5 uses converted Diffusers MiniMax-H3, LightX2V's original **four** evaluations,
-video/audio flow shifts6/3, LoRA128 and new text conditions. It never uses W6's
-eight-step/LoRA64/previous-current sampler. Training deleted frozen AdaLN
-projections, so an ordinary remaining checkpoint is incomplete for inference.
-Export keeps full remaining frozen state, current unmerged Student, exactly four
-BF16 Grid-mmap rollout-table entries and native-dtype nonpersistent RoPE. Do not
-randomly rebuild projections, merge LoRA, requantize sigma or use continuous
-AdaLN. The original first-step duplicate table rows are addressed, not altered.
+W5 uses converted Diffusers MiniMax-H3, the original four-step sampler,
+video/audio flow shifts 6/3 and LoRA128. Training retains its frozen AdaLN
+projection bank and continuous sigma sampling. The inference export contains the
+current unmerged Student, frozen base, four exact fixed-rollout modulation
+entries and native RoPE values. These are computed from the retained projections,
+not a quantized sigma table. W6 keeps its independent eight-step AR sampler.
 
 ```text
 prompt_embeds:   BF16 CPU [1, text_tokens, 5120]
@@ -317,8 +315,8 @@ text_token_tags: int64 CPU [text_tokens], every tag 1
 ```
 
 ```sh
-distillctl generate /PROJECT/current-grid-student.inference.json \
-  --weights /PROJECT/current-grid-student \
+distillctl generate /PROJECT/current-fullseq-student.inference.json \
+  --weights /PROJECT/current-fullseq-student \
   --prepared /PROJECT/new-text/manifest.json \
   --parameters /PROJECT/media-parameters.json \
   --output-kind audio_video --output /PROJECT/generated-av
@@ -326,10 +324,10 @@ distillctl generate /PROJECT/current-grid-student.inference.json \
 
 ```sh
 distillctl export native-export.json --checkpoint /project/checkpoints/cycle-000064 \
-  --output /project/current-grid-student
+  --output /project/current-fullseq-student
 ```
 
-`h3_grid_inference.current_student_view` is read-only and preserves DTensors,
+`h3_fullseq_inference.current_student_view` is read-only and preserves DTensors,
 not an admission/all-gather. `export_components` projects an explicitly
 consolidated CPU snapshot; `build_inference_model` strictly restores the real
 converted class/PEFT, all buffers and dtypes after host-capacity admission.
@@ -342,14 +340,14 @@ seed/geometry/layout/source/four-step schedule; wrong/previous-chunk inputs reje
 Original noise order, FP32 latents and data-ward velocity remain unchanged.
 Latent output is packed BLD `video_tokens`/`audio_tokens`.
 
-For media, the pinned decoder manifest must match original Grid geometry:
+For media, the pinned decoder manifest must match original full-sequence geometry:
 video `[1,24,T,H/16,W/16]`, stereo `[2,32,A]`, FPS24/32kHz,
 `T=(frames-5)/17*5+2` for17*n+5 frames, `A=round(frames/24*40)`.
 Original `unpatchify_video` uses1×2×2 patches; `unpack_audio` is stereo
 channel-major. Conversion does not change values/normalization; original VAE
 applies mean/std once and its temporal planner checks frames. No crop/resample.
 `decoder_manifest` changes decoding only. `distillctl decode` can use the same
-bridge with explicit `manifest`, `grid_source`, `geometry` and safe packed inputs.
+bridge with explicit `manifest`, `fullseq_source`, `geometry` and safe packed inputs.
 
 Native export supports only the original-reference owner, **not** the held
 optimized candidate. Add [trainer.export](../../recipes/h3_fullseq/export.native.template.json)
@@ -406,7 +404,7 @@ remain bound. Artifact/companion config enable independent new-input generation.
 Meta-model/physical/cgroup checks precede allocation with explicit parameter,
 attention, working-set and reserve budgets: do not shrink shape/precision to fit.
 Source/CPU proofs are not native CUDA/world16/pretrained output qualification;
-W5 Grid1000 is a different binding.
+W5 continuous H3 is a different binding.
 
 <a id="h3_audio_video_decode"></a>
 ## Decode original H3 video and stereo audio

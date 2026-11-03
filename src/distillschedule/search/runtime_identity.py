@@ -80,7 +80,7 @@ def collect_planned_node_identity(receipt: dict[str, Any], *, node_rank: int) ->
     require(type(node_rank) is int and node_rank in (0, 1), "invalid identity node")
     root = repository_root()
     validated_profile(receipt, root=root)
-    require(receipt["profile_id"] in {WAN, "livewan_crossscale_pipeline_best", "minimax_h3_grid1000_best",
+    require(receipt["profile_id"] in {WAN, "livewan_crossscale_pipeline_best", "minimax_h3_continuous_best",
                                      "helios14b_nogan_best", "helios14b_gan_best"},
             "runtime identity adapter not implemented for this workload")
     require(receipt["integration_head"] == git_head(root), "runtime probe source changed")

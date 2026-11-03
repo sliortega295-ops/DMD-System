@@ -174,13 +174,7 @@ include = ["distillschedule*", "runtime*"]
 "share/distillschedule/docs/workloads/runbooks" = ["docs/workloads/runbooks/*.md"]
 "share/distillschedule/docs/workloads/evidence" = [
     "docs/workloads/evidence/livewan_c34_20260906.json",
-    "docs/workloads/evidence/profile_guided_search_20260906.json",
-    "docs/workloads/evidence/profile_guided_search_20260906.csv",
 ]
 
 # Current result data and its exact source bindings; process logs stay local.
-"share/distillschedule/artifacts/publications/20261019/evidence/planner" = [
-    "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
-]
-
 "share/distillschedule/artifacts/results" = ["artifacts/results/*.csv", "artifacts/results/*.json"]

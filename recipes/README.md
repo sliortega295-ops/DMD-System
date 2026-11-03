@@ -35,7 +35,7 @@ records which execution and output paths are available for each model.
 | W2 | [Helios14B No-GAN](helios_nogan/README.md) |
 | W3 | [Helios14B GAN](helios_gan/README.md) |
 | W4 | [LiveWan cross-scale Self-Forcing](self_forcing/README.md) |
-| W5 | [H3 full-sequence AV](h3_fullseq/README.md), with approximate Grid1000 sampling |
+| W5 | [H3 full-sequence AV](h3_fullseq/README.md), with continuous sigma sampling |
 | W6 | [H3 autoregressive AV](h3_ar/README.md), with continuous sigma sampling |
 
 Use `distillctl workloads list` and `describe --workload Wn` to inspect these

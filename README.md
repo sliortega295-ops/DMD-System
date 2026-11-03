@@ -58,11 +58,11 @@ new-input generation, or choose a model below. See
 | Flow DMD: audio–video | [LTX-2.5](recipes/ltx25/README.md) |
 | Hierarchical video DMD | [Wan1.3B / W1](recipes/wan_ar/README.md), [Helios No-GAN / W2](recipes/helios_nogan/README.md), [Helios GAN / W3](recipes/helios_gan/README.md) |
 | Cross-scale Self-Forcing | [LiveWan / W4](recipes/self_forcing/README.md) |
-| H3 audio–video DMD | [Full-sequence Grid1000 / W5](recipes/h3_fullseq/README.md), [Autoregressive / W6](recipes/h3_ar/README.md) |
+| H3 audio–video DMD | [Full-sequence / W5](recipes/h3_fullseq/README.md), [Autoregressive / W6](recipes/h3_ar/README.md) |
 
 W1–W6 identify the original benchmark protocols, not the limit of model support.
-Official Self-Forcing and cross-scale LiveWan have separate recipes. H3
-Grid1000 uses an approximate schedule; H3 AR keeps continuous sigma sampling.
+Official Self-Forcing and cross-scale LiveWan have separate recipes. Both H3
+workloads retain continuous sigma sampling and their own full-sequence/AR flows.
 The [support matrix](docs/guides/model_families.md#support_matrix) distinguishes available
 execution paths and the scope of their tests.
 

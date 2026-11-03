@@ -51,12 +51,12 @@ def _receipts(impl=None):
                           samples=[dict(stage=stage, identity=f"{cycle}:{rank}:{stage}") for stage in
                                    ("student", "fake_0", "fake_1", "fake_2", "fake_3", "fake_4")])
             replay = dict(checkpoint_wrap_count=300, scoped_execution_count=600,
-                          cache_hit_count=600, cache_miss_count=0, missing_key_count=0)
+                          cache_hit_count=600, cache_miss_count=0, captured_key_missing_count=0, captured_key_incomplete_count=0, unexpected_hit_delta_count=0)
             cycles.append(dict(cycle=cycle, status="PASS_NATIVE_RUNTIME_CONTRACTS", census=census,
                                native_wall_seconds=100 + rank - cycle, gpu_completion_elapsed_s=90 + rank - cycle,
                                updates=dict(student=1, fake=5, ema=0),
                                cumulative_updates=dict(student=cycle, fake=5 * cycle, ema=0),
-                               grid_replay_delta=replay, grid_replay={k: v * cycle for k, v in replay.items()},
+                               exact_adaln_replay_delta=replay, exact_adaln_replay={k: v * cycle for k, v in replay.items()},
                                finite_losses=True, losses=dict(student=[.25], fake=[.5] * 5)))
         if impl.cache_policy != "legacy_cpu_staged":
             for item in cycles:
@@ -66,9 +66,9 @@ def _receipts(impl=None):
                     stats=dict(compact_forward_impl_calls=300, compact_backward_calls=300,
                         cpu_d2h_bytes=0, cpu_h2d_bytes=0, cpu_pool_allocated_bytes=0,
                         cpu_stage_allocated_bytes=0, allocator_trim_calls=0))
-        rows.append(dict(schema_version="distillschedule.h3_native_two_cycle.v1",
+        rows.append(dict(schema_version="distillschedule.h3_native_two_cycle.v2",
                          status="PASS_NATIVE_RUNTIME_CONTRACTS", rank=rank, integration_head=HEAD,
-                         semantics="approximate_grid1000", cycles=cycles,
+                         semantics="continuous", cycles=cycles,
                          updates=dict(student=2, fake=10, ema=0),
                          final_versions=dict(generator=2, critic=10, ema=0),
                          native_wall_clock="HOST_MONOTONIC_CUDA_FENCED", native_boundary_fences=4,
@@ -99,8 +99,8 @@ def test_exact_generated_roundtrip_and_lowering_without_canonical_mutation(depth
     assert p["runtime"]["environment"]["H3_PLANNER_CLOCK"] == "host_fenced"
 
 
-@pytest.mark.parametrize("key", ["joint-h3v1-d0-n128", "joint-h3v1-d2-n32", "joint-h3v1-d2-n128-extra",
-                                 "joint-h3v1-d02-n128", "joint-h3v1-d2-n128\n", "joint-h3v2-d2-n128"])
+@pytest.mark.parametrize("key", ["joint-h3c1-d0-n128", "joint-h3c1-d2-n32", "joint-h3c1-d2-n128-extra",
+                                 "joint-h3c1-d02-n128", "joint-h3c1-d2-n128\n", "joint-h3c2-d2-n128"])
 def test_generated_ids_fail_closed(key):
     with pytest.raises(ValueError):
         H3Implementation.parse(key)
@@ -200,7 +200,7 @@ def test_summary_rejects_partial_or_changed_native_receipts(mutation):
     if mutation == "forward": cycle["census"]["forward_counts"]["student"] = 23
     if mutation == "grad": cycle["census"]["grad_forward_counts"]["student"] = 2
     if mutation == "backward": cycle["census"]["backward_counts"]["fake"] = 4
-    if mutation == "replay": cycle["grid_replay_delta"]["cache_miss_count"] = 1
+    if mutation == "replay": cycle["exact_adaln_replay_delta"]["cache_miss_count"] = 1
     if mutation == "versions": row["final_versions"]["critic"] = 9
     if mutation == "nonfinite_wall": cycle["native_wall_seconds"] = float("nan")
     if mutation == "cuda_only": cycle.pop("native_wall_seconds")

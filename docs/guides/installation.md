@@ -39,7 +39,7 @@ versions and environment files. Public distributed training uses Torch 2.10+.
 | FLUX, Qwen-Image, Wan2.2, HunyuanVideo | `modern-flow` |
 | LTX-2.5 | See [LTX recipe](../../recipes/ltx25/README.md) |
 
-H3 Grid1000 uses its source-qualified environment (source checkout: `.github/workflows/h3-grid-native-cpu.yml`).
+H3 full-sequence training uses its source-qualified environment (source checkout: `.github/workflows/h3-fullseq-native-cpu.yml`).
 
 For example, `python -m pip install -e '.[dmd2]'` selects the DMD2 stack.
 DMD2 and official Self-Forcing use the Transformers 4 lane; modern-flow uses

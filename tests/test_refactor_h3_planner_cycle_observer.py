@@ -70,7 +70,7 @@ def trainer_contract(**overrides):
         max_train_iters=2, save_every_iters=0, auto_resume=False,
         activation_policy="none", activation_checkpoint_segment_size=1,
         activation_offload_enabled=False, gradient_checkpointing=True,
-        adaln_grid_enabled=True, adaln_grid_size=1000,
+        sigma_semantics="continuous", registered_adaln_parameter_numel=13_000_000_000,
         fa3_replay_cache_storage="cpu_staged", fa3_replay_cache_blocks=tuple(range(50)),
         fa3_replay_cache_max_d2h_inflight=2, fa3_replay_cache_trim_before_backward=True,
         fa3_nograd_num_splits=2, fa3_grad_num_splits=2,
@@ -95,7 +95,7 @@ def test_opt_in_is_explicit_and_default_off():
     {"activation_checkpoint_segment_size": 2},
     {"activation_policy": "checkpoint_boundary_cpu"},
     {"activation_offload_enabled": True}, {"gradient_checkpointing": False},
-    {"adaln_grid_size": 999}, {"fa3_replay_cache_storage": "cuda"},
+    {"sigma_semantics": "discrete"}, {"fa3_replay_cache_storage": "cuda"},
     {"fa3_replay_cache_blocks": (0,)}, {"fa3_replay_cache_max_d2h_inflight": 3},
     {"fa3_replay_cache_trim_before_backward": False},
     {"fa3_nograd_num_splits": 1}, {"fa3_grad_num_splits": 1},
@@ -120,7 +120,7 @@ def test_resume_cannot_enter_two_cycle_timing(current_iter, resume):
 def _native_loop_class(torch, calls):
     """Execute the real mixin AST, without importing GPU/LightX2V dependencies."""
     import contextlib
-    from distillschedule.backends.training.minimax_h3.matched_contract import sample_identity
+    from distillschedule.backends.training.minimax_h3.matched_contract import sample_identity, EXACT_ADALN_REPLAY_COUNTS
     node = next(n for n in ast.parse(LOOP.read_text()).body
                 if isinstance(n, ast.ClassDef) and n.name == "H3A100LoopMixin")
     namespace = dict(
@@ -133,7 +133,7 @@ def _native_loop_class(torch, calls):
         set_parallel_gradient_sync=lambda *a: None,
         STUDENT_ADAPTER="student", FAKE_ADAPTER="fake",
         STUDENT_ROLE="student", FAKE_ROLE="fake",
-        sample_identity=sample_identity,
+        sample_identity=sample_identity, EXACT_ADALN_REPLAY_COUNTS=EXACT_ADALN_REPLAY_COUNTS,
     )
     exec(compile(ast.Module(body=[node], type_ignores=[]), str(LOOP), "exec",
                  flags=__future__.annotations.compiler_flag), namespace)
@@ -192,9 +192,9 @@ def _native_fixture(*, observed=True, calibration=False, bad_loss=False, fake_lo
     trainer.matched_cycle_census = MatchedCycleCensus(expected_world_size=1)
     trainer.fa3_replay_cache_registration = SimpleNamespace(enabled=True, storage="cpu_staged",
         block_indices=tuple(range(50)), max_d2h_inflight=2, trim_before_backward=True)
-    trainer.grid_replay_registration = SimpleNamespace(stats=dict(
+    trainer.exact_adaln_replay_registration = SimpleNamespace(stats=dict(
         checkpoint_wrap_count=0, scoped_execution_count=0, cache_hit_count=0,
-        cache_miss_count=0, missing_key_count=0))
+        cache_miss_count=0, captured_key_missing_count=0, captured_key_incomplete_count=0, unexpected_hit_delta_count=0))
 
     def probe(name):
         assert not observed or trainer.planner_cycle_observer.active is None
@@ -227,9 +227,9 @@ def _native_fixture(*, observed=True, calibration=False, bad_loss=False, fake_lo
         role_scope=lambda _: nullcontext(), adaln_scope=lambda *a, **kw: nullcontext(),
         set_transformer_training=lambda _: None, drop_adaln_key=lambda _: None, log_adaln_stats=lambda: None)
 
-    def grid_grad():
+    def exact_grad():
         for key, count in (("checkpoint_wrap_count", 50), ("scoped_execution_count", 100), ("cache_hit_count", 100)):
-            trainer.grid_replay_registration.stats[key] += count
+            trainer.exact_adaln_replay_registration.stats[key] += count
 
     def student_loss(shape, conditions, *, current_iter):
         calls.append(("student_loss", shape, conditions, current_iter, rng.random()))
@@ -238,7 +238,7 @@ def _native_fixture(*, observed=True, calibration=False, bad_loss=False, fake_lo
             trainer.matched_cycle_census.note_forward("student", grad_enabled=i == 3)
         trainer.matched_cycle_census.note_forward("fake", grad_enabled=False)
         trainer.matched_cycle_census.note_forward("teacher", grad_enabled=False)
-        grid_grad()
+        exact_grad()
         scalar = Scalar(float("nan") if bad_loss else 0.25)
         return dict(loss=scalar, dmd=scalar, backward_key="student-key")
 
@@ -253,7 +253,7 @@ def _native_fixture(*, observed=True, calibration=False, bad_loss=False, fake_lo
         calls.append(("fake_loss", item.cache_key, rng.random() if fake_loss_rng else None))
         cuda.now += 3
         trainer.matched_cycle_census.note_forward("fake", grad_enabled=True)
-        grid_grad()
+        exact_grad()
         return Scalar(0.5)
 
     trainer.forward_student_loss = student_loss
@@ -314,7 +314,7 @@ def test_real_native_two_cycle_hooks_preserve_compute_rng_and_exclude_probes(cal
     assert receipt["extra_explicit_synchronization_calls"] == receipt["extra_collectives"] == 0
     assert [row["census"]["samples"][0]["identity"] for row in receipt["cycles"]] == ['{"id":"0"}', '{"id":"6"}']
     assert all(row["updates"] == {"student": 1, "fake": 5, "ema": 0} for row in receipt["cycles"])
-    assert all(row["grid_replay_delta"]["checkpoint_wrap_count"] == 300 for row in receipt["cycles"])
+    assert all(row["exact_adaln_replay_delta"]["checkpoint_wrap_count"] == 300 for row in receipt["cycles"])
     assert len([p for p in fixture.probes if p.startswith("validate/")]) == 18
     if calibration:
         stages = receipt["stage_calibration"]["rows"]

@@ -19,7 +19,7 @@ STREAMS = [
     ("W2", "helios_nogan/training.safe-stream.json", "SAFE_STREAM.md", 100),
     ("W3", "helios_gan/training.stream.json", "NATIVE_STREAM.md", None),
     ("W4", "self_forcing/training.c51-stream.json", "C51_CONTINUATION.md", 100),
-    ("W5", "h3_fullseq/training.original-reference.json", "h3-grid-original-training.md", 64),
+    ("W5", "h3_fullseq/training.original-reference.json", "h3-fullseq-original-training.md", 64),
     ("W6", "h3_ar/training.native-stream.json", "NATIVE_CONTINUATION.md", 100),
 ]
 
@@ -43,7 +43,7 @@ def test_native_output_docs_link_real_current_generator_media_paths():
     for family in ("wan_ar", "helios_nogan", "helios_gan"):
         assert "../../recipes/" + family + "/NATIVE_OUTPUT.md" in matrix
     native = (ROOT / "docs/guides/native_workloads.md").read_text()
-    for guide in ("training.md#livewan_native_output", "training.md#h3_grid_inference",
+    for guide in ("training.md#livewan_native_output", "training.md#h3_fullseq_inference",
                   "training.md#h3_ar_native_inference", "data.md#h3_audio_video_encode"):
         assert guide in matrix and guide in native, guide
     for workload, recipe, _, _ in STREAMS:
@@ -53,9 +53,9 @@ def test_native_output_docs_link_real_current_generator_media_paths():
         assert "W5/W6 native AV export/codec integration remains pending" not in text
         assert "W5/W6 native audio-video output remains implementation work" not in text
         assert "W3/W4/W6 full optimized native long\n  lifecycles are **not complete**" not in text
-    grid = (ROOT / "recipes/h3-grid-original-training.md").read_text()
+    grid = (ROOT / "recipes/h3-fullseq-original-training.md").read_text()
     assert "Generation/export are unsupported" not in grid
-    assert "training.md#h3_grid_inference" in grid
+    assert "training.md#h3_fullseq_inference" in grid
     assert "C51's physical drain/save/resume seam remains unsupported" not in (ROOT / "docs/guides/native_workloads.md").read_text()
 
 
@@ -63,7 +63,7 @@ def test_current_docs_preserve_frozen_benchmark_and_actual_gpu_boundaries():
     docs = [ROOT / "docs/guides" / name for name in ("model_families.md", "native_workloads.md")]
     for path in docs:
         text = path.read_text()
-        assert "two-cycle" in text and "Grid1000" in text and "100-cycle" in text
+        assert "two-cycle" in text and "continuous sigma" in text and "100-cycle" in text
         for link in re.findall(r"\]\(([^ )]+)", text):
             if not link.startswith(("https://", "http://", "#", "mailto:")):
                 assert (path.parent / link.split("#")[0]).exists(), (path.name, link)

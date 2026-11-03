@@ -1,6 +1,6 @@
 """Bounded adapter for W6's ORIGINAL DiffSynth previous/current AV DMD2.
 
-This is not W5 Grid1000, a full-sequence replacement, or the new Euler task.
+This is not W5 full-sequence, a full-sequence replacement, or the new Euler task.
 The first adapter freezes the measured workload and only enumerates two native
 implementations. A changed shape/update ratio needs a new contract and costs.
 """
@@ -12,8 +12,8 @@ from distillschedule.core.enums import GradientMode, OperationKind
 from distillschedule.core.graph import ExecutionGraph, Operation
 from distillschedule.workloads.best_known.registry import fingerprint
 
-SCHEMA = 'distillschedule.original_h3_ar_task.v2'
-INPUT_CONTRACT_SHA256 = 'c12a59eff4ac2907f06645a4132d5f0dea58458729546083041b98c53c173d82'
+SCHEMA = 'distillschedule.original_h3_ar_task.v3'
+INPUT_CONTRACT_SHA256 = '1218cfb1d1811f4bb20d5f6b021195ece18c8673c89c350030e56de76b2b2db4'
 SOURCE_RECEIPT = '9ca4ad8ca13b0a9e7397f6313e4eca225f10f52802e90423b06f7e786a58b989'
 SOURCE_PINS = {
     'examples/minimax_h3/model_training/h3_dmd2.py': '77744f5ec391be813d42ebaf6a2692c18ea58f5ca7fb41398fd287d2a177ca62',

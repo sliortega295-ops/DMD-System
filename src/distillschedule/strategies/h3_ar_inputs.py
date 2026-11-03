@@ -9,13 +9,13 @@ import json
 from pathlib import Path
 
 from distillschedule.core.contracts import require
-from distillschedule.workloads.best_known.registry import file_sha256, repository_root
+from distillschedule.workloads.best_known.registry import SHA256_RE, file_sha256, repository_root
 from .h3_ar_assets import checked
 from .h3_ar_task import INPUT_CONTRACT_SHA256, SOURCE_RECEIPT
 
-CONTRACT_PATH = 'configs/distillschedule/original_h3_ar/rank_inputs_v1.json'
-CONTRACT_SCHEMA = 'distillschedule.original_h3_ar_rank_inputs.v1'
-VALIDATION_SCHEMA = 'distillschedule.original_h3_ar_prepared_input.v1'
+CONTRACT_PATH = 'configs/distillschedule/original_h3_ar/rank_inputs_v2.json'
+CONTRACT_SCHEMA = 'distillschedule.original_h3_ar_rank_inputs.v2'
+VALIDATION_SCHEMA = 'distillschedule.original_h3_ar_prepared_input.v2'
 
 
 def input_contract():
@@ -47,15 +47,26 @@ def tensor_metadata(value, torch):
     return None
 
 
-def expected_validation(task, rank):
+def _input_identity(task, rank, identity):
+    """Relocation changes the directory, never the original sample bytes/name."""
+    expected = expected_input(task, rank)['input_identity']
+    require(isinstance(identity, dict) and isinstance(identity.get('path'), str)
+            and bool(identity['path']) and Path(identity['path']).name == expected['path']
+            and identity.get('sha256') == expected['sha256'],
+            'rank-qualified original cache filename/SHA mismatch', path='h3_ar.inputs')
+    return {k: identity[k] for k in ('path', 'sha256')}
+
+
+def expected_validation(task, rank, input_identity=None):
     row = expected_input(task, rank)
-    return dict(schema_version=VALIDATION_SCHEMA, input_contract_sha256=task.input_contract_sha256, **row)
+    identity = row['input_identity'] if input_identity is None else _input_identity(task, rank, input_identity)
+    return dict(schema_version=VALIDATION_SCHEMA, input_contract_sha256=task.input_contract_sha256,
+                **{**row, 'input_identity': identity})
 
 
 def validate_prepared_input(task, rank, input_identity, raw, positive, negative, torch):
     row = expected_input(task, rank)
-    require({k: input_identity.get(k) for k in ('path', 'sha256')} == row['input_identity'],
-            'rank-qualified original cache path/SHA mismatch', path='h3_ar.inputs')
+    _input_identity(task, rank, input_identity)
     require(tensor_metadata(raw, torch) == row['raw_tensors']
             and tensor_metadata(positive, torch) == row['positive_tensors']
             and tensor_metadata(negative, torch) == row['negative_tensors'],
@@ -63,11 +74,11 @@ def validate_prepared_input(task, rank, input_identity, raw, positive, negative,
     scalars = {k: v for k, v in positive.items() if not isinstance(v, (torch.Tensor, dict, list, tuple))}
     require(scalars == row['positive_scalars'] and all(type(v) is float for v in scalars.values()),
             'original prepared clean-reference scalar conditioning mismatch', path='h3_ar.inputs')
-    return expected_validation(task, rank)
+    return expected_validation(task, rank, input_identity)
 
 
 def validate_input_receipt(task, rank, input_identity, build):
-    expected = expected_validation(task, rank)
+    expected = expected_validation(task, rank, input_identity)
     require({k: input_identity.get(k) for k in ('path', 'sha256')} == expected['input_identity']
             and build.get('input_shapes') == expected['input_shapes']
             and build.get('input_validation') == expected,
@@ -85,14 +96,14 @@ def validate_parser(native):
 def prepare_rank_input(task, cache_manifest, native, rank, torch, *, teacher_cfg_scale=1.0):
     expected_input(task, rank)
     contract = input_contract()
-    require(cache_manifest == contract['cache_manifest'],
-            'original rank-input cache manifest identity mismatch', path='h3_ar.inputs')
+    # The caller's explicit path/SHA binds the relocated manifest itself; its
+    # rows must still describe every original sample. The archived manifest's
+    # hash remains provenance, not a requirement to reproduce author paths.
     cache = json.loads(checked(cache_manifest).read_text())
     require(cache.get('status') == 'PASS_CACHE_SOURCE_AND_SCHEMA' and len(cache.get('rows', [])) == 16,
             'native previous/current cache manifest rejected', path='h3_ar.inputs')
     for index, row in enumerate(cache['rows']):
-        require({k: row.get(k) for k in ('path', 'sha256')} == expected_input(task, index)['input_identity'],
-                'rank-qualified cache manifest row/path/SHA mismatch', path='h3_ar.inputs')
+        _input_identity(task, index, row)
     identity = cache['rows'][rank]
     validate_parser(native)
     raw = torch.load(checked({k: identity[k] for k in ('path', 'sha256')}), map_location='cpu', weights_only=True)
@@ -120,8 +131,15 @@ def preflight_native_inputs(task, cache_manifest, native, torch):
 
 def validate_preflight(task, proof):
     contract = input_contract()
+    require(isinstance(proof, dict) and isinstance(proof.get('rows'), list) and len(proof['rows']) == 16,
+            'all16 CPU input proof required', path='h3_ar.inputs')
+    cache_manifest = proof.get('cache_manifest', {})
+    require(isinstance(cache_manifest, dict) and set(cache_manifest) == {'path', 'sha256'}
+            and isinstance(cache_manifest['path'], str) and bool(cache_manifest['path'])
+            and isinstance(cache_manifest['sha256'], str) and SHA256_RE.fullmatch(cache_manifest['sha256']),
+            'explicit cache manifest path/SHA proof required', path='h3_ar.inputs')
     require(proof == dict(status='PASS_ALL16_ORIGINAL_PREPARE_BATCH_SAME_SESSION_VALIDATOR_CPU',
-                input_contract_sha256=task.input_contract_sha256, cache_manifest=contract['cache_manifest'],
-                parser_sources=contract['parser_sources'], rows=[expected_validation(task, r) for r in range(16)],
+                input_contract_sha256=task.input_contract_sha256, cache_manifest=cache_manifest,
+                parser_sources=contract['parser_sources'], rows=[expected_validation(task, r, proof['rows'][r].get('input_identity')) for r in range(16)],
                 GPU_started=0, CUDA_initialized=False),
             'CPU original16 parser/session input proof missing or changed', path='h3_ar.inputs')

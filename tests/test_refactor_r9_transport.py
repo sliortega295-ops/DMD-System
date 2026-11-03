@@ -75,7 +75,7 @@ def fixture(tmp_path, monkeypatch, *, impl=CUDA, mode='correctness', run_id='CPU
         helper_pins[str(path)] = registry.file_sha256(path)
     donor = dict(source_root='/old/source', packet_root='/old/packet', file_sha256=helper_pins,
         owned_worker_oom_fail_fast=True, verified_zombie_fd_rescan=True, cycles=2, profile=False,
-        numerical_status='GRID1000_REVIEW_POLICY_ONLY', expected_final_versions=dict(generator=2,critic=10,ema=0),
+        numerical_status='CONTINUOUS_NUMERICAL_COMPARISON', expected_final_versions=dict(generator=2,critic=10,ema=0),
         hosts=['fixture0','fixture1'], ordered_UUIDs_by_node=[[f'CPU-FIXTURE-{n}-{d}' for d in range(8)] for n in (0,1)],
         work_seconds=1200, lease_seconds=1500,
         expected_runtime={k:'CPU_FIXTURE_ONLY' for k in ('torch','cuda','diffusers','peft','transformers')})
@@ -589,6 +589,84 @@ def test_repository_owner_bytes_match_the_explicit_allowlisted_binding():
     source=path.read_text()
     assert source.index('state,live=refresh_finished_probe(') < source.index('donor.exclusive_all8(')
     assert "fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)" in source
+
+
+def _load_repository_owner():
+    import importlib.util
+    path = registry.repository_root() / 'scripts/distillschedule/own_h3_native_plan.py'
+    spec = importlib.util.spec_from_file_location('cpu_test_h3_owner', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize('change', ['none', 'missing', 'ambiguous', 'digest', 'bytes', 'relative'])
+def test_owner_resolves_only_sealed_helper_paths(tmp_path, monkeypatch, change):
+    owner = _load_repository_owner()
+    monkeypatch.delenv('DMD_REMOTE_PROJECT_ROOT', raising=False)
+    helper = tmp_path / 'operator root' / 'helper.py'
+    helper.parent.mkdir()
+    helper.write_text('SYNTHETIC_TEST_ONLY_NOT_A_SAFETY_IMPLEMENTATION')
+    digest = registry.file_sha256(helper)
+    cfg = {'file_sha256': {str(helper): digest}}
+    if change == 'missing':
+        cfg['file_sha256'].clear()
+    elif change == 'ambiguous':
+        second = tmp_path / 'another' / helper.name
+        second.parent.mkdir()
+        second.write_bytes(helper.read_bytes())
+        cfg['file_sha256'][str(second)] = digest
+    elif change == 'digest':
+        cfg['file_sha256'][str(helper)] = '0' * 64
+    elif change == 'bytes':
+        helper.write_text('CHANGED_AFTER_SEAL')
+    elif change == 'relative':
+        monkeypatch.chdir(tmp_path)
+        cfg['file_sha256'] = {str(helper.relative_to(tmp_path)): digest}
+    if change == 'none':
+        assert owner.pinned_helper(cfg, helper.name, digest) == helper
+    else:
+        with pytest.raises(RuntimeError, match='SEALED_HELPER'):
+            owner.pinned_helper(cfg, helper.name, digest)
+
+
+def test_real_owner_main_consumes_sealed_paths_before_any_runtime_load(tmp_path, monkeypatch):
+    """Execute the real CPU owner preamble; never import a GPU safety helper."""
+    owner = _load_repository_owner()
+    monkeypatch.setenv('DMD_REMOTE_PROJECT_ROOT', '/unused-author-root')
+    pins = {}
+    paths = []
+    for name in ('bounded_owner_verified_ssh_ancestor_r9.py',
+                 'native_qkv_prefix_owner_r2.py', 'root_owner_draft_r1.py'):
+        path = tmp_path / 'operator root' / name
+        path.parent.mkdir(exist_ok=True)
+        path.write_text('SYNTHETIC_TEST_ONLY_' + name)
+        paths.append(path)
+        pins[str(path)] = registry.file_sha256(path)
+    monkeypatch.setattr(owner, 'R9_SHA', pins[str(paths[0])])
+    monkeypatch.setattr(owner, 'GUARD_SHA', pins[str(paths[1])])
+    cfg = {'file_sha256': pins, 'lifecycle_donor_sha256': pins[str(paths[2])],
+           'owner_sha256': registry.file_sha256(Path(owner.__file__))}
+    manifest = tmp_path / 'sealed.json'
+    manifest.write_text(json.dumps(cfg))
+    monkeypatch.setattr(sys, 'argv', [owner.__file__, '--manifest', str(manifest),
+        '--manifest-sha256', registry.file_sha256(manifest), '--node', '0'])
+    calls = []
+    class StopBeforeSafetyImport(Exception):
+        pass
+    def stop(path, digest, name):
+        calls.append((path, digest, name))
+        raise StopBeforeSafetyImport
+    monkeypatch.setattr(owner, 'load', stop)
+    with pytest.raises(StopBeforeSafetyImport):
+        owner.main()
+    assert calls == [(paths[0], pins[str(paths[0])], 'ar_r9')]
+    # All three locations are checked before even the first module is loaded.
+    paths[1].write_text('CHANGED_AFTER_SEAL')
+    calls.clear()
+    with pytest.raises(RuntimeError, match='SEALED_HELPER'):
+        owner.main()
+    assert calls == []
 
 
 @pytest.mark.parametrize('cache_policy', ['cpu_staged_trim', 'cuda_no_trim'])

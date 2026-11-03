@@ -17,7 +17,7 @@ def validate_comparison(value):
     if value.get("schema_version") == SCHEMA:
         validate_admission(value)
         return
-    require(value.get("schema_version") == "distillschedule.h3_native_two_cycle_comparison.v1"
+    require(value.get("schema_version") == "distillschedule.h3_native_two_cycle_comparison.v2"
             and value.get("status") == "REVIEW_SAMPLED_PARITY_ONLY", "H3 sampled numerical gate failed/incomplete")
     require(all(value.get(k) == "PASS" for k in ("sampled_state_status", "loss_status", "sample_status", "rng_status")),
             "H3 sampled state/loss/sample/RNG gate failed")

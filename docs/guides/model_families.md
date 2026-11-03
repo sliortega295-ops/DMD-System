@@ -35,7 +35,7 @@ Choose the model and algorithm together, then an execution policy:
 
 Official Self-Forcing and W4 LiveWan have separate recipes. W4 uses a
 14B Teacher and 1.3B Student with its own cross-scale sampling/update rules.
-W5 is full-sequence H3 with an approximate Grid1000 schedule;
+W5 is full-sequence H3 with an continuous sigma sampling;
 W6 is autoregressive previous/current H3 with continuous sigma.
 
 ## Prepare model assets
@@ -182,7 +182,7 @@ CPU thread.
 | `train,test,test-helios-model` | Original Helios model classes, G/C/EMA owners and fresh-process recovery |
 | `test-helios-native-history` with the Helios model environment | Original native 40-block/FSDP topology in an independent test process |
 | `train,test,test-h3` | Original H3 loop, data progress, complete-cycle state and Gloo recovery |
-| `train,test,test-h3-output` plus pinned Diffusers source | Original Grid sampler, current-Student export and distributed state gathering |
+| `train,test,test-h3-output` plus pinned Diffusers source | Original full-sequence sampler, current-Student export and distributed state gathering |
 | `test-h3-consolidation` | Installed DeepSpeed Student-state serialization method |
 
 The workflows under `.github/workflows/` pin each source/dependency closure and
@@ -191,7 +191,7 @@ processes so their dependency and module namespaces remain independent.
 The common `.34` helper lane uses `scripts/run_framework_cpu_tests.py` to select
 its compatible inventory. Provider-specific tests are assigned to dedicated
 jobs. Operator-supplied H3 codec assets can also be checked explicitly through
-`tests/test_h3_grid_codec_target_cpu.py`.
+`tests/test_h3_fullseq_codec_target_cpu.py`.
 
 `python scripts/check_framework_install.py` builds a wheel and tests it in a
 new isolated environment, reusing the invoking numerical dependency roots in
@@ -252,7 +252,7 @@ lists physical strategies without implying every model supports each one.
 | W2 Helios No-GAN | G1/C5/EMA5; FSDP2 reference and node-HSDP SafeBundle | [Safe stream](../../recipes/helios_nogan/SAFE_STREAM.md), G/C/EMA recovery and [current-G video](../../recipes/helios_nogan/NATIVE_OUTPUT.md) |
 | W3 Helios GAN | G1/C5/EMA1; full world16 FSDP2, chunk2048/window5, attention reuse and down40 | [Full native stream](../../recipes/helios_gan/NATIVE_STREAM.md), GAN-head/role state recovery and [current-G video](../../recipes/helios_gan/NATIVE_OUTPUT.md) |
 | W4 LiveWan / cross-scale Self-Forcing | 14B Teacher → 1.3B Student; C51 8G+8Score dual-wave pipeline | [C51 continuation](../../recipes/self_forcing/C51_CONTINUATION.md), drained two-pool recovery and [current-Student output](training.md#livewan_native_output) |
-| W5 full-sequence H3 | Full-sequence AV DMD; Grid1000 approximate schedule; original reference and selected FSDP2/cache execution | [Original-reference training](../../recipes/h3-grid-original-training.md), cycle recovery and [four-step AV export](training.md#h3_grid_inference) |
+| W5 full-sequence H3 | Full-sequence AV DMD; continuous sigma sampling; original reference and selected FSDP2/cache execution | [Original-reference training](../../recipes/h3-fullseq-original-training.md), cycle recovery and [four-step AV export](training.md#h3_fullseq_inference) |
 | W6 autoregressive H3 | DiffSynth previous/current AV DMD2; eight rollout steps, G1/F1; native ZeRO-3/AP | [Native continuation](../../recipes/h3_ar/NATIVE_CONTINUATION.md), engine/LoRA/Adam recovery and [current-Student AV export](training.md#h3_ar_native_inference) |
 
 [Native workload commands](native_workloads.md) link the complete configuration

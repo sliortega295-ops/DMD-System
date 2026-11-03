@@ -22,7 +22,8 @@ from lightx2v_train.runtime.distributed import (
 from lightx2v_train.runtime.parallel import set_parallel_gradient_sync
 from lightx2v_train.runtime.sequence_parallel import sync_sequence_parallel_gradients
 
-from .matched_contract import FAKE_ROLE, STUDENT_ROLE, sample_identity, validate_global_snapshots
+from .matched_contract import (FAKE_ROLE, STUDENT_ROLE, sample_identity,
+                               validate_global_snapshots, EXACT_ADALN_REPLAY_COUNTS)
 from .model import FAKE_ADAPTER, STUDENT_ADAPTER
 from .fused_block_pointwise import validate_cycle as validate_fused_pointwise_cycle
 from .fused_qk_rmsnorm_rotary import validate_cycle as validate_fused_qk_cycle
@@ -41,7 +42,7 @@ class H3A100LoopMixin:
     """Optimized one-Student/five-Fake DMD scheduling."""
 
     def train(self):
-        lifecycle = getattr(self, "grid_training_lifecycle", None)
+        lifecycle = getattr(self, "fullseq_training_lifecycle", None)
         if lifecycle is None:
             resume_ckpt_path, current_iter = self._resolve_resume_a100()
         else:
@@ -85,6 +86,8 @@ class H3A100LoopMixin:
             self._begin_fa3_nograd_split_cycle()
             self._begin_fa3_replay_cache_cycle()
             self._begin_lora_scale1_cycle()
+            exact = getattr(self, "exact_adaln_replay_registration", None)
+            exact_start = dict(exact.stats) if exact is not None else None
             runtime_state_start = self.shared_model.runtime_state_stats()
             action_program = None
             if planner_observer is not None:
@@ -112,6 +115,11 @@ class H3A100LoopMixin:
             self._validate_fa3_nograd_split_cycle(current_iter)
             self._validate_fa3_replay_cache_cycle(current_iter)
             self._validate_lora_scale1_cycle(current_iter)
+            if exact is not None:
+                delta = {key: int(exact.stats[key]) - exact_start[key]
+                         for key in EXACT_ADALN_REPLAY_COUNTS}
+                if delta != EXACT_ADALN_REPLAY_COUNTS:
+                    raise RuntimeError(f"continuous H3 exact AdaLN replay mismatch: {delta}")
             runtime_state_end = self.shared_model.runtime_state_stats()
             logger.info(
                 "[h3-a100][runtime-state] iter={} rank={} delta={} final_role={} "
@@ -559,7 +567,9 @@ class H3A100LoopMixin:
         world_size = get_world_size()
         snapshots = [None for _ in range(world_size)]
         if dist.is_available() and dist.is_initialized():
-            dist.all_gather_object(snapshots, snapshot)
+            lifecycle = getattr(self, "fullseq_training_lifecycle", None)
+            metadata_group = getattr(lifecycle, "metadata_group", None)
+            dist.all_gather_object(snapshots, snapshot, group=metadata_group)
         else:
             snapshots = [snapshot]
         global_errors = validate_global_snapshots(

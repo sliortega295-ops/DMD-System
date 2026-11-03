@@ -37,4 +37,4 @@ and `h3_ar_planning.py`. See [direct presets](../../docs/guides/native_workloads
 [current-Student output](../../docs/guides/training.md#h3_ar_native_inference) and
 [current performance and validation](../../docs/guides/performance_validation.md).
 Earlier A100/H100 trials retain their original source and measurement scope;
-W6 does not use W5's Grid1000 sampler.
+W6 does not use W5's continuous H3 sampler.

@@ -3,10 +3,10 @@
   "source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
   "scope": "SIX_PROTOCOLS_NOT_SIX_NEW_STRICT_GPU_RELEASES",
   "evidence_files": {
-    "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json": "6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842",
-    "artifacts/results/a100.csv": "2f8d27857124bb3609fdda63a9ad6058d0d6520a63fd933038554224c017b6e2",
-    "artifacts/results/h100.csv": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881",
-    "artifacts/results/gan_nomerge_retime.json": "20abb59127571c626460072452aef109063bc4bc8af1fe81e7405e2a0efe6039"
+    "artifacts/results/a100.csv": "e224bbfadb05e057933cbb0b9d3d04cb93b27859f5fac147c5f4b8502b04d010",
+    "artifacts/results/h100.csv": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64",
+    "artifacts/results/gan_nomerge_retime.json": "20abb59127571c626460072452aef109063bc4bc8af1fe81e7405e2a0efe6039",
+    "artifacts/results/planner.json": "af24f63fb56af0e6227225db7d666ff34ee35a6e978d56a6edcbe9161529e274"
   },
   "workloads": [
     {
@@ -33,7 +33,7 @@
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/wan_ar/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "path": "artifacts/results/planner.json",
         "source": "ea29129342741b54e59c4773e07454f541fadcc7",
         "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
       },
@@ -80,7 +80,7 @@
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/helios_nogan/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "path": "artifacts/results/planner.json",
         "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
         "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
       },
@@ -118,7 +118,7 @@
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/helios_gan/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "path": "artifacts/results/planner.json",
         "source": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
         "status": "REUSED_MATCHED_DIAGNOSTIC_TARGET_MET"
       },
@@ -156,7 +156,7 @@
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/self_forcing/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "path": "artifacts/results/planner.json",
         "source": "5cdffc2efab969ad35a8f69dd7b94ad061cc8c86",
         "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
       },
@@ -174,9 +174,9 @@
     {
       "id": "W5",
       "slug": "h3_fullseq",
-      "name": "Audio-Video DMD (Full-Sequence / H3 Grid1000)",
-      "protocol": "Full-sequence AV; approximate Grid1000 sigma; 4-step; G1/F5; LoRA128",
-      "legacy_profile": "minimax_h3_grid1000_best",
+      "name": "Audio-Video DMD (Full-Sequence / H3 Continuous)",
+      "protocol": "Full-sequence AV; continuous sigma; 4-step; G1/F5; LoRA128",
+      "legacy_profile": "minimax_h3_continuous_best",
       "task": null,
       "runbook": "docs/runbooks/native_planner_workflow.md",
       "code": [
@@ -187,15 +187,15 @@
         "workloads",
         "candidates",
         "--workload",
-        "minimax_h3_grid1000_best"
+        "minimax_h3_continuous_best"
       ],
-      "note": "Historical A100/H100 timings exist. The latest manual/saved-plan pair is blocked by a sampled backward numerical FAIL. Do not bypass the gate.",
+      "note": "Registered exact frozen AdaLN bank, shared backbone and staged attention replay.",
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/h3_fullseq/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
-        "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
-        "status": "DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN"
+        "path": "artifacts/results/planner.json",
+        "source": "44e8ad04a716c7c1b50326f2030bf9427ca12aea",
+        "status": "NOT_RUN"
       },
       "h100": {
         "repository": "sliortega295-ops/H3-DMD-for-A100",
@@ -203,8 +203,8 @@
         "published_source": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
         "evidence": "artifacts/results/h100.csv",
-        "baseline_definition": "Same-source Grid1000 FSDP control vs GPU attention cache",
-        "numerical_status": "NOT_RUN_FULL_STATE"
+        "baseline_definition": "Continuous full-sequence AV DMD",
+        "numerical_status": "NOT_RUN"
       },
       "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
     },
@@ -232,7 +232,7 @@
       "integrated_planner_source": "ea29129342741b54e59c4773e07454f541fadcc7",
       "recipe": "recipes/h3_ar/README.md",
       "a100_saved_plan_evidence": {
-        "path": "artifacts/publications/20261019/evidence/planner/six_workload_native_match.json",
+        "path": "artifacts/results/planner.json",
         "source": "e88d21c168ce54be99134cecd195c961319cb45a",
         "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
       },

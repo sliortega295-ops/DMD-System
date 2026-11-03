@@ -24,18 +24,18 @@ from distillschedule.evidence.trajectory_state_sketch import (
     canonical_state_name,
     deterministic_flat_indices,
 )
+from .matched_contract import EXACT_ADALN_REPLAY_COUNTS
 
 
 TIMING_SCOPE = "GPU_COMPLETION_ELAPSED_STUDENT1_FAKE5_EXCLUDING_SETUP_AND_BETWEEN_CYCLE_PROBES"
 _STAGES = ("h3/student_step", "h3/critic_prepare_5xG", *("h3/critic_update_F",) * 5)
-_GRID_COUNTS = dict(checkpoint_wrap_count=300, scoped_execution_count=600,
-                    cache_hit_count=600, cache_miss_count=0, missing_key_count=0)
+_EXACT_COUNTS = EXACT_ADALN_REPLAY_COUNTS
 _SOURCE_ENVIRONMENT_KEYS = (
     "H3_PLANNER_TWO_CYCLE", "H3_PLANNER_CALIBRATION", "H3_BENCHMARK_SEED", "H3_ATTN_BACKEND",
     "H3_MAX_ITERS", "H3_SAVE_EVERY", "H3_ACTIVATION_POLICY", "H3_ACTIVATION_CHECKPOINT_SEGMENT",
     "H3_ACTIVATION_OFFLOAD", "H3_FA3_NOGRAD_NUM_SPLITS", "H3_FA3_GRAD_NUM_SPLITS",
     "H3_FA3_REPLAY_CACHE_BLOCKS", "H3_FA3_REPLAY_CACHE_STORAGE", "H3_FA3_REPLAY_CACHE_MAX_D2H_INFLIGHT",
-    "H3_FA3_REPLAY_CACHE_TRIM_BEFORE_BACKWARD", "H3_ADALN_GRID_MANIFEST", "H3_FLASH_ATTN3_LOCAL_PATH",
+    "H3_FA3_REPLAY_CACHE_TRIM_BEFORE_BACKWARD", "H3_ADALN_EXACT_MANIFEST", "H3_FLASH_ATTN3_LOCAL_PATH",
     "DISTILLSCHEDULE_PYTHON", "LIGHTX2V_ROOT", "EXPECTED_INTEGRATION_HEAD",
 )
 
@@ -182,7 +182,7 @@ class H3PlannerCycleObserver:
         frozen = dict(max_train_iters=2, save_every_iters=0, auto_resume=False,
                       activation_policy="none", activation_checkpoint_segment_size=1,
                       gradient_checkpointing=True, activation_offload_enabled=False,
-                      adaln_grid_enabled=True, adaln_grid_size=1000,
+                      sigma_semantics="continuous",
                       fa3_replay_cache_storage=expected_storage, fa3_replay_cache_max_d2h_inflight=expected_depth,
                       fa3_replay_cache_trim_before_backward=expected_trim,
                       fa3_nograd_num_splits=2, fa3_grad_num_splits=2,
@@ -214,8 +214,10 @@ class H3PlannerCycleObserver:
                 or registration.max_d2h_inflight != self.frozen_contract["fa3_replay_cache_max_d2h_inflight"]
                 or registration.trim_before_backward != self.frozen_contract["fa3_replay_cache_trim_before_backward"]):
             raise ValueError("H3 two-cycle native FA3 cache registration changed")
-        if getattr(trainer, "grid_replay_registration", None) is None:
-            raise ValueError("H3 two-cycle requires the native Grid-1000 replay registration")
+        if getattr(trainer, "exact_adaln_replay_registration", None) is None:
+            raise ValueError("H3 two-cycle requires the native exact AdaLN replay registration")
+        if getattr(trainer, "registered_adaln_parameter_numel", 0) <= 12_000_000_000:
+            raise ValueError("continuous H3 must retain the original frozen AdaLN bank")
         self.device = trainer.shared_model.device
         self.events = [(self.torch.cuda.Event(enable_timing=True, blocking=False),
                         self.torch.cuda.Event(enable_timing=True, blocking=False)) for _ in range(2)]
@@ -254,7 +256,7 @@ class H3PlannerCycleObserver:
         if self.active is not None or current_iter != len(self.cycles) or current_iter not in (0, 1):
             raise RuntimeError("H3 observer cycle sequence changed")
         self.pending = dict(cycle=current_iter + 1, updates_start=dict(self.updates),
-                            grid_start=dict(trainer.grid_replay_registration.stats),
+                            exact_start=dict(trainer.exact_adaln_replay_registration.stats),
                             memory_before=self.memory_probe(self.torch, self.device))
         if self.host_fenced_clock:
             self.pending["rng_before"] = self._rng_fingerprints()
@@ -317,10 +319,10 @@ class H3PlannerCycleObserver:
         delta = {key: self.updates[key] - row["updates_start"][key] for key in self.updates}
         if delta != dict(student=1, fake=5, ema=0):
             raise RuntimeError(f"H3 actual optimizer update count mismatch: {delta}")
-        grid = dict(trainer.grid_replay_registration.stats)
-        grid_delta = {key: int(grid[key]) - int(row["grid_start"].get(key, 0)) for key in _GRID_COUNTS}
-        if grid_delta != _GRID_COUNTS:
-            raise RuntimeError(f"H3 cycle Grid-1000 replay mismatch: {grid_delta}")
+        exact = dict(trainer.exact_adaln_replay_registration.stats)
+        exact_delta = {key: int(exact[key]) - int(row["exact_start"].get(key, 0)) for key in _EXACT_COUNTS}
+        if exact_delta != _EXACT_COUNTS:
+            raise RuntimeError(f"H3 cycle exact AdaLN replay mismatch: {exact_delta}")
         losses = {"student": [float(value.item()) for value in dmd_metrics],
                   "fake": [float(value.item()) for value in fake_metrics]}
         if len(losses["student"]) != 1 or len(losses["fake"]) != 5:
@@ -328,7 +330,7 @@ class H3PlannerCycleObserver:
         if not all(math.isfinite(value) for values in losses.values() for value in values):
             raise RuntimeError("non-finite H3 native cycle loss")
         row.update(status="PASS_NATIVE_RUNTIME_CONTRACTS", updates=delta, cumulative_updates=dict(self.updates),
-                   census=trainer.matched_cycle_census.snapshot(), grid_replay=grid, grid_replay_delta=grid_delta,
+                   census=trainer.matched_cycle_census.snapshot(), exact_adaln_replay=exact, exact_adaln_replay_delta=exact_delta,
                    losses=losses, finite_losses=True, memory_after=self.memory_probe(self.torch, self.device))
         if self.implementation is not None and self.implementation.cache_policy != "legacy_cpu_staged":
             from distillschedule.search.h3_implementation import validate_cache_registration
@@ -341,7 +343,7 @@ class H3PlannerCycleObserver:
             row["action_execution"] = self.action_trace.finish_cycle(
                 self.action_program.receipt(), self.updates, row["census"])
         row.pop("updates_start")
-        row.pop("grid_start")
+        row.pop("exact_start")
         self.cycles.append(row)
 
     def finish_after_sync(self, trainer) -> dict:
@@ -370,9 +372,9 @@ class H3PlannerCycleObserver:
                 initial_sha256=hashlib.sha256(json.dumps(self.cycles[0]["rng_before"], sort_keys=True).encode()).hexdigest(),
                 final_sha256=hashlib.sha256(json.dumps(self.cycles[-1]["rng_after"], sort_keys=True).encode()).hexdigest(),
                 scope="NATIVE_RNG_STATE_BEFORE_AND_AFTER_TWO_CYCLES")}
-        return {"schema_version": "distillschedule.h3_native_two_cycle.v1", **self.implementation_binding, **rng_binding,
+        return {"schema_version": "distillschedule.h3_native_two_cycle.v2", **self.implementation_binding, **rng_binding,
                 "status": "PASS_NATIVE_RUNTIME_CONTRACTS", "rank": self.rank,
-                "integration_head": self.source_head, "semantics": "approximate_grid1000",
+                "integration_head": self.source_head, "semantics": "continuous",
                 "cycles": self.cycles, "updates": dict(self.updates),
                 "update_count_scope": "SUCCESSFULLY_RETURNED_NATIVE_OPTIMIZER_STEP_CALLS",
                 "final_versions": {"generator": self.updates["student"], "critic": self.updates["fake"], "ema": 0},

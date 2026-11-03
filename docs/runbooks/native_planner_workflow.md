@@ -12,7 +12,7 @@ storage. Assembly runs beside actual returned files, not invented local copies.
 | Wan |35 action implementations; placement/chunk/pointwise/retention |
 | Helios No-GAN |20 FSDP/HSDP/chunk/window actions |
 | Helios GAN |4 world16 FSDP/chunk/persistence actions; five-rollout group |
-| H3 Grid1000 |6 macros per request; CPU/CUDA cache/depth/tile, joined seven-stage costs |
+| H3 continuous H3 |6 macros per request; CPU/CUDA cache/depth/tile, joined seven-stage costs |
 | LiveWan |5 coupled FSDP/pipeline-commit implementations, not independent G/Score overlap |
 
 These counts are source capability, not current-HEAD GPU qualification. Native
@@ -21,41 +21,41 @@ adapter use [AR admission/calibration/run](../guides/native_workloads.md#origina
 
 ## H3 calibration, assembly, search and confirmation
 
-Supply exact request-matching prompt cache, Grid1000 mmap, converted Diffusers,
+Supply exact request-matching prompt cache, converted Diffusers,
 FA3, LightX2V and assets; `HEAD`, `OUT`, `ASSETS` below are operator-supplied.
 The examples include the existing Wan stage/manual commands and explicit H3
 noise-diagnostic policy, each retaining its own scope:
 
 ```bash
 python scripts/distillctl.py workloads candidates \
-  --workload minimax_h3_grid1000_best \
-  --request configs/distillschedule/requests/minimax_h3_480x832_grid1000.json
+  --workload minimax_h3_continuous_best \
+  --request configs/distillschedule/requests/minimax_h3_480x832_continuous.json
 
 # Optional Nsight diagnostic import, not a cost model and never GPU MFU:
 python scripts/distillctl.py workloads profile --input "$PROFILE_INPUT" --output "$PROFILE_OUTPUT"
 
 # Omit --execute-native first to inspect the immutable intent without launching.
 python scripts/distillctl.py workloads calibrate \
-  --workload minimax_h3_grid1000_best --expected-head "$HEAD" \
+  --workload minimax_h3_continuous_best --expected-head "$HEAD" \
   --run-id h3-v3-cal --output "$OUT/collection" --assets-config "$ASSETS" \
-  --candidate joint-h3v3-h480-w832-f124-cpu_staged_trim-d2-n128 \
-              joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128 \
+  --candidate joint-h3c3-h480-w832-f124-cpu_staged_trim-d2-n128 \
+              joint-h3c3-h480-w832-f124-cuda_no_trim-d2-n128 \
   --execute-native
 
 python scripts/distillctl.py workloads assemble-calibration \
-  --workload minimax_h3_grid1000_best --expected-head "$HEAD" \
+  --workload minimax_h3_continuous_best --expected-head "$HEAD" \
   --result "$OUT/collection/calibration-0/result.json" "$OUT/collection/calibration-1/result.json" \
   --output "$OUT/library"
 
 python scripts/distillctl.py workloads search --strategy model-based \
-  --workload minimax_h3_grid1000_best --problem "$OUT/library/problem.json" \
+  --workload minimax_h3_continuous_best --problem "$OUT/library/problem.json" \
   --cost-model "$OUT/library/cost-model.json" --search-algorithm hierarchical \
   --run-id h3-v3-selected --assets-config "$ASSETS" \
   --emit-native-plan "$OUT/selected-plan.json" --output "$OUT/search.json"
 
-python scripts/distillctl.py workloads run --workload minimax_h3_grid1000_best \
+python scripts/distillctl.py workloads run --workload minimax_h3_continuous_best \
   --search-plan "$OUT/selected-plan.json" --dry-run
-python scripts/distillctl.py workloads run --workload minimax_h3_grid1000_best \
+python scripts/distillctl.py workloads run --workload minimax_h3_continuous_best \
   --search-plan "$OUT/selected-plan.json" --run-id h3-v3-confirm \
   --coordinator-output "$OUT/confirmation"
 ```
@@ -87,8 +87,8 @@ python scripts/distillctl.py workloads native benchmark-manual \
 {
   "schema_version": "distillschedule.h3_noise_diagnostic_policy.v1",
   "source_head": "<exact current 40-character commit>",
-  "reference_candidate_id": "joint-h3v3-h480-w832-f124-cpu_staged_trim-d2-n128",
-  "candidate_id": "joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128",
+  "reference_candidate_id": "joint-h3c3-h480-w832-f124-cpu_staged_trim-d2-n128",
+  "candidate_id": "joint-h3c3-h480-w832-f124-cuda_no_trim-d2-n128",
   "max_cross_self_delta_l2_ratio": 2.0,
   "purpose": "PLANNER_DIAGNOSTIC_ONLY",
   "formal_timing_eligible": false,
@@ -107,7 +107,7 @@ Do not reuse a source-only output directory for execution.
 
 Require both node launch/preflight manifests; exact source/request/semantics/
 assets/runtime/hardware;16unique ranks/two cycles/G2F10EMA0; finite original
-Grid1000/census/sample/RNG/state checks. Actual FA3 cache/trim/depth must match;
+exact-AdaLN/census/sample/RNG/state checks. Actual FA3 cache/trim/depth must match;
 CUDA-cache CPU-transfer/trim counters must be zero. Resource evidence includes
 setup/lifetime peaks, no CUDA/cgroup OOM and owned cleanup. Reopen raw hashes,
 not environment echoes/exit codes. Predictions and measured errors are recorded separately.
@@ -167,7 +167,7 @@ to preempt another reservation.
 <a id="H3_R9_CALIBRATED_SEARCH"></a>
 ## Opt-in H3 R9 calibrated search transport
 
-R9 is an opt-in transport/evidence adapter for480×832×124 Grid1000,
+R9 is an opt-in transport/evidence adapter for480×832×124 continuous H3,
 CPU-staged/trim versus CUDA/no-trim, depth2/LoRA128. Canonical profiles,
 FA3 splits/numeric thresholds/training are unchanged. Existing
 `calibrate --execute-native --r9-transport DEPLOYMENT.json` performs matched

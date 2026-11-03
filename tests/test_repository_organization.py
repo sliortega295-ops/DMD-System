@@ -19,7 +19,7 @@ def test_all_six_protocols_are_distinct_from_five_legacy_profiles():
     from distillschedule.workloads.best_known.registry import CANONICAL_IDS
     assert tuple(row['id'] for row in load_catalog()['workloads']) == IDS
     assert len(CANONICAL_IDS) == 5
-    assert 'Grid1000' in describe('W5')['protocol']
+    assert 'continuous sigma' in describe('W5')['protocol']
     assert '8-step' in describe('W6')['protocol']
     assert describe('W6')['legacy_profile'] is None
 
@@ -41,7 +41,8 @@ def test_newer_measured_and_published_hardware_sources_remain_separate():
 
 def test_w5_failure_and_no_new_hardware_result_are_preserved():
     row = describe('W5')
-    assert 'FAIL_PAIR_NOT_RUN' in row['a100_saved_plan_evidence']['status']
+    assert row['a100_saved_plan_evidence']['status'] == 'NOT_RUN'
+    assert row['name'].endswith('H3 Continuous)')
     assert 'NOT_A_NEW_GPU_VALIDATION' in row['h100']['integration']
 
 
@@ -112,6 +113,88 @@ def test_overlay_cannot_change_origin_hash(tmp_path):
     (directory/'source_layout.lock.json').write_text(json.dumps(lock))
     with pytest.raises(ValueError,match='origin receipt changed'):
         reviewed_imports(tmp_path)
+
+
+def test_retired_imports_preserve_hashes_and_cannot_hide_active_files(tmp_path):
+    directory = tmp_path / 'docs/workloads'; directory.mkdir(parents=True)
+    for name in ('source_import_map.json', 'source_layout.lock.json'):
+        (directory / name).write_bytes((ROOT / 'docs/workloads' / name).read_bytes())
+    lock_path = directory / 'source_layout.lock.json'
+    lock = json.loads(lock_path.read_text())
+    assert lock['retired_imports']
+    target = next(iter(lock['retired_imports']))
+    active = tmp_path / target; active.parent.mkdir(parents=True); active.write_text('not retired')
+    with pytest.raises(ValueError, match='still active'):
+        reviewed_imports(tmp_path)
+    active.unlink()
+    lock['retired_imports'][target] = '0' * 64
+    lock_path.write_text(json.dumps(lock))
+    with pytest.raises(ValueError, match='hash changed'):
+        reviewed_imports(tmp_path)
+
+
+def test_public_guides_recipes_and_defaults_do_not_embed_author_paths():
+    files = [ROOT / 'README.md']
+    for folder in ('docs', 'recipes', 'configs'):
+        files.extend(p for p in (ROOT / folder).rglob('*') if p.suffix in {'.md', '.json', '.yaml', '.yml'})
+    prefixes = ('/home/lyy/', '/home/shuchenweng/', '/share/project/shuchenweng/', '/mnt/bn/yufan')
+    matches = []
+    for path in files:
+        text = path.read_text()
+        matches.extend((str(path.relative_to(ROOT)), prefix) for prefix in prefixes if prefix in text)
+    assert not matches
+
+
+@pytest.mark.parametrize('coordinator', ['wan13b_fair', 'static_fsdp2_p0', 'livewan_crossscale'])
+@pytest.mark.parametrize('environment', [None, 'envs/model runtime', '/operator/model runtime'])
+def test_native_coordinator_and_collector_share_configurable_python(tmp_path, monkeypatch,
+                                                                  coordinator, environment):
+    import runpy
+    import shlex
+
+    path = ROOT / 'scripts/distillschedule' / ('run_' + coordinator + '_world16.py')
+    module = runpy.run_path(str(path))
+    source = tmp_path / 'source tree'
+    argv = ['--run-id', 'CPU_PATH_TEST_ONLY', '--expected-head', '1' * 40,
+            '--remote-root', str(source)]
+    if coordinator == 'livewan_crossscale':
+        argv += ['--hosts', 'cpu-node0,cpu-node1', '--run-kind', 'validate',
+                 '--execution-mode', 'baseline']
+        for name in ('remote-output-root', 'student-checkpoint', 'critic-checkpoint',
+                     'teacher-checkpoint', 'trace', 'bootstrap', 'source-root',
+                     'source-receipt', 'python-overlay'):
+            argv += ['--' + name, str(tmp_path / name)]
+        command_name, summary_name = 'command', 'summarize'
+    else:
+        argv += ['--mode', 'validate', '--helios-runtime-root', str(tmp_path / 'runtime')]
+        if coordinator == 'wan13b_fair':
+            argv += ['--placement', 'world16-fsdp', '--model-root', str(tmp_path / 'model'),
+                     '--bootstrap', str(tmp_path / 'bootstrap'), '--bootstrap-hash', 'a' * 64]
+        else:
+            argv += ['--variant', 'no-gan', '--mesh-policy', 'world16-fsdp',
+                     '--rollout-batch-size', '1', '--local-evidence-root', str(tmp_path / 'evidence')]
+        command_name, summary_name = '_command', '_summarize'
+    if environment is not None:
+        argv += ['--pyenv', environment]
+    args = module['parser']().parse_args(argv)
+    expected = Path(environment or '.venv')
+    if not expected.is_absolute():
+        expected = source / expected
+    remote = shlex.split(module[command_name](args, 0, '127.0.0.1')[-1])[0]
+    assert 'DISTILLSCHEDULE_PYENV=' + shlex.quote(str(expected)) in remote
+    captured = []
+    class StopBeforeSSH(Exception):
+        pass
+    def capture(command, **kwargs):
+        captured.append(command)
+        raise StopBeforeSSH
+    monkeypatch.setattr(subprocess, 'run', capture)
+    with pytest.raises(StopBeforeSSH):
+        module[summary_name](args, tmp_path / 'local')
+    assert len(captured) == 1
+    remote = shlex.split(captured[0][-1])[0]
+    assert shlex.quote(str(expected / 'bin/python')) in remote
+    assert '/tmp/distillschedule-helios-official' not in path.read_text()
 
 
 def test_moves_have_one_owner_and_keep_runtime_paths():

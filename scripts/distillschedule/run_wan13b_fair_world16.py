@@ -142,19 +142,15 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--remote-root",
         type=Path,
-        default=Path(
-            "/share/project/shuchenweng/yongyan_liu/"
-            "DMD-System_wan13b_upper_bound_20260820"
-        ),
+        required=True,
     )
     value.add_argument(
         "--helios-runtime-root",
         type=Path,
-        default=Path(
-            "/share/project/shuchenweng/yongyan_liu/"
-            "DistillSchedule_fsdp2_gpu_residual_20260816"
-        ),
+        required=True,
     )
+    value.add_argument("--pyenv", type=Path, default=Path(".venv"),
+                       help="remote Python environment, relative to --remote-root or absolute")
     value.add_argument(
         "--expected-helios-transformer-sha256",
         default="5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
@@ -164,15 +160,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--nsys-bin",
         type=Path,
-        default=Path("/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys"),
     )
     value.add_argument(
         "--local-evidence-root",
         type=Path,
-        default=Path(
-            "/home/lyy/Helios/research_artifacts/DMD-System/"
-            "wan13b_fair_resident_fsdp2_20260822"
-        ),
+        default=Path("artifacts/runs"),
     )
     value.add_argument("--lora-operator-attribution", action="store_true")
     value.add_argument("--lora-attribution-target-rank", type=int, default=0)
@@ -202,6 +194,7 @@ def _pid_file(args: argparse.Namespace, node: int) -> Path:
 
 
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     launcher = (
         args.remote_root
         / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
@@ -210,6 +203,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     exports = [
         f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}",
         f"HELIOS_RUNTIME_ROOT={shlex.quote(str(args.helios_runtime_root))}",
+        f"DISTILLSCHEDULE_PYENV={shlex.quote(str(pyenv))}",
         f"DISTILLSCHEDULE_WAN13B_MODEL_ROOT={shlex.quote(str(args.model_root))}",
         f"DISTILLSCHEDULE_WAN13B_BOOTSTRAP={shlex.quote(str(args.bootstrap))}",
         f"DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH={shlex.quote(args.bootstrap_hash)}",
@@ -227,7 +221,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 + shlex.quote(args.correctness_sha256),
             )
         )
-    if args.mode == "profile":
+    if args.mode == "profile" and args.nsys_bin is not None:
         exports.append("DISTILLSCHEDULE_NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
     if args.lora_operator_attribution:
         if args.mode != "profile":
@@ -342,6 +336,7 @@ def _cancel(args: argparse.Namespace, node: int) -> None:
 
 
 def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     run_root = args.remote_root / "artifacts/runs" / args.run_id
     summary = run_root / "summary.json"
     summarizer_name = (
@@ -367,7 +362,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     command = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:"
         f"{shlex.quote(str(args.remote_root))}; "
-        "/tmp/distillschedule-helios-official-torch210/bin/python "
+        f"{shlex.quote(str(pyenv / 'bin/python'))} "
         f"{shlex.quote(str(summarizer))} "
         f"--run-root {shlex.quote(str(run_root))} "
         f"--placement {shlex.quote(args.placement)} "

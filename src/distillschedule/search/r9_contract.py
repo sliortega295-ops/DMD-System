@@ -19,7 +19,7 @@ from distillschedule.workloads.best_known.registry import (
 
 SCHEMA = 'distillschedule.r9_transport.v1'
 KIND = 'native_h3_serialized_plan_v1'
-OWNER_SHA256 = '5b5369c2e22128403970a998f381ae1cebff97ffd2c89416b63fa72d593201b8'
+OWNER_SHA256 = '946de871df74b4149338d7f8d49245a9f607f0dd65c4023ea47d6532621695a5'
 MODES = {'correctness', 'calibration', 'diagnostic-timing'}
 WORKER_WRAPPER = 'from distillschedule.search.r9_worker import main\nraise SystemExit(main())\n'
 CONTRACT_WRAPPER = ('from distillschedule.search.r9_contract import '
@@ -94,7 +94,7 @@ def validate_config(cfg):
         require(file_sha256(path) == digest and cfg['file_sha256'].get(str(path)) == digest,
                 'R9 wrapper must call the current source adapter unchanged')
     require(cfg['cycles'] == 2 and cfg['profile'] is False and cfg['worker_flags'] == []
-            and cfg['numerical_status'] == 'GRID1000_REVIEW_POLICY_ONLY', 'R9 native two-cycle scope')
+            and cfg['numerical_status'] == 'CONTINUOUS_NUMERICAL_COMPARISON', 'R9 native two-cycle scope')
     require(cfg['owned_worker_oom_fail_fast'] is True and cfg['verified_zombie_fd_rescan'] is True,
             'R9 required safety helpers')
     require(cfg['expected_final_versions'] == dict(generator=2, critic=10, ema=0), 'R9 final versions')

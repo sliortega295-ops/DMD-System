@@ -71,6 +71,38 @@ def _digest(value: object) -> str:
     ).hexdigest()
 
 
+def test_profile_command_uses_path_discovery_unless_profiler_override_is_explicit(tmp_path):
+    import runpy
+    import shlex
+    controller = runpy.run_path(str(CONTROLLER))
+    argv = ['--run-id', 'cpu-profile-only', '--mode', 'profile',
+            '--placement', controller['FAIR_PLACEMENTS'][0], '--expected-head', HEAD,
+            '--model-root', str(tmp_path / 'model'), '--bootstrap', str(tmp_path / 'bootstrap'),
+            '--bootstrap-hash', SHA, '--remote-root', str(tmp_path / 'source'),
+            '--helios-runtime-root', str(tmp_path / 'runtime'),
+            '--correctness-receipt', str(tmp_path / 'correctness.json'), '--correctness-sha256', SHA]
+    ordinary = controller['parser']().parse_args(argv)
+    remote = shlex.split(controller['_command'](ordinary, 0, '127.0.0.1')[-1])[0]
+    assert 'DISTILLSCHEDULE_NSYS_BIN=' not in remote
+    override = controller['parser']().parse_args(argv + ['--nsys-bin', '/opt/profiler tools/nsys'])
+    remote = shlex.split(controller['_command'](override, 0, '127.0.0.1')[-1])[0]
+    assert "DISTILLSCHEDULE_NSYS_BIN='/opt/profiler tools/nsys'" in remote
+
+
+def test_native_profiler_version_probe_quotes_the_resolved_executable(tmp_path):
+    tool = tmp_path / 'profiler tools' / 'nsys'
+    tool.parent.mkdir()
+    tool.write_text('#!/bin/sh\nprintf "NVIDIA Nsight Systems version 2025.1\\n"\n')
+    tool.chmod(0o700)
+    probe = next(line.strip() for line in LAUNCHER.read_text().splitlines()
+                 if line.strip().startswith('NSYS_VERSION='))
+    result = subprocess.run(['bash', '-c', 'set -euo pipefail\n' + probe + '\nprintf "%s" "$NSYS_VERSION"'],
+                            env=dict(os.environ, NSYS_BIN=str(tool)), capture_output=True,
+                            text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == 'NVIDIA Nsight Systems version 2025.1'
+
+
 def test_two_cycle_worker_is_a_dedicated_timing_path() -> None:
     source = WORKER.read_text()
     tree = ast.parse(source)

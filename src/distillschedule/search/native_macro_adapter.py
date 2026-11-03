@@ -48,7 +48,7 @@ def precision_contract(workload, *, h3_request=None, livewan_request=None):
     """Pin native precision source/config; do not pretend this is a dtype probe."""
     p = h3_request.profile() if workload == H3 and h3_request is not None else load_profile(workload)
     source = ("src/distillschedule/runtime/livewan_crossscale_worker.py" if workload == LIVEWAN
-              else "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py")
+              else "src/distillschedule/backends/training/minimax_h3/entrypoint.py")
     result = dict(workload=workload, native_precision_source_sha256=file_sha256(repository_root()/source),
                 dependency_contract=p.get("dependency_contract"),
                 model_config=p["runtime"].get("model_config"),

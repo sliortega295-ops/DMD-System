@@ -22,6 +22,12 @@ EXPECTED_FORWARD_COUNTS = {STUDENT_ROLE: 24, FAKE_ROLE: 6, TEACHER_ROLE: 1}
 EXPECTED_GRAD_FORWARD_COUNTS = {STUDENT_ROLE: 1, FAKE_ROLE: 5, TEACHER_ROLE: 0}
 EXPECTED_BACKWARD_COUNTS = {STUDENT_ROLE: 1, FAKE_ROLE: 5}
 EXPECTED_SAMPLE_STAGES = ["student"] + [f"fake_{index}" for index in range(5)]
+EXACT_ADALN_REPLAY_COUNTS = {
+    "checkpoint_wrap_count": 300, "scoped_execution_count": 600,
+    "cache_hit_count": 600, "cache_miss_count": 0,
+    "captured_key_missing_count": 0, "captured_key_incomplete_count": 0,
+    "unexpected_hit_delta_count": 0,
+}
 
 
 def sample_identity(sample: Any) -> str:

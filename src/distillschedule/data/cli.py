@@ -61,9 +61,9 @@ def main(argv=None):
     h3_stream.add_argument("--output", type=Path, required=True)
     h3_stream.add_argument("--input-policy", choices=("distillschedule.h3_ar_record_epochs.v1",),
                            help="explicit rank-local cached AV epochs; default v1 forbids source reuse")
-    grid = sub.add_parser("prepare-h3-grid", help="inventory original W5 cached conditions; no data/model download")
-    grid.add_argument("--native-config", type=Path, required=True)
-    grid.add_argument("--output", type=Path, required=True)
+    fullseq = sub.add_parser("prepare-h3-fullseq", help="inventory original W5 cached conditions; no data/model download")
+    fullseq.add_argument("--native-config", type=Path, required=True)
+    fullseq.add_argument("--output", type=Path, required=True)
     livewan = sub.add_parser("prepare-livewan-inputs", help="admit finite original W4 teacher inputs; not a training command")
     livewan.add_argument("--data-root", type=Path, required=True)
     livewan.add_argument("--prompts", type=Path, required=True)
@@ -110,8 +110,8 @@ def main(argv=None):
             elif args.command == "prepare-helios-nogan-reference":
                 from .helios_nogan_reference_inputs import prepare_inputs
                 result = inspect_prepared(prepare_inputs(args.sources, args.output))
-            elif args.command == "prepare-h3-grid":
-                from distillschedule.training.h3_grid_inputs import prepare_inputs
+            elif args.command == "prepare-h3-fullseq":
+                from distillschedule.training.h3_fullseq_inputs import prepare_inputs
                 result = prepare_inputs(args.native_config, args.output)
             elif args.command == "prepare-h3-cached-reference":
                 from .h3_cached_inputs import prepare_inputs

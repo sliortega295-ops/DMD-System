@@ -1,9 +1,9 @@
 {
   "schema_version": "distillschedule.training.v1",
   "model": {"workload": "W5"},
-  "algorithm": {"name": "original_h3_fullseq_grid1000"},
+  "algorithm": {"name": "original_h3_fullseq_continuous"},
   "data": {
-    "input_kind": "original_h3_grid_latent_dataset.v1",
+    "input_kind": "original_h3_fullseq_latent_dataset.v1",
     "prepared": "REPLACE_WITH_GRID_INPUTS.json"
   },
   "execution": {

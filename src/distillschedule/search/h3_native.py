@@ -20,9 +20,9 @@ from distillschedule.runtime.p0_parity import DEFAULT_P0_PARITY
 from distillschedule.workloads.best_known.registry import file_sha256, write_new_json
 from .contracts import finite_number, require
 from .h3_implementation import H3Implementation
+from distillschedule.backends.training.minimax_h3.matched_contract import EXACT_ADALN_REPLAY_COUNTS
 
-_GRID = dict(checkpoint_wrap_count=300, scoped_execution_count=600,
-             cache_hit_count=600, cache_miss_count=0, missing_key_count=0)
+_EXACT = EXACT_ADALN_REPLAY_COUNTS
 _COMPONENTS = {"student_parameters", "student_optimizer", "fake_parameters", "fake_optimizer"}
 _SHA = re.compile(r"[0-9a-f]{64}")
 
@@ -47,9 +47,9 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
         rank = row["rank"]
         require(row.get("run_kind", "calibration" if calibration else "correctness") == run_kind,
                 "H3 rank run kinds differ")
-        for key, expected in {"schema_version": "distillschedule.h3_native_two_cycle.v1",
+        for key, expected in {"schema_version": "distillschedule.h3_native_two_cycle.v2",
                               "status": "PASS_NATIVE_RUNTIME_CONTRACTS", "integration_head": expected_head,
-                              "semantics": "approximate_grid1000", **binding,
+                              "semantics": "continuous", **binding,
                               "final_versions": dict(generator=2, critic=10, ema=0),
                               "updates": dict(student=2, fake=10, ema=0),
                               "native_wall_clock": "HOST_MONOTONIC_CUDA_FENCED",
@@ -75,10 +75,10 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
             for key, expected in {"status": "PASS_NATIVE_RUNTIME_CONTRACTS",
                                   "updates": dict(student=1, fake=5, ema=0),
                                   "cumulative_updates": dict(student=cycle, fake=5 * cycle, ema=0),
-                                  "grid_replay_delta": _GRID, "finite_losses": True}.items():
+                                  "exact_adaln_replay_delta": _EXACT, "finite_losses": True}.items():
                 require(item.get(key) == expected, f"H3 rank{rank} cycle{cycle} {key} mismatch")
-            require(all(item.get("grid_replay", {}).get(k) == v * cycle for k, v in _GRID.items()),
-                    f"H3 rank{rank} cumulative Grid1000 mismatch")
+            require(all(item.get("exact_adaln_replay", {}).get(k) == v * cycle for k, v in _EXACT.items()),
+                    f"H3 rank{rank} cumulative exact AdaLN mismatch")
             finite_number(item.get("native_wall_seconds"), "native_wall_seconds", positive=True)
             finite_number(item.get("gpu_completion_elapsed_s"), "gpu_completion_elapsed_s", positive=True)
             require(item.get("census", {}).get("fixed_end_step_idx") == 3, "H3 fixed end step changed")
@@ -118,7 +118,7 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
         require(not errors, f"H3 cycle{index + 1} census failed: {errors}")
     wall = {str(c + 1): max(float(r["cycles"][c]["native_wall_seconds"]) for r in rows) for c in range(2)}
     cuda = {str(c + 1): max(float(r["cycles"][c]["gpu_completion_elapsed_s"]) for r in rows) for c in range(2)}
-    return {"schema_version": "distillschedule.h3_native_two_cycle_summary.v1", "status": "PASS",
+    return {"schema_version": "distillschedule.h3_native_two_cycle_summary.v2", "status": "PASS",
             "errors": [], "integration_head": expected_head, **binding, "rank_count": 16,
             "cycles": 2, "cycles_in_same_process": 2, "final_versions": dict(generator=2, critic=10, ema=0),
             "cycle_wall_seconds": wall, "cycle_cuda_elapsed_seconds": cuda,
@@ -279,7 +279,7 @@ def compare_native_two_cycle(reference: Sequence[Mapping[str, Any]], candidate: 
     state = _aggregate([r["sampled_state"]["status"] for r in ranks])
     statuses = {key: _aggregate([r[key] for r in ranks]) for key in ("loss_status", "sample_status", "rng_status")}
     failed = "FAIL" in [state, *statuses.values()]
-    return {"schema_version": "distillschedule.h3_native_two_cycle_comparison.v1",
+    return {"schema_version": "distillschedule.h3_native_two_cycle_comparison.v2",
             "status": "FAIL" if failed else "NOT_RUN" if "NOT_RUN" in [state, *statuses.values()]
             else "REVIEW_SAMPLED_PARITY_ONLY",
             "integration_head": expected_head, "reference_candidate_id": summaries[0]["candidate_id"],

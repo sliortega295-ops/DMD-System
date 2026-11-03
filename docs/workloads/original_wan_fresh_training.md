@@ -237,7 +237,7 @@ The new protocol is
 
 The existing `runtime/dmd_boundary.py` surrogate and critic-loss primitives are
 reused. This is **not** the historical Helios-pyramid Wan contract, LightX2V H3
-Grid1000, or DiffSynth autoregressive H3. GAN, stochastic early exits and
+continuous H3, or DiffSynth autoregressive H3. GAN, stochastic early exits and
 previous/current history need their original training-protocol adapters.
 A missing DiffSynth training source is not replaced with a different algorithm.
 

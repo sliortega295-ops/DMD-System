@@ -67,7 +67,7 @@ def test_contract_is_original_and_frozen():
 def test_rank6_original_audio94_is_bound_to_its_sample_not_a_global_shape():
     """The real original parser has one longer audio sample; never pad/crop it."""
     task = H3ARTask()
-    assert task.schema_version == 'distillschedule.original_h3_ar_task.v2'
+    assert task.schema_version == 'distillschedule.original_h3_ar_task.v3'
     assert task.input_shapes(6)['audio'] == [2, 32, 94]
     assert task.input_shapes(6)['previous_audio'] == [188, 32]
     for rank in set(range(16)) - {6}:
@@ -76,6 +76,33 @@ def test_rank6_original_audio94_is_bound_to_its_sample_not_a_global_shape():
     assert len({task.expected_input(r)['input_identity']['sha256'] for r in range(16)}) == 16
     with pytest.raises(ValueError):
         H3ARTask.from_dict({**task.to_dict(), 'schema_version': 'distillschedule.original_h3_ar_task.v1'})
+
+
+def test_rank_input_contract_has_portable_paths_and_original_hashes():
+    from pathlib import Path
+    from distillschedule.strategies.h3_ar_inputs import input_contract
+    contract = input_contract()
+    assert not Path(contract['cache_manifest']['path']).is_absolute()
+    assert all(not Path(row['input_identity']['path']).is_absolute() for row in contract['rows'])
+    assert contract['rows'][6]['input_shapes']['audio'] == [2, 32, 94]
+    assert contract['cache_manifest']['sha256'] == 'c5d0218e63e772d8bad8b0e9e92099c1114497db3068f164db0b689c74447f48'
+
+
+def test_relocated_original_sample_binds_its_actual_path_to_the_receipt(tmp_path):
+    import torch
+    from pathlib import Path
+    from distillschedule.strategies.h3_ar_inputs import validate_prepared_input, validate_input_receipt
+    task = H3ARTask(); row = task.expected_input(6)
+    identity = dict(path=str(tmp_path / Path(row['input_identity']['path']).name),
+                    sha256=row['input_identity']['sha256'])
+    raw = input_tensor_fixture(row['raw_tensors'], torch)
+    positive = {**input_tensor_fixture(row['positive_tensors'], torch), **row['positive_scalars']}
+    witness = validate_prepared_input(task, 6, identity, raw, positive, None, torch)
+    assert witness['input_identity'] == identity
+    validate_input_receipt(task, 6, identity, dict(input_shapes=row['input_shapes'], input_validation=witness))
+    with pytest.raises(ValueError):
+        validate_input_receipt(task, 6, {**identity, 'path': str(tmp_path / 'elsewhere.pth')},
+                               dict(input_shapes=row['input_shapes'], input_validation=witness))
 
 
 def input_tensor_fixture(metadata, torch):
@@ -331,6 +358,7 @@ def test_native_session_prepared_handler_consumes_saved_order_and_versions(tmp_p
     from distillschedule.runtime.version_sync import VersionLedger
     document = plan(H3ARTask(), [collection(tmp_path, 'zero3-ap', 100)])
     session = H3ARSession.__new__(H3ARSession)
+    session.input_provider = None
     session.task = H3ARTask(); session.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
     session.census = session.updates = session.adam = __import__('collections').Counter()
     session.pool = object(); session.view = object(); session.leaf = None
@@ -358,7 +386,7 @@ def test_native_session_prepared_handler_consumes_saved_order_and_versions(tmp_p
 def test_execute_cycles_uses_common_capacity_and_native_boundaries():
     from distillschedule.strategies.h3_ar_session import H3ARSession
     from distillschedule.runtime.version_sync import VersionLedger
-    session = H3ARSession.__new__(H3ARSession); task = session.task = H3ARTask()
+    session = H3ARSession.__new__(H3ARSession); session.input_provider = None; task = session.task = H3ARTask()
     session.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
     session.census = session.updates = session.adam = __import__('collections').Counter()
     session.pool = session.leaf = None; session.real = session.positive = session.negative = object()
@@ -389,7 +417,7 @@ def test_cli_routing_is_opt_in_and_does_not_import_torch(tmp_path, capsys):
     before = 'torch' in sys.modules
     assert main(['validate', '--task', str(path)]) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result['task']['schema_version'] == 'distillschedule.original_h3_ar_task.v2'
+    assert result['task']['schema_version'] == 'distillschedule.original_h3_ar_task.v3'
     assert result['gpu_execution'] == 'NOT_RUN'
     assert ('torch' in sys.modules) == before
 
@@ -575,7 +603,7 @@ def test_worker_completes_without_memory_peak_using_exact_hardcap_not_current_as
         monkeypatch.setitem(sys.modules, name, module)
     class NativeFixture(native_session.H3ARSession):
         def __init__(self, task, assets, implementation, **kwargs):
-            self.task = task; self.device = 'cpu_test_fixture'; self.static_bytes = 100
+            self.task = task; self.input_provider = None; self.device = 'cpu_test_fixture'; self.static_bytes = 100
             self.rank = kwargs['rank']; self.build = {}; self.input_identity = {'cpu_test_fixture': True, 'rank': self.rank}
             self.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
             self.census = self.updates = self.adam = __import__('collections').Counter()

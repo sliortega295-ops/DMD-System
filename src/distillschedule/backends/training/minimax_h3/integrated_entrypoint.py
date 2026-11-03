@@ -88,7 +88,7 @@ def main() -> None:
         raise ValueError("H3 attention capture requires the original two-cycle correctness entry")
     if os.environ.get("H3_ATTENTION_TUPLE_CAPTURE_CONFIG") and os.environ.get("DISTILLSCHEDULE_RUN_KIND") != "correctness":
         raise ValueError("H3 attention capture is correctness-only, never profile/native timing")
-    from . import grid_entrypoint
+    from . import entrypoint
     from .trainer import MiniMaxH3A100DmdTrainer
     from lightx2v_train.runtime.distributed import get_rank
     import torch
@@ -100,17 +100,17 @@ def main() -> None:
             return _measure_planner_two_cycle(self, original, torch=torch, rank=int(get_rank()))
         start = time.perf_counter()
         original(self)
-        # Original train() executes all matched/grid/fusion/replay gates first.
+        # Original train() executes all matched/exact/fusion/replay gates first.
         torch.cuda.synchronize()
         row = {
             "status": "PASS_NATIVE_RUNTIME_CONTRACTS", "rank": int(get_rank()),
             "integration_head": os.environ["EXPECTED_INTEGRATION_HEAD"],
-            "semantics": "approximate_grid1000", "census": self.matched_cycle_census.snapshot(),
+            "semantics": "continuous", "census": self.matched_cycle_census.snapshot(),
             "elapsed_including_trainer_setup_s": time.perf_counter() - start,
             "formal_timing_eligible": False, "numerical_cross_reference": "NOT_RUN_BY_THIS_WRAPPER",
             "boundary_policy": os.environ["H3_ACTIVATION_POLICY"],
             "fa3_replay_storage": os.environ["H3_FA3_REPLAY_CACHE_STORAGE"],
-            "grid_replay": dict(self.grid_replay_registration.stats),
+            "exact_adaln_replay": dict(self.exact_adaln_replay_registration.stats),
             "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
             "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
         }
@@ -125,7 +125,7 @@ def main() -> None:
             f.write("\n")
     MiniMaxH3A100DmdTrainer.train = measured
     try:
-        grid_entrypoint.main()
+        entrypoint.main()
     finally:
         MiniMaxH3A100DmdTrainer.train = original
 

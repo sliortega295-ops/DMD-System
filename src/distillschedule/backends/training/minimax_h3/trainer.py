@@ -25,6 +25,9 @@ from .fused_qk_rmsnorm_rotary import install_fused_qk_rmsnorm_rotary
 from .fused_rotary import install_fused_rotary
 from .fused_swiglu import install_fused_swiglu
 from .fa3_nograd_splits import install_fa3_nograd_splits
+from .fa3_replay_setup import configure_fa3_replay, install_configured_fa3_replay
+from .exact_adaln_replay import install_exact_adaln_checkpoint_replay_scope
+from .adaln_cache import adaln_bank
 from .matched_contract import FIXED_END_STEP_IDX, MatchedCycleCensus
 from .model import FAKE_ADAPTER, STUDENT_ADAPTER, MiniMaxH3A100Model
 from .trainer_loop import H3A100LoopMixin
@@ -51,6 +54,11 @@ class MiniMaxH3A100DmdTrainer(
             raise ValueError("H3 A100 shared-backbone trainer does not yet support SenseFlow IDA")
 
         a100 = self.training_config.get("a100", {})
+        if "adaln_grid" in a100 or "H3_ADALN_GRID_MANIFEST" in os.environ:
+            raise ValueError("H3 full-sequence training requires continuous sigma and registered exact AdaLN weights")
+        self.sigma_semantics = "continuous"
+        self.exact_adaln_replay_registration = None
+        configure_fa3_replay(self)
         cache = a100.get("adaln_cache", {})
         reorder = a100.get("critic_rollout_reorder", {})
         matched = a100.get("matched_compute", {})
@@ -94,6 +102,9 @@ class MiniMaxH3A100DmdTrainer(
                 "H3_ACTIVATION_CHECKPOINT_SEGMENT must be >= 1, got "
                 f"{self.activation_checkpoint_segment_size}"
             )
+        if self.gradient_checkpointing and (not self.adaln_cache_enabled
+                or self.activation_checkpoint_segment_size != 1):
+            raise ValueError("continuous H3 checkpoint replay requires exact AdaLN caching and segment_size=1")
 
         # Production world16 now mirrors the DMD-System capacity path that
         # actually passed: native per-block checkpointing plus CPU staging of
@@ -453,6 +464,18 @@ class MiniMaxH3A100DmdTrainer(
                 event_path=event_path,
                 pin_memory=self.boundary_offload_pin_memory,
             )
+
+        bank = adaln_bank(model.denoiser_module())
+        if bank is None or any(p.requires_grad for p in bank.parameters()):
+            raise RuntimeError("continuous H3 requires a registered frozen exact AdaLN bank")
+        self.registered_adaln_parameter_numel = sum(p.numel() for p in bank.parameters())
+        if self.matched_compute_enabled and (len(bank.projections) != 50
+                or self.registered_adaln_parameter_numel <= 12_000_000_000):
+            raise RuntimeError("matched continuous H3 must retain all 50 original AdaLN projections")
+        install_configured_fa3_replay(self)
+        if self.gradient_checkpointing:
+            self.exact_adaln_replay_registration = install_exact_adaln_checkpoint_replay_scope(
+                model.denoiser_module(), model.adaln_cache(), expected_block_count=len(bank.projections))
 
         self.trainable_params = model.role_parameters(STUDENT_ADAPTER)
         self.fake_trainable_params = model.role_parameters(FAKE_ADAPTER)

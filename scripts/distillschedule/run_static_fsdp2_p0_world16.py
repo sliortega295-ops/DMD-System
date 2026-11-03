@@ -223,19 +223,15 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--remote-root",
         type=Path,
-        default=Path(
-            "/share/project/shuchenweng/yongyan_liu/"
-            "DMD-System_fsdp2_p0_20260815"
-        ),
+        required=True,
     )
     value.add_argument(
         "--helios-runtime-root",
         type=Path,
-        default=Path(
-            "/share/project/shuchenweng/yongyan_liu/"
-            "DistillSchedule_gan_rolephase_exec_20260812"
-        ),
+        required=True,
     )
+    value.add_argument("--pyenv", type=Path, default=Path(".venv"),
+                       help="remote Python environment, relative to --remote-root or absolute")
     value.add_argument(
         "--expected-helios-transformer-sha256",
         default="776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7",
@@ -270,9 +266,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--local-evidence-root",
         type=Path,
-        default=Path(
-            "/home/lyy/Helios/research_artifacts/DMD-System/fsdp2_p0"
-        ),
+        required=True,
     )
     value.add_argument(
         "--summary-transport",
@@ -300,6 +294,7 @@ def _pid_file(args: argparse.Namespace, node: int) -> Path:
 
 
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     launcher = (
         args.remote_root
         / "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
@@ -308,6 +303,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     exports = [
         f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}",
         f"HELIOS_RUNTIME_ROOT={shlex.quote(str(args.helios_runtime_root))}",
+        f"DISTILLSCHEDULE_PYENV={shlex.quote(str(pyenv))}",
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
         "DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE="
@@ -446,7 +442,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         / "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"
     )
     pythonpath = f"{args.remote_root}/src:{args.remote_root}"
-    pyenv = Path("/tmp/distillschedule-helios-official-torch210")
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     command = (
         f"export PYTHONPATH={shlex.quote(pythonpath)}; "
         + "export LD_LIBRARY_PATH="

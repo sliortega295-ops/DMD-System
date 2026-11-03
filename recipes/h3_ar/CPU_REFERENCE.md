@@ -9,7 +9,7 @@ It uses the actual original MiniMaxH3DiT, independent unmerged student/fake
 LoRA64 adapters, velocity discriminator, `DMD2Trainer.update`, `make_optimizers`
 and `optimizer_step`. A single nonreplayable `external_grad` Call owns a complete
 8-step rollout, one critic update and one student update. The continuous
-logit-normal sigma and nine-boundary schedule ending at zero are not Grid1000.
+logit-normal sigma and nine-boundary schedule ending at zero are not continuous H3.
 
 ## Install and supply explicit local assets
 

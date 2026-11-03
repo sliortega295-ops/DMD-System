@@ -5,14 +5,14 @@
   },
   "data": {},
   "algorithm": {
-    "name": "original_h3_fullseq_grid1000"
+    "name": "original_h3_fullseq_continuous"
   },
   "execution": {
     "adapter": "native",
     "mode": "manual",
     "task": "task.json",
     "assets": "REPLACE_WITH_QUALIFIED_NATIVE_ASSETS.json",
-    "preset": "h3_fullseq.cpu_staged_trim.v1"
+    "preset": "h3_fullseq.cpu_staged_trim.v2"
   },
   "trainer": {
     "cycles": 2,

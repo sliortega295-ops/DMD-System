@@ -5,7 +5,7 @@
       "path": "third_party/lightx2v",
       "url": "https://github.com/ModelTC/LightX2V.git",
       "used_by": [
-        "minimax_h3_grid1000_best"
+        "minimax_h3_continuous_best"
       ]
     },
     {

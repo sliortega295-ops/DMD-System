@@ -526,7 +526,7 @@
     },
     "docs/workloads/runbooks/minimax_h3_grid1000_best.md": {
       "original_integrated_sha256": "30793114bbe70a3129f6e30439d710fe0e8ec95c3e2246f4987a5abafe0c3412",
-      "target": "docs/workloads/runbooks/minimax_h3_grid1000_best.md",
+      "target": "docs/workloads/runbooks/minimax_h3_continuous_best.md",
       "integrated_sha256": "7a2019478f7d623b5727fcd226946c96f51aa64009b29ef1ff307207e7cd953f",
       "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
       "change": "User-approved public documentation consolidation; executable imports unchanged."
@@ -544,6 +544,22 @@
       "integrated_sha256": "4ad4280d12d04fc244499033c5493961cfc5f2bd3a5a81cb126842313e45697d",
       "source_commit": "479be6541721dd68a7468cfb02e158f372c08b89",
       "change": "User-approved public documentation consolidation; executable imports unchanged."
+    },
+    "configs/distillschedule/best_known/minimax_h3_grid1000_best.json": {
+      "target": "configs/distillschedule/best_known/minimax_h3_continuous_best.json",
+      "original_integrated_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
+      "reviewed_source_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
+      "integrated_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Current continuous API relocation; original imported identity preserved."
+    },
+    "configs/distillschedule/best_known/assets_examples/minimax_h3_grid1000_best.json": {
+      "target": "configs/distillschedule/best_known/assets_examples/minimax_h3_continuous_best.json",
+      "original_integrated_sha256": "f03d8d75a1dc610f68e760c05aec8461a7a2ab5914ef711ff584e42309ea43dc",
+      "reviewed_source_sha256": "f03d8d75a1dc610f68e760c05aec8461a7a2ab5914ef711ff584e42309ea43dc",
+      "integrated_sha256": "f03d8d75a1dc610f68e760c05aec8461a7a2ab5914ef711ff584e42309ea43dc",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Current continuous API relocation; original imported identity preserved."
     }
   },
   "integration_overlays": [
@@ -746,6 +762,204 @@
       "integrated_sha256": "c923887be77b7f88e379b56cce0b47bc09b4e4575e40927389c58b99ad0799a5",
       "source_commit": "8a556b7e7fc41facf4bb0c833629b5646e033bdf",
       "change": "Add the explicit assets prepare/verify public entrypoint; existing training/workload dispatch, numerical policies and native asset loaders are unchanged. Source commit records the integration base; exact new CLI bytes are bound by this append-only overlay. Original imports and previous receipts remain intact."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+      "previous_sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+      "integrated_sha256": "34e5e3fe7d4f7bdf101c663fc163e6bf77c65c1c5822ca92dbcf24e2997ac8c4",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/entrypoint.py",
+      "previous_sha256": "a245397c45c992db79d663b0376e6f96f89a5e8d46969f282a00ec36d311f667",
+      "integrated_sha256": "0d5c8389a1594522961b2dfbf160ec390ea0b6f307c83504188409bd1c916243",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
+      "previous_sha256": "b5e0c1cf78309f68d6250bad31c0fa294b23e058f4e6cb184d2191921d393b8e",
+      "integrated_sha256": "339ab57c2177190519f04a1c00b027b3224cef016d542c92670e478e4fa12a8d",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/matched_contract.py",
+      "previous_sha256": "c2f0d47b29515ac51f2922be3f03d49775c3498125ce0d02065dd050931ba9c7",
+      "integrated_sha256": "cf2956f3a2242dc452a5f46587c0ee8b125ab2fd0eda72dab007ed0df6009e99",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer.py",
+      "previous_sha256": "be0169efa8a08210b2f4a879e748f5bcf53f7069d2c4f31aa34575f55ba0caff",
+      "integrated_sha256": "d9276ebb5a388b53170946e2a955b079f30c1e78de0067027871ed7f8d2b33f6",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "previous_sha256": "022e9fcbcb766f736209de25000e06018ec47f920a004796f40532908818c8e9",
+      "integrated_sha256": "6cc2ca39b39b64f5c291741b221648abda8c4a5c39fdb80801a22e0af8cdf5af",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
+      "previous_sha256": "b8860b893b022335ea9a2931eb3fcc0dd2f5db8b6c198af6406fd4944ff029b9",
+      "integrated_sha256": "14452011352b9f23e0d95e4d409db1855fdda0892c334ad0514eca7626150df2",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/run_static_fsdp2_p0_world16.py",
+      "previous_sha256": "a0c4468241ab143b3e023d8263248fb5c5f6fd2a21cb04b5389f276291ecc0f9",
+      "integrated_sha256": "6a31ec5d1461b7d7777b6741fc8639c8f2285301bfd1e1ad8b4b8a6e73c2292c",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py",
+      "previous_sha256": "3cbaf31893253dbd287d05de84fe539a5e4480895414eaadec79c1abb7b70ceb",
+      "integrated_sha256": "e5b9abb3d0e23bd35711e5c6139573135b20c40899b25060bae88749a46ce222",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/runtime/livewan_attention_backend.py",
+      "previous_sha256": "ee4d2c33450634b81802a0beb9974dcaf46544e1ab6650d53b62f24589c5073c",
+      "integrated_sha256": "1f923b3b42430f0c235013aea1317794ae2e68cb5148607de9d88c612d473f25",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
+      "previous_sha256": "890367b77b66e55ba5e39768202179490e6a5558026f1e9c5b662a06b457faf7",
+      "integrated_sha256": "42d64f17dddf4a196bce7791457a94e30090c419d11ab411908e54f69f668013",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/workloads/best_known/dispatch.py",
+      "previous_sha256": "3738839027c1e84860fb9ca1c52bbf2d145190c30e913754aa8dad349328694c",
+      "integrated_sha256": "97f9af9827c0edfce880ee0a1f4fb6b8d736eba2699309c348a614a91bc1fa98",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/workloads/best_known/evidence.py",
+      "previous_sha256": "42368d4cf5b6bd63611521e81fd48bd46a9bdda6c8c8eb71c0c784d1da224ae2",
+      "integrated_sha256": "9bba74500aff969d61e773649697d4413f5b4d1a3058ebe2d59d1eaa1a265e4d",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "src/distillschedule/workloads/best_known/registry.py",
+      "previous_sha256": "1f2775ea28ddf98c8009921ad26f2d41acd2ed386894af0295f3b8dc03348a72",
+      "integrated_sha256": "fa9c005a11bc9c05efbcde6a1a3166f32c1ba678162f2dac61ed9eb4784aa734",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_best_known.py",
+      "previous_sha256": "886c4ae6da4d7fc63e310a48c47da31f620a05e51b26cd6f7bf118a1d5e99b97",
+      "integrated_sha256": "f62abef7b515b7e80adf113da66f25f16a8343fec9d1f5f0464a12a087c191bb",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "configs/distillschedule/best_known/minimax_h3_continuous_best.json",
+      "previous_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
+      "integrated_sha256": "b95e6787c33e84483cc373d68399ce382de5aa892653d26740e2751a96f410ff",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "configs/distillschedule/best_known/registry.lock.json",
+      "previous_sha256": "4e1264ad52fec8a44b358ad477e428a222ae1c41824e959dd2cc643ff784a13d",
+      "integrated_sha256": "2577f03c3edcaeabc8a7e4c07bd283b9526f1c799bc4d867137c359053f7b94e",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "configs/distillschedule/best_known/assets_examples/minimax_h3_continuous_best.json",
+      "previous_sha256": "f03d8d75a1dc610f68e760c05aec8461a7a2ab5914ef711ff584e42309ea43dc",
+      "integrated_sha256": "5fd45e43c679c0935d99de467c720a84c9142a34ae16863eaa372f3ede42238b",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/guides/native_workloads.md",
+      "previous_sha256": "d49a21c291b41ebaaa3ad43fa6c7fa5b2a2bd2a849fa658fb1df3936fe90f29b",
+      "integrated_sha256": "838d2cbeaa6515658fb5b521a73a99466f879b6ca238c29d099cf3347d7f89be",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
+      "previous_sha256": "602fa5cd7531465f4f29db960ef5e7cf4a0c60884141fffbb30b860a1e3c6572",
+      "integrated_sha256": "bd5f6f4ce9c461524e7350ccc03dd5a53e999f1e39884524153fdd06c61e1152",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/guides/installation.md",
+      "previous_sha256": "8681c7f8805a5ab8ec6438c62d41bcc995de87a2381a7d87d3d985982d35c33f",
+      "integrated_sha256": "ff44981c5c2a83ecade1e0e884090f11c4b392fbf1001dcbeda2697f6f5286d9",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/workloads/runbooks/minimax_h3_continuous_best.md",
+      "previous_sha256": "7a2019478f7d623b5727fcd226946c96f51aa64009b29ef1ff307207e7cd953f",
+      "integrated_sha256": "07226fdc5212cbcf531a4d1cbdb06fd88b5cafce672a1bf5d85171355817eb56",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "tests/test_refactor_best_known_livewan_c34.py",
+      "previous_sha256": "401b1e6a73804a0093fc7746036e85764e725e7a6f2f5cc26cf092f18abfa696",
+      "integrated_sha256": "59d9cd154628ba52e0562d6e5bd6872796db006648d877c66785559ccbdfa11a",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/run_wan13b_fair_world16.py",
+      "previous_sha256": "1e493dbc05660d3ec69516f36c1f7b6aed9e78918700e832a1b0a85dc298e34f",
+      "integrated_sha256": "ae97b970f68c84f262c0300d1d14545c9448ef242109f54f9a49ddf4d44c5b8a",
+      "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+      "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
     }
-  ]
+  ],
+  "retired_imports": {
+    "src/distillschedule/backends/training/minimax_h3/grid_adaln.py": "e80755094038d10908f6a7e4325d0831faab9e38af2f6a42e731cc6a0669d325",
+    "src/distillschedule/backends/training/minimax_h3/grid_contract.py": "16021e76fe4d2fd1c23e3a56d5183708d77c2ab4e62d5f6d2a18d1b7d3db3783",
+    "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py": "f93e2ac41cc9d00d1f1a4bca31f2b6d365d59e1e554db82ac66ee5e728308e04",
+    "src/distillschedule/backends/training/minimax_h3/grid_timestep_compat.py": "feae7afa47a52b7bded6adfbce27fe6b531d05c5ebe9f1c7cf81a005d1c22878"
+  }
 }

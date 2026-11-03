@@ -44,7 +44,7 @@ def test_request_cache_roundtrip_lowering_and_default_preservation(height, width
     assert profile['runtime']['model_config']['training']['dmd']['width'] == task.width
     assert profile['runtime']['model_config']['training']['dmd']['num_frames'] == task.frames
     assert semantic_contract(profile) == semantic_contract(task.profile())
-    assert profile['semantics'] == 'approximate_grid1000'
+    assert profile['semantics'] == 'continuous'
     assert profile['hardware'] == canonical['hardware']
     runtime = profile['runtime']
     assert runtime['model_config']['training']['a100']['fa3_replay_cache']['storage'] == impl.storage
@@ -54,8 +54,8 @@ def test_request_cache_roundtrip_lowering_and_default_preservation(height, width
         assert profile['contract']['request'] == task.to_dict()
         assert 'seconds' not in profile['historical']
         assert semantic_contract(profile) != semantic_contract(canonical)
-    assert H3Implementation().id == 'joint-h3v1-d2-n128'
-    assert H3Implementation(2, 128, 3).id == 'joint-h3v2-d2-n128-w3'
+    assert H3Implementation().id == 'joint-h3c1-d2-n128'
+    assert H3Implementation(2, 128, 3).id == 'joint-h3c2-d2-n128-w3'
 
 
 @pytest.mark.parametrize("change", [dict(height=481), dict(width=1344), dict(frames=125),
@@ -131,7 +131,7 @@ def test_actual_native_registration_is_checked_not_only_environment(monkeypatch,
     with pytest.raises(ValueError, match='registration changed'): observer.after_setup(trainer)
     trainer.fa3_replay_cache_registration.storage = 'cuda'
     trainer.fa3_replay_cache_registration.trim_before_backward = False
-    trainer.grid_replay_registration = SimpleNamespace(stats={})
+    trainer.exact_adaln_replay_registration = SimpleNamespace(stats={})
     observer.after_setup(trainer)
 
 

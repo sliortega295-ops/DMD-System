@@ -92,7 +92,7 @@ def test_public_source_checkout_references_keep_real_paths_without_payload_links
             assert not target.suffix in {".pt", ".pth", ".safetensors", ".nsys-rep", ".sqlite"}
             references.append(source)
     assert references, "source-only references must not look like broken installed links"
-    assert ".github/workflows/h3-grid-native-cpu.yml" in references
+    assert ".github/workflows/h3-fullseq-native-cpu.yml" in references
     assert "src/distillschedule/runtime/livewan_crossscale_worker.py" in references
     installation = (ROOT / "docs/guides/installation.md").read_text()
     assert "https://github.com/sliortega295-ops/DMD-System" in installation
@@ -321,7 +321,7 @@ def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_met
     for package in ("loguru==0.7.3", "peft==0.15.2", "imageio==2.37.4",
                     "diffusers==0.34.0", "transformers==4.51.3", "einops==0.8.1"):
         assert f'{package};extra=="test-h3"' in requirements
-    workflow = yaml.safe_load((ROOT / ".github/workflows/h3-grid-native-cpu.yml").read_text())
+    workflow = yaml.safe_load((ROOT / ".github/workflows/h3-fullseq-native-cpu.yml").read_text())
     job = workflow["jobs"]["original-source-state"]
     commands = "\n".join(step.get("run", "") for step in job["steps"])
     assert "git submodule update --init --depth 1 third_party/lightx2v" in commands
@@ -331,8 +331,8 @@ def test_original_h3_cpu_job_uses_real_pinned_sources_and_dependencies(wheel_met
     assert ".[train,test,test-h3]" in commands
     assert "test-helios" not in commands, "H3 and Helios qualify separate PEFT versions"
     assert not any('peft==0.17.1' in value and 'extra=="test-h3"' in value for value in requirements)
-    assert "python scripts/check_cpu_receipt.py h3-grid-cpu.xml" in commands
-    assert "--require 'test_real_original_grid_loop_three_cycles_exact_interrupted_continuation'" in commands
+    assert "python scripts/check_cpu_receipt.py h3-fullseq-cpu.xml" in commands
+    assert "--require 'test_real_original_fullseq_loop_three_cycles_exact_interrupted_continuation'" in commands
 
 
 @pytest.mark.parametrize("workflow", ["ci.yml", "hierarchical-planner.yml"])

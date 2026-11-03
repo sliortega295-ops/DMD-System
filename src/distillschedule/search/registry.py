@@ -114,7 +114,7 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     if candidate.id.startswith("joint-helios"):
         from .helios_implementation import HeliosImplementation
         return HeliosImplementation.parse(candidate.id).lower_profile(root=root)
-    if candidate.workload == "minimax_h3_grid1000_best" and candidate.id.startswith("joint-h3"):
+    if candidate.workload == "minimax_h3_continuous_best" and candidate.id.startswith("joint-h3"):
         from .h3_implementation import H3Implementation
         return H3Implementation.parse(candidate.id).lower_profile(root=root)
     if candidate.workload == LIVEWAN and candidate.id.startswith("joint-livewan"):

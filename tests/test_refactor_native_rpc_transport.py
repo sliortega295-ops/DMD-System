@@ -71,7 +71,7 @@ def test_unknown_rpc_transport_rejected_before_subprocess(tmp_path):
 
 @pytest.mark.parametrize("mode", ["stdin", "argv-json-tty-v1", "arbitrary-shell"])
 def test_asset_schema_admits_only_explicit_registered_rpc_modes(mode):
-    profile = load_profile("minimax_h3_grid1000_best", root=ROOT)
+    profile = load_profile("minimax_h3_continuous_best", root=ROOT)
     value = {"schema_version": 1, "nodes": [
         {"host": f"node{rank}", "repo_root": "/source", "python_env": "/env",
          "rpc_transport": mode} for rank in range(2)],

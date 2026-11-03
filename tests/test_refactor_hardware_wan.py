@@ -289,7 +289,7 @@ def test_allocation_and_semantics_not_generalized(setup):
     altered["semantics"]["updates"] = "G1_C1_EMA1"
     with pytest.raises(ValueError, match="matched workload"):
         wan.validate_deployment(altered)
-    d["workload"] = "minimax_h3_grid1000"
+    d["workload"] = "minimax_h3_fullseq1000"
     with pytest.raises(ValueError, match="NOT_ADMITTED"):
         wan.validate_deployment(d)
 

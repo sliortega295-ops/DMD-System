@@ -35,20 +35,6 @@
       "head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
       "scope": "W6 native continuous AR8 FA2 same-source three-arm matrix",
       "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/0419b96b9ed9a8dd76737042e6c5020c80f6673a"
-    },
-    {
-      "repository": "H3-DMD-for-A100",
-      "branch": "agent/h100-h3-three-arm-20261014",
-      "head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
-      "scope": "W5 approximate Grid1000 matched FSDP/GPU-cache pair",
-      "github_commit_url": "https://github.com/sliortega295-ops/H3-DMD-for-A100/tree/9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71"
-    },
-    {
-      "repository": "H3-DMD-for-A100",
-      "branch": "agent/h100-h3-resident-boundary-contract-20261014",
-      "head": "d81ebb2014af9ea3a84011e3be198818e63cb1e7",
-      "scope": "W5 named Resident CPU-boundary capacity fallback; not pure GPU Resident",
-      "github_commit_url": "https://github.com/sliortega295-ops/H3-DMD-for-A100/tree/d81ebb2014af9ea3a84011e3be198818e63cb1e7"
     }
   ],
   "workloads": [
@@ -126,25 +112,6 @@
       "main_merged": false
     },
     {
-      "id": "W5",
-      "name": "Audio-Video DMD (Full-Sequence / Grid1000)",
-      "physical_ranks": 8,
-      "independent_logical_slots": 16,
-      "repository": "H3-DMD-for-A100",
-      "measured_training_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
-      "baseline_seconds": 638.522138278,
-      "optimized_seconds": 539.7183830337599,
-      "observed_ratio": 1.1830653880804722,
-      "baseline_definition": "Same-source Grid1000 FSDP control vs GPU attention cache",
-      "timer_contract": "Native C2; separate cold/warm cycles; Grid1000 approximate on BOTH arms",
-      "replications": 1,
-      "profiled": false,
-      "formal_speedup_eligible": false,
-      "semantics": "GRID1000_APPROXIMATE_NOT_EXACT_CONTINUOUS",
-      "published_head": "9bfd3eda959bd0c8415fe71ba64d3ad5f7e93e71",
-      "main_merged": false
-    },
-    {
       "id": "W6",
       "name": "Autoregressive Audio-Video DMD / DiffSynth",
       "physical_ranks": 8,
@@ -168,8 +135,8 @@
   "files": [
     {
       "path": "artifacts/results/h100.csv",
-      "bytes": 1848,
-      "sha256": "ade7a114d181598f66b60cf16ceb137ec50de0a46b0b4f67b07ee0778717e881"
+      "bytes": 1591,
+      "sha256": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64"
     }
   ],
   "provenance": {

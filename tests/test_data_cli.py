@@ -7,7 +7,7 @@ import sys
 import pytest
 
 from distillschedule.data.cli import main
-from test_training_h3_grid import cached_data as cached_data
+from test_training_h3_fullseq import cached_data as cached_data
 
 
 def test_inspect_and_imports_do_not_load_torch(tmp_path):
@@ -53,7 +53,7 @@ assert not any(name in sys.modules for name in ('torch', 'diffusers', 'lightx2v_
     assert "prepare-helios-gan-reference" in completed.stdout
     assert "prepare-wan-reference" in completed.stdout
     assert "prepare-h3-cached-reference" in completed.stdout
-    assert "prepare-h3-grid" in completed.stdout
+    assert "prepare-h3-fullseq" in completed.stdout
     assert "prepare-livewan-inputs" in completed.stdout
 
 
@@ -63,16 +63,16 @@ def test_original_grid_inventory_cli_does_not_decode_or_change_native_data(tmp_p
     # supplied data; semantic native tensor admission is still worker-owned.
     config, native, _ = cached_data
     output = tmp_path / "inventory.json"
-    assert main(["prepare-h3-grid", "--native-config", str(config), "--output", str(output)]) == 0
+    assert main(["prepare-h3-fullseq", "--native-config", str(config), "--output", str(output)]) == 0
     row = json.loads(capsys.readouterr().out)
     assert row == json.loads(output.read_text())
-    assert row["schema_version"] == "original_h3_grid_latent_dataset.v1"
+    assert row["schema_version"] == "original_h3_fullseq_latent_dataset.v1"
     assert len(row["rows"]) == 288 and row["cycles"] == native["training"]["max_train_iters"]
     assert torch.cuda.is_initialized() is False
 
 
 def test_native_preparation_missing_input_is_a_normal_cli_error(tmp_path, capsys):
-    assert main(["prepare-h3-grid", "--native-config", str(tmp_path / "missing.json"),
+    assert main(["prepare-h3-fullseq", "--native-config", str(tmp_path / "missing.json"),
                  "--output", str(tmp_path / "output.json")]) == 2
     assert "ERROR:" in capsys.readouterr().err
     assert not (tmp_path / "output.json").exists()

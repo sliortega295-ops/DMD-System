@@ -24,7 +24,7 @@ _FAMILIES = {
     "W2": ("original_helios_nogan", "helios14b_nogan_best"),
     "W3": ("original_helios_gan", "helios14b_gan_best"),
     "W4": ("original_self_forcing_c51", "livewan_crossscale_pipeline_best"),
-    "W5": ("original_h3_fullseq_grid1000", "minimax_h3_grid1000_best"),
+    "W5": ("original_h3_fullseq_continuous", "minimax_h3_continuous_best"),
     "W6": ("original_diffsynth_h3_ar", None),
 }
 
@@ -172,8 +172,8 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             checkpoint_required=True, immutable_horizon=True,
             scope="complete all-rank checkpoint boundary; resume the unchanged full stream in a fresh output directory",
             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
-    if _h3_grid_training(config, workload):
-        result.update(native_api="distillschedule.training.h3_grid_training:run_reference",
+    if _h3_fullseq_training(config, workload):
+        result.update(native_api="distillschedule.training.h3_fullseq_training:run_reference",
                       launch="enter on each original world16 torchrun rank; no node reservation/launch")
         result["source"]["selected_plan_is_authoritative"] = False
         result["capabilities"]["stop"] = dict(supported=True, control="trainer.stop_after_cycle",
@@ -181,11 +181,11 @@ def describe_native(config: TrainingConfig) -> dict[str, Any]:
             scope="complete all-rank original G1/F5/EMA0 checkpoint; unchanged native config/input/scheduler horizon",
             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY; NATIVE_GPU_NOT_RUN")
         result['capabilities']['export'] = dict(supported=True,
-            scope='complete original-reference checkpoint restore; current unmerged Grid Student and four frozen rollout entries',
+            scope='complete original-reference checkpoint restore; current unmerged continuous Student and four frozen rollout entries',
             standalone_generation='original four-step CPU packed AV; optional original codec exact patch/stereo ABI',
             verification='SOURCE_AND_CPU_ONLY; native GPU output pending')
         result["capabilities"].update(modes=["reference"],
-            cycles=dict(min=2, max=64, fresh_inputs="original_h3_grid_latent_dataset.v1",
+            cycles=dict(min=2, max=64, fresh_inputs="original_h3_fullseq_latent_dataset.v1",
                         scope="finite original latent_dataset; 96 distinct cached records per complete G1/F5 cycle"),
             checkpoint=dict(supported=True, scope="two named LoRAs, original Adam/schedulers, clocks, sampler cursor and per-rank RNG; EMA0",
                             verification="CPU_SOURCE_AND_LIFECYCLE_ONLY"),
@@ -265,8 +265,8 @@ def _helios_gan_stream(config, workload):
     return workload == "W3" and config.execution.get("preset") in (HELIOS_GAN_STREAM, HELIOS_GAN_CHECKPOINT_CPU_STREAM)
 
 
-def _h3_grid_training(config, workload):
-    return workload == "W5" and config.data.get("input_kind") == "original_h3_grid_latent_dataset.v1"
+def _h3_fullseq_training(config, workload):
+    return workload == "W5" and config.data.get("input_kind") == "original_h3_fullseq_latent_dataset.v1"
 
 
 def _livewan_reference(config, workload):
@@ -341,14 +341,14 @@ def _options(config, workload):
              "algorithm.name does not match the original workload")
     for field in ("generate", "export"):
         _require(not config.trainer.get(field), f"trainer.{field} is not supported by this native adapter")
-    _require(_h3_grid_training(config, workload) or _livewan_reference(config, workload)
+    _require(_h3_fullseq_training(config, workload) or _livewan_reference(config, workload)
              or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload) or "seed" not in config.trainer,
              "trainer.seed override is unsupported; native RNG is bound by the prepared trace/bootstrap")
     fresh_wan = (workload == 'W1' and config.data.get('input_kind') == 'original_wan_cohort_stream.v1'
                  and bool(config.data.get('prepared')) and not config.data.get('replay_fixed_trace'))
     fresh_helios = _helios_stream(config, workload) or _helios_gan_stream(config, workload)
     _require(fresh_wan or fresh_helios or _livewan_c51_stream(config, workload) or _h3_ar_stream(config, workload)
-             or _h3_grid_training(config, workload)
+             or _h3_fullseq_training(config, workload)
              or "stop_after_cycle" not in config.trainer,
              "trainer.stop_after_cycle requires an explicit W1, W2, W3, C51, W5 reference or W6 fresh stream")
     if fresh_helios:
@@ -420,7 +420,7 @@ def _options(config, workload):
         _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer and "checkpoint_every" in config.trainer,
                  "W4 reference requires cycles 2..64 and explicit seed/checkpoint_every")
         return "reference"
-    if _h3_grid_training(config, workload):
+    if _h3_fullseq_training(config, workload):
         _require(config.execution.get("mode", "reference") == "reference"
                  and not any(config.execution.get(k) for k in ("plan", "implementation", "transport", "capacity_policy")),
                  "W5 upstream training supports explicit reference only; optimized selected plans are not admitted")
@@ -429,7 +429,7 @@ def _options(config, workload):
         _require(2 <= config.trainer["cycles"] <= 64 and "seed" in config.trainer
                  and "checkpoint_every" in config.trainer,
                  "W5 original training requires cycles 2..64 and explicit matching native seed/checkpoint_every")
-        from .h3_grid_training import stop_cycle
+        from .h3_fullseq_training import stop_cycle
         stop_cycle(config)
         return "reference"
     if _helios_stream(config, workload):
@@ -727,8 +727,8 @@ def _admit(config):
         else:
             admit = admit_reference
         admitted = admit(config, task_value, assets_value, paths)
-    elif _h3_grid_training(config, workload):
-        from .h3_grid_training import admit_reference
+    elif _h3_fullseq_training(config, workload):
+        from .h3_fullseq_training import admit_reference
         admitted = admit_reference(config, task_value, assets_value, paths)
     elif _livewan_reference(config, workload):
         from .livewan_training import admit_reference
@@ -803,8 +803,8 @@ def export_native(config: TrainingConfig, checkpoint, output):
         from .livewan_native_export import export_native as export_c51
         return export_c51(config, checkpoint, output)
     if workload == 'W5':
-        from .h3_grid_export import export_native as export_grid
-        return export_grid(config, checkpoint, output)
+        from .h3_fullseq_export import export_native as export_fullseq
+        return export_fullseq(config, checkpoint, output)
     if workload == 'W6':
         from .h3_ar_export import export_native as export_h3
         return export_h3(config, checkpoint, output)
@@ -864,10 +864,10 @@ def run_native(config: TrainingConfig, *, dry_run: bool = False) -> dict[str, An
         from .helios_worker import run_reference, run_safe_stream
         run = run_safe_stream if _helios_safe_stream(config, _workload(config)) else run_reference
         return run(config, admit=lambda: _admit(config))
-    if _h3_grid_training(config, _workload(config)) and not dry_run:
+    if _h3_fullseq_training(config, _workload(config)) and not dry_run:
         # This lifecycle enters a metadata plane before rank-local admission or
         # model imports. A bad source/input on one rank must fail its peers too.
-        from .h3_grid_training import run_reference
+        from .h3_fullseq_training import run_reference
         return run_reference(config, admit=lambda: _admit(config))
     workload, source, paths, admitted = _admit(config)
     if dry_run:

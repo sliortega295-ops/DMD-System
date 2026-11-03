@@ -12,6 +12,7 @@ sys.path.insert(0, str(SKILL / "scripts"))
 import dmd_knowledge as knowledge
 import dmd_navigation as navigation
 from dmd_sources import verify_references
+from dmd_perf import git_read
 
 
 class ExperienceContentTests(unittest.TestCase):
@@ -24,7 +25,10 @@ class ExperienceContentTests(unittest.TestCase):
                     for c in group if c["id"] == ident)
 
     def test_r46_retrieval_preserves_source_intervention_direction(self):
-        source = json.loads((REPO / "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json").read_text())
+        # Process records are archived; authenticate the original pinned Git bytes.
+        ref = self.case('helios-w6-metadata-r46')['evidence'][0]
+        self.assertFalse(verify_references([ref], repo=REPO)['evidence_errors'])
+        source = json.loads(git_read(REPO, 'show', ref['revision'] + ':' + ref['path']))
         c = self.recalled("r46", "helios-w6-metadata-r46")
         self.assertEqual(c["facts"]["metadata_reads_per_rank_cycle"], source["actual_native_metadata_reads_per_rank_cycle"])
         self.assertGreater(c["facts"]["metadata_reads_per_rank_cycle"]["candidate"], c["facts"]["metadata_reads_per_rank_cycle"]["control"])

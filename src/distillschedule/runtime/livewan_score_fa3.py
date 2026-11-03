@@ -23,13 +23,7 @@ from distillschedule.runtime.livewan_attention_checkpoint import (
 VARIANT = "c38-continuous-b16-score-fa3"
 INTERFACE_SHA256 = "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4"
 OP_NAME = "_flash_attn3_cuda_373a45c::_flash_attn_forward"
-DEFAULT_ROOT = Path(
-    "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/"
-    "lightx2v_minimax_dmd_20260817/hf_home/hub/"
-    "models--kernels-community--flash-attn3/snapshots/"
-    "acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/"
-    "torch210-cxx11-cu128-x86_64-linux"
-)
+DEFAULT_ROOT = Path("assets/kernels/flash-attn3")
 HASHES = {
     "metadata.json": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
     "__init__.py": "29756640933e2a159cd94a9625eb2ea4268ffa6a80bd3c7bc86b9e1404e09471",

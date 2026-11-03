@@ -24,7 +24,7 @@ PRESETS = {
     "W2": "helios_nogan.safe_ed8.v1",
     "W3": "helios_gan.fa3_down40_nomerge.v1",
     "W4": "self_forcing.c51.v1",
-    "W5": "h3_fullseq.cpu_staged_trim.v1",
+    "W5": "h3_fullseq.cpu_staged_trim.v2",
     "W6": "h3_ar.zero3_ap.v1",
 }
 
@@ -117,7 +117,8 @@ def test_direct_preset_without_plan_uses_same_real_lowering_and_dispatch(tmp_pat
         binding = impl.receipt_binding(receipt["nodes"][0]["resolved_model_config"],
                                        receipt["nodes"][0]["environment"])
         assert binding["candidate_id"] == impl.id
-        assert result["preset"]["numerical_status"] == "FAIL_UNRESOLVED"
+        assert result["preset"]["numerical_status"] == "NOT_RUN"
+        assert receipt["fully_resolved_profile"]["semantics"] == "continuous"
         assert runtime["strict_pair_gate"] == "NOT_RUN"
 
 
@@ -248,7 +249,7 @@ def test_public_direct_admission_imports_no_torch_or_model_and_writes_nothing(tm
 @pytest.mark.parametrize("workload,input_kind", [
     ("W2", "original_helios_cohort_stream.v1"),
     ("W4", "original_livewan_teacher_cohorts.v1"),
-    ("W5", "original_h3_grid_latent_dataset.v1"),
+    ("W5", "original_h3_fullseq_latent_dataset.v1"),
 ])
 def test_direct_presets_cannot_claim_fresh_reference_lifecycle(tmp_path, workload, input_kind):
     conf = direct(config(tmp_path, workload), workload)

@@ -26,7 +26,7 @@ from distillschedule.workloads.best_known.registry import (
 EXPECTED = {
     "wan13b_nogan_resident_best",
     "helios14b_nogan_best",
-    "minimax_h3_grid1000_best",
+    "minimax_h3_continuous_best",
     "helios14b_gan_best",
     "livewan_crossscale_pipeline_best",
 }
@@ -52,12 +52,12 @@ class BestKnownIntegrationTests(unittest.TestCase):
             root = Path(td)
             shutil.copytree(ROOT / "configs", root / "configs")
             # repository_root-dependent source files are irrelevant: lock failure happens first.
-            p = root / "configs/distillschedule/best_known/minimax_h3_grid1000_best.json"
+            p = root / "configs/distillschedule/best_known/minimax_h3_continuous_best.json"
             value = json.loads(p.read_text())
             value["runtime"]["environment"]["H3_ACTIVATION_POLICY"] = "checkpoint_boundary_cpu"
             p.write_text(json.dumps(value))
             with self.assertRaisesRegex(ValueError, "canonical profile changed"):
-                load_profile("minimax_h3_grid1000_best", root=root)
+                load_profile("minimax_h3_continuous_best", root=root)
 
     def test_wan_winner_flags(self):
         p = load_profile("wan13b_nogan_resident_best", root=ROOT)
@@ -75,7 +75,7 @@ class BestKnownIntegrationTests(unittest.TestCase):
         self.assertEqual(env["DISTILLSCHEDULE_OPTIMIZER_DISPATCH_WARMUP"], "on")
 
     def test_h3_exact_winner_vector_and_approximate_semantics(self):
-        p = load_profile("minimax_h3_grid1000_best", root=ROOT)
+        p = load_profile("minimax_h3_continuous_best", root=ROOT)
         env = p["runtime"]["environment"]
         expected = {
             "H3_ATTN_BACKEND": "_flash_3_hub", "H3_BENCHMARK_SEED": "20260817",
@@ -91,7 +91,7 @@ class BestKnownIntegrationTests(unittest.TestCase):
             "H3_LORA_EPILOGUE_BLOCK_N": "128",
         }
         for k, v in expected.items(): self.assertEqual(env[k], v, k)
-        self.assertEqual(p["semantics"], "approximate_grid1000")
+        self.assertEqual(p["semantics"], "continuous")
         self.assertFalse(p["memory"]["activation_boundary_offload"])
         self.assertEqual(p["memory"]["fa3_replay_storage"], "cpu_staged")
         self.assertTrue((ROOT / "src/distillschedule/backends/training/minimax_h3/trainer.py").is_file())

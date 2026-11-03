@@ -31,14 +31,14 @@ def main():
     toolchain = qualify_toolchain(os.environ) if args.validate_only else None
     import torch
     require(not torch.cuda.is_initialized(), 'R9 preflight created CUDA context')
-    from distillschedule.backends.training.minimax_h3 import trainer, grid_entrypoint
+    from distillschedule.backends.training.minimax_h3 import trainer, entrypoint
     import diffusers, peft, transformers
     require(not torch.cuda.is_initialized(), 'R9 native imports created CUDA context')
     runtime = dict(torch=torch.__version__, cuda=torch.version.cuda, diffusers=diffusers.__version__,
                    peft=peft.__version__, transformers=transformers.__version__)
     require(runtime == cfg['expected_runtime'], 'R9 runtime changed')
     imports = import_provenance(cfg, node, torch=torch, transformers=transformers, diffusers=diffusers,
-                                trainer=trainer, entrypoint=grid_entrypoint)
+                                trainer=trainer, entrypoint=entrypoint)
     evidence = dict(node=node, source_head=cfg['source_head'], candidate_id=cfg['candidate_id'],
                     selected_plan_sha256=cfg['selected_plan']['sha256'], runtime=runtime,
                     import_provenance=imports, mode=plan['mode'], selection=cfg['selection'])

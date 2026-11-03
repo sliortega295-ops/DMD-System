@@ -104,12 +104,12 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
 def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any], *,
                  repeat=None, noise_policy=None) -> dict[str, Any]:
     require((repeat is None and noise_policy is None) or
-            reference["profile_id"] == "minimax_h3_grid1000_best",
+            reference["profile_id"] == "minimax_h3_continuous_best",
             "noise diagnostic admission is only supported by the explicit H3 cache adapter")
     if reference["search_candidate"]["id"].startswith("joint-helios1-"):
         from .helios_native import prepare_pair as helios_pair
         return helios_pair(reference,candidate)
-    if reference["profile_id"] == "minimax_h3_grid1000_best":
+    if reference["profile_id"] == "minimax_h3_continuous_best":
         from .h3_native_bridge import prepare_pair as h3_pair
         return h3_pair(reference, candidate, repeat=repeat, noise_policy=noise_policy)
     from .wan_implementation import is_generated, WanImplementation
@@ -233,7 +233,7 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
         if payload["receipt"]["search_candidate"]["id"].startswith("joint-helios1-"):
             from .helios_native import normalize_native
             return normalize_native(payload["receipt"],payload["preparation"],payload["identity"])
-        if payload["receipt"]["profile_id"] == "minimax_h3_grid1000_best":
+        if payload["receipt"]["profile_id"] == "minimax_h3_continuous_best":
             from .h3_native_bridge import normalize_native
             return normalize_native(payload["receipt"], payload["preparation"], payload["identity"])
         from .measurement import normalize_native

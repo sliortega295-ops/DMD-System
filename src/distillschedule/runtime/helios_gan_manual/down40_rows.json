@@ -23,7 +23,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -101,7 +101,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -179,7 +179,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -257,7 +257,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -335,7 +335,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -413,7 +413,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -491,7 +491,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -569,7 +569,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -647,7 +647,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -725,7 +725,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank0/trace.json",
+          "source_entry_path": "rank0/trace.json",
           "source_entry_sha256": "e438a063db552a97e18cd36040911a8b05403ebb73a22ddc66c48c9e044df5c0",
           "source_shapes": {
             "entry_noise": [
@@ -808,7 +808,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -886,7 +886,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -964,7 +964,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1042,7 +1042,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1120,7 +1120,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1198,7 +1198,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1276,7 +1276,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1354,7 +1354,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1432,7 +1432,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1510,7 +1510,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank1/trace.json",
+          "source_entry_path": "rank1/trace.json",
           "source_entry_sha256": "64991a180ff568941e59a3371789367ab9e152713c95b53da6537cf28d5c494a",
           "source_shapes": {
             "entry_noise": [
@@ -1593,7 +1593,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -1671,7 +1671,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -1749,7 +1749,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -1827,7 +1827,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -1905,7 +1905,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -1983,7 +1983,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -2061,7 +2061,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -2139,7 +2139,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -2217,7 +2217,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -2295,7 +2295,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank2/trace.json",
+          "source_entry_path": "rank2/trace.json",
           "source_entry_sha256": "e0d0ca15e26f41ea634305e06cd678126cded50d8bf1de15c67196133bb31b4a",
           "source_shapes": {
             "entry_noise": [
@@ -2378,7 +2378,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2456,7 +2456,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2534,7 +2534,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2612,7 +2612,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2690,7 +2690,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2768,7 +2768,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2846,7 +2846,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -2924,7 +2924,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -3002,7 +3002,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -3080,7 +3080,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank3/trace.json",
+          "source_entry_path": "rank3/trace.json",
           "source_entry_sha256": "78aa11ad68afb1f1fedcfaa04d9ac3d55be6a2544a808c0e9237b40e267b1101",
           "source_shapes": {
             "entry_noise": [
@@ -3163,7 +3163,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3241,7 +3241,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3319,7 +3319,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3397,7 +3397,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3475,7 +3475,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3553,7 +3553,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3631,7 +3631,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3709,7 +3709,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3787,7 +3787,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3865,7 +3865,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank4/trace.json",
+          "source_entry_path": "rank4/trace.json",
           "source_entry_sha256": "1be1795b102ff7c7f67e7025376a167313fb6bb5ecfeb9ad830fac4a00aa0703",
           "source_shapes": {
             "entry_noise": [
@@ -3948,7 +3948,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4026,7 +4026,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4104,7 +4104,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4182,7 +4182,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4260,7 +4260,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4338,7 +4338,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4416,7 +4416,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4494,7 +4494,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4572,7 +4572,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4650,7 +4650,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank5/trace.json",
+          "source_entry_path": "rank5/trace.json",
           "source_entry_sha256": "fc219eb01a687c5029bd16026da51af7d085100a36dc5f324522d40aecbabf34",
           "source_shapes": {
             "entry_noise": [
@@ -4733,7 +4733,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -4811,7 +4811,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -4889,7 +4889,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -4967,7 +4967,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5045,7 +5045,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5123,7 +5123,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5201,7 +5201,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5279,7 +5279,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5357,7 +5357,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5435,7 +5435,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank6/trace.json",
+          "source_entry_path": "rank6/trace.json",
           "source_entry_sha256": "5b11cb7059b098a95b0339aa60b1321e35c4a88471c7b3311abc88425ed1b33f",
           "source_shapes": {
             "entry_noise": [
@@ -5518,7 +5518,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5596,7 +5596,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5674,7 +5674,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5752,7 +5752,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5830,7 +5830,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5908,7 +5908,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -5986,7 +5986,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -6064,7 +6064,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -6142,7 +6142,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -6220,7 +6220,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank7/trace.json",
+          "source_entry_path": "rank7/trace.json",
           "source_entry_sha256": "22bbb8cf85469a47dd3be971c9d87419719902a8ad455b389f8cb6572752241f",
           "source_shapes": {
             "entry_noise": [
@@ -6303,7 +6303,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6381,7 +6381,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6459,7 +6459,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6537,7 +6537,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6615,7 +6615,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6693,7 +6693,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6771,7 +6771,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6849,7 +6849,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -6927,7 +6927,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -7005,7 +7005,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank8/trace.json",
+          "source_entry_path": "rank8/trace.json",
           "source_entry_sha256": "e70f92ab3ed5fd191b84887c885adc56b35a252dd896a3eadbd42cbac2779a5f",
           "source_shapes": {
             "entry_noise": [
@@ -7088,7 +7088,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7166,7 +7166,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7244,7 +7244,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7322,7 +7322,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7400,7 +7400,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7478,7 +7478,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7556,7 +7556,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7634,7 +7634,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7712,7 +7712,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7790,7 +7790,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank9/trace.json",
+          "source_entry_path": "rank9/trace.json",
           "source_entry_sha256": "81b74684f50af0a0475c0e2382c70ca656921220e2b3c80e6cb184f7ae7f13e9",
           "source_shapes": {
             "entry_noise": [
@@ -7873,7 +7873,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -7951,7 +7951,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8029,7 +8029,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8107,7 +8107,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8185,7 +8185,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8263,7 +8263,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8341,7 +8341,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8419,7 +8419,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8497,7 +8497,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8575,7 +8575,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank10/trace.json",
+          "source_entry_path": "rank10/trace.json",
           "source_entry_sha256": "6ce45ab6a289c4ac5d9b0f8b22c3479808273c2d8232b046e7e5121eba92b343",
           "source_shapes": {
             "entry_noise": [
@@ -8658,7 +8658,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -8736,7 +8736,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -8814,7 +8814,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -8892,7 +8892,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -8970,7 +8970,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9048,7 +9048,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9126,7 +9126,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9204,7 +9204,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9282,7 +9282,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9360,7 +9360,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank11/trace.json",
+          "source_entry_path": "rank11/trace.json",
           "source_entry_sha256": "0714b290dedaf0dbe8e7e554274c451c156067b4be7c7d2f70a0c90e6ebc15d3",
           "source_shapes": {
             "entry_noise": [
@@ -9443,7 +9443,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9521,7 +9521,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9599,7 +9599,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9677,7 +9677,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9755,7 +9755,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9833,7 +9833,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9911,7 +9911,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -9989,7 +9989,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -10067,7 +10067,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -10145,7 +10145,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank12/trace.json",
+          "source_entry_path": "rank12/trace.json",
           "source_entry_sha256": "1cb0f85ce1635a08ace20235fd96cb5635265d57298b24a2ad59b31c3d0f6471",
           "source_shapes": {
             "entry_noise": [
@@ -10228,7 +10228,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10306,7 +10306,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10384,7 +10384,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10462,7 +10462,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10540,7 +10540,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10618,7 +10618,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10696,7 +10696,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10774,7 +10774,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10852,7 +10852,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -10930,7 +10930,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank13/trace.json",
+          "source_entry_path": "rank13/trace.json",
           "source_entry_sha256": "eb86b102e664fec416be635e6e060966430d77b4500e5de5517d99368b008622",
           "source_shapes": {
             "entry_noise": [
@@ -11013,7 +11013,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11091,7 +11091,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11169,7 +11169,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11247,7 +11247,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11325,7 +11325,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11403,7 +11403,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11481,7 +11481,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11559,7 +11559,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11637,7 +11637,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11715,7 +11715,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank14/trace.json",
+          "source_entry_path": "rank14/trace.json",
           "source_entry_sha256": "bdca901e5922e9c1e0398bef03c05295c67beca70b1815d6bb43187d48977372",
           "source_shapes": {
             "entry_noise": [
@@ -11798,7 +11798,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1000,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -11876,7 +11876,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1000,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -11954,7 +11954,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1001,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12032,7 +12032,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1001,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12110,7 +12110,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1002,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12188,7 +12188,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1002,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12266,7 +12266,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1003,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12344,7 +12344,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1003,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12422,7 +12422,7 @@
           "graph": "B1_DENOISE",
           "logical_step": 1004,
           "rows": 11040,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12500,7 +12500,7 @@
           "graph": "B3_GAN_R1",
           "logical_step": 1004,
           "rows": 13680,
-          "source_entry_path": "/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1/rank15/trace.json",
+          "source_entry_path": "rank15/trace.json",
           "source_entry_sha256": "a573ee1b6d9421d84530a1303fafda26fb246d7ce3ee5f42799f7b6991dbaa37",
           "source_shapes": {
             "entry_noise": [
@@ -12563,5 +12563,6 @@
   ],
   "source_head": "ba52a2446b7f090cd31af9504679e68770d32603",
   "source_shape_qualification_sha256": "354e849562002b3df700611bf30edf86e6156d364e06e6eb9e5e52ca3f288082",
-  "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+  "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+  "path_binding": "DISTILLSCHEDULE_GAN_TRACE_BUNDLE_RELATIVE_FILES_SHA256_V1"
 }

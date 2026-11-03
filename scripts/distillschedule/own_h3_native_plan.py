@@ -1,4 +1,4 @@
-"""Native H3 continuous/Grid comparison bounded owner, identical sealed lifecycle policy. Reuses sealed R9 birth/permit/reap guards.
+"""Native H3 continuous full-sequence comparison bounded owner, identical sealed lifecycle policy. Reuses sealed R9 birth/permit/reap guards.
 
 No Torch import here, no borrowed GPU PID authority, no global cleanup. New
 workload contracts replace (not bypass) old hard-coded Student1/Fake5 gates.
@@ -7,17 +7,20 @@ from __future__ import annotations
 import argparse, csv, fcntl, hashlib, importlib.util, json, os, pathlib, signal, socket, subprocess, sys, time
 from types import SimpleNamespace
 P=pathlib.Path
-B=P('/share/project/shuchenweng/yongyan_liu')
-OP=B/'research_artifacts/DMD-System/five_workload_cycle2_speedup_20260930/rounds/helios_optimizer_portfolio_20261002_r2'
-R9=OP/'h3_lora_swiglu_consumer_fusion_20261005_r1/ffn_operation_markers_r1/cuda_qualifier_r2/scripts/bounded_owner_verified_ssh_ancestor_r9.py'
 R9_SHA='e40ac3518c481e163040e77c338b00b8ab57c4ead9c3591692dca4634acace86'
-GUARD=OP/'reports/h3_native_qkv_owner_20261005_r1/scripts/native_qkv_prefix_owner_r2.py'
 GUARD_SHA='91333522d660c8ebfaa1328a933757536d82d86a9ffa48481453770676dc6bd0'
-ROOT_DONOR=OP/'reports/priority_followup_20261007_r2/root_H3_split_release_native_two_cycle_20261008_r3/scripts/root_owner_draft_r1.py'
 
 def require(ok,why):
  if not ok: raise RuntimeError(why)
 def sha(p):return hashlib.sha256(P(p).read_bytes()).hexdigest()
+def pinned_helper(cfg,name,digest):
+ # The sealed deployment already records the actual helper locations. Resolve
+ # those exact bytes instead of assuming a site-specific project root.
+ matches=[P(path) for path,value in cfg['file_sha256'].items()
+          if P(path).name==name and value==digest]
+ require(len(matches)==1 and matches[0].is_absolute(),'SEALED_HELPER_BINDING:'+name)
+ require(sha(matches[0])==digest,'SEALED_HELPER:'+str(matches[0]))
+ return matches[0]
 def write(p,row):
  # Publish a complete immutable JSON object, preserving exclusive no-overwrite.
  # Peer readers must never observe a zero-length/incomplete ready receipt.
@@ -37,10 +40,13 @@ def main():
  ap=argparse.ArgumentParser();ap.add_argument('--manifest',required=True);ap.add_argument('--manifest-sha256',required=True);ap.add_argument('--node',type=int,choices=(0,1),required=True);ap.add_argument('--execute',action='store_true')
  a=ap.parse_args();require(sha(a.manifest)==a.manifest_sha256,'MANIFEST_SHA');cfg=json.loads(P(a.manifest).read_text())
  require(sha(__file__)==cfg['owner_sha256'],'OWNER_SHA')
+ R9=pinned_helper(cfg,'bounded_owner_verified_ssh_ancestor_r9.py',R9_SHA)
+ GUARD=pinned_helper(cfg,'native_qkv_prefix_owner_r2.py',GUARD_SHA)
+ ROOT_DONOR=pinned_helper(cfg,'root_owner_draft_r1.py',cfg['lifecycle_donor_sha256'])
  r9=load(R9,R9_SHA,'ar_r9');helper=r9.load_module(r9.HELPER,r9.HELPER_SHA,'ar_pid_helper');old=r9.load_module(r9.TRACKER,r9.TRACKER_SHA,'ar_tracker')
  guard=load(GUARD,GUARD_SHA,'ar_assignment_guard');donor=load(ROOT_DONOR,cfg['lifecycle_donor_sha256'],'ar_fd_reconcile')
  require(cfg['kind']=='native_h3_serialized_plan_v1','EXPLICIT_USER_H3_COMPARISON')
- require(cfg['cycles']==2 and cfg['numerical_status']=='GRID1000_REVIEW_POLICY_ONLY','TWO_CYCLE_DIAGNOSTIC_NUMERIC_BOUNDARY')
+ require(cfg['cycles']==2 and cfg['numerical_status']=='CONTINUOUS_NUMERICAL_COMPARISON','TWO_CYCLE_DIAGNOSTIC_NUMERIC_BOUNDARY')
  require(socket.gethostname()==cfg['hosts'][a.node],'PINNED_JOB_HOST')
  require(sha(cfg['python'])==cfg['python_sha256'],'PYTHON_IDENTITY')
  source=P(cfg['source_root']);head=cfg['source_head']

@@ -14,11 +14,11 @@ Each table retains its baseline definition and uses the adopted DMD-System resul
 | W2 Helios No-GAN | 109.170 | 82.990 | 1.315× |
 | W3 Helios GAN | 164.300 | 116.254 | 1.413× |
 | W4 Self-Forcing DMD / LiveWan | 84.260 | 42.450 | 1.985× |
-| W5 Audio–Video DMD, full-sequence Grid1000 | 911.770 | 767.020 | 1.189× |
+| W5 Audio–Video DMD, full-sequence | — | — | — |
 | W6 Autoregressive Audio–Video DMD | 320.000 | 255.671 | 1.252× |
 
-W1–W5 use G1/F5; W6 uses eight rollout steps and G1/F1. W5 uses
-Grid1000; W6 uses continuous sigma. W3 uses unmerged LoRA. W6's denominator
+W1–W5 use G1/F5; W6 uses eight rollout steps and G1/F1. Both H3
+workloads use continuous sigma. W3 uses unmerged LoRA. W6's denominator
 is the reported FSDP2 reference.
 
 ### Resident / offload baseline
@@ -29,7 +29,7 @@ is the reported FSDP2 reference.
 | W2 Helios No-GAN | 688.730 | 82.990 | 8.299× |
 | W3 Helios GAN | 762.440 | 116.254 | 6.558× |
 | W4 Self-Forcing DMD / LiveWan | 69.250 | 42.450 | 1.631× |
-| W5 Audio–Video DMD, full-sequence Grid1000 | — | 767.020 | — |
+| W5 Audio–Video DMD, full-sequence | — | — | — |
 | W6 Autoregressive Audio–Video DMD | — | 255.671 | — |
 
 W2 and W3 use the role-swap/offload reference; W1 and W4 use their resident
@@ -43,7 +43,7 @@ reference. A dash means no measurement is recorded for that baseline.
 | W2 Helios No-GAN | 156.250 | 82.990 | 1.883× |
 | W3 Helios GAN | 203.740 | 116.254 | 1.753× |
 | W4 Self-Forcing DMD / LiveWan | 62.380 | 42.450 | 1.469× |
-| W5 Audio–Video DMD, full-sequence Grid1000 | — | 767.020 | — |
+| W5 Audio–Video DMD, full-sequence | — | — | — |
 | W6 Autoregressive Audio–Video DMD | — | 255.671 | — |
 
 RealHF-like identifies the static-layout comparison, not a run of the ReaLHF
@@ -64,9 +64,8 @@ corresponding recipe.
 | Official Self-Forcing Wan, 81 frames, 368 × 640, G1/C5 | 50.739 | 30.959 | 1.639× |
 
 Both workflows completed 100 cycles, cycle-50 saving and fresh-process
-continuation, Student export and new-input generation. DMD2 timing uses full-size
-deterministic random initialization and prepared synthetic prompts/latents;
-Self-Forcing uses Wan base weights. See the [result data](../../artifacts/results/official.csv)
+continuation, Student export and new-input generation.
+See the [result data](../../artifacts/results/official.csv)
 and [training commands](native_workloads.md#official_optimized_training).
 
 ## H100
@@ -80,7 +79,7 @@ reference and timing window; these are not hardware-normalized A100 comparisons.
 | W2 | Retained-G control | 95.535 | 94.311 | 1.013× | G1/C5/EMA5 Full5 |
 | W3 | Whole-role swap, GPU ZeRO1 | 192.986 | 117.344 | 1.645× | G1/C5/EMA1 Full5 |
 | W4 | Resident | 45.361 | 45.257 | 1.002× | C2 |
-| W5 | Grid1000 FSDP | 638.522 | 539.718 | 1.183× | C2 |
+| W5 | Continuous FSDP2 | — | — | — | C2 |
 | W6 | Native FSDP | 320.666 | 278.886 | 1.150× | C2, FA2 |
 
 [Measurements and revisions](../../artifacts/results/h100.csv) ·
@@ -88,7 +87,7 @@ reference and timing window; these are not hardware-normalized A100 comparisons.
 
 ## Planning and reproduction
 
-[Manual versus saved-plan measurements](../../artifacts/publications/20261019/evidence/planner/six_workload_native_match.json)
+[Manual versus saved-plan measurements](../../artifacts/results/planner.json)
 record native plan execution separately from end-to-end optimization gains.
 Use an explicit strategy for direct training, or calibrate and search for your
 hardware and inputs through the [planning workflow](../runbooks/native_planner_workflow.md).

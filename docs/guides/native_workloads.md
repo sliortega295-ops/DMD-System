@@ -47,14 +47,13 @@ passed. A source/layout change requires new source-bound admission and costs.
 | [W2 optimized](../../recipes/helios_nogan/training.json) / [direct reference](../../recipes/helios_nogan/training.reference.json) | Helios14B hierarchical AR, G1/C5/EMA5 | Preset/plan: `search.execution.run_plan`; direct reference: original P0 setup and preparation/update helpers | Preset/plan: 2. Direct reference: 2..100 fresh cohorts, explicit original Step10 G2/C10/EMA10 bootstrap |
 | [W3](../../recipes/helios_gan/training.json) | Helios14B DMD + GAN-G/GAN-D, G1/C5/EMA1 | `search.execution.run_plan` | Exactly the selected native contract's 2 |
 | [W4 optimized](../../recipes/self_forcing/training.json) / [original reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) | Self-Forcing, continuous sigma, G1/C5/EMA0 | Preset/plan: `search.execution.run_plan`; reference: original baseline ModelBundle and update helper | Preset/plan: 2. Original reference: 2..64 finite teacher cohorts, explicit genuine zero-step assets |
-| [W5 optimized](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-grid-original-training.md) | Full-sequence AV Grid1000, 4-step, G1/F5, LoRA128 | Preset/plan: `search.execution.run_plan`; original reference: `grid_entrypoint` and original Grid trainer | Preset/plan: 2. Original reference: 2..64 finite cached-condition cycles |
+| [W5 optimized](../../recipes/h3_fullseq/training.json) / [original reference](../../recipes/h3-fullseq-original-training.md) | Full-sequence AV continuous H3, 4-step, G1/F5, LoRA128 | Preset/plan: `search.execution.run_plan`; original reference: `entrypoint` and original continuous trainer | Preset/plan: 2. Original reference: 2..64 finite cached-condition cycles |
 | [W6](../../recipes/h3_ar/training.json) | Original DiffSynth previous+current AV, continuous sigma, 8-step, G1/F1, LoRA64, ZeRO-3 | `strategies.h3_ar_cli.main` -> `h3_ar_worker.run_worker` | Exactly 2 native updates |
 
 The table above names the original benchmark configs, not the separately
 versioned continuous-training configs below. Raising `cycles` on a two-update
 benchmark is rejected rather than silently truncated. Shapes, objective,
-precision and update counts stay owned by each original task. W5 remains
-Grid1000, not continuous sigma, and W6 never dispatches through W5.
+precision and update counts stay owned by each original task. W5 and W6 both use continuous sigma, with separate full-sequence and AR owners.
 
 ## Continuous native training
 
@@ -68,12 +67,11 @@ modified. Direct training does not need a saved plan.
 | W2 | [SafeBundle stream](../../recipes/helios_nogan/training.safe-stream.json); `helios_worker` | 2..100 fresh cohorts | Original native state and warm clocks; [SAFE_STREAM.md](../../recipes/helios_nogan/SAFE_STREAM.md) |
 | W3 | [full GAN stream](../../recipes/helios_gan/training.stream.json); `helios_gan_training` | finite prepared stream, including 100 cycles | Full G/C/GAN-head Adam and EMA; [NATIVE_STREAM.md](../../recipes/helios_gan/NATIVE_STREAM.md) |
 | W4 | [full C51 stream](../../recipes/self_forcing/training.c51-stream.json); `livewan_c51_training` | 2..100 fresh cohorts | Two-pool drain, role state and wave cursors; [C51_CONTINUATION.md](../../recipes/self_forcing/C51_CONTINUATION.md) |
-| W5 | [original Grid reference](../../recipes/h3_fullseq/training.original-reference.json); `h3_grid_training` | 2..64 finite cached-condition cycles | Both LoRAs, original Adam/schedulers, sampler and RNG; [h3-grid-original-training.md](../../recipes/h3-grid-original-training.md) |
+| W5 | [original continuous reference](../../recipes/h3_fullseq/training.original-reference.json); `h3_fullseq_training` | 2..64 finite cached-condition cycles | Both LoRAs, original Adam/schedulers, sampler and RNG; [h3-fullseq-original-training.md](../../recipes/h3-fullseq-original-training.md) |
 | W6 | [native AR stream](../../recipes/h3_ar/training.native-stream.json); `h3_ar_training` | 2..100 fresh cycles | Original ZeRO-3 model/master Adam and native clocks; [NATIVE_CONTINUATION.md](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
 
 W2 also has a direct-reference fresh stream. W4's original-reference input owner
-is not full C51. W5 remains approximate Grid1000; its reference lifecycle does
-not waive the optimized backward failure. W3's explicit
+is not full C51. W3's explicit
 [native-history policy](../contracts/helios_native.md#helios_gan_native_history_v1)
 keeps full GAN and original detached-rollout persistence; full-size capacity and
 restart require their own native evidence.
@@ -84,7 +82,7 @@ restart require their own native evidence.
 | --- | --- |
 | W1/W2/W3 | [W1](../../recipes/wan_ar/NATIVE_OUTPUT.md), [W2](../../recipes/helios_nogan/NATIVE_OUTPUT.md), [W3](../../recipes/helios_gan/NATIVE_OUTPUT.md): native complete restore, current unmerged G, real Wan2.1 VAE; W3 keeps GAN restore and N70 OFF |
 | W4 | [Full C51](training.md#livewan_native_output): both role pools restored, only current G exported; original four-step streamer |
-| W5 | [Grid output](training.md#h3_grid_inference): current LoRA plus four frozen AdaLN entries and converted-model four-step sampler |
+| W5 | [Full-sequence output](training.md#h3_fullseq_inference): current LoRA plus four frozen AdaLN entries and converted-model four-step sampler |
 | W6 | [AR output](training.md#h3_ar_native_inference): original eight-step previous/current AV sampler; [new raw AV inputs](data.md#h3_audio_video_encode) use original encoders/text features |
 
 Exports are inference weights, not resumable checkpoints. Reuse recorded runs
@@ -101,7 +99,7 @@ restart coverage does not complete a missing native GPU endpoint.
   AP is only explicit `zero3-ap` or a measured selected plan.
 - W2 [reference](../../recipes/helios_nogan/REFERENCE_TRAINING.md), W4
   [zero-step reference](../../recipes/self_forcing/REFERENCE_TRAINING.md) and W5
-  [original-config reference](../../recipes/h3-grid-original-training.md) do not
+  [original-config reference](../../recipes/h3-fullseq-original-training.md) do not
   inherit a historical optimized winner.
 - W2-W5 presets use manual mode. For resolved reference candidates and measured
   controls use [native calibration](../runbooks/native_planner_workflow.md).
@@ -147,8 +145,8 @@ weights/trace/shape, topology and capacity are checked before model construction
 | W2 reference | `original_helios_cohort_stream.v1`, five rank/step feature sets per cohort; used model/precast/bootstrap/negative/EMA assets and warm G2/C10/EMA10, not cold Step0 |
 | W3 | Full GAN/native-history stream and its own checkpoint identity; never W2 relabeling |
 | W4 reference | `original_livewan_teacher_cohorts.v1`, `algorithm.name: original_self_forcing_reference.v1`, reference mode, actual zero-step G0/C0/EMA0 assets, exact finite horizon/seed/capacity |
-| W5 reference | `original_h3_grid_latent_dataset.v1`, genuine cached conditions, resolved native config/source/dependencies/order and exact original seed; Grid1000 approximate objective |
-| W6 | Versioned per-rank cache/parser/source metadata, including rank6 audio94. Arbitrary cache relocation needs a new reviewed input contract, not edits to historical locks |
+| W5 reference | `original_h3_fullseq_latent_dataset.v1`, genuine cached conditions, resolved native config/source/dependencies/order and exact original seed; continuous sigma objective |
+| W6 | Versioned per-rank cache/parser/source metadata, including rank6 audio94. Cache roots are configurable; original filenames, checksums and tensor metadata stay bound to the input contract |
 
 Native streams are not generic PreparedDataset/statistics-encoder manifests.
 Unrecognized prepared data or RNG overrides reject, not get ignored. Only the
@@ -249,7 +247,7 @@ two-node dispatcher and the supplied node manifest.
 | W2 `helios_nogan.safe_ed8.v1` | Node-HSDP, chunk512/window5, SafeBundle normalization/LoRA/replay reuse; warm No-GAN bootstrap | [Safe stream](../../recipes/helios_nogan/SAFE_STREAM.md) |
 | W3 `helios_gan.fa3_down40_nomerge.v1` | World16 FSDP, chunk2048/window5, SM80 FA3, down40 replay, separate GAN heads; LoRA unmerged | [GAN stream](../../recipes/helios_gan/NATIVE_STREAM.md) |
 | W4 `self_forcing.c51.v1` | Full C51 8G+8Score pipeline with C34 prerequisites | [C51 continuation](../../recipes/self_forcing/C51_CONTINUATION.md) |
-| W5 `h3_fullseq.cpu_staged_trim.v1` | Grid1000 CPU-staged trimmed FA3 replay, depth2/N128 | [Original-reference lifecycle](../../recipes/h3-grid-original-training.md) |
+| W5 `h3_fullseq.cpu_staged_trim.v2` | continuous H3 CPU-staged trimmed FA3 replay, depth2/N128 | [Original-reference lifecycle](../../recipes/h3-fullseq-original-training.md) |
 | W6 `h3_ar.zero3_ap.v1` | ZeRO-3, selected-cache/unit prefetch, CPU-staged replay, fusion and communication overlap | [Native AR continuation](../../recipes/h3_ar/NATIVE_CONTINUATION.md) |
 
 The original six presets require exactly two native cycles,
@@ -427,7 +425,7 @@ python scripts/distillctl.py workloads native validate \
 ```bash
 python scripts/distillctl.py workloads native prepare-assets \
   --task configs/distillschedule/original_h3_ar/w6_reference.json \
-  --native-manifest /share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/steady_two_cycle_20261012_r1/configs/world16_r1_manifest.json \
+  --native-manifest /REMOTE/RUN/configs/native-manifest.json \
   --checkpoint-audit /REMOTE/RUN/artifacts/checkpoint-audit.json \
   --output /REMOTE/RUN/configs/assets.json
 ```

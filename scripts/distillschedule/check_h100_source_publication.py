@@ -32,8 +32,8 @@ def verify(root: Path) -> dict:
         if ref['repository'] not in {'DMD-System', 'H3-DMD-for-A100'}:
             raise ValueError('unexpected source repository')
     rows = manifest['workloads']
-    if len(rows) != 6 or {r['id'] for r in rows} != {'W1', 'W2', 'W3', 'W4', 'W5', 'W6'}:
-        raise ValueError('six H100 workloads must remain distinct')
+    if len(rows) != 5 or {r['id'] for r in rows} != {'W1', 'W2', 'W3', 'W4', 'W6'}:
+        raise ValueError('five measured H100 workloads must remain distinct')
     for row in rows:
         for key in ('measured_training_head', 'published_head'):
             if not re.fullmatch('[0-9a-f]{40}', row[key]):
@@ -47,11 +47,9 @@ def verify(root: Path) -> dict:
     by_id = {r['id']: r for r in rows}
     if by_id['W1']['latest_norm_end_to_end'] != 'NOT_RUN':
         raise ValueError('untimed W1 norm port is not a measured faster endpoint')
-    if by_id['W5']['semantics'] != 'GRID1000_APPROXIMATE_NOT_EXACT_CONTINUOUS':
-        raise ValueError('W5 approximate Grid is not continuous DMD')
     if by_id['W6']['attention_backend'] != 'FA2' or by_id['W6']['fa3_status'] != 'FAIL_UNWAIVED_NOT_ACCEPTED':
         raise ValueError('W6 rejected FA3 path cannot become the measured endpoint')
-    return dict(status='PASS_H100_ARCHIVE_INTEGRITY_ONLY', files=len(seen), workloads=6,
+    return dict(status='PASS_H100_ARCHIVE_INTEGRITY_ONLY', files=len(seen), workloads=len(rows),
                 source_refs=len(manifest['source_refs']), GPU_started=0, SSH_calls=0)
 
 

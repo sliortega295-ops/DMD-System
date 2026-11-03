@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIVEWAN_COMMIT="1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5"
 WAN21_COMMIT="9737cba9c1c3c4d04b33fcad41c111989865d315"
-OUTPUT="${LIVEWAN_WAN21_SOURCE:-/home/lyy/Helios/runtime_sources/livewan-wan21-${WAN21_COMMIT}}"
+OUTPUT="${LIVEWAN_WAN21_SOURCE:-${ROOT}/runtime_sources/livewan-wan21-${WAN21_COMMIT}}"
 RECEIPT="${LIVEWAN_SOURCE_RECEIPT:-${OUTPUT}.source_receipt.json}"
 
 usage() {

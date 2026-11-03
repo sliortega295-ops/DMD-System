@@ -21,12 +21,12 @@ data_config:
   use_stage1_dataset: false
   use_stage3_dataset: true
   gan_data_root:
-  - /share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_single
+  - assets/helios/features
 model_config:
-  pretrained_model_name_or_path: /home/shuchenweng/xty/Helios-main/weights
-  transformer_model_name_or_path: /share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled
+  pretrained_model_name_or_path: assets/helios/base
+  transformer_model_name_or_path: assets/helios/distilled
   subfolder: transformer_ode
-  real_score_model_name_or_path: /home/shuchenweng/xty/Helios-main/weights
+  real_score_model_name_or_path: assets/helios/base
   load_checkpoints_custom: false
   load_dcp: false
   upcast_vae: true
@@ -43,7 +43,7 @@ model_config:
   critic_lora_rank: 256
   critic_lora_alpha: 256.0
   critic_lora_dropout: 0.0
-  reward_model_name_or_path: /mnt/bn/yufan-dev-my/ysh_new/Ckpts/Videoreward
+  reward_model_name_or_path: assets/helios/reward
 validation_config:
   validation_steps: 1000000
   validation_height: 384

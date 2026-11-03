@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "repository": "sliortega295-ops/DMD-System",
-  "source_revision": "479be6541721dd68a7468cfb02e158f372c08b89",
+  "source_revision": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
-    "src/distillschedule/workloads/catalog.json": "de9b3b7a1447f222fd613fcb822949f2e316d94225d1d4fa1a63add50d78b90b",
+    "src/distillschedule/workloads/catalog.json": "1d23ea4948680dad056b07c865145568c69886d17d4a7d637515ee55b30e9458",
     "src/distillschedule/training/strategy_catalog.py": "77210d8d927cbcbcc7d24b2416166af8ee70d65db7fe16d1b47efe80f6da1ee6",
     "recipes/dmd2_sd15/training.component-checkpoint.json": "2011a0d91faaa0923d635fe7c14f68177e286301c09aa9b25d5c4a2f548484ed",
     "recipes/dmd2_sd15/training.ddp-fp32.json": "510e5aca092425182db0577b00a572fd8b65a4766c18a7ac2c4a2c35a01862c7",
@@ -23,10 +23,10 @@
     "recipes/h3_ar/training.json": "4868e2f4286913fb6cb3c9a6842e68c10b9583a491c74b6215d18f0b542be420",
     "recipes/h3_ar/training.native-stream.json": "85a78624563ffd0db64ca1b00ad405d4537f952cd8aaf284fa6d68a9d6c6352a",
     "recipes/h3_ar/training.reference.json": "f5821962b3548abf0977d841fec1d411b788b0f49c7e90e3c4207d8655ed230e",
-    "recipes/h3_ar/README.md": "1a56b0d9668eb4bdc2731b0dc237fea45b0df8480d2226f7ceb5fddc9c6dab76",
-    "recipes/h3_fullseq/training.json": "6c820e7754ac1b8e4fc367e04400e6f4ce4929089069f40daca99a21aae579e3",
-    "recipes/h3_fullseq/training.original-reference.json": "f9190e47852a12ff8e03b4e30389454ab71d3ab1365511f54bfcbaa51104b28e",
-    "recipes/h3_fullseq/README.md": "4bf56c9e33889b7bedf015b96ac235910d81dfa571f71dde72e87a7a9b5f84ef",
+    "recipes/h3_ar/README.md": "82bf700ffcbda3b375a8aae18247edd222a93294383b0d11a981390df1264de4",
+    "recipes/h3_fullseq/training.json": "812867c1363bf23c76aac0bc0b110dbc63e148dc5d89e143b80a11ad72bd13a3",
+    "recipes/h3_fullseq/training.original-reference.json": "df9966815318846555411f983fa8623ce403b7b1759d8bed9e2c7dd3dba867dc",
+    "recipes/h3_fullseq/README.md": "9da9d989027965c0642cfb2307bd4e4f202741f831e8bccfc27773608653fdbb",
     "recipes/helios_gan/training.json": "f35477db36f77592122a71777cc4d6705293bf7d76e44303937c0b4de9c63d8f",
     "recipes/helios_gan/training.native-history-checkpoint-cpu.json": "a2dc656167266d4d58ac6419fc9dfc4af9ed106d142f41945f6d8eacbb592b3e",
     "recipes/helios_gan/training.reference.cpu.json": "82de07c0fb22d03a576ee96453377f5179ea66daddae3b271e4450ec64b7471d",
@@ -254,7 +254,7 @@
         "W5"
       ],
       "algorithms": [
-        "original_h3_fullseq_grid1000"
+        "original_h3_fullseq_continuous"
       ],
       "recipes": {
         "reference": [
@@ -272,11 +272,11 @@
       "profiles": [],
       "checks": [
         "tests/test_training_expansion_packaging.py",
-        "tests/test_training_h3_grid.py"
+        "tests/test_training_h3_fullseq.py"
       ],
       "tests_run": false,
       "guide": "recipes/h3_fullseq/README.md",
-      "title": "W5 — Audio-Video DMD (Full-Sequence / H3 Grid1000)",
+      "title": "W5 — Audio-Video DMD (Full-Sequence / H3 continuous H3)",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 2

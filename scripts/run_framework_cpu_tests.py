@@ -16,10 +16,10 @@ EXCLUDED = frozenset({
     "test_training_livewan_reference_inputs.py",
     "test_training_livewan_public_cpu.py",
     "test_training_livewan_inference_cpu.py",
-    # Actual Diffusers 0.40 Grid output and installed DeepSpeed serialization
+    # Actual Diffusers 0.40 full-sequence output and installed DeepSpeed serialization
     # are mandatory in their own dependency-separated H3 jobs.
-    "test_training_h3_grid_outputs.py",
-    "test_training_h3_grid_native_outputs.py",
+    "test_training_h3_fullseq_outputs.py",
+    "test_training_h3_fullseq_native_outputs.py",
     "test_training_h3_native_consolidation.py",
     # This actual original transformer import needs the full 0.37 model
     # closure, not the 0.34 source-helper environment used here.

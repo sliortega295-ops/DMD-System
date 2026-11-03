@@ -274,7 +274,7 @@ def test_profile_invalid_evidence_rejected(tmp_path, bad):
 def test_cli_cpu_only_no_torch_or_gpu_import():
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src"), "PYTHONDONTWRITEBYTECODE": "1"}
     command = [sys.executable, str(ROOT / "scripts/distillctl.py"), "workloads", "search",
-               "--workload", "minimax_h3_grid1000_best", "--dry-run"]
+               "--workload", "minimax_h3_continuous_best", "--dry-run"]
     run = subprocess.run(command, cwd=ROOT, env=env, text=True, capture_output=True, check=True)
     value = json.loads(run.stdout)
     assert value["status"] == "PASS_CPU_PLAN_ONLY" and value["gpu"] == "NOT_RUN"

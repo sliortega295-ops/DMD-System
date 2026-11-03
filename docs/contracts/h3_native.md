@@ -1,6 +1,6 @@
 # H3 request, native AR and diagnostic contracts
 
-W5 Grid1000 and W6 previous/current AR are distinct algorithms and input owners.
+W5 continuous H3 and W6 previous/current AR are distinct algorithms and input owners.
 [Native commands](../guides/native_workloads.md)
 and [AR output](../guides/training.md#h3_ar_native_inference) use these contracts.
 
@@ -52,7 +52,7 @@ claims. An intact tuple is not a numerical-equivalence result: the original
 native completion checks and subsequent same-tuple analysis remain separate.
 
 <a id="minimax_h3_bounded_requests_v1"></a>
-## Bounded original H3 Grid1000 requests, v1
+## Bounded original H3 continuous H3 requests, v1
 
 `distillschedule.h3_request.v1` admits exactly 768x1344 and 480x832, each with
 56 or 124 frames. The default remains 768x1344x124. This is a versioned request contract, **not** a replacement or
@@ -69,15 +69,13 @@ lengths, not arbitrary native lengths or Wan's frame lattice. Audio packing
 retains the native `round(num_frames / FPS * AUDIO_LATENTS_PER_SECOND)` rule.
 
 Everything except the explicitly selected resolution/frame count and physical cache policy
-retains the original canonical H3 protocol: approximate discrete Grid1000,
+retains the original canonical H3 protocol: continuous sigma,
 world16 on 2x8 A100, B1/global16, BF16, SP1, LoRA128, four rollout evaluations,
 fixed end step 3, Student1/Fake5, segment1, activation policy none, FA3 splits2,
 all 50 replay blocks, seed20260817, no EMA. The native two-cycle adapter runs
 one process lifetime, advances G2/F10, and does not reset models/RNG between
-cycles. This does not support autoregressive H3 or continuous-exact sigma.
-Eight-GPU topology requests and arbitrary shapes remain unsupported. The
-CPU-staged matched control is still approximate Grid1000, not a continuous
-reference baseline.
+cycles. This full-sequence binding is separate from autoregressive H3.
+Eight-GPU topology requests and arbitrary shapes remain unsupported. Both baseline and optimized execution retain the same continuous sampler.
 
 ### Physical implementation identities
 
@@ -103,7 +101,7 @@ cannot satisfy a 56-frame candidate. After native setup the actual installed cac
 registration must match; v3 per-cycle receipts include its policy and native
 counters. CUDA must have zero CPU cache/staging/transfer and trim counters and
 nonzero native replay forward/backward execution. The original workload-owned
-per-cycle FA3/Grid1000/census/version gates remain unchanged.
+per-cycle FA3/exact-AdaLN/census/version gates remain unchanged.
 
 Request/shape, storage/trim and kernel choices enter cost keys. H3 v3 macro
 planning requires joined, hash-bound native calibration results. Missing costs
@@ -267,7 +265,7 @@ loading models.
   `dmd2_zero3.configure/initialize/step`, checkpoint helper and RNG progression.
   `H3ARSession` binds those functions; it does not copy/rewrite training math.
 - One world16 group, two nodes x eight A100-SXM4-40GB; real validated
-  Torch2.10.0+cu128. No world1/world8/Grid1000/fullseq/Diffusers fallback.
+  Torch2.10.0+cu128. No world1/world8/continuous H3/fullseq/Diffusers fallback.
   The pinned native startup metadata helper intentionally rejects other GPUs.
 
 ### Admitted physical choices
@@ -384,13 +382,15 @@ video frames, 768×1344, original video latents `[1,24,17,48,84]`, previous
 visual anchors `[17136,96]`, and the exact semantics in the v1 contract.
 Prompt/packed sequence lengths also remain sample-specific.
 
-`distillschedule.original_h3_ar_task.v2` binds the SHA256 of
-`configs/distillschedule/original_h3_ar/rank_inputs_v1.json`. That curated
-small file contains no tensor values: it binds each rank's original path/SHA,
+`distillschedule.original_h3_ar_task.v3` binds the SHA256 of
+`configs/distillschedule/original_h3_ar/rank_inputs_v2.json`. That curated
+small file contains no tensor values: it binds each rank's original filename/SHA,
 raw/prepared tensor shapes/dtypes/packed layout, the original clean-reference
-conditioning scalars, cache manifest, both original preparation source SHAs,
+conditioning scalars, archived cache-manifest hash, both original preparation source SHAs,
 full native source receipt, and the CPU observation's SHA/source provenance.
-The observation is **not timing/calibration evidence**.
+The operator supplies the current cache-manifest path and SHA. Relocated files
+retain their original filenames and byte hashes; each receipt binds the actual
+loaded path. The observation is not timing/calibration evidence.
 
 The same validator is used immediately after unchanged original
 `prepare_batch` in the live Session and in the mandatory owner CPU preflight
@@ -471,4 +471,4 @@ and topology. An output-only restore resolves the saved draw without consuming
 a next training draw. Caches are reconstructed, not serialized as training state.
 
 Source/CPU behavior is validated independently of full-size GPU training.
-This policy does not alter W5 Grid1000 or its outstanding numerical diagnosis.
+This policy does not alter W5 continuous full-sequence execution.

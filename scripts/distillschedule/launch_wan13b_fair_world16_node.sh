@@ -421,7 +421,7 @@ set +e
 if [[ "${MODE}" == profile ]]; then
   NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:-$(command -v nsys || true)}"
   [[ -x "${NSYS_BIN}" ]] || { echo nsys_missing >&2; exit 3; }
-  NSYS_VERSION="$(${NSYS_BIN} --version | head -1)"
+  NSYS_VERSION="$("${NSYS_BIN}" --version | head -1)"
   [[ "${NSYS_VERSION}" =~ 2024\.6\.2|2024\.[789]|202[5-9]\. ]] || {
     echo "nsys_version_not_admissible=${NSYS_VERSION}" >&2
     exit 3

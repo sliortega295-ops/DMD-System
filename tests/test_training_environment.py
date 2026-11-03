@@ -7,16 +7,15 @@ from types import SimpleNamespace
 import pytest
 
 
-@pytest.fixture(params=["livewan_reference_assets", "h3_grid_training"])
+@pytest.fixture(params=["livewan_reference_assets", "h3_fullseq_training"])
 def owner(request):
     return importlib.import_module("distillschedule.training." + request.param)
 
 
 def explicit_environment(owner, extra):
-    if owner.__name__.endswith("h3_grid_training"):
-        value = {"H3_ADALN_GRID_MANIFEST": "/synthetic/grid.json",
-                 "H3_FLASH_ATTN3_LOCAL_PATH": "/synthetic/fa3", **extra}
-        config = {"training": {"a100": {"adaln_grid": {"manifest": "/synthetic/grid.json"}}}}
+    if owner.__name__.endswith("h3_fullseq_training"):
+        value = {"H3_FLASH_ATTN3_LOCAL_PATH": "/synthetic/fa3", **extra}
+        config = {"training": {"a100": {}}}
         return value, lambda: owner._environment(value, config)
     return extra, lambda: owner._environment(extra)
 
@@ -52,7 +51,7 @@ def test_explicit_environment_rejects_credentials_without_echoing_values(owner, 
 def test_token_rotation_does_not_change_checkpoint_identity(owner):
     def identity(token, *, offline="1"):
         environment = owner.environment_snapshot({"HF_TOKEN": token, "HF_HUB_OFFLINE": offline})
-        if owner.__name__.endswith("h3_grid_training"):
+        if owner.__name__.endswith("h3_fullseq_training"):
             assets = {"environment": environment, "native_config": {"sha256": "a" * 64}}
             return owner.training_identity("b" * 40, assets, {"inventory_sha256": "c" * 64}, 3)
         from distillschedule.training.livewan_training import training_identity
@@ -86,7 +85,7 @@ def test_livewan_optional_framework_import_controls_are_bound(key):
 
 @pytest.mark.parametrize("key", ["H3_PLANNER_TWO_CYCLE", "DISTILLSCHEDULE_PLAN", "LOCAL_KERNELS"])
 def test_h3_forbidden_controls_remain_visible_and_rejected(key):
-    from distillschedule.training import h3_grid_training as owner
+    from distillschedule.training import h3_fullseq_training as owner
     value = owner.environment_snapshot({key: "1", "HF_TOKEN": "SYNTHETIC_CREDENTIAL_NOT_REAL"})
     assert value[key] == "1"
     _, admit = explicit_environment(owner, value)
@@ -94,12 +93,12 @@ def test_h3_forbidden_controls_remain_visible_and_rejected(key):
         admit()
 
 
-def test_h3_required_grid_and_kernel_controls_still_admit_only_matching_paths():
-    from distillschedule.training import h3_grid_training as owner
+def test_h3_reference_kernel_control_rejects_discretized_configuration():
+    from distillschedule.training import h3_fullseq_training as owner
     value, admit = explicit_environment(owner, {"HF_HUB_DISABLE_IMPLICIT_TOKEN": "1"})
     before = deepcopy(value)
     admit()
     assert value == before
     value["H3_ADALN_GRID_MANIFEST"] = "/synthetic/different.json"
-    with pytest.raises(ValueError, match="matching Grid table"):
+    with pytest.raises(ValueError, match="benchmark/planner/optimized environment overrides"):
         admit()

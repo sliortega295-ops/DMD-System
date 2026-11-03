@@ -81,7 +81,7 @@ def search_fixture(tmp_path, workload, *, implementation=None):
     else:
         impl = H3Implementation(cache_policy="cpu_staged_trim")
         task = H3Request()
-        profile_id = "minimax_h3_grid1000_best"
+        profile_id = "minimax_h3_continuous_best"
     impl = implementation or impl
     profile = impl.lower_profile()
     assets = dict(schema_version=1, nodes=[dict(host=f"cpu-fixture-node{i}",

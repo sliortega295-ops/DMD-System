@@ -103,8 +103,8 @@ def test_legacy_random_fake_fixture_is_rejected_as_a_reordering_reference():
 def test_new_id_is_opt_in_and_cannot_admit_timing_or_old_macro_costs(window):
     legacy = H3Implementation(2, 128)
     impl = H3Implementation(2, 128, rollout_window=window)
-    assert legacy.id == "joint-h3v1-d2-n128"
-    assert impl.id == f"joint-h3v2-d2-n128-w{window}"
+    assert legacy.id == "joint-h3c1-d2-n128"
+    assert impl.id == f"joint-h3c2-d2-n128-w{window}"
     assert H3Implementation.parse(impl.id) == impl
     assert H3Implementation.from_assignment(impl.assignment) == impl
     profile = impl.lower_profile()
@@ -218,15 +218,15 @@ def test_failure_evidence_io_error_does_not_mask_native_error(tmp_path, monkeypa
 
 
 @pytest.mark.parametrize("candidate,window,mode,passes", [
-    ("joint-h3v2-d2-n128-w3", "3", "correctness", True),
-    ("joint-h3v2-d1-n64-w5", "5", "correctness", True),
-    ("joint-h3v2-d2-n128-w3", "3", "diagnostic-timing", True),
-    ("joint-h3v2-d2-n128-w3", "2", "correctness", False),
-    ("joint-h3v1-d2-n128", "3", "correctness", False),
-    ("joint-h3v1-d2-n128", "", "correctness", True),
-    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128", "", "correctness", True),
-    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128", "1", "correctness", False),
-    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128-r3", "3", "correctness", True),
+    ("joint-h3c2-d2-n128-w3", "3", "correctness", True),
+    ("joint-h3c2-d1-n64-w5", "5", "correctness", True),
+    ("joint-h3c2-d2-n128-w3", "3", "diagnostic-timing", True),
+    ("joint-h3c2-d2-n128-w3", "2", "correctness", False),
+    ("joint-h3c1-d2-n128", "3", "correctness", False),
+    ("joint-h3c1-d2-n128", "", "correctness", True),
+    ("joint-h3c3-h480-w832-f124-cuda_no_trim-d2-n128", "", "correctness", True),
+    ("joint-h3c3-h480-w832-f124-cuda_no_trim-d2-n128", "1", "correctness", False),
+    ("joint-h3c3-h480-w832-f124-cuda_no_trim-d2-n128-r3", "3", "correctness", True),
 ])
 def test_real_launcher_identity_guard_without_gpu(candidate, window, mode, passes, tmp_path):
     import os

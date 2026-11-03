@@ -116,9 +116,9 @@ class AdaLNCacheController:
         with torch.no_grad():
             output = projection(temb.detach())
         modulation = (
-            (output.detach(),)
+            (output.detach().contiguous(),)
             if torch.is_tensor(output)
-            else tuple(tensor.detach() for tensor in output)
+            else tuple(tensor.detach().contiguous() for tensor in output)
         )
 
         if block_cache is None:
@@ -166,6 +166,10 @@ class AdaLNCacheController:
             dynamic_keys=dynamic_keys,
             bytes=total_bytes,
         )
+
+    def access_counts(self) -> tuple[int, int]:
+        """Snapshot hit/miss counters without scanning cached tensor storage."""
+        return self._hits, self._misses
 
     def _evict_dynamic_keys(self) -> None:
         dynamic = [key for key in self._entries if key not in self._persistent]

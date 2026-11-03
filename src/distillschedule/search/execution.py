@@ -268,7 +268,7 @@ class NativeTrialRunner:
         if self.h3_noise_policy is not None:
             from .h3_noise_admission import validate_policy
             validate_policy(self.h3_noise_policy, expected_head=identity["source_head"])
-            require(workload == "minimax_h3_grid1000_best"
+            require(workload == "minimax_h3_continuous_best"
                     and self.h3_noise_policy["reference_candidate_id"] == reference_id
                     and self.h3_noise_policy["candidate_id"] == bootstrap_peer,
                     "H3 noise policy does not bind the declared anchor pair")

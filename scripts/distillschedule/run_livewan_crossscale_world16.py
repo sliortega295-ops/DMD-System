@@ -170,7 +170,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--bootstrap", required=True, type=Path)
     value.add_argument("--source-root", required=True, type=Path)
     value.add_argument("--source-receipt", required=True, type=Path)
-    value.add_argument("--pyenv", type=Path, default=Path("/tmp/distillschedule-helios-official-torch210"))
+    value.add_argument("--pyenv", type=Path, default=Path(".venv"),
+                       help="remote Python environment, relative to --remote-root or absolute")
     value.add_argument("--python-overlay", required=True, type=Path)
     value.add_argument(
         "--flash-attn-kernel",
@@ -203,7 +204,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--timeout-seconds", type=int, default=21600)
     value.add_argument(
         "--local-evidence-root", type=Path,
-        default=Path("/home/lyy/Helios/research_artifacts/DMD-System/livewan_crossscale_20260830"),
+        default=Path("artifacts/runs"),
     )
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -214,12 +215,13 @@ def pid_file(args: argparse.Namespace, node: int) -> Path:
 
 
 def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     run_root = args.remote_output_root / args.run_id
     launcher = args.remote_root / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
     exports = {
         "DMD_SYSTEM_ROOT": args.remote_root,
-        "DISTILLSCHEDULE_PYENV": args.pyenv,
+        "DISTILLSCHEDULE_PYENV": pyenv,
         "LIVEWAN_PYTHON_OVERLAY": args.python_overlay,
         "DISTILLSCHEDULE_OUTPUT_DIR": run_root,
         "LIVEWAN_STUDENT_CHECKPOINT": args.student_checkpoint,
@@ -336,6 +338,7 @@ def cancel(args: argparse.Namespace, node: int) -> None:
 
 
 def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
+    pyenv = args.pyenv if args.pyenv.is_absolute() else args.remote_root / args.pyenv
     run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
     summary_name = (
@@ -389,7 +392,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             summary_arguments += " --diagnostic-two-cycle"
     remote = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
-        f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
+        f"{shlex.quote(str(pyenv / 'bin/python'))} {shlex.quote(str(script))} "
         f"{summary_arguments}"
     )
     completed = subprocess.run(

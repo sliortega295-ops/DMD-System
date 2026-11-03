@@ -99,9 +99,9 @@ class LiveWanC34CanonicalTests(unittest.TestCase):
             self.assertEqual(receipt["scope"], "RESOLVED_NOT_EXECUTED")
             self.assertFalse(receipt["historical_evidence"]["valid_for_integration_head"])
 
-    def test_other_four_profiles_unchanged(self):
-        # File hashes at merged PR26; also works in a shallow CI checkout.
-        expected = {'wan13b_nogan_resident_best': '8a1bda0851c42f576b2c3358cc07ec2873fe641c82b7e020b876864fe8141775', 'helios14b_nogan_best': '00716145197fa0ff9b0fce2557b732ef88d66864a1068d463bbf2d07f2c5783c', 'helios14b_gan_best': '143896a4c51a062fba49ab223290e023f137ba3718941d7649954d2872a89e4b', 'minimax_h3_grid1000_best': 'f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac'}
+    def test_other_three_profiles_unchanged_and_w5_has_continuous_identity(self):
+        # PR26 hashes for W1-W3; W5 is the separately versioned continuous profile.
+        expected = {'wan13b_nogan_resident_best': '8a1bda0851c42f576b2c3358cc07ec2873fe641c82b7e020b876864fe8141775', 'helios14b_nogan_best': '00716145197fa0ff9b0fce2557b732ef88d66864a1068d463bbf2d07f2c5783c', 'helios14b_gan_best': '143896a4c51a062fba49ab223290e023f137ba3718941d7649954d2872a89e4b', 'minimax_h3_continuous_best': 'b95e6787c33e84483cc373d68399ce382de5aa892653d26740e2751a96f410ff'}
         for name, sha in expected.items():
             path = ROOT / "configs/distillschedule/best_known" / (name + ".json")
             self.assertEqual(file_sha256(path), sha, name)

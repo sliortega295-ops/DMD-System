@@ -20,16 +20,15 @@ from distillschedule.workloads.best_known.registry import fingerprint
 from .contracts import Candidate, require, semantic_contract
 from .h3_request import H3Request
 
-H3 = "minimax_h3_grid1000_best"
-PREFIX = "joint-h3v1-"
-PATTERN = re.compile(r"joint-h3v1-d([12])-n(64|128)")
-ACTION_PATTERN = re.compile(r"joint-h3v2-d([12])-n(64|128)-w([1-5])")
-CACHE_PATTERN = re.compile(r"joint-h3v3-(h[0-9]+-w[0-9]+-f[0-9]+)-(cpu_staged_trim|cuda_no_trim)-d([12])-n(64|128)(?:-r([1-5]))?")
+H3 = "minimax_h3_continuous_best"
+PREFIX = "joint-h3c1-"
+PATTERN = re.compile(r"joint-h3c1-d([12])-n(64|128)")
+ACTION_PATTERN = re.compile(r"joint-h3c2-d([12])-n(64|128)-w([1-5])")
+CACHE_PATTERN = re.compile(r"joint-h3c3-(h[0-9]+-w[0-9]+-f[0-9]+)-(cpu_staged_trim|cuda_no_trim)-d([12])-n(64|128)(?:-r([1-5]))?")
 MODES = ("correctness", "diagnostic-timing", "calibration")
 _PATH_FIELDS = (
     ("data", "train", "data_path"),
     ("model", "pretrained_model_name_or_path"),
-    ("training", "a100", "adaln_grid", "manifest"),
     ("training", "output_dir"),
 )
 
@@ -41,6 +40,8 @@ def normalized_model_config(config: Mapping[str, Any]) -> dict[str, Any]:
     different run directory is not a different model configuration.
     """
     result = copy.deepcopy(dict(config))
+    require("adaln_grid" not in result.get("training", {}).get("a100", {}),
+            "continuous H3 cannot inherit discretized AdaLN configuration")
     if "config_path" in result:
         require(isinstance(result["config_path"], str) and bool(result["config_path"]),
                 "invalid H3 loader config_path")
@@ -104,9 +105,9 @@ class H3Implementation:
     def id(self) -> str:
         if self.cache_policy != "legacy_cpu_staged":
             suffix = "" if self.rollout_window is None else f"-r{self.rollout_window}"
-            return f"joint-h3v3-{self.request.id}-{self.cache_policy}-d{self.prefetch_depth}-n{self.lora_epilogue_block_n}{suffix}"
+            return f"joint-h3c3-{self.request.id}-{self.cache_policy}-d{self.prefetch_depth}-n{self.lora_epilogue_block_n}{suffix}"
         if self.rollout_window is not None:
-            return f"joint-h3v2-d{self.prefetch_depth}-n{self.lora_epilogue_block_n}-w{self.rollout_window}"
+            return f"joint-h3c2-d{self.prefetch_depth}-n{self.lora_epilogue_block_n}-w{self.rollout_window}"
         return f"{PREFIX}d{self.prefetch_depth}-n{self.lora_epilogue_block_n}"
 
     @property
