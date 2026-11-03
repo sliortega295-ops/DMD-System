@@ -99,7 +99,18 @@ def test_actual_forward_text_masks_pack_and_native_vae_roundtrip(assets):
             normalized = (api.classes()[3]._patchify_latents(raw)-media.vae.bn.running_mean.view(1,-1,1,1))/torch.sqrt(
                 media.vae.bn.running_var.view(1,-1,1,1)+media.vae.config.batch_norm_eps)
             packed = api.classes()[3]._pack_latents(normalized)
-            decoded = media.vae.decode(raw, return_dict=False)[0]
+            unpacked = api.classes()[3]._unpack_latents_with_ids(packed, row['img_ids'])
+            assert torch.equal(api.unpack(tokens, shape), unpacked)
+            # Follow the native pipeline's BN inverse before decoding. The
+            # FP32 normalize/invert roundtrip is not bitwise equal to raw;
+            # comparing decoded outputs from those different inputs can
+            # amplify a few ulps in the tiny untrained VAE on another CPU.
+            restored = unpacked * torch.sqrt(
+                media.vae.bn.running_var.view(1,-1,1,1)+media.vae.config.batch_norm_eps)
+            restored = api.classes()[3]._unpatchify_latents(
+                restored + media.vae.bn.running_mean.view(1,-1,1,1))
+            torch.testing.assert_close(restored, raw, rtol=1e-5, atol=1e-6)
+            decoded = media.vae.decode(restored, return_dict=False)[0]
         else:
             normalized = (raw-raw.new_tensor(media.vae.config.latents_mean).view(1,-1,1,1,1))/raw.new_tensor(
                 media.vae.config.latents_std).view(1,-1,1,1,1)
