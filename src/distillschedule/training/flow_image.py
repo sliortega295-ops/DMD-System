@@ -19,7 +19,8 @@ from torch import nn
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint
 from .adapters import InferenceProjection, ModelComponents
 from .dmd import FlowDMDMethods
-from .low_rank import TrainableLowRankLinear, trainable_scope
+from .low_rank import trainable_scope
+from .construction_sharing import admit_frozen_sharing, frozen_native_subtrees, place_frozen_role
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state, native_compute_context
 from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches,
@@ -126,7 +127,7 @@ def admit_frozen_teacher_construction(*, parameters, request, budget, factory, b
     choices = gather(choice)
     require(all(value == choices[0] for value in choices), 'ranks selected different construction providers')
     if choice is None:
-        return None
+        return admit_frozen_sharing(parameters=parameters, request=request, budget=budget, factory=factory)
     def admit():
         require(choice == FROZEN_TEACHER_CONSTRUCTION and budget is None
                 and parameters.get('compute_precision', 'fp32') == 'fp32'
@@ -192,6 +193,7 @@ def runtime_identity(api):
         'adapter': Path(api.__file__), 'shared_native_plumbing': Path(__file__),
         'feature_encoder': Path(__file__).parent.parent/'data/flow_image_inputs.py',
         'unmerged_lora': Path(__file__).parent/'low_rank.py',
+        'frozen_construction': Path(__file__).parent/'construction_sharing.py',
         'device_ownership': Path(__file__).parent/'single_device.py'}.items()})
     import platform
     return dict(python=platform.python_version(), versions=versions, source_files=files)
@@ -823,9 +825,7 @@ def _components(api, state, descriptor, *, training, construction=None):
         # Reuse the existing exact immutable alias mechanism, including actual
         # frozen native Linear bases in LoRA roles; never merge their weights.
         for role in ('student', 'fake'):
-            for name, module in state[role].named_modules():
-                if isinstance(module, TrainableLowRankLinear):
-                    immutable.append(role + '.' + name + '.base')
+            immutable.extend(frozen_native_subtrees(state[role].native, role + '.native'))
     # Single-device/inference capability identities remain unchanged. Only the
     # explicitly launched training owner opts in to private-call replication.
     replica_caps = ('dmd_flow_private_replicated_b1_v1',) if training and rank_world()[1] > 1 else ()
@@ -953,7 +953,10 @@ def build_family(parameters, api, *, construction=None):
                     trainable_scope(native, parameters['trainable'])
                     native.train()
                 if role != 'teacher' or construction is None:
-                    place_module(native, device, require=require)
+                    spec = manifest['roles'][role]
+                    place_frozen_role(native, device, identity={
+                        'config': current, 'files': spec['files'],
+                        'dtype_policy': spec.get('dtype_policy', 'strict_fp32')}, require=require)
                 return dict(api=api, config=current, media_config=media_config,
                     binding=binding, empty=empty, trainable=parameters['trainable'], schedule=schedule,
                     compute_precision=parameters.get('compute_precision', 'fp32'))

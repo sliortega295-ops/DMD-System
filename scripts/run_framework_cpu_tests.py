@@ -16,6 +16,7 @@ CORE_TESTS = (
     "test_training_checkpoint_policy.py",
     "test_training_cli.py",
     "test_training_config.py",
+    "test_training_construction.py",
     "test_training_end_to_end.py",
     "test_training_model_catalog.py",
     "test_training_packaging.py",

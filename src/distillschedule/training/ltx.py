@@ -19,6 +19,7 @@ import torch
 from torch import nn
 
 from .adapters import InferenceProjection, ModelComponents
+from .construction_sharing import admit_frozen_sharing, frozen_native_subtrees, place_frozen_role
 from .dmd import FlowDMDMethods
 from .flow_image import QualifiedNativeFlowTrials, qualify_trial_roles
 from .ltx_source import original, require
@@ -380,10 +381,11 @@ def _runtime():
 
 def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas,
               compute_precision='fp32', replicated=False, cpu_parameter_limits=None):
-    from .ltx_media import encoding_sources
+    from .ltx_media import encoding_sources, file_sha256
     metadata = dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
         architecture=deepcopy(architecture), media_architecture=deepcopy(media_architecture),
         media_binding=binding, encoding_sources=encoding_sources(),
+        frozen_construction_source=file_sha256(Path(__file__).with_name('construction_sharing.py')),
         trainable=deepcopy(trainable), generation_sigmas=list(generation_sigmas),
         precision='FP32_MATH_SDPA', runtime=_runtime(), quality_validation='NOT_RUN', gpu_execution='NOT_RUN',
         pretrained_quality='UNVERIFIED_LOCAL_WEIGHTS_OR_RANDOM_NATIVE_FIXTURE',
@@ -471,7 +473,11 @@ def _build_model(parameters, *, construction=None):
                 native.eval().requires_grad_(False)
             else:
                 trainable_scope(native, parameters['trainable'])
-            place_module(native, device)
+            place_frozen_role(native, device, identity={
+                'config': role_architecture,
+                'format': spec.get('format', 'native_state_dict'),
+                'weights_sha256': spec.get('checkpoint', spec.get('weights'))['sha256'],
+                'dtype_policy': spec.get('dtype_policy', 'strict_fp32')}, require=require)
             roles[name] = LTXRole(native, api.source, architecture=architecture,
                 media_architecture=media.architecture, binding=binding, empty_context=empty_context,
                 generation_sigmas=schedule, trainable=parameters['trainable'], compute_precision=precision,
@@ -492,8 +498,7 @@ def _build_model(parameters, *, construction=None):
         if manifest['evidence_kind'] == 'RANDOM_TINY_ACTUAL_NATIVE_CLASSES_NOT_PRETRAINED' else None)
     immutable = ['teacher', 'media']
     for role in ('student', 'fake'):
-        immutable.extend(role+'.'+path+'.base' for path, module in state[role].named_modules()
-                         if isinstance(module, TrainableLowRankLinear))
+        immutable.extend(frozen_native_subtrees(state[role].native, role + '.native'))
     metadata = _metadata(api, architecture=architecture, media_architecture=media.architecture, binding=binding,
         trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision, replicated=world > 1,
         cpu_parameter_limits=limits)
@@ -516,7 +521,10 @@ def build_model(parameters):
 
 def _admit_construction(**kwargs):
     from .ltx_sharding import admit_construction
-    return admit_construction(**kwargs, factory=build_model, builder=_build_model)
+    provider = admit_construction(**kwargs, factory=build_model, builder=_build_model)
+    if provider is not None:
+        return provider
+    return admit_frozen_sharing(**kwargs, factory=build_model)
 
 
 build_model.admit_construction = _admit_construction

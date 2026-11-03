@@ -70,8 +70,14 @@ This changes neither role placement, checkpoint replay nor call order, and
 export keeps the unmerged current Student. Direct sharing does not run paired
 calibration.
 
-**All original roles are constructed before sharing.** The full construction
-must fit the target device; lower tracked live storage does not lower that peak.
+With this policy, each role reuses matching frozen parameters **before device
+transfer**, rather than placing three independent backbones on the GPU first.
+The native CPU constructors, weight loading and LoRA initialization keep their
+original order. Matching native parameter names, configurations and exact CPU
+values identify reusable layers, including unchanged layers in different
+checkpoints. Buffers, LoRA adapters, optimizer state and EMA stay separate.
+`construction-admission.json` records the actual alias count and frozen bytes
+reused; the ordinary runtime checks remain active.
 LTX uses its separate pinned runtime. Its optional
 [all-component parameter budgets](../../recipes/ltx25/README.md#optional-all-component-cpu-parameter-budgets)
 admit larger declared architectures through native meta sizing before loading

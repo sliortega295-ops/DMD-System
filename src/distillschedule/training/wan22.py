@@ -18,7 +18,8 @@ from torch import nn
 from . import flow_image as safe
 from .adapters import InferenceProjection, ModelComponents
 from .flow_image import require
-from .low_rank import TrainableLowRankLinear, trainable_scope
+from .low_rank import trainable_scope
+from .construction_sharing import admit_frozen_sharing, frozen_native_subtrees, place_frozen_role
 from .prediction import PredictionSpec
 from .single_device import admit_fp32, construction_rng, place_module, resident_flow_state, native_compute_context
 from .single_device import FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches
@@ -315,8 +316,7 @@ def _components(state, descriptor, *, training):
     immutable = ['teacher','media'] if training else ['media']
     if training:
         for role in ('student','fake'):
-            immutable += [role+'.'+name+'.base' for name,module in state[role].named_modules()
-                          if isinstance(module,TrainableLowRankLinear)]
+            immutable.extend(frozen_native_subtrees(state[role].native, role + '.native'))
     # Single-process and portable-inference identities remain unchanged.
     replica_caps = ('dmd_flow_private_replicated_b1_v1',) if training and rank_world()[1] > 1 else ()
     metadata = dict(schema_version='distillschedule.native_wan22_t2v.v1',family=FAMILY,
@@ -363,7 +363,9 @@ def build_model(parameters):
             native.train(name != 'teacher')
             roles[name] = Role(native,config=config,media_config=media_config,binding=binding,empty=empty,
                 trainable=parameters['trainable'],schedule=schedule,compute_precision=parameters.get('compute_precision', 'fp32'))
-            place_module(roles[name], device, require=require)
+            place_frozen_role(roles[name], device, native=native, identity={
+                'config': config, 'files': spec['files'],
+                'dtype_policy': spec.get('dtype_policy', 'strict_fp32')}, require=require)
             roles[name].train(name != 'teacher')
         with torch.device(device):
             state = training_state(roles['student'],roles['fake'],roles['teacher'],student_lr=parameters['student_lr'],
@@ -384,6 +386,13 @@ def build_model(parameters):
         safe.asset_files(Path(parameters['assets']).resolve().parent,spec)
     require(safe.json_object(parameters['assets']) == manifest, 'asset manifest changed during load')
     return _components(state,descriptor,training=True)
+
+
+def _admit_construction(**kwargs):
+    return admit_frozen_sharing(**kwargs, factory=build_model)
+
+
+build_model.admit_construction = _admit_construction
 
 
 def admit_training(*,state,request,prepared_identity,prepared_manifest):
