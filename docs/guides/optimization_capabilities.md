@@ -72,8 +72,12 @@ calibration.
 
 **All original roles are constructed before sharing.** The full construction
 must fit the target device; lower tracked live storage does not lower that peak.
-LTX uses its separate pinned runtime, with ≤16 layers
-and video/audio attention widths ≤1024. All five adapters accept
+LTX uses its separate pinned runtime. Its optional
+[all-component parameter budgets](../../recipes/ltx25/README.md#optional-all-component-cpu-parameter-budgets)
+admit larger declared architectures through native meta sizing before loading
+roles/codecs. Budgets remain bound through recovery and current-Student export;
+device memory and execution placement are configured separately.
+All five adapters accept
 `model.parameters.compute_precision: "fp32"` or `"bf16-mixed"` on supported
 CPU/CUDA devices: native Transformer autocast keeps FP32 master/Adam/EMA state
 and flow/sampling math, without changing model-native norm/rotary precision.

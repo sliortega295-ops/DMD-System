@@ -46,7 +46,7 @@ class ResidentEMA(_ResidentEMA):
     _require = staticmethod(require)
 
 
-def _validate_architecture(architecture):
+def _validate_architecture(architecture, *, _budgeted=False):
     """One bounded contract for local/original roles and current-G reconstruction."""
     require(isinstance(architecture, dict), 'explicit actual LTXModel constructor config required')
     essential = {'model_type', 'num_attention_heads', 'attention_head_dim', 'audio_num_attention_heads',
@@ -61,17 +61,19 @@ def _validate_architecture(architecture):
     require(all(type(architecture[k]) is int and architecture[k] > 0 for k in (
                 'num_layers', 'num_attention_heads', 'attention_head_dim',
                 'audio_num_attention_heads', 'audio_attention_head_dim'))
-            and architecture['num_layers'] <= 16
-            and architecture['num_attention_heads'] * architecture['attention_head_dim'] <= 1024
-            and architecture['audio_num_attention_heads'] * architecture['audio_attention_head_dim'] <= 1024,
+            and (_budgeted or (architecture['num_layers'] <= 16
+                and architecture['num_attention_heads'] * architecture['attention_head_dim'] <= 1024
+                and architecture['audio_num_attention_heads'] * architecture['audio_attention_head_dim'] <= 1024)),
             'bounded explicit native architecture required; full pretrained 22B route is NOT_RUN')
     return essential
 
 
-def native_transformer(source, architecture):
+def native_transformer(source, architecture, *, _budgeted=False):
+    # Private cap switch for the meta witness and its already-admitted owner.
+    # Public bundle/export entrypoints perform the all-component sizing first.
     from torch.nn.attention import SDPBackend
     from .ltx_media import constructor
-    essential = _validate_architecture(architecture)
+    essential = _validate_architecture(architecture, _budgeted=_budgeted)
     api = source.import_module('ltx_core.model.transformer.model')
     attention = source.import_module('ltx_core.model.transformer.attention')
     config = deepcopy(architecture)
@@ -84,7 +86,7 @@ def native_transformer(source, architecture):
     return constructor(api.LTXModel, config, essential).float()
 
 
-def _original_architecture(metadata):
+def _original_architecture(metadata, *, _budgeted=False):
     """Mirror the pinned configurator's explicit fields, not invented 22B defaults."""
     require(isinstance(metadata, dict) and isinstance(metadata.get('config'), dict)
             and isinstance(metadata['config'].get('transformer'), dict), 'original checkpoint config.transformer metadata required')
@@ -108,8 +110,34 @@ def _original_architecture(metadata):
         'audio_num_attention_heads', 'audio_attention_head_dim', 'num_layers', 'cross_attention_dim', 'audio_cross_attention_dim'))
         and all(config[k] == 128 for k in ('in_channels', 'out_channels', 'audio_in_channels', 'audio_out_channels'))
         and config['use_middle_indices_grid'] is True, 'original native AV shape contract is incompatible')
-    _validate_architecture(architecture)
+    _validate_architecture(architecture, _budgeted=_budgeted)
     return architecture
+
+
+def _budget_role_architectures(source, manifest, root):
+    """Read declared geometry only, before any role/media payload or CPU owner."""
+    from .ltx_media import asset_file, ROLE_KEYS
+    require(set(manifest) == {'schema_version', 'evidence_kind', 'roles', 'media', 'cpu_parameter_limits'}
+            and isinstance(manifest['roles'], dict) and manifest['roles'].keys() == ROLE_KEYS,
+            'native budgeted bundle must declare actual Student/Fake/Teacher and media')
+    architectures = {}
+    for name, spec in manifest['roles'].items():
+        require(isinstance(spec, dict), 'native role must be an explicit asset object')
+        if spec.get('format') == 'ltx_original_safetensors':
+            require(set(spec) == {'format', 'checkpoint', 'cpu_max_parameters', 'dtype_policy'}
+                    and type(spec['cpu_max_parameters']) is int and spec['cpu_max_parameters'] > 0
+                    and spec['dtype_policy'] in ('strict_fp32', 'cast_native_float_to_fp32'),
+                    'original native role requires checkpoint/hash, explicit CPU budget and precision policy')
+            path = asset_file(root, spec['checkpoint'])
+            loader = source.import_module('ltx_core.loader.sft_loader').SafetensorsModelStateDictLoader()
+            architectures[name] = _original_architecture(loader.metadata(str(path)), _budgeted=True)
+        else:
+            require(set(spec) == {'config', 'weights'}, 'local native role requires exact config/weights')
+            asset_file(root, spec['weights'])
+            architectures[name] = spec['config']
+    require(all(value == next(iter(architectures.values())) for value in architectures.values()),
+            'this first recipe requires same-family G/F/Teacher native architecture')
+    return architectures
 
 
 def _matches_original_weight(handle, raw_name, operations, live):
@@ -121,7 +149,7 @@ def _matches_original_weight(handle, raw_name, operations, live):
                operations.apply_to_key_value(name, handle.get_tensor(raw_name)))
 
 
-def load_original_transformer(source, checkpoint, expected_sha256, *, max_parameters, dtype_policy):
+def load_original_transformer(source, checkpoint, expected_sha256, *, max_parameters, dtype_policy, budgeted=False):
     """Strict ORIGINAL LTX safetensors import via all four actual native owners.
 
     Metadata/configurator and model.diffusion_model key ops come from upstream.
@@ -139,6 +167,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
     path = Path(checkpoint).expanduser().resolve(strict=True)
     require(path.is_file() and path.suffix == '.safetensors', 'explicit local original safetensors checkpoint required')
     require(type(max_parameters) is int and max_parameters > 0, 'explicit positive CPU max_parameters required')
+    require(type(budgeted) is bool, 'explicit boolean original budgeted admission required')
     require(dtype_policy in ('strict_fp32', 'cast_native_float_to_fp32'), 'explicit original checkpoint dtype policy required')
     require(file_sha256(path) == expected_sha256, 'original checkpoint SHA256 mismatch')
     source.validate()
@@ -153,7 +182,7 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
         json.dumps(metadata, allow_nan=False)
     except (TypeError, ValueError) as exc:
         raise ValueError('LTX-2.5: nonfinite/non-JSON original metadata') from exc
-    architecture = _original_architecture(metadata)
+    architecture = _original_architecture(metadata, _budgeted=budgeted)
     operations = configurator.LTXV_MODEL_COMFY_RENAMING_MAP
     with safetensors.safe_open(path, framework='pt', device='cpu') as handle:
         raw_keys = list(handle.keys())
@@ -243,13 +272,15 @@ def load_original_transformer(source, checkpoint, expected_sha256, *, max_parame
         configurator=configurator.LTXModelConfigurator.__module__ + '.LTXModelConfigurator',
         builder=type(builder).__module__ + '.' + type(builder).__name__, key_ops=operations.name,
         source='PINNED_NATIVE_CONFIGURATOR_LOADER_KEY_OPS_AND_BUILDER', quality_validation='NOT_RUN', gpu_execution='NOT_RUN')
+    if budgeted:
+        receipt['architecture_admission'] = 'EXPLICIT_CPU_PARAMETER_BUDGET_NATIVE_META'
     return native, architecture, receipt
 
 
 class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
     """Model-owned native ABI, conditioning and differentiable Euler rollout."""
     def __init__(self, native, source, *, architecture, media_architecture, binding, empty_context,
-                 generation_sigmas, trainable, compute_precision='fp32'):
+                 generation_sigmas, trainable, compute_precision='fp32', cpu_parameter_limits=None):
         super().__init__()
         self.native = native
         self.device = next(native.parameters()).device
@@ -260,6 +291,7 @@ class LTXRole(FlowDMDMethods, QualifiedNativeFlowTrials, nn.Module):
         self.generation_sigmas = tuple(generation_sigmas)
         self.trainable_config = deepcopy(trainable)
         self.compute_precision = compute_precision
+        self.cpu_parameter_limits = deepcopy(cpu_parameter_limits)
         self.register_buffer('empty_video_context', empty_context['video'].detach().clone())
         self.register_buffer('empty_audio_context', empty_context['audio'].detach().clone())
         self.register_buffer('empty_context_mask', empty_context['mask'].detach().clone().bool())
@@ -347,7 +379,7 @@ def _runtime():
 
 
 def _metadata(api, *, architecture, media_architecture, binding, trainable, generation_sigmas,
-              compute_precision='fp32', replicated=False):
+              compute_precision='fp32', replicated=False, cpu_parameter_limits=None):
     from .ltx_media import encoding_sources
     metadata = dict(schema_version='distillschedule.native_ltx25.v1', upstream=api.identity,
         architecture=deepcopy(architecture), media_architecture=deepcopy(media_architecture),
@@ -365,6 +397,8 @@ def _metadata(api, *, architecture, media_architecture, binding, trainable, gene
             precision=('BF16_AUTOCAST_FP32_STATE' if compute_precision != 'fp32' else 'FP32_MATH_SDPA')
                       + '_RANK_LOCAL_REPLICATED',
             scope='BOUNDED_RANK_LOCAL_FULL_MODEL_REPLICAS; NO_SHARDING_OR_FULL_PRETRAINED_22B_CLAIM')
+    if cpu_parameter_limits is not None:
+        metadata['cpu_parameter_limits'] = deepcopy(cpu_parameter_limits)
     return metadata
 
 
@@ -394,9 +428,11 @@ def build_model(parameters):
     # existing Program RNG and common checkpoint, not an untracked model RNG.
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
         media, manifest, identity = load_media(api.source, asset_path)
-        require(set(manifest) == {'schema_version', 'evidence_kind', 'roles', 'media'}
+        require(set(manifest) in ({'schema_version', 'evidence_kind', 'roles', 'media'},
+                                 {'schema_version', 'evidence_kind', 'roles', 'media', 'cpu_parameter_limits'})
                 and isinstance(manifest['roles'], dict) and set(manifest['roles']) == {'student', 'fake', 'teacher'},
                 'native local bundle must declare actual Student/Fake/Teacher and media')
+        limits = manifest.get('cpu_parameter_limits')
         binding = media_binding(manifest, api.source)
         empty = media.encode_text([''])
         # Prepared inputs carry the offline CPU codec's exact null encoding.
@@ -412,13 +448,14 @@ def build_model(parameters):
                         'original native role requires checkpoint/hash, explicit CPU budget and precision policy')
                 checkpoint = asset_file(asset_path.parent, spec['checkpoint'])
                 native, role_architecture, receipt = load_original_transformer(api.source, checkpoint,
-                    spec['checkpoint']['sha256'], max_parameters=spec['cpu_max_parameters'], dtype_policy=spec['dtype_policy'])
+                    spec['checkpoint']['sha256'], max_parameters=spec['cpu_max_parameters'], dtype_policy=spec['dtype_policy'],
+                    budgeted=limits is not None)
                 role_receipts[name] = receipt
             else:
                 require(set(spec) == {'config', 'weights'}, 'local native role requires exact config/weights')
                 checkpoint = asset_file(asset_path.parent, spec['weights'])
                 role_architecture = spec['config']
-                native = native_transformer(api.source, role_architecture)
+                native = native_transformer(api.source, role_architecture, _budgeted=limits is not None)
                 strict_load(native, checkpoint, spec['weights']['sha256'])
                 role_receipts[name] = dict(format='EXPLICIT_NATIVE_STATE_DICT', checkpoint_sha256=spec['weights']['sha256'])
             architecture = role_architecture if architecture is None else architecture
@@ -430,7 +467,8 @@ def build_model(parameters):
             place_module(native, device)
             roles[name] = LTXRole(native, api.source, architecture=architecture,
                 media_architecture=media.architecture, binding=binding, empty_context=empty_context,
-                generation_sigmas=schedule, trainable=parameters['trainable'], compute_precision=precision)
+                generation_sigmas=schedule, trainable=parameters['trainable'], compute_precision=precision,
+                cpu_parameter_limits=limits)
         with torch.device(device):
             state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
                 fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])
@@ -450,7 +488,8 @@ def build_model(parameters):
         immutable.extend(role+'.'+path+'.base' for path, module in state[role].named_modules()
                          if isinstance(module, TrainableLowRankLinear))
     metadata = _metadata(api, architecture=architecture, media_architecture=media.architecture, binding=binding,
-        trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision, replicated=world > 1)
+        trainable=parameters['trainable'], generation_sigmas=schedule, compute_precision=precision, replicated=world > 1,
+        cpu_parameter_limits=limits)
     metadata.update(asset_identity={**identity, 'roles': role_receipts},
                     placement=_training_placement(device, world),
                     optimizer_execution='NATIVE_ADAMW_CAPTURABLE' if device.type == 'cuda' else 'NATIVE_ADAMW_CPU',
@@ -475,6 +514,9 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
             'native role compute precision differs from the training request')
     require(state.get('flow_compute_precision', 'fp32') == precision,
             'native owned compute precision differs from the training request')
+    require(all(getattr(state[name], 'cpu_parameter_limits', None)
+                == getattr(state.get('media'), 'cpu_parameter_limits', None)
+                for name in ('student', 'fake', 'teacher')), 'native owned CPU parameter limits disagree')
     if rank_world()[1] > 1:
         require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
                 and request.data.get('sharding') == 'rank_strided',
@@ -512,6 +554,8 @@ def _inference_parameters(student):
         trainable=deepcopy(student.trainable_config), generation_sigmas=list(student.generation_sigmas))
     if student.compute_precision != 'fp32':
         parameters['compute_precision'] = student.compute_precision
+    if student.cpu_parameter_limits is not None:
+        parameters['cpu_parameter_limits'] = deepcopy(student.cpu_parameter_limits)
     return parameters
 
 
@@ -520,14 +564,17 @@ def _inference_components(api, student, media, parameters):
     return ModelComponents(state={'student': student, 'media': media}, immutable_modules=('media',),
         metadata=_metadata(api, architecture=parameters['architecture'], media_architecture=parameters['media_architecture'],
             binding=parameters['binding'], trainable=parameters['trainable'], generation_sigmas=parameters['generation_sigmas'],
-            compute_precision=parameters.get('compute_precision', 'fp32')),
+            compute_precision=parameters.get('compute_precision', 'fp32'),
+            cpu_parameter_limits=parameters.get('cpu_parameter_limits')),
         prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1'),
         generate=generate, decode=media.decode, encode_input=encode_export_input).validate()
 
 
 def project_current_generator(components, effective_training_parameters):
     student = components.state['student']; media = components.state['media']
-    _validate_architecture(student.architecture)
+    require(student.cpu_parameter_limits == getattr(media, 'cpu_parameter_limits', None),
+            'native current Student/media CPU parameter limits disagree')
+    _validate_architecture(student.architecture, _budgeted=student.cpu_parameter_limits is not None)
     parameters = _inference_parameters(student)
     api = original(parameters['source_root'])
     return InferenceProjection(components=_inference_components(api, student, media, parameters),
@@ -536,11 +583,11 @@ def project_current_generator(components, effective_training_parameters):
 
 def build_inference_model(parameters):
     from .dmd import sigmas
-    from .ltx_media import NativeMedia, place_module
+    from .ltx_media import NativeMedia, place_module, cpu_parameter_limits, admit_parameter_limits
     allowed = {'source_root', 'architecture', 'media_architecture', 'binding', 'trainable', 'generation_sigmas', 'seed', 'device',
-               'compute_precision'}
+               'compute_precision', 'cpu_parameter_limits'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
-            and allowed - {'seed', 'device', 'compute_precision'} <= parameters.keys(),
+            and allowed - {'seed', 'device', 'compute_precision', 'cpu_parameter_limits'} <= parameters.keys(),
             'explicit exported native LTX architecture required, no training/base bundle')
     device = _admit_device(parameters)
     precision = parameters.get('compute_precision', 'fp32')
@@ -548,8 +595,14 @@ def build_inference_model(parameters):
     require(type(parameters.get('seed', 0)) is int, 'explicit integer initialization seed required')
     api = original(parameters['source_root']); schedule = sigmas(parameters['generation_sigmas'])
     with construction_rng(device, parameters.get('seed', 0)), torch.device('cpu'):
-        media = place_module(NativeMedia(api.source, parameters['media_architecture']), device)
-        native = native_transformer(api.source, parameters['architecture'])
+        limits = None
+        if 'cpu_parameter_limits' in parameters:
+            limits = cpu_parameter_limits(parameters['cpu_parameter_limits'])
+            admit_parameter_limits(api.source, limits, parameters['media_architecture'], {'student': parameters['architecture']})
+        media = place_module(NativeMedia(api.source, parameters['media_architecture'], _budgeted=limits is not None), device)
+        if limits is not None:
+            media.cpu_parameter_limits = deepcopy(limits)
+        native = native_transformer(api.source, parameters['architecture'], _budgeted=limits is not None)
         trainable_scope(native, parameters['trainable'])
         place_module(native, device)
         p = parameters['media_architecture']; length = p['text_encoder']['tokenizer']['max_length']
@@ -558,7 +611,7 @@ def build_inference_model(parameters):
                  'mask': torch.zeros(1, length, dtype=torch.bool, device=device)}
         student = LTXRole(native, api.source, architecture=parameters['architecture'], media_architecture=p,
             binding=parameters['binding'], empty_context=empty, generation_sigmas=schedule, trainable=parameters['trainable'],
-            compute_precision=precision)
+            compute_precision=precision, cpu_parameter_limits=limits)
     # Only layout is reconstructed here. The common export loader MUST strictly
     # replace every buffer/parameter before validation or generation can succeed.
     return _inference_components(api, student, media, parameters)

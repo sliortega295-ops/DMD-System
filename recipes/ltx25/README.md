@@ -5,8 +5,9 @@ unmerged Student/Fake LoRA. The common `dmd` algorithm supplies G1/F5 flow DMD;
 native video/audio VAEs, vocoder, Gemma4 and connectors supply inputs and decoded
 output. Use FP32 or explicit native BF16 compute on CPU or `cuda:N`, with
 single-device execution or explicit rank-local replicas, FP32 training state
-and bounded native architectures (1..16 layers,
-video/audio head inner widths <=1024).
+and explicit native architectures. Legacy bundles use 1..16 layers and
+video/audio head inner widths <=1024; use the parameter budgets below for larger
+declared architectures.
 
 ## Source, environment and assets
 
@@ -49,11 +50,41 @@ and original `model.diffusion_model.*` keys. Loading uses the pinned native
 LTXV_MODEL_COMFY_RENAMING_MAP → SingleGPUModelBuilder(device=cpu)**, with complete
 key/shape/value checks and independently owned parameter storage.
 
-Set `cpu_max_parameters` explicitly. The same bounded architecture contract
-applies to local/original roles and exports.
+Set `cpu_max_parameters` explicitly. This field alone retains the legacy
+architecture caps for original roles and direct imports; it does not select the
+larger-architecture admission below.
 `strict_fp32` requires FP32 storage; `cast_native_float_to_fp32` explicitly allows
 native FP16/BF16 through the builder's FP32 cast. Both native Transformer
 attention paths use MATH SDPA. Codecs/Gemma remain explicit local bundle entries.
+
+### Optional all-component CPU parameter budgets
+
+An explicit top-level `cpu_parameter_limits` object in `assets.json` replaces
+the arbitrary tiny-only constructor ceilings with actual native meta sizing:
+
+```json
+{
+  "cpu_parameter_limits": {
+    "student": 3000000, "fake": 3000000, "teacher": 3000000,
+    "video_encoder": 2000000, "video_decoder": 2000000,
+    "audio_encoder": 3000000, "audio_decoder": 3000000,
+    "vocoder": 100000, "text_encoder": 100000, "text_processor": 100000
+  }
+}
+```
+
+The example uses small-fixture limits; set all ten positive integers for your
+architecture. Limits count native parameter elements before LoRA, rather than
+bytes or peak memory. Native meta constructors size every role and codec before
+weight loading; an over-budget component rejects the bundle. Original-format
+roles also retain their `cpu_max_parameters` limit. Without this object, legacy
+construction is unchanged.
+
+The same limits are recorded in training checkpoints and current-Student
+exports. Recovery uses the recorded architecture and limits; native constructors
+rebuild nonpersistent Gemma buffers. Prepared data and checkpoints remain bound
+to their adapter and asset identities. Loading uses dense CPU staging; select
+device capacity and execution placement separately.
 
 ## First run with random native assets
 

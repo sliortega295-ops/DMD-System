@@ -21,6 +21,41 @@ from .ltx_source import require
 ASSET_SCHEMA = 'distillschedule.ltx25_local_assets.v1'
 MEDIA_KEYS = {'video_encoder', 'video_decoder', 'audio_encoder', 'audio_decoder', 'vocoder',
               'text_encoder', 'text_processor'}
+ROLE_KEYS = {'student', 'fake', 'teacher'}
+
+
+def cpu_parameter_limits(value):
+    require(isinstance(value, dict) and value.keys() == MEDIA_KEYS | ROLE_KEYS
+            and all(type(limit) is int and limit > 0 for limit in value.values()),
+            'cpu_parameter_limits must declare positive integer limits for exactly all three roles and seven media modules')
+    return deepcopy(value)
+
+
+def admit_parameter_limits(source, limits, media_architecture, role_architectures):
+    """Real native meta witnesses only; never materialize or return these shells.
+
+    Actual owners still use their ordinary constructors, including nonpersistent
+    buffers. Meta sizing must not consume the subsequent native initialization RNG.
+    """
+    from .ltx import native_transformer
+    limits = cpu_parameter_limits(limits)
+    counts = {}
+    with torch.random.fork_rng(devices=[]), torch.device('meta'):
+        media = NativeMedia(source, media_architecture, _budgeted=True)
+        for name in sorted(MEDIA_KEYS):
+            module = getattr(media, name)
+            require(all(p.is_meta for p in module.parameters()), 'native media sizing materialized parameters: ' + name)
+            counts[name] = sum(p.numel() for p in module.parameters())
+        del media
+        for name, architecture in role_architectures.items():
+            require(name in ROLE_KEYS, 'unknown native role for parameter sizing')
+            module = native_transformer(source, architecture, _budgeted=True)
+            require(all(p.is_meta for p in module.parameters()), 'native role sizing materialized parameters: ' + name)
+            counts[name] = sum(p.numel() for p in module.parameters())
+            del module
+    for name, count in counts.items():
+        require(0 < count <= limits[name], 'CPU parameter budget exceeded for ' + name)
+    return counts
 
 
 def place_module(module, device):
@@ -115,7 +150,7 @@ def _video_config(source, config):
     return config
 
 
-def _audio_config(source, config):
+def _audio_config(source, config, *, _budgeted=False):
     config = deepcopy(config)
     norm = source.import_module('ltx_core.model.common.normalization')
     causal = source.import_module('ltx_core.model.audio_vae.causality_axis')
@@ -126,14 +161,16 @@ def _audio_config(source, config):
     config['ch_mult'] = tuple(config['ch_mult']); config['attn_resolutions'] = set(config['attn_resolutions'])
     require(config['norm_type'] is norm.NormType.PIXEL and config['causality_axis'] is causal.CausalityAxis.HEIGHT,
             'this admitted audio route requires native causal HEIGHT PixelNorm, not incompatible GroupNorm')
-    require(config['is_causal'] is True and 1 <= config['ch'] <= 256,
+    require(config['is_causal'] is True and 1 <= config['ch'] and (_budgeted or config['ch'] <= 256),
             'explicit bounded causal CPU audio architecture required')
     return config
 
 
 class NativeMedia(nn.Module):
     """One owned immutable module containing actual VAE, Gemma and connectors."""
-    def __init__(self, source, architecture):
+    def __init__(self, source, architecture, *, _budgeted=False):
+        # Internal cap switch only: load_media/build_inference_model admit all
+        # component budgets with real meta constructors before concrete owners.
         super().__init__()
         require(isinstance(architecture, dict) and architecture.keys() == MEDIA_KEYS,
                 'all native video/audio/text codec configurations are required')
@@ -148,8 +185,9 @@ class NativeMedia(nn.Module):
         require(enc_config.get('out_channels') == dec_config.get('in_channels') == 128
                 and enc_config.get('in_channels') == dec_config.get('out_channels') == 3,
                 'actual native RGB/128-channel video VAE required')
-        require(type(dec_config.get('base_channels')) is int and 1 <= dec_config['base_channels'] <= 256
-                and len(enc_config.get('encoder_blocks', [])) <= 16 and len(dec_config.get('decoder_blocks', [])) <= 16,
+        require(type(dec_config.get('base_channels')) is int and 1 <= dec_config['base_channels']
+                and (_budgeted or (dec_config['base_channels'] <= 256
+                    and len(enc_config.get('encoder_blocks', [])) <= 16 and len(dec_config.get('decoder_blocks', [])) <= 16)),
                 'bounded explicit native CPU video codec architecture required')
         self.video_encoder = constructor(video.VideoEncoder, enc_config,
             ('encoder_blocks', 'patch_size', 'norm_layer', 'latent_log_var'))
@@ -157,23 +195,24 @@ class NativeMedia(nn.Module):
             ('decoder_blocks', 'patch_size', 'base_channels', 'norm_layer', 'decoder_spatial_padding_mode'))
         require(self.video_encoder.video_scale_factors == self.video_decoder.video_downscale_factors,
                 'native video encoder/decoder scale factors disagree')
-        audio_enc = _audio_config(source, architecture['audio_encoder'])
-        audio_dec = _audio_config(source, architecture['audio_decoder'])
+        audio_enc = _audio_config(source, architecture['audio_encoder'], _budgeted=_budgeted)
+        audio_dec = _audio_config(source, architecture['audio_decoder'], _budgeted=_budgeted)
         self.audio_encoder = constructor(audio.AudioEncoder, audio_enc, ('n_fft', 'in_channels'))
         self.audio_decoder = constructor(audio.AudioDecoder, audio_dec, ('out_ch',))
         require(all(audio_enc[key] == audio_dec[key] for key in ('sample_rate', 'mel_hop_length', 'mel_bins',
                 'ch_mult', 'z_channels', 'is_causal')), 'native audio encoder/decoder geometry differs')
         vocoder_config = architecture['vocoder']
         require(type(vocoder_config.get('upsample_initial_channel')) is int
-                and 1 <= vocoder_config['upsample_initial_channel'] <= 1024,
+                and 1 <= vocoder_config['upsample_initial_channel']
+                and (_budgeted or vocoder_config['upsample_initial_channel'] <= 1024),
                 'bounded explicit native CPU vocoder width required')
         self.vocoder = constructor(vocoder.Vocoder, deepcopy(vocoder_config),
             ('upsample_initial_channel', 'upsample_rates', 'upsample_kernel_sizes', 'resblock_kernel_sizes',
              'resblock_dilation_sizes', 'output_sampling_rate'))
-        self._build_text(architecture['text_encoder'], architecture['text_processor'])
+        self._build_text(architecture['text_encoder'], architecture['text_processor'], _budgeted=_budgeted)
         self.float().eval().requires_grad_(False)
 
-    def _build_text(self, encoder_config, processor_config):
+    def _build_text(self, encoder_config, processor_config, *, _budgeted=False):
         from transformers import (GemmaTokenizer, Gemma4UnifiedTextConfig,
                                   Gemma4UnifiedConfig, Gemma4UnifiedForConditionalGeneration)
         source = self.source
@@ -185,7 +224,7 @@ class NativeMedia(nn.Module):
                      'sliding_window', 'layer_types', 'use_cache'}
         require(isinstance(text, dict) and essential <= text.keys() and text['use_cache'] is False,
                 'complete cache-disabled Gemma4 shape configuration required')
-        require(text['vocab_size'] * text['hidden_size']
+        require(_budgeted or text['vocab_size'] * text['hidden_size']
                 + text['num_hidden_layers'] * 24 * text['hidden_size'] ** 2 < 50_000_000,
                 'this explicit CPU local bundle is bounded; full 22B construction is not admitted')
         token = encoder_config['tokenizer']
@@ -296,8 +335,23 @@ def load_media(source, manifest_path):
         require(isinstance(row, dict) and set(row) == {'config', 'weights'}, 'native media entry needs exact config/weights')
         architecture[name] = row['config']
         files[name] = asset_file(path.parent, row['weights'])
-    module = NativeMedia(source, architecture)
+    counts = None
+    if 'cpu_parameter_limits' in value:
+        from .ltx import _budget_role_architectures
+        limits = cpu_parameter_limits(value['cpu_parameter_limits'])
+        roles = _budget_role_architectures(source, value, path.parent)
+        counts = admit_parameter_limits(source, limits, architecture, roles)
+        # Original-format roles retain their own explicit, possibly tighter cap.
+        for name, spec in value['roles'].items():
+            if spec.get('format') == 'ltx_original_safetensors':
+                require(counts[name] <= spec['cpu_max_parameters'], 'CPU parameter budget exceeded for ' + name)
+    module = NativeMedia(source, architecture, _budgeted=counts is not None)
+    if counts is not None:
+        module.cpu_parameter_limits = limits
     for name, file in files.items():
         strict_load(getattr(module, name), file, value['media'][name]['weights']['sha256'])
-    return module, value, {'manifest': file_sha256(path), 'files': {
+    identity = {'manifest': file_sha256(path), 'files': {
         name: value['media'][name]['weights']['sha256'] for name in sorted(files)}}
+    if counts is not None:
+        identity['cpu_parameter_counts'] = counts
+    return module, value, identity

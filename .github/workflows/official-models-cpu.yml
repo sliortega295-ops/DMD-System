@@ -227,6 +227,38 @@ jobs:
               python scripts/check_cpu_receipt.py provider-cpu.xml \
                 --require test_real_native_media_text_and_modality_abi \
                 --require test_native_cpu_media_never_probes_visible_cuda \
+                --require test_ltx_budget_opt_in_admits_real_meta_sized_seventeen_layer_bundle \
+                --require test_ltx_legacy_seventeen_layer_refusal_is_unchanged \
+                --require test_original_architecture_rejected_before_native_materialization_if_not_reconstructable \
+                --require test_explicit_budgeted_original_seventeen_layer_import_uses_native_builder \
+                --require 'test_budgeted_original_header_refusal_precedes_payload[missing]' \
+                --require 'test_budgeted_original_header_refusal_precedes_payload[shape]' \
+                --require 'test_budgeted_original_header_refusal_precedes_payload[dtype]' \
+                --require 'test_budgeted_original_header_refusal_precedes_payload[duplicate_metadata]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[student]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[fake]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[teacher]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[video_encoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[video_decoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[audio_encoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[audio_decoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[vocoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[text_encoder]' \
+                --require 'test_ltx_all_component_limits_refuse_before_payload_or_concrete[text_processor]' \
+                --require 'test_ltx_invalid_limit_maps_reject_before_any_constructor[None]' \
+                --require 'test_ltx_invalid_limit_maps_reject_before_any_constructor[missing]' \
+                --require 'test_ltx_invalid_limit_maps_reject_before_any_constructor[unknown]' \
+                --require 'test_ltx_invalid_limit_maps_reject_before_any_constructor[bool_value]' \
+                --require 'test_ltx_portable_limits_reject_before_concrete_owner[text_processor]' \
+                --require test_ltx_portable_missing_budget_cannot_fall_back_to_tiny_defaults \
+                --require 'test_ltx_original_role_all_component_budget_precedes_any_payload[teacher]' \
+                --require 'test_ltx_original_role_all_component_budget_precedes_any_payload[text_processor]' \
+                --require 'test_ltx_equal_budgets_preserve_native_initial_rng_loss_gradient_and_update[config-fp32]' \
+                --require 'test_ltx_equal_budgets_preserve_native_initial_rng_loss_gradient_and_update[config-bf16-mixed]' \
+                --require 'test_ltx_equal_budgets_preserve_native_initial_rng_loss_gradient_and_update[lora_config-fp32]' \
+                --require 'test_ltx_equal_budgets_preserve_native_initial_rng_loss_gradient_and_update[lora_config-bf16-mixed]' \
+                --require 'test_ltx_budgeted_native_new_process_resume_and_current_student_av_export[config]' \
+                --require 'test_ltx_budgeted_native_new_process_resume_and_current_student_av_export[lora_config]' \
                 --require 'test_current_g_export_only_raw_prompt_prepare_and_av_generate[config]' \
                 --require 'test_current_g_export_only_raw_prompt_prepare_and_av_generate[lora_config]' \
                 --require 'test_fresh_process_exact_resume_and_current_generator_av_export[config]' \

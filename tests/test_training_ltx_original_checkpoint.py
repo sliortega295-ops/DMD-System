@@ -171,10 +171,7 @@ def test_original_builder_failure_releases_cached_payload(native_checkpoint, mon
     assert registries[0].get([str(checkpoint)], operations) is None
 
 
-def test_original_architecture_rejected_before_native_materialization_if_not_reconstructable(
-        native_checkpoint, tmp_path, monkeypatch):
-    from distillschedule.training.ltx import load_original_transformer
-    from distillschedule.training.ltx_media import file_sha256
+def seventeen_layer_checkpoint(native_checkpoint, tmp_path):
     from safetensors.torch import save_file
     api, _, _, _, metadata = native_checkpoint
     config = json.loads(metadata['config'])['transformer']; config['num_layers'] = 17
@@ -191,6 +188,15 @@ def test_original_architecture_rejected_before_native_materialization_if_not_rec
              for name, value in native.state_dict().items()}
     path = tmp_path / 'seventeen-narrow-layers.safetensors'
     save_file(state, path, metadata=dict(metadata, config=json.dumps({'transformer': config})))
+    return path, native, count
+
+
+def test_original_architecture_rejected_before_native_materialization_if_not_reconstructable(
+        native_checkpoint, tmp_path, monkeypatch):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    api = native_checkpoint[0]
+    path, _, count = seventeen_layer_checkpoint(native_checkpoint, tmp_path)
     builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
     actual_meta, actual_build = builder.meta_model, builder.build
     calls = []
@@ -206,8 +212,43 @@ def test_original_architecture_rejected_before_native_materialization_if_not_rec
     assert not calls, 'reject before even the native meta-model sizing/materialization stage'
 
 
+def test_explicit_budgeted_original_seventeen_layer_import_uses_native_builder(native_checkpoint, tmp_path, monkeypatch):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    api = native_checkpoint[0]
+    path, reference, count = seventeen_layer_checkpoint(native_checkpoint, tmp_path)
+    loader = api.source.import_module('ltx_core.loader.sft_loader').SafetensorsModelStateDictLoader
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    load, meta, build = loader.load, builder.meta_model, builder.build
+    events = []
+    def meta_model(self, *args, **kwargs):
+        value = meta(self, *args, **kwargs)
+        assert all(p.is_meta for p in value.parameters())
+        events.append('meta')
+        return value
+    def payload(self, *args, **kwargs):
+        assert events and events[0] == 'meta'
+        events.append('payload')
+        return load(self, *args, **kwargs)
+    def concrete(self, *args, **kwargs):
+        events.append('build')
+        return build(self, *args, **kwargs)
+    monkeypatch.setattr(builder, 'meta_model', meta_model)
+    monkeypatch.setattr(builder, 'build', concrete)
+    monkeypatch.setattr(loader, 'load', payload)
+    loaded, architecture, receipt = load_original_transformer(api.source, path, file_sha256(path),
+        max_parameters=count, dtype_policy='strict_fp32', budgeted=True)
+    assert architecture['num_layers'] == 17 and type(loaded) is api.model.LTXModel
+    assert events.count('payload') == events.count('build') == 1
+    assert receipt['parameter_count'] == count
+    assert all(torch.equal(value, loaded.state_dict()[name]) for name, value in reference.state_dict().items())
+    assert all(not value.is_meta and bool(torch.isfinite(value).all()) for value in (*loaded.parameters(), *loaded.buffers()))
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('budgeted', [False, True])
 @pytest.mark.parametrize('case', ['empty', 'missing', 'shape', 'nonfinite', 'dtype', 'metadata', 'budget', 'hash'])
-def test_incomplete_or_changed_original_checkpoint_refused(native_checkpoint, tmp_path, case):
+def test_incomplete_or_changed_original_checkpoint_refused(native_checkpoint, tmp_path, case, budgeted):
     from distillschedule.training.ltx import load_original_transformer
     from distillschedule.training.ltx_media import file_sha256
     from safetensors.torch import save_file
@@ -229,7 +270,35 @@ def test_incomplete_or_changed_original_checkpoint_refused(native_checkpoint, tm
     path = tmp_path / (case + '.safetensors'); save_file(state, path, metadata=metadata)
     with pytest.raises(ValueError):
         load_original_transformer(api.source, path, '0' * 64 if case == 'hash' else file_sha256(path),
-            max_parameters=2 if case == 'budget' else 200_000, dtype_policy='strict_fp32')
+            max_parameters=2 if case == 'budget' else 200_000, dtype_policy='strict_fp32', budgeted=budgeted)
+
+
+@pytest.mark.parametrize('case', ['missing', 'shape', 'dtype', 'duplicate_metadata'])
+def test_budgeted_original_header_refusal_precedes_payload(native_checkpoint, tmp_path, monkeypatch, case):
+    from distillschedule.training.ltx import load_original_transformer
+    from distillschedule.training.ltx_media import file_sha256
+    from safetensors.torch import save_file
+    api, _, _, state, metadata = native_checkpoint
+    state = dict(state); metadata = dict(metadata); first = next(iter(state))
+    if case == 'missing':
+        state.pop(first)
+    elif case == 'shape':
+        state[first] = state[first].reshape(-1)[:1]
+    elif case == 'dtype':
+        state[first] = state[first].double()
+    else:
+        config = json.loads(metadata['config'])['transformer']
+        metadata['config'] = '{"transformer":' + json.dumps(config) + ',"transformer":' + json.dumps(config) + '}'
+    path = tmp_path / 'invalid-header.safetensors'; save_file(state, path, metadata=metadata)
+    loader = api.source.import_module('ltx_core.loader.sft_loader').SafetensorsModelStateDictLoader
+    builder = api.source.import_module('ltx_core.loader.single_gpu_model_builder').SingleGPUModelBuilder
+    def forbidden(*args, **kwargs):
+        pytest.fail('invalid original key/header/metadata reached payload or native build')
+    monkeypatch.setattr(loader, 'load', forbidden)
+    monkeypatch.setattr(builder, 'build', forbidden)
+    with pytest.raises(ValueError, match='selected keys|header shape/dtype|duplicate original metadata'):
+        load_original_transformer(api.source, path, file_sha256(path), max_parameters=200_000,
+            dtype_policy='strict_fp32', budgeted=True)
 
 
 def test_original_native_precision_cast_is_explicit_and_returned_meta_is_refused(native_checkpoint, tmp_path, monkeypatch):
