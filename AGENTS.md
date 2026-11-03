@@ -12,9 +12,8 @@ trainer, planner or experiment-management layer.
   model-native compatibility remains at its audited paths.
 - **Change a model or workflow:** start from [extensions](docs/guides/extensions.md).
   Algorithm mathematics, state ownership and physical execution have different owners.
-- **Verify a change:** follow [CONTRIBUTING](CONTRIBUTING.md) and the affected
-  workflow under `.github/workflows/`. Skill-only tests use Python's standard
-  library; model test lanes require their own pinned environment.
+- **Verify a change:** follow [CONTRIBUTING](CONTRIBUTING.md). Automatic CI runs
+  the fast core suite on Python 3.12. Keep model dependency environments separate.
 
 Reuse current implementations first. Do not resurrect retired Route-A/Route-B
 or remove a live runtime merely because it is old. Keep source receipts,

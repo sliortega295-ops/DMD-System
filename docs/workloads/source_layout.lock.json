@@ -954,12 +954,61 @@
       "integrated_sha256": "ae97b970f68c84f262c0300d1d14545c9448ef242109f54f9a49ddf4d44c5b8a",
       "source_commit": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
       "change": "Continuous full-sequence integration and portable configuration bindings; original source import identities retained. CPU/source validation, not new GPU timing."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "scripts/distillschedule/check_best_known_integration.py",
+      "previous_sha256": "061c4060394b9535bde3741db994ab0dae8f8ef457e1a6df4cada49f10d35800",
+      "integrated_sha256": "e0fd1819f6041c913f495de0a0823154f4337fe5e176932be7477fdd3cdb24e8",
+      "source_commit": "a9b6f0f3eac23f65dbd783637c3a597724ff1760",
+      "change": "Remove retired model-test instructions; training implementation unchanged."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/architecture/repository_organization.md",
+      "previous_sha256": "8be11a481e6fcd5f9df9f40f8b6c6c2e321562c0e054221ae7cc2fe276b4bf2e",
+      "integrated_sha256": "e7033311e04c72d3ae77e268a769101e88392cbbbc8a19fb38dadca8743c8948",
+      "source_commit": "a9b6f0f3eac23f65dbd783637c3a597724ff1760",
+      "change": "Remove retired model-test instructions; training implementation unchanged."
+    },
+    {
+      "schema_version": "distillschedule.source_integration_overlay.v1",
+      "target": "docs/guides/installation.md",
+      "previous_sha256": "ff44981c5c2a83ecade1e0e884090f11c4b392fbf1001dcbeda2697f6f5286d9",
+      "integrated_sha256": "79cc384ba9e2bd196c35e64a2792d17caad79a469b441803a1e2cdea36200f83",
+      "source_commit": "a9b6f0f3eac23f65dbd783637c3a597724ff1760",
+      "change": "Remove retired model-test instructions; training implementation unchanged."
     }
   ],
   "retired_imports": {
     "src/distillschedule/backends/training/minimax_h3/grid_adaln.py": "e80755094038d10908f6a7e4325d0831faab9e38af2f6a42e731cc6a0669d325",
     "src/distillschedule/backends/training/minimax_h3/grid_contract.py": "16021e76fe4d2fd1c23e3a56d5183708d77c2ab4e62d5f6d2a18d1b7d3db3783",
     "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py": "f93e2ac41cc9d00d1f1a4bca31f2b6d365d59e1e554db82ac66ee5e728308e04",
-    "src/distillschedule/backends/training/minimax_h3/grid_timestep_compat.py": "feae7afa47a52b7bded6adfbce27fe6b531d05c5ebe9f1c7cf81a005d1c22878"
+    "src/distillschedule/backends/training/minimax_h3/grid_timestep_compat.py": "feae7afa47a52b7bded6adfbce27fe6b531d05c5ebe9f1c7cf81a005d1c22878",
+    "tests/test_refactor_best_known.py": "f62abef7b515b7e80adf113da66f25f16a8343fec9d1f5f0464a12a087c191bb",
+    "tests/test_refactor_best_known_livewan_c34.py": "59d9cd154628ba52e0562d6e5bd6872796db006648d877c66785559ccbdfa11a",
+    "tests/test_refactor_livewan_attention_checkpoint.py": "6f18424d7e40d2d01b84ea2cffddebe2dcd3ab1b4b418df9e591e305d3059570",
+    "tests/test_refactor_livewan_b1_attribution.py": "c7e3e06bad84a91a6fa8fd61a1b1606927a4b30397c99319ee55993126d686fc",
+    "tests/test_refactor_livewan_c30_composition.py": "c8a48a00583f9a032778fa5af3c662c739512eb663a9016edb6485a11e1f6628",
+    "tests/test_refactor_livewan_c31_integration.py": "b6b2d2260bf5edf4cabfd9e2cd6c44677236522c284ad41889215954c4bd284e",
+    "tests/test_refactor_livewan_c32_integration.py": "15a9d353322e0caf4df103b898743c963861038d26f68c5cfe9b71d7d884d662",
+    "tests/test_refactor_livewan_c33_integration.py": "aa442761dcd8d7dc42aeedba71300d572047724adeb52609d020bc380c04c1f9",
+    "tests/test_refactor_livewan_c34_integration.py": "698f75fd2b230b037b2ef4bbdaed64f64400ba83ba87215e6685a85a2509db94",
+    "tests/test_refactor_livewan_context_staging.py": "d1bc6dccaf4171233cbea58b79dd4164de9436151c0280892d8efa7c4a001c29",
+    "tests/test_refactor_livewan_crossscale_profile.py": "2dd0ba4ebbe31658dfb280cecdba81c356c49bba728c812ee356aebbc2f71895",
+    "tests/test_refactor_livewan_cuda_setup.py": "fa975a19dc35903500b44cd59182a3d954ba68a2676a5334f33401b266817e21",
+    "tests/test_refactor_livewan_failure_receipt.py": "81e72e879c335cb48f2c5fe9a33856d475800aa49fb9bfa22f7f4725e489b9e0",
+    "tests/test_refactor_livewan_generator_cast_square.py": "7b01c4f1123b8ddfbdd32422704bfb3ae4e19d133f22ac7ac03fda822134aace",
+    "tests/test_refactor_livewan_generator_gate.py": "3e348e9764ac1732824a6a04501f46ea169ef929577cdf0afeff83da20c21831",
+    "tests/test_refactor_livewan_generator_modulation.py": "36338ea144784604be793ffaac6cda8bb69b4168da1fb3c82e7b94c996e4a077",
+    "tests/test_refactor_livewan_generator_rms_epilogue.py": "2f9ab9c7c80e052f74bb095c1e2e24d2496a4f770020102782c5a37679555b05",
+    "tests/test_refactor_livewan_rollout_cast_cache.py": "c1d2de5b4d2d1e9e63fd82f66fb5f40c5cb24fd13ede16513bd04f2792a57404",
+    "tests/test_refactor_livewan_score_rmsnorm.py": "49f0b1ca86f4e2b7b4f809bab63e5178bf28846d6c03782e7ea8c2ab4a9a1843",
+    "tests/test_refactor_livewan_teardown_visibility.py": "dcd1a64f616b21cd2825a5ffd3f101c4d1e059adc65e94905c56ab4f70807375",
+    "tests/test_refactor_livewan_trajectory.py": "a53ed21da6c5febdc1c0d2971105671c6fbdf8a77565d9514e0fa7df05590c9d",
+    "tests/test_refactor_livewan_two_cycle_profile.py": "747f16b9213d96113485220072e35c7d8892a7cd15d20ec21794413e9df0ac1b",
+    "tests/test_refactor_livewan_two_cycle_timing.py": "a85057c901e2c513d63368a621a70b85932c0b2970921ca687d048c2526dbc5e",
+    "tests/test_refactor_trajectory_coarse.py": "ae1ac30375e93c907f2f7f96b4202ecba26c4039a34d9892c61b97a5914e402c",
+    "tests/test_refactor_trajectory_state_sketch.py": "46753ac89736d02826d4fd592caf2e3cf0ff2463c43e0745f88a8cc6b5596995"
   }
 }

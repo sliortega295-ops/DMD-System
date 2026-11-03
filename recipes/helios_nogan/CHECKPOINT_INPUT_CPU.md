@@ -91,25 +91,3 @@ forces the original exits, reconnects dead graphs, adds losses/backwards or draw
 extra training RNG to satisfy a census.
 Detached rollout actions install no offloader. Existing original call/update and
 SafeBundle execution counters remain separate and mandatory.
-
-## Verification boundary
-
-Local tests use actual Torch non-reentrant checkpointing and Adam, but synthetic
-small CPU tensors, not a native HSDP owner. They are
-`CPU_SYNTHETIC_TEST_ONLY`: no native capacity, numerical, timing or quality
-promotion. Native Torch 2.10 / original 40-block integration / target GPU are
-**NOT_RUN** until independently executed and reviewed. Run
-`verify_checkpoint_inputs_target_cpu.py` only in an already provisioned target
-Torch 2.10 full-stack CPU environment; it refuses missing dependencies instead of
-installing them or reporting a skipped PASS. Full pretrained HSDP capacity remains
-unproved, even when this component test passes. The historical 82.99s observation
-does not apply to this new scope.
-
-That entry checks the production hidden shapes through the original meta-device
-preprocessor, then compares the actual small 40-block class with and without CPU
-leases for the three prefix patterns above (outputs, all gradients, named Adam,
-RNG and lifetimes). This is still CPU component/composition evidence, not the
-original full sampler, target GPU or pretrained native HSDP qualification. The
-local real CPU FSDP ordering regression explicitly substitutes only its expected
-physical topology after confirming unmodified native topology rejection; the
-production owner/callable validators and CUDA-only factory refusal remain strict.

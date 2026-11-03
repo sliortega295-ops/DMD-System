@@ -8,7 +8,7 @@
 | `recipes/` | Model/workflow configurations and user guides |
 | `skills/dmd-system-optimizer/` | Standalone Codex Skill, public experience library and lookup tools |
 | `runtime/` | Shared compatibility components used by current native training paths |
-| `tests/` | Unit, integration, CPU and opt-in GPU tests |
+| `tests/` | Fast core configuration, data, training lifecycle and packaging tests |
 | `docs/guides/` | Current user documentation |
 | `docs/contracts/`, `docs/runbooks/` | Native execution contracts and operating procedures |
 | `artifacts/results/` | Measured results and their source identities |
@@ -51,13 +51,13 @@ included in the wheel.
 From a source checkout, run:
 
 ```sh
-python -m pytest -q tests/test_repository_organization.py tests/test_workload_catalog_validation.py
+python scripts/run_framework_cpu_tests.py
 python scripts/check_wheel_install.py
 ```
 
 The wheel check creates an isolated environment outside the checkout and removes
 inherited `PYTHONPATH`/`PYTHONHOME` settings. This checks installation and imports;
-model-specific execution and numerical validation use their separate test lanes.
+the core suite also checks small-model updates and fresh-process recovery.
 
 <a id="framework"></a>
 ## Framework ownership and lifecycle

@@ -144,21 +144,3 @@ codec assets fail closed, including when a broken codec was explicitly passed
 to latent mode. No pretrained decoder assets have been supplied or qualified;
 real dim96 capacity, visual quality, GPU/BF16/world16/C51 and performance remain
 **NOT_RUN**.
-
-## CPU qualification tests
-
-Set `DMD_WAN21_TEST_UPSTREAM` to the above ORIGINAL local Wan2.1 root to run
-the codec tests rather than skip them. The tests copy only the two pinned
-source/license files to disposable scratch and generate tiny random full-class
-weights; they download nothing. Run:
-
-```bash
-python -m pytest -q tests/test_training_livewan_reference_inputs.py \
-  tests/test_training_livewan_public_cpu.py tests/test_training_livewan_inference_cpu.py
-```
-
-Coverage includes current-G export, pure projection/next-update equality,
-fresh-process generation after all training payloads are deleted, actual
-native full-step/cache census and exact native control, runtime seed and new
-conditioning sensitivity, explicit latent schema, CLI latent/video paths,
-actual original random codec21→81 pixels and strict source/asset admission.

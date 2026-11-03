@@ -42,24 +42,26 @@ callers before moving them. Legacy Route-A/Route-B runners are retired.
 
 ## Tests
 
-Run the tests relevant to the change and add a regression for a fixed bug.
-Useful starting points, from the repository root:
+Automatic CI runs the fast core suite on Python 3.12: configuration, data,
+command entry points, small-model updates, checkpoint recovery and packaging.
+From the repository root, with `.[train,test]` installed:
 
 ```sh
 # Skill installation, lookup and workflow tests (standard library only).
 python -m unittest discover -s skills/dmd-system-optimizer/tests -v
 
-# Public configuration and small CPU training lifecycle (requires .[train,test]).
-python -m pytest -q tests/test_training_config.py tests/test_training_end_to_end.py
+# Core training and framework checks.
+python scripts/run_framework_cpu_tests.py
 
-# Source organization and public entry points.
-python -m pytest -q tests/test_repository_organization.py tests/test_workload_catalog_validation.py
+# Installation and the public lifecycle outside the checkout.
+python scripts/check_wheel_install.py
+python scripts/check_framework_install.py --output installed-framework.json
 ```
 
-Model-specific jobs under `.github/workflows/` list their dependency versions and
-test commands. Some source-navigation tests need pinned historical Git objects;
-the Skill workflow shows the fetch step. Do not install all model extras into one
-environment. Report tests that could not run and the missing dependencies or hardware.
+Model-specific suites are not part of this repository's CI. Use the relevant
+recipe and dependency group for actual training checks; do not install all model
+extras into one environment. Some historical Skill checks need the exact Git
+revisions recorded in its catalog.
 
 ## Performance and source-sensitive changes
 

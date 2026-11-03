@@ -179,11 +179,6 @@ one host, including warmed Adam moments, a global-batch reference and measured
 common-plan replay (`test_open_workload_hsdp.py`). This does not establish
 physical multi-node NCCL behavior or A100/H100 GPU validity (NOT_RUN).
 
-CPU FSDP tests require Torch >=2.10. The distributed CI pins 2.10 so these tests
-are executed rather than silently skipped. Older CPU environments retain the
-replicated path and explicitly decline FSDP2. Original canonical paths are not
-migrated to a newer Torch runtime by this test workflow.
-
 This is still an admitted finite-program executor, NOT an unrestricted production
 trainer: HSDP2 requires complete equal multi-rank node groups, and this callable
 data-parallel path does not automatically lower arbitrary role pools or general
@@ -396,16 +391,6 @@ rejects backward/replay across a changed live model version; no-grad history mus
 not be relabeled differentiable to bypass that guard.
 
 ### Validation and limits
-
-`tests/test_open_workload_dmd_builder.py` specifies two complete CPU cycles with
-Student1/Fake1 and Student1/Fake3, both sample policies, cross-scale model widths,
-frozen Teacher, detached histories, real DMD boundary math, parameter updates and
-full Adam state against an independent sequential loop. Ordinary no-history
-cases exercise both sample policies through that same oracle. It also exercises
-baseline/full-checkpoint variants, nested initial-history admission and stale
-provenance rejection. These are test specifications, not an execution receipt.
-It adds no
-target-GPU, large-model, distributed-numerical or performance claim.
 
 The helper instantiates at most 511 calls, as required by `Program`. It describes
 this explicit loop, not all DMD variants. GAN branches, other update orderings,

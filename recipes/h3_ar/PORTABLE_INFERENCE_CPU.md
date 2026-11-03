@@ -102,16 +102,6 @@ fails, leaving no partial output directory. No fake decoder is provided.
 
 ## Evidence and exclusions
 
-`tests/test_training_h3_cached_inference_cpu.py` exercises actual original
-training, fresh-process resume/export across the separately labeled
-`GAN_START_2_TEST_FIXTURE`, full restored-current Student weight equality,
-non-mutating projection/export and an exact subsequent original update. A
-second fresh process runs with all old training payloads removed and trapped,
-and rejects discriminator/Adam construction. Both flat and packed caches match
-direct original eight-step rollout exactly at the same seed. Tests separately
-exercise template-value independence and genuine prompt/previous-AV conditions,
-strict staged weight rejection and source/runtime/config/input refusal.
-
 The GAN2 fixture remains **tiny, not pretrained and not quality evidence**;
 canonical training still uses GAN500. CUDA/distributed, auto/manual/saved-plan
 modes, changes of source/dependency/precision, alternate samplers, media

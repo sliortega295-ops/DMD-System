@@ -316,15 +316,3 @@ automatic selection match the native reference state, and direct execution
 matches an uninterrupted run after a fresh-process checkpoint restore. Current
 Student exports decode to images or video. The shared saved-plan/restart path
 is additionally exercised with SD1.5, including changed-plan rejection.
-
-The tests retain one native owner, check parameters/Adam/scheduler/EMA/RNG/data
-positions and clocks, and leave the unrelated device's RNG unchanged.
-`tests/test_training_resident_lifecycle.py` covers the CPU path;
-`tests/gpu/test_training_resident_public_gpu.py` is the opt-in CUDA check.
-These checks use small randomly initialized native models; they do not measure
-pretrained quality or performance.
-
-The `official-models-cpu` workflow runs the public resident lifecycle in separate
-DMD2 and Self-Forcing jobs. Their required receipts cover real native updates,
-automatic selection, saved plans, rollback and fresh-process restore; missing
-or skipped required cases fail the job. CUDA qualification remains separate.

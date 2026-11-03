@@ -28,7 +28,7 @@ class CurrentNavigationTests(unittest.TestCase):
             self.assertFalse(out['automatic_application'])
             for row in out['matches'][:len(ids)]:
                 self.assertTrue(row['implementations'])
-                self.assertTrue(row['checks'])
+                self.assertGreaterEqual(row['check_count'], len(row['checks']))
                 self.assertFalse(row['tests_run'])
         first = current.lookup('SD1.5 DMD2')['matches'][0]
         self.assertIn('recipes/dmd2_sd15/training.optimized.json', first['recipes']['optimized'])

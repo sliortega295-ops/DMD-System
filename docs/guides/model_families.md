@@ -166,37 +166,15 @@ Original Helios helper `.34`, Wan/LiveWan `.35.2`, and full-original Helios
 `.37.1` pins remain separate. These new extras do not upgrade an existing
 experiment environment, and no combined `all` extra is advertised.
 
-## Verification lanes
+## Core checks
 
-Each model family has its own CPU test environment. The source checkouts are
-explicit, revision-pinned inputs; the tests use upstream model classes and
-small fixtures. Run with `CUDA_VISIBLE_DEVICES=''`, offline Hub modes and one
-CPU thread.
+Automatic CI runs the fast core suite on Python 3.12 with `train,test`.
+Model training uses the dependency groups above and each model's recipe;
+keep those environments separate.
 
-| Environment / CI lane | Verified components |
-| --- | --- |
-| `train,test,dmd2` | `DMD2_SOURCE_ROOT`; SD1.5/SDXL model, native update clocks, checkpoint and image output |
-| `train,test,self-forcing-official` | `SELF_FORCING_SOURCE_ROOT`; causal rollout, role state and video output |
-| `train,test,ltx25` | `LTX_SOURCE_ROOT`; AV models/codecs and common flow-DMD lifecycle |
-| `train,test,livewan-wan21-reference` | Original Wan2.1/LiveWan public input, training and inference paths |
-| `train,test,test-helios-model` | Original Helios model classes, G/C/EMA owners and fresh-process recovery |
-| `test-helios-native-history` with the Helios model environment | Original native 40-block/FSDP topology in an independent test process |
-| `train,test,test-h3` | Original H3 loop, data progress, complete-cycle state and Gloo recovery |
-| `train,test,test-h3-output` plus pinned Diffusers source | Original full-sequence sampler, current-Student export and distributed state gathering |
-| `test-h3-consolidation` | Installed DeepSpeed Student-state serialization method |
-
-The workflows under `.github/workflows/` pin each source/dependency closure and
-check the required named test receipts. Model-specific tests run in their own
-processes so their dependency and module namespaces remain independent.
-The common `.34` helper lane uses `scripts/run_framework_cpu_tests.py` to select
-its compatible inventory. Provider-specific tests are assigned to dedicated
-jobs. Operator-supplied H3 codec assets can also be checked explicitly through
-`tests/test_h3_fullseq_codec_target_cpu.py`.
-
-`python scripts/check_framework_install.py` builds a wheel and tests it in a
-new isolated environment, reusing the invoking numerical dependency roots in
-their import order. The installed-package check covers training, recovery,
-saved-plan execution, export and new-input generation outside the checkout.
+`python scripts/check_framework_install.py` checks the installed package's
+small-model training, recovery, saved-plan execution, export and new-input
+generation outside the checkout.
 
 ## Image models: FLUX and Qwen-Image
 

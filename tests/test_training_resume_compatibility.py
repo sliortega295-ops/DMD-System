@@ -71,14 +71,21 @@ def test_old_release_contract_is_not_promoted_by_a_future_epoch(monkeypatch):
 
 
 def test_runtime_cannot_change_again_mid_process_after_resume(tmp_path, monkeypatch):
+    from distillschedule.examples.tiny_av import build_algorithm, build_model
     from distillschedule.open_workload import planning
     from distillschedule.training.policy import CyclePolicy
-    from test_open_workload_execution import build
+
+    def build():
+        return build_algorithm(build_model({}), {
+            'latent': torch.zeros(1, 4, 1, 2, 2),
+            'condition': torch.zeros(1, 4, 1, 1, 1),
+        }, {'fake_updates': 1}, cycle=0, seed=7)
+
     policy = CyclePolicy({'mode': 'reference'})
-    policy.run(build(n=1), tmp_path)
+    policy.run(build(), tmp_path)
     restored = CyclePolicy({'mode': 'reference'}); restored.restore(policy.bound)
     monkeypatch.setattr(planning, 'source_identity', lambda: 'a' * 64)
-    restored.prepare_resume(build(n=1))
+    restored.prepare_resume(build())
     monkeypatch.setattr(planning, 'source_identity', lambda: 'b' * 64)
     with pytest.raises(ValueError, match='source'):
-        restored.run(build(n=1), tmp_path)
+        restored.run(build(), tmp_path)

@@ -116,13 +116,6 @@ Failure before publication discards/expires only that newly constructed owner.
 
 ### Evidence boundaries
 
-`tests/test_training_sharded_construction.py` includes actual tiny FLUX.1
-compatibility probes and separate actual FLUX.2 cases. Missing FLUX.2 is an
-explicit deferred target, never replaced by FLUX.1. The production FLUX.2
-factory test exercises real native media/data, public `train`, and fresh-
-process resume on the pinned Torch 2.10 modern-flow lane; it is not satisfied
-by the local fixture-role compatibility tests.
-
 Student/Fake are still dense at factory time and their initial full-parameter
 EMA is still dense. Other native lifecycle integrity signatures may still
 materialize full tensors. Thus **three-role large-model construction,

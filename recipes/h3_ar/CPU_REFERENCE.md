@@ -128,13 +128,6 @@ accepted only for the non-pretrained fixture; it never changes canonical500.
 
 ## Evidence and limits
 
-`tests/test_training_h3_cached_public_cpu.py` and
-`tests/test_data_h3_cached_inputs.py` exercise actual CPU models through the
-public chain, direct-original exact update equivalence, tensor-only flat/split
-parser equivalence, all-owner tamper rejection and a **new OS process** exact
-uninterrupted3 versus2+resume3 comparison across the GAN-start2 transition.
-The independent original source-provider/CPU tests remain applicable unchanged.
-
 Current **full base + unmerged Student-only export** and fresh-process original
 eight-step generation on NEW genuine cached AV conditions are documented in
 [PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Use its separate

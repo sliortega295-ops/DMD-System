@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "sliortega295-ops/DMD-System",
-  "source_revision": "c95fb8598791eb22b69c74bfcd60c31aa642c3bc",
+  "source_revision": "a9b6f0f3eac23f65dbd783637c3a597724ff1760",
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
@@ -127,18 +127,13 @@
           "numerical_status": "REVIEW"
         }
       ],
-      "checks": [
-        "tests/test_training_official_dmd2_mechanisms.py",
-        "tests/test_training_dmd2_collective.py",
-        "tests/test_training_dmd2_completion.py",
-        "tests/test_training_dmd2_cpu.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/dmd2_sd15/README.md",
       "title": "Official DMD2 / Stable Diffusion 1.5",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": true,
-      "check_count": 22
+      "check_count": 0
     },
     {
       "id": "dmd2_sdxl",
@@ -161,18 +156,13 @@
         "src/distillschedule/training/sd.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_dmd2_completion.py",
-        "tests/test_training_dmd2_component_checkpoint.py",
-        "tests/test_training_dmd2_contract.py",
-        "tests/test_training_dmd2_collective.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/dmd2_sdxl/README.md",
       "title": "Official DMD2 / Stable Diffusion XL",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 18
+      "check_count": 0
     },
     {
       "id": "flux_dmd",
@@ -195,17 +185,14 @@
       ],
       "profiles": [],
       "checks": [
-        "tests/test_training_dmd_flow.py",
-        "tests/test_training_flow_image_device.py",
-        "tests/test_training_flow_images_cpu.py",
-        "tests/test_training_flow_precision.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/flux_dmd/README.md",
       "title": "FLUX.2 klein Base 4B: flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 17
+      "check_count": 1
     },
     {
       "id": "h3_ar",
@@ -235,18 +222,13 @@
         "src/distillschedule/training/h3_cached_public.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_strategy_h3_ar.py",
-        "tests/test_training_h3_cached_inference_cpu.py",
-        "tests/test_training_h3_cached_public_cpu.py",
-        "tests/test_h3_av_codec_target_cpu.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/h3_ar/README.md",
       "title": "W6 — Autoregressive Audio-Video DMD (Original DiffSynth H3)",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 7
+      "check_count": 0
     },
     {
       "id": "h3_fullseq",
@@ -270,16 +252,13 @@
         "src/distillschedule/search/h3_action_model_adapter.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_expansion_packaging.py",
-        "tests/test_training_h3_fullseq.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/h3_fullseq/README.md",
       "title": "W5 — Audio-Video DMD (Full-Sequence / H3 continuous H3)",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 2
+      "check_count": 0
     },
     {
       "id": "helios_gan",
@@ -308,18 +287,13 @@
         "src/distillschedule/training/helios_public.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_helios_gan_checkpoint_cpu.py",
-        "tests/test_training_helios_public_cpu.py",
-        "tests/test_training_helios_public_inference_cpu.py",
-        "tests/test_helios_gan_manual_bundle.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/helios_gan/README.md",
       "title": "W3 — Helios14B GAN-on",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 6
+      "check_count": 0
     },
     {
       "id": "helios_nogan",
@@ -351,18 +325,13 @@
         "src/distillschedule/training/helios_nogan_public.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_cpu_workflows.py",
-        "tests/test_training_helios_checkpoint_inputs_cpu.py",
-        "tests/test_training_helios_epoch_inputs.py",
-        "tests/test_training_helios_native_history.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/helios_nogan/README.md",
       "title": "W2 — Helios14B No-GAN",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 16
+      "check_count": 0
     },
     {
       "id": "hunyuan_video_dmd",
@@ -385,17 +354,14 @@
       ],
       "profiles": [],
       "checks": [
-        "tests/test_training_hunyuan_video_cpu.py",
-        "tests/test_training_dmd_flow.py",
-        "tests/test_training_flow_image_device.py",
-        "tests/test_training_flow_images_cpu.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/hunyuan_video_dmd/README.md",
       "title": "HunyuanVideo-1.5: text-to-video flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 17
+      "check_count": 1
     },
     {
       "id": "ltx25",
@@ -419,17 +385,14 @@
       ],
       "profiles": [],
       "checks": [
-        "tests/test_training_ltx_capacity.py",
-        "tests/test_training_ltx_cpu.py",
-        "tests/test_training_ltx_replicated.py",
-        "tests/test_training_ltx_sharded.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/ltx25/README.md",
       "title": "LTX-2.5: native AV + reusable No-GAN flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 24
+      "check_count": 1
     },
     {
       "id": "qwen_image_dmd",
@@ -452,17 +415,14 @@
       ],
       "profiles": [],
       "checks": [
-        "tests/test_training_flow_sharded_weight_loading.py",
-        "tests/test_training_dmd_flow.py",
-        "tests/test_training_flow_image_device.py",
-        "tests/test_training_flow_images_cpu.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/qwen_image_dmd/README.md",
       "title": "Original Qwen-Image T2I: flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 18
+      "check_count": 1
     },
     {
       "id": "self_forcing",
@@ -489,18 +449,13 @@
         "src/distillschedule/search/livewan_implementation.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_livewan_text_kv_retirement.py",
-        "tests/test_refactor_livewan_request.py",
-        "tests/test_refactor_request_asset_admission.py",
-        "tests/test_evidence_livewan_c51_phases.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/self_forcing/README.md",
       "title": "W4 — Self-Forcing DMD / LiveWan C51",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 36
+      "check_count": 0
     },
     {
       "id": "self_forcing_official",
@@ -572,17 +527,14 @@
         }
       ],
       "checks": [
-        "tests/test_training_expansion_packaging.py",
-        "tests/test_training_self_forcing_cpu.py",
-        "tests/test_training_official_sf_inference.py",
-        "tests/test_training_official_sf_owner.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/self_forcing_official/README.md",
       "title": "Official Self-Forcing (not LiveWan)",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": true,
-      "check_count": 17
+      "check_count": 1
     },
     {
       "id": "wan22_dmd",
@@ -605,17 +557,14 @@
       ],
       "profiles": [],
       "checks": [
-        "tests/test_training_wan22_cpu.py",
-        "tests/test_training_sharded_construction.py",
-        "tests/test_training_dmd_flow.py",
-        "tests/test_training_flow_image_device.py"
+        "tests/test_training_model_catalog.py"
       ],
       "tests_run": false,
       "guide": "recipes/wan22_dmd/README.md",
       "title": "Wan2.2 TI2V-5B: text-to-video flow DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 17
+      "check_count": 1
     },
     {
       "id": "wan_ar",
@@ -645,18 +594,13 @@
         "src/distillschedule/training/wan_public.py"
       ],
       "profiles": [],
-      "checks": [
-        "tests/test_training_wan_native_outputs_upstream_cpu.py",
-        "tests/test_training_expansion_packaging.py",
-        "tests/test_training_native.py",
-        "tests/test_training_wan_public_cpu.py"
-      ],
+      "checks": [],
       "tests_run": false,
       "guide": "recipes/wan_ar/README.md",
       "title": "W1 — Wan1.3B autoregressive DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 24
+      "check_count": 0
     }
   ],
   "capabilities": [

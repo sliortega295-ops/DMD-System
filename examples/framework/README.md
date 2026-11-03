@@ -233,16 +233,12 @@ including exact held-out metrics. Portable `generate`/`export` instead uses
 **current Student with zero history**, explicitly recorded in model metadata;
 it does not pretend the default module-only export includes EMA/history trees.
 
-## Focused proof
+## Core checks
 
 ```sh
-python -m pytest -q tests/test_training_example.py tests/test_open_workload_dmd_builder.py
-python -m pytest -q tests/test_training_validation.py tests/test_training_workflow_extension.py
+python scripts/run_framework_cpu_tests.py
+python scripts/check_framework_install.py --output installed-framework.json
 ```
 
-The example tests actual modality-dependent encoding, global-RNG isolation,
-frozen Teacher state, nonzero autograd gradients, Student/Fake parameter and full
-AdamW-state updates against an independent sequential DMD cycle, both Fake sample
-policies, reference/checkpointed open-runtime execution, actual fixture files and
-the external template path. These are CPU correctness tests, not quality or
-speedup measurements.
+The core suite covers real small-model updates, complete training state,
+fresh-process recovery, saved plans and generation on new inputs.

@@ -110,19 +110,6 @@ decoder evidence are retained. This is a decoded frame sequence, not an MP4
 container or a quality score. `--output-kind latents` is a separate explicit
 diagnostic, never a substitute for decoded-output acceptance.
 
-## Focused validation
-
-- `tests/test_training_wan_native_outputs.py`: real small installed VAE,
-  safe codec/RNG/refusals and actual native restore/output-only control seams
-  with explicitly synthetic CUDA/rank/scalar owners; new singular-PSD/noise
-  substream/control/RNG/refusal and operation-input routing cases.
-- `tests/test_training_wan_native_output_owners.py`: actual two-process CPU
-  Gloo/DTensor all-owner materialization, rank0 publication and failed writes.
-- `tests/test_training_wan_native_outputs_upstream_cpu.py`: optional original
-  Diffusers0.37.1/PEFT0.17.1 stack; actual tiny original G/current full export,
-  independent native sampler and real VAE after old assets are removed. This
-  random marker-checkpoint proof does not rerun training or qualify world16.
-
 Publication failure must not be treated as a successful output. Distributed
 unpublished `.tmp-*` staging is deliberately retained for failure audit; never
 manually add `_SUCCESS`. Existing exports are never overwritten. The single-GPU

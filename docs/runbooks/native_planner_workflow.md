@@ -285,26 +285,6 @@ python scripts/distillctl.py workloads run \
   --coordinator-output /absolute/project/evidence/c51-v1-replay
 ```
 
-```bash
-CUDA_VISIBLE_DEVICES='' LIVEWAN_REQUIRE_TORCH210_CPU=1 PYTHONPATH=src \
-  python -m pytest -q \
-  tests/test_refactor_livewan_c51_planner.py \
-  tests/test_refactor_livewan_c51_artifact_chain.py \
-  tests/test_refactor_livewan_c51_checkpoint_cpu.py \
-  tests/test_refactor_livewan_generator_fused_rms.py \
-  tests/test_refactor_livewan_generator_splitkv.py \
-  tests/test_refactor_livewan_c38_score_fa3.py \
-  tests/test_refactor_livewan_c31_integration.py \
-  tests/test_refactor_livewan_c32_integration.py \
-  tests/test_refactor_livewan_c33_integration.py \
-  tests/test_refactor_livewan_c34_integration.py \
-  tests/test_refactor_livewan_request.py \
-  tests/test_refactor_livewan_action_observation.py \
-  tests/test_refactor_livewan_attention_checkpoint.py \
-  tests/test_refactor_native_macro_adapter.py \
-  tests/test_refactor_livewan_calibration_summary.py
-```
-
 The opt-in control is `joint-livewan1-fsdp-m0-g0-r0-bundle1-control`; C51 is
 `joint-livewan1-pipeline-m1-g1-r1-bundle1-c51`. Four other controls retainC31-C34.
 Omitting `--include-livewan-c51` preserves the original IDs. Treat C51 as an
