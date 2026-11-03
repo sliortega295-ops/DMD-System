@@ -240,6 +240,27 @@ portable generation is unchanged. CPU execution uses `device: cpu` and
 Replicas support both compute precisions, not model sharding or clone-based
 planning. Same-topology recovery requires every rank's checkpoint shard.
 
+### Opt-in native CPU block FSDP
+
+With Torch 2.10, two or more CPU/Gloo ranks and the same `rank_strided` B1
+inputs, set `model.parameters.construction` to `cpu-fsdp2-native-blocks-v1`
+and use this exact execution policy:
+
+```json
+{"mode":"manual","implementation":{"backend":"torch-callable-replicated-v1","reduction":"fsdp2_reshard","bucket_cap_mb":0,"local":{"backend":"torch-callable-resident-v1","share_immutable":false,"checkpoint_bindings":[]}}}
+```
+
+The existing backend shards actual `native.transformer_blocks` children and
+each Student/Fake/frozen-Teacher outer root, using one `dmd_forward` entry per
+role. Native block argument dataclasses are registered as PyTorch pytrees so
+child backward hooks see their tensors. Codecs remain frozen and resident;
+full or LoRA updates, optional Student EMA, RNG and G1/F5/CFG math are unchanged.
+Use the same launcher and topology for training, resume, evaluation and export.
+
+This FP32 manual path starts from **dense CPU construction/loading**. Native
+two-block CPU tests cover gradients, Adam/EMA, fresh-process all-rank recovery
+and current-Student AV output. Default post-backward replicas remain unchanged.
+
 ## Generate new audio–video
 
 The export contains current Student + native codecs/Gemma/connectors and inline

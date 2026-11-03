@@ -11,6 +11,7 @@ import json
 import re
 from .single_device import (FLOW_CUDA_EXECUTION, FLOW_REPLICATED_EXECUTION, execution_policy_matches, _exact_value,
     FROZEN_TEACHER_CONSTRUCTION, FLOW_FROZEN_TEACHER_EXECUTION)
+from .ltx_sharding import CONSTRUCTION as LTX_BLOCK_CONSTRUCTION, EXECUTION as LTX_BLOCK_EXECUTION
 
 _MODELS = {}
 _ALGORITHMS = {}
@@ -181,10 +182,11 @@ register_model('ltx25', factory='distillschedule.training.ltx:build_model',
     capabilities=('video', 'audio', 'flow', 'lora'), description='LTX-2.5 audio-video, explicit post-backward B1 replicas',
     compute_precisions=['fp32', 'bf16-mixed'],
     execution_constraints={'cuda': FLOW_CUDA_EXECUTION, 'replicated': FLOW_REPLICATED_EXECUTION},
+    construction_constraint=dict(recipe=LTX_BLOCK_CONSTRUCTION, device='cpu', backend='gloo', execution=LTX_BLOCK_EXECUTION),
     compatibility=dict(algorithm_factories=['distillschedule.training.dmd:build_algorithm'],
         devices=['cpu', 'cuda'], distributed=True, distributed_backends={'cpu': 'gloo', 'cuda': 'nccl'},
         model_parameters=['source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
-            'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision']))
+            'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision', 'construction']))
 
 # Source-qualified image families. Validation levels remain distinct: actual
 # tiny native CPU fixtures are not pretrained/GPU/quality acceptance.

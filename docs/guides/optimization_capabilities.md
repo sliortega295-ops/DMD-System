@@ -96,6 +96,11 @@ rank shards. See the [replica configuration and launch sequence](../../recipes/f
 [HunyuanVideo](../../recipes/hunyuan_video_dmd/README.md) and
 [LTX AV](../../recipes/ltx25/README.md#explicit-local-b1-replicas) recipes.
 
+LTX separately admits [native CPU block FSDP](../../recipes/ltx25/README.md#opt-in-native-cpu-block-fsdp):
+an explicit FP32/Gloo manual recipe, with real Student/Fake/Teacher child/root
+groups and owned optional EMA shards. It uses dense CPU initialization,
+resident codecs and the common training, recovery and export lifecycle.
+
 ## Measured planning and clone safety
 
 The four image/video flow adapters admit whole-role calibration copies only for

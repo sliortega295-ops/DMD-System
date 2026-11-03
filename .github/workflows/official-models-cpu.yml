@@ -9,6 +9,7 @@ on:
       - 'tests/test_framework_flow_methods_ci.py'
       - 'tests/flow_replica_oracle.py'
       - 'tests/native_flow_replicated.py'
+      - 'tests/ltx_sharded_lifecycle.py'
       - 'tests/test_official_optimization_profiles.py'
       - 'tests/gpu/**'
       - 'tests/test_owner_execution_capability.py'
@@ -223,7 +224,7 @@ jobs:
                 --require test_fresh_process_common_program_restart_current_g_export
               ;;
             ltx25)
-              DMD_LTX_REPLICATED_CPU=1 python -m pytest -q tests/test_training_dmd_flow.py tests/test_training_ltx_*.py --junitxml=provider-cpu.xml
+              DMD_LTX_REPLICATED_CPU=1 DMD_LTX_SHARDED_CPU=1 python -m pytest -q tests/test_training_dmd_flow.py tests/test_training_ltx_*.py --junitxml=provider-cpu.xml
               python scripts/check_cpu_receipt.py provider-cpu.xml \
                 --require test_real_native_media_text_and_modality_abi \
                 --require test_native_cpu_media_never_probes_visible_cuda \
@@ -268,7 +269,16 @@ jobs:
                 --require test_ltx_unqualified_pretrained_trials_refuse_before_copy \
                 --require test_ltx_independent_oracle_preserves_default_teacher_cfg2_and_cfg1_call_order \
                 --require 'test_actual_native_ltx_gloo2_default_cfg2_oracle_and_fresh_av_lifecycle[fp32]' \
-                --require 'test_actual_native_ltx_gloo2_default_cfg2_oracle_and_fresh_av_lifecycle[bf16-mixed]'
+                --require 'test_actual_native_ltx_gloo2_default_cfg2_oracle_and_fresh_av_lifecycle[bf16-mixed]' \
+                --require test_ltx_block_construction_catalog_is_exact_lazy_and_torch_free \
+                --require test_ltx_block_helper_source_receipt_is_exact_and_torch_free \
+                --require test_ltx_block_public_policy_rejects_before_data_model_and_rng \
+                --require test_ltx_block_constructor_requires_live_public_provider_before_assets \
+                --require test_ltx_block_failed_constructor_closes_single_use_provider \
+                --require test_native_ltx_block_pytree_rejects_conflicting_registration \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[config]' \
+                --require 'test_actual_native_ltx_two_block_gloo2_oracle_and_public_fresh_av_lifecycle[lora_config]' \
+                --require test_actual_native_ltx_two_block_gloo2_preserves_disabled_ema
               ;;
             livewan-public)
               python -m pytest -q tests/test_training_livewan_reference_inputs.py tests/test_training_livewan_public_cpu.py tests/test_training_livewan_inference_cpu.py --junitxml=provider-cpu.xml

@@ -114,6 +114,14 @@ def test_common_cpu_collector_runs_the_flow_methods_ci_regressions():
     assert 'tests/test_framework_flow_methods_ci.py' in api['test_files'](ROOT)
 
 
+def test_ltx_native_block_lifecycle_driver_triggers_official_cpu_ci():
+    workflow, _, _, _ = _lane('ltx25')
+    paths = workflow['on']['pull_request']['paths']
+    driver = 'tests/ltx_sharded_lifecycle.py'
+    assert driver in paths
+    assert any(Path(driver).match(pattern) for pattern in paths)
+
+
 SHARDING_LANES = {
     'flux2-klein-base': ('modern-flow-cpu.yml', 'native-media-lifecycle',
                          'Actual FLUX CPU FSDP flow ownership', 'flux-flow-sharding-cpu.xml'),

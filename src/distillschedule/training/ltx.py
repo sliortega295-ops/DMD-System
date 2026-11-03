@@ -1,7 +1,7 @@
 """Actual pinned LTX-2.5 AV models through the common training lifecycle.
 
 Explicit CPU/CUDA reference or post-backward rank-local replicas, FP32 state
-and optional native BF16 compute.
+and optional native BF16 compute; explicit CPU FP32 native block FSDP ownership.
 No LightX2V, architecture substitute,
 22B guessed defaults, online loader, new trainer or model-name solver branch.
 All media/text codecs are actual upstream classes; portable exports retain the
@@ -408,14 +408,21 @@ def _training_placement(device, world):
     return {'device': device.type if world > 1 else str(device), 'world_size': world, 'precision': 'FP32'}
 
 
-def build_model(parameters):
+def _build_model(parameters, *, construction=None):
     from .dmd import sigmas, training_state
     from .distributed import rank_world
     from .ltx_media import load_media, media_binding, strict_load, asset_file, place_module
     allowed = {'source_root', 'assets', 'device', 'seed', 'trainable', 'student_lr', 'fake_lr',
-               'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision'}
+               'scheduler_gamma', 'ema_decay', 'generation_sigmas', 'compute_precision', 'construction'}
     require(isinstance(parameters, dict) and set(parameters) <= allowed
-            and allowed - {'seed', 'device', 'compute_precision'} <= parameters.keys(), 'complete explicit native LTX model parameters required')
+            and allowed - {'seed', 'device', 'compute_precision', 'construction'} <= parameters.keys(), 'complete explicit native LTX model parameters required')
+    from .ltx_sharding import CONSTRUCTION, _NativeBlockConstruction
+    if 'construction' in parameters:
+        require(parameters['construction'] == CONSTRUCTION and type(construction) is _NativeBlockConstruction,
+                'native block construction requires public lifecycle provider admission')
+        construction.validate_constructor(parameters)
+    else:
+        require(construction is None, 'unexpected native block construction provider')
     device = _admit_device(parameters, allow_replicated=True)
     world = rank_world()[1]
     precision = parameters.get('compute_precision', 'fp32')
@@ -500,7 +507,19 @@ def build_model(parameters):
         prediction=PredictionSpec('flow'), capabilities=('video', 'audio', 'flow', 'lora', 'dmd_flow_v1',
             *(('dmd_flow_private_replicated_b1_v1',) if world > 1 else ())),
         generate=generate, decode=media.decode, inference_projection=project_current_generator,
-        admit_training=admit_training).validate()
+        admit_training=admit_training, sharded_construction=construction).validate()
+
+
+def build_model(parameters):
+    return _build_model(parameters)
+
+
+def _admit_construction(**kwargs):
+    from .ltx_sharding import admit_construction
+    return admit_construction(**kwargs, factory=build_model, builder=_build_model)
+
+
+build_model.admit_construction = _admit_construction
 
 
 def admit_training(*, state, request, prepared_identity, prepared_manifest):
@@ -521,7 +540,10 @@ def admit_training(*, state, request, prepared_identity, prepared_manifest):
         require(request.trainer.get('distributed', {}).get('backend') == torch.distributed.get_backend()
                 and request.data.get('sharding') == 'rank_strided',
                 'explicit distributed backend and rank_strided data required')
-        require(execution_policy_matches(request.execution, FLOW_REPLICATED_EXECUTION),
+        from .ltx_sharding import CONSTRUCTION, EXECUTION
+        construction = request.model.get('parameters', {}).get('construction')
+        policy = EXECUTION if construction == CONSTRUCTION else FLOW_REPLICATED_EXECUTION
+        require(construction in (None, CONSTRUCTION) and execution_policy_matches(request.execution, policy),
                 'replicated private flow requires reference or exact manual post_backward immutable sharing; trials unsupported')
     else:
         require('distributed' not in request.trainer, 'distributed execution requires actual torchrun ranks')
