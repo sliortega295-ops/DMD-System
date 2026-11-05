@@ -1,0 +1,33 @@
+{
+  "schema_version": "distillschedule.planner_v0_replay_status.v0",
+  "status": "FRAMEWORK_PASS_PROFILE_INCOMPLETE",
+  "known_component_replay": {
+    "plan": "no_gan_rolephase_measured",
+    "phase_a_seconds": 104.687,
+    "transition_seconds": 17.776,
+    "critic_phase_seconds": 158.494,
+    "predicted_full5_seconds": 280.957,
+    "observed_full5_median_seconds": 279.934,
+    "absolute_error_seconds": 1.023,
+    "relative_error": 0.003654432830595668,
+    "claim_boundary": "same-run component accounting; not held-out prediction"
+  },
+  "unseen_candidate": {
+    "plan": "gan_static_fsdp2_candidate",
+    "status": "PROFILE_INCOMPLETE",
+    "direct_required_records": 7,
+    "direct_missing_records": 7
+  },
+  "initial_calibration": {
+    "primitive_records": 166,
+    "exact_records_available": 0,
+    "note": "records, not Full5 runs; one instrumented canary emits many records"
+  },
+  "next_data": [
+    "PR13 static FSDP2 No-GAN/GAN correctness and primitive profile",
+    "model/block/optimizer/EMA byte inventories",
+    "per-stage activation saved-tensor census",
+    "pinned/pageable PCIe and NCCL topology calibration",
+    "transition decomposition and CPU stable/transient peaks"
+  ]
+}
