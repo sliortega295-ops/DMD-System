@@ -203,3 +203,176 @@ def test_checkpoint_session_rejects_input_alias_mutation(measure, policy):
 def test_selective_checkpoint_keeps_native_cache_mutation_check(measure):
     with pytest.raises(RuntimeError, match='Tensor cached during selective activation checkpoint has been mutated'):
         _saved_session(mutation='detached_alias', checkpoint_policy='save_matmul', update=True).run(measure=measure)
+
+
+def _immutable_read(ctx):
+    from distillschedule.open_workload.torch_backend import physical_tensor
+    return ctx.inputs['x'] + sum(physical_tensor(p).sum() for p in ctx.state['teacher'].parameters())
+
+
+def _immutable_session(*, persistent=True, lifecycle=None, teacher=None):
+    from distillschedule.open_workload.torch_backend import Session, Workload
+    if teacher is None:
+        teacher = torch.nn.Module()
+        teacher.register_parameter('weight', torch.nn.Parameter(torch.ones(2, 2), requires_grad=False))
+    workload = Workload(Program((Call('read', 'read', inputs=('x',), reads=('teacher',)),),
+                                {'teacher': 0}, ('x',), ('read',)),
+                        {'read': _immutable_read}, {'teacher': teacher}, {'x': torch.tensor(1.)},
+                        immutable_modules=('teacher',))
+    option = {'backend': 'torch-callable-resident-v1', 'share_immutable': False,
+              'checkpoint_bindings': []}
+    return Session(workload, option, copy_state=not persistent, persistent=persistent,
+                   lifecycle=lifecycle), workload
+
+
+def _count_content_hashes(monkeypatch):
+    from distillschedule.open_workload import torch_backend
+    original = torch_backend.tensor_signature
+    calls = []
+    def counted(*args, **kwargs):
+        calls.append(None)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(torch_backend, 'tensor_signature', counted)
+    return calls
+
+
+def test_persistent_session_does_not_rehash_unchanged_frozen_parameters(monkeypatch):
+    calls = _count_content_hashes(monkeypatch)
+    session, workload = _immutable_session()
+    assert len(calls) == 1  # Initial admission still binds the actual contents.
+    for cycle in range(3):
+        if cycle:
+            session.bind_cycle(workload)
+        assert session.run()['read'].item() == 5.
+        assert len(calls) == 1
+
+
+def test_frozen_version_bump_revalidates_once_without_rejecting_equal_values(monkeypatch):
+    calls = _count_content_hashes(monkeypatch)
+    session, workload = _immutable_session()
+    parameter = session.state['teacher'].weight
+    before = parameter._version
+    parameter.copy_(parameter.clone())
+    assert parameter._version > before
+    session.run()
+    assert len(calls) == 2
+    session.bind_cycle(workload)
+    session.run()
+    assert len(calls) == 2
+
+
+def test_persistent_session_rejects_inplace_frozen_parameter_mutation():
+    session, _ = _immutable_session()
+    session.state['teacher'].weight.add_(1)
+    with pytest.raises(ValueError, match='declared immutable parameters changed'):
+        session.run()
+
+
+@pytest.mark.parametrize('change', ['owner', 'name', 'requires_grad', 'shape', 'stride', 'dtype'])
+def test_persistent_session_rejects_frozen_parameter_ownership_or_layout_changes(change):
+    session, _ = _immutable_session()
+    teacher = session.state['teacher']
+    parameter = teacher.weight
+    if change == 'owner':
+        teacher.weight = torch.nn.Parameter(parameter.clone(), requires_grad=False)
+    elif change == 'name':
+        del teacher.weight
+        teacher.register_parameter('renamed', parameter)
+    elif change == 'requires_grad':
+        parameter.requires_grad_(True)
+    elif change == 'shape':
+        parameter.data = parameter.data.reshape(4)
+    elif change == 'stride':
+        parameter.data = parameter.data.t()
+    else:
+        parameter.data = parameter.data.double()
+    with pytest.raises(ValueError, match='declared immutable parameters changed'):
+        session.run()
+
+
+def test_explicit_frozen_content_audit_catches_unsafe_data_writes():
+    session, _ = _immutable_session()
+    parameter = session.state['teacher'].weight
+    before = parameter._version
+    parameter.data.add_(1)  # Unsupported raw writes bypass ordinary version guards.
+    assert parameter._version == before
+    with pytest.raises(ValueError, match='declared immutable parameters changed'):
+        session.audit_immutable()
+
+
+@pytest.mark.parametrize('measure,persistent', [(True, True), (False, False)])
+def test_measured_and_trial_sessions_always_audit_frozen_contents(measure, persistent):
+    session, _ = _immutable_session(persistent=persistent)
+    session.state['teacher'].weight.data.add_(1)
+    with pytest.raises(ValueError, match='declared immutable parameters changed'):
+        session.run(measure=measure)
+
+
+def test_frozen_admission_uses_the_final_lifecycle_owned_parameters():
+    import weakref
+    class Lifecycle:
+        def prepare(self, session):
+            teacher = session.state['teacher']
+            self.replaced = weakref.ref(teacher.weight)
+            teacher.weight = torch.nn.Parameter(teacher.weight.clone(), requires_grad=False)
+        def before_run(self, session, order): pass
+        def before_call(self, session, call): pass
+        def after_call(self, session, call): pass
+        def finish(self, session): pass
+    lifecycle = Lifecycle()
+    session, _ = _immutable_session(lifecycle=lifecycle)
+    assert lifecycle.replaced() is None
+    assert session.run()['read'].item() == 5.
+
+
+def test_counterless_frozen_parameters_keep_content_validation():
+    with torch.inference_mode():
+        teacher = torch.nn.Module()
+        teacher.register_parameter('weight', torch.nn.Parameter(torch.ones(2, 2), requires_grad=False))
+    session, workload = _immutable_session(teacher=teacher)
+    assert session.run()['read'].item() == 5.
+    session.bind_cycle(workload)
+    with torch.inference_mode():
+        teacher.weight.add_(1)
+    with pytest.raises(ValueError, match='declared immutable parameters changed'):
+        session.run()
+
+
+def _local_immutable_worker(rank, rendezvous):
+    from datetime import timedelta
+    import torch.distributed as dist
+    from torch.distributed.device_mesh import init_device_mesh
+    from torch.distributed.tensor import DTensor, Shard
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=30))
+    try:
+        mesh = init_device_mesh('cpu', (2,), mesh_dim_names=('data',))
+        teacher = torch.nn.Module()
+        local = DTensor.from_local(torch.ones(1, 2), mesh, [Shard(0)],
+                                   shape=torch.Size((2, 2)), stride=(2, 1))
+        teacher.register_parameter('weight', torch.nn.Parameter(local, requires_grad=False))
+        def forbidden(*args, **kwargs):
+            raise AssertionError('immutable validation must not gather a full DTensor')
+        DTensor.full_tensor = forbidden
+        session, workload = _immutable_session(teacher=teacher)
+        if rank == 1:
+            teacher.weight.to_local().copy_(teacher.weight.to_local().clone())
+        assert session.run()['read'].item() == 3.
+        session.bind_cycle(workload)
+        session.audit_immutable()
+        if rank == 1:
+            teacher.weight.to_local().add_(1)
+            with pytest.raises(ValueError, match='declared immutable parameters changed'):
+                session.run()
+        else:
+            assert session.run()['read'].item() == 3.
+    finally:
+        dist.destroy_process_group()
+
+
+def test_dtensor_immutable_checks_are_local_even_when_only_one_rank_changes(tmp_path):
+    import torch.distributed as dist
+    if not dist.is_available() or not dist.is_gloo_available():
+        pytest.skip('local shard validation requires Gloo')
+    torch.multiprocessing.spawn(_local_immutable_worker, args=(str(tmp_path / 'gloo'),),
+                                nprocs=2, join=True)

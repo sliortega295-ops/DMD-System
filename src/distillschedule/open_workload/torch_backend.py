@@ -17,6 +17,7 @@ import itertools
 import math
 import random
 import time
+import weakref
 from typing import Any, Callable, Mapping
 
 import torch
@@ -95,6 +96,27 @@ def tensor_signature(t, *, _local_shards=False):
         'bytes':hashlib.sha256(v.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()})
 
 
+def _immutable_parameter_state(parameter):
+    """Local layout and mutation tokens; never materialize distributed weights."""
+    from torch.distributed.tensor import DTensor
+    local = physical_tensor(parameter)
+    def metadata(t):
+        return (type(t), tuple(t.shape), tuple(t.stride()), t.dtype, t.layout,
+                t.device, t.storage_offset())
+    distributed = None
+    if isinstance(parameter, DTensor):
+        from distillschedule.training.tensor_state import layout
+        distributed = layout(parameter)
+    versions = []
+    for tensor in (parameter, local):
+        try:
+            versions.append(tensor._version)
+        except RuntimeError:  # Inference-mode tensors have no version counter.
+            versions.append(None)
+    return ((metadata(parameter), metadata(local), distributed),
+            (storage_key(local), tuple(versions)))
+
+
 def signature(value, *, _metadata=False, _local_shards=False):
     if isinstance(value, torch.Tensor): return {'tensor':tensor_signature(value, _local_shards=_local_shards)}
     if isinstance(value, nn.Module):
@@ -135,7 +157,8 @@ class Workload:
     feeds: Mapping[str, Any]
     seed: int = 0
     # Semantic declaration: these model subtree parameters are immutable.
-    # The backend checks requires_grad=False and validates contents after execution.
+    # The backend checks requires_grad=False, guards owned cycle mutations and
+    # audits full contents for trials, measurements or explicit validation.
     # This is not an instruction to share them; the capability library decides.
     immutable_modules: tuple[str, ...] = ()
     identity_extra: Mapping[str, Any] = field(default_factory=dict)
@@ -345,8 +368,6 @@ class Session:
                                if copy_state else (dict(workload.state),dict(workload.feeds)))
         self.device=workload.device; self.graph=workload.program.compile()
         self.profile={}; self.effects={'shared_parameter_aliases':0,'checkpoint_calls':0,'recompute_calls':0}
-        self._immutable={path:{n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}
-                         for path in workload.immutable_modules}
         if implementation['share_immutable']:
             for first,second,_ in sharing_inventory(workload):
                 source=resolve_module(self.state,first[0]).get_parameter(first[1])
@@ -362,6 +383,46 @@ class Session:
             self.effects['lifecycle_installations'] = 1
             self.initial_storage = storage_bytes((self.state, self.feeds))
             self.static_bytes = self.initial_storage
+        # Aliasing and lifecycle installation may replace Parameters or install
+        # local DTensor shards. Admit the final owned slots, without retaining
+        # any replaced Parameters (including construction-time frozen copies).
+        self._immutable = {}
+        for path in workload.immutable_modules:
+            values = {}
+            for name, parameter in resolve_module(self.state, path).named_parameters(remove_duplicate=False):
+                require(not parameter.requires_grad, 'immutable module has trainable parameters', path='open.runtime')
+                metadata, token = _immutable_parameter_state(parameter)
+                values[name] = {'owner': weakref.ref(parameter), 'metadata': metadata, 'token': token,
+                                'signature': tensor_signature(parameter, _local_shards=True)}
+            self._immutable[path] = values
+
+    def _check_immutable(self, *, full=False):
+        message = 'declared immutable parameters changed'
+        require(tuple(self._immutable) == tuple(self.workload.immutable_modules), message, path='open.runtime')
+        for path, values in self._immutable.items():
+            current = dict(resolve_module(self.state, path).named_parameters(remove_duplicate=False))
+            require(current.keys() == values.keys(), message, path='open.runtime')
+            for name, parameter in current.items():
+                admitted = values[name]
+                metadata, token = _immutable_parameter_state(parameter)
+                require(admitted['owner']() is parameter and not parameter.requires_grad
+                        and metadata == admitted['metadata'], message, path='open.runtime')
+                if full or token != admitted['token'] or None in token[1]:
+                    # A load_state_dict/copy_ may bump versions without changing
+                    # values. Revalidate only that local payload, then refresh
+                    # its token. No rank-conditional full_tensor collectives.
+                    require(tensor_signature(parameter, _local_shards=True) == admitted['signature'],
+                            message, path='open.runtime')
+                    admitted['token'] = token
+
+    def audit_immutable(self):
+        """Audit every local immutable payload against admission.
+
+        Ordinary persistent cycles guard version/storage changes. Unsupported
+        raw writes through e.g. .data can bypass counters and require this full
+        audit, which measured and one-shot trial runs also perform automatically.
+        """
+        self._check_immutable(full=True)
 
     def bind_cycle(self, workload, *, graph=None):
         """Rebind an owned complete-cycle session; never reinstall its layout.
@@ -532,9 +593,7 @@ class Session:
             require(row.get('option') == option
                     and row.get('effect') == self.owner_inventory[key]['descriptor']['effect'],
                     'owner changed admitted execution effect predicates', path='open.runtime')
-        for path,values in self._immutable.items():
-            require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters(remove_duplicate=False)}==values,
-                    'declared immutable parameters changed',path='open.runtime')
+        self._check_immutable(full=measure or not self.persistent)
         self.receipt={'status':'EXECUTED_OPEN_PROGRAM','program':self.workload.program.digest,
             'dispatcher':prepared.receipt(),'effects':deepcopy(self.effects),'wall_ns':time.perf_counter_ns()-started,
             'device':str(self.device),'gpu_execution':'NOT_RUN' if self.device.type=='cpu' else 'NATIVE_CUDA_RUN',
