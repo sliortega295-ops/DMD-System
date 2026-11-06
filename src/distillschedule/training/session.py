@@ -612,6 +612,10 @@ def export(config, checkpoint, output):
         from .inference import publish_export
         components, _, payload, identity, _session = _load_for_output(config, checkpoint)
         lifetime.enter_context(components.managed())
+        cycle = payload["cycle"]
+        # Restore has installed the live optimizer/state owners. The serialized
+        # module snapshot is obsolete before projection or export allocates one.
+        del payload
         parameters = {key: value for key, value in _model_parameters(config).items() if key != "device"}
         factory, source = config.model["factory"], identity["model"]
         if components.inference_projection is not None:
@@ -633,7 +637,7 @@ def export(config, checkpoint, output):
             identity = {"model": source, "model_metadata": dict(components.metadata), "training_provenance": identity}
         return publish_export(components, output, model={"factory": factory,
             "source": source, "parameters": parameters, "metadata": dict(components.metadata)},
-            identity=identity, cycle=payload["cycle"])
+            identity=identity, cycle=cycle)
 
 
 def generate_from_export(config, weights_dir, output, *, prepared, sample_index=0, parameters=None, output_kind="video"):

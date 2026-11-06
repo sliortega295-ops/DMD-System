@@ -150,7 +150,7 @@ def cpu_tree(value):
     if isinstance(value, torch.Tensor):
         from distillschedule.open_workload.torch_backend import full_tensor
         value = full_tensor(value)
-        return value.detach().cpu().clone()
+        return value.detach().to(device="cpu", copy=True)
     if isinstance(value, dict):
         return {key: cpu_tree(item) for key, item in value.items()}
     if isinstance(value, tuple):
@@ -179,21 +179,22 @@ def pack_state(state):
     from distillschedule.open_workload.torch_backend import unwrap_module
     parameter_names = _parameter_names(state)
     packed = {}
+    snapshot_memo = {}
     for key, value in state.items():
         if isinstance(value, torch.nn.Module):
             value = unwrap_module(value)
             packed[key] = {"kind": "module", "class": _class(value),
-                           "value": pack(value.state_dict()),
+                           "value": pack(value.state_dict(), memo=snapshot_memo),
                            "training": {name: child.training for name, child in value.named_modules()},
                            "requires_grad": {name: p.requires_grad for name, p in value.named_parameters(remove_duplicate=False)}}
         elif isinstance(value, torch.optim.Optimizer):
-            packed[key] = {"kind": "optimizer", "class": _class(value), "value": pack(value.state_dict()),
+            packed[key] = {"kind": "optimizer", "class": _class(value), "value": pack(value.state_dict(), memo=snapshot_memo),
                            "parameters": [[parameter_names[id(p)] for p in group["params"]]
                                           for group in value.param_groups]}
         elif callable(getattr(value, "state_dict", None)) and callable(getattr(value, "load_state_dict", None)):
-            packed[key] = {"kind": "stateful", "class": _class(value), "value": pack(value.state_dict())}
+            packed[key] = {"kind": "stateful", "class": _class(value), "value": pack(value.state_dict(), memo=snapshot_memo)}
         else:
-            packed[key] = {"kind": "value", "value": pack(value)}
+            packed[key] = {"kind": "value", "value": pack(value, memo=snapshot_memo)}
     return packed
 
 

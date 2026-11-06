@@ -123,20 +123,54 @@ def layout(tensor):
             "device_type": mesh.device_type}
 
 
-def pack(value):
+def _snapshot_tensor(value, memo, *, info=None):
+    """Copy an exact live storage view once, without retaining its source.
+
+    state_dict() returns fresh detached wrappers, so Tensor identity is not a
+    storage identity. The weak StorageImpl guard prevents reuse after a source
+    dies without keeping its model-sized storage alive until packing finishes.
+    """
+    import json
     import torch
     from torch.distributed.tensor import DTensor
+    from torch.multiprocessing.reductions import StorageWeakRef
+    local = value.to_local() if info is not None else value
+    if (type(value) not in (torch.Tensor, torch.nn.Parameter, DTensor)
+            or type(local) not in (torch.Tensor, torch.nn.Parameter)
+            or local.layout != torch.strided or local.is_quantized or local.is_meta):
+        return local.detach().to(device="cpu", copy=True)
+    try:
+        source = StorageWeakRef(local.untyped_storage())
+        key = (str(local.device), source.cdata, local.dtype, local.storage_offset(),
+               tuple(local.shape), tuple(local.stride()), local.is_conj(), local.is_neg(),
+               local._version, value._version, json.dumps(info, sort_keys=True) if info is not None else None)
+    except (RuntimeError, NotImplementedError):
+        # Inference tensors have no version counter; unsupported storage kinds
+        # retain the original independent-copy behavior rather than guessing.
+        return local.detach().to(device="cpu", copy=True)
+    cached = memo.get(key)
+    if cached is None or cached[0].expired():
+        cached = (source, local.detach().to(device="cpu", copy=True))
+        memo[key] = cached
+    return cached[1]
+
+
+def pack(value, *, memo=None):
+    import torch
+    from torch.distributed.tensor import DTensor
+    if memo is None:
+        memo = {}
     if isinstance(value, DTensor):
-        return {"_tensor_kind": _MARKER, "layout": layout(value),
-                "local": value.to_local().detach().to(device="cpu", copy=True)}
+        info = layout(value)
+        return {"_tensor_kind": _MARKER, "layout": info, "local": _snapshot_tensor(value, memo, info=info)}
     if isinstance(value, torch.Tensor):
-        return value.detach().to(device="cpu", copy=True)
+        return _snapshot_tensor(value, memo)
     if isinstance(value, dict):
         if value.get("_tensor_kind") == _MARKER:
             raise ValueError("reserved checkpoint tensor marker in user state")
-        return {key: pack(item) for key, item in value.items()}
+        return {key: pack(item, memo=memo) for key, item in value.items()}
     if isinstance(value, (tuple, list)):
-        return type(value)(pack(item) for item in value)
+        return type(value)(pack(item, memo=memo) for item in value)
     if value is None or type(value) in (str, bool, int, float):
         return value
     raise ValueError(f"checkpoint state needs an explicit serializer: {type(value).__name__}")

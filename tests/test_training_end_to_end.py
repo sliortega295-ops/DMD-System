@@ -190,3 +190,55 @@ def test_invalid_resume_identity_rejects_without_creating_output(tmp_path):
     with pytest.raises(ValueError, match="identity"):
         train(TrainingConfig.from_dict(raw, source=config.source))
     assert not (root / "wrong").exists()
+
+
+@pytest.mark.parametrize('project', [False, True])
+def test_export_releases_loaded_checkpoint_before_staging_and_restores_weights(tmp_path, monkeypatch, project):
+    import gc
+    import weakref
+    from distillschedule.examples.tiny_av import build_model
+    from distillschedule.training import inference, session
+    root, config = fixture(tmp_path)
+    trained = train(config)
+    original_load, original_publish = session._load_for_output, inference.publish_export
+    source_refs, loaded = [], []
+
+    def projection(components, parameters):
+        assert source_refs and all(ref() is None for ref in source_refs)
+        return session.InferenceProjection(components, config.model['factory'], parameters)
+
+    def load(*args, **kwargs):
+        result = original_load(*args, **kwargs)
+        # Observe the real strict loader's module payload, not synthetic state.
+        source_refs.extend(weakref.ref(tensor) for row in result[2]['state'].values()
+                           if row['kind'] == 'module' for tensor in row['value'].values())
+        loaded.append(result[0])
+        if project:
+            result[0].inference_projection = projection
+        return result
+
+    def publish(*args, **kwargs):
+        gc.collect()
+        assert source_refs and all(ref() is None for ref in source_refs)
+        # Optimizer slots intentionally installed into live training owners are
+        # legitimate state, not disposable checkpoint module copies.
+        optimizer = loaded[0].state['student_optimizer']
+        assert optimizer.state and optimizer.param_groups[0]['params'][0] in optimizer.state
+        return original_publish(*args, **kwargs)
+
+    monkeypatch.setattr(session, '_load_for_output', load)
+    monkeypatch.setattr(inference, 'publish_export', publish)
+    exported = session.export(config, trained['checkpoint'], root / 'exported')
+    path, manifest = inference.read_export(root / 'exported')
+    assert manifest == exported and manifest['schema_version'] == 'distillschedule.inference_export.v1'
+    assert manifest['checkpoint_cycle'] == 4
+    weights = torch.load(path / 'weights.pt', weights_only=True)
+    components = build_model({})
+    inference.restore_modules(components, path, manifest)
+    for name, module in inference.modules(components.state).items():
+        assert equal(weights[name], module.state_dict())
+        assert equal(weights[name], loaded[0].state[name].state_dict())
+    with torch.no_grad():
+        loaded[0].state['student'].layers[0].weight.add_(1)
+    assert equal(weights, torch.load(path / 'weights.pt', weights_only=True))
+    assert not equal(weights['student'], loaded[0].state['student'].state_dict())

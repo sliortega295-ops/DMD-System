@@ -163,3 +163,160 @@ def test_output_conflict_is_rejected_before_model_factory(tmp_path, monkeypatch)
     monkeypatch.setattr(session, '_construct_model', forbidden)
     with pytest.raises(FileExistsError):
         train(config)
+
+
+class _SharedCheckpointRole(torch.nn.Module):
+    def __init__(self, frozen):
+        super().__init__()
+        self.frozen = torch.nn.Parameter(frozen, requires_grad=False)
+        self.weight = torch.nn.Parameter(torch.ones(2))
+        self.weight_alias = self.weight
+
+    def forward(self, value):
+        return value @ self.frozen + self.weight
+
+
+def _shared_checkpoint_state():
+    frozen = torch.arange(4, dtype=torch.float32).reshape(2, 2)
+    roles = {name: _SharedCheckpointRole(frozen) for name in ('student', 'fake', 'teacher')}
+    return {**roles, **{name + '_optimizer': torch.optim.AdamW([role.weight], lr=.01)
+                       for name, role in roles.items()},
+            'ema': {name: role.weight.detach().clone() for name, role in roles.items()}}
+
+
+def _checkpoint_update(state):
+    for name in ('student', 'fake', 'teacher'):
+        optimizer = state[name + '_optimizer']
+        state[name](torch.ones(1, 2)).square().mean().backward()
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        state['ema'][name].lerp_(state[name].weight.detach(), .1)
+
+
+def test_shared_role_snapshot_safe_roundtrip_preserves_optimizer_updates(tmp_path):
+    from copy import deepcopy
+    from distillschedule.training.checkpoint import (
+        SCHEMA, pack_state, read_checkpoint, read_manifest, save_checkpoint, unpack_state,
+    )
+    state = _shared_checkpoint_state()
+    _checkpoint_update(state)
+    path = tmp_path / 'shared'
+    identity = {'fixture': 'shared3roles'}
+    save_checkpoint(path, state, identity=identity, cycle=1, cursor=1, versions={})
+    assert read_manifest(path, identity=identity)['schema_version'] == SCHEMA == 'distillschedule.training_checkpoint.v2'
+    payload = read_checkpoint(path, identity=identity)
+    safe = torch.load(path / 'state.pt', weights_only=True)
+    assert equal(safe, payload)
+    restored = _shared_checkpoint_state()
+    parameters = {name: restored[name].weight for name in ('student', 'fake', 'teacher')}
+    unpack_state(payload['state'], restored)
+    assert equal(pack_state(state), pack_state(restored))
+    for name, parameter in parameters.items():
+        assert restored[name].weight is restored[name].weight_alias is parameter
+        assert restored[name + '_optimizer'].param_groups[0]['params'][0] is parameter
+        assert parameter in restored[name + '_optimizer'].state
+    # Pre-sharing v2 files remain ordinary full state dictionaries, with no
+    # reference markers or dropped frozen keys. Their reader is unchanged.
+    old = deepcopy(payload['state'])
+    for name in parameters:
+        old[name]['value']['frozen'] = old[name]['value']['frozen'].clone()
+    unpack_state(old, restored)
+    malformed = deepcopy(old)
+    malformed['student_optimizer']['parameters'] = [['fake.weight']]
+    with pytest.raises(ValueError, match='parameter ownership'):
+        unpack_state(malformed, restored)
+    _checkpoint_update(state)
+    _checkpoint_update(restored)
+    assert equal(pack_state(state), pack_state(restored))
+    snapshots = [payload['state'][name]['value']['frozen'] for name in parameters]
+    assert len({tensor.untyped_storage()._cdata for tensor in snapshots}) == 1
+    assert snapshots[0].untyped_storage()._cdata != state['student'].frozen.untyped_storage()._cdata
+
+
+def test_snapshot_reuses_only_exact_live_storage_views():
+    from distillschedule.training.checkpoint import pack_state
+    base = torch.arange(16).reshape(4, 4)
+    complex_base = torch.tensor([1 + 2j, 3 + 4j])
+    empty_a, empty_b = torch.empty(0), torch.empty(0)
+    values = dict(base=base, detached=base.detach(), independent=base.clone(),
+                  transposed=base.t(), offset=base[1:], reshaped=base.reshape(2, 8),
+                  first_row=base[0], next_row=base[1], dtype_view=base.view(torch.float64),
+                  negative=base._neg_view(), complex=complex_base, conjugate=complex_base.conj(),
+                  empty=empty_a, empty_alias=empty_a.detach(), empty_independent=empty_b)
+    saved = pack_state({'views': values})['views']['value']
+    store = lambda tensor: tensor.untyped_storage()._cdata
+    assert store(saved['base']) == store(saved['detached'])
+    distinct = ('base', 'independent', 'transposed', 'offset', 'reshaped',
+                'first_row', 'next_row', 'dtype_view', 'negative', 'complex', 'conjugate')
+    assert len({store(saved[name]) for name in distinct}) == len(distinct)
+    assert store(saved['empty']) == store(saved['empty_alias']) != store(saved['empty_independent'])
+    for name, tensor in values.items():
+        assert torch.equal(saved[name], tensor)
+        assert store(saved[name]) != store(tensor)
+    again = pack_state({'views': values})['views']['value']
+    assert store(again['base']) != store(saved['base'])
+    base.add_(1)
+    fresh = pack_state({'views': values})['views']['value']
+    assert torch.equal(fresh['base'], base) and not torch.equal(saved['base'], base)
+
+
+def test_snapshot_does_not_retain_temporary_state_or_reuse_mutated_views():
+    import gc
+    import weakref
+    from torch.multiprocessing.reductions import StorageWeakRef
+    from distillschedule.training.checkpoint import pack_state
+    base = torch.zeros(3)
+    tensor_refs, storage_refs, wrapper_refs = [], [], []
+    module = torch.nn.Linear(2, 2)
+    def observe(module, state_dict, prefix, metadata):
+        wrapper_refs.extend(weakref.ref(value) for value in state_dict.values())
+    module.register_state_dict_post_hook(observe)
+
+    class TemporaryState:
+        def state_dict(self):
+            value = base.clone()
+            tensor_refs.append(weakref.ref(value))
+            storage_refs.append(StorageWeakRef(value.untyped_storage()))
+            base.add_(1)
+            return {'value': value}
+
+        def load_state_dict(self, value):
+            pass
+
+    saved = pack_state({'module': module, 'before': base, 'temporary_a': TemporaryState(),
+                        'temporary_b': TemporaryState(), 'after': base})
+    gc.collect()
+    assert all(ref() is None for ref in tensor_refs)
+    assert wrapper_refs and all(ref() is None for ref in wrapper_refs)
+    assert all(ref.expired() for ref in storage_refs)
+    assert torch.equal(saved['before']['value'], torch.zeros(3))
+    assert torch.equal(saved['after']['value'], torch.full((3,), 2.))
+    assert torch.equal(saved['temporary_a']['value']['value'], torch.zeros(3))
+    assert torch.equal(saved['temporary_b']['value']['value'], torch.ones(3))
+
+
+def test_cpu_tree_uses_one_independent_copy_without_an_extra_clone():
+    from torch.utils._python_dispatch import TorchDispatchMode
+    from distillschedule.training.checkpoint import cpu_tree
+
+    class Copies(TorchDispatchMode):
+        def __init__(self):
+            self.calls = []
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            self.calls.append(func)
+            return func(*args, **(kwargs or {}))
+
+    for tensor in (torch.arange(12.).reshape(3, 4).t(),
+                   torch.arange(12, dtype=torch.bfloat16).reshape(3, 4)[:, ::2],
+                   torch.tensor([1 + 2j, 3 + 4j]).conj()):
+        expected = tensor.detach().cpu().clone()
+        with Copies() as copies:
+            saved = cpu_tree(tensor)
+        assert torch.equal(saved, expected) and saved.stride() == expected.stride()
+        assert not saved.requires_grad and saved.untyped_storage()._cdata != tensor.untyped_storage()._cdata
+        assert copies.calls.count(torch.ops.aten._to_copy.default) == 1
+        if not tensor.is_conj():  # Torch may resolve a conjugate bit inside to().
+            assert torch.ops.aten.clone.default not in copies.calls
+        tensor.add_(1)
+        assert torch.equal(saved, expected)
