@@ -37,14 +37,14 @@ def tensor_tree(value, *, cpu=False):
     return visit(value, 0)
 
 
-def load_tensors(source):
+def load_tensors(path):
     """Read a path or seekable binary stream without taking ownership of a stream."""
     import torch
 
     try:
         # Never retry with weights_only=False, including on older Torch versions.
-        value = torch.load(Path(source) if isinstance(source, (str, Path)) else source,
+        value = torch.load(Path(path) if isinstance(path, (str, Path)) else path,
                            map_location="cpu", weights_only=True)
     except (pickle.UnpicklingError, RuntimeError, TypeError, ValueError, OSError, EOFError) as exc:
-        raise ValueError(f"cannot safely load tensor file: {source}") from exc
+        raise ValueError(f"cannot safely load tensor file: {path}") from exc
     return tensor_tree(value)

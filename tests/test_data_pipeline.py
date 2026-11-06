@@ -500,10 +500,14 @@ def test_load_tensors_accepts_a_stream_with_actual_cpu_weights_only_loader(tmp_p
         assert calls == [(stream, {"map_location": "cpu", "weights_only": True})]
     assert torch.equal(value["latent"], torch.arange(4))
     assert metadata["items"]["latent"] == {"kind": "tensor", "shape": [4], "dtype": "torch.int64"}
+    # Existing callers can still supply the original path keyword.
+    keyword_value, keyword_metadata = load_tensors(path=feature)
+    assert torch.equal(keyword_value["latent"], value["latent"])
+    assert keyword_metadata == metadata
     torch.save({"latent": Path("not-allowlisted")}, feature)
     with feature.open("rb") as stream, pytest.raises(ValueError, match="safely"):
         load_tensors(stream)
-    assert len(calls) == 2 and all(kwargs["weights_only"] is True for _, kwargs in calls)
+    assert len(calls) == 3 and all(kwargs["weights_only"] is True for _, kwargs in calls)
 
 
 def test_prepared_inspection_retains_full_hashes_without_importing_torch(tmp_path):
