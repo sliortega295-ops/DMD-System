@@ -2,16 +2,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
+import random
 import shutil
 import subprocess
+import sys
 import wave
 
 import pytest
 import torch
 
 from distillschedule.data import PreparedDataset, import_preencoded, prepare
+from distillschedule.data import dataset as dataset_module
 from distillschedule.data.decoding import decode_record
+from distillschedule.data.tensors import load_tensors
+from distillschedule.workloads.best_known.registry import fingerprint
 
 
 def write_json(path, value):
@@ -145,7 +151,7 @@ def test_completed_data_is_never_overwritten(tmp_path):
     assert manifest.read_bytes() == original
 
 
-def test_feature_drift_is_rejected_at_open_and_each_sample(tmp_path):
+def test_feature_drift_is_rejected_at_strict_open_and_each_sample(tmp_path):
     raw = raw_fixture(tmp_path)
     manifest = prepare(raw, tmp_path / "prepared")
     dataset = PreparedDataset(manifest)
@@ -154,7 +160,7 @@ def test_feature_drift_is_rejected_at_open_and_each_sample(tmp_path):
     with pytest.raises(ValueError, match="hash"):
         dataset.sample(0)
     with pytest.raises(ValueError, match="hash"):
-        PreparedDataset(manifest)
+        PreparedDataset(manifest, verification="strict")
 
 
 @pytest.mark.parametrize("target", ["text-0.txt", "encoder.py"])
@@ -279,6 +285,241 @@ def test_manifest_bytes_bind_identity_and_open_reader(tmp_path):
     with pytest.raises(ValueError, match="manifest hash"):
         dataset.sample(0)
     assert PreparedDataset(manifest).identity != original_identity
+
+
+def hash_census(monkeypatch, manifest, *, on_feature_hash=None):
+    """Count completed full-content hashes, independent of reader helpers."""
+    real_sha256 = hashlib.sha256
+    manifest_hash = real_sha256(manifest.read_bytes()).hexdigest()
+    feature_hashes = {row["features"]["sha256"] for row in json.loads(manifest.read_text())["records"]}
+    counts = {"manifest": 0, "features": 0}
+
+    class TrackedHash:
+        def __init__(self, *args, **kwargs):
+            self.inner = real_sha256(*args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+
+        def hexdigest(self):
+            value = self.inner.hexdigest()
+            if value == manifest_hash:
+                counts["manifest"] += 1
+            if value in feature_hashes:
+                counts["features"] += 1
+                if on_feature_hash is not None:
+                    on_feature_hash()
+            return value
+
+    monkeypatch.setattr(dataset_module.hashlib, "sha256", TrackedHash)
+    return counts
+
+
+def test_cached_verification_hashes_once_without_changing_identity_order_rng_or_tensors(tmp_path, monkeypatch):
+    manifest = prepare(raw_fixture(tmp_path), tmp_path / "prepared")
+    expected = json.loads(manifest.read_text())
+    identity = fingerprint({"manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+                            "features": [row["features"]["sha256"] for row in expected["records"]]})
+    counts = hash_census(monkeypatch, manifest)
+    python_rng, torch_rng = random.getstate(), torch.get_rng_state().clone()
+    dataset = PreparedDataset(manifest)
+    assert dataset.identity == identity
+    assert counts == {"manifest": 1, "features": 0}
+    assert [dataset.sample_id(i) for i in range(len(dataset))] == ["record-0", "record-1"]
+    first = dataset.sample(0)
+    assert counts == {"manifest": 1, "features": 1}
+    first["latents"].zero_()
+    again = dataset.sample(0)
+    assert counts == {"manifest": 1, "features": 1}
+    assert again["latents"][0, 0, 0, 0] == 10
+    assert again["latents"].data_ptr() != first["latents"].data_ptr()
+    assert dataset.sample(1)["latents"][0, 0, 0, 0] == 25
+    assert counts == {"manifest": 1, "features": 2}
+    assert random.getstate() == python_rng
+    assert torch.equal(torch.get_rng_state(), torch_rng)
+
+
+@pytest.mark.parametrize("verification", ["cached", "strict"])
+def test_strict_and_explicit_validation_force_content_checks(tmp_path, monkeypatch, verification):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    counts = hash_census(monkeypatch, manifest)
+    dataset = PreparedDataset(manifest, verification=verification)
+    assert counts["features"] == (1 if verification == "strict" else 0)
+    for _ in range(2):
+        counts.update(manifest=0, features=0)
+        dataset.sample(0)
+        assert counts["features"] == (1 if verification == "strict" else int(_ == 0))
+        assert (counts["manifest"] > 0) == (verification == "strict")
+    counts.update(manifest=0, features=0)
+    assert dataset.validate()["status"] == "PASS"
+    assert counts["features"] == 1
+    assert counts["manifest"] > 0
+
+
+def test_invalid_verification_mode_is_rejected(tmp_path):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    with pytest.raises(ValueError, match="verification"):
+        PreparedDataset(manifest, verification="disabled")
+
+
+@pytest.mark.parametrize("change", ["rewrite", "replace"])
+def test_feature_same_size_drift_with_restored_mtime_is_rehashed(tmp_path, change):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    dataset = PreparedDataset(manifest)
+    dataset.sample(0)  # Warm only the integrity token, not a tensor payload cache.
+    feature = manifest.parent / dataset.manifest["records"][0]["features"]["path"]
+    before, original = feature.stat(), feature.read_bytes()
+    changed = original[:-1] + bytes([original[-1] ^ 1])
+    if change == "rewrite":
+        feature.write_bytes(changed)
+    else:
+        replacement = feature.with_suffix(".replacement")
+        replacement.write_bytes(changed)
+        replacement.replace(feature)
+    os.utime(feature, ns=(before.st_atime_ns, before.st_mtime_ns))
+    assert feature.stat().st_size == before.st_size
+    assert feature.stat().st_mtime_ns == before.st_mtime_ns
+    assert feature.stat().st_ctime_ns != before.st_ctime_ns
+    with pytest.raises(ValueError, match="hash"):
+        dataset.sample(0)
+
+
+def test_unchanged_bytes_after_metadata_drift_are_reverified_then_cached(tmp_path, monkeypatch):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    dataset = PreparedDataset(manifest)
+    dataset.sample(0)
+    feature = manifest.parent / dataset.manifest["records"][0]["features"]["path"]
+    feature.write_bytes(feature.read_bytes())
+    manifest.write_bytes(manifest.read_bytes())
+    counts = hash_census(monkeypatch, manifest)
+    dataset.sample(0)
+    assert counts == {"manifest": 1, "features": 1}
+    dataset.sample(0)
+    assert counts == {"manifest": 1, "features": 1}
+
+
+@pytest.mark.parametrize("change", ["missing", "directory", "escape"])
+def test_cached_open_still_rejects_missing_nonregular_and_escaping_features(tmp_path, change):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    value = json.loads(manifest.read_text())
+    feature = manifest.parent / value["records"][0]["features"]["path"]
+    content = feature.read_bytes()
+    feature.unlink()
+    if change == "directory":
+        feature.mkdir()
+    elif change == "escape":
+        outside = tmp_path / "outside.pt"
+        outside.write_bytes(content)
+        feature.symlink_to(outside)
+    with pytest.raises(ValueError, match="exist|regular|inside"):
+        PreparedDataset(manifest)
+
+
+@pytest.mark.parametrize("change", ["rewrite", "replace", "escape", "manifest"])
+def test_mutation_during_tensor_read_cannot_publish_a_sample(tmp_path, monkeypatch, change):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    dataset = PreparedDataset(manifest)
+    dataset.sample(0)  # Exercise the unchanged cached-read path, too.
+    feature = manifest.parent / dataset.manifest["records"][0]["features"]["path"]
+    original = feature.read_bytes()
+    real_load = dataset_module.load_tensors
+
+    def mutate_during_load(stream):
+        assert hasattr(stream, "fileno"), "hashing and safe loading must share an opened descriptor"
+        value = real_load(stream)
+        if change == "rewrite":
+            feature.write_bytes(original)
+        elif change == "replace":
+            replacement = feature.with_suffix(".replacement")
+            replacement.write_bytes(original)
+            replacement.replace(feature)
+        elif change == "escape":
+            outside = tmp_path / "outside.pt"
+            outside.write_bytes(original)
+            feature.unlink()
+            feature.symlink_to(outside)
+        else:
+            value_manifest = json.loads(manifest.read_text())
+            value_manifest["metadata"]["changed"] = True
+            write_json(manifest, value_manifest)
+        return value
+
+    monkeypatch.setattr(dataset_module, "load_tensors", mutate_during_load)
+    with pytest.raises(ValueError, match="changed|inside"):
+        dataset.sample(0)
+
+
+def test_mutation_during_feature_hash_is_rejected_before_loading(tmp_path, monkeypatch):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    dataset = PreparedDataset(manifest)
+    feature = manifest.parent / dataset.manifest["records"][0]["features"]["path"]
+    original = feature.read_bytes()
+    hash_census(monkeypatch, manifest, on_feature_hash=lambda: feature.write_bytes(original))
+
+    def must_not_load(_):
+        pytest.fail("a feature modified while hashing must not reach deserialization")
+
+    monkeypatch.setattr(dataset_module, "load_tensors", must_not_load)
+    with pytest.raises(ValueError, match="changed"):
+        dataset.sample(0)
+
+
+@pytest.mark.parametrize("change", ["rewrite", "replace"])
+def test_manifest_same_size_drift_never_rebinds_an_open_reader(tmp_path, change):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    dataset = PreparedDataset(manifest)
+    before = manifest.stat()
+    changed = manifest.read_bytes().replace(b"native-0", b"native-1")
+    assert len(changed) == before.st_size
+    if change == "replace":
+        replacement = manifest.with_suffix(".replacement")
+        replacement.write_bytes(changed)
+        replacement.replace(manifest)
+    else:
+        manifest.write_bytes(changed)
+    os.utime(manifest, ns=(before.st_atime_ns, before.st_mtime_ns))
+    with pytest.raises(ValueError, match="manifest hash"):
+        dataset.sample_id(0)
+    with pytest.raises(ValueError, match="manifest hash"):
+        dataset.sample(0)
+
+
+def test_load_tensors_accepts_a_stream_with_actual_cpu_weights_only_loader(tmp_path, monkeypatch):
+    feature = tmp_path / "tensors.pt"
+    torch.save({"latent": torch.arange(4)}, feature)
+    real_load, calls = torch.load, []
+
+    def checked_load(source, **kwargs):
+        calls.append((source, kwargs))
+        return real_load(source, **kwargs)
+
+    monkeypatch.setattr(torch, "load", checked_load)
+    with feature.open("rb") as stream:
+        value, metadata = load_tensors(stream)
+        assert not stream.closed
+        assert calls == [(stream, {"map_location": "cpu", "weights_only": True})]
+    assert torch.equal(value["latent"], torch.arange(4))
+    assert metadata["items"]["latent"] == {"kind": "tensor", "shape": [4], "dtype": "torch.int64"}
+    torch.save({"latent": Path("not-allowlisted")}, feature)
+    with feature.open("rb") as stream, pytest.raises(ValueError, match="safely"):
+        load_tensors(stream)
+    assert len(calls) == 2 and all(kwargs["weights_only"] is True for _, kwargs in calls)
+
+
+def test_prepared_inspection_retains_full_hashes_without_importing_torch(tmp_path):
+    manifest = import_preencoded(preencoded_fixture(tmp_path), tmp_path / "prepared")
+    script = (
+        "import sys; from distillschedule.data import inspect_prepared; "
+        "value = inspect_prepared(sys.argv[1]); "
+        "assert value['validation'] == 'HASHES_ONLY_TENSORS_NOT_LOADED'; "
+        "assert 'torch' not in sys.modules; print(value['identity'])"
+    )
+    result = subprocess.run([sys.executable, "-c", script, str(manifest)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    feature = manifest.parent / json.loads(manifest.read_text())["records"][0]["features"]["path"]
+    feature.write_bytes(feature.read_bytes() + b"changed")
+    result = subprocess.run([sys.executable, "-c", script, str(manifest)], capture_output=True, text=True)
+    assert result.returncode != 0 and "feature hash changed" in result.stderr
 
 
 @pytest.mark.parametrize("width,data,expected", [

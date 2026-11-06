@@ -20,6 +20,13 @@ with CPU `weights_only=True`, checking tensor shape/dtype/tree; no unsafe pickle
 fallback. `--sources` additionally checks original media/documents/encoder code.
 Without it, prepared tensors survive original-media relocation/archive.
 
+Training uses `PreparedDataset(..., verification="cached")` by default: opening
+checks manifest/schema/paths, then features hash on first access or filesystem
+metadata drift; unchanged reads safe-load fresh tensors without rehashing.
+Keep prepared files immutable. Use `verification="strict"` for full hashes at
+open and every read; `inspect` and explicit `validate()` always force content
+checks regardless of the training default. Dataset identity and order are unchanged.
+
 ## Raw manifest
 
 JSON/YAML supports deterministic includes and `${ENV:NAME}`. All local paths,
@@ -158,8 +165,9 @@ identity = dataset.identity
 ```
 
 Indices are integer0..len-1; negative/boolean/exhausted access rejects. Order is
-manifest order; identity binds exact manifest and actual file bytes, rechecked
-on access. Epoch/shuffle/batch/rank ownership are explicit trainer policies,
+manifest order; identity binds exact manifest bytes and declared feature SHA256s,
+checked on first access and metadata drift by default. Epoch/shuffle/batch/rank
+ownership are explicit trainer policies,
 not dataset reuse: see [Program sampling](training.md#explicit-program-data-sampling).
 Evaluation/generation indexes still name physical records; native inputs do not
 accept that generic policy.
