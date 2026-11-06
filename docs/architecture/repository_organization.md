@@ -30,12 +30,22 @@ Before moving a file, inspect imports, launch commands, tests and the source map
 In particular, top-level `runtime/` is packaged as `runtime.*` and remains a live
 dependency; it is not an archive directory.
 
-Source-checkout metadata records previous file moves in
-`docs/architecture/repository_organization.json`, original imported identities in
-`docs/workloads/source_import_map.json`, and reviewed changes in the append-only
-`docs/workloads/source_layout.lock.json`. Each layout entry retains the original,
-previous reviewed and new expected hashes. Keep provenance when updating a source-sensitive path; do not
-rewrite original experiment receipts to describe a new implementation.
+`docs/workloads/source_import_map.json` records upstream ownership and original
+file identities. `docs/workloads/source_layout.lock.json` stores one current
+override per changed or relocated file, plus retired paths. Historical migration
+and experiment records remain in Git history and the local archive, not in the
+current runtime inventory.
+
+Check the active inventory, or refresh explicitly reviewed files without editing
+hashes by hand:
+
+```sh
+python -m distillschedule.evidence.source_layout --check
+python -m distillschedule.evidence.source_layout --update PATH... --source-commit COMMIT
+```
+
+The update command requires exact imported paths and a full reviewed commit ID.
+It leaves original import receipts unchanged.
 
 [Route-A/Route-B retirement](#legacy_route_retirement) documents removed
 launchers and their exclusive code. It does not retire the FSDP2, offload or

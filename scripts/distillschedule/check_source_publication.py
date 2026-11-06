@@ -32,7 +32,7 @@ def verify(root: Path) -> dict:
     required = {'artifacts/results/a100.csv', 'artifacts/results/h100.csv',
                 'artifacts/results/official.csv', 'artifacts/results/gan_nomerge_retime.json',
                 'artifacts/results/h100_sources.json',
-                'artifacts/publications/20261019/evidence/planner/six_workload_native_match.json'}
+                'artifacts/results/planner.json'}
     if seen != required or not re.fullmatch('[0-9a-f]{40}', manifest['source_revision']):
         raise ValueError('current results require the complete source-bound data set')
     with (root / 'artifacts/results/a100.csv').open(newline='') as stream:
@@ -49,7 +49,7 @@ def verify(root: Path) -> dict:
     if (gan['merge_counts'] != [0] * 16 or gan['reported_C2_s'] != 116.254
             or float(measured[2]['system_s']) != gan['reported_C2_s']):
         raise ValueError('current W3 result requires unmerged weights')
-    rows = json.loads((root / 'artifacts/publications/20261019/evidence/planner/six_workload_native_match.json').read_text())['rows']
+    rows = json.loads((root / 'artifacts/results/planner.json').read_text())['rows']
     if {row['id'] for row in rows} != {'W1','W2','W3','W4','W5','W6'} or len(rows) != 6:
         raise ValueError('six workloads must remain distinct')
     unresolved = next(row for row in rows if row['id'] == 'W5')

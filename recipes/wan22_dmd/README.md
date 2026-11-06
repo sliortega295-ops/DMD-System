@@ -9,7 +9,7 @@ flow/sampling math remain FP32. The setting is checkpoint/export-bound.
 
 ## Environment and assets
 
-Use the isolated `train,modern-flow` environment in [environment.json](environment.json).
+Use the isolated `train,modern-flow` environment in [shared environment](../flow_image/environment.json).
 [source.json](source.json) pins `Wan-AI/Wan2.2-TI2V-5B-Diffusers` and its
 Apache-2.0 model/config attribution; preserve tokenizer, ftfy and sentencepiece
 notices. Training uses explicit local files. Provide `transformer/`, `vae/`,

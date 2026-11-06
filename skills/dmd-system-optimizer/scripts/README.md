@@ -15,6 +15,17 @@ runner, server or experiment approval layer is added.
 
 Dependencies point from CLI composition to helpers, not back into the CLI.
 Existing helper imports from `dmd_knowledge` remain available for local callers.
+Public source identities have one declaration in `assets/experience-source-index.json`
+under `source_files`, keyed by stable `source_id`. The experience pack,
+implementation map and discovery rows retain their own locators, spans and
+qualifications, not copies of repository/revision/path/hash/URLs. Use
+`dmd_sources.load_public_data(path)` to read these assets: it expands references
+and derives pinned GitHub URLs and span anchors; legacy inline assets still work.
+`recall`, `case`, `locate`, `sources` and `render_knowledge.py` expose the same
+expanded fields and links. Code-only declarations do not become discovery rows.
+Keep `current-navigation.json` separate: these pinned historical identities do
+not declare current-tree applicability or runtime validation.
+
 Private `search --limit` limits records after ranking all matching mechanisms;
 `recall --limit` intentionally limits mechanism packets, with omitted routes
 reported. Neither command approves an implementation.

@@ -91,13 +91,15 @@ class ExperienceContentTests(unittest.TestCase):
         self.assertNotIn("exposed_gather", c["performance_conditions"])
         self.assertEqual(c["navigation"]["implementations"][0]["id"], "h3-block49-hybrid-output-cache")
 
-    def test_w6_local_commit_has_public_byte_identical_source_archive(self):
+    def test_w6_local_commit_has_public_byte_identical_pinned_source(self):
         c = self.case("helios-w6-retention-r1")
         ref = next(r for r in c["evidence"] if "historical_origin" in r)
         self.assertFalse(ref["historical_origin"]["commit_publicly_fetchable"])
         self.assertNotEqual(ref["revision"], ref["historical_origin"]["local_commit"])
         self.assertIn("artifacts/publications/20261031/optimizer_reference_sources/", ref["path"])
-        self.assertEqual(hashlib.sha256((REPO / ref["path"]).read_bytes()).hexdigest(), ref["sha256"])
+        checked = verify_references([ref], repo=REPO)
+        self.assertFalse(checked["evidence_errors"])
+        self.assertEqual(checked["evidence_checks"][0]["status"], "HASH_MATCH")
         impl = navigation.validate_catalog()["h3-block49-hybrid-output-cache"]
         for code in navigation.references(impl):
             self.assertEqual(code["revision"], ref["revision"])

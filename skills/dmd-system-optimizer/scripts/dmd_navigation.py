@@ -7,7 +7,7 @@ import hashlib
 from pathlib import Path
 import subprocess
 
-from dmd_perf import load, require, text
+from dmd_perf import require, text
 
 CATALOG = Path(__file__).resolve().parents[1] / "assets/implementation-map.json"
 STATUSES = {"linked", "method_only", "unresolved"}
@@ -54,8 +54,8 @@ def callsite_matches(source, ref):
 
 
 def validate_catalog(path=CATALOG):
-    from dmd_sources import validate_reference
-    data = load(path)
+    from dmd_sources import load_public_data, validate_reference
+    data = load_public_data(path)
     require(data.get("schema_version") == 1, "implementation map schema must be 1")
     entries = data.get("implementations")
     require(isinstance(entries, list) and entries, "implementation map must contain entries")

@@ -28,7 +28,7 @@ _BACKEND_MODULE = _NAMESPACE + ".modules.helios_kernels"
 _REFERENCE_PATH = Path(__file__).resolve().with_name("_reference")
 _BACKEND_PATH = _REFERENCE_PATH / "modules/helios_kernels.py"
 _BACKEND_SHA256 = "8965435b63b9712305b2e2d40d53311d33db1682f0ff2c255ae6dccd82d0c71d"
-_MANIFEST_SHA256 = "8d643157acde126a8decfcd8f21e9bce6754e0de2c0640421a8eedc53fdc5f9e"
+_MANIFEST_SHA256 = "16044b99f61f0b5d4681e80732f58870a1a343a77f6232b4bdfc0f1934f4ada1"
 _LOCK = RLock()
 _loaded_modules = None
 _loaded_objects = None
@@ -44,7 +44,7 @@ def _source_identity():
     _require(file_sha256(manifest_path) == _MANIFEST_SHA256,
              "Helios reference source manifest identity changed")
     manifest = json.loads(manifest_path.read_text())
-    _require(manifest["expected_transformer_sha256"] == HELIOS_SHA and manifest["file_count"] == 83,
+    _require(manifest["expected_transformer_sha256"] == HELIOS_SHA and manifest["file_count"] == 44,
              "Helios reference original source pin changed")
     for row in manifest["files"]:
         path = root / row["path"]

@@ -152,10 +152,6 @@ def verify_source(repo_root: Path, snapshot_root: Path | None = None) -> dict[st
         sorted(source_root.rglob("*.py")), source_root=source_root,
         runtime_root=repo_root, file_root=source_root,
     )
-    reference_imports = _audit_imports(
-        sorted((root / "reference").rglob("*.py")), source_root=source_root,
-        runtime_root=root / "reference", file_root=root / "reference",
-    )
     return {
         "schema_version": "distillschedule.helios_compat_source_receipt.v1",
         "status": "PASS",
@@ -166,7 +162,7 @@ def verify_source(repo_root: Path, snapshot_root: Path | None = None) -> dict[st
         "transformer_sha256": EXPECTED_TRANSFORMER_SHA256,
         "files_checked": len(files), "bytes_checked": total,
         "core_local_imports": core_imports,
-        "historical_reference_local_imports": reference_imports,
+        "historical_reference": manifest.get("historical_reference"),
         "real_model_import": "NOT_RUN",
         "gpu_execution": "NOT_RUN",
         "historical_performance_reproduction": "NOT_RUN",

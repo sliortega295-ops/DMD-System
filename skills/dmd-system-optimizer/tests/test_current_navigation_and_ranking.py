@@ -54,6 +54,21 @@ class CurrentNavigationTests(unittest.TestCase):
             for path in row['implementations'] + row['checks'] + [row['guide']]:
                 self.assertTrue((REPO / path).is_file(), path)
 
+    def test_documentation_prose_does_not_repin_executable_navigation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in (current.REGISTRY, current.PROFILES, current.WORKLOADS, current.STRATEGIES):
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(REPO / path, target)
+            shutil.copytree(REPO / 'recipes/dmd2_sd15', root / 'recipes/dmd2_sd15')
+            (root / 'tests').mkdir()
+            before = current.build_index(root)
+            guide = root / 'recipes/dmd2_sd15/README.md'
+            guide.write_text(guide.read_text() + '\nAdditional usage explanation.\n')
+            self.assertEqual(current.build_index(root), before)
+            self.assertFalse(any(path.endswith('.md') for path in before['source_hashes']))
+
     def test_explicit_checkout_wins_without_importing_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

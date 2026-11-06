@@ -21,7 +21,7 @@ from dmd_conditions import condition_match, normalize_context
 from dmd_memory import (OUTCOMES, corrections, correction_edges, decision_view,
                         import_session, private_cases, put, qualified_id, seed)
 from dmd_sources import (DEFAULT_REPOSITORY, SOURCE_INDEX, inventory,
-                         source_search, validate_reference, verify_references)
+                         load_public_data, source_search, validate_reference, verify_references)
 
 PACK = Path(__file__).resolve().parents[1] / "assets/helios-experience-pack.json"
 CASE_OUTCOMES = {"positive_observation", "negative_observation", "correctness_failure",
@@ -52,7 +52,7 @@ def search(store: Path, query: str, context: dict, limit: int = 10) -> dict:
 
 def validate_pack(pack=PACK):
     from dmd_navigation import validate_catalog, validate_case
-    data = load(pack)
+    data = load_public_data(pack)
     require(data.get("schema_version") == 3, "public pack schema_version must be 3")
     catalog = validate_catalog(pack.with_name("implementation-map.json"))
     patterns, cases = data.get("patterns"), data.get("cases")

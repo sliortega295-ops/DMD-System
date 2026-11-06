@@ -12,6 +12,69 @@ from dmd_retrieval import tokens as terms
 
 DEFAULT_REPOSITORY = "sliortega295-ops/DMD-System"
 SOURCE_INDEX = Path(__file__).resolve().parents[1] / "assets/experience-source-index.json"
+SOURCE_FIELDS = {"repository", "revision", "path", "sha256"}
+
+
+def source_url(ref):
+    return f"https://github.com/{ref['repository']}/blob/{ref['revision']}/{ref['path']}"
+
+
+def load_public_data(path):
+    """Expand compact public references from the existing sibling source index.
+
+    Legacy inline packs still work without an index. Only immutable file identity
+    is shared; locators, conditions and evidence qualification stay at each use.
+    No global cache: a changed declaration must be checked on the next read.
+    """
+    data = load(path)
+    def compact(value):
+        if isinstance(value, dict):
+            return "source_id" in value or any(compact(v) for v in value.values())
+        return isinstance(value, list) and any(compact(v) for v in value)
+    if not compact(data):
+        return data
+    index = data if path.name == SOURCE_INDEX.name else load(path.with_name(SOURCE_INDEX.name))
+    require(index.get("schema_version") == 1, "invalid source index")
+    identities = index.get("source_files")
+    require(isinstance(identities, dict) and identities, "canonical source_files required")
+    pinned = set()
+    for name, identity in identities.items():
+        text(name, "source id")
+        require(isinstance(identity, dict) and set(identity) == SOURCE_FIELDS, "invalid canonical source identity")
+        for key in SOURCE_FIELDS:
+            text(identity[key], "canonical source." + key)
+        validate_reference({**identity, "url": source_url(identity), "locator": "canonical source identity"})
+        key = tuple(identity[k] for k in ("repository", "revision", "path"))
+        require(key not in pinned, "duplicate or conflicting canonical source identity")
+        pinned.add(key)
+
+    def expand(value):
+        if isinstance(value, list):
+            return [expand(v) for v in value]
+        if not isinstance(value, dict):
+            return value
+        row = {k: expand(v) for k, v in value.items()}
+        if "source_id" not in row:
+            return row
+        name = text(row.pop("source_id"), "source id")
+        require(name in identities, "unknown canonical source: " + name)
+        require(not (SOURCE_FIELDS | {"url", "anchor_url"}) & row.keys(), "compact source identity/URL override")
+        row = {**identities[name], **row, "url": source_url(identities[name])}
+        if "anchor" in row:
+            anchor = row.pop("anchor")
+            require(isinstance(anchor, str) and bool(re.fullmatch(r"#L[1-9][0-9]*(?:-L[1-9][0-9]*)?", anchor)),
+                    "invalid source anchor")
+            lines = [int(n) for n in re.findall(r"[0-9]+", anchor)]
+            require(len(lines) == 1 or lines[0] <= lines[1], "invalid source anchor range")
+            require("symbol" not in row, "code anchors must derive from declared spans")
+            row["anchor_url"] = row["url"] + anchor
+        elif "symbol" in row:
+            start, end = ((row.get("focus_start"), row.get("focus_end")) if "focus_call" in row else
+                          (row.get("line_start"), row.get("line_end")))
+            require(type(start) is int and type(end) is int and 0 < start <= end, "invalid code anchor span")
+            row["anchor_url"] = row["url"] + f"#L{start}-L{end}"
+        return row
+    return expand(data)
 
 
 def validate_reference(ref):
@@ -23,7 +86,7 @@ def validate_reference(ref):
     require(bool(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository)), "invalid repository")
     revision = text(ref.get("revision"), "evidence.revision")
     require(bool(re.fullmatch("[0-9a-f]{40}", revision)), "pinned commit required")
-    require(ref.get("url") == f"https://github.com/{repository}/blob/{revision}/{ref['path']}",
+    require(ref.get("url") == source_url(ref),
             "evidence URL must bind repository, revision and path")
     text(ref.get("locator"), "evidence.locator")
 
@@ -74,7 +137,7 @@ def source_search(query, limit=10, index=SOURCE_INDEX):
     """Search discovered source metadata, including sources not yet curated into cases."""
     text(query, "query")
     require(1 <= limit <= 100, "limit must be 1..100")
-    data = load(index)
+    data = load_public_data(index)
     require(data.get("schema_version") == 1 and isinstance(data.get("sources"), list), "invalid source index")
     tokens, rows = terms(query), []
     for row in data["sources"]:

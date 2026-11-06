@@ -10,7 +10,7 @@ Checkpoints and exports retain this setting.
 
 ## Environment, source and assets
 
-Use the isolated `train,modern-flow` environment in [environment.json](environment.json).
+Use the isolated `train,modern-flow` environment in [shared environment](../flow_image/environment.json).
 [source.json](source.json) pins
 [HunyuanVideo-1.5-Diffusers-480p_t2v at 286be7c](https://huggingface.co/hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v/tree/286be7ce72277246578a3e3cc2487e95ddae5bcf).
 Model assets retain the **Tencent Hunyuan Community License** and their

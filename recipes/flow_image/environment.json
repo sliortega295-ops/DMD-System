@@ -1,5 +1,5 @@
 {
-  "scope": "CPU1_AND_CUDA1_FP32_REFERENCE_SEPARATE_FROM_TRANSFORMERS4_LANES",
+  "scope": "MODERN_FLOW_MODELS",
   "qualified_python": "3.12",
   "optional_extra": "modern-flow",
   "versions": {
@@ -10,8 +10,8 @@
     "tokenizers": "0.22.2",
     "huggingface-hub": "1.7.1",
     "safetensors": "0.8.0",
-    "accelerate": "1.14.0"
-  },
-  "cuda_qualified_python": "3.13.11",
-  "cuda_qualified_torch": "2.10.0+cu128"
+    "accelerate": "1.14.0",
+    "ftfy": "6.3.1",
+    "sentencepiece": "0.2.2"
+  }
 }

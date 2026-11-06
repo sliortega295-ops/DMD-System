@@ -4,6 +4,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from dmd_sources import load_public_data
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -39,8 +41,8 @@ def render_coverage(root):
 
 
 def render(root=ROOT):
-    data = json.loads((root / "assets/helios-experience-pack.json").read_text())
-    catalog = {i["id"]: i for i in json.loads((root / "assets/implementation-map.json").read_text())["implementations"]}
+    data = load_public_data(root / "assets/helios-experience-pack.json")
+    catalog = {i["id"]: i for i in load_public_data(root / "assets/implementation-map.json")["implementations"]}
     directory = root / "references/knowledge"
     directory.mkdir(parents=True, exist_ok=True)
     counts = Counter(c["pattern"] for c in data["cases"])

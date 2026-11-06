@@ -98,7 +98,7 @@ class RecallTests(unittest.TestCase):
     def test_source_index_links_reach_cases_with_identical_identity(self):
         pack = m.validate_pack()
         cases = {c["id"]: c for c in pack["cases"]}
-        sources = m.load(m.SOURCE_INDEX)["sources"]
+        sources = m.load_public_data(m.SOURCE_INDEX)["sources"]
         by_key = {(s["repository"], s["revision"], s["path"]): s for s in sources}
         self.assertEqual(len(by_key), len(sources))
         for s in sources:

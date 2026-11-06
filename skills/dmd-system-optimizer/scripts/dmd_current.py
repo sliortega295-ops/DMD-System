@@ -74,9 +74,10 @@ def _assignments(tree):
 def build_index(repo, revision=None):
     root = Path(repo).resolve()
     inputs, warnings = {}, []
-    def read(relative):
+    def read(relative, *, pin=True):
         path = _path(root, relative)
-        inputs[relative] = sha_file(path)
+        if pin:
+            inputs[relative] = sha_file(path)
         return path.read_text(encoding="utf-8")
     registered = _registrations(ast.parse(read(REGISTRY)))
     official = _assignments(ast.parse(read(PROFILES)))
@@ -158,7 +159,7 @@ def build_index(repo, revision=None):
         guide = folder / "README.md"
         row["guide"] = guide.relative_to(root).as_posix() if guide.is_file() else "docs/guides/model_families.md"
         try:
-            lines = read(row["guide"]).splitlines()
+            lines = read(row["guide"], pin=False).splitlines()
             require(bool(lines) and bool(lines[0].strip("# ")), "guide has no title")
             row["title"] = lines[0].lstrip("# ")[:160]
         except (OSError, ValueError, UnicodeError) as exc:

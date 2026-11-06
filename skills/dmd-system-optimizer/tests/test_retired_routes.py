@@ -1,5 +1,4 @@
 """Retirement must cover recall, fallback sources and implementation navigation."""
-import json
 from pathlib import Path
 import re
 import sys
@@ -16,7 +15,7 @@ class RetiredRouteTests(unittest.TestCase):
         early = re.compile(r'202608(?:0[1-9]|1[0-4])')
         cases = knowledge.validate_pack()['cases']
         self.assertFalse(any(early.search(r['path']) for c in cases for r in c['evidence']))
-        sources = json.loads((SKILL / 'assets/experience-source-index.json').read_text())['sources']
+        sources = knowledge.load_public_data(knowledge.SOURCE_INDEX)['sources']
         self.assertFalse(any(early.search(s['path']) for s in sources))
         entries = navigation.validate_catalog()
         self.assertFalse(any(i.startswith('legacy-') for i in entries))

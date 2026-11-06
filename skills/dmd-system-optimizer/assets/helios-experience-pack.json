@@ -573,15 +573,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "source_id": "src-63e1e93d64b7ad24",
           "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json#L6",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L6"
         }
       ],
       "provenance": {
@@ -637,25 +633,17 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "source_id": "src-7183acc9a6b18f97",
           "locator": "观察中的数值文本锚点 L45；同时阅读同节合同、状态与限制。原定位：rows[workload=W3]",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "rows[workload=W3]",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L45",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L45"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "155ffbb585356a29b544573a391eb456b790a15a",
-          "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
-          "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+          "source_id": "src-4c9ec2c8e9913909",
           "locator": "up_blocks in ((),(38,39))",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L41",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L41"
         }
       ],
       "provenance": {
@@ -724,31 +712,23 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "source_id": "src-7183acc9a6b18f97",
           "locator": "观察中的数值文本锚点 L89；同时阅读同节合同、状态与限制。原定位：rows[workload=W6]",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "rows[workload=W6]",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L89",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L89"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
-          "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-          "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+          "source_id": "src-0709ebc91417faac",
           "locator": "Only block49",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
           "locator_quality": "structured_source_locator",
           "historical_origin": {
             "local_commit": "45938af88d65ddb15b96ec1a181b65aa4e92de70",
             "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
             "commit_publicly_fetchable": false,
             "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
-          }
+          },
+          "anchor": "#L4"
         }
       ],
       "provenance": {
@@ -814,24 +794,16 @@
       "evidence_status": "HISTORICAL_CUDA_OOM",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "source_id": "src-7183acc9a6b18f97",
           "locator": "followups.wan_tail8; cleanup[0].unpaired_tail8_source_control",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "followups.wan_tail8; cleanup[0].unpaired_tail8_source_control",
           "locator_quality": "structured_source_locator"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "docs/contracts/wan_tail8_retention_v1.md",
-          "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3",
+          "source_id": "src-af440ae78f48d19a",
           "locator": "tail8",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md#L1",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -891,15 +863,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-          "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+          "source_id": "src-8df2eaf8a0fc2b3a",
           "locator": "观察中的数值文本锚点 L62；同时阅读同节合同、状态与限制。原定位：results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json#L62",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L62"
         }
       ],
       "provenance": {
@@ -945,12 +913,8 @@
       "evidence_status": "HISTORICAL_POLICY",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "source_id": "src-63e1e93d64b7ad24",
           "locator": "allocator_reserve_policy; host_reserve_GiB",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "allocator_reserve_policy; host_reserve_GiB",
           "locator_quality": "structured_source_locator"
         }
@@ -1000,25 +964,17 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
-          "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe",
+          "source_id": "src-c56081f395a6bd59",
           "locator": "观察中的数值文本锚点 L12；同时阅读同节合同、状态与限制。原定位：control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json#L12",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L12"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
-          "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+          "source_id": "src-8797db288ccdddc0",
           "locator": "POLICY='restore-native-cu-metadata-barrier.v1'",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L4",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L4"
         }
       ],
       "provenance": {
@@ -1088,15 +1044,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
-          "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957",
+          "source_id": "src-28489615e2c14096",
           "locator": "观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json#L8",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L8"
         }
       ],
       "provenance": {
@@ -1145,12 +1097,8 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
-          "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a",
+          "source_id": "src-af43020831289e5f",
           "locator": "saved_s; coverage_caveat; review_note; long_trajectory",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "saved_s; coverage_caveat; review_note; long_trajectory",
           "locator_quality": "structured_source_locator"
         }
@@ -1203,12 +1151,8 @@
       "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
       "evidence": [
         {
-          "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
-          "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+          "source_id": "src-578b8f574b3de503",
           "locator": "module docstring; fused_lora_epilogue; inline PTX",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "module docstring; fused_lora_epilogue; inline PTX",
           "locator_quality": "structured_source_locator"
         }
@@ -1272,12 +1216,8 @@
       "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
       "evidence": [
         {
-          "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
-          "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
+          "source_id": "src-a70845766daa38d8",
           "locator": "build.op guards; canary_scope; PLAN_CONTRACT",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "build.op guards; canary_scope; PLAN_CONTRACT",
           "locator_quality": "structured_source_locator"
         }
@@ -1339,15 +1279,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
-          "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341",
+          "source_id": "src-34cf77ee9b148032",
           "locator": "观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：scope; coefficient_scope; claim; production_ready",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "scope; coefficient_scope; claim; production_ready",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json#L8",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L8"
         }
       ],
       "provenance": {
@@ -1402,15 +1338,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
-          "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a",
+          "source_id": "src-005c2ff3d1675061",
           "locator": "观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json#L8",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L8"
         }
       ],
       "provenance": {
@@ -1465,15 +1397,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "source_id": "src-7183acc9a6b18f97",
           "locator": "观察中的数值文本锚点 L104；同时阅读同节合同、状态与限制。原定位：followups.wan_frozen_down",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "followups.wan_frozen_down",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json#L104",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L104"
         }
       ],
       "provenance": {
@@ -1523,14 +1451,9 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
-          "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
+          "source_id": "src-71faaeda6f6e2f07",
           "locator": "观察中的数值文本锚点 L39；同时阅读同节合同、状态与限制。原定位：section 2: N70-OFF retime and preserved failure",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "section 2: N70-OFF retime and preserved failure",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L39",
           "locator_quality": "literal_observation_anchor",
           "content_corrections": [
             {
@@ -1546,18 +1469,15 @@
               "note": "固定历史汇总的r46消除表述有误；补充勘误见docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md。按r46原始回执与归档packet记录恢复读取/同步，保留单配对数值REVIEW和原因未隔离。",
               "erratum_path": "docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md"
             }
-          ]
+          ],
+          "anchor": "#L39"
         },
         {
-          "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
-          "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496",
+          "source_id": "src-823d8062389bef33",
           "locator": "观察中的数值文本锚点 L32；同时阅读同节合同、状态与限制。原定位：status; strict_numerical_status; rank records",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "status; strict_numerical_status; rank records",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json#L32",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L32"
         }
       ],
       "provenance": {
@@ -1603,12 +1523,8 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-          "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
+          "source_id": "src-8df2eaf8a0fc2b3a",
           "locator": "source_boundary; baseline; joint_reference",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "source_boundary; baseline; joint_reference",
           "locator_quality": "structured_source_locator"
         }
@@ -1654,14 +1570,9 @@
       "evidence_status": "HISTORICAL_EVIDENCE_SCOPE",
       "evidence": [
         {
-          "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
-          "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
+          "source_id": "src-71faaeda6f6e2f07",
           "locator": "报告范围 L1–L122；L1: 六个 workload：当前结果口径、旧审计勘误与源码阅读指南；L7: 1. 范围必须是六项，不是五项；L20: 2. 用户当前论文主表快照：A100 六项；L37: 必须更正：W3 的 113.59s 不是当前无 merged-LoRA 数字；L47: 不能再沿用旧审计的三种替代；L53: 3. 主表之后还有新结果：不要隐去，也不要直接替换旧分母；L67: 4. H100 六项均已有结果，不能只写 W1/W2 找到了；L86: 5. 自动规划器：最新证据是“保存计划实际执行并接近手工”，不是把全部系统收益算成搜索增量；原定位：section 5: manual vs saved plan",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "section 5: manual vs saved plan",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md#L1",
           "locator_quality": "report_scope_not_case_exact",
           "content_corrections": [
             {
@@ -1677,7 +1588,8 @@
               "note": "固定历史汇总的r46消除表述有误；补充勘误见docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md。按r46原始回执与归档packet记录恢复读取/同步，保留单配对数值REVIEW和原因未隔离。",
               "erratum_path": "docs/status/SIX_WORKLOAD_RESULTS_ERRATA_20261031.md"
             }
-          ]
+          ],
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -1730,12 +1642,8 @@
       "evidence_status": "HISTORICAL_FAIL_UNRESOLVED",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
+          "source_id": "src-7183acc9a6b18f97",
           "locator": "rows[workload=W5]; numerical_policy",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "rows[workload=W5]; numerical_policy",
           "locator_quality": "structured_source_locator"
         }
@@ -1865,12 +1773,8 @@
       "evidence_status": "SOURCE_ONLY_GPU_NOT_RUN",
       "evidence": [
         {
-          "path": "src/distillschedule/search/implementation_library.py",
-          "sha256": "5aae39955bcde32414542576f73c61f88951760052e55b15be59a893e5db1809",
+          "source_id": "src-059fd3c28029d82b",
           "locator": "ENTRIES; implementation_inventory.search_admission",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/implementation_library.py",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "ENTRIES; implementation_inventory.search_admission",
           "locator_quality": "structured_source_locator"
         }
@@ -1917,12 +1821,8 @@
       "evidence_status": "HISTORICAL_ACCOUNTING_SCOPE",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
+          "source_id": "src-63e1e93d64b7ad24",
           "locator": "campaign_charges; ledger; charged_stage_phases",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "campaign_charges; ledger; charged_stage_phases",
           "locator_quality": "structured_source_locator"
         }
@@ -1968,15 +1868,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
-          "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7",
+          "source_id": "src-d9e394b6fd673845",
           "locator": "观察中的数值文本锚点 L4；同时阅读同节合同、状态与限制。原定位：status; numerical; saved_seconds",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
           "original_locator": "status; numerical; saved_seconds",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json#L4",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L4"
         }
       ],
       "provenance": {
@@ -2028,15 +1924,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
-          "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
-          "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+          "source_id": "src-9288be8fa193a4fd",
           "locator": "观察中的数值文本锚点 L43；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md#L43",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L43"
         }
       ],
       "provenance": {
@@ -2092,26 +1984,18 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-          "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+          "source_id": "src-948c7233b8095992",
           "locator": "观察中的数值文本锚点 L43；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L43",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L43"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
-          "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+          "source_id": "src-8e14e5e6508ea019",
           "locator": "观察中的数值文本锚点 L34；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md#L34",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L34"
         }
       ],
       "provenance": {
@@ -2167,15 +2051,11 @@
           "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
           "evidence": [
             {
-              "repository": "sliortega295-ops/DMD-System",
-              "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
-              "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-              "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
-              "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+              "source_id": "src-948c7233b8095992",
               "locator": "观察中的数值文本锚点 L43；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
               "original_locator": "结果、合同、限制与失败记录",
-              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L43",
-              "locator_quality": "literal_observation_anchor"
+              "locator_quality": "literal_observation_anchor",
+              "anchor": "#L43"
             }
           ]
         },
@@ -2199,15 +2079,11 @@
           "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
           "evidence": [
             {
-              "repository": "sliortega295-ops/DMD-System",
-              "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
-              "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
-              "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78",
-              "url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+              "source_id": "src-8e14e5e6508ea019",
               "locator": "观察中的数值文本锚点 L34；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
               "original_locator": "结果、合同、限制与失败记录",
-              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md#L34",
-              "locator_quality": "literal_observation_anchor"
+              "locator_quality": "literal_observation_anchor",
+              "anchor": "#L34"
             }
           ]
         }
@@ -2240,15 +2116,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
-          "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
-          "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+          "source_id": "src-9288be8fa193a4fd",
           "locator": "观察中的数值文本锚点 L47；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md#L47",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L47"
         }
       ],
       "provenance": {
@@ -2313,15 +2185,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
-          "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
-          "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+          "source_id": "src-9288be8fa193a4fd",
           "locator": "观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md#L7",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L7"
         }
       ],
       "provenance": {
@@ -2389,15 +2257,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "b9dd25e36dfa45e6768428eb08f549afa7d3895e",
-          "path": "docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
-          "sha256": "9b5da1646210931109837f473e8aec1355c4ab095e09da6a8e3c02e6264290b4",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
+          "source_id": "src-909b74a4c3c8ccbc",
           "locator": "观察中的数值文本锚点 L38；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md#L38",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L38"
         }
       ],
       "provenance": {
@@ -2455,15 +2319,11 @@
       "evidence_status": "HISTORICAL_UNEQUAL_REPEAT_COUNTS",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-          "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+          "source_id": "src-948c7233b8095992",
           "locator": "观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L7",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L7"
         }
       ],
       "provenance": {
@@ -2527,15 +2387,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "6d88e4d45ab07e3fd54bc9edacc3954ee6168937",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
-          "sha256": "451e6488d156ece3d4a6f8b6c57457a5019bfa2dfa2e3d239d20314d5746aeb8",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/6d88e4d45ab07e3fd54bc9edacc3954ee6168937/docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
+          "source_id": "src-ba140fbdd5b54fee",
           "locator": "报告范围 L1–L54；L1: Iteration 357: C6 node-HSDP placement result；L3: Claim boundary；L13: Construction result；L29: Gates and formal result；L42: Decision；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/6d88e4d45ab07e3fd54bc9edacc3954ee6168937/docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -2599,15 +2455,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "dcc4a740a8dbf17969a7618f1514c7d6438e9931",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
-          "sha256": "eda0dfdc9c3b035a1565e2dc3073150932d97fe586e16dc30dc5f69e23f50cae",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
+          "source_id": "src-589cd1a8d1de04c8",
           "locator": "观察中的数值文本锚点 L52；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md#L52",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L52"
         }
       ],
       "provenance": {
@@ -2674,15 +2526,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "观察中的数值文本锚点 L34；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L34",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L34"
         }
       ],
       "provenance": {
@@ -2745,15 +2593,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -2812,15 +2656,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -2893,15 +2733,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "7f7a5c28db628a22ad494d4533590dc71b3d9afa",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
-          "sha256": "1a86fda321470b615fdf03c0b9a5cfde1fec8b46ca69b016a676def6269f2654",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f7a5c28db628a22ad494d4533590dc71b3d9afa/docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
+          "source_id": "src-dc0b56c8b7b64078",
           "locator": "观察中的数值文本锚点 L48；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/7f7a5c28db628a22ad494d4533590dc71b3d9afa/docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md#L48",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L48"
         }
       ],
       "provenance": {
@@ -2969,15 +2805,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "2d70afbbc3f28d828304b4f08cd6440c4e3e7a71",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
-          "sha256": "ba96398b5926eada6b42dfc48de5a2bc042ebaab9c86b04bc424cfc217552819",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/2d70afbbc3f28d828304b4f08cd6440c4e3e7a71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
+          "source_id": "src-3fbdfb55ba16734a",
           "locator": "观察中的数值文本锚点 L18；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/2d70afbbc3f28d828304b4f08cd6440c4e3e7a71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md#L18",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L18"
         }
       ],
       "provenance": {
@@ -3047,15 +2879,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -3117,26 +2945,18 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
-          "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+          "source_id": "src-2432112f3d82f446",
           "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md#L6",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L6"
         }
       ],
       "provenance": {
@@ -3194,15 +3014,11 @@
           "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
           "evidence": [
             {
-              "repository": "sliortega295-ops/DMD-System",
-              "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-              "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-              "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-              "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+              "source_id": "src-1dd2f088594e0f1a",
               "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
               "original_locator": "结果、合同、限制与失败记录",
-              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-              "locator_quality": "report_scope_not_case_exact"
+              "locator_quality": "report_scope_not_case_exact",
+              "anchor": "#L1"
             }
           ]
         },
@@ -3226,15 +3042,11 @@
           "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
           "evidence": [
             {
-              "repository": "sliortega295-ops/DMD-System",
-              "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
-              "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
-              "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1",
-              "url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+              "source_id": "src-2432112f3d82f446",
               "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
               "original_locator": "结果、合同、限制与失败记录",
-              "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md#L6",
-              "locator_quality": "literal_observation_anchor"
+              "locator_quality": "literal_observation_anchor",
+              "anchor": "#L6"
             }
           ]
         }
@@ -3269,15 +3081,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "06b53e85e6598bbc43d93c785a85520da7c3f716",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
-          "sha256": "1e2b4b978b27dac02601cbe836ce77c6722419eae4d28739dbba8c228c05c4c2",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/06b53e85e6598bbc43d93c785a85520da7c3f716/docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
+          "source_id": "src-f0ea38533746c3fb",
           "locator": "观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/06b53e85e6598bbc43d93c785a85520da7c3f716/docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md#L5",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L5"
         }
       ],
       "provenance": {
@@ -3342,26 +3150,18 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "b6cdeed6211bcfb5433840da68d2339b427946f0",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
-          "sha256": "e3bdceb6f6534566f83ef926428e74e0a15bdfb77b2d5bce458dda9eb7d811b3",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/b6cdeed6211bcfb5433840da68d2339b427946f0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
+          "source_id": "src-22d3ecdb06aa6132",
           "locator": "报告范围 L1–L40；L1: Iteration 367: C14 fused BF16 LayerNorm and modulation；L3: Frozen comparison；L14: Evidence；L31: Decision；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/b6cdeed6211bcfb5433840da68d2339b427946f0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "1ef0e907aff7a64d4b459f0f41af64c499d3689b",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
-          "sha256": "44d8752946a28e7eb264e6d7f6bd9509b50bdff149f76d150766831edf0d8dc6",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/1ef0e907aff7a64d4b459f0f41af64c499d3689b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
+          "source_id": "src-a3b2ba267ac58bf6",
           "locator": "观察中的数值文本锚点 L20；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/1ef0e907aff7a64d4b459f0f41af64c499d3689b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md#L20",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L20"
         }
       ],
       "provenance": {
@@ -3425,15 +3225,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "报告范围 L1–L146；L1: Helios14B node-HSDP optimization closure (Iterations 368-382)；L3: Status and claim boundary；L27: New experiment ladder；L52: Effective methods；L54: Explicit pinned local FlashAttention-2；L70: Critic selective FA2 checkpoint-output retention；L87: Rejected and bounded-negative methods；L105: Post-winner Nsight result；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -3498,15 +3294,11 @@
       "evidence_status": "HISTORICAL_CANARY_ONLY_NOT_RUN",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
-          "sha256": "8a8a2b1075527bb856dcfe065e221035532d719440ea1d9cfdb2d3a0617e793f",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
+          "source_id": "src-a929307a285edaff",
           "locator": "报告范围 L1–L83；L1: Iteration 386: C27 frozen cross-attention LayerNorm canary；L3: Pause-point summary；L16: Source-qualified hypothesis；L38: Canary evidence；L73: Decision and stop boundary；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -3571,15 +3363,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "160f19543cfdefd71ba9f8dc73bd79cad7b6d207",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
-          "sha256": "68266926ce8416d2612d5197ebb721d39b3f48d6360d639de8e4d890af719dde",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/160f19543cfdefd71ba9f8dc73bd79cad7b6d207/docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
+          "source_id": "src-b82f6b4e724c59d9",
           "locator": "观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/160f19543cfdefd71ba9f8dc73bd79cad7b6d207/docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md#L5",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L5"
         }
       ],
       "provenance": {
@@ -3644,15 +3432,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "2883f88a14654d3e6369c4f14de01a1f932edf35",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
-          "sha256": "ddc9058e9a0a265ee1654ebf96eb87cca7a10622c66809a6d0a395b5ee8fd7cd",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/2883f88a14654d3e6369c4f14de01a1f932edf35/docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
+          "source_id": "src-0d0d9cd4fc360a28",
           "locator": "报告范围 L1–L42；L1: Iteration 365: C12 explicit rollout-fence cleanup；L3: Contract；L12: Evidence；L36: Result boundary；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/2883f88a14654d3e6369c4f14de01a1f932edf35/docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -3709,15 +3493,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "6137c4cfa762f7b73aaa08614bd4ac6b19466070",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
-          "sha256": "74b5a6da155e72ede92ca000140ae7885da34c32b5d616948d296614253db269",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/6137c4cfa762f7b73aaa08614bd4ac6b19466070/docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
+          "source_id": "src-a53c1034e43d9e38",
           "locator": "观察中的数值文本锚点 L31；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/6137c4cfa762f7b73aaa08614bd4ac6b19466070/docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md#L31",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L31"
         }
       ],
       "provenance": {
@@ -3781,15 +3561,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "d91c3727cb22642dc9f54061315f15703dfe623a",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
-          "sha256": "b1c014752fd1bb9238e9c5833958e76cb6d991d6b71ecf725786139aea8c5212",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/d91c3727cb22642dc9f54061315f15703dfe623a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
+          "source_id": "src-1bdd9efcff7d0c60",
           "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/d91c3727cb22642dc9f54061315f15703dfe623a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md#L6",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L6"
         }
       ],
       "provenance": {
@@ -3853,15 +3629,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "59ae41c6a6a3d295117737ed6b26ef3e9a4102a9",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
-          "sha256": "c64650edb2262bcb21c5f98013f1a102c6d09cc9b81bd8e36c397fee43d6e436",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/59ae41c6a6a3d295117737ed6b26ef3e9a4102a9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
+          "source_id": "src-02346912f8ae4024",
           "locator": "观察中的数值文本锚点 L20；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/59ae41c6a6a3d295117737ed6b26ef3e9a4102a9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md#L20",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L20"
         }
       ],
       "provenance": {
@@ -3927,15 +3699,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "7f64327754a31a409f581470f588c5e94a2787b4",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
-          "sha256": "b725596d6c899859e7df822036a611c44003ccb6a5eedab039c6936c7ddbf07b",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f64327754a31a409f581470f588c5e94a2787b4/docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
+          "source_id": "src-3b1479458ada2c5f",
           "locator": "观察中的数值文本锚点 L29；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/7f64327754a31a409f581470f588c5e94a2787b4/docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md#L29",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L29"
         }
       ],
       "provenance": {
@@ -3998,15 +3766,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "ae6f2b28b97739143b02f21c6496d3afbb5765d0",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
-          "sha256": "f90d92463f09ecdd999cabe5f6475978bb2af396b7d18d02f099b77a34f183b8",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/ae6f2b28b97739143b02f21c6496d3afbb5765d0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
+          "source_id": "src-50c24a7e62ed78be",
           "locator": "观察中的数值文本锚点 L33；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/ae6f2b28b97739143b02f21c6496d3afbb5765d0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md#L33",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L33"
         }
       ],
       "provenance": {
@@ -4069,15 +3833,11 @@
       "evidence_status": "HISTORICAL_CANARY_NEGATIVE",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "5fab44949b0d9184fe7fb868ee91c79b91ebf174",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
-          "sha256": "7d3fc4d82e5ea1b086c0b54c0c10914be46591da9795890ced10f19946f9aa0f",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/5fab44949b0d9184fe7fb868ee91c79b91ebf174/docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
+          "source_id": "src-95cc9e16e7c86d83",
           "locator": "报告范围 L1–L44；L1: Iteration 371: C16 NCCL protocol canary；L3: Question and boundary；L15: Result；L36: Decision；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/5fab44949b0d9184fe7fb868ee91c79b91ebf174/docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4127,15 +3887,11 @@
       "evidence_status": "HISTORICAL_DIAGNOSTIC_NORMALIZATION",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "54351707288c8d8a8d2efd789ece708852a07033",
-          "path": "docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
-          "sha256": "39a2cf2b0c23a2ab9b888d6758b7ed0f0d2dea20f4a3309b2e627e4b308f8e1f",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/54351707288c8d8a8d2efd789ece708852a07033/docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
+          "source_id": "src-fbfaad6c67ede4fc",
           "locator": "观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/54351707288c8d8a8d2efd789ece708852a07033/docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md#L8",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L8"
         }
       ],
       "provenance": {
@@ -4189,15 +3945,11 @@
       "evidence_status": "HISTORICAL_TRAJECTORY_FAIL",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
-          "sha256": "de1ab6260c895d540bfd9cb24ea25ff5ea9f9b88a742017d1bc8104fd300ee53",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+          "source_id": "src-b27b1c672bfa4ccf",
           "locator": "观察中的数值文本锚点 L18；同时阅读同节合同、状态与限制。原定位：结果与证据边界",
           "original_locator": "结果与证据边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md#L18",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L18"
         }
       ],
       "provenance": {
@@ -4242,15 +3994,11 @@
       "evidence_status": "HISTORICAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
-          "sha256": "b6a55cb6ef6a32bc4a46514299ac1ac0d19336d65e64075f7d9d6425b9616032",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+          "source_id": "src-ed546d99c1b95147",
           "locator": "观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：结果与证据边界",
           "original_locator": "结果与证据边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md#L7",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L7"
         }
       ],
       "provenance": {
@@ -4303,15 +4051,11 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
-          "path": "docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
-          "sha256": "c609e4a7b8c69e96afffbd18e71d35d13bfb64f807cd19efe1af7108e801c6bd",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
+          "source_id": "src-ef5b0c6322c92787",
           "locator": "报告范围 L1–L140；L1: H3 measured action costs → common search → native performance closure；L8: Result；L30: What was actually searched and executed；L59: Hard gates and numerical boundary；L82: Memory and transfers；L102: Reproduction, failures and source fix；L134: Stop boundary；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4364,15 +4108,11 @@
       "evidence_status": "HISTORICAL_PARITY_UNRESOLVED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
-          "path": "docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
-          "sha256": "9f0619b5f9cf0406337b1aa5a21fb6a3b25ec2a9d0164564e14db246861c1eaa",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+          "source_id": "src-1294073e63e3d3d8",
           "locator": "报告范围 L1–L213；L1: Native planner continuation: LiveWan complete, H3 numerical gate blocked；L19: Environment and denominator；L41: LiveWan: completed loop；L74: Memory caveat；L81: H3: native integration works, numerical admission fails；L107: Actual blocker and repeat experiment；L146: Integration bugs fixed and preserved failures；L185: Evidence, replay and stopping point；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4422,15 +4162,11 @@
       "evidence_status": "SOURCE_CONTRACT_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "docs/guides/optimization_capabilities.md",
-          "sha256": "eb2eed667d2370287ae7245b90dc0b4d02d80238cb339f8780870b02f3c91dcb",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md",
+          "source_id": "src-2e16f16262da9d77",
           "locator": "报告范围 L1–L239；L1: Physical capabilities and executable plans；L20: Reuse the existing runtime；L37: Four uses of one executable policy；L59: Model adaptation, not optimization-script copying；L76: Scoped native owner example: DMD2 UNet checkpointing；L113: Official Self-Forcing: Fake-only checkpoint policy；L135: Modern native flow planning is a separately qualified CPU slice；L171: Direct single-CUDA immutable sharing；原定位：结果与证据边界",
           "original_locator": "结果与证据边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4477,15 +4213,11 @@
       "evidence_status": "SOURCE_CONTRACT_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "docs/guides/optimization_capabilities.md",
-          "sha256": "eb2eed667d2370287ae7245b90dc0b4d02d80238cb339f8780870b02f3c91dcb",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md",
+          "source_id": "src-2e16f16262da9d77",
           "locator": "报告范围 L1–L239；L1: Physical capabilities and executable plans；L20: Reuse the existing runtime；L37: Four uses of one executable policy；L59: Model adaptation, not optimization-script copying；L76: Scoped native owner example: DMD2 UNet checkpointing；L113: Official Self-Forcing: Fake-only checkpoint policy；L135: Modern native flow planning is a separately qualified CPU slice；L171: Direct single-CUDA immutable sharing；原定位：结果与证据边界",
           "original_locator": "结果与证据边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4537,15 +4269,11 @@
       "evidence_status": "SOURCE_CONTRACT_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "docs/status/ROLE_PRODUCER_DISPATCH.md",
-          "sha256": "c6dc442a039e198bba02391a640aebfab11c792183981d841c8d4e713a96c1d5",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/ROLE_PRODUCER_DISPATCH.md",
+          "source_id": "src-33220ce160ac9d1b",
           "locator": "报告范围 L1–L69；L1: Component-derived producer dispatch on the existing role runtime；L20: Evidence；L32: Boundaries；L49: Dispatch safety and a non-preset scheduling example；原定位：结果与证据边界",
           "original_locator": "结果与证据边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/ROLE_PRODUCER_DISPATCH.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -4602,15 +4330,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
-          "sha256": "cd2849bc3145fc6fdfc79cb47af11dd5915d6c43cbe9fdd289a50c6b5495324d",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
+          "source_id": "src-d4bde142d1fd8bf4",
           "locator": "观察中的数值文本锚点 L4；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json#L4",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L4"
         }
       ],
       "provenance": {
@@ -4662,11 +4386,7 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
-          "sha256": "bc0b55746b97b3f24ea108f749e5094fb27150f96d8f07e9655540369358db91",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
+          "source_id": "src-7d059bfd81c12c99",
           "locator": "该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
           "locator_quality": "structured_source_locator"
@@ -4721,15 +4441,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
-          "sha256": "8f4e850d4771fa4749c9f2d95e535255ae083b331944a69dbb1441bec1667587",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
+          "source_id": "src-396bf034d632b60a",
           "locator": "观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json#L6",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L6"
         }
       ],
       "provenance": {
@@ -4781,26 +4497,18 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
-          "sha256": "6b66166f3a36ddbe23a15e5d5c00cab6a2c1b851e99fcbd1fd75f907c01a04ca",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
+          "source_id": "src-4df255bce02b7779",
           "locator": "观察中的数值文本锚点 L4；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json#L4",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L4"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
-          "sha256": "5c481c36044bb6759dcefd31f8f3044694d4ca772443ed92e155a71f43b748bd",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
+          "source_id": "src-840d6c19493a7b00",
           "locator": "观察中的数值文本锚点 L12；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json#L12",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L12"
         }
       ],
       "provenance": {
@@ -4854,15 +4562,11 @@
       "evidence_status": "HISTORICAL_H100_CUDA_OOM",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
-          "sha256": "ff4ef977f2cf5058fbc56387c4fe6d6513291e0ef0d3591bb914f2045d959875",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
+          "source_id": "src-af05123794b7a387",
           "locator": "观察中的数值文本锚点 L5；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json#L5",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L5"
         }
       ],
       "provenance": {
@@ -4919,15 +4623,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
-          "sha256": "8354eea5ea5757afc85eb60c009d68bfc87a9d560010b60fc1122d562b271e23",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
+          "source_id": "src-a5ea47995da1666f",
           "locator": "观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md#L7",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L7"
         }
       ],
       "provenance": {
@@ -4985,15 +4685,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
-          "sha256": "1072f45472f39ae09268ba6e5562c9d57660b2a97f2e430424ee01dd9950e1e2",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
+          "source_id": "src-c6de4448f53cfccc",
           "locator": "观察中的数值文本锚点 L28；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json#L28",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L28"
         }
       ],
       "provenance": {
@@ -5054,11 +4750,7 @@
       "evidence_status": "HISTORICAL_STALL_UNRESOLVED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
-          "sha256": "414ac8469ea08c92e7852955045966443a0a2138a241b74c29f9da1da7d6c8d5",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
+          "source_id": "src-123323c1cafa482f",
           "locator": "该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
           "locator_quality": "structured_source_locator"
@@ -5120,15 +4812,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
-          "sha256": "e8ba806f429ac5c2ddcc0ac4cb58027902dc27984bb37ed6b0f4197c1608c2a0",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
+          "source_id": "src-83e9a6769e3b614f",
           "locator": "观察中的数值文本锚点 L8；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json#L8",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L8"
         }
       ],
       "provenance": {
@@ -5180,15 +4868,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
-          "sha256": "514508e0d790788ab359363335a17e48323f5816cc1a7794041eb436ae74a4c9",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+          "source_id": "src-6e08dd5b24294e80",
           "locator": "观察中的数值文本锚点 L7；同时阅读同节合同、状态与限制。原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md#L7",
-          "locator_quality": "literal_observation_anchor"
+          "locator_quality": "literal_observation_anchor",
+          "anchor": "#L7"
         }
       ],
       "provenance": {
@@ -5239,15 +4923,11 @@
       "evidence_status": "HISTORICAL_H100_SINGLE_TRIAL_REVIEW",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
-          "sha256": "514508e0d790788ab359363335a17e48323f5816cc1a7794041eb436ae74a4c9",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+          "source_id": "src-6e08dd5b24294e80",
           "locator": "报告范围 L1–L14；L1: W6 same0419 native single-trial matrix；原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5303,11 +4983,7 @@
       "evidence_status": "HISTORICAL_TINY_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
-          "sha256": "e9b7e8f30d0402cd0c67c5b7a4fd71bdbaffa6dcae047cb43e0f751df926b495",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
+          "source_id": "src-d17f4549cf084c7c",
           "locator": "该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
           "locator_quality": "structured_source_locator"
@@ -5359,15 +5035,11 @@
       "evidence_status": "HISTORICAL_ENVIRONMENT_FAILURE",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
-          "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+          "source_id": "src-de689ab8124685a8",
           "locator": "报告范围 L1–L33；L1: R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch；L5: New measured W2 result；L17: W1 actual cheap failure, not new model/OOM/numeric failure；L24: Actual resource blocker after reconnect；L28: Next authorized serial work；原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5419,15 +5091,11 @@
       "evidence_status": "HISTORICAL_PROFILE_GAP",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
-          "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+          "source_id": "src-de689ab8124685a8",
           "locator": "报告范围 L1–L33；L1: R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch；L5: New measured W2 result；L17: W1 actual cheap failure, not new model/OOM/numeric failure；L24: Actual resource blocker after reconnect；L28: Next authorized serial work；原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5484,26 +5152,18 @@
       "evidence_status": "HISTORICAL_STOPPED_NOT_RUN",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
-          "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+          "source_id": "src-de689ab8124685a8",
           "locator": "报告范围 L1–L33；L1: R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch；L5: New measured W2 result；L17: W1 actual cheap failure, not new model/OOM/numeric failure；L24: Actual resource blocker after reconnect；L28: Next authorized serial work；原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-          "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
-          "sha256": "16d4b00b57e5c6bcaf8bdad099e654028b54a6713353990035193fb9ec3a000a",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
+          "source_id": "src-78a6d03475096d3b",
           "locator": "报告范围 L1–L27；L1: R48 — Explicit user stop before machine reboot；L6: Actual verified stop；L18: Unfinished work is cancelled, not completed；L23: Evidence；原定位：该结果及 qualification / NOT_RUN 边界",
           "original_locator": "该结果及 qualification / NOT_RUN 边界",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5547,15 +5207,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
-          "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md",
+          "source_id": "src-8461a91df18d5930",
           "locator": "报告范围 L1–L88；L6: FSDP: several forwards in one iteration；L24: 1. All-gather once per iteration；L33: 2. Cast frozen models to the compute dtype before wrapping in FSDP；L45: 3. Keep the frozen encoder's parameters resident；L54: 4. Cross-attention K/V cache；L63: 5. Remove host syncs；L72: 6. Spend the freed memory on speed；L83: What ships with it；原定位：重复 forward、reshard 与 backward 约束",
           "original_locator": "重复 forward、reshard 与 backward 约束",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5610,15 +5266,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
-          "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md",
+          "source_id": "src-8461a91df18d5930",
           "locator": "报告范围 L1–L88；L6: FSDP: several forwards in one iteration；L24: 1. All-gather once per iteration；L33: 2. Cast frozen models to the compute dtype before wrapping in FSDP；L45: 3. Keep the frozen encoder's parameters resident；L54: 4. Cross-attention K/V cache；L63: 5. Remove host syncs；L72: 6. Spend the freed memory on speed；L83: What ships with it；原定位：frozen weights / compute dtype",
           "original_locator": "frozen weights / compute dtype",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5671,15 +5323,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
-          "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md",
+          "source_id": "src-8461a91df18d5930",
           "locator": "报告范围 L1–L88；L6: FSDP: several forwards in one iteration；L24: 1. All-gather once per iteration；L33: 2. Cast frozen models to the compute dtype before wrapping in FSDP；L45: 3. Keep the frozen encoder's parameters resident；L54: 4. Cross-attention K/V cache；L63: 5. Remove host syncs；L72: 6. Spend the freed memory on speed；L83: What ships with it；原定位：kwargs container reconstruction / host state",
           "original_locator": "kwargs container reconstruction / host state",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5728,15 +5376,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-action-ladder/SKILL.md",
-          "sha256": "666781d0c202b58f7f6938a6487af59fee1cba6b5439ae9340044f36e653f9a3",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md",
+          "source_id": "src-0163a22a09d4b78b",
           "locator": "报告范围 L1–L127；L6: The action ladder；L10: Check the existing fast paths first；L41: Classify first, then work in batches；L55: L0 switches and configuration；L79: L1 a different library or backend；L84: L2 parameter search；L89: L3 graph or Python rewrites；L97: L4 custom kernels；原定位：Compile falls back / proving compile effective",
           "original_locator": "Compile falls back / proving compile effective",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5784,15 +5428,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-action-ladder/SKILL.md",
-          "sha256": "666781d0c202b58f7f6938a6487af59fee1cba6b5439ae9340044f36e653f9a3",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md",
+          "source_id": "src-0163a22a09d4b78b",
           "locator": "报告范围 L1–L127；L6: The action ladder；L10: Check the existing fast paths first；L41: Classify first, then work in batches；L55: L0 switches and configuration；L79: L1 a different library or backend；L84: L2 parameter search；L89: L3 graph or Python rewrites；L97: L4 custom kernels；原定位：Recompile limit",
           "original_locator": "Recompile limit",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5840,15 +5480,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fusion-patterns/SKILL.md",
-          "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md",
+          "source_id": "src-e867ddafc9cb207e",
           "locator": "报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：Read these first / GEMM prologue and epilogue",
           "original_locator": "Read these first / GEMM prologue and epilogue",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5908,15 +5544,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fusion-patterns/SKILL.md",
-          "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md",
+          "source_id": "src-e867ddafc9cb207e",
           "locator": "报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：QKV packing; Removing layout copies",
           "original_locator": "QKV packing; Removing layout copies",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -5972,15 +5604,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-fusion-patterns/SKILL.md",
-          "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md",
+          "source_id": "src-e867ddafc9cb207e",
           "locator": "报告范围 L1–L179；L6: Common fusion paths and examples；L10: Read these first；L33: 1. Residual add + norm；L38: reference；L41: fused: read x and y once, write h (still needed by the residual stream) and out；L49: 2. Norm + scale and shift (+ gate): adaLN in DiT；L63: 3. Bias + activation (+ gated activation)；L68: reference；原定位：Reproducing library reductions bit for bit",
           "original_locator": "Reproducing library reductions bit for bit",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6035,15 +5663,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-tiered-profiling/SKILL.md",
-          "sha256": "4840fa97aeb495e07da49e545a6f457a80006fc4518805073cb7a11f2cb68c33",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md",
+          "source_id": "src-548bf7df00993654",
           "locator": "报告范围 L1–L93；L6: Tiered profiling；L10: Split by training phase first, then by the parts of one step；L17: The parts of one training step；L54: Three kinds of hotspot；L64: Identifying the bottleneck type: by ablation, not by nvidia-smi；L80: Accounting conventions；L86: Kernel level (Nsight Compute)；原定位：Do not attribute backward with a module full backward hook",
           "original_locator": "Do not attribute backward with a module full backward hook",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6095,15 +5719,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-tiered-profiling/SKILL.md",
-          "sha256": "4840fa97aeb495e07da49e545a6f457a80006fc4518805073cb7a11f2cb68c33",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md",
+          "source_id": "src-548bf7df00993654",
           "locator": "报告范围 L1–L93；L6: Tiered profiling；L10: Split by training phase first, then by the parts of one step；L17: The parts of one training step；L54: Three kinds of hotspot；L64: Identifying the bottleneck type: by ablation, not by nvidia-smi；L80: Accounting conventions；L86: Kernel level (Nsight Compute)；原定位：Fine-grained observation",
           "original_locator": "Fine-grained observation",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6155,15 +5775,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/lessons.md",
-          "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+          "source_id": "src-da9d304f89689946",
           "locator": "报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：Measurement",
           "original_locator": "Measurement",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6209,15 +5825,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/lessons.md",
-          "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+          "source_id": "src-da9d304f89689946",
           "locator": "报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：Third-party libraries changing state behind your back",
           "original_locator": "Third-party libraries changing state behind your back",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6261,15 +5873,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-numerics-validation/SKILL.md",
-          "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+          "source_id": "src-cecc7d1808f6194f",
           "locator": "报告范围 L1–L98；L6: Numerics tiers and validation；L14: N0–N5；L35: How thresholds are set；L57: Cheap investigation order (T0 → T3)；L68: When only one component cannot be bitwise: isolate it behind a stand-in；L81: Common pitfalls；原定位：Common pitfalls / ghost gradient",
           "original_locator": "Common pitfalls / ghost gradient",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6314,15 +5922,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-numerics-validation/SKILL.md",
-          "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+          "source_id": "src-cecc7d1808f6194f",
           "locator": "报告范围 L1–L98；L6: Numerics tiers and validation；L14: N0–N5；L35: How thresholds are set；L57: Cheap investigation order (T0 → T3)；L68: When only one component cannot be bitwise: isolate it behind a stand-in；L81: Common pitfalls；原定位：Common pitfalls / numerical debugging",
           "original_locator": "Common pitfalls / numerical debugging",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6366,15 +5970,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-numerics-validation/SKILL.md",
-          "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+          "source_id": "src-cecc7d1808f6194f",
           "locator": "报告范围 L1–L98；L6: Numerics tiers and validation；L14: N0–N5；L35: How thresholds are set；L57: Cheap investigation order (T0 → T3)；L68: When only one component cannot be bitwise: isolate it behind a stand-in；L81: Common pitfalls；原定位：The evaluator itself can have bugs",
           "original_locator": "The evaluator itself can have bugs",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6419,15 +6019,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/judge.md",
-          "sha256": "a6688646c098d504fdbec114607a6b190d51c36b93173b3d5dff0e3e6ecf377a",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/judge.md",
+          "source_id": "src-e8c447a481a25410",
           "locator": "报告范围 L1–L43；L1: The judge；L5: Four gates；L19: When the judge may change, and when it may not；L26: Fake gains the judge caught；L38: Known limits of the judge；原定位：Four gates; When the judge may change; Known limits",
           "original_locator": "Four gates; When the judge may change; Known limits",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/judge.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6475,15 +6071,11 @@
       "evidence_status": "EXTERNAL_REPORTED_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/results/video-generation.md",
-          "sha256": "ecf04bf3f3f5816fd790ecbc33391aef6931a6026b408798246f5916085a1b95",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md",
+          "source_id": "src-d376fc3d10b24ebd",
           "locator": "报告范围 L1–L35；L1: Video Generation；L7: Faster-SelfForcing；L22: Faster-MiniMax-H3；原定位：MiniMax-H3 trajectory failure and repair",
           "original_locator": "MiniMax-H3 trajectory failure and repair",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6530,15 +6122,11 @@
       "evidence_status": "EXTERNAL_REPORTED_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/results/video-generation.md",
-          "sha256": "ecf04bf3f3f5816fd790ecbc33391aef6931a6026b408798246f5916085a1b95",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md",
+          "source_id": "src-d376fc3d10b24ebd",
           "locator": "报告范围 L1–L35；L1: Video Generation；L7: Faster-SelfForcing；L22: Faster-MiniMax-H3；原定位：MiniMax-H3 later repaired candidate",
           "original_locator": "MiniMax-H3 later repaired candidate",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6582,15 +6170,11 @@
       "evidence_status": "EXTERNAL_REPORTED_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/lessons.md",
-          "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+          "source_id": "src-da9d304f89689946",
           "locator": "报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：From the judge to a real run",
           "original_locator": "From the judge to a real run",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6642,15 +6226,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/lessons.md",
-          "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+          "source_id": "src-da9d304f89689946",
           "locator": "报告范围 L1–L33；L1: Results and lessons across tasks；L3: Four tasks, four ceilings；L12: General lessons；原定位：Four tasks, four ceilings; Memory is an account",
           "original_locator": "Four tasks, four ceilings; Memory is an account",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6694,25 +6274,17 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/results/llm.md",
-          "sha256": "56bb7cbea8f3b61d296966636d742baac30acff9b0999001096bbcd456f3df42",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md",
+          "source_id": "src-0e8ba2673a9547a2",
           "locator": "报告范围 L1–L56；L1: LLM；L7: Faster-NanoChat；L24: Faster-YOCO；L39: Faster-LLM2Vec；原定位：YOCO; R3; LLM2Vec",
           "original_locator": "YOCO; R3; LLM2Vec",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         },
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "docs/results/multimodal.md",
-          "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9",
+          "source_id": "src-5d0e2d1b12553fd3",
           "locator": "With the optimized reward service on both sides",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L56"
         }
       ],
       "provenance": {
@@ -6766,15 +6338,11 @@
       "evidence_status": "EXTERNAL_REPORTED_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/sglang-diffusion-performance/SKILL.md",
-          "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md",
+          "source_id": "src-054bdedd9d709cc7",
           "locator": "报告范围 L1–L565；L6: SGLang Diffusion Performance Tuning；L10: Start from the model's cookbook page；L38: Native Backend Gate；L51: Section 1: Lossless Optimizations；L73: Choosing what goes in `--layerwise-offload-components`；L105: Prefetch depth has a knee；L118: Host memory is part of the placement decision；L135: When the transfer knobs do nothing；原定位：SANA-Video graph capture shape",
           "original_locator": "SANA-Video graph capture shape",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6832,15 +6400,11 @@
       "evidence_status": "EXTERNAL_REPORTED_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/sglang-diffusion-performance/SKILL.md",
-          "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md",
+          "source_id": "src-054bdedd9d709cc7",
           "locator": "报告范围 L1–L565；L6: SGLang Diffusion Performance Tuning；L10: Start from the model's cookbook page；L38: Native Backend Gate；L51: Section 1: Lossless Optimizations；L73: Choosing what goes in `--layerwise-offload-components`；L105: Prefetch depth has a knee；L118: Host memory is part of the placement decision；L135: When the transfer knobs do nothing；原定位：LingBot offload on B300",
           "original_locator": "LingBot offload on B300",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6894,15 +6458,11 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/sglang-diffusion-performance/SKILL.md",
-          "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md",
+          "source_id": "src-054bdedd9d709cc7",
           "locator": "报告范围 L1–L565；L6: SGLang Diffusion Performance Tuning；L10: Start from the model's cookbook page；L38: Native Backend Gate；L51: Section 1: Lossless Optimizations；L73: Choosing what goes in `--layerwise-offload-components`；L105: Prefetch depth has a knee；L118: Host memory is part of the placement decision；L135: When the transfer knobs do nothing；原定位：Approximate inference paths",
           "original_locator": "Approximate inference paths",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -6961,15 +6521,11 @@
       "evidence_status": "HISTORICAL_MECHANISM_DIAGNOSTIC",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "af240f5e53f9a43eefe523a6473aa6a9fba0164e",
-          "path": "docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
-          "sha256": "c9142d2452e7f4847a6d4a8673d0076f08d2e458c414ec0251b9f74ac2e2ec7e",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/af240f5e53f9a43eefe523a6473aa6a9fba0164e/docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
+          "source_id": "src-d666ab2299286974",
           "locator": "报告范围 L1–L105；L1: Iteration 336 — Wan1.3B resident GPU-residual correction；L3: Status；L11: Root cause and fix；L28: Frozen workload；L37: World16 execution；L47: Exact post-fix transfer evidence；L74: Diagnostic timeline comparison；L90: Unprofiled timing boundary；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/af240f5e53f9a43eefe523a6473aa6a9fba0164e/docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -7024,15 +6580,11 @@
       "evidence_status": "HISTORICAL_STRICT_PARITY_FAIL",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "524048c94c6374ae5071bc23e93daf19fc1e0bb9",
-          "path": "docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
-          "sha256": "b607b6c4696cd748186b64405b3eeaf85bc5ee12da8dca2125066c049b6ef7c5",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/524048c94c6374ae5071bc23e93daf19fc1e0bb9/docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
+          "source_id": "src-132ac9af0c6551a4",
           "locator": "报告范围 L1–L101；L1: Iteration 328 — Wan1.3B fair Resident/FSDP2 result；L3: Status；L10: Source and compatibility patch；L28: Frozen workload；L46: Per-placement execution；L57: Strict cross-placement correctness；L82: Conclusion boundary；L90: Resource and cleanup evidence；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/524048c94c6374ae5071bc23e93daf19fc1e0bb9/docs/experiments/wan13b_fair_pr22_iteration328_20260822.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -7086,15 +6638,11 @@
       "evidence_status": "HISTORICAL_PARTIAL_MARKER_DIAGNOSTIC",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8",
-          "path": "docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
-          "sha256": "ad7701a593a642c2f8a8e91ae90cd6f7d54962e27a12c085c5b21b18f557b4da",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8/docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
+          "source_id": "src-c317dab236c3945a",
           "locator": "报告范围 L1–L147；L1: Iteration 301 — MiniMax-H3 Native Nsight Attribution；L3: Status and claim boundary；L12: Workload identity；L34: Correctness / capture gates；L42: Native cycle decomposition (overlap-aware)；L61: NCCL collective breakdown；L73: Boundary-offload evidence；L85: Stage decomposition；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8/docs/experiments/minimax_h3_native_nsys_attribution_20260818.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -7156,26 +6704,18 @@
       "evidence_status": "HISTORICAL_KERNEL_DIAGNOSTIC",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "d5ff09623a1f57a8194619b24fc633fd51569fff",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
-          "sha256": "653b9e61977c7b3b82fa3d4ccf95c988c08e2795b520222448d9385e46fdf0b1",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/d5ff09623a1f57a8194619b24fc633fd51569fff/docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
+          "source_id": "src-13c5442e75460a2e",
           "locator": "报告范围 L1–L82；L1: Iteration 358: C7 dominant Critic GEMM NCU diagnostic；L3: Claim boundary；L22: Kernel result；L56: Decision；L69: Remote evidence；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/d5ff09623a1f57a8194619b24fc633fd51569fff/docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         },
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "91ca0e007f64cfb857089fd73957669397754a8c",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
-          "sha256": "fca2a83f94060a87c3664c3545ea4dabe08ff5e5d404a48d8df9912295da13ab",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/91ca0e007f64cfb857089fd73957669397754a8c/docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
+          "source_id": "src-6d7fb84b87dedbdc",
           "locator": "报告范围 L1–L72；L1: Iteration 374: C19 production FlashAttention NCU diagnostic；L3: Frozen identity and validity；L28: Hardware result；L53: Claim boundary and decision；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/91ca0e007f64cfb857089fd73957669397754a8c/docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -7234,15 +6774,11 @@
       "evidence_status": "HISTORICAL_PRIMITIVE_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "a065830e550151c56934ec83771ea506708d0e14",
-          "path": "docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
-          "sha256": "6347bed7c7252e3dd33e52ff9a6681ba992d1ca48e49b8b6070295d98ecadcd6",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/a065830e550151c56934ec83771ea506708d0e14/docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
+          "source_id": "src-1a9a55b9c09b6b82",
           "locator": "报告范围 L1–L31；L1: Bounded H100 Helios no-grad Generator retention experiment；原定位：结果、合同、限制与失败记录",
           "original_locator": "结果、合同、限制与失败记录",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/a065830e550151c56934ec83771ea506708d0e14/docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md#L1",
-          "locator_quality": "report_scope_not_case_exact"
+          "locator_quality": "report_scope_not_case_exact",
+          "anchor": "#L1"
         }
       ],
       "provenance": {
@@ -7338,14 +6874,10 @@
       "evidence_status": "EXTERNAL_GUIDANCE_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-          "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-          "path": "skills/train-opt-numerics-validation/SKILL.md",
-          "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
+          "source_id": "src-cecc7d1808f6194f",
           "locator": "## When only one component cannot be bitwise",
-          "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
-          "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md#L68",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L68"
         }
       ],
       "correctness_conditions": {
@@ -7393,14 +6925,10 @@
       "evidence_status": "HISTORICAL_NUMERICAL_FAILURE",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-          "path": "docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
-          "sha256": "4cb0fc460cc10a6c4d40eaa8591d61cf3fd49aa493967d620c8df322ddfaecd6",
+          "source_id": "src-a7496c54060b6e5b",
           "locator": "iter355_helios14b_hsdp_compatible_b2_correctness_r2_20260824",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md#L63",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L63"
         }
       ],
       "correctness_conditions": {
@@ -7451,14 +6979,10 @@
       "evidence_status": "HISTORICAL_SINGLE_TIMING_NOT_REPRODUCED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-          "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
+          "source_id": "src-948c7233b8095992",
           "locator": "### 4. Exact residual and timestep-gradient fusion",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md#L105",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L105"
         }
       ],
       "correctness_conditions": {
@@ -7513,14 +7037,10 @@
       "evidence_status": "HISTORICAL_CANARY_ONLY",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-          "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
+          "source_id": "src-1dd2f088594e0f1a",
           "locator": "One fused QKV GEMM",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md#L96",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L96"
         }
       ],
       "correctness_conditions": {
@@ -7572,14 +7092,10 @@
       "evidence_status": "HISTORICAL_POLICY_REJECTION",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
-          "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
-          "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
+          "source_id": "src-6a506c56ce4209be",
           "locator": "## GAN safety rejection is not an OOM",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L92",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L92"
         }
       ],
       "correctness_conditions": {
@@ -7633,14 +7149,10 @@
       "evidence_status": "HISTORICAL_SOURCE_REPORTED",
       "evidence": [
         {
-          "repository": "sliortega295-ops/DMD-System",
-          "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
-          "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
-          "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
+          "source_id": "src-6a506c56ce4209be",
           "locator": "Its actual restored Adam/scheduler counters",
-          "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
-          "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md#L136",
-          "locator_quality": "structured_source_locator"
+          "locator_quality": "structured_source_locator",
+          "anchor": "#L136"
         }
       ],
       "correctness_conditions": {

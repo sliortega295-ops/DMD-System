@@ -24,8 +24,9 @@ Listing a test still means where to check, not that the lookup command executed 
 
 ## Keep one source of truth
 
-The generated index reads existing `training/catalog.py`, `official_profiles.py`,
+The generated index pins existing `training/catalog.py`, `official_profiles.py`,
 `strategy_catalog.py`, `workloads/catalog.json` and `recipes/*/training*.json`.
+Guide titles are displayed without hashing documentation prose.
 After changing those sources, regenerate (do not hand-edit the bundled index):
 
     python3 "$SKILL/scripts/dmd_current.py" --repo /project/DMD-System \

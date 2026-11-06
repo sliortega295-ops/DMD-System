@@ -1,13 +1,977 @@
 {
   "schema_version": 1,
-  "curated_date": "2026-10-31",
-  "sources": [
-    {
+  "source_files": {
+    "src-e8c447a481a25410": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/judge.md",
+      "sha256": "a6688646c098d504fdbec114607a6b190d51c36b93173b3d5dff0e3e6ecf377a"
+    },
+    "src-da9d304f89689946": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/lessons.md",
+      "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8"
+    },
+    "src-0e8ba2673a9547a2": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/llm.md",
+      "sha256": "56bb7cbea8f3b61d296966636d742baac30acff9b0999001096bbcd456f3df42"
+    },
+    "src-5d0e2d1b12553fd3": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/multimodal.md",
+      "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9"
+    },
+    "src-d376fc3d10b24ebd": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "docs/results/video-generation.md",
+      "sha256": "ecf04bf3f3f5816fd790ecbc33391aef6931a6026b408798246f5916085a1b95"
+    },
+    "src-054bdedd9d709cc7": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/sglang-diffusion-performance/SKILL.md",
+      "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30"
+    },
+    "src-0163a22a09d4b78b": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-action-ladder/SKILL.md",
+      "sha256": "666781d0c202b58f7f6938a6487af59fee1cba6b5439ae9340044f36e653f9a3"
+    },
+    "src-8461a91df18d5930": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
+      "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7"
+    },
+    "src-e867ddafc9cb207e": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-fusion-patterns/SKILL.md",
+      "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870"
+    },
+    "src-cecc7d1808f6194f": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-numerics-validation/SKILL.md",
+      "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0"
+    },
+    "src-548bf7df00993654": {
+      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
+      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
+      "path": "skills/train-opt-tiered-profiling/SKILL.md",
+      "sha256": "4840fa97aeb495e07da49e545a6f457a80006fc4518805073cb7a11f2cb68c33"
+    },
+    "src-f0ea38533746c3fb": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "06b53e85e6598bbc43d93c785a85520da7c3f716",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
+      "sha256": "1e2b4b978b27dac02601cbe836ce77c6722419eae4d28739dbba8c228c05c4c2"
+    },
+    "src-1dd2f088594e0f1a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "111e293dc79978132af91ab5515a096d941b94fe",
+      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+      "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a"
+    },
+    "src-4c9ec2c8e9913909": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+      "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
+      "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4"
+    },
+    "src-a03fcf91bfa4b281": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+      "path": "src/distillschedule/runtime/helios_gan_manual/runtime.py",
+      "sha256": "5ec39d828069df274a555ec1724b3cadd449078e2360ee555274471b8626d944"
+    },
+    "src-77df55b631af66d9": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
+      "path": "tests/test_gan_frozen_up_retention.py",
+      "sha256": "44d54b5834623937f84a1dc0b8e6637ea52b3c647e0d9139b732e2ae5b60581d"
+    },
+    "src-b82f6b4e724c59d9": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "160f19543cfdefd71ba9f8dc73bd79cad7b6d207",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
+      "sha256": "68266926ce8416d2612d5197ebb721d39b3f48d6360d639de8e4d890af719dde"
+    },
+    "src-c317dab236c3945a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8",
+      "path": "docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
+      "sha256": "ad7701a593a642c2f8a8e91ae90cd6f7d54962e27a12c085c5b21b18f557b4da"
+    },
+    "src-f909bdd49c386cf8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "18e889ad3653103e7f1d1aebfb055d71cdc22205",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md",
+      "sha256": "58cb3a7fb426f7c7b49bc8bbac0e55639c3c626ea5d88be599e961bfdd846f66"
+    },
+    "src-a3b2ba267ac58bf6": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "1ef0e907aff7a64d4b459f0f41af64c499d3689b",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
+      "sha256": "44d8752946a28e7eb264e6d7f6bd9509b50bdff149f76d150766831edf0d8dc6"
+    },
+    "src-7d15f576decd4499": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "205dbd6fac25ad7b46f24040e3f2250f1bd6c696",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration351_profile.md",
+      "sha256": "8d0fd4185e20784429130b8e59ed06aa1dd2d1c2312e833c3bb3380e0d63cc72"
+    },
+    "src-0d0d9cd4fc360a28": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "2883f88a14654d3e6369c4f14de01a1f932edf35",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
+      "sha256": "ddc9058e9a0a265ee1654ebf96eb87cca7a10622c66809a6d0a395b5ee8fd7cd"
+    },
+    "src-3fbdfb55ba16734a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "2d70afbbc3f28d828304b4f08cd6440c4e3e7a71",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
+      "sha256": "ba96398b5926eada6b42dfc48de5a2bc042ebaab9c86b04bc424cfc217552819"
+    },
+    "src-70c27f2979b74f01": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "313dcbd1925f831ce1d9bf3e322b7a8a5fec1567",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration377_c22_post_c21_profile.md",
+      "sha256": "94706f13d404b4e8e48c4ebc8f250bf3e340cdddc47b6a61c4d1c47cbe6326e2"
+    },
+    "src-5634cc6118d814a9": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "31f4388ab3ef696d1dd2a21cba500c3b65a0698a",
+      "path": "docs/experiments/GAN_CUDA_BASELINE_OPTIMIZATION_20260829.md",
+      "sha256": "f9a5565cb7602bbb5c037d8ba9b6f686c1488f86d3e43f64de193779344e1579"
+    },
+    "src-0709ebc91417faac": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
+      "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf"
+    },
+    "src-d8ea6f4633209092": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
+      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/tests/test_h3_ar_hybrid_cache.py",
+      "sha256": "491f074f644d5d6700c34625b34921145ed199c768957470752604d6ebe75230"
+    },
+    "src-cbde5c4262a409d4": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4b511c49e3b8363d60443f839ebd66f8ea4f69cb",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
+      "sha256": "85024940b33d35afea325fe25f074319dac7d051a2a391d61d7606e48145f08f"
+    },
+    "src-6a506c56ce4209be": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
+      "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+      "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977"
+    },
+    "src-47d56f8044e6eae2": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "4e85b5d6bc7f884ca002d4cd0d66dce070531528",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration364_c11_profile.md",
+      "sha256": "c965282012f240db67d572d86edc6faf579fa4a0b40e078ad17caf88762bb30a"
+    },
+    "src-6057d4cc7209fe0d": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "50aa0975239449dd2fe874f1c159a23158e5f6d9",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration370_c15_profile.md",
+      "sha256": "d4cf398778d2d7e6ea14cb28e1251d79b821303e891eba906ed62d778a4a5dd6"
+    },
+    "src-132ac9af0c6551a4": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "524048c94c6374ae5071bc23e93daf19fc1e0bb9",
+      "path": "docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
+      "sha256": "b607b6c4696cd748186b64405b3eeaf85bc5ee12da8dca2125066c049b6ef7c5"
+    },
+    "src-fbfaad6c67ede4fc": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "54351707288c8d8a8d2efd789ece708852a07033",
+      "path": "docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
+      "sha256": "39a2cf2b0c23a2ab9b888d6758b7ed0f0d2dea20f4a3309b2e627e4b308f8e1f"
+    },
+    "src-02346912f8ae4024": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "59ae41c6a6a3d295117737ed6b26ef3e9a4102a9",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
+      "sha256": "c64650edb2262bcb21c5f98013f1a102c6d09cc9b81bd8e36c397fee43d6e436"
+    },
+    "src-0c0721ac1fad24f2": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5c75376982c2d114402992e3538bd59ea9f12fb0",
+      "path": "docs/experiments/h100_five_workload_b16_20260930.md",
+      "sha256": "0787aa2556014e8f9753c42dac1a86ceae5b0c91a32425f49bf33f7e903a5ea7"
+    },
+    "src-9e0e0b0c940a0a85": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5f399a0f4faf4df0a38e7a46255299e00992da71",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration353_local_fa2.md",
+      "sha256": "81baa7a7e9886fcc9503c303ff46992c23eda67f1566fb5252a81cbbaec5cc6d"
+    },
+    "src-95cc9e16e7c86d83": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "5fab44949b0d9184fe7fb868ee91c79b91ebf174",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
+      "sha256": "7d3fc4d82e5ea1b086c0b54c0c10914be46591da9795890ced10f19946f9aa0f"
+    },
+    "src-a53c1034e43d9e38": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6137c4cfa762f7b73aaa08614bd4ac6b19466070",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
+      "sha256": "74b5a6da155e72ede92ca000140ae7885da34c32b5d616948d296614253db269"
+    },
+    "src-4b0cf6e0d6333485": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "63e7164267a1b2e72304c723b6dd82eb788b6b0f",
+      "path": "docs/experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md",
+      "sha256": "301b5da5347c74203be53424334d9481aab7b7e45026f3d0055c60953d52d7a0"
+    },
+    "src-ef5b0c6322c92787": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
+      "sha256": "c609e4a7b8c69e96afffbd18e71d35d13bfb64f807cd19efe1af7108e801c6bd"
+    },
+    "src-a08e77108b1dc0ac": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_H3_PREPARED_ACTIONS_20260907.md",
+      "sha256": "68150c227a5578ff4a672ad142a25f4a33a66c571fe8e7f27f4ef785849b6ddf"
+    },
+    "src-1294073e63e3d3d8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+      "sha256": "9f0619b5f9cf0406337b1aa5a21fb6a3b25ec2a9d0164564e14db246861c1eaa"
+    },
+    "src-1b8ad1181fbdff47": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6c7d0cbaac3a80eba8d82f409db826fb4572c50f",
+      "path": "docs/experiments/DMD_LIVEWAN_POOL_DAG_20260907.md",
+      "sha256": "6d457593c29bcb81a0e80727c3b02cc3972a697529d04ca4325e205bbc3019c6"
+    },
+    "src-ba140fbdd5b54fee": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "6d88e4d45ab07e3fd54bc9edacc3954ee6168937",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
+      "sha256": "451e6488d156ece3d4a6f8b6c57457a5019bfa2dfa2e3d239d20314d5746aeb8"
+    },
+    "src-813a382e3cb3956a": {
       "repository": "sliortega295-ops/DMD-System",
       "revision": "70ace0efbb89ce5691617bb06b9971d1e96a2522",
       "path": "docs/experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md",
-      "sha256": "72d0f774d5f98ceb25d95fb303a1fe3f8c22824cb3457b8109de61f5811c15cf",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/70ace0efbb89ce5691617bb06b9971d1e96a2522/docs/experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md",
+      "sha256": "72d0f774d5f98ceb25d95fb303a1fe3f8c22824cb3457b8109de61f5811c15cf"
+    },
+    "src-2432112f3d82f446": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+      "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1"
+    },
+    "src-3b1479458ada2c5f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7f64327754a31a409f581470f588c5e94a2787b4",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
+      "sha256": "b725596d6c899859e7df822036a611c44003ccb6a5eedab039c6936c7ddbf07b"
+    },
+    "src-dc0b56c8b7b64078": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "7f7a5c28db628a22ad494d4533590dc71b3d9afa",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
+      "sha256": "1a86fda321470b615fdf03c0b9a5cfde1fec8b46ca69b016a676def6269f2654"
+    },
+    "src-b2d9c1b6d831045f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "8e6fd674302260ea24fa63f0121357db9ac15656",
+      "path": "docs/experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md",
+      "sha256": "90c5de46b2cb0773f3c85250ed0c8cdc14e0e6642a47cb2e238ca3b6a3d20077"
+    },
+    "src-9288be8fa193a4fd": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
+      "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+      "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe"
+    },
+    "src-6d7fb84b87dedbdc": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "91ca0e007f64cfb857089fd73957669397754a8c",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
+      "sha256": "fca2a83f94060a87c3664c3545ea4dabe08ff5e5d404a48d8df9912295da13ab"
+    },
+    "src-8e14e5e6508ea019": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+      "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78"
+    },
+    "src-1a9a55b9c09b6b82": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a065830e550151c56934ec83771ea506708d0e14",
+      "path": "docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
+      "sha256": "6347bed7c7252e3dd33e52ff9a6681ba992d1ca48e49b8b6070295d98ecadcd6"
+    },
+    "src-151a1557e8a93454": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/current_status.md",
+      "sha256": "ba08d5ea022ec13e042478a26100a7d02f8c90162618fc042d4367ba224d667b"
+    },
+    "src-a31f8908704d800d": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/draft.md",
+      "sha256": "ee84eb974cd18e1b9196c4f1fc1b97035829f703879d68571cd211de38d02b68"
+    },
+    "src-a929307a285edaff": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
+      "sha256": "8a8a2b1075527bb856dcfe065e221035532d719440ea1d9cfdb2d3a0617e793f"
+    },
+    "src-a7496c54060b6e5b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+      "sha256": "4cb0fc460cc10a6c4d40eaa8591d61cf3fd49aa493967d620c8df322ddfaecd6"
+    },
+    "src-dfa5f25a56cccc6b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/preflight.md",
+      "sha256": "45812c5197ed1e584618c4e723012f0b6f328369cf0ac99d0df15eb5e9f9d394"
+    },
+    "src-50c24a7e62ed78be": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "ae6f2b28b97739143b02f21c6496d3afbb5765d0",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
+      "sha256": "f90d92463f09ecdd999cabe5f6475978bb2af396b7d18d02f099b77a34f183b8"
+    },
+    "src-d666ab2299286974": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "af240f5e53f9a43eefe523a6473aa6a9fba0164e",
+      "path": "docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
+      "sha256": "c9142d2452e7f4847a6d4a8673d0076f08d2e458c414ec0251b9f74ac2e2ec7e"
+    },
+    "src-22d3ecdb06aa6132": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "b6cdeed6211bcfb5433840da68d2339b427946f0",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
+      "sha256": "e3bdceb6f6534566f83ef926428e74e0a15bdfb77b2d5bce458dda9eb7d811b3"
+    },
+    "src-909b74a4c3c8ccbc": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "b9dd25e36dfa45e6768428eb08f549afa7d3895e",
+      "path": "docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
+      "sha256": "9b5da1646210931109837f473e8aec1355c4ab095e09da6a8e3c02e6264290b4"
+    },
+    "src-2a22e279e367afb8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c69876197aeaccbab19b515b54d1022f07634422",
+      "path": "docs/experiments/WAN13B_MERGED_SHADOW_NOISE_STUDY.md",
+      "sha256": "0ce92fe554a35198ffea08fa5419539b018a76ebeac0e5a876ae8e340a84d52b"
+    },
+    "src-a115c002040d1d6a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c7590a3e45abd5770e4069cbf26fe3ceba2dcf1b",
+      "path": "docs/experiments/LIVEWAN_H100_TEACHER_RESIDENT.md",
+      "sha256": "e5604090f3a74cb338db4ef2497bf64893594885bd24c7da2a1ec5a75a377724"
+    },
+    "src-948c7233b8095992": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
+      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+      "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3"
+    },
+    "src-13c5442e75460a2e": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "d5ff09623a1f57a8194619b24fc633fd51569fff",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
+      "sha256": "653b9e61977c7b3b82fa3d4ccf95c988c08e2795b520222448d9385e46fdf0b1"
+    },
+    "src-1bdd9efcff7d0c60": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "d91c3727cb22642dc9f54061315f15703dfe623a",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
+      "sha256": "b1c014752fd1bb9238e9c5833958e76cb6d991d6b71ecf725786139aea8c5212"
+    },
+    "src-589cd1a8d1de04c8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "dcc4a740a8dbf17969a7618f1514c7d6438e9931",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
+      "sha256": "eda0dfdc9c3b035a1565e2dc3073150932d97fe586e16dc30dc5f69e23f50cae"
+    },
+    "src-baba870629adee42": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "e89942f29debc04d80b58397614a3f6828d6208a",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration375_c20_postfix_profile.md",
+      "sha256": "84aac39281b16a50850688dc1cdc62a3abf4991282b936730b45f558b2ae2da3"
+    },
+    "src-b7197cfdfbe25b83": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "e8a72d4cda487e43f2652e75e3d3e1f83604105c",
+      "path": "docs/experiments/WAN13B_RESIDENT_CHUNK2048_20260824.md",
+      "sha256": "3e8a9bf2205ae668bbf231f95f8a60dc6b4654a8d972d58db9735853d3605204"
+    },
+    "src-de21b2289981c49a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "ea520a2e339506e704122c3e35314de3ac9e09b2",
+      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration356_c5_profile.md",
+      "sha256": "712c4014d75fc5a50e6c38569b9b0b7d968a2274993f652d542196f6e0a91005"
+    },
+    "src-8df2eaf8a0fc2b3a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+      "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51"
+    },
+    "src-b27b1c672bfa4ccf": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+      "sha256": "de1ab6260c895d540bfd9cb24ea25ff5ea9f9b88a742017d1bc8104fd300ee53"
+    },
+    "src-7183acc9a6b18f97": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+      "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d"
+    },
+    "src-d9e394b6fd673845": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+      "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7"
+    },
+    "src-ed546d99c1b95147": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+      "sha256": "b6a55cb6ef6a32bc4a46514299ac1ac0d19336d65e64075f7d9d6425b9616032"
+    },
+    "src-af43020831289e5f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+      "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a"
+    },
+    "src-34cf77ee9b148032": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+      "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341"
+    },
+    "src-63e1e93d64b7ad24": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+      "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20"
+    },
+    "src-005c2ff3d1675061": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+      "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a"
+    },
+    "src-28489615e2c14096": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+      "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957"
+    },
+    "src-c56081f395a6bd59": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+      "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe"
+    },
+    "src-6b3d5214baeef170": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/manifests/imported_A100_exact_source_r1.json",
+      "sha256": "c11ad9be4ebe555f34fa6a277f4b0ae68adaa4ea63d868f812442717609ec7b6"
+    },
+    "src-7eb74d1d46095792": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/manifests/committed_offline_canary_source_r1.json",
+      "sha256": "e51b8c375f4ce766a58c8dbfae3e26ac51bc384da16680049b68224ee44eef60"
+    },
+    "src-d4bde142d1fd8bf4": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
+      "sha256": "cd2849bc3145fc6fdfc79cb47af11dd5915d6c43cbe9fdd289a50c6b5495324d"
+    },
+    "src-cff5d54132fb837b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/arm_table.csv",
+      "sha256": "0ca6aec3898f1bc5b8b26e427ceec32fb319d90335c7d23eda5344689b69b011"
+    },
+    "src-7a1ff9a4f9e3cd9d": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/artifact_sha256.json",
+      "sha256": "f8eb72a4fcf038f80c95dc9424501eff17797e3021ce6b7358cff4746e0f97c3"
+    },
+    "src-64773758077e33f8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/report.md",
+      "sha256": "c030845fef1a6fcc74970aa2b8cd8d0b00c60e3d7f6ce9349f1fb30e6aede735"
+    },
+    "src-7d059bfd81c12c99": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
+      "sha256": "bc0b55746b97b3f24ea108f749e5094fb27150f96d8f07e9655540369358db91"
+    },
+    "src-396bf034d632b60a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
+      "sha256": "8f4e850d4771fa4749c9f2d95e535255ae083b331944a69dbb1441bec1667587"
+    },
+    "src-840d6c19493a7b00": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
+      "sha256": "5c481c36044bb6759dcefd31f8f3044694d4ca772443ed92e155a71f43b748bd"
+    },
+    "src-aef5964b2d566850": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/artifact_sha256.json",
+      "sha256": "28b102e3778d53b1e6c95a58f1fda65293bbdc63da1dfc74cb59676bbfc59477"
+    },
+    "src-7efe5f71762fbc77": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/baseline_summary.json",
+      "sha256": "b5c4a287a30dcc13bcedf8865d8ca67f4a8f50761492d9916653475b0c298cb0"
+    },
+    "src-eb9a13ca9c5a96d0": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/candidate_summary.json",
+      "sha256": "333b63719852bcb8ad828ae2d465c0c6627ea44252e9cbf306f5c59fe1d74209"
+    },
+    "src-4df255bce02b7779": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
+      "sha256": "6b66166f3a36ddbe23a15e5d5c00cab6a2c1b851e99fcbd1fd75f907c01a04ca"
+    },
+    "src-426817762ecce9bb": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/arm_table.csv",
+      "sha256": "744f0d237d9ae75ea5ada39f5bed90b42a7c097195490347c174c81fc06771da"
+    },
+    "src-e8852cf29a882390": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/artifact_sha256.json",
+      "sha256": "4c965f52ac48734e0c8ebe092a6feb6caa617b267dcc24e5cd2ee21df04a1143"
+    },
+    "src-0c6ad9db9ccc358b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/per_rank_contract.csv",
+      "sha256": "a57bcf293222575c716fd4f9203282280be49ebb06aaab0255ea43cf2bf17ee2"
+    },
+    "src-a5ea47995da1666f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
+      "sha256": "8354eea5ea5757afc85eb60c009d68bfc87a9d560010b60fc1122d562b271e23"
+    },
+    "src-c6de4448f53cfccc": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
+      "sha256": "1072f45472f39ae09268ba6e5562c9d57660b2a97f2e430424ee01dd9950e1e2"
+    },
+    "src-123323c1cafa482f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
+      "sha256": "414ac8469ea08c92e7852955045966443a0a2138a241b74c29f9da1da7d6c8d5"
+    },
+    "src-af05123794b7a387": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
+      "sha256": "ff4ef977f2cf5058fbc56387c4fe6d6513291e0ef0d3591bb914f2045d959875"
+    },
+    "src-bf6c6d904983398b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/arm_table.csv",
+      "sha256": "7e233167d3e61cf405f745ca2a25aa7198b76a72699682a7c18f3ce4f4f3fe23"
+    },
+    "src-69c48b118540eec1": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/artifact_sha256.json",
+      "sha256": "b93e515e72657566ef7c6885a4d4c3dc149249b7585efe875cbb51a7634a27d0"
+    },
+    "src-6e08dd5b24294e80": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+      "sha256": "514508e0d790788ab359363335a17e48323f5816cc1a7794041eb436ae74a4c9"
+    },
+    "src-83e9a6769e3b614f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
+      "sha256": "e8ba806f429ac5c2ddcc0ac4cb58027902dc27984bb37ed6b0f4197c1608c2a0"
+    },
+    "src-49a3a9f3e3c0be12": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/source_receipt_sha256.json",
+      "sha256": "cc568358bdc3976d3ab2379380c7018372c042d491d301da9a4848dc3ce68d8d"
+    },
+    "src-d17f4549cf084c7c": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
+      "sha256": "e9b7e8f30d0402cd0c67c5b7a4fd71bdbaffa6dcae047cb43e0f751df926b495"
+    },
+    "src-de689ab8124685a8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+      "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc"
+    },
+    "src-78a6d03475096d3b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
+      "sha256": "16d4b00b57e5c6bcaf8bdad099e654028b54a6713353990035193fb9ec3a000a"
+    },
+    "src-52d8c14b9ee683b9": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/scripts/exact_ema_graph.py",
+      "sha256": "6a7f0cc83725b884a92ed07ff70150f89da20d65f29a1ed420a28b7eca02235d"
+    },
+    "src-e372ecee16f50571": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r34/tests/test_exact_ema_graph.py",
+      "sha256": "c0fe41890a9aafe0d88510265054807e14a24b9c54f851c75579db49d904af2b"
+    },
+    "src-5d8ab3f06565c499": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/metadata_barrier_worker.py",
+      "sha256": "8812bed6a7c7b9eda2beb4b58b32cd3264ed2e5e0affa3ec8e092713e47c4590"
+    },
+    "src-8797db288ccdddc0": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833"
+    },
+    "src-a682ae4f9fc4822c": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/tests/test_metadata_barrier.py",
+      "sha256": "7b2eea329059d07cc7643c555aed2fcc426bc923abefad6d450339f0451bdf14"
+    },
+    "src-823d8062389bef33": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+      "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496"
+    },
+    "src-af440ae78f48d19a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/contracts/wan_tail8_retention_v1.md",
+      "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3"
+    },
+    "src-2e16f16262da9d77": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/guides/optimization_capabilities.md",
+      "sha256": "eb2eed667d2370287ae7245b90dc0b4d02d80238cb339f8780870b02f3c91dcb"
+    },
+    "src-33220ce160ac9d1b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/status/ROLE_PRODUCER_DISPATCH.md",
+      "sha256": "c6dc442a039e198bba02391a640aebfab11c792183981d841c8d4e713a96c1d5"
+    },
+    "src-71faaeda6f6e2f07": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+      "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50"
+    },
+    "src-cf3deefe9f9235e8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "runtime/static_fsdp2_p0_helios.py",
+      "sha256": "a0dc38cfaa1118df0fd33fdf516183d04d7aef00ba64da964f56d2ed37f17e3e"
+    },
+    "src-575aacc6c9db4d0f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "sha256": "6b9a04f6842c2d52d6038354175421e998b9e8e5a5f84c71ba87667b9ab77d20"
+    },
+    "src-94237bcbb5732cf3": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
+      "sha256": "12cab5fe8eb9b38da79706fd5063e069b44def41e9b0d736be2643708eb1eaac"
+    },
+    "src-12f74d1e3ecb5760": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py",
+      "sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3"
+    },
+    "src-1c0c141a9d68f0c6": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py",
+      "sha256": "4fe7f377e1f244750695f27a874b86d06e85cff7b2f601530c852c9b424adfcd"
+    },
+    "src-72fa00c8871306ea": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+      "sha256": "6335acbbef4a28a3b715b5fb387fd9dfe4921471050ceb07865546ecb94b3599"
+    },
+    "src-a854d89a2f190d9e": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/open_workload/role_transport.py",
+      "sha256": "7de50671350863dd9723ea4ec935339c0fa670fdbf4f5d8ba5f43e2c910373a4"
+    },
+    "src-3e07619bbf636e0d": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/checkpoint_block_retention.py",
+      "sha256": "08dce8d2a408cbc83b49f30bc11399447dec45d694765cde476efebab39e273c"
+    },
+    "src-8a0fc07db2779472": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/fsdp2_nograd_persistence.py",
+      "sha256": "4a57f7accad40542f8a9f42aa0b6c763b58127f8cadd691c15803cef8d1a6c51"
+    },
+    "src-32502ddb304ad4ee": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/fsdp2_p0.py",
+      "sha256": "d9f2a3f20ed5e8730083d4e2009c88f321fdf6c0297d494dd23412ab17b77eff"
+    },
+    "src-ac58f7e1652e2ec5": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/fsdp2_static.py",
+      "sha256": "dd2fd0861f058b731145b9868524c13542d38c9ad19973de90b99088aa4a5d50"
+    },
+    "src-858971a584e75a10": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/fsdp2_variable_forward.py",
+      "sha256": "08ce82bcdcf228ab9f15eaac829abbb65df1cc316f0bba8a86ab6b1a5587b1bb"
+    },
+    "src-b3be2b53ec5f73d4": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_cross_kv_cache.py",
+      "sha256": "b0e4ce53c2ab76f0aa1285e12199aaaeab04f801e8b3321938266075015b4b08"
+    },
+    "src-be0668b60be64fbb": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_fused_layernorm_kernel.py",
+      "sha256": "b91dfce7f143497fcce7d1f89f5b30956ed0e8f4e5aa303205b6df300cb6bafa"
+    },
+    "src-66647956bc165eb3": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+      "sha256": "360d7c1dea7b4a5b8b8bdbedcd42542fd196014fba8d8c900cd4bff7a39c7bda"
+    },
+    "src-aeff6dc73e170dae": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+      "sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6"
+    },
+    "src-6059dbbaaa6aaed7": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+      "sha256": "38f615574bd0031058c81d3ad8e13287625a944a39028093789f72f0616fe493"
+    },
+    "src-37d1baabbd0094ed": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_modulation_chunks.py",
+      "sha256": "a99a7429eedfceccbb0f983927d53e804abbb71c238f0aa0c2117ab6308c3b25"
+    },
+    "src-7a123e07c9959f13": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_residual_fusion.py",
+      "sha256": "b42facb12a06d4df35167ac1b1adf7891ed4c1a436ba89b8d06d64e03edec666"
+    },
+    "src-b4c1ff57cd80eb31": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_residual_kernel.py",
+      "sha256": "59fc72203e879218df35152cfa00379527e3949f9dbd124866ec4670fe77b6d9"
+    },
+    "src-844e83428b157170": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/helios_rollout_context_cache.py",
+      "sha256": "e03ef5e96d4ec12ee3160ac1daded93f64ecd2a11d88dcb1c16a37305d96f327"
+    },
+    "src-a70845766daa38d8": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+      "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff"
+    },
+    "src-59596264f979a2da": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+      "sha256": "cdf0c1afaf5065f6759130fd443aed0c24526e648bbef7b9ace4068ea8119b03"
+    },
+    "src-578b8f574b3de503": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+      "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47"
+    },
+    "src-84046de74698cc70": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/wan13b_lora_grad_epilogue.py",
+      "sha256": "719e6c2b3c9c447664dc7b39df2666237293daaea7c28631385eb416ac40781d"
+    },
+    "src-04af16f2c635378c": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/runtime/wan13b_rollout_cuda_graph.py",
+      "sha256": "ded58da8e42e605e13e4b7e27170ec86e5145c8090e48028705246629e1b0395"
+    },
+    "src-1a0e9283a3c285ea": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/cost_model.py",
+      "sha256": "f7c24028f90d77df9af48fd7900aea2e7cf7814efab85d614943f1f19f8021a6"
+    },
+    "src-08a95d62329e282a": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/helios_action_costs.py",
+      "sha256": "313144c96afc98f52fc6234f4b6408122b859e6387228dd04a0999007f3adde1"
+    },
+    "src-059fd3c28029d82b": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/implementation_library.py",
+      "sha256": "5aae39955bcde32414542576f73c61f88951760052e55b15be59a893e5db1809"
+    },
+    "src-1ecf2c3c95cac55d": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/measurement.py",
+      "sha256": "a3b05e01850398c146a7de0ecadc895c997b18ae702ee06094623a26dd308706"
+    },
+    "src-f39a756f1f057342": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/search/profile.py",
+      "sha256": "54ad18f3095431b9001bdd3971dbab1a4e2835c68b2b30db511ecf1df315d957"
+    },
+    "src-66b13fd48767ca9f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "src/distillschedule/training/checkpoint.py",
+      "sha256": "fb36d2bb1bb65a0e5d21f355d734eea511b417fb62278a5d204193dea62d2d4e"
+    },
+    "src-b2e4eb2777333117": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_checkpoint_block_retention.py",
+      "sha256": "28ef42185016c63255b6e074f9459487a5a75a8a6218a9c602bda907e28cba0a"
+    },
+    "src-48a6ac669182b23f": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_h3_cache_workflow.py",
+      "sha256": "8a14a2790625984cfcfcd68e34e24fc57d146b2258ee7b5d2aa092ce814db21d"
+    },
+    "src-51dbdd0fe3eb1d77": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_livewan_generator_modulation.py",
+      "sha256": "36338ea144784604be793ffaac6cda8bb69b4168da1fb3c82e7b94c996e4a077"
+    },
+    "src-2eeb8de3479a3f51": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_profile_guided_search.py",
+      "sha256": "c6242a286c6ec42b20e4a515f7ca7e681972fc2768e66d2f17a43d338156b52e"
+    },
+    "src-77c254a4c66ec9f0": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_wan13b_cast_composition.py",
+      "sha256": "2c705444013abb6bbbb3d55adeae6627483a611627e76c372051ee10ac4cb702"
+    },
+    "src-36d3189ed5fbee78": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_wan13b_grad_epilogue.py",
+      "sha256": "2f317908e0294195b836843bfa960c96dcee370554cc31f8dfa401443fc29a1a"
+    },
+    "src-f92dd8b48f2779e3": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_refactor_wan13b_rollout_cuda_graph.py",
+      "sha256": "f31ad539458c8def9cf0a80d4e31e2c24340fdfeefa16b91dab095f609100b95"
+    },
+    "src-87ce2efed4540dc1": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_runtime_fsdp2_variable_forward.py",
+      "sha256": "3a967bc87c009bf911d3f862746431e91bab4310e7d882b55034bf99737e4084"
+    },
+    "src-7dd0f978e0985dd5": {
+      "repository": "sliortega295-ops/DMD-System",
+      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
+      "path": "tests/test_training_helios_gan_native_history.py",
+      "sha256": "e8c2ad38dc34544dd73c4bef9d712127ac46b892528f2d75328efea661f774a0"
+    }
+  },
+  "curated_date": "2026-10-31",
+  "sources": [
+    {
+      "source_id": "src-813a382e3cb3956a",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan generated actions and reusable component costs",
       "tags": [
@@ -28,11 +992,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
-      "path": "docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
-      "sha256": "c609e4a7b8c69e96afffbd18e71d35d13bfb64f807cd19efe1af7108e801c6bd",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md",
+      "source_id": "src-ef5b0c6322c92787",
       "locator": "结果、合同、限制与失败记录",
       "title": "H3 measured action costs → common search → native performance closure",
       "tags": [
@@ -55,11 +1015,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
-      "path": "docs/experiments/DMD_H3_PREPARED_ACTIONS_20260907.md",
-      "sha256": "68150c227a5578ff4a672ad142a25f4a33a66c571fe8e7f27f4ef785849b6ddf",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_H3_PREPARED_ACTIONS_20260907.md",
+      "source_id": "src-a08e77108b1dc0ac",
       "locator": "结果、合同、限制与失败记录",
       "title": "H3 generated prepared-action native gate",
       "tags": [
@@ -76,11 +1032,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde",
-      "path": "docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
-      "sha256": "fc6a0cd2c4fbe5fe7d079f520f208f1d51633ea0b779c98b22f5215746a6e977",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4cc3a4c9c965fe7b35d98f6e0c39d45115d35dde/docs/experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md",
+      "source_id": "src-6a506c56ce4209be",
       "locator": "结果、合同、限制与失败记录",
       "title": "Helios No-GAN / GAN: measured search → native execution",
       "tags": [
@@ -106,11 +1058,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
-      "path": "docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
-      "sha256": "9f0619b5f9cf0406337b1aa5a21fb6a3b25ec2a9d0164564e14db246861c1eaa",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa/docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+      "source_id": "src-1294073e63e3d3d8",
       "locator": "结果、合同、限制与失败记录",
       "title": "Native planner continuation: LiveWan complete, H3 numerical gate blocked",
       "tags": [
@@ -134,11 +1082,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "8e6fd674302260ea24fa63f0121357db9ac15656",
-      "path": "docs/experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md",
-      "sha256": "90c5de46b2cb0773f3c85250ed0c8cdc14e0e6642a47cb2e238ca3b6a3d20077",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/8e6fd674302260ea24fa63f0121357db9ac15656/docs/experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md",
+      "source_id": "src-b2d9c1b6d831045f",
       "locator": "结果、合同、限制与失败记录",
       "title": "Native Wan stage calibration pilot — 2026-09-07",
       "tags": [
@@ -156,11 +1100,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "18e889ad3653103e7f1d1aebfb055d71cdc22205",
-      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md",
-      "sha256": "58cb3a7fb426f7c7b49bc8bbac0e55639c3c626ea5d88be599e961bfdd846f66",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/18e889ad3653103e7f1d1aebfb055d71cdc22205/docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md",
+      "source_id": "src-f909bdd49c386cf8",
       "locator": "结果、合同、限制与失败记录",
       "title": "Joint-planner Wan native bridge — 2026-09-07",
       "tags": [
@@ -177,11 +1117,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "4b511c49e3b8363d60443f839ebd66f8ea4f69cb",
-      "path": "docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
-      "sha256": "85024940b33d35afea325fe25f074319dac7d051a2a391d61d7606e48145f08f",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4b511c49e3b8363d60443f839ebd66f8ea4f69cb/docs/experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md",
+      "source_id": "src-cbde5c4262a409d4",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan measured-cost planner: closed-loop native diagnostic",
       "tags": [
@@ -194,11 +1130,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "63e7164267a1b2e72304c723b6dd82eb788b6b0f",
-      "path": "docs/experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md",
-      "sha256": "301b5da5347c74203be53424334d9481aab7b7e45026f3d0055c60953d52d7a0",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/63e7164267a1b2e72304c723b6dd82eb788b6b0f/docs/experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md",
+      "source_id": "src-4b0cf6e0d6333485",
       "locator": "结果、合同、限制与失败记录",
       "title": "LiveWan native action and transport evidence",
       "tags": [
@@ -217,11 +1149,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "6c7d0cbaac3a80eba8d82f409db826fb4572c50f",
-      "path": "docs/experiments/DMD_LIVEWAN_POOL_DAG_20260907.md",
-      "sha256": "6d457593c29bcb81a0e80727c3b02cc3972a697529d04ca4325e205bbc3019c6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6c7d0cbaac3a80eba8d82f409db826fb4572c50f/docs/experiments/DMD_LIVEWAN_POOL_DAG_20260907.md",
+      "source_id": "src-1b8ad1181fbdff47",
       "locator": "结果、合同、限制与失败记录",
       "title": "LiveWan native observations → source-bound pool DAG",
       "tags": [
@@ -237,11 +1165,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "31f4388ab3ef696d1dd2a21cba500c3b65a0698a",
-      "path": "docs/experiments/GAN_CUDA_BASELINE_OPTIMIZATION_20260829.md",
-      "sha256": "f9a5565cb7602bbb5c037d8ba9b6f686c1488f86d3e43f64de193779344e1579",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/31f4388ab3ef696d1dd2a21cba500c3b65a0698a/docs/experiments/GAN_CUDA_BASELINE_OPTIMIZATION_20260829.md",
+      "source_id": "src-5634cc6118d814a9",
       "locator": "结果、合同、限制与失败记录",
       "title": "GAN CUDA-residual baseline optimization task contract",
       "tags": [
@@ -259,11 +1183,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "111e293dc79978132af91ab5515a096d941b94fe",
-      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
-      "sha256": "095d59f00359200d90d5f29d24e1b19e9ddc45dfd5d235bb8580e316cbbca28a",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/111e293dc79978132af91ab5515a096d941b94fe/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_CLOSURE_20260825.md",
+      "source_id": "src-1dd2f088594e0f1a",
       "locator": "结果、合同、限制与失败记录",
       "title": "Helios14B node-HSDP optimization closure (Iterations 368-382)",
       "tags": [
@@ -304,11 +1224,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "c93c2736e0fc528e72e63229998d21d87181d346",
-      "path": "docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
-      "sha256": "a54b5590ae91b6e4c650ed73b89a861cf641563fae7a1328528c70ca241735b3",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c93c2736e0fc528e72e63229998d21d87181d346/docs/experiments/HELIOS14B_HSDP_OPTIMIZATION_LADDER_20260825.md",
+      "source_id": "src-948c7233b8095992",
       "locator": "结果、合同、限制与失败记录",
       "title": "Helios14B node-HSDP optimization ladder (Iterations 351-367)",
       "tags": [
@@ -343,11 +1259,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a065830e550151c56934ec83771ea506708d0e14",
-      "path": "docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
-      "sha256": "6347bed7c7252e3dd33e52ff9a6681ba992d1ca48e49b8b6070295d98ecadcd6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a065830e550151c56934ec83771ea506708d0e14/docs/experiments/HELIOS_H100_NOGRAD_RETENTION.md",
+      "source_id": "src-1a9a55b9c09b6b82",
       "locator": "结果、合同、限制与失败记录",
       "title": "Bounded H100 Helios no-grad Generator retention experiment",
       "tags": [
@@ -364,11 +1276,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "54351707288c8d8a8d2efd789ece708852a07033",
-      "path": "docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
-      "sha256": "39a2cf2b0c23a2ab9b888d6758b7ed0f0d2dea20f4a3309b2e627e4b308f8e1f",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/54351707288c8d8a8d2efd789ece708852a07033/docs/experiments/LIVEWAN_CONTINUOUS_B16_B32_20260901.md",
+      "source_id": "src-fbfaad6c67ede4fc",
       "locator": "结果、合同、限制与失败记录",
       "title": "LiveWan continuous B16/B32 diagnostics (Iterations 143-178)",
       "tags": [
@@ -395,11 +1303,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "c7590a3e45abd5770e4069cbf26fe3ceba2dcf1b",
-      "path": "docs/experiments/LIVEWAN_H100_TEACHER_RESIDENT.md",
-      "sha256": "e5604090f3a74cb338db4ef2497bf64893594885bd24c7da2a1ec5a75a377724",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c7590a3e45abd5770e4069cbf26fe3ceba2dcf1b/docs/experiments/LIVEWAN_H100_TEACHER_RESIDENT.md",
+      "source_id": "src-a115c002040d1d6a",
       "locator": "结果、合同、限制与失败记录",
       "title": "H100 C34 pipeline: Teacher residency probe",
       "tags": [
@@ -411,11 +1315,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "c69876197aeaccbab19b515b54d1022f07634422",
-      "path": "docs/experiments/WAN13B_MERGED_SHADOW_NOISE_STUDY.md",
-      "sha256": "0ce92fe554a35198ffea08fa5419539b018a76ebeac0e5a876ae8e340a84d52b",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/c69876197aeaccbab19b515b54d1022f07634422/docs/experiments/WAN13B_MERGED_SHADOW_NOISE_STUDY.md",
+      "source_id": "src-2a22e279e367afb8",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan1.3B merged-LoRA shadow noise study (opt-in)",
       "tags": [
@@ -427,11 +1327,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "e8a72d4cda487e43f2652e75e3d3e1f83604105c",
-      "path": "docs/experiments/WAN13B_RESIDENT_CHUNK2048_20260824.md",
-      "sha256": "3e8a9bf2205ae668bbf231f95f8a60dc6b4654a8d972d58db9735853d3605204",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/e8a72d4cda487e43f2652e75e3d3e1f83604105c/docs/experiments/WAN13B_RESIDENT_CHUNK2048_20260824.md",
+      "source_id": "src-b7197cfdfbe25b83",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan1.3B Resident modulation-chunk diagnostic (2026-08-24)",
       "tags": [
@@ -447,11 +1343,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "9186aee022e7d8933ca84429bde7f54868f203de",
-      "path": "docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
-      "sha256": "a22a0ef2960e4e6f1323a24f18c23ed21bb973ad6ce7ff4e7acf072e9c00d8fe",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/9186aee022e7d8933ca84429bde7f54868f203de/docs/experiments/WAN13B_RESIDENT_OPTIMIZATION_LADDER_20260824.md",
+      "source_id": "src-9288be8fa193a4fd",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan1.3B Resident optimization ladder (Iterations 340-349)",
       "tags": [
@@ -486,11 +1378,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "b9dd25e36dfa45e6768428eb08f549afa7d3895e",
-      "path": "docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
-      "sha256": "9b5da1646210931109837f473e8aec1355c4ab095e09da6a8e3c02e6264290b4",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/b9dd25e36dfa45e6768428eb08f549afa7d3895e/docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md",
+      "source_id": "src-909b74a4c3c8ccbc",
       "locator": "结果、合同、限制与失败记录",
       "title": "Wan1.3B Generator No-Grad `torch.compile` Canary (2026-08-24)",
       "tags": [
@@ -511,11 +1399,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/current_status.md",
-      "sha256": "ba08d5ea022ec13e042478a26100a7d02f8c90162618fc042d4367ba224d667b",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/current_status.md",
+      "source_id": "src-151a1557e8a93454",
       "locator": "结果、合同、限制与失败记录",
       "title": "Helios GAN-on optimization pause summary",
       "tags": [
@@ -532,11 +1416,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/draft.md",
-      "sha256": "ee84eb974cd18e1b9196c4f1fc1b97035829f703879d68571cd211de38d02b68",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/draft.md",
+      "source_id": "src-a31f8908704d800d",
       "locator": "结果、合同、限制与失败记录",
       "title": "Helios GAN-on CUDA-resident optimization draft",
       "tags": [
@@ -577,11 +1457,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "205dbd6fac25ad7b46f24040e3f2250f1bd6c696",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration351_profile.md",
-      "sha256": "8d0fd4185e20784429130b8e59ed06aa1dd2d1c2312e833c3bb3380e0d63cc72",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/205dbd6fac25ad7b46f24040e3f2250f1bd6c696/docs/experiments/gan_cuda_baseline_opt_20260829/iteration351_profile.md",
+      "source_id": "src-7d15f576decd4499",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 351 profile attribution",
       "tags": [
@@ -596,11 +1472,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "dcc4a740a8dbf17969a7618f1514c7d6438e9931",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
-      "sha256": "eda0dfdc9c3b035a1565e2dc3073150932d97fe586e16dc30dc5f69e23f50cae",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/dcc4a740a8dbf17969a7618f1514c7d6438e9931/docs/experiments/gan_cuda_baseline_opt_20260829/iteration352_optimizer_warmup.md",
+      "source_id": "src-589cd1a8d1de04c8",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 352: world16 optimizer dispatch warmup",
       "tags": [
@@ -623,11 +1495,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "5f399a0f4faf4df0a38e7a46255299e00992da71",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration353_local_fa2.md",
-      "sha256": "81baa7a7e9886fcc9503c303ff46992c23eda67f1566fb5252a81cbbaec5cc6d",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5f399a0f4faf4df0a38e7a46255299e00992da71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration353_local_fa2.md",
+      "source_id": "src-9e0e0b0c940a0a85",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 353: pinned local FlashAttention-2",
       "tags": [
@@ -642,11 +1510,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "92de9f07af81a9e7ff96de755aafdcf4dadadf2b",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
-      "sha256": "2c3b55fca8d6c43e2016c518d2aa5c7e0e6dd6140e932002d11f4f0d8a779c78",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/92de9f07af81a9e7ff96de755aafdcf4dadadf2b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration354_modulation_chunk2048.md",
+      "source_id": "src-8e14e5e6508ea019",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 354: modulation chunk 2048",
       "tags": [
@@ -666,11 +1530,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "7613dcedcbdca1428c0a484894bf2e421ac5f2c8",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
-      "sha256": "4cce3e406c835e586333bfdd44f99a3dec78fd3ce11b794b28c3ce5ddeab2ca1",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7613dcedcbdca1428c0a484894bf2e421ac5f2c8/docs/experiments/gan_cuda_baseline_opt_20260829/iteration355_selective_flash_checkpoint.md",
+      "source_id": "src-2432112f3d82f446",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 355: Critic selective Flash checkpoint replay",
       "tags": [
@@ -691,11 +1551,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "ea520a2e339506e704122c3e35314de3ac9e09b2",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration356_c5_profile.md",
-      "sha256": "712c4014d75fc5a50e6c38569b9b0b7d968a2274993f652d542196f6e0a91005",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/ea520a2e339506e704122c3e35314de3ac9e09b2/docs/experiments/gan_cuda_baseline_opt_20260829/iteration356_c5_profile.md",
+      "source_id": "src-de21b2289981c49a",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 356: C5 post-optimization profile",
       "tags": [
@@ -712,11 +1568,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "6d88e4d45ab07e3fd54bc9edacc3954ee6168937",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
-      "sha256": "451e6488d156ece3d4a6f8b6c57457a5019bfa2dfa2e3d239d20314d5746aeb8",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6d88e4d45ab07e3fd54bc9edacc3954ee6168937/docs/experiments/gan_cuda_baseline_opt_20260829/iteration357_c6_hsdp.md",
+      "source_id": "src-ba140fbdd5b54fee",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 357: C6 node-HSDP placement result",
       "tags": [
@@ -737,11 +1589,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "d5ff09623a1f57a8194619b24fc633fd51569fff",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
-      "sha256": "653b9e61977c7b3b82fa3d4ccf95c988c08e2795b520222448d9385e46fdf0b1",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/d5ff09623a1f57a8194619b24fc633fd51569fff/docs/experiments/gan_cuda_baseline_opt_20260829/iteration358_c7_ncu.md",
+      "source_id": "src-13c5442e75460a2e",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 358: C7 dominant Critic GEMM NCU diagnostic",
       "tags": [
@@ -762,11 +1610,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "7f7a5c28db628a22ad494d4533590dc71b3d9afa",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
-      "sha256": "1a86fda321470b615fdf03c0b9a5cfde1fec8b46ca69b016a676def6269f2654",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f7a5c28db628a22ad494d4533590dc71b3d9afa/docs/experiments/gan_cuda_baseline_opt_20260829/iteration359_c8_crosskv.md",
+      "source_id": "src-dc0b56c8b7b64078",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 359: exact Generator rollout cross-attention K/V reuse",
       "tags": [
@@ -787,11 +1631,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "06b53e85e6598bbc43d93c785a85520da7c3f716",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
-      "sha256": "1e2b4b978b27dac02601cbe836ce77c6722419eae4d28739dbba8c228c05c4c2",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/06b53e85e6598bbc43d93c785a85520da7c3f716/docs/experiments/gan_cuda_baseline_opt_20260829/iteration363_c11_modnorm_backward.md",
+      "source_id": "src-f0ea38533746c3fb",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 363: exact modulated-norm backward",
       "tags": [
@@ -813,11 +1653,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "4e85b5d6bc7f884ca002d4cd0d66dce070531528",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration364_c11_profile.md",
-      "sha256": "c965282012f240db67d572d86edc6faf579fa4a0b40e078ad17caf88762bb30a",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/4e85b5d6bc7f884ca002d4cd0d66dce070531528/docs/experiments/gan_cuda_baseline_opt_20260829/iteration364_c11_profile.md",
+      "source_id": "src-47d56f8044e6eae2",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 364: C11 post-fix GAN-on profile",
       "tags": [
@@ -837,11 +1673,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "2883f88a14654d3e6369c4f14de01a1f932edf35",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
-      "sha256": "ddc9058e9a0a265ee1654ebf96eb87cca7a10622c66809a6d0a395b5ee8fd7cd",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/2883f88a14654d3e6369c4f14de01a1f932edf35/docs/experiments/gan_cuda_baseline_opt_20260829/iteration365_c12_rollout_nosync.md",
+      "source_id": "src-0d0d9cd4fc360a28",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 365: C12 explicit rollout-fence cleanup",
       "tags": [
@@ -861,11 +1693,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "2d70afbbc3f28d828304b4f08cd6440c4e3e7a71",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
-      "sha256": "ba96398b5926eada6b42dfc48de5a2bc042ebaab9c86b04bc424cfc217552819",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/2d70afbbc3f28d828304b4f08cd6440c4e3e7a71/docs/experiments/gan_cuda_baseline_opt_20260829/iteration366_c13_static_context.md",
+      "source_id": "src-3fbdfb55ba16734a",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 366: C13 exact Generator rollout static context",
       "tags": [
@@ -884,11 +1712,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "b6cdeed6211bcfb5433840da68d2339b427946f0",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
-      "sha256": "e3bdceb6f6534566f83ef926428e74e0a15bdfb77b2d5bce458dda9eb7d811b3",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/b6cdeed6211bcfb5433840da68d2339b427946f0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration367_c14_fused_layernorm.md",
+      "source_id": "src-22d3ecdb06aa6132",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 367: C14 fused BF16 LayerNorm and modulation",
       "tags": [
@@ -908,11 +1732,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "1ef0e907aff7a64d4b459f0f41af64c499d3689b",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
-      "sha256": "44d8752946a28e7eb264e6d7f6bd9509b50bdff149f76d150766831edf0d8dc6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/1ef0e907aff7a64d4b459f0f41af64c499d3689b/docs/experiments/gan_cuda_baseline_opt_20260829/iteration369_c15_fused_backward.md",
+      "source_id": "src-a3b2ba267ac58bf6",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 369: C15 fused modulated-norm backward",
       "tags": [
@@ -932,11 +1752,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "50aa0975239449dd2fe874f1c159a23158e5f6d9",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration370_c15_profile.md",
-      "sha256": "d4cf398778d2d7e6ea14cb28e1251d79b821303e891eba906ed62d778a4a5dd6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/50aa0975239449dd2fe874f1c159a23158e5f6d9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration370_c15_profile.md",
+      "source_id": "src-6057d4cc7209fe0d",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 370: C15 post-fix Nsight diagnosis",
       "tags": [
@@ -952,11 +1768,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "5fab44949b0d9184fe7fb868ee91c79b91ebf174",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
-      "sha256": "7d3fc4d82e5ea1b086c0b54c0c10914be46591da9795890ced10f19946f9aa0f",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5fab44949b0d9184fe7fb868ee91c79b91ebf174/docs/experiments/gan_cuda_baseline_opt_20260829/iteration371_c16_nccl_protocol.md",
+      "source_id": "src-95cc9e16e7c86d83",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 371: C16 NCCL protocol canary",
       "tags": [
@@ -976,11 +1788,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "6137c4cfa762f7b73aaa08614bd4ac6b19466070",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
-      "sha256": "74b5a6da155e72ede92ca000140ae7885da34c32b5d616948d296614253db269",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/6137c4cfa762f7b73aaa08614bd4ac6b19466070/docs/experiments/gan_cuda_baseline_opt_20260829/iteration372_c17_scalar_logs.md",
+      "source_id": "src-a53c1034e43d9e38",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 372: C17 elide unused official Critic scalar logs",
       "tags": [
@@ -1001,11 +1809,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "d91c3727cb22642dc9f54061315f15703dfe623a",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
-      "sha256": "b1c014752fd1bb9238e9c5833958e76cb6d991d6b71ecf725786139aea8c5212",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/d91c3727cb22642dc9f54061315f15703dfe623a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md",
+      "source_id": "src-1bdd9efcff7d0c60",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 373: C18 official Generator `free_memory` elision",
       "tags": [
@@ -1026,11 +1830,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "91ca0e007f64cfb857089fd73957669397754a8c",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
-      "sha256": "fca2a83f94060a87c3664c3545ea4dabe08ff5e5d404a48d8df9912295da13ab",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/91ca0e007f64cfb857089fd73957669397754a8c/docs/experiments/gan_cuda_baseline_opt_20260829/iteration374_c19_flash_ncu.md",
+      "source_id": "src-6d7fb84b87dedbdc",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 374: C19 production FlashAttention NCU diagnostic",
       "tags": [
@@ -1050,11 +1850,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "e89942f29debc04d80b58397614a3f6828d6208a",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration375_c20_postfix_profile.md",
-      "sha256": "84aac39281b16a50850688dc1cdc62a3abf4991282b936730b45f558b2ae2da3",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/e89942f29debc04d80b58397614a3f6828d6208a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration375_c20_postfix_profile.md",
+      "source_id": "src-baba870629adee42",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 375: C20 post-C18 diagnostic profile",
       "tags": [
@@ -1071,11 +1867,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "59ae41c6a6a3d295117737ed6b26ef3e9a4102a9",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
-      "sha256": "c64650edb2262bcb21c5f98013f1a102c6d09cc9b81bd8e36c397fee43d6e436",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/59ae41c6a6a3d295117737ed6b26ef3e9a4102a9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md",
+      "source_id": "src-02346912f8ae4024",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 376: C21 Generator no-grad persistent unshard",
       "tags": [
@@ -1097,11 +1889,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "313dcbd1925f831ce1d9bf3e322b7a8a5fec1567",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration377_c22_post_c21_profile.md",
-      "sha256": "94706f13d404b4e8e48c4ebc8f250bf3e340cdddc47b6a61c4d1c47cbe6326e2",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/313dcbd1925f831ce1d9bf3e322b7a8a5fec1567/docs/experiments/gan_cuda_baseline_opt_20260829/iteration377_c22_post_c21_profile.md",
+      "source_id": "src-70c27f2979b74f01",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 377: C22 post-C21 diagnostic profile",
       "tags": [
@@ -1117,11 +1905,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "7f64327754a31a409f581470f588c5e94a2787b4",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
-      "sha256": "b725596d6c899859e7df822036a611c44003ccb6a5eedab039c6936c7ddbf07b",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/7f64327754a31a409f581470f588c5e94a2787b4/docs/experiments/gan_cuda_baseline_opt_20260829/iteration378_c23_allocator_noflush.md",
+      "source_id": "src-3b1479458ada2c5f",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 378: C23 persistence allocator no-flush",
       "tags": [
@@ -1141,11 +1925,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "ae6f2b28b97739143b02f21c6496d3afbb5765d0",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
-      "sha256": "f90d92463f09ecdd999cabe5f6475978bb2af396b7d18d02f099b77a34f183b8",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/ae6f2b28b97739143b02f21c6496d3afbb5765d0/docs/experiments/gan_cuda_baseline_opt_20260829/iteration379_c24_expandable_noflush.md",
+      "source_id": "src-50c24a7e62ed78be",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 379: C24 expandable allocator with persistence no-flush",
       "tags": [
@@ -1165,11 +1945,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "160f19543cfdefd71ba9f8dc73bd79cad7b6d207",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
-      "sha256": "68266926ce8416d2612d5197ebb721d39b3f48d6360d639de8e4d890af719dde",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/160f19543cfdefd71ba9f8dc73bd79cad7b6d207/docs/experiments/gan_cuda_baseline_opt_20260829/iteration380_c25_history_current_fusion.md",
+      "source_id": "src-b82f6b4e724c59d9",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 380: C25 exact history/current add-and-cat fusion",
       "tags": [
@@ -1191,11 +1967,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
-      "sha256": "8a8a2b1075527bb856dcfe065e221035532d719440ea1d9cfdb2d3a0617e793f",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/iteration386_c27_frozen_cross_norm.md",
+      "source_id": "src-a929307a285edaff",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 386: C27 frozen cross-attention LayerNorm canary",
       "tags": [
@@ -1216,11 +1988,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
-      "sha256": "4cb0fc460cc10a6c4d40eaa8591d61cf3fd49aa493967d620c8df322ddfaecd6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/plan.md",
+      "source_id": "src-a7496c54060b6e5b",
       "locator": "结果、合同、限制与失败记录",
       "title": "Executable plan",
       "tags": [
@@ -1236,11 +2004,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "a78827099c89795416f9ac6c77284dd5bacb0383",
-      "path": "docs/experiments/gan_cuda_baseline_opt_20260829/preflight.md",
-      "sha256": "45812c5197ed1e584618c4e723012f0b6f328369cf0ac99d0df15eb5e9f9d394",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/a78827099c89795416f9ac6c77284dd5bacb0383/docs/experiments/gan_cuda_baseline_opt_20260829/preflight.md",
+      "source_id": "src-dfa5f25a56cccc6b",
       "locator": "结果、合同、限制与失败记录",
       "title": "C1 iteration preflight",
       "tags": [
@@ -1281,11 +2045,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "5c75376982c2d114402992e3538bd59ea9f12fb0",
-      "path": "docs/experiments/h100_five_workload_b16_20260930.md",
-      "sha256": "0787aa2556014e8f9753c42dac1a86ceae5b0c91a32425f49bf33f7e903a5ea7",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/5c75376982c2d114402992e3538bd59ea9f12fb0/docs/experiments/h100_five_workload_b16_20260930.md",
+      "source_id": "src-0c0721ac1fad24f2",
       "locator": "结果、合同、限制与失败记录",
       "title": "Eight-H100 / logical-B16 adaptation",
       "tags": [
@@ -1301,11 +2061,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8",
-      "path": "docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
-      "sha256": "ad7701a593a642c2f8a8e91ae90cd6f7d54962e27a12c085c5b21b18f557b4da",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/17ab1ac8cfc21684b1eaa5cfa83fed7fa70261d8/docs/experiments/minimax_h3_native_nsys_attribution_20260818.md",
+      "source_id": "src-c317dab236c3945a",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 301 — MiniMax-H3 Native Nsight Attribution",
       "tags": [
@@ -1334,11 +2090,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "524048c94c6374ae5071bc23e93daf19fc1e0bb9",
-      "path": "docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
-      "sha256": "b607b6c4696cd748186b64405b3eeaf85bc5ee12da8dca2125066c049b6ef7c5",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/524048c94c6374ae5071bc23e93daf19fc1e0bb9/docs/experiments/wan13b_fair_pr22_iteration328_20260822.md",
+      "source_id": "src-132ac9af0c6551a4",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 328 — Wan1.3B fair Resident/FSDP2 result",
       "tags": [
@@ -1363,11 +2115,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "af240f5e53f9a43eefe523a6473aa6a9fba0164e",
-      "path": "docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
-      "sha256": "c9142d2452e7f4847a6d4a8673d0076f08d2e458c414ec0251b9f74ac2e2ec7e",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/af240f5e53f9a43eefe523a6473aa6a9fba0164e/docs/experiments/wan13b_resident_gpu_residual_iteration336_20260823.md",
+      "source_id": "src-d666ab2299286974",
       "locator": "结果、合同、限制与失败记录",
       "title": "Iteration 336 — Wan1.3B resident GPU-residual correction",
       "tags": [
@@ -1392,11 +2140,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
-      "sha256": "2bc175bb416451aee472a8774cbf3893ca04c799a91fc4480d6b414a43b64a20",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r36/conclusion.json",
+      "source_id": "src-63e1e93d64b7ad24",
       "locator": "control_C2_s, candidate_C2_s, peak_allocated_GiB, numerical_status",
       "title": "conclusion",
       "tags": [
@@ -1418,11 +2162,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
-      "sha256": "d738ee46f68134ac6b2c578335c8c000403669a1a199b0b1413ad6b105c6006d",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r1/conclusion.json",
+      "source_id": "src-7183acc9a6b18f97",
       "locator": "rows[workload=W3]",
       "title": "conclusion",
       "tags": [
@@ -1449,11 +2189,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
-      "sha256": "2b0aafacd42444583350378d70de2af5267a9d1e66f1127df4d7d15609fdba51",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/livewan_r3/reports/conclusion.json",
+      "source_id": "src-8df2eaf8a0fc2b3a",
       "locator": "results[arm=only_B_full_fsdp16_v1]; capacity_boundary; source_boundary",
       "title": "conclusion",
       "tags": [
@@ -1472,11 +2208,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
-      "sha256": "23b41e53456c370db3d92e0f6b1b3ecb61d23b2a5a76dedc5f10de6d42494dbe",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r46/conclusion.json",
+      "source_id": "src-c56081f395a6bd59",
       "locator": "control_C2_s; candidate_C2_s; same_FA3_backend_both_arms; interpretation",
       "title": "conclusion",
       "tags": [
@@ -1492,11 +2224,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
-      "sha256": "fa9ae2519bc5abb5ab638d8dbfb3e90e37b46026e9f32cbb94e60486c1c3c957",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r43/conclusion.json",
+      "source_id": "src-28489615e2c14096",
       "locator": "actual_FA3_calls_per_cycle_per_rank; control_C2_s; candidate_C2_s",
       "title": "conclusion",
       "tags": [
@@ -1512,11 +2240,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
-      "sha256": "32431c07f8dc11b9c56cd82e3c0eb770360f799a1e674da960d89dccae77b40a",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r25/conclusion.json",
+      "source_id": "src-af43020831289e5f",
       "locator": "saved_s; coverage_caveat; review_note; long_trajectory",
       "title": "conclusion",
       "tags": [
@@ -1532,11 +2256,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
-      "sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/wan13b_lora_epilogue.py",
+      "source_id": "src-578b8f574b3de503",
       "locator": "module docstring; fused_lora_epilogue; inline PTX",
       "title": "wan13b_lora_epilogue",
       "tags": [
@@ -1552,11 +2272,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
-      "sha256": "3375865d138f6a395694a592412d41fbbc0e08f064646e4e4ce3dc17dde66cff",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/livewan_generator_modulation.py",
+      "source_id": "src-a70845766daa38d8",
       "locator": "build.op guards; canary_scope; PLAN_CONTRACT",
       "title": "livewan_generator_modulation",
       "tags": [
@@ -1572,11 +2288,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
-      "sha256": "362e4b3c142a3aaef90d2891ac6a561f92824bc0192f56ad60ecdab248214341",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r34/conclusion.json",
+      "source_id": "src-34cf77ee9b148032",
       "locator": "scope; coefficient_scope; claim; production_ready",
       "title": "conclusion",
       "tags": [
@@ -1592,11 +2304,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
-      "sha256": "dbc9873537f64466d38dce5648307073dc7fee31e5b6851fa967e9a5e8980d6a",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r41/conclusion.json",
+      "source_id": "src-005c2ff3d1675061",
       "locator": "exact_cache_input_gate; control_C2_s; candidate_C2_s; numerical_status",
       "title": "conclusion",
       "tags": [
@@ -1612,11 +2320,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
-      "sha256": "c1eb63a831fb003be65cb68137d3983f736ecae8ec936d5b04e39b77a827ef50",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/SIX_WORKLOAD_RESULTS_CORRECTION_20261019.md",
+      "source_id": "src-71faaeda6f6e2f07",
       "locator": "section 2: N70-OFF retime and preserved failure",
       "title": "六个 workload：当前结果口径、旧审计勘误与源码阅读指南",
       "tags": [
@@ -1659,11 +2363,7 @@
       ]
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
-      "sha256": "f8b70f3a844a237c1aa7404a5d4db4e0554069f98e8dbf19b881f841cf23d496",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/results_correction/evidence/gan_nomerge/gan_nomerge_retime.json",
+      "source_id": "src-823d8062389bef33",
       "locator": "status; strict_numerical_status; rank records",
       "title": "gan_nomerge_retime",
       "tags": [
@@ -1679,11 +2379,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "src/distillschedule/search/implementation_library.py",
-      "sha256": "5aae39955bcde32414542576f73c61f88951760052e55b15be59a893e5db1809",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/search/implementation_library.py",
+      "source_id": "src-059fd3c28029d82b",
       "locator": "ENTRIES; implementation_inventory.search_admission",
       "title": "Exact existing entry modules, not copied kernels or inferred CUDA support.",
       "tags": [
@@ -1701,11 +2397,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
-      "sha256": "5e99d7cb8dc2a394a2db7b5f619bd59813e52d17a7454d63e44149660a2393d7",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r14/conclusion.json",
+      "source_id": "src-d9e394b6fd673845",
       "locator": "status; numerical; saved_seconds",
       "title": "conclusion",
       "tags": [
@@ -1721,11 +2413,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
-      "sha256": "de1ab6260c895d540bfd9cb24ea25ff5ea9f9b88a742017d1bc8104fd300ee53",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/merged_lora_rejected/summary.md",
+      "source_id": "src-b27b1c672bfa4ccf",
       "locator": "结果与证据边界",
       "title": "Wan1.3B merged-LoRA shadow: 30-cycle self-noise experiment",
       "tags": [
@@ -1747,11 +2435,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
-      "sha256": "b6a55cb6ef6a32bc4a46514299ac1ac0d19336d65e64075f7d9d6425b9616032",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/evidence/state_retention/r18/conclusion.md",
+      "source_id": "src-ed546d99c1b95147",
       "locator": "结果与证据边界",
       "title": "Wan：状态保留策略的真实搜索与保存计划执行",
       "tags": [
@@ -1770,11 +2454,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "docs/guides/optimization_capabilities.md",
-      "sha256": "eb2eed667d2370287ae7245b90dc0b4d02d80238cb339f8780870b02f3c91dcb",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/guides/optimization_capabilities.md",
+      "source_id": "src-2e16f16262da9d77",
       "locator": "结果与证据边界",
       "title": "Physical capabilities and executable plans",
       "tags": [
@@ -1803,11 +2483,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "docs/status/ROLE_PRODUCER_DISPATCH.md",
-      "sha256": "c6dc442a039e198bba02391a640aebfab11c792183981d841c8d4e713a96c1d5",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/status/ROLE_PRODUCER_DISPATCH.md",
+      "source_id": "src-33220ce160ac9d1b",
       "locator": "结果与证据边界",
       "title": "Component-derived producer dispatch on the existing role runtime",
       "tags": [
@@ -1827,11 +2503,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/manifests/imported_A100_exact_source_r1.json",
-      "sha256": "c11ad9be4ebe555f34fa6a277f4b0ae68adaa4ea63d868f812442717609ec7b6",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/manifests/imported_A100_exact_source_r1.json",
+      "source_id": "src-6b3d5214baeef170",
       "locator": "来源文件本体",
       "title": "imported_A100_exact_source_r1",
       "tags": [],
@@ -1841,11 +2513,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/manifests/committed_offline_canary_source_r1.json",
-      "sha256": "e51b8c375f4ce766a58c8dbfae3e26ac51bc384da16680049b68224ee44eef60",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan13b_h100_norm_graph_20261015_r1/norm_offline_import_recovery_r3/manifests/committed_offline_canary_source_r1.json",
+      "source_id": "src-7eb74d1d46095792",
       "locator": "来源文件本体",
       "title": "committed_offline_canary_source_r1",
       "tags": [],
@@ -1855,11 +2523,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
-      "sha256": "cd2849bc3145fc6fdfc79cb47af11dd5915d6c43cbe9fdd289a50c6b5495324d",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W1/artifacts/wan_matched_r1_result.json",
+      "source_id": "src-d4bde142d1fd8bf4",
       "locator": "来源文件本体",
       "title": "wan_matched_r1_result",
       "tags": [
@@ -1875,11 +2539,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/arm_table.csv",
-      "sha256": "0ca6aec3898f1bc5b8b26e427ceec32fb319d90335c7d23eda5344689b69b011",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/arm_table.csv",
+      "source_id": "src-cff5d54132fb837b",
       "locator": "来源文件本体",
       "title": "arm_table",
       "tags": [],
@@ -1889,11 +2549,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/artifact_sha256.json",
-      "sha256": "f8eb72a4fcf038f80c95dc9424501eff17797e3021ce6b7358cff4746e0f97c3",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/artifact_sha256.json",
+      "source_id": "src-7a1ff9a4f9e3cd9d",
       "locator": "来源文件本体",
       "title": "artifact_sha256",
       "tags": [],
@@ -1903,11 +2559,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/report.md",
-      "sha256": "c030845fef1a6fcc74970aa2b8cd8d0b00c60e3d7f6ce9349f1fb30e6aede735",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/report.md",
+      "source_id": "src-64773758077e33f8",
       "locator": "来源文件本体",
       "title": "W2: retained G, then only internal rollout-fence elision",
       "tags": [
@@ -1919,11 +2571,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
-      "sha256": "bc0b55746b97b3f24ea108f749e5094fb27150f96d8f07e9655540369358db91",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W2/artifacts/helios_h100_rollout_fence_probe_20261015_r1/reports/completed_fence_pair_r1/result.json",
+      "source_id": "src-7d059bfd81c12c99",
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
@@ -1939,11 +2587,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
-      "sha256": "8f4e850d4771fa4749c9f2d95e535255ae083b331944a69dbb1441bec1667587",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W3/reports/w3_official_swap_matched_r1.json",
+      "source_id": "src-396bf034d632b60a",
       "locator": "来源文件本体",
       "title": "w3_official_swap_matched_r1",
       "tags": [
@@ -1959,11 +2603,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
-      "sha256": "5c481c36044bb6759dcefd31f8f3044694d4ca772443ed92e155a71f43b748bd",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/manifests/timing_audit_committed_source_r1.json",
+      "source_id": "src-840d6c19493a7b00",
       "locator": "来源文件本体",
       "title": "timing_audit_committed_source_r1",
       "tags": [
@@ -1979,11 +2619,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/artifact_sha256.json",
-      "sha256": "28b102e3778d53b1e6c95a58f1fda65293bbdc63da1dfc74cb59676bbfc59477",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/artifact_sha256.json",
+      "source_id": "src-aef5964b2d566850",
       "locator": "来源文件本体",
       "title": "artifact_sha256",
       "tags": [],
@@ -1993,11 +2629,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/baseline_summary.json",
-      "sha256": "b5c4a287a30dcc13bcedf8865d8ca67f4a8f50761492d9916653475b0c298cb0",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/baseline_summary.json",
+      "source_id": "src-7efe5f71762fbc77",
       "locator": "来源文件本体",
       "title": "baseline_summary",
       "tags": [],
@@ -2007,11 +2639,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/candidate_summary.json",
-      "sha256": "333b63719852bcb8ad828ae2d465c0c6627ea44252e9cbf306f5c59fe1d74209",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/candidate_summary.json",
+      "source_id": "src-eb9a13ca9c5a96d0",
       "locator": "来源文件本体",
       "title": "candidate_summary",
       "tags": [],
@@ -2021,11 +2649,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
-      "sha256": "6b66166f3a36ddbe23a15e5d5c00cab6a2c1b851e99fcbd1fd75f907c01a04ca",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W4/artifacts/w4_h100_teacher_resident_20261015_r1/reports/completed_single_pair_r1/result.json",
+      "source_id": "src-4df255bce02b7779",
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
@@ -2041,11 +2665,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/arm_table.csv",
-      "sha256": "744f0d237d9ae75ea5ada39f5bed90b42a7c097195490347c174c81fc06771da",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/arm_table.csv",
+      "source_id": "src-426817762ecce9bb",
       "locator": "来源文件本体",
       "title": "arm_table",
       "tags": [],
@@ -2055,11 +2675,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/artifact_sha256.json",
-      "sha256": "4c965f52ac48734e0c8ebe092a6feb6caa617b267dcc24e5cd2ee21df04a1143",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/artifact_sha256.json",
+      "source_id": "src-e8852cf29a882390",
       "locator": "来源文件本体",
       "title": "artifact_sha256",
       "tags": [],
@@ -2069,11 +2685,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/per_rank_contract.csv",
-      "sha256": "a57bcf293222575c716fd4f9203282280be49ebb06aaab0255ea43cf2bf17ee2",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/per_rank_contract.csv",
+      "source_id": "src-0c6ad9db9ccc358b",
       "locator": "来源文件本体",
       "title": "per_rank_contract",
       "tags": [],
@@ -2083,11 +2695,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
-      "sha256": "8354eea5ea5757afc85eb60c009d68bfc87a9d560010b60fc1122d562b271e23",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/report.md",
+      "source_id": "src-a5ea47995da1666f",
       "locator": "来源文件本体",
       "title": "W5 H100: preserved three-arm re-audit, no new GPU experiment",
       "tags": [
@@ -2104,11 +2712,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
-      "sha256": "1072f45472f39ae09268ba6e5562c9d57660b2a97f2e430424ee01dd9950e1e2",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/completed_W5_three_arm_source_qualified_r2/result.json",
+      "source_id": "src-c6de4448f53cfccc",
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
@@ -2124,11 +2728,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
-      "sha256": "414ac8469ea08c92e7852955045966443a0a2138a241b74c29f9da1da7d6c8d5",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_cpu_staged_candidate_stall_r1.json",
+      "source_id": "src-123323c1cafa482f",
       "locator": "来源文件本体",
       "title": "w5_cpu_staged_candidate_stall_r1",
       "tags": [
@@ -2144,11 +2744,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
-      "sha256": "ff4ef977f2cf5058fbc56387c4fe6d6513291e0ef0d3591bb914f2045d959875",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W5/reports/w5_resident_actual_capacity_failure_r4.json",
+      "source_id": "src-af05123794b7a387",
       "locator": "来源文件本体",
       "title": "w5_resident_actual_capacity_failure_r4",
       "tags": [
@@ -2164,11 +2760,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/arm_table.csv",
-      "sha256": "7e233167d3e61cf405f745ca2a25aa7198b76a72699682a7c18f3ce4f4f3fe23",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/arm_table.csv",
+      "source_id": "src-bf6c6d904983398b",
       "locator": "来源文件本体",
       "title": "arm_table",
       "tags": [],
@@ -2178,11 +2770,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/artifact_sha256.json",
-      "sha256": "b93e515e72657566ef7c6885a4d4c3dc149249b7585efe875cbb51a7634a27d0",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/artifact_sha256.json",
+      "source_id": "src-69c48b118540eec1",
       "locator": "来源文件本体",
       "title": "artifact_sha256",
       "tags": [],
@@ -2192,11 +2780,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
-      "sha256": "514508e0d790788ab359363335a17e48323f5816cc1a7794041eb436ae74a4c9",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/report.md",
+      "source_id": "src-6e08dd5b24294e80",
       "locator": "来源文件本体",
       "title": "W6 same0419 native single-trial matrix",
       "tags": [
@@ -2216,11 +2800,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
-      "sha256": "e8ba806f429ac5c2ddcc0ac4cb58027902dc27984bb37ed6b0f4197c1608c2a0",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/result.json",
+      "source_id": "src-83e9a6769e3b614f",
       "locator": "来源文件本体",
       "title": "result",
       "tags": [
@@ -2236,11 +2816,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/source_receipt_sha256.json",
-      "sha256": "cc568358bdc3976d3ab2379380c7018372c042d491d301da9a4848dc3ce68d8d",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/artifacts/w6_resident_adaln16_staging_20261015_r1/reports/completed_same0419_matrix_r1/source_receipt_sha256.json",
+      "source_id": "src-49a3a9f3e3c0be12",
       "locator": "来源文件本体",
       "title": "source_receipt_sha256",
       "tags": [],
@@ -2250,11 +2826,7 @@
       "summary": "仅索引来源元数据；需阅读固定版本原文，不代表已复核全部内容。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
-      "sha256": "e9b7e8f30d0402cd0c67c5b7a4fd71bdbaffa6dcae047cb43e0f751df926b495",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/W6/reports/w6_tiny_trainable_state_parity_r1.json",
+      "source_id": "src-d17f4549cf084c7c",
       "locator": "来源文件本体",
       "title": "w6_tiny_trainable_state_parity_r1",
       "tags": [
@@ -2270,11 +2842,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
-      "sha256": "78d5c158c5f05624e9be3a5096a847cc5d31356f399f7d1399f767cd7bd7f3dc",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r47.md",
+      "source_id": "src-de689ab8124685a8",
       "locator": "来源文件本体",
       "title": "R47 — SSH recovered; W2 completed; W1 canary import repaired; foreign GPU use blocks launch",
       "tags": [
@@ -2301,11 +2869,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
-      "sha256": "16d4b00b57e5c6bcaf8bdad099e654028b54a6713353990035193fb9ec3a000a",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/h100/evidence/campaign/h100_campaign_handoff_20261016_r48.md",
+      "source_id": "src-78a6d03475096d3b",
       "locator": "来源文件本体",
       "title": "R48 — Explicit user stop before machine reboot",
       "tags": [
@@ -2325,11 +2889,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/train-opt-fsdp-multi-forward/SKILL.md",
-      "sha256": "8bdbf00ddc646cf262eef11388c50e5078556e8c3b1372b213def80c74fe82d7",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fsdp-multi-forward/SKILL.md",
+      "source_id": "src-8461a91df18d5930",
       "locator": "重复 forward、reshard 与 backward 约束",
       "title": "FSDP: several forwards in one iteration",
       "tags": [
@@ -2359,11 +2919,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/train-opt-action-ladder/SKILL.md",
-      "sha256": "666781d0c202b58f7f6938a6487af59fee1cba6b5439ae9340044f36e653f9a3",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-action-ladder/SKILL.md",
+      "source_id": "src-0163a22a09d4b78b",
       "locator": "Compile falls back / proving compile effective",
       "title": "The action ladder",
       "tags": [
@@ -2390,11 +2946,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/train-opt-fusion-patterns/SKILL.md",
-      "sha256": "9eae871838da3b374cb67ca1da06ea60d3c94dd5699a1e8e681e305626be4870",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-fusion-patterns/SKILL.md",
+      "source_id": "src-e867ddafc9cb207e",
       "locator": "Read these first / GEMM prologue and epilogue",
       "title": "Common fusion paths and examples",
       "tags": [
@@ -2435,11 +2987,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/train-opt-tiered-profiling/SKILL.md",
-      "sha256": "4840fa97aeb495e07da49e545a6f457a80006fc4518805073cb7a11f2cb68c33",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-tiered-profiling/SKILL.md",
+      "source_id": "src-548bf7df00993654",
       "locator": "Do not attribute backward with a module full backward hook",
       "title": "Tiered profiling",
       "tags": [
@@ -2464,11 +3012,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "docs/lessons.md",
-      "sha256": "f915dce7df92850320278e308af55d6d4a949fd857494a75290763d84c638df8",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/lessons.md",
+      "source_id": "src-da9d304f89689946",
       "locator": "Measurement",
       "title": "Results and lessons across tasks",
       "tags": [
@@ -2496,11 +3040,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/train-opt-numerics-validation/SKILL.md",
-      "sha256": "a97257254b4cd14360799e850c39e2dddab818980a762b14cf091a0532833af0",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/train-opt-numerics-validation/SKILL.md",
+      "source_id": "src-cecc7d1808f6194f",
       "locator": "Common pitfalls / ghost gradient",
       "title": "Numerics tiers and validation",
       "tags": [
@@ -2529,11 +3069,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "docs/judge.md",
-      "sha256": "a6688646c098d504fdbec114607a6b190d51c36b93173b3d5dff0e3e6ecf377a",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/judge.md",
+      "source_id": "src-e8c447a481a25410",
       "locator": "Four gates; When the judge may change; Known limits",
       "title": "The judge",
       "tags": [
@@ -2554,11 +3090,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "docs/results/video-generation.md",
-      "sha256": "ecf04bf3f3f5816fd790ecbc33391aef6931a6026b408798246f5916085a1b95",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/video-generation.md",
+      "source_id": "src-d376fc3d10b24ebd",
       "locator": "MiniMax-H3 trajectory failure and repair",
       "title": "Video Generation",
       "tags": [
@@ -2579,11 +3111,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "docs/results/llm.md",
-      "sha256": "56bb7cbea8f3b61d296966636d742baac30acff9b0999001096bbcd456f3df42",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/llm.md",
+      "source_id": "src-0e8ba2673a9547a2",
       "locator": "YOCO; R3; LLM2Vec",
       "title": "LLM",
       "tags": [
@@ -2603,11 +3131,7 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "skills/sglang-diffusion-performance/SKILL.md",
-      "sha256": "43938f6df6e72856e9bb1889f702507e3b7650d7e78f8982fa5a48230b5f1f30",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/skills/sglang-diffusion-performance/SKILL.md",
+      "source_id": "src-054bdedd9d709cc7",
       "locator": "SANA-Video graph capture shape",
       "title": "SGLang Diffusion Performance Tuning",
       "tags": [
@@ -2656,13 +3180,8 @@
       "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "155ffbb585356a29b544573a391eb456b790a15a",
-      "path": "src/distillschedule/runtime/helios_gan_manual/down_replay.py",
-      "sha256": "0a9a90a4ce51da9b995063fba3afb584e2dac2d920ff0821dbd6c40f68f2fec4",
+      "source_id": "src-4c9ec2c8e9913909",
       "locator": "up_blocks in ((),(38,39))",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py",
-      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/155ffbb585356a29b544573a391eb456b790a15a/src/distillschedule/runtime/helios_gan_manual/down_replay.py#L41",
       "locator_quality": "structured_source_locator",
       "title": "down_replay.py",
       "tags": [
@@ -2674,16 +3193,12 @@
         "helios-w3-retention-r1"
       ],
       "review_status": "CURATED_EXCERPTS",
-      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "anchor": "#L41"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "48134cded8f6745a8906fd6fb4ca669b4ace2679",
-      "path": "artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-      "sha256": "dc75b8c17beede1884a63bf677616b56d9ef4ea112cd42836750e8fe5e1b0ddf",
+      "source_id": "src-0709ebc91417faac",
       "locator": "Only block49",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py",
-      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/48134cded8f6745a8906fd6fb4ca669b4ace2679/artifacts/publications/20261031/optimizer_reference_sources/h3_gpu_tail1/src/distillschedule/strategies/h3_ar_hybrid_cache.py#L4",
       "locator_quality": "structured_source_locator",
       "title": "h3_ar_hybrid_cache.py",
       "tags": [
@@ -2701,16 +3216,12 @@
         "path": "src/distillschedule/strategies/h3_ar_hybrid_cache.py",
         "commit_publicly_fetchable": false,
         "copy_policy": "BYTE_IDENTICAL_SOURCE_SNAPSHOT"
-      }
+      },
+      "anchor": "#L4"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "docs/contracts/wan_tail8_retention_v1.md",
-      "sha256": "71692b9d822f54eddaf377e66a1cff109131edd9587f1202175ea834b8b088a3",
+      "source_id": "src-af440ae78f48d19a",
       "locator": "tail8",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md",
-      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/docs/contracts/wan_tail8_retention_v1.md#L1",
       "locator_quality": "structured_source_locator",
       "title": "wan_tail8_retention_v1.md",
       "tags": [
@@ -2722,16 +3233,12 @@
         "helios-w1-tail8-oom"
       ],
       "review_status": "CURATED_EXCERPTS",
-      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "anchor": "#L1"
     },
     {
-      "repository": "sliortega295-ops/DMD-System",
-      "revision": "fee3e29e25ba481bb87d42270bb3af57a3676ccd",
-      "path": "artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
-      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833",
+      "source_id": "src-8797db288ccdddc0",
       "locator": "POLICY='restore-native-cu-metadata-barrier.v1'",
-      "url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py",
-      "anchor_url": "https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/artifacts/publications/20261019/manual_packets/state_retention/r46/scripts/native_r2/native_metadata_barrier.py#L4",
       "locator_quality": "structured_source_locator",
       "title": "native_metadata_barrier.py",
       "tags": [
@@ -2743,16 +3250,12 @@
         "helios-w6-metadata-r46"
       ],
       "review_status": "CURATED_EXCERPTS",
-      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "anchor": "#L4"
     },
     {
-      "repository": "AI4AI-for-Anything/ResearchBoost-Agent",
-      "revision": "908c6a13c41fcb6da6d0237aba2574d368ffbec8",
-      "path": "docs/results/multimodal.md",
-      "sha256": "032b241df3ea1174de676fc67e83323b4ed2fbad52d610437ecde8bbaeedebc9",
+      "source_id": "src-5d0e2d1b12553fd3",
       "locator": "With the optimized reward service on both sides",
-      "url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md",
-      "anchor_url": "https://github.com/AI4AI-for-Anything/ResearchBoost-Agent/blob/908c6a13c41fcb6da6d0237aba2574d368ffbec8/docs/results/multimodal.md#L56",
       "locator_quality": "structured_source_locator",
       "title": "multimodal.md",
       "tags": [
@@ -2764,7 +3267,8 @@
         "rb-end-to-end-denominator"
       ],
       "review_status": "CURATED_EXCERPTS",
-      "summary": "已核对所引用段落；其余内容未据此声明完整审计。"
+      "summary": "已核对所引用段落；其余内容未据此声明完整审计。",
+      "anchor": "#L56"
     }
   ],
   "policy": "Pinned source metadata only. DISCOVERED_NOT_CURATED is a backlog item, not a verified experience."
