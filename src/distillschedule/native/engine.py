@@ -18,6 +18,7 @@ from torch.nn import functional as F
 from distillschedule.core.enums import OperationKind as Kind
 from distillschedule.runtime.parameterized_cycle import build_parameterized_cycle_graph, parameterized_window_order
 from distillschedule.runtime.role_runner import StaticRoleRunner
+from distillschedule.runtime.saved_tensors import pack_saved_tensor, unpack_saved_tensor
 from distillschedule.runtime.version_sync import VersionLedger
 from distillschedule.workloads.best_known.registry import file_sha256
 from runtime.dmd_boundary import detached_dmd_surrogate_loss, critic_denoising_loss
@@ -259,7 +260,7 @@ class NativeEngine:
             def pack(value):
                 nonlocal saved_bytes
                 saved_bytes += value.numel() * value.element_size()
-                return value
+                return pack_saved_tensor(value)
             if calibration:
                 self.fence()
                 if self.device.type == "cuda":
@@ -276,7 +277,7 @@ class NativeEngine:
                     return self.critic_update(cycle, index, ctx.values[f"r{index}"])
                 return self.update_ema()
             if calibration and self.device.type == "cpu":
-                with torch.autograd.graph.saved_tensors_hooks(pack, lambda x: x):
+                with torch.autograd.graph.saved_tensors_hooks(pack, unpack_saved_tensor):
                     result = execute()
             else:
                 result = execute()

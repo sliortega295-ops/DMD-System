@@ -25,6 +25,7 @@ from torch.utils.checkpoint import checkpoint
 
 from distillschedule.core.contracts import require
 from distillschedule.runtime.role_runner import StaticRoleRunner
+from distillschedule.runtime.saved_tensors import pack_saved_tensor, unpack_saved_tensor
 from distillschedule.runtime.version_sync import VersionLedger
 from distillschedule.workloads.program import Program
 from distillschedule.workloads.best_known.registry import fingerprint
@@ -436,7 +437,7 @@ class Session:
             def pack(t):
                 k=storage_key(t)
                 if k not in excluded: saved[k]=physical_tensor(t).untyped_storage().nbytes()
-                return t
+                return pack_saved_tensor(t)
             if measure:
                 self.synchronize()
             if measure and self.device.type=='cuda':
@@ -453,8 +454,13 @@ class Session:
                 end_event = torch.cuda.Event(enable_timing=True)
                 start_event.record(torch.cuda.current_stream(self.device))
             start=time.perf_counter_ns()
+            # Observation hooks replace native SavedVariable version checks.
+            # Keep production execution hook-free, and restore those checks
+            # explicitly for opt-in accounting without copying tensor storage.
+            observation = (torch.autograd.graph.saved_tensors_hooks(pack,unpack_saved_tensor)
+                           if measure else nullcontext())
             with torch.set_grad_enabled(c.grad!='no_grad'):
-                with torch.autograd.graph.saved_tensors_hooks(pack,lambda t:t):
+                with observation:
                     if c.replay_safe and c.binding in self.implementation['checkpoint_bindings']:
                         self.effects['checkpoint_calls']+=1
                         policy=self.implementation.get('checkpoint_policy','recompute')
