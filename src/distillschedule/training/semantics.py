@@ -8,8 +8,9 @@ opaque dynamic code is not inferred from a model name or an epoch alone.
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from copy import deepcopy
-from functools import lru_cache
+from functools import lru_cache, partial
 import importlib.metadata
 import inspect
 from pathlib import Path
@@ -167,6 +168,16 @@ def _source_path(name):
     if path and str(path).endswith('.py') and Path(path).is_file():
         return Path(path).resolve()
     parts = name.split('.')
+    # Editable installs use import finders rather than putting src/ in sys.path.
+    # A loaded package's real search locations remain available without
+    # importing any of its children (or initializing a model/backend).
+    for boundary in range(len(parts) - 1, 0, -1):
+        package = sys.modules.get('.'.join(parts[:boundary]))
+        for root in getattr(package, '__path__', ()):
+            base = Path(root).joinpath(*parts[boundary:])
+            for candidate in (base.with_suffix('.py'), base / '__init__.py'):
+                if candidate.is_file():
+                    return candidate.resolve()
     for root in sys.path:
         base = Path(root or '.').joinpath(*parts)
         for candidate in (base.with_suffix('.py'), base / '__init__.py'):
@@ -209,6 +220,7 @@ class _Dependencies:
         self.parsed = {}
         self.attributes = {}
         self.initialized = set()
+        self.partials = set()
         self.visited = set()
         self.owned = {"distillschedule", "runtime"}
 
@@ -367,6 +379,29 @@ class _Dependencies:
 
     def callable(self, value, *, owned=False):
         value = inspect.unwrap(getattr(value, '__func__', value))
+        if isinstance(value, partial):
+            if id(value) in self.partials:
+                return
+            self.partials.add(id(value))
+            seen = set()
+            def bind(argument):
+                if id(argument) in seen:
+                    return
+                seen.add(id(argument))
+                if callable(argument):
+                    self.callable(argument, owned=owned)
+                elif isinstance(argument, Mapping):
+                    for child in argument.values():
+                        bind(child)
+                elif isinstance(argument, (list, tuple)):
+                    for child in argument:
+                        bind(child)
+            # partial's stdlib class is not the algorithm. Follow the actual
+            # function and any bound callbacks, without running them.
+            bind(value.func)
+            bind(value.args)
+            bind(value.keywords)
+            return
         if not (inspect.isfunction(value) or inspect.isclass(value)):
             value = type(value)
         name, symbol = value.__module__, value.__qualname__

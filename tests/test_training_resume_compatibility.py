@@ -132,6 +132,94 @@ def build(components, feeds, parameters, cycle, seed):
     assert load_callable(raw['algorithm']['factory'])[1] == entry
 
 
+def test_partial_algorithm_factory_binds_its_actual_helper_before_restore(tmp_path, monkeypatch):
+    import importlib
+    from distillschedule.training import checkpoint
+    package = tmp_path / 'partial_math_adapter'
+    package.mkdir()
+    (package / '__init__.py').write_text('')
+    (package / 'entry.py').write_text('''from functools import partial
+from distillschedule.examples.tiny_av import build_model
+from .helper import build
+build_algorithm = partial(build)
+''')
+    helper = package / 'helper.py'
+    helper.write_text('''from distillschedule.examples.tiny_av import build_algorithm as base
+def build(components, feeds, parameters, cycle, seed):
+    return base(components, feeds, parameters, cycle, seed)
+''')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    importlib.invalidate_caches()
+    root, config = fixture(tmp_path / 'training', samples=4)
+    raw = config.to_dict()
+    raw['model']['factory'] = 'partial_math_adapter.entry:build_model'
+    raw['algorithm']['factory'] = 'partial_math_adapter.entry:build_algorithm'
+    raw['trainer'].update(cycles=1, output_dir=str(root / 'first'))
+    first = train(TrainingConfig.from_dict(raw, source=config.source))
+    helper.write_text(helper.read_text().replace('return base(components, feeds, parameters, cycle, seed)',
+        "return base(components, feeds, {**parameters, 'guidance_scale': 2.0}, cycle, seed)"))
+    raw['trainer'].update(cycles=2, resume_from=first['checkpoint'], output_dir=str(root / 'resume'))
+    def forbidden(*args, **kwargs):
+        raise AssertionError('partial factory helper change reached tensor restoration')
+    monkeypatch.setattr(checkpoint, 'unpack_state', forbidden)
+    with pytest.raises(ValueError, match='identity|semantics|source'):
+        train(TrainingConfig.from_dict(raw, source=config.source))
+
+
+@pytest.mark.parametrize('nested', [False, True])
+def test_partial_bound_callbacks_keep_source_dependencies(tmp_path, monkeypatch, nested):
+    import importlib
+    from functools import partial
+    from distillschedule.training.semantics import _Dependencies
+    module_name = 'partial_callback_math_' + str(nested).lower()
+    helper = tmp_path / (module_name + '.py')
+    helper.write_text('def loss(x):\n    return x * 2\n')
+    entry = tmp_path / 'partial_callback_entry.py'
+    entry.write_text('def invoke(callback, x):\n    return callback(x)\n')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    math = importlib.import_module(module_name)
+    invoke = importlib.import_module('partial_callback_entry').invoke
+    callback = {'callbacks': [math.loss]} if nested else math.loss
+    wrapped = partial(invoke, callback)
+    # Cyclic metadata must not recurse indefinitely during source inspection.
+    wrapped.keywords['recursive'] = wrapped
+    def descriptor():
+        collector = _Dependencies()
+        collector.callable(wrapped, owned=True)
+        return collector.descriptor()
+    first = descriptor()
+    assert any(key.startswith(module_name + ':loss') for key in first['dependencies'])
+    helper.write_text(helper.read_text().replace('x * 2', 'x * 3'))
+    assert descriptor() != first
+
+
+def test_editable_package_children_resolve_without_importing_them(tmp_path, monkeypatch):
+    import sys
+    from types import ModuleType
+    from distillschedule.training.semantics import _Dependencies, _source_path
+    root = tmp_path / 'off_path_package'
+    root.mkdir()
+    helper = root / 'math.py'
+    marker = tmp_path / 'unexpected-import'
+    helper.write_text(f'''from pathlib import Path
+Path({str(marker)!r}).touch()
+def loss(x):
+    return x * 2
+''')
+    package = ModuleType('editable_math_package')
+    package.__path__ = [str(root)]
+    monkeypatch.setitem(sys.modules, package.__name__, package)
+    # PEP 660/namespace packages can be importable without their source root
+    # appearing in sys.path. The actual parent package owns that search path.
+    name = package.__name__ + '.math'
+    assert _source_path(name) == helper
+    collector = _Dependencies()
+    collector.owned.add(package.__name__)
+    collector.module(name, 'loss')
+    assert name + ':loss' in collector.descriptor()['dependencies']
+    assert name not in sys.modules and not marker.exists()
+
+
 @pytest.fixture(scope='module')
 def math_descriptor():
     from distillschedule.training.semantics import _Dependencies
