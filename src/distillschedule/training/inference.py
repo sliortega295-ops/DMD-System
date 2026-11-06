@@ -5,16 +5,18 @@ remain explicit trusted adapter contracts; no optimizer/RNG restore is inferred.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
+import stat
 import uuid
+from contextlib import ExitStack
 from pathlib import Path, PurePosixPath
 
 from distillschedule.workloads.best_known.registry import file_sha256
 
 from . import distributed
-from .checkpoint import cpu_tree
 from .config import digest
 
 SCHEMA = "distillschedule.inference_export.v1"
@@ -100,7 +102,7 @@ def module_layout(state):
     return result
 
 
-def _primary_cpu_tree(value, *, retain):
+def _primary_cpu_tree(value, *, retain, memo=None, collective=True):
     """Gather each tensor on its owners, retaining CPU copies only on primary.
 
     A CPU staging failure must be exchanged before peers enter the next tensor
@@ -108,18 +110,23 @@ def _primary_cpu_tree(value, *, retain):
     it is not a rank-zero-only all-gather or an export capacity admission.
     """
     import torch
+    from .tensor_state import _snapshot_tensor
+    if memo is None:
+        memo = {}
     if isinstance(value, torch.Tensor):
         from distillschedule.open_workload.torch_backend import full_tensor
         def materialize():
             dense = full_tensor(value)
-            return cpu_tree(dense) if retain else None
-        return distributed.checked(materialize, "inference primary-weight materialization")
+            return _snapshot_tensor(dense, memo) if retain else None
+        return (distributed.checked(materialize, "inference primary-weight materialization")
+                if collective else materialize())
     if isinstance(value, dict):
-        result = {key: _primary_cpu_tree(item, retain=retain) for key, item in sorted(value.items())}
+        result = {key: _primary_cpu_tree(item, retain=retain, memo=memo, collective=collective)
+                  for key, item in sorted(value.items())}
     elif isinstance(value, tuple):
-        result = tuple(_primary_cpu_tree(item, retain=retain) for item in value)
+        result = tuple(_primary_cpu_tree(item, retain=retain, memo=memo, collective=collective) for item in value)
     elif isinstance(value, list):
-        result = [_primary_cpu_tree(item, retain=retain) for item in value]
+        result = [_primary_cpu_tree(item, retain=retain, memo=memo, collective=collective) for item in value]
     else:
         _tree_layout(value)  # Retain the existing safe extra-state contract.
         result = value
@@ -176,10 +183,13 @@ def publish_export(components, output, *, model, identity, cycle, primary_only=F
     _require(all(row == model for row in distributed.gather(model)), "ranks disagree on exported model layout")
     _require(all(row == primary_only for row in distributed.gather(primary_only)),
              "ranks disagree on inference weight staging policy")
-    # cpu_tree calls full_tensor on DTensors, which MUST run on all owners.
-    collect = (lambda value: _primary_cpu_tree(value, retain=rank == 0)) if primary_only else cpu_tree
+    # full_tensor on DTensors MUST run on all owners, even without retention.
+    memo = {}
+    def collect(value):
+        return _primary_cpu_tree(value, retain=not primary_only or rank == 0,
+                                 memo=memo, collective=not primary_replica)
     if primary_replica:
-        weights = distributed.primary(lambda: {name: cpu_tree(dict(sorted(module.state_dict().items())))
+        weights = distributed.primary(lambda: {name: collect(dict(sorted(module.state_dict().items())))
             for name, module in modules(components.state).items()}, "inference complete primary-replica staging")
     else:
         weights = (distributed.checked(lambda: {name: collect(dict(sorted(module.state_dict().items())))
@@ -220,22 +230,7 @@ def publish_export(components, output, *, model, identity, cycle, primary_only=F
     return distributed.gather(result)[0]
 
 
-def read_export(path):
-    """Admit completeness, schema, every file hash and bounds before imports."""
-    root = Path(path).expanduser().resolve()
-    manifest, marker = root / "export.json", root / "_SUCCESS"
-    _require(manifest.is_file() and marker.is_file() and not manifest.is_symlink()
-             and not marker.is_symlink(), "inference export is not complete")
-    expected = marker.read_text().strip()
-    _require(_sha(expected) and expected == file_sha256(manifest), "export manifest hash changed")
-    def unique(pairs):
-        result = {}
-        for key, value in pairs:
-            _require(key not in result, f"duplicate export manifest key: {key}")
-            result[key] = value
-        return result
-    value = json.loads(manifest.read_text(), object_pairs_hook=unique)
-    _require(file_sha256(manifest) == expected, "export manifest hash changed during read")
+def _validate_manifest(value):
     _require(isinstance(value, dict) and set(value) == {
         "schema_version", "status", "kind", "checkpoint_cycle", "identity", "model", "world_size",
         "export", "files", "quality_validation"}, "malformed inference export schema")
@@ -264,15 +259,156 @@ def read_export(path):
         _require(set(metadata) == {"format", "metadata"} and metadata["format"] == "adapter",
                  "unsupported custom export format")
     digest(value)
-    for name, sha in files.items():
-        item = _file(root, name)
-        _require(_sha(sha) and item.is_file() and file_sha256(item) == sha, f"export file hash changed: {name}")
-    _require(_files(root) == files, "export has unrecorded files or a file hash changed")
-    return root, value
+    return value
+
+
+def _stat_token(value):
+    return (value.st_dev, value.st_ino, value.st_mode, value.st_size,
+            value.st_mtime_ns, value.st_ctime_ns)
+
+
+def _inventory(root):
+    """Census names/types without reading model-sized file contents."""
+    names = set()
+    for directory, directories, files in os.walk(root, followlinks=False):
+        for name in directories:
+            _require(stat.S_ISDIR((Path(directory) / name).lstat().st_mode),
+                     "export directory contains a symlink or unsupported type")
+        for name in files:
+            path = Path(directory) / name
+            _require(stat.S_ISREG(path.lstat().st_mode),
+                     "export file contains a symlink or unsupported type")
+            names.add(path.relative_to(root).as_posix())
+    return names
+
+
+class VerifiedExport:
+    """One operation's admission; never a process-global trusted-file cache.
+
+    Large files are hashed once. The named-module loader uses that same open
+    descriptor; metadata checks detect replacements and writes through the end
+    of generation, including same-size writes with restored mtime.
+    """
+    def __init__(self, path):
+        path = Path(path).expanduser().absolute()
+        _require(all(not parent.is_symlink() for parent in (path, *path.parents)),
+                 "export root contains a symlink")
+        self.root = path.resolve()
+        self._lifetime = ExitStack()
+        self._files = {}
+
+    def __enter__(self):
+        try:
+            self._root_fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            self._lifetime.callback(os.close, self._root_fd)
+            root = os.fstat(self._root_fd)
+            self._root_identity = (root.st_dev, root.st_ino)
+            marker = self._open('_SUCCESS')
+            manifest = self._open('export.json')
+            expected = marker.read().decode('utf-8').strip()
+            content = manifest.read()
+            self.manifest_sha256 = hashlib.sha256(content).hexdigest()
+            _require(_sha(expected) and expected == self.manifest_sha256, "export manifest hash changed")
+
+            def unique(pairs):
+                result = {}
+                for key, value in pairs:
+                    _require(key not in result, f"duplicate export manifest key: {key}")
+                    result[key] = value
+                return result
+
+            self.manifest = _validate_manifest(json.loads(content, object_pairs_hook=unique))
+            self._manifest_digest = digest(self.manifest)
+            self._names = set(self.manifest['files']) | {'export.json', '_SUCCESS'}
+            _require(_inventory(self.root) == self._names, "export has unrecorded or missing files")
+            for name, expected in self.manifest['files'].items():
+                _file(self.root, name)
+                _require(_sha(expected), f"invalid export file hash: {name}")
+                stream = self._open(name)
+                checksum = hashlib.sha256()
+                for block in iter(lambda: stream.read(1024 * 1024), b''):
+                    checksum.update(block)
+                _require(checksum.hexdigest() == expected, f"export file hash changed: {name}")
+                stream.seek(0)
+                # Custom formats can have many files and load through their
+                # adapter callback. Only the built-in loader needs a live FD.
+                if self.manifest['export']['format'] != 'torch_state_dicts':
+                    stream.close()
+            self.check_unchanged()
+            return self
+        except BaseException as exc:
+            self._lifetime.close()
+            if isinstance(exc, (OSError, UnicodeError)):
+                raise ValueError("inference export is incomplete, unreadable or changed") from exc
+            raise
+
+    def _open(self, name):
+        parts = PurePosixPath(name).parts
+        directory = self._root_fd
+        with ExitStack() as parents:
+            for part in parts[:-1]:
+                directory = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
+                parents.callback(os.close, directory)
+            descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+            try:
+                token = os.fstat(descriptor)
+                _require(stat.S_ISREG(token.st_mode), f"export file is not regular: {name}")
+                stream = os.fdopen(descriptor, 'rb')
+            except BaseException:
+                os.close(descriptor)
+                raise
+        self._lifetime.enter_context(stream)
+        self._files[name] = (_stat_token(token), stream)
+        return stream
+
+    def check_unchanged(self):
+        _require(digest(self.manifest) == self._manifest_digest, "export manifest changed in memory")
+        try:
+            root = self.root.stat()
+            _require((root.st_dev, root.st_ino) == self._root_identity and not self.root.is_symlink(),
+                     "export root changed during use")
+            _require(_inventory(self.root) == self._names, "export file inventory changed during use")
+            for name, (expected, stream) in self._files.items():
+                path = self.root / name
+                _require(all(not parent.is_symlink() for parent in (path, *path.parents)),
+                         "export file path changed to a symlink")
+                _require(_stat_token(path.stat()) == expected,
+                         f"export file changed during use: {name}")
+                if not stream.closed:
+                    _require(_stat_token(os.fstat(stream.fileno())) == expected,
+                             f"export open file changed during use: {name}")
+        except OSError as exc:
+            raise ValueError("export file changed or disappeared during use") from exc
+
+    def restore_modules(self, components):
+        self.check_unchanged()
+        _restore_modules(components, self)
+        self.check_unchanged()
+
+    def __exit__(self, exc_type, exc, traceback):
+        try:
+            if exc_type is None:
+                self.check_unchanged()
+        finally:
+            self._lifetime.close()
+
+
+def read_export(path):
+    """Standalone strict admission; a generation operation uses VerifiedExport."""
+    with VerifiedExport(path) as verified:
+        return verified.root, verified.manifest
 
 
 def restore_modules(components, root, manifest):
+    """Standalone loader re-admits rather than trusting caller-provided metadata."""
+    with VerifiedExport(root) as verified:
+        _require(digest(verified.manifest) == digest(manifest), "export manifest differs from admitted files")
+        verified.restore_modules(components)
+
+
+def _restore_modules(components, verified):
     """Validate all named state trees before mutating any module."""
+    root, manifest = verified.root, verified.manifest
     import torch
     _require(digest(module_layout(components.state)) == digest(manifest["model"]["modules"]),
              "export model module layout changed")
@@ -284,14 +420,13 @@ def restore_modules(components, root, manifest):
                  "custom loader changed model layout")
         return
     _require(components.export is None, "export format differs from current model adapter")
-    path = _file(root, "weights.pt")
-    expected = manifest["files"]["weights.pt"]
-    _require(file_sha256(path) == expected, "export weights hash changed before loading")
+    stream = verified._files["weights.pt"][1]
+    stream.seek(0)
     try:
-        weights = torch.load(path, map_location="cpu", weights_only=True)
+        weights = torch.load(stream, map_location="cpu", weights_only=True)
     except Exception as exc:
         raise ValueError("invalid safe exported weights") from exc
-    _require(file_sha256(path) == expected, "export weights hash changed during loading")
+    verified.check_unchanged()
     models = modules(components.state)
     _require(isinstance(weights, dict) and set(weights) == set(models), "export module names changed")
     for name, module in models.items():

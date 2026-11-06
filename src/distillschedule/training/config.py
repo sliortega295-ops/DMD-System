@@ -38,6 +38,8 @@ class TrainingConfig:
                 raise ValueError(f"{key} must be an object")
             parts[key] = deepcopy(value[key])
         execution, trainer = parts["execution"], parts["trainer"]
+        from distillschedule.open_workload.state_audit import validate_every
+        validate_every(execution.get('state_audit_every_cycles', 50))
         if execution.get("adapter", "program") not in ("program", "native"):
             raise ValueError("execution.adapter must be program or native")
         if execution.get("mode", "reference") not in ("reference", "manual", "plan", "auto"):
@@ -57,7 +59,8 @@ class TrainingConfig:
                 "model": {"name", "factory", "parameters"}, "data": {"prepared", "streams", "sharding", "validation_prepared", "sampling"},
                 "algorithm": {"name", "factory", "parameters"},
                 "execution": {"adapter", "mode", "implementation", "order", "plan", "memory_limit_bytes",
-                              "max_candidates", "samples", "max_program_runs", "max_states", "resident_budget"},
+                              "max_candidates", "samples", "max_program_runs", "max_states", "resident_budget",
+                              "state_audit_every_cycles"},
                 "trainer": {"cycles", "seed", "output_dir", "checkpoint_every", "checkpoint_interval_seconds",
                             "checkpoint_keep_last", "resume_from", "device", "distributed", "validation"},
             }

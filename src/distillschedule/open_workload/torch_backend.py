@@ -336,7 +336,11 @@ class Context:
 
 
 class Session:
-    def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False):
+    def __init__(self, workload: Workload, implementation, *, lifecycle=None, copy_state=True, persistent=False,
+                 state_audit_every_cycles=50):
+        from .state_audit import validate_every
+        self.state_audit_every_cycles = validate_every(state_audit_every_cycles)
+        self._audit_cycle = 0
         workload.validate()
         from .collective_owner import validate_session
         validate_session(self, workload, implementation, lifecycle,
@@ -424,6 +428,32 @@ class Session:
         """
         self._check_immutable(full=True)
 
+    def audit_state(self):
+        """Collective explicit local-shard audit; all distributed ranks call it."""
+        from .state_audit import audit_scope, distributed_audit, state_record
+        import torch.distributed as dist
+        with audit_scope(cycle=max(1, self._audit_cycle), every=self.state_audit_every_cycles, force=True):
+            if dist.is_initialized() and dist.get_world_size() > 1 and self.lifecycle is not None:
+                from .collective_owner import NativeOwnerLifecycle
+                if isinstance(self.lifecycle, NativeOwnerLifecycle):
+                    # Native owners have rank-local RNG and state; they own
+                    # their reducers. Validate local payloads, not full replicas.
+                    from .replicated import checked
+                    checked(lambda: state_record(self.state, content=True), 'native explicit state audit')
+                    result = dict(kind='content_audit', replica_content_consensus=False,
+                                  scope='native_owner_rank_local')
+                else:
+                    result = distributed_audit(self, force=True)
+            else:
+                state_record(self.state, content=True)
+                result = dict(kind='content_audit', replica_content_consensus=False, scope='local')
+            if dist.is_initialized() and dist.get_world_size() > 1 and self.lifecycle is not None:
+                from .replicated import checked
+                checked(lambda: self._check_immutable(full=True), 'explicit immutable state audit')
+            else:
+                self._check_immutable(full=True)
+            return result
+
     def bind_cycle(self, workload, *, graph=None):
         """Rebind an owned complete-cycle session; never reinstall its layout.
 
@@ -458,6 +488,24 @@ class Session:
         if self.device.type=='cuda': torch.cuda.synchronize(self.device)
 
     def run(self, order=None, *, measure=False):
+        from .state_audit import audit_scope, cycle_controls, validate_every
+        import torch.distributed as dist
+        self._audit_cycle += 1
+        if self.lifecycle is not None and dist.is_initialized() and dist.get_world_size() > 1:
+            from .replicated import checked
+            checked(lambda: validate_every(self.state_audit_every_cycles), 'state audit cadence')
+        with audit_scope(cycle=self._audit_cycle, every=self.state_audit_every_cycles,
+                         persistent=self.persistent, measure=measure) as full:
+            if self.lifecycle is not None and dist.is_initialized() and dist.get_world_size() > 1:
+                from .replicated import gather
+                from .collective_owner import NativeOwnerLifecycle
+                controls = gather(cycle_controls(self, full,
+                    native_owner=isinstance(self.lifecycle, NativeOwnerLifecycle)))
+                require(all(value == controls[0] for value in controls),
+                        'state audit cadence or logical program clocks differ across ranks', path='open.state_audit')
+            return self._run(order, measure=measure)
+
+    def _run(self, order=None, *, measure=False):
         from .collective_owner import validate_session
         validate_session(self, self.workload, self.implementation, self.lifecycle,
                          copy_state=False, persistent=self.persistent)
@@ -593,7 +641,13 @@ class Session:
             require(row.get('option') == option
                     and row.get('effect') == self.owner_inventory[key]['descriptor']['effect'],
                     'owner changed admitted execution effect predicates', path='open.runtime')
-        self._check_immutable(full=measure or not self.persistent)
+        from .state_audit import content_due
+        import torch.distributed as dist
+        if self.lifecycle is not None and dist.is_initialized() and dist.get_world_size() > 1:
+            from .replicated import checked
+            checked(lambda: self._check_immutable(full=content_due()), 'immutable cycle audit')
+        else:
+            self._check_immutable(full=content_due())
         self.receipt={'status':'EXECUTED_OPEN_PROGRAM','program':self.workload.program.digest,
             'dispatcher':prepared.receipt(),'effects':deepcopy(self.effects),'wall_ns':time.perf_counter_ns()-started,
             'device':str(self.device),'gpu_execution':'NOT_RUN' if self.device.type=='cpu' else 'NATIVE_CUDA_RUN',

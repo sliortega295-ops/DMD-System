@@ -427,9 +427,12 @@ class SelfForcingOwner:
                 and all(name.startswith('fake_score.') for group in self.ownership['critic'] for name in group),
                 'teacher or codec entered a trainable optimizer')
         model_state = self.model.state_dict()
-        require(all(_hash(model_state[name]) == digest for name, digest in self.frozen_hashes.items())
-                and all(_hash(native_plain[name]) == digest for name, digest in self.plain_hashes.items()),
-                'live frozen teacher/VAE or native non-buffer tensor changed')
+        from distillschedule.open_workload.state_audit import check_frozen
+        check_frozen(self, 'frozen', {name: model_state[name] for name in self.frozen_hashes},
+                     self.frozen_hashes, _hash,
+                     message='live frozen teacher/VAE or native non-buffer tensor changed')
+        check_frozen(self, 'plain', native_plain, self.plain_hashes, _hash,
+                     message='live frozen teacher/VAE or native non-buffer tensor changed')
         require(self.generator_ema is None or self.generator_ema.decay == self.args.ema_weight,
                 'native EMA policy changed')
         if self.generator_ema is not None:
@@ -442,7 +445,8 @@ class SelfForcingOwner:
         from distillschedule.data.self_forcing_inputs import validate_row
         validate_row({'prompt_embeds': self.negative_embedding},
             shape=(1, self.model.generator.model.text_len, self.model.generator.model.text_dim), device=self.device)
-        require(_hash(self.negative_embedding) == self.negative_hash, 'native encoded negative conditioning changed')
+        check_frozen(self, 'negative', {'negative': self.negative_embedding}, {'negative': self.negative_hash},
+                     _hash, message='native encoded negative conditioning changed')
         require(vars(self.config).keys() == vars(self.args).keys()
                 and all(value == getattr(self.args, name) for name, value in vars(self.config).items()
                         if name != 'negative_prompt'), 'native trainer settings changed')

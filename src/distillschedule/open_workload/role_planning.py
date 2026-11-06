@@ -295,7 +295,7 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     return result
 
 
-def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1):
+def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1,state_audit_every_cycles=50):
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'selected role pool needs allocated process group',path='role.run')
     require(type(cycles) is int and 1<=cycles<=1024 and
@@ -321,7 +321,7 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
     if dist.get_rank()==0:root.mkdir(parents=True,exist_ok=False)
     dist.barrier()
     executor=RolePoolExecutor(task,layout,hardware,bindings,device=device,
-        producer_dispatch=p.get('producer_dispatch'))
+        producer_dispatch=p.get('producer_dispatch'),state_audit_every_cycles=state_audit_every_cycles)
     summaries=[]
     try:
         for cycle in range(cycles):

@@ -14,7 +14,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
-from .torch_backend import Session, candidates as local_candidates, signature, tensors, unwrap_module
+from .torch_backend import Session, candidates as local_candidates, tensors, unwrap_module
 
 BACKEND = 'torch-callable-replicated-v1'
 _CONTROL_GROUP = ContextVar('distillschedule_control_group', default=None)
@@ -279,17 +279,18 @@ class ReplicaLifecycle:
         # DDP backward completion waits for registered futures; CUDA synchronization
         # then closes the physical lifetime before the next update/version boundary.
         session.synchronize()
-        state=fingerprint(signature({k:unwrap_module(v) for k,v in session.state.items()}))
-        digests=gather(state)
-        require(len(set(digests))==1, 'replicated model/optimizer state diverged', path='open.replicated')
+        from .state_audit import distributed_audit
+        distributed_audit(session)
         self._drain_ddp_telemetry()
         session.effects.update(parameter_backward_calls=self.backward_count,
             gradient_collectives=self.collectives,
             communicated_gradient_bytes=self.gradient_bytes,
-            replica_state_consensus=True, reduction_completed=True)
+            reduction_completed=True)
 
 
-def make_session(workload, implementation, *, copy_state=True, persistent=False):
+def make_session(workload, implementation, *, copy_state=True, persistent=False, state_audit_every_cycles=50):
+    from .state_audit import validate_every
+    checked(lambda: validate_every(state_audit_every_cycles), 'audit cadence')
     checked(lambda: workload.validate(), 'session preflight')
     options = gather(implementation)
     require(all(option == options[0] for option in options),
@@ -307,10 +308,10 @@ def make_session(workload, implementation, *, copy_state=True, persistent=False)
     from .mixed_layout import MixedLifecycle, MODE as MIXED
     if implementation.get('reduction') == MIXED:
         return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation),
-                       copy_state=copy_state,persistent=persistent)
+                       copy_state=copy_state,persistent=persistent,state_audit_every_cycles=state_audit_every_cycles)
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
     if lifecycle is ShardedLifecycle:
         from .sharded import construction_handoffs
         construction_handoffs(workload, implementation, copy_state=copy_state)
     return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation),
-                   copy_state=copy_state,persistent=persistent)
+                   copy_state=copy_state,persistent=persistent,state_audit_every_cycles=state_audit_every_cycles)

@@ -65,6 +65,10 @@ class CyclePolicy:
         self._owner_readmission = False
         self._active_source = None
 
+    def _semantics(self, workload, implementation):
+        from .semantics import execution_semantics
+        return execution_semantics(workload, implementation)
+
     def _resident(self, workload):
         if 'resident_budget' not in self.execution:
             return None
@@ -110,11 +114,14 @@ class CyclePolicy:
         """Install the saved physical layout before restoring its local shards."""
         from distillschedule.open_workload.execution import ExecutionBackend
         from distillschedule.open_workload.planning import source_identity
-        backend = ExecutionBackend(workload)
+        backend = ExecutionBackend(workload, state_audit_every_cycles=self.execution.get('state_audit_every_cycles', 50))
         self._resident(workload)
         def admit():
             self._admit_owner_request()
-            if (not execution_source_compatible(self.bound, source_identity())
+            from .semantics import execution_semantics
+            current_semantics = execution_semantics(workload, self.bound["implementation"])
+            if (not execution_source_compatible(self.bound, source_identity(),
+                    current_semantics=current_semantics)
                     or self.bound["structure"] != cycle_structure(workload)
                     or self.bound["mode"] != self.execution.get("mode", "reference")):
                 raise ValueError("checkpoint execution source or structure changed")
@@ -124,9 +131,16 @@ class CyclePolicy:
         return self.session
 
     def run(self, workload, output):
+        session, outputs = self._run(workload, output)
+        # Paired/saved-plan qualification creates its own C1 session. It always
+        # receives a full audit; adopt the public cadence for later owned cycles.
+        session.state_audit_every_cycles = self.execution.get('state_audit_every_cycles', 50)
+        return session, outputs
+
+    def _run(self, workload, output):
         from distillschedule.open_workload.execution import ExecutionBackend
         from distillschedule.open_workload.planning import source_identity
-        backend = ExecutionBackend(workload)
+        backend = ExecutionBackend(workload, state_audit_every_cycles=self.execution.get('state_audit_every_cycles', 50))
         admission = self._resident(workload)
         resident_budget = admission.budget.trial if admission is not None else None
         def admit():
@@ -173,6 +187,7 @@ class CyclePolicy:
                 self.bound = {"schema_version": "distillschedule.cycle_policy.v1",
                               "mode": mode, "source": source_identity(), "structure": current_structure,
                               "resume_contract": EXECUTION_CONTRACT,
+                              "execution_semantics": self._semantics(workload, document["selected"]["implementation"]),
                               "implementation": deepcopy(document["selected"]["implementation"]),
                               "order": list(document["selected"]["order"]),
                               "plan_sha256": document["plan_sha256"],
@@ -212,6 +227,7 @@ class CyclePolicy:
             self.bound = {"schema_version": "distillschedule.cycle_policy.v1", "mode": mode,
                           "source": source_identity(), "structure": current_structure,
                           "resume_contract": EXECUTION_CONTRACT,
+                          "execution_semantics": self._semantics(workload, implementation),
                           "implementation": deepcopy(implementation),
                           "order": list(order or (*[c.id for c in workload.program.calls], "__open_finish__")),
                           "initial_reference_gate": gate}

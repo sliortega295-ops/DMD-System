@@ -608,7 +608,8 @@ class NativeOutputRequest:
         metadata = dict(projection.components.metadata)
         result = publish_export(projection.components,self.output,
             model=dict(factory=FACTORY,source=source,parameters=projection.parameters,metadata=metadata),
-            identity=dict(model=source,model_metadata=metadata,training_provenance=identity),cycle=manifest['cycle'])
+            identity=dict(model=source,model_metadata=metadata,training_provenance=identity),
+            cycle=manifest['cycle'], primary_only=True)
         def write_config():
             import uuid
             temporary = self.config_path.with_name('.'+self.config_path.name+'.tmp-'+uuid.uuid4().hex)

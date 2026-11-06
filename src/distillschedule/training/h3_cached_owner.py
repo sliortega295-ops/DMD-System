@@ -202,7 +202,9 @@ class H3CachedOwner:
                 "native LoRA/model/head scalar options changed")
         require(all(p.device.type == "cpu" and p.dtype == torch.float32 and bool(p.isfinite().all())
                     and p.grad is None for p in named.values()), "finite FP32 zero-gradient complete boundary required")
-        require({n: tensor_content(named[n]) for n in self._frozen} == self._frozen, "frozen full base changed")
+        from distillschedule.open_workload.state_audit import check_frozen
+        check_frozen(self, 'frozen', {name: named[name] for name in self._frozen}, self._frozen,
+                     tensor_content, message="frozen full base changed")
         t = self.cycle
         require(type(t) is int and 0 <= t <= self.assets["budget"]["max_cycles"]
                 and type(self.trainer.critic_step) is int and self.trainer.critic_step == t

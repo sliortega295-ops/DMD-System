@@ -89,7 +89,7 @@ def _model_parameters(config):
     return parameters
 
 
-def _construct_model(config, *, source=None):
+def _construct_model(config, *, source=None, include_factory=False):
     factory, model_source = load_callable(config.model["factory"])
     if source is not None and (model_source["sha256"] != source["sha256"]
                               or not _same_factory(model_source["reference"], source["reference"])):
@@ -135,7 +135,7 @@ def _construct_model(config, *, source=None):
             finally:
                 admission.close()
         components.close = close
-    return components, model_source
+    return (components, model_source, factory) if include_factory else (components, model_source)
 
 
 def _same_factory(current, original):
@@ -153,7 +153,7 @@ def construct(config, *, include_validation=False):
     validate_compatibility(config.model, config.algorithm, config.trainer, config.execution)
     dataset = training_data(config, world_size=distributed.rank_world()[1])
     _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
-    components, model_source = _construct_model(config)
+    components, model_source, factory = _construct_model(config, include_factory=True)
     try:
         algorithm, algorithm_source = load_callable(config.algorithm["factory"])
         if components.admit_training is not None:
@@ -161,9 +161,11 @@ def construct(config, *, include_validation=False):
                                       prepared_identity=dataset.identity, prepared_manifest=dataset.manifest)
         validation = Validation.prepare(config, components)
         from .compatibility import TRAINING_CONTRACT
+        from .semantics import training_semantics
         identity = {"config": config.identity, "dataset": dataset.identity, "model": model_source,
                     "algorithm": algorithm_source, "framework": _source(),
                     "resume_contract": TRAINING_CONTRACT,
+                    "training_semantics": training_semantics(factory, algorithm, components.state),
                     "model_metadata": dict(components.metadata)}
         if validation is not None:
             identity["validation"] = validation.identity
@@ -232,24 +234,8 @@ def _training_metrics(components, outputs):
 
 
 def _finite(state, outputs):
-    import torch
-
-    from distillschedule.open_workload.torch_backend import physical_tensor, tensors
-    checks, seen = {}, {}
-    with torch.no_grad():
-        for tensor in tensors((state, outputs)):
-            if id(tensor) in seen or not (tensor.is_floating_point() or tensor.is_complex()):
-                continue
-            seen[id(tensor)] = tensor
-            value = physical_tensor(tensor)
-            finite = torch.isfinite(value).all()
-            if value.device in checks:
-                checks[value.device].logical_and_(finite)
-            else:
-                checks[value.device] = finite
-        # One device-to-host scalar read per device, rather than per parameter,
-        # gradient or optimizer tensor. Coverage and check frequency are unchanged.
-        return all([bool(check) for check in checks.values()])
+    from .finite import FiniteCheck
+    return FiniteCheck()(state, outputs)
 
 
 def _preflight_output(config):
@@ -355,6 +341,8 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
               'finite_check': 0., 'validation': 0., 'metrics': 0., 'checkpoint': 0.,
               'publication': 0., 'logging': 0.}
     cycles_wall = 0.
+    from .finite import FiniteCheck
+    finite = FiniteCheck()
     try:
         for cycle in range(start_cycle, config.trainer["cycles"]):
             cycle_started = time.perf_counter()
@@ -368,7 +356,8 @@ def _train_owned(config, components, dataset, algorithm, identity, validation, *
             wall = time.perf_counter() - started
             timings['execution'] = wall
             started = time.perf_counter()
-            if not all(distributed.gather(_finite(session.state, outputs))):
+            audit_due = (cycle + 1) % config.execution.get('state_audit_every_cycles', 50) == 0
+            if not all(distributed.gather(finite(session.state, outputs, audit=audit_due))):
                 raise ValueError(f"nonfinite training state/output at cycle {cycle + 1}")
             timings['finite_check'] = time.perf_counter() - started
             components.state.update({key: session.state[key] for key in components.state})
@@ -637,14 +626,15 @@ def export(config, checkpoint, output):
             identity = {"model": source, "model_metadata": dict(components.metadata), "training_provenance": identity}
         return publish_export(components, output, model={"factory": factory,
             "source": source, "parameters": parameters, "metadata": dict(components.metadata)},
-            identity=identity, cycle=cycle)
+            identity=identity, cycle=cycle,
+            primary_only=components.export is None and distributed.rank_world()[1] > 1)
 
 
 def generate_from_export(config, weights_dir, output, *, prepared, sample_index=0, parameters=None, output_kind="video"):
     """Generate on new prepared inputs, without training data, algorithm or RNG state."""
     from distillschedule.data import PreparedDataset
 
-    from .inference import read_export, restore_modules, write_generation
+    from .inference import VerifiedExport, write_generation
     if output_kind not in ('image', 'video', 'audio', 'audio_video', 'latents'):
         raise ValueError('unsupported output_kind')
     if distributed.rank_world()[1] != 1 or int(os.environ.get("WORLD_SIZE", "1")) != 1:
@@ -652,36 +642,35 @@ def generate_from_export(config, weights_dir, output, *, prepared, sample_index=
     if config.execution.get("adapter", "program") != "program":
         raise ValueError("portable inference requires a Program model adapter")
     # Integrity admission precedes model imports/construction and any output.
-    root, manifest = read_export(weights_dir)
-    parameters = _generation_parameters(parameters)
-    model = manifest["model"]
-    effective = {key: value for key, value in _model_parameters(config).items() if key != "device"}
-    if not _same_factory(config.model["factory"], model["factory"]) or digest(effective) != digest(model["parameters"]):
-        raise ValueError("export model factory or effective parameters changed")
-    dataset = PreparedDataset(prepared)
-    if type(sample_index) is not int or not 0 <= sample_index < len(dataset):
-        raise ValueError("generation sample index out of range")
-    feeds, sample_id = dataset.sample(sample_index), dataset.sample_id(sample_index)
-    _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
-    components, model_source = _construct_model(config, source=model["source"])
-    with components.managed():
-        if digest(dict(components.metadata)) != digest(model["metadata"]):
-            raise ValueError("export model metadata changed")
-        restore_modules(components, root, manifest)
-        values = cpu_tree(_generate_values(config, components, feeds, parameters,
-                                          video_required=output_kind == "video", latents_required=output_kind == "latents",
-                                          output_kind=None if output_kind == 'latents' else output_kind))
-        _, current = read_export(root)
-        if digest(current) != digest(manifest):
-            raise ValueError("export manifest changed during generation")
-        output = Path(output).expanduser().resolve()
-        output.mkdir(parents=True, exist_ok=False)
-        result = write_generation(output, values, metadata={
-            "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
-            "sample_id": sample_id, "input_identity": dataset.identity,
-            "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
-            "loaded_factory": model_source,
-            "export_manifest_sha256": file_sha256(root / "export.json"),
-            "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
-        (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
-        return result
+    with VerifiedExport(weights_dir) as verified:
+        manifest = verified.manifest
+        parameters = _generation_parameters(parameters)
+        model = manifest["model"]
+        effective = {key: value for key, value in _model_parameters(config).items() if key != "device"}
+        if not _same_factory(config.model["factory"], model["factory"]) or digest(effective) != digest(model["parameters"]):
+            raise ValueError("export model factory or effective parameters changed")
+        dataset = PreparedDataset(prepared)
+        if type(sample_index) is not int or not 0 <= sample_index < len(dataset):
+            raise ValueError("generation sample index out of range")
+        feeds, sample_id = dataset.sample(sample_index), dataset.sample_id(sample_index)
+        _seed(config.trainer.get("seed", 0), device=config.trainer.get("device", "cpu"))
+        components, model_source = _construct_model(config, source=model["source"])
+        with components.managed():
+            if digest(dict(components.metadata)) != digest(model["metadata"]):
+                raise ValueError("export model metadata changed")
+            verified.restore_modules(components)
+            values = cpu_tree(_generate_values(config, components, feeds, parameters,
+                                              video_required=output_kind == "video", latents_required=output_kind == "latents",
+                                              output_kind=None if output_kind == 'latents' else output_kind))
+        export_manifest_sha256 = verified.manifest_sha256
+    output = Path(output).expanduser().resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    result = write_generation(output, values, metadata={
+        "status": "GENERATED", "kind": "INFERENCE_FROM_EXPORTED_WEIGHTS", "sample_index": sample_index,
+        "sample_id": sample_id, "input_identity": dataset.identity,
+        "generation_parameters": parameters, "inference_seed": config.trainer.get("seed", 0),
+        "loaded_factory": model_source,
+        "export_manifest_sha256": export_manifest_sha256,
+        "model": model, "checkpoint_cycle": manifest["checkpoint_cycle"]}, output_kind=output_kind)
+    (output / "_SUCCESS").write_text(file_sha256(output / "generation.json") + "\n")
+    return result

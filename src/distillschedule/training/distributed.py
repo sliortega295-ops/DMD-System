@@ -54,12 +54,13 @@ def admit_run_controls(config):
         from .checkpoint import CheckpointPolicy
         return {"cycles": trainer["cycles"], "checkpoint_policy": asdict(CheckpointPolicy.from_trainer(trainer)),
                 "output_root": str(Path(trainer["output_dir"]).resolve()),
-                "resume_manifest_sha256": manifest_sha}
+                "resume_manifest_sha256": manifest_sha,
+                "state_audit_every_cycles": config.execution.get('state_audit_every_cycles', 50)}
 
     controls = checked(local, "training run/restart control admission")
     if any(row != controls for row in gather(controls)):
         raise ValueError("ranks disagree on training run/restart controls: "
-                         "cycles, checkpoint cadence, output root or resume manifest")
+                         "cycles, checkpoint/audit cadence, output root or resume manifest")
 
 
 def topology():

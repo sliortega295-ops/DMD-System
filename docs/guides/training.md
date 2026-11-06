@@ -105,10 +105,11 @@ complete-cycle boundary, optimizer/scheduler/EMA, RNG, data positions, logical
 versions and the effective strategy. Transient caches are rebuilt.
 
 The common lifecycle supports same-topology recovery across compatible minor
-framework fixes. Versioned restore contracts separate source provenance from
-state compatibility; model/plugin, algorithm, data, precision, layout and update
-contracts remain bound to the checkpoint. New output paths, save settings and
-target cycle counts can be chosen on recovery.
+framework fixes. Restore binds versioned contracts and source-derived identities
+of training math, update clocks, state encoding and execution dependencies.
+Comments and docstrings do not change those identities. Older checkpoints without
+them require their original source. Model, algorithm, data, precision and layout
+remain bound; output paths, save settings and target cycles can change.
 
 Distributed checkpoints contain local tensor shards and mesh/placement metadata.
 Only after all rank files are complete and hashed are the manifest and
@@ -141,6 +142,11 @@ Ranks agree on target cycles, checkpoint policy, output root and resume
 manifest before model construction. Each rank consumes its own input; the
 cursor advances by world size. Parameter topology and optimizer ownership are
 restored before reading local checkpoint tensors.
+
+Ordinary cycles check local-shard layout, versions and updated finite values.
+Content audits run on the first cycle and every 50 cycles without gathering
+complete DTensors. Set `execution.state_audit_every_cycles` to another positive
+interval, or `1` to audit every cycle; `Session.audit_state()` is an explicit audit.
 
 ## Run artifacts
 

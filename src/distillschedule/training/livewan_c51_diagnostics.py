@@ -14,6 +14,7 @@ from .livewan_reference_assets import require
 
 
 SCHEMA = "distillschedule.livewan_c51_phase_receipts.v1"
+OUTPUT_SCHEMA = "distillschedule.livewan_c51_output_phase_receipts.v1"
 FLAG = "DISTILLSCHEDULE_LIVEWAN_C51_PHASE_RECEIPTS"
 MEMORY_FIELDS = frozenset(("allocated_bytes", "reserved_bytes", "max_allocated_bytes", "max_reserved_bytes",
                            "driver_free_bytes", "driver_total_bytes"))
@@ -30,17 +31,30 @@ def from_environment(continuation, *, rank):
     require(flag in {"0", "v1"}, "phase diagnostic flag must be 0 or explicit v1")
     if flag == "0":
         return None  # No source reads, identity probes, scalar calls or writes.
-    require(continuation.native_output is None, "phase diagnostic v1 supports training, not output-only export")
+    output_only = continuation.native_output is not None
+    if output_only:
+        from .checkpoint import SCHEMA as CHECKPOINT_SCHEMA
+        from .livewan_native_export import NativeOutputRequest
+        from .livewan_c51_training import validate_progress
+        header = continuation.header
+        require(type(continuation.native_output) is NativeOutputRequest and type(header) is dict
+                and header.get("schema_version") == CHECKPOINT_SCHEMA
+                and header.get("kind") == "RESUMABLE_COMPLETE_CYCLE"
+                and header.get("identity") == continuation.identity
+                and header.get("cycle") == continuation.start_cycle == continuation.end_cycle,
+                "phase diagnostic output requires the actual restored output owner and complete checkpoint")
+        validate_progress(header, identity=continuation.identity, output_only=True)
     from .livewan_c51_training import source_files
     return PhaseReceipts(identity=continuation.identity, output=continuation.output,
         binding=continuation.device_binding, rank=rank, start_cycle=continuation.start_cycle,
         end_cycle=continuation.end_cycle, current_source_files=source_files(),
-        run_id=os.environ.get("DISTILLSCHEDULE_RUN_ID", ""))
+        run_id=os.environ.get("DISTILLSCHEDULE_RUN_ID", ""), output_only=output_only)
 
 
 class PhaseReceipts:
     """Bounded per-rank atomic history, not an execution/checkpoint owner."""
-    def __init__(self, *, identity, output, binding, rank, start_cycle, end_cycle, current_source_files, run_id):
+    def __init__(self, *, identity, output, binding, rank, start_cycle, end_cycle, current_source_files, run_id,
+                 output_only=False):
         from .livewan_training import _gpu_uuid
         require(type(rank) is int and 0 <= rank < 16, "phase diagnostic rank is invalid")
         require(type(run_id) is str and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", run_id) is not None
@@ -53,7 +67,9 @@ class PhaseReceipts:
                 "phase diagnostic complete source/asset/input identity differs")
         require(type(identity.get("horizon")) is int and 2 <= identity["horizon"] <= 100
                 and type(start_cycle) is int and type(end_cycle) is int
-                and 0 <= start_cycle < end_cycle <= identity["horizon"], "phase diagnostic cycle interval is invalid")
+                and type(output_only) is bool and end_cycle <= identity["horizon"]
+                and (0 < start_cycle == end_cycle if output_only else 0 <= start_cycle < end_cycle),
+                "phase diagnostic cycle interval is invalid")
         require(type(binding) is dict and binding.get("rank") == rank and binding.get("node_rank") == rank//8
                 and type(binding.get("cuda_device")) is int and binding["cuda_device"] == rank % 8
                 and type(binding.get("physical_device")) is int and binding["physical_device"] == rank % 8
@@ -69,6 +85,8 @@ class PhaseReceipts:
             valid_uuid = False
         require(valid_uuid, "phase diagnostic GPU UUID/inventory differs")
         self.rank, self.start_cycle, self.end_cycle = rank, start_cycle, end_cycle
+        self.output_only = output_only
+        self.schema = OUTPUT_SCHEMA if output_only else SCHEMA
         self.path = Path(output)/"capacity/phase-receipts"/f"rank-{rank:05d}.json"
         self.identity = dict(run_id=run_id, training_identity_sha256=fingerprint(identity),
             source_head=identity["source_head"], source_files=dict(identity["source_files"]),
@@ -77,12 +95,14 @@ class PhaseReceipts:
             pid=os.getpid(), gpu_uuid=binding["uuid"], physical_device=binding["physical_device"],
             physical_inventory=dict(inventory), role="generator" if rank < 8 else "score",
             start_cycle=start_cycle, requested_stop_cycle=end_cycle)
+        if output_only:
+            self.identity["target_checkpoint_cycle"] = start_cycle
         self.observations = []
-        self.limit = 4+4*(end_cycle-start_cycle)  # <=404: setup + two Full5/two pack markers per cycle.
+        self.limit = 2 if output_only else 4+4*(end_cycle-start_cycle)
         self._setup, self._returned, self._active, self._packing, self._packed = 0, start_cycle, None, None, None
 
     def descriptor(self):
-        return dict(schema_version=SCHEMA, path=str(self.path), diagnostic_only=True,
+        return dict(schema_version=self.schema, path=str(self.path), diagnostic_only=True,
                     formal_timing_eligible=False, claimable_speedup=False)
 
     def record(self, *, torch, rank, device, phase, cycle, versions, memory=None):
@@ -95,7 +115,15 @@ class PhaseReceipts:
                 and all(type(v) is int and v >= 0 for v in versions.values()),
                 "phase diagnostic phase/cycle/physical clock is invalid")
         setup, returned, active, packing, packed = self._setup, self._returned, self._active, self._packing, self._packed
-        if phase in SETUP_PHASES:
+        if self.output_only:
+            # The real output branch returns before training setup and Full5.
+            # These two observations precede restoration: do not relabel the
+            # bootstrap clock as the checkpoint's trained parameter versions.
+            require(setup < 2 and phase == SETUP_PHASES[setup] and cycle == self.start_cycle
+                    and versions == physical_versions(rank, 0),
+                    "phase diagnostic output construction ordering/cycle/bootstrap clock differs")
+            setup += 1
+        elif phase in SETUP_PHASES:
             require(setup < 4 and phase == SETUP_PHASES[setup] and cycle == self.start_cycle,
                     "phase diagnostic setup ordering/cycle differs")
             if phase == "public_bind_exit":
@@ -127,14 +155,17 @@ class PhaseReceipts:
                 and all(type(v) is int and v >= 0 for v in memory.values())
                 and memory["driver_free_bytes"] <= memory["driver_total_bytes"],
                 "phase diagnostic requires exactly the existing six scalar memory fields")
-        global_step = 5*(cycle-1) if phase == "full5_entry" else 5*cycle
+        global_step = None if self.output_only else 5*(cycle-1) if phase == "full5_entry" else 5*cycle
         row = dict(sequence=len(self.observations), phase=phase, cycle=cycle, global_step=global_step,
-            wave=None, wave_scope="WHOLE_FULL5_BOTH_WAVES_NOT_PER_WAVE_SAMPLING", physical_versions=dict(versions),
+            wave=None, wave_scope="NO_TRAINING_WAVES" if self.output_only else "WHOLE_FULL5_BOTH_WAVES_NOT_PER_WAVE_SAMPLING",
+            physical_versions=dict(versions),
             monotonic_ns=time.monotonic_ns(), wall_time_ns=time.time_ns(), memory=dict(memory),
             memory_origin="EXISTING_SETUP_MEMORY_NO_REQUERY" if phase == "setup_ready" else "ORIGINAL_MEMORY_SNAPSHOT_HELPER",
             timing_class="DIAGNOSTIC_NONPERFORMANCE", observation="HOST_BOUNDARY_REACHED_NOT_CYCLE_ACCEPTANCE")
+        if self.output_only:
+            row["physical_versions_scope"] = "BOOTSTRAP_PRE_RESTORE"
         observations = self.observations+[row]
-        atomic_json(self.path, dict(schema_version=SCHEMA, status="DIAGNOSTIC_ONLY_PARTIAL_HISTORY",
+        atomic_json(self.path, dict(schema_version=self.schema, status="DIAGNOSTIC_ONLY_PARTIAL_HISTORY",
             identity=self.identity, observations=observations, observation_limit=self.limit,
             peak_scope="ORIGINAL_GLOBAL_COUNTERS_NO_PHASE_RESETS", unsynchronized_host_samples=True,
             diagnostic_only=True, formal_timing_eligible=False, claimable_speedup=False,

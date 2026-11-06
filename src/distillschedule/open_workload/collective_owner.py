@@ -112,15 +112,8 @@ def admit(workload):
     source = dict(provider_code={cls.__module__ + '.' + cls.__qualname__: code_signature(cls)
                                  for cls in type(owner).__mro__ if cls is not object},
                   protocol_code={name: _method_signature(owner, name) for name in (*_METHODS, 'runtime_tensors')})
-    before, rng = signature(owner, _local_shards=True), _rng()
-    try:
-        spec = owner.collective_execution_spec()
-        repeated = owner.collective_execution_spec()
-        pure = signature(_rng()) == signature(rng)
-        _require(spec == repeated and pure and signature(owner, _local_shards=True) == before,
-                 'native collective spec must be pure and stable')
-    finally:
-        _restore_rng(rng)
+    from .state_audit import pure_descriptor
+    spec = pure_descriptor(owner, 'collective_execution_spec')
     spec = _json(spec, 'spec')
     _require(type(spec) is dict and set(spec) == {
         'schema_version', 'backend', 'world_size', 'device_type', 'shared_identity'}
@@ -288,6 +281,10 @@ class NativeOwnerLifecycle:
         checked(lambda: self._preflight(session), 'native completed cycle source/spec')
         checked(self._runtime, 'native cycle completion boundary')
         self.completed_cycles += 1
+        from .state_audit import content_due
+        session.effects['state_audit'] = dict(kind='content_audit' if content_due() else 'metadata',
+            cycle=session._audit_cycle, every_cycles=session.state_audit_every_cycles,
+            local_shards=True, scope='native_owner_rank_local', replica_content_consensus=False)
         self._effects(session)
 
 
@@ -326,8 +323,10 @@ def validate_session(session, workload, local, lifecycle, *, copy_state, persist
              'native lifecycle requires its exact local implementation and persistent owned state')
 
 
-def make_session(workload, option, *, copy_state=True, persistent=False, binding=None):
+def make_session(workload, option, *, copy_state=True, persistent=False, binding=None, state_audit_every_cycles=50):
     def preflight():
+        from .state_audit import validate_every
+        validate_every(state_audit_every_cycles)
         implementation(option)
         _require(copy_state is False and persistent is True,
                  'native owner requires copy_state=False and persistent=True; clone/calibration/paired trials are not admitted')
@@ -337,4 +336,4 @@ def make_session(workload, option, *, copy_state=True, persistent=False, binding
         return current
     binding = checked(preflight, 'native persistent session admission')
     return _NativeOwnerSession(workload, option['local'], lifecycle=NativeOwnerLifecycle(workload, option, binding),
-                               copy_state=False, persistent=True)
+                               copy_state=False, persistent=True,state_audit_every_cycles=state_audit_every_cycles)

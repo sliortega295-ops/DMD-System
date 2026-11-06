@@ -14,7 +14,6 @@ from distillschedule.workloads.best_known.registry import fingerprint
 from .replicated import ReplicaLifecycle, checked, gather, identity, ddp_order_admitted, BACKEND
 from .replica_contract import execution_graph
 from .sharded import rejection, shard_roots, MODES, HSDP_MODES, ParameterShadowOwnership
-from .torch_backend import signature, unwrap_module
 
 MODE = 'per_module'
 
@@ -158,10 +157,10 @@ class MixedLifecycle(ReplicaLifecycle):
         for key, mode in self.mapping.items():
             if mode in (*MODES, *HSDP_MODES): session.state[key].reshard()
         session.synchronize()
-        digests = gather(fingerprint(signature({k:unwrap_module(v) for k,v in session.state.items()})))
-        require(len(set(digests)) == 1, 'mixed-layout state diverged', path='open.mixed')
+        from .state_audit import distributed_audit
+        distributed_audit(session)
         self._drain_ddp_telemetry()
-        session.effects.update(parameter_backward_calls=self.backward_count, replica_state_consensus=True,
+        session.effects.update(parameter_backward_calls=self.backward_count,
             reduction_completed=True, gradient_collectives=None,
             collective_count_scope='mixed native collectives not fully instrumented',
             reference_collectives=self.reference.collectives,

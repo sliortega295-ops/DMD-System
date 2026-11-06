@@ -26,7 +26,7 @@ def _new_output(output_dir):
     return path.resolve()
 
 
-def _publish(output_dir, *, rows, provenance, metadata, produce):
+def _publish(output_dir, *, rows, provenance, metadata, produce, validate_document=None, before_publish=None):
     """Rename a fully verified sibling directory; no complete output is replaced."""
     output = _new_output(output_dir)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -54,9 +54,13 @@ def _publish(output_dir, *, rows, provenance, metadata, produce):
                 if "metadata" in record:
                     item["metadata"] = deepcopy(record["metadata"])
                 prepared.append(item)
+            # Finish trusted providers before final source validation: cleanup
+            # can itself fail or modify an input or encoder source file.
+            if before_publish is not None:
+                before_publish()
             # Detect changing raw documents/media or encoder code before publishing.
             for identity in provenance["documents"]:
-                validate_source(identity)
+                (validate_document or validate_source)(identity)
             for record in provenance["sources"]:
                 for identity in record["media"].values():
                     validate_source(identity)

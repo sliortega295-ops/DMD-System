@@ -416,19 +416,30 @@ class DMD2Owner:
         return result
 
     def _frozen_tensors_identity(self):
+        return {name: _tensor_identity(value) for name, value in self._frozen_tensors().items()}
+
+    def _frozen_tensors(self):
         # Initial masks, not current masks: upstream deliberately toggles the
         # entire guidance module to requires_grad=True after the first G turn.
         # Those Teacher tensors remain immutable and outside the optimizer.
         tensors = dict(self._model_named('parameters'))
-        result = {name: _tensor_identity(tensors[name]) for name in self.frozen_hashes}
+        result = {name: tensors[name] for name in self.frozen_hashes}
         for name, value in self._model_named('buffers'):
             if not name.startswith(('feedforward_model.', 'guidance_model.fake_unet.',
                                     'guidance_model.cls_pred_branch.')):
-                result[name] = _tensor_identity(value)
+                result[name] = value
         return result
 
     def _native_constants(self):
         from .sd import _plain
+        from distillschedule.open_workload.state_audit import check_frozen
+        plain = self._plain_tensors()
+        expected = getattr(self, '_state_audit_constants_identity', None)
+        if expected is None:
+            expected = {name: _tensor_identity(value) for name, value in plain.items()}
+            self._state_audit_constants_identity = expected
+        check_frozen(self, 'constants', plain, expected, _tensor_identity,
+                     message='live native conditioning/scheduler constants changed')
         # Bound args.gradient_checkpointing remains mathematical identity. The
         # native model's actual flags/callbacks are physical execution state;
         # admission here must not preempt a separately scoped capability owner.
@@ -440,7 +451,7 @@ class DMD2Owner:
             'gen_cls_loss', 'sdxl', 'diffusion_gan', 'diffusion_gan_max_timestep')
         return dict(model={name: getattr(self.model, name) for name in model_fields},
             guidance={name: getattr(self.model.guidance_model, name) for name in guidance_fields},
-            tensors={name: _tensor_identity(value) for name, value in self._plain_tensors().items()},
+            tensors=deepcopy(expected),
             scheduler=_plain(dict(self.model.noise_scheduler.config)),
             scheduler_fields={name: value for name, value in vars(self.model.noise_scheduler).items()
                 if not name.startswith('_') and type(value) in (str, bool, int, float, type(None))},
@@ -482,8 +493,9 @@ class DMD2Owner:
                 and self.identity['preprocessing_assets'] == preprocessing_assets(self.identity['bundle']['files'],
                     variant='sdxl' if self.args.sdxl else 'sd15', images=True),
                 'live tokenizer/VAE preprocessing binding changed')
-        require(self._frozen_tensors_identity() == self._frozen_identity,
-                'live frozen Teacher/CLIP/VAE/base-LoRA tensors changed')
+        from distillschedule.open_workload.state_audit import check_frozen
+        check_frozen(self, 'frozen', self._frozen_tensors(), self._frozen_identity, _tensor_identity,
+                     message='live frozen Teacher/CLIP/VAE/base-LoRA tensors changed')
         require(self.model.noise_scheduler is self.model.guidance_model.scheduler
                 and fingerprint(self._native_constants()) == self._constants_hash,
                 'live native conditioning/scheduler constants changed')

@@ -61,3 +61,14 @@ def test_user_home_paths_expand_before_config_relative_resolution(tmp_path, monk
     assert config.trainer["resume_from"] == str(home / "runs/checkpoint")
     from distillschedule.data.manifest import resolve_path
     assert resolve_path("~/raw/video.mp4", tmp_path / "config") == home / "raw/video.mp4"
+
+
+@pytest.mark.parametrize('every', [1, 7, 50, 0, -1, True, 2.5, '50'])
+def test_public_state_audit_cadence_is_positive_integer(tmp_path, every):
+    raw = request()
+    raw['execution']['state_audit_every_cycles'] = every
+    if type(every) is int and every > 0:
+        assert TrainingConfig.from_dict(raw, source=tmp_path / 'run.json').execution['state_audit_every_cycles'] == every
+    else:
+        with pytest.raises(ValueError, match='positive integer'):
+            TrainingConfig.from_dict(raw, source=tmp_path / 'run.json')

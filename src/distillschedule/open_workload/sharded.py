@@ -20,7 +20,7 @@ import torch.distributed as dist
 from distillschedule.core.contracts import require
 from .replicated import ReplicaLifecycle, checked, gather, identity, forward_order_admitted, BACKEND
 from .replica_contract import execution_graph, shard_boundary_modules
-from .torch_backend import storage_key, physical_tensor, signature, unwrap_module
+from .torch_backend import storage_key, physical_tensor, unwrap_module
 from distillschedule.workloads.best_known.registry import fingerprint
 
 MODES = ('fsdp2_reshard', 'fsdp2_keep_forward')
@@ -590,9 +590,9 @@ class ShardedLifecycle(ReplicaLifecycle):
         for key in self.module_keys:
             close_sharded_forward(session.state[key])
         session.synchronize()
-        digests=gather(fingerprint(signature(session.state)))
-        require(len(set(digests))==1,'FSDP model/optimizer state diverged',path='open.fsdp')
+        from .state_audit import distributed_audit
+        distributed_audit(session)
         session.effects.update(parameter_backward_calls=self.backward_count,
-            replica_state_consensus=True,reduction_completed=True,
+            reduction_completed=True,
             gradient_collectives=None,communicated_gradient_bytes=None,
             collective_count_scope='native_FSDP_collectives_not_instrumented')

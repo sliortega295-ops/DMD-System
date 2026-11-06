@@ -7,8 +7,6 @@ from copy import deepcopy
 import itertools
 import inspect
 import json
-import random
-import torch
 
 from distillschedule.core.contracts import require
 
@@ -72,16 +70,8 @@ def inventory(state):
                     and getattr(owner, name).__func__ is getattr(type(owner), name)
                     for name in ('execution_options', 'execution_scope')),
                 'owner execution methods must be bound inspectable class methods', path='open.owner')
-        before = signature(owner)
-        py, rng = random.getstate(), torch.random.get_rng_state()
-        try:
-            descriptor = owner.execution_options()
-            repeated = owner.execution_options()
-            pure_rng = random.getstate() == py and torch.equal(rng, torch.random.get_rng_state())
-        finally:
-            random.setstate(py); torch.random.set_rng_state(rng)
-        require(descriptor == repeated and signature(owner) == before and pure_rng,
-                'owner execution descriptor must be pure and stable', path='open.owner')
+        from .state_audit import pure_descriptor
+        descriptor = pure_descriptor(owner, 'execution_options')
         try:
             plain = json.loads(json.dumps(descriptor, allow_nan=False))
         except (TypeError, ValueError) as exc:

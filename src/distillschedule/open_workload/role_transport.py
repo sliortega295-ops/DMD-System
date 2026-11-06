@@ -111,7 +111,10 @@ def _model_identity(module):
 
 class RolePoolExecutor:
     def __init__(self, task:RoleTask, layout:PoolLayout, hardware:AllocatedWorld,
-                 bindings:RoleFunctions, *, device=None, profile_components=False, producer_dispatch=None):
+                 bindings:RoleFunctions, *, device=None, profile_components=False, producer_dispatch=None,
+                 state_audit_every_cycles=50):
+        from .state_audit import validate_every
+        self.state_audit_every_cycles = validate_every(state_audit_every_cycles)
         require(dist.is_available() and dist.is_initialized() and dist.get_world_size()==hardware.world,
                 'explicit initialized world process group required',path='role.runtime')
         layout.validate(task,hardware);bindings.validate(task)
@@ -226,6 +229,12 @@ class RolePoolExecutor:
 
     def run(self):
         """Run one real cycle; repeated calls reuse models, optimizers and groups."""
+        from .state_audit import audit_scope
+        with audit_scope(cycle=self._cycle + 1, every=self.state_audit_every_cycles,
+                         measure=self.profile_components):
+            return self._run()
+
+    def _run(self):
         from .replicated import checked
         def admission():
             require(not (self._closed or self._failed or self._busy),
@@ -238,7 +247,8 @@ class RolePoolExecutor:
                     'continuous execution requires explicit sample_at',path='role.data')
             require(fingerprint(self.producer_dispatch)==self._dispatch_identity,
                     'producer dispatch mutated after admission',path='role.dispatch')
-            return (self._cycle,self._versions,self.task.digest,self.layout.to_dict(),self._dispatch_identity)
+            return (self._cycle,self._versions,self.task.digest,self.layout.to_dict(),self._dispatch_identity,
+                    self.state_audit_every_cycles,self.profile_components)
         local=checked(admission,'role cycle admission')
         entries=[None]*self.hardware.world;dist.all_gather_object(entries,local)
         require(all(x==entries[0] for x in entries),'rank cycle/version mismatch',path='role.runtime')
@@ -408,12 +418,11 @@ class RolePoolExecutor:
                    if self.device.type=='cuda' else None)
         if self.profile_components and self.device.type=='cuda':
             cuda_peak=max([cuda_peak]+[r['peak_allocated_bytes'] for r in components.records])
-        if (self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward') or (
-             self.role=='score' and layout.score_parallelism in ('fsdp2_frozen','fsdp2_train')):
-            from .role_sharding import sharded_model_identity
-            model_digest=sharded_model_identity(module,gen_group if self.role=='generator' else score_group,group_size)
-        else:
-            model_digest=_model_identity(module)
+        from .state_audit import content_due, state_record, _compare_records
+        from .replicated import checked
+        full_audit = content_due()
+        state = checked(lambda: state_record({'model': module, 'optimizer': optimizer}, content=full_audit),
+                        'role local state audit')
         local={'rank':self.rank,'role':self.role,'events':self.events,
                'components':components.result(),
                'producer_dispatch':None if self.producer_dispatch is None else
@@ -433,7 +442,10 @@ class RolePoolExecutor:
                'initial_storage_bytes':initial_bytes,
                'final_storage_bytes':storage_bytes((module,optimizer)),
                'max_inflight':peak,'elapsed_ns':time.perf_counter_ns()-started,
-               'model_sha256':model_digest,'sharding':self._sharding,
+               'model_sha256':None, 'state_audit_record':state, 'sharding':self._sharding,
+               'state_audit':dict(kind='content_audit' if full_audit else 'metadata',
+                    cycle=self._cycle + 1, every_cycles=self.state_audit_every_cycles,
+                    local_shards=True, replica_content_consensus=full_audit),
                'generator_version':graph.metadata['final_versions']['generator'],
                'score_version':graph.metadata['final_versions']['score'],
                'cycle':self._cycle,
@@ -451,8 +463,13 @@ class RolePoolExecutor:
                     r['cuda_peak_allocated_bytes']<=self.hardware.capacities[r['rank']] for r in rows),
                 'observed CUDA peak exceeds allocated capacity',path='role.capacity')
         for role,ranks in (('generator',layout.generator),('score',layout.score)):
-            digests={rows[r]['model_sha256'] for r in ranks}
-            require(len(digests)==1,f'{role} replicas diverged',path='role.runtime')
+            records = [rows[rank]['state_audit_record'] for rank in ranks]
+            _compare_records(records, list(ranks), content=full_audit)
+            digest = fingerprint(records) if full_audit else None
+            for rank in ranks:
+                rows[rank]['model_sha256'] = digest
+        for row in rows:
+            del row['state_audit_record']
         require(sum(x['input_gradients'] for x in rows)==task.microbatches,
                 'missing transported input VJPs',path='role.runtime')
         return {'schema_version':'distillschedule.role_pool_execution.v1',

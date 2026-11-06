@@ -12,10 +12,16 @@ from distillschedule.workloads.best_known.registry import fingerprint, write_new
 
 
 class ExecutionBackend:
-    def __init__(self, workload):
+    def __init__(self, workload, *, state_audit_every_cycles=50):
+        from .state_audit import validate_every
         import torch.distributed as dist
         self.workload=workload
         self.distributed=dist.is_initialized() and dist.get_world_size()>1
+        if self.distributed:
+            from .replicated import checked
+            self.state_audit_every_cycles = checked(lambda: validate_every(state_audit_every_cycles), 'audit cadence')
+        else:
+            self.state_audit_every_cycles = validate_every(state_audit_every_cycles)
         self.world=dist.get_world_size() if self.distributed else 1
         self.rank=dist.get_rank() if self.distributed else 0
         self.native_owner=False
@@ -85,12 +91,15 @@ class ExecutionBackend:
         if self.native_owner:
             from .collective_owner import make_session
             return make_session(self.workload,implementation,copy_state=copy_state,
-                                persistent=persistent,binding=self.native_binding)
+                                persistent=persistent,binding=self.native_binding,
+                                state_audit_every_cycles=self.state_audit_every_cycles)
         if self.distributed:
             from .replicated import make_session
-            return make_session(self.workload,implementation,copy_state=copy_state,persistent=persistent)
+            return make_session(self.workload,implementation,copy_state=copy_state,persistent=persistent,
+                                state_audit_every_cycles=self.state_audit_every_cycles)
         from .torch_backend import Session
-        return Session(self.workload,implementation,copy_state=copy_state,persistent=persistent)
+        return Session(self.workload,implementation,copy_state=copy_state,persistent=persistent,
+                       state_audit_every_cycles=self.state_audit_every_cycles)
 
     def resident_trial(self, budget):
         """Private CPU/single-CUDA budgeted opt-in; public clone policy is unchanged."""
