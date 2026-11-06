@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "sliortega295-ops/DMD-System",
-  "source_revision": "19544630305c1ad03c30af1f4fec863af1caf68c",
+  "source_revision": "878ae00cbce63a29725e1f6b73398f5b8e88de11",
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
