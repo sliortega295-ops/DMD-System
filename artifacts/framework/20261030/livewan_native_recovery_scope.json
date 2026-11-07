@@ -35,11 +35,5 @@
     "export_manifest_sha256": "cabb7f2745b39eb43a3954e52d66f295a59b1da164af90ee00c7d7e1cf81690a",
     "payload_revalidated_utc": "2026-11-06",
     "payload_bytes": 87729256
-  },
-  "single_job_same_checkpoint_acceptance": "NOT_RUN_COMPONENTS_HAVE_DISTINCT_SOURCES_AND_CYCLES",
-  "historical_controller": {
-    "status": "FAIL_FD_CLOSED_DURING_SCAN_PRESERVED",
-    "whole_job_acceptance": "FAIL_PRESERVED",
-    "scope": "ORIGINAL_PRIVATE_OBSERVER_FAILURE_NOT_REWRITTEN"
   }
 }

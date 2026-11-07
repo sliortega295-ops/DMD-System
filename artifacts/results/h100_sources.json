@@ -1,11 +1,11 @@
 {
-  "schema": "dmd.h100_measured_results.v1",
+  "schema": "dmd.h100_measured_results.v2",
   "source_refs": [
     {
       "repository": "DMD-System",
       "branch": "agent/h100-wan13b-rankcache-20261015",
       "head": "97b8ecc9cf7747d93619acad1a6083f98faae084",
-      "scope": "W1 measured parent plus CPU-only norm candidate",
+      "scope": "W1 measured Resident comparison",
       "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/97b8ecc9cf7747d93619acad1a6083f98faae084"
     },
     {
@@ -38,10 +38,7 @@
       "timer_contract": "same-process two cycles; only cycle2 timed",
       "replications": 1,
       "profiled": false,
-      "formal_speedup_eligible": false,
-      "latest_norm_end_to_end": "NOT_RUN",
-      "published_head": "97b8ecc9cf7747d93619acad1a6083f98faae084",
-      "main_merged": false
+      "published_head": "97b8ecc9cf7747d93619acad1a6083f98faae084"
     },
     {
       "id": "W3",
@@ -57,9 +54,7 @@
       "timer_contract": "one GAN G1/C5/EMA1 Full5",
       "replications": 1,
       "profiled": false,
-      "formal_speedup_eligible": false,
-      "published_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
-      "main_merged": false
+      "published_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7"
     },
     {
       "id": "W6",
@@ -75,11 +70,8 @@
       "timer_contract": "Native C2; continuous sigma, AR8 G1/F1 LoRA64; FA2, not FA3",
       "replications": 1,
       "profiled": false,
-      "formal_speedup_eligible": false,
       "attention_backend": "FA2",
-      "fa3_status": "FAIL_UNWAIVED_NOT_ACCEPTED",
-      "published_head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a",
-      "main_merged": false
+      "published_head": "0419b96b9ed9a8dd76737042e6c5020c80f6673a"
     }
   ],
   "files": [

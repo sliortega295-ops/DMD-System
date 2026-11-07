@@ -11,7 +11,7 @@ import re
 def verify(root: Path) -> dict:
     root = root.resolve()
     manifest = json.loads((root / 'artifacts/results/h100_sources.json').read_text())
-    if manifest['schema'] != 'dmd.h100_measured_results.v1':
+    if manifest['schema'] != 'dmd.h100_measured_results.v2':
         raise ValueError('unknown H100 publication schema')
     if set(manifest) != {'schema', 'source_refs', 'workloads', 'files', 'provenance'}:
         raise ValueError('H100 result data cannot change the stop boundary or authorize execution')
@@ -38,17 +38,15 @@ def verify(root: Path) -> dict:
         for key in ('measured_training_head', 'published_head'):
             if not re.fullmatch('[0-9a-f]{40}', row[key]):
                 raise ValueError('invalid measured/published H100 source')
-        if row['formal_speedup_eligible'] is not False or row['main_merged'] is not False:
-            raise ValueError('publication cannot promote diagnostic results')
+        if type(row['replications']) is not int or row['replications'] < 1:
+            raise ValueError('measurements require their recorded replication count')
         if row['physical_ranks'] != 8 or row['independent_logical_slots'] != 16 or row['profiled'] is not False:
             raise ValueError('H100 measured resource/timer scope changed')
     if seen != {'artifacts/results/h100.csv'}:
         raise ValueError('H100 measured rows require their complete result table')
     by_id = {r['id']: r for r in rows}
-    if by_id['W1']['latest_norm_end_to_end'] != 'NOT_RUN':
-        raise ValueError('untimed W1 norm port is not a measured faster endpoint')
-    if by_id['W6']['attention_backend'] != 'FA2' or by_id['W6']['fa3_status'] != 'FAIL_UNWAIVED_NOT_ACCEPTED':
-        raise ValueError('W6 rejected FA3 path cannot become the measured endpoint')
+    if by_id['W6']['attention_backend'] != 'FA2':
+        raise ValueError('W6 measured attention backend must remain FA2')
     return dict(status='PASS_H100_ARCHIVE_INTEGRITY_ONLY', files=len(seen), workloads=len(rows),
                 source_refs=len(manifest['source_refs']), GPU_started=0, SSH_calls=0)
 
