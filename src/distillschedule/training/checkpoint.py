@@ -399,6 +399,35 @@ def _native_inventory(path, value, *, hashes=False):
         raise ValueError("native checkpoint shard inventory changed")
 
 
+def _fsync_directory(path):
+    # File fsync does not persist directory entries on POSIX. An unsupported
+    # storage sync is a failed save, not permission to prune an older checkpoint.
+    if os.name == 'posix':
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
+def _fsync_checkpoint_tree(staging, native):
+    if native is not None:
+        # Opaque native writers need not fsync their own sidecars. Flush them
+        # here without materializing model tensors or changing engine formats.
+        for name in native['files']:
+            with (staging / name).open('rb') as handle:
+                os.fsync(handle.fileno())
+    directories = []
+    for path in staging.rglob('*'):
+        if path.is_symlink():
+            raise ValueError('checkpoint staging must not contain symlinks')
+        if path.is_dir():
+            directories.append(path)
+    for path in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+        _fsync_directory(path)
+    _fsync_directory(staging)
+
+
 def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=None, data_progress=None,
                     pre_publication_guard=None, native_checkpoint=None, diagnostic_packing_observer=None):
     import torch
@@ -521,7 +550,12 @@ def save_checkpoint(path, state, *, identity, cycle, cursor, versions, policy=No
             for name, value in contents.items():
                 if (staging / name).read_bytes() != value:
                     raise ValueError(f"checkpoint source metadata hash changed: {name}")
+            _fsync_checkpoint_tree(staging, native)
             os.rename(staging, path)
+            # A caller may have precreated a fresh run root without syncing its
+            # parent. Existence alone is not proof of a durable directory entry.
+            for parent in (path.parent,*path.parent.parents):
+                _fsync_directory(parent)
             return metadata
         metadata = distributed.primary(publish, "checkpoint publication")
         metadata = distributed.gather(metadata)[0]

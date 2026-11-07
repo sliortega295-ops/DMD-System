@@ -12,7 +12,7 @@ from typing import Any, Mapping
 import math
 
 from distillschedule.core.contracts import require
-from distillschedule.workloads.program import Program, Call
+from distillschedule.workloads.program import MAX_PROGRAM_CALLS, Program, Call
 from distillschedule.workloads.best_known.registry import fingerprint
 
 
@@ -38,6 +38,10 @@ class RoleTask:
         require(self.dtype in {'float32', 'bfloat16'}, 'unsupported gradient dtype', path='role.task')
         require(type(self.score_updates) is int and 0 <= self.score_updates <= 64,
                 'invalid score update count', path='role.task')
+        require(5 * self.microbatches + 1 + self.score_updates <= MAX_PROGRAM_CALLS,
+                f'role program permits at most {MAX_PROGRAM_CALLS} calls; '
+                f'5 * microbatches + 1 + score_updates = {5 * self.microbatches + 1 + self.score_updates}',
+                path='role.task')
         fingerprint(dict(self.parameters))
 
     @property

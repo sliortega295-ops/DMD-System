@@ -79,12 +79,18 @@ def metadata_timeout_seconds():
     return seconds
 
 
-def checked(fn: Callable, label: str):
-    """Make preflight/validation failures visible to every rank before collectives."""
+def checked(fn: Callable, label: str, *, fatal_exceptions=()):
+    """Exchange validation failures; fail-stop exceptions bypass collectives.
+
+    Callers opting into fatal exceptions own whole-job termination. A poisoned
+    native/CUDA context must not attempt another metadata collective here.
+    """
     value = None
     try:
         value = fn(); error = None
     except Exception as exc:
+        if isinstance(exc, fatal_exceptions):
+            raise
         error = type(exc).__name__ + ': ' + str(exc)
     errors = gather(error)
     require(not any(errors), f'{label}: rank failures {errors}', path='open.replicated')

@@ -259,6 +259,95 @@ def test_retention_keeps_latest_three_and_never_touches_unpublished_or_foreign(t
     assert (root / '.cycle-000007.pending').exists()
 
 
+class _DurableNativeSidecar:
+    def validate_checkpoint_boundary(self):
+        pass
+
+    def save(self, path):
+        from distillschedule.workloads.best_known.registry import file_sha256
+        shard = path / 'rank0' / 'optimizer.bin'
+        shard.parent.mkdir(parents=True)
+        shard.write_bytes(b'native optimizer fixture')
+        return {'owner': {'engine': 'SYNTHETIC_TEST_ONLY'},
+                'files': {'native/rank0/optimizer.bin': file_sha256(shard)}}
+
+    def validate_inventory(self, path, owner):
+        assert (path / 'rank0/optimizer.bin').is_file()
+
+
+@pytest.mark.skipif(__import__('os').name != 'posix', reason='POSIX directory sync')
+def test_checkpoint_syncs_nested_files_and_directories_before_publish_and_parent_after(tmp_path, monkeypatch):
+    import os
+    import stat
+    from distillschedule.training import checkpoint
+    events = []
+    original_sync, original_rename = os.fsync, os.rename
+    def sync(fd):
+        name = Path(os.readlink(f'/proc/self/fd/{fd}'))
+        events.append(('directory' if stat.S_ISDIR(os.fstat(fd).st_mode) else 'file', name))
+        original_sync(fd)
+    def rename(source, target):
+        events.append(('rename', Path(source)))
+        original_rename(source, target)
+    monkeypatch.setattr(os, 'fsync', sync)
+    monkeypatch.setattr(os, 'rename', rename)
+    target = tmp_path / 'new' / 'checkpoints' / 'cycle-000001'
+    checkpoint.save_checkpoint(target, {'weight': torch.ones(1)}, identity={'run': 'test'},
+        cycle=1, cursor=1, versions={}, native_checkpoint=_DurableNativeSidecar())
+    split = next(i for i, event in enumerate(events) if event[0] == 'rename')
+    staging = events[split][1]
+    before, after = events[:split], events[split + 1:]
+    assert ('file', staging / 'native/rank0/optimizer.bin') in before
+    assert [path for kind, path in before if kind == 'directory'] == [
+        staging / 'native/rank0', staging / 'native', staging]
+    assert [path for kind, path in after if kind == 'directory'] == [target.parent, *target.parent.parents]
+    checkpoint.read_checkpoint(target, identity={'run': 'test'})
+
+
+@pytest.mark.parametrize('failure', ['staging', 'parent'])
+def test_checkpoint_directory_sync_failure_never_reaches_retention(tmp_path, monkeypatch, failure):
+    import os
+    import stat
+    from distillschedule.training import checkpoint
+    root = tmp_path / 'checkpoints'
+    previous = root / 'cycle-000001'
+    checkpoint.save_checkpoint(previous, {'weight': torch.ones(1)}, identity={'run': 'test'},
+                               cycle=1, cursor=1, versions={})
+    sync = os.fsync
+    def fail(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            path = Path(os.readlink(f'/proc/self/fd/{fd}'))
+            if (failure == 'parent' and path == root or
+                    failure == 'staging' and path.name.startswith('.cycle-000002.tmp-')):
+                raise OSError('directory-sync-sentinel')
+        sync(fd)
+    monkeypatch.setattr(os, 'fsync', fail)
+    with pytest.raises(OSError, match='directory-sync-sentinel'):
+        checkpoint.save_checkpoint(root / 'cycle-000002', {'weight': torch.ones(1)},
+                                   identity={'run': 'test'}, cycle=2, cursor=2, versions={})
+        pytest.fail('failed publication was eligible for retention')
+    assert (previous / '_SUCCESS').is_file()
+    assert (root / 'cycle-000002').exists() == (failure == 'parent')
+
+
+def test_checkpoint_syncs_precreated_run_root_ancestors_before_success(tmp_path, monkeypatch):
+    import os
+    import stat
+    from distillschedule.training import checkpoint
+    root = tmp_path / 'fresh-run/checkpoints'
+    root.mkdir(parents=True)  # Public lifecycle creates its run root before saving.
+    directories = []
+    original = os.fsync
+    def sync(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            directories.append(Path(os.readlink(f'/proc/self/fd/{fd}')))
+        original(fd)
+    monkeypatch.setattr(os, 'fsync', sync)
+    checkpoint.save_checkpoint(root / 'cycle-000001', {'weight': torch.ones(1)},
+                               identity={'run': 'test'}, cycle=1, cursor=1, versions={})
+    assert directories[1:] == [root, *root.parents]
+
+
 def test_default_run_saves_final_only_and_explicit_retention_preserves_training(tmp_path):
     root, config = fixture(tmp_path, samples=6)
     raw = config.to_dict()

@@ -28,7 +28,7 @@ def execute_updates(executor, retained):
     returning the retained cohort is allowed only as that provider's semantics.
     """
     from .role_transport import _validate_tensor
-    from .replicated import checked
+    checked=executor._checked
     from .torch_backend import storage_bytes
     task, layout = executor.task, executor.layout
     module, optimizer = executor.module, executor.optimizer

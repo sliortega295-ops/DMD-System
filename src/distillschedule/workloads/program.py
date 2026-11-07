@@ -17,6 +17,8 @@ from distillschedule.core.graph import Dependency, ExecutionGraph, Operation
 from distillschedule.search.plan_ir import validate_versions
 from distillschedule.workloads.best_known.registry import fingerprint
 
+MAX_PROGRAM_CALLS = 511
+
 
 @dataclass(frozen=True)
 class Call:
@@ -74,7 +76,7 @@ class Program:
 
     def __post_init__(self):
         require(self.schema_version == "distillschedule.open_program.v1", "unknown program schema", path="program")
-        require(0 < len(self.calls) <= 511, "program requires 1..511 instantiated calls", path="program")
+        require(0 < len(self.calls) <= MAX_PROGRAM_CALLS, "program requires 1..511 instantiated calls", path="program")
         require(all(isinstance(c, Call) for c in self.calls), "typed calls required", path="program")
         ids = [c.id for c in self.calls]
         require("__open_finish__" not in ids, "reserved terminal ID", path="program")

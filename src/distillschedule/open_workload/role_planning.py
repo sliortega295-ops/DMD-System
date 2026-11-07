@@ -13,7 +13,6 @@ import builtins
 import dis
 import inspect
 import json
-import platform
 from pathlib import Path
 import statistics
 import sysconfig
@@ -31,10 +30,10 @@ from distillschedule.search.plan_ir import BindingRule, StateAllocation
 from distillschedule.search.service import BoundCandidate, select
 from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,write_new_json
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts, transport_bytes_by_rank
-from .role_transport import RoleFunctions, RolePoolExecutor
+from .role_transport import RoleFunctions, RolePoolExecutor, RoleNativeCapabilityRejected
 
-SCHEMA='distillschedule.measured_role_pool_calibration.v1'
-PLAN='distillschedule.measured_role_pool_plan.v1'
+SCHEMA='distillschedule.measured_role_pool_calibration.v2'
+PLAN='distillschedule.measured_role_pool_plan.v2'
 
 
 def code_identity(bindings:RoleFunctions):
@@ -47,16 +46,21 @@ def code_identity(bindings:RoleFunctions):
     file_hashes={}
     dependency_roots=tuple(Path(sysconfig.get_path(key)).resolve() for key in ('stdlib','purelib','platlib'))
     dynamic_lookups=(getattr,setattr,delattr,vars,globals,locals,eval,exec,__import__)
+    def source_target(value):
+        # Inspect the implementation that actually runs, not an arbitrary
+        # functools.wraps target (a user decorator can change the mathematics).
+        return value.__code__ if inspect.isfunction(value) else value
     def installed_dependency(value):
-        try:path=inspect.getsourcefile(value)
+        try:path=inspect.getsourcefile(source_target(value))
         except (OSError,TypeError):return False
         return path is not None and any(Path(path).resolve().is_relative_to(root) for root in dependency_roots)
     def source_record(value):
-        path=inspect.getsourcefile(value)
+        target=source_target(value)
+        path=inspect.getsourcefile(target)
         if path is not None:
             path=Path(path)
             if path not in file_hashes:file_hashes[path]=file_sha256(path)
-        try:source=inspect.getsource(value)
+        try:source=inspect.getsource(target)
         except (OSError,TypeError) as exc:raise ValueError('uninspectable role callable configuration') from exc
         return dict(callable=hashlib.sha256(source.encode()).hexdigest(),
                     module=file_hashes.get(path)),source
@@ -87,6 +91,20 @@ def code_identity(bindings:RoleFunctions):
         require(inspect.isfunction(value) or inspect.isclass(value),
                 'dynamic role capture requires explicit configuration and state ownership: '+type(value).__qualname__,
                 path='role.identity')
+        if dependency and inspect.isfunction(value):
+            # Torch's first optimizer import lazily installs this transparent
+            # compiler-disable wrapper. Normalize only that stock dependency
+            # wrapper; never unwrap arbitrary user decorators or their config.
+            code=value.__code__
+            disable=getattr(torch,'_disable_dynamo',None)
+            if (Path(code.co_filename).resolve()==Path(torch.__file__).parent/'_compile.py'
+                    and inspect.isfunction(disable)
+                    and any(code is child for child in disable.__code__.co_consts if inspect.iscode(child))
+                    and value.__globals__.get('__name__')=='torch._compile'):
+                original=inspect.getclosurevars(value).nonlocals.get('fn')
+                if (inspect.isfunction(original) and installed_dependency(original)
+                        and getattr(value,'__wrapped__',None) is original):
+                    value=original
         key=(id(value),dependency)
         if key in seen:return {'code_reference':seen[key]}
         seen[key]=len(seen)
@@ -163,30 +181,24 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=Path(__file__).resolve().parent
     files=tuple(root/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py',
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_cli.py',
          'role_score.py','role_profiling.py','role_prediction.py','role_dispatch.py','role_checkpoint.py',
-         'torch_backend.py'))
+         'torch_backend.py','planning.py','hardware_probe.py','replicated.py'))
     files+=tuple(root.parent/name for name in ('runtime/saved_tensors.py','training/checkpoint.py',
-        'training/tensor_state.py','training/distributed.py','training/finite.py'))
+        'training/tensor_state.py','training/distributed.py','training/finite.py','workloads/program.py'))
     return fingerprint({str(p.relative_to(root.parent)):file_sha256(p) for p in files})
 
 
 def _run_identity(task,hardware,bindings,device):
     from .replicated import checked
-    from .planning import source_revision
+    from .planning import hardware_identity, source_revision
     def local():
         bindings.validate(task)
         require(bool(getattr(bindings,'data_identity','')),
                 'explicit immutable data/cohort identity required for role calibration',path='role.identity')
-        props={'device':str(torch.device(device)),'torch':torch.__version__,
+        props={**hardware_identity(torch.device(device)),
                'backend':str(dist.get_backend()),'world_size':dist.get_world_size(),
-               'capacity_bytes':list(hardware.capacities),'node_ids':list(hardware.node_ids),
-               'host_capacity_bytes':list(hardware.host_capacities),
-               'platform':platform.platform(),'cuda_version':torch.version.cuda}
-        if torch.device(device).type=='cuda':
-            p=torch.cuda.get_device_properties(device)
-            props.update({'gpu_name':p.name,'gpu_capability':[p.major,p.minor],
-                          'gpu_total_memory':p.total_memory,'gpu_uuid':str(getattr(p,'uuid','UNAVAILABLE'))})
+               'node_ids':list(hardware.node_ids),'cuda_version':torch.version.cuda}
         value={'source_head':source_revision(),'source_fingerprint':source_identity(),
                'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
                'source_functions_sha256':code_identity(bindings),
@@ -212,6 +224,53 @@ def _binding(identity,task):
                                         'data':identity['data_identity']}),
         'semantic_fingerprint':task.digest,
         'precision_fingerprint':fingerprint({'dtype':task.dtype,'devices':identity['hardware']})}
+
+
+def _plan_resources(selected, hardware, host_bytes=None):
+    rows=selected['memory']
+    require(len(rows)==hardware.world and {r['rank'] for r in rows}==set(range(hardware.world)),
+            'selected memory must cover every allocated rank',path='role.capacity')
+    device=[None]*hardware.world
+    for row in rows:
+        device[row['rank']]=row['peak_bytes']
+    value=dict(schema_version='distillschedule.role_plan_resources.v1', device_bytes=device,
+               host_bytes=list(host_bytes) if host_bytes is not None else [0]*hardware.world)
+    _admit_plan_resources(value,hardware)
+    return value
+
+
+def _admit_plan_resources(value, hardware):
+    require(type(value) is dict and set(value)=={'schema_version','device_bytes','host_bytes'}
+            and value['schema_version']=='distillschedule.role_plan_resources.v1',
+            'missing or invalid role resource requirements',path='role.capacity')
+    for name,available in (('device_bytes',hardware.capacities),('host_bytes',hardware.host_capacities)):
+        needs=value[name]
+        require(type(needs) is list and len(needs)==hardware.world
+                and all(type(n) is int and n>=0 for n in needs),
+                'invalid per-rank '+name+' requirements',path='role.capacity')
+        require(all(current>=needed for current,needed in zip(available,needs)),
+                'available '+name+' capacity below selected plan requirements',path='role.capacity')
+
+
+def _measured_host_requirements(task, layout, costs, world):
+    if layout.activation_policy=='resident':return [0]*world
+    cost=costs.get_component(_contract(task,layout,'measured_native_cycle'))
+    raw=_load(cost.evidence['source_receipt'])
+    observations=raw['rank_observations']
+    require(observations,'offload plan requires actual host observations',path='role.capacity')
+    peaks=[0]*world
+    for observation in observations:
+        rows=observation['ranks']
+        require(observation['layout']==layout.to_dict() and len(rows)==world
+                and [row['rank'] for row in rows]==list(range(world)),
+                'offload host observations changed ownership',path='role.capacity')
+        for rank,row in enumerate(rows):
+            peak=row['offload']['peak_host_bytes']
+            require(type(peak) is int and peak>=0,'invalid observed host peak',path='role.capacity')
+            peaks[rank]=max(peaks[rank],peak)
+    for rank in layout.generator:
+        peaks[rank]=max(peaks[rank],2*layout.window*task.bytes_per_latent)
+    return peaks
 
 
 def cycle_graph(task):
@@ -274,10 +333,9 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
             executor=RolePoolExecutor(task,layout,hardware,bindings,device=device)
             try:
                 result,model,optimizer=executor.run()
-            except ValueError as exc:
+            except RoleNativeCapabilityRejected as exc:
                 # Only a WORLD-synchronized native capability rejection is safe
                 # to skip. Never swallow native loss, CUDA, transport or OOM errors.
-                if 'role native layout admission' not in str(exc):raise
                 rejected_reason=str(exc)
             finally:executor.close()
             if rejected_reason is not None:break
@@ -372,13 +430,14 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     hw=AllocatedWorld(tuple(manifest['hardware']['capacities']),
                       tuple(manifest['hardware']['node_ids']),
                       tuple(manifest['hardware']['host_capacities']))
-    candidates=[]
+    candidates=[];host_requirements={}
     for row in manifest['candidates']:
         layout=PoolLayout.from_dict(row['layout']).validate(task,hw)
         require(file_sha256(Path(row['cost_path']))==row['cost_sha256'],
                 'role measured costs changed',path='role.plan')
         costs=CostModel.from_dict(_load(row['cost_path']));costs.verify_receipts()
         require(costs.binding==_binding(manifest['identity'],task),'mixed calibration identity',path='role.plan')
+        host_requirements[fingerprint(layout.to_dict())]=_measured_host_requirements(task,layout,costs,hw.world)
         graph=cycle_graph(task);ranks=tuple(range(hw.world))
         transport=transport_bytes_by_rank(task,layout)
         # Rank-specific queues matter for asymmetric pools. Never give every
@@ -410,10 +469,12 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     prediction=select(candidates,max_states=max_states,beam_width=beam_width,
                       timeout_seconds=timeout_seconds)
     require(prediction['ranked'],'no feasible measured role-pool plan',path='role.plan')
+    selected=prediction['ranked'][0]
     result={'schema_version':PLAN,'calibration':str(Path(calibration_path).resolve()),
             'calibration_sha256':file_sha256(Path(calibration_path)),
             'identity':manifest['identity'],'task':task.to_dict(),
-            'selected':prediction['ranked'][0],'search':prediction,
+            'selected':selected,'search':prediction,
+            'resource_requirements':_plan_resources(selected,hw,host_requirements[selected['candidate_id']]),
             'execution_model':'FULL_CYCLE_MEASURED_FIFO_WINDOW_NOT_UNLOWERED_DP_ORDER',
             'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
             'claimable_speedup':False,'gpu_execution':'NOT_RUN_BY_SEARCH'}
@@ -462,12 +523,16 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
                 'selected role pool differs from source-bound measured search',path='role.run')
         require(p.get('producer_dispatch')==expected.get('producer_dispatch'),
                 'selected producer dispatch differs from source-bound search',path='role.run')
+        require(p.get('resource_requirements')==expected['resource_requirements'],
+                'selected role resource requirements changed',path='role.run')
         return p,sha,PoolLayout.from_dict(p['selected']['implementation']).validate(task,hardware)
     p,sha,layout=distributed.checked(load_plan,'role selected plan admission')
     require(len(set(distributed.gather(sha)))==1,'ranks loaded different role plans',path='role.run')
     identity=_run_identity(task,hardware,bindings,device)
     distributed.checked(lambda:require(p['identity']==identity,
                 'role source/hardware/data identity changed',path='role.run'),'role runtime identity')
+    distributed.checked(lambda:_admit_plan_resources(p['resource_requirements'],hardware),
+                        'role available resource admission')
     policy=CheckpointPolicy(**controls['policy']) if controls['policy'] is not None else None
     root=Path(controls['output'])
     distributed.primary(lambda:root.mkdir(parents=True,exist_ok=False),'role output directory')

@@ -20,7 +20,7 @@ from distillschedule.search.service import BoundCandidate, select
 from distillschedule.workloads.best_known.registry import fingerprint, file_sha256, write_new_json
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts, transport_bytes_by_rank
 
-SCHEMA = 'distillschedule.role_component_calibration.v1'
+SCHEMA = 'distillschedule.role_component_calibration.v2'
 BACKEND = 'native_planned_producer_fifo_components_v2'
 
 
@@ -317,7 +317,7 @@ def _load(path):
 
 
 def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
-    from .role_planning import source_identity,_binding,PLAN
+    from .role_planning import source_identity,_binding,_plan_resources,PLAN
     m=_load(calibration_path)
     require(m.get('schema_version')==SCHEMA and m['identity']['source_fingerprint']==source_identity(),
             'changed component calibration/source',path='role.predict')
@@ -377,6 +377,7 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     result={'schema_version':PLAN,'calibration':str(Path(calibration_path).resolve()),
             'calibration_sha256':file_sha256(Path(calibration_path)),
             'identity':m['identity'],'task':m['task'],'selected':selected,'search':prediction,
+            'resource_requirements':_plan_resources(selected,hardware),
             'cost_mode':'components','execution_model':BACKEND,'producer_dispatch':dispatch,
             'search_settings':{'max_states':max_states,'beam_width':beam_width,'timeout_seconds':timeout_seconds},
             'prediction_provenance':provenance,'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',

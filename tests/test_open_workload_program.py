@@ -60,6 +60,21 @@ def test_no_name_whitelist_or_fixed_five_contract():
         assert p.compile().operations[0].metadata['binding']==name
 
 
+@pytest.mark.parametrize('microbatches,updates', [(102, 1), (128, 0), (90, 64)])
+def test_role_task_rejects_unlowerable_call_count_at_construction(microbatches, updates):
+    from distillschedule.open_workload.role_program import RoleTask
+    with pytest.raises(ValueError, match=r'role.task:.*511.*calls'):
+        RoleTask(microbatches, (1, 1), score_updates=updates)
+
+
+@pytest.mark.parametrize('microbatches,updates', [(102, 0), (90, 60), (89, 64)])
+def test_role_task_accepts_legal_combined_call_boundaries(microbatches, updates):
+    from distillschedule.open_workload.role_program import RoleTask
+    task = RoleTask(microbatches, (1, 1), score_updates=updates)
+    assert len(task.program().calls) == 5 * microbatches + 1 + updates <= 511
+    assert RoleTask.from_dict(task.to_dict()) == task
+
+
 def _saved_forward(ctx):
     model = ctx.state['model']
     value = model(ctx.inputs['x']) if ctx.attributes['linear'] else model.weight * 2
@@ -1127,6 +1142,43 @@ def test_role_plan_identity_changes_with_actual_callable_configuration(mode):
     assert code_identity(_scaled_role_bindings(2, mode)) == code_identity(_scaled_role_bindings(2, mode))
 
 
+def _role_identity_adam_worker(_rank):
+    from distillschedule.open_workload.role_planning import code_identity
+    bindings = _scaled_role_bindings(2)
+    before = code_identity(bindings)
+    # First optimizer construction lazily wraps torch.manual_seed in Torch2.10.
+    torch.optim.Adam([torch.nn.Parameter(torch.ones(1))], lr=.01)
+    assert code_identity(bindings) == before
+
+
+def test_role_identity_is_stable_across_first_adam_construction():
+    torch.multiprocessing.spawn(_role_identity_adam_worker, nprocs=1, join=True)
+
+
+def _role_wrapped_loss_a():
+    import functools
+    @functools.wraps(_audit_role_loss)
+    def wrapper(model, source, sample):
+        return _audit_role_loss(model, source, sample) * 2
+    return wrapper
+
+
+def _role_wrapped_loss_b():
+    import functools
+    @functools.wraps(_audit_role_loss)
+    def wrapper(model, source, sample):
+        return _audit_role_loss(model, source, sample) * 7
+    return wrapper
+
+
+def test_role_identity_does_not_unwrap_user_decorator_mathematics():
+    from dataclasses import replace
+    from distillschedule.open_workload.role_planning import code_identity
+    bindings = _scaled_role_bindings(2)
+    assert code_identity(replace(bindings, score_loss=_role_wrapped_loss_a())) != code_identity(
+        replace(bindings, score_loss=_role_wrapped_loss_b()))
+
+
 def test_role_plan_identity_rejects_opaque_dynamic_capture_without_reading_tensor_payload(monkeypatch):
     from distillschedule.open_workload.role_planning import code_identity
     def forbidden(*args, **kwargs):
@@ -1297,7 +1349,252 @@ def test_role_factory_binds_all_requested_parameters_without_mutating_caller(tmp
     assert code_identity(first) != code_identity(second)
 
 
-def _role_plan_restart_worker(rank, rendezvous, output, mode):
+def _identity_without_transport(monkeypatch, hardware):
+    from copy import deepcopy
+    from distillschedule.open_workload import role_planning, replicated
+    from distillschedule.open_workload.role_program import RoleTask
+    monkeypatch.setattr(replicated, 'checked', lambda fn, label: fn())
+    monkeypatch.setattr(role_planning.dist, 'get_backend', lambda: 'gloo')
+    monkeypatch.setattr(role_planning.dist, 'get_world_size', lambda: 2)
+    monkeypatch.setattr(role_planning.dist, 'all_gather_object',
+                        lambda rows, value: rows.__setitem__(slice(None), [deepcopy(value), deepcopy(value)]))
+    # Isolate hardware field coverage; actual callable binding has its own
+    # source-backed and fresh-process tests below.
+    monkeypatch.setattr(role_planning, 'code_identity', lambda bindings: 'a' * 64)
+    return role_planning._run_identity(RoleTask(3, (1, 1)), hardware, _scaled_role_bindings(2), 'cpu')
+
+
+def test_role_identity_does_not_bind_transient_device_or_host_capacity(monkeypatch):
+    from distillschedule.open_workload.role_program import AllocatedWorld
+    before = _identity_without_transport(monkeypatch, AllocatedWorld((1000, 1000), host_capacities=(100, 100)))
+    after = _identity_without_transport(monkeypatch, AllocatedWorld((5096, 5096), host_capacities=(4196, 4196)))
+    assert before == after
+
+
+@pytest.mark.parametrize('field', ['matmul', 'determinism', 'threads', 'interop', 'cuda_tf32', 'cudnn_tf32'])
+def test_role_identity_binds_common_numeric_and_cost_settings(monkeypatch, field):
+    from distillschedule.open_workload.role_program import AllocatedWorld
+    hardware = AllocatedWorld((1000, 1000))
+    before = _identity_without_transport(monkeypatch, hardware)
+    target = None
+    if field in ('cuda_tf32', 'cudnn_tf32'):
+        target = torch.backends.cuda.matmul if field == 'cuda_tf32' else torch.backends.cudnn
+        old_tf32 = target.allow_tf32
+        target.allow_tf32 = not old_tf32
+    else:
+        name = dict(matmul='get_float32_matmul_precision', determinism='are_deterministic_algorithms_enabled',
+                    threads='get_num_threads', interop='get_num_interop_threads')[field]
+        previous = getattr(torch, name)()
+        changed = ('medium' if previous != 'medium' else 'highest') if field == 'matmul' else (
+            not previous if field == 'determinism' else previous + 1)
+        monkeypatch.setattr(torch, name, lambda: changed)
+    try:
+        assert _identity_without_transport(monkeypatch, hardware) != before
+        assert not torch.cuda.is_initialized()
+    finally:
+        if target is not None:
+            target.allow_tf32 = old_tf32
+
+
+@pytest.mark.parametrize('device,host', [((44, 28), (12, 0)), ((4096, 4096), (100, 100))])
+def test_role_resource_admission_accepts_available_capacity_at_or_above_requirements(device, host):
+    from distillschedule.open_workload.role_planning import _admit_plan_resources
+    from distillschedule.open_workload.role_program import AllocatedWorld
+    requirements = dict(schema_version='distillschedule.role_plan_resources.v1',
+                        device_bytes=[44, 28], host_bytes=[12, 0])
+    _admit_plan_resources(requirements, AllocatedWorld(device, host_capacities=host))
+
+
+@pytest.mark.parametrize('device,host', [((43, 28), (12, 0)), ((44, 28), (11, 0))])
+def test_role_resource_admission_rejects_insufficient_rank_before_execution(device, host):
+    from distillschedule.open_workload.role_planning import _admit_plan_resources
+    from distillschedule.open_workload.role_program import AllocatedWorld
+    requirements = dict(schema_version='distillschedule.role_plan_resources.v1',
+                        device_bytes=[44, 28], host_bytes=[12, 0])
+    with pytest.raises(ValueError, match='role.*capacity'):
+        _admit_plan_resources(requirements, AllocatedWorld(device, host_capacities=host))
+
+
+def _role_large_activation_model(role, device):
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(3 if role == 'generator' else 7)
+        return torch.nn.Sequential(torch.nn.Linear(1, 64), torch.nn.SiLU(),
+                                   torch.nn.Linear(64, 1)).to(device)
+
+
+def _role_offload_budget_worker(rank, rendezvous, output):
+    from dataclasses import replace
+    from datetime import timedelta
+    from pathlib import Path
+    import json
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_planning import (
+        calibrate, search, _measured_host_requirements, _plan_resources, _admit_plan_resources)
+    from distillschedule.search.cost_model import CostModel
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=20))
+    try:
+        task = RoleTask(3, (1, 1))
+        hardware = AllocatedWorld((1 << 20,) * 2, host_capacities=(1 << 20,) * 2)
+        root = Path(output)
+        bindings = replace(_scaled_role_bindings(2), make_model=_role_large_activation_model)
+        calibration = calibrate(task, hardware, bindings, root,
+            generator_bytes=1000, score_bytes=1000, max_candidates=2, samples=1,
+            max_native_runs=3, allow_offload=True)
+        plan = search(root / 'calibration.json')
+        _admit_plan_resources(plan['resource_requirements'], hardware)
+        offload = [row for row in calibration['candidates']
+                   if row['layout']['activation_policy'] == 'cpu_offload_prefetch']
+        assert len(offload) == 1
+        row = offload[0]
+        layout = PoolLayout.from_dict(row['layout'])
+        costs = CostModel.from_dict(json.loads(Path(row['cost_path']).read_text()))
+        costs.verify_receipts()
+        host = _measured_host_requirements(task, layout, costs, 2)
+        raw = json.loads((Path(row['cost_path']).parent / 'measured_native_cycle.json').read_text())
+        measured = max(run['ranks'][0]['offload']['peak_host_bytes'] for run in raw['rank_observations'])
+        assert measured > 2 * layout.window * task.bytes_per_latent
+        assert host == [measured, 0]
+        value = _plan_resources({'memory': [{'rank': r, 'peak_bytes': 1000} for r in range(2)]},
+                                hardware, host)
+        _admit_plan_resources(value, AllocatedWorld((1000,) * 2, host_capacities=tuple(host)))
+        with pytest.raises(ValueError, match='host_bytes capacity'):
+            _admit_plan_resources(value, AllocatedWorld((1000,) * 2,
+                                  host_capacities=(host[0] - 1, 0)))
+    finally:
+        dist.destroy_process_group()
+
+
+def test_role_offload_host_requirements_come_from_actual_measured_receipts(tmp_path):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_offload_budget_worker,
+        args=(str(tmp_path / 'rendezvous'), str(tmp_path / 'calibration')), nprocs=2, join=True)
+
+
+def _role_misleading_loss(model, latent, sample):
+    raise RuntimeError('role native layout admission: callback-sentinel')
+
+
+def _role_misleading_failure_worker(rank, rendezvous, output):
+    from dataclasses import replace
+    from datetime import timedelta
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, AllocatedWorld
+    from distillschedule.open_workload.role_planning import calibrate
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=10))
+    try:
+        bindings = replace(_scaled_role_bindings(2), score_loss=_role_misleading_loss)
+        with pytest.raises(ValueError, match='role transport computation.*callback-sentinel'):
+            calibrate(RoleTask(3, (1, 1)), AllocatedWorld((1 << 20,) * 2), bindings,
+                      output, max_candidates=1, samples=1, max_native_runs=2)
+        dist.barrier()  # Computation rejected without poisoning the transport.
+    finally:
+        dist.destroy_process_group()
+
+
+def test_role_calibration_never_skips_callback_errors_based_on_message_text(tmp_path):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_misleading_failure_worker,
+        args=(str(tmp_path / 'rendezvous'), str(tmp_path / 'calibration')), nprocs=2, join=True)
+
+
+def test_role_checkpoint_preparation_owns_fatal_cleanup_even_before_run(monkeypatch):
+    from types import SimpleNamespace
+    from distillschedule.open_workload.role_transport import RolePoolExecutor, RoleTransportFatalError
+    from distillschedule.open_workload.role_checkpoint import RoleCheckpoint
+    from distillschedule.training import distributed
+    executor = RolePoolExecutor.__new__(RolePoolExecutor)
+    executor.rank = 0
+    executor.device = torch.device('cpu')
+    executor._busy = executor._failed = executor._closed = executor._prepared = False
+    executor._native_installing = False
+    executor._transport_drained = True
+    executor._fatal_error = None
+    executor.bindings = SimpleNamespace(checkpoint_safe=True, sample_at=lambda *args: None, data_identity='d' * 64)
+    retained = object()
+    executor._pending_transport = [retained]
+    def install():
+        executor._native_installing = True
+        raise RuntimeError('native-install-sentinel')
+    monkeypatch.setattr(executor, '_prepare_models', install)
+    monkeypatch.setattr(distributed, 'checked', lambda fn, label: fn())
+    with pytest.raises(RoleTransportFatalError, match='native-install-sentinel') as failure:
+        RoleCheckpoint(executor, {})
+    assert executor._failed and executor._fatal_error is failure.value
+    assert failure.value.executor is executor
+    executor.close()
+    assert executor._closed and executor._pending_transport == [retained]
+
+
+@pytest.mark.parametrize('phase', ['installing', 'prepared'])
+def test_role_native_failure_bypasses_metadata_even_for_value_error(monkeypatch, phase):
+    from types import SimpleNamespace
+    from distillschedule.open_workload import replicated
+    from distillschedule.open_workload.role_transport import RolePoolExecutor, RoleTransportFatalError
+    # CPU classification fixture only: no native model or CUDA context created.
+    executor = RolePoolExecutor.__new__(RolePoolExecutor)
+    executor.rank, executor.device = 0, torch.device('cpu')
+    executor._native_installing = phase == 'installing'
+    executor._prepared = phase == 'prepared'
+    executor.layout = SimpleNamespace(generator_parallelism='fsdp2_keep_forward',
+                                      score_parallelism='replicated')
+    executor._transport_drained = True
+    executor._fatal_error = None
+    def gather(value):
+        pytest.fail('native failure must not enter a metadata rendezvous')
+    def fail():
+        raise ValueError('native-callback-sentinel')
+    monkeypatch.setattr(replicated, 'gather', gather)
+    with pytest.raises(RoleTransportFatalError, match='native-callback-sentinel') as failure:
+        executor._checked(fail, 'native callback')
+    assert executor._failed and executor._fatal_error is failure.value
+
+
+def _role_borrowed_world_worker(rank, rendezvous, output, raw_runtime):
+    from datetime import timedelta
+    from pathlib import Path
+    import os
+    import torch.distributed as dist
+    from distillschedule.open_workload import role_cli, role_planning
+    from distillschedule.open_workload.role_transport import RoleTransportFatalError
+    os.environ.update(RANK=str(rank), WORLD_SIZE='2', LOCAL_RANK=str(rank), LOCAL_WORLD_SIZE='2')
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=10))
+    original = role_planning.calibrate
+    try:
+        def fail(*args, **kwargs):
+            error = RuntimeError if raw_runtime else RoleTransportFatalError
+            raise error('borrowed-world-sentinel')
+        role_planning.calibrate = fail
+        root = Path(output)
+        with pytest.raises(RoleTransportFatalError, match='borrowed-world-sentinel'):
+            role_cli.main(['role-auto', '--factory', str(root / 'factory.py') + ':build',
+                '--parameters', str(root / 'parameters.json'), '--execute', '--distributed', 'gloo',
+                '--memory-limit-bytes', str(1 << 20), '--host-memory-limit-bytes', '0',
+                '--output', str(root / 'result')])
+        assert dist.is_initialized()
+        dist.barrier()  # CLI did not destroy or exit an embedding caller's WORLD.
+    finally:
+        role_planning.calibrate = original
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('raw_runtime', [False, True])
+def test_role_cli_preserves_caller_world_on_fatal_error(tmp_path, raw_runtime):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    (tmp_path / 'factory.py').write_text(_ROLE_FACTORY_SOURCE.replace('checkpoint_safe=True)',
+        "checkpoint_safe=True,role_storage_estimate_bytes={'generator':1000,'score':1000})"))
+    (tmp_path / 'parameters.json').write_text('{"scale":2}')
+    torch.multiprocessing.spawn(_role_borrowed_world_worker,
+        args=(str(tmp_path / 'rendezvous'), str(tmp_path), raw_runtime), nprocs=2, join=True)
+
+
+def _role_plan_restart_worker(rank, rendezvous, output, mode, cost_mode='measured_cycle'):
     from datetime import timedelta
     from pathlib import Path
     import os
@@ -1316,18 +1613,25 @@ def _role_plan_restart_worker(rank, rendezvous, output, mode):
         root = Path(output)
         scale = 7 if mode == 'changed' or mode == 'ranks' and rank == 1 else 2
         task, bindings, _ = load_factory(str(root / 'factory.py') + ':build', {'scale': scale})
-        hardware = AllocatedWorld((1 << 30,) * 2)
+        capacities, hosts = (1 << 30,) * 2, (1 << 20,) * 2
+        hardware = AllocatedWorld(capacities, host_capacities=hosts)
         random.seed(23); np.random.seed(23); torch.manual_seed(23)
         if mode == 'ranks':
             with pytest.raises(ValueError, match='configuration identity'):
                 _run_identity(task, hardware, bindings, 'cpu')
             return
-        if mode == 'calibrate':
-            calibrate(task, hardware, bindings, root / 'calibration', generator_bytes=10000,
-                      score_bytes=10000, max_candidates=1, samples=1, max_native_runs=2)
+        if mode in ('calibrate', 'auto'):
+            calibration = root / ('auto-calibration' if mode == 'auto' else 'calibration')
+            plan_path = root / ('auto-plan.json' if mode == 'auto' else 'plan.json')
+            calibrate(task, hardware, bindings, calibration, generator_bytes=10000,
+                      score_bytes=10000, max_candidates=1, samples=1, max_native_runs=3,
+                      cost_mode=cost_mode)
             if rank == 0:
-                write_new_json(root / 'plan.json', search(root / 'calibration/calibration.json'))
+                write_new_json(plan_path, search(calibration / 'calibration.json'))
             dist.barrier()
+            if mode == 'auto':
+                receipt, _, _ = run_selected(task, hardware, bindings, plan_path, root / mode)
+                assert receipt['completed_cycles'] == 1
             return
         if mode == 'changed':
             with pytest.raises(ValueError, match='identity changed'):
@@ -1335,31 +1639,55 @@ def _role_plan_restart_worker(rank, rendezvous, output, mode):
             assert not (root / mode).exists()
             return
         import json
-        previous = json.loads((root / 'segment/execution.json').read_text()) if mode == 'resumed' else None
+        if mode in ('resumed', 'tight', 'capacity', 'settings'):
+            plan = json.loads((root / 'plan.json').read_text())
+            needs = plan.get('resource_requirements', {})
+            if mode == 'resumed':
+                hardware = AllocatedWorld(tuple(v + 4096 for v in capacities),
+                                          host_capacities=tuple(v + 4096 for v in hosts))
+            elif mode in ('tight', 'capacity'):
+                current = list(needs['device_bytes'])
+                if mode == 'capacity':
+                    current[0] -= 1
+                hardware = AllocatedWorld(tuple(current), host_capacities=tuple(needs['host_bytes']))
+            else:
+                torch.set_float32_matmul_precision('medium')
+        if mode in ('capacity', 'settings'):
+            from distillschedule.open_workload import role_planning
+            def forbidden(*args, **kwargs):
+                raise AssertionError('rejected plan entered model construction')
+            role_planning.RolePoolExecutor = forbidden
+            with pytest.raises(ValueError, match='capacity' if mode == 'capacity' else 'identity changed'):
+                run_selected(task, hardware, bindings, root / 'plan.json', root / mode)
+            assert not (root / mode).exists()
+            return
+        previous = json.loads((root / 'segment/execution.json').read_text()) if mode in ('resumed', 'tight') else None
         receipt, model, optimizer = run_selected(task, hardware, bindings, root / 'plan.json', root / mode,
             cycles=1 if mode == 'segment' else 2,
             checkpoint_policy={'checkpoint_every': 1} if mode == 'segment' else None,
             resume_from=previous['checkpoint_path'] if previous else None)
         torch.save({'state': pack_state({'model': model, 'optimizer': optimizer}), 'rng': rng_state(),
                     'cycle': receipt['completed_cycles']}, root / f'{mode}-{rank}.pt')
-        if mode == 'resumed':
+        if mode in ('resumed', 'tight'):
             assert receipt['resumed_from_cycle'] == 1 and receipt['cycles_executed'] == 1
     finally:
         dist.destroy_process_group()
 
 
-def test_saved_role_plan_rejects_changed_config_and_resumes_in_fresh_processes(tmp_path):
+@pytest.mark.parametrize('cost_mode', ['measured_cycle', 'components'])
+def test_saved_role_plan_rejects_changed_config_and_resumes_in_fresh_processes(tmp_path, cost_mode):
     if not torch.distributed.is_gloo_available():
         pytest.skip('Gloo required')
     pytest.importorskip('numpy')
     (tmp_path / 'factory.py').write_text(_ROLE_FACTORY_SOURCE)
-    for mode in ('ranks', 'calibrate', 'changed', 'segment', 'resumed', 'reference'):
+    for mode in ('auto', 'ranks', 'calibrate', 'changed', 'segment', 'resumed', 'tight', 'capacity', 'settings', 'reference'):
         torch.multiprocessing.spawn(_role_plan_restart_worker,
-            args=(str(tmp_path / (mode + '-init')), str(tmp_path), mode), nprocs=2, join=True)
+            args=(str(tmp_path / (mode + '-init')), str(tmp_path), mode, cost_mode), nprocs=2, join=True)
     for rank in range(2):
         expected = torch.load(tmp_path / f'reference-{rank}.pt', weights_only=True)
         resumed = torch.load(tmp_path / f'resumed-{rank}.pt', weights_only=True)
         _assert_role_tree_equal(expected, resumed)
+        _assert_role_tree_equal(expected, torch.load(tmp_path / f'tight-{rank}.pt', weights_only=True))
 
 
 def _audit_role_forward(model, sample):
@@ -1368,6 +1696,234 @@ def _audit_role_forward(model, sample):
 
 def _audit_role_loss(model, source, sample):
     return (model(source) - sample).square().mean()
+
+
+def _role_transport_fault_worker(rank, rendezvous, fault, world):
+    from datetime import timedelta
+    import time
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_transport import RoleFunctions, RolePoolExecutor
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=world,
+                            timeout=timedelta(seconds=6))
+    executor = None
+    original_send, original_receive = dist.isend, dist.irecv
+    pending, waited = [], []
+    class TrackedWork:
+        def __init__(self, work):
+            self.work = work
+            pending.append(self)
+        def wait(self):
+            self.work.wait()
+            waited.append(self)
+    dist.isend = lambda *a, **k: TrackedWork(original_send(*a, **k))
+    dist.irecv = lambda *a, **k: TrackedWork(original_receive(*a, **k))
+    try:
+        class FailingBackward(torch.autograd.Function):
+            @staticmethod
+            def forward(ctx, value):
+                return value
+            @staticmethod
+            def backward(ctx, gradient):
+                raise RuntimeError('delayed-backward-sentinel')
+        def sample(index, role, device):
+            if fault == 'generator_sample' and role == 'generator':
+                raise RuntimeError('generator-sample-sentinel')
+            return torch.full((1, 1), float(index + 1), device=device)
+        def forward(module, actual):
+            if fault == 'generator_forward_late' and actual.item() == 3:
+                raise RuntimeError('late-forward-sentinel')
+            value = module(actual)
+            return FailingBackward.apply(value) if fault == 'generator_backward' else value
+        def loss(module, source, actual):
+            if fault == 'score_loss':
+                raise RuntimeError('score-loss-sentinel')
+            if fault == 'score_autograd':
+                return module.weight.square().mean()  # No connection to transported input.
+            return _audit_role_loss(module, source, actual)
+        def constructed(module, source, actual):
+            return torch.full_like(source, float('nan'))
+        bindings = RoleFunctions(_audit_role_model, _audit_role_optimizer, sample, forward,
+            None if fault == 'score_nan' else loss,
+            score_input_gradient=constructed if fault == 'score_nan' else None,
+            sample_identity=_audit_role_sample_identity)
+        task = RoleTask(1 if world == 4 else 3, (1, 1))
+        layout = (PoolLayout((0, 1), (2, 3), 1) if world == 4 else
+                  PoolLayout((0,), tuple(range(1, world)), 2))
+        executor = RolePoolExecutor(task, layout, AllocatedWorld((1 << 30,) * world), bindings)
+        executor._prepare()
+        initial = {name: parameter.detach().clone() for name, parameter in executor.module.named_parameters()}
+        started = time.monotonic()
+        with pytest.raises(ValueError) as failure:
+            executor.run()
+        assert time.monotonic() - started < 3., 'peer escaped via process-group timeout, not protocol drain'
+        errors = [None] * world
+        dist.all_gather_object(errors, str(failure.value))
+        assert len(set(errors)) == 1 and 'role transport computation' in errors[0]
+        assert 'timeout' not in errors[0].lower()
+        expected = {'score_loss': 'score-loss-sentinel', 'score_nan': 'constructed latent gradient',
+                    'generator_backward': 'delayed-backward-sentinel',
+                    'generator_sample': 'generator-sample-sentinel',
+                    'generator_forward_late': 'late-forward-sentinel',
+                    'score_autograd': 'not have been used'}[fault]
+        assert expected in errors[0]
+        assert len(waited) == len(pending) and len({id(item) for item in waited}) == len(waited)
+        assert executor._failed and not executor._busy and executor._transport_drained
+        assert not executor._pending_transport and not executor._active_offloaders
+        assert executor._cycle == 0 and not any(executor._versions.values())
+        assert not any('commit' in row['action'] for row in executor.events)
+        for name, parameter in executor.module.named_parameters():
+            torch.testing.assert_close(parameter, initial[name], rtol=0, atol=0)
+            assert parameter.grad is None
+        with pytest.raises(ValueError, match='failed'):
+            executor.run()
+    finally:
+        dist.isend, dist.irecv = original_send, original_receive
+        if executor is not None:
+            executor.close()
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('fault,world', [('score_loss', 2), ('score_nan', 2), ('score_autograd', 2),
+    ('generator_backward', 2), ('generator_forward_late', 3), ('generator_sample', 4)])
+def test_role_transport_drains_callback_failures_before_common_rejection(tmp_path, fault, world):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    context = torch.multiprocessing.spawn(_role_transport_fault_worker,
+        args=(str(tmp_path / 'rendezvous'), fault, world), nprocs=world, join=False)
+    import time
+    deadline = time.monotonic() + 25
+    try:
+        while not context.join(timeout=.5):
+            assert time.monotonic() < deadline, 'role fault probe exceeded its owner deadline'
+    finally:
+        for process in context.processes:
+            if process.is_alive():
+                process.terminate()
+            process.join(5)
+            if process.is_alive():
+                process.kill(); process.join(5)
+        assert not any(process.is_alive() for process in context.processes)
+
+
+@pytest.mark.parametrize('fault', ['score_vjp', 'optimizer_commit', 'work_wait',
+    'pairing_collective', 'final_barrier', 'receipt_collective', 'gradient_reduce',
+    'prepare_collective', 'cycle_entry_collective', 'subgroup_close'])
+def test_role_cli_owner_reaps_fatal_transport_without_blocking_group_cleanup(tmp_path, fault):
+    from pathlib import Path
+    import os
+    import signal
+    import subprocess
+    import sys
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    factory = tmp_path / 'factory.py'
+    source = _ROLE_FACTORY_SOURCE.replace('import torch\n',
+        'import torch\nfrom distillschedule.open_workload.role_transport import RoleTransportFatalError\n', 1)
+    if fault == 'score_vjp':
+        source = source.replace("return scale*(module(latent)-actual['value']).square().mean()",
+                                "raise RoleTransportFatalError('fatal-vjp-sentinel')")
+    elif fault == 'optimizer_commit':
+        source += '''\nclass FailingOptimizer(torch.optim.Adam):
+    def step(self, closure=None):
+        raise RoleTransportFatalError('fatal-optimizer-sentinel')
+'''
+        source = source.replace('torch.optim.Adam(module.parameters()', 'FailingOptimizer(module.parameters()')
+    factory.write_text(source.replace('checkpoint_safe=True)',
+        "checkpoint_safe=True,role_storage_estimate_bytes={'generator':1000,'score':1000})"))
+    parameters = tmp_path / 'parameters.json'
+    parameters.write_text('{"scale":2}')
+    runner = tmp_path / 'worker.py'
+    runner.write_text('''import os, time
+from pathlib import Path
+import torch.distributed as dist
+from distillschedule.open_workload.role_cli import main
+root=Path(__file__).parent
+(root/('pid-'+os.environ['RANK'])).write_text(str(os.getpid()))
+original=dist.destroy_process_group
+def destroy(group=None):
+    if group is None:
+        print('BLOCKING_WORLD_CLEANUP_ENTERED',flush=True)
+        time.sleep(90)  # A poisoned owner cleanup must be bypassed on fatal exit.
+    return original(group)
+dist.destroy_process_group=destroy
+''')
+    with runner.open('a') as stream:
+        if fault == 'work_wait':
+            stream.write('''if os.environ['RANK']=='0':
+    original_receive=dist.irecv
+    class WaitFailure:
+        def __init__(self,work): self.work=work
+        def wait(self): raise RuntimeError('p2p-wait-sentinel')
+    def receive(*args,**kwargs): return WaitFailure(original_receive(*args,**kwargs))
+    dist.irecv=receive
+''')
+        elif fault not in ('score_vjp', 'optimizer_commit'):
+            stream.write('''if os.environ['RANK']=='0':
+    import inspect
+    from distillschedule.open_workload import replicated, role_transport
+    specs={
+        'pairing_collective':(replicated,'gather','_check_sample_pairing',1),
+        'final_barrier':(dist,'barrier','_run_cycle',2),
+        'receipt_collective':(dist,'all_gather_object','_run_cycle',1),
+        'gradient_reduce':(role_transport,'_sync_gradients','_commit_update',1),
+        'prepare_collective':(dist,'new_group','_prepare_models',1),
+        'cycle_entry_collective':(dist,'all_gather_object','_run',1),
+        'subgroup_close':(dist,'destroy_process_group','close',1),
+    }
+    fault=FAULT
+    target,name,caller,occurrence=specs[fault]
+    communicate=getattr(target,name)
+    calls=0
+    def fail_communication(*args,**kwargs):
+        global calls
+        frame=inspect.currentframe().f_back
+        if frame.f_code.co_name=='_communicate': frame=frame.f_back
+        if frame.f_code.co_name==caller:
+            calls+=1
+            if calls==occurrence: raise RuntimeError(fault+'-sentinel')
+        return communicate(*args,**kwargs)
+    setattr(target,name,fail_communication)
+'''.replace('FAULT', repr(fault)))
+        stream.write('raise SystemExit(main())\n')
+    command = [sys.executable, '-m', 'torch.distributed.run', '--standalone', '--nproc_per_node=2',
+        '--max_restarts=0', '--monitor_interval=.1', str(runner), 'role-auto',
+        '--factory', str(factory) + ':build', '--parameters', str(parameters), '--execute',
+        '--distributed', 'gloo', '--group-timeout', '90', '--memory-limit-bytes', str(1 << 30),
+        '--host-memory-limit-bytes', '0', '--disable-offload', '--max-candidates', '1',
+        '--samples', '1', '--max-native-runs', '2', '--output', str(tmp_path / 'output')]
+    process = subprocess.Popen(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               start_new_session=True)
+    def stop_probe():
+        # Elastic workers have their own process groups. Only kill the PIDs
+        # recorded by this probe, after checking their actual command line.
+        for path in tmp_path.glob('pid-*'):
+            pid = int(path.read_text())
+            command_line = Path(f'/proc/{pid}/cmdline')
+            if command_line.exists() and str(runner).encode() in command_line.read_bytes():
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+    try:
+        stdout, _ = process.communicate(timeout=20)
+    except subprocess.TimeoutExpired:
+        stop_probe()
+        stdout, _ = process.communicate(timeout=5)
+        pytest.fail('owned launcher did not reap fatal workers within deadline:\n' + stdout)
+    finally:
+        if process.poll() is None:
+            stop_probe()
+            process.communicate(timeout=5)
+    expected = {'score_vjp': 'fatal-vjp-sentinel', 'optimizer_commit': 'fatal-optimizer-sentinel',
+                'work_wait': 'p2p-wait-sentinel'}.get(fault, fault + '-sentinel')
+    assert process.returncode != 0 and 'ROLE_FATAL:' in stdout and expected in stdout
+    assert 'BLOCKING_WORLD_CLEANUP_ENTERED' not in stdout
+    assert not (tmp_path / 'output/result.json').exists()
+    assert len(list(tmp_path.glob('pid-*'))) == 2
+    assert all(not Path('/proc', path.read_text()).exists() for path in tmp_path.glob('pid-*'))
 
 
 def _role_pairing_worker(rank, rendezvous, fault):

@@ -8,6 +8,8 @@ using the same versioned `Program` graph. The supported native update family is
 G1 followed by **0..64** Score commits after all Generator VJPs. More than one
 Score update requires explicit `score_update_input` cycle/update/sample
 semantics; this is not arbitrary GAN/DistillSchedule protocol translation.
+The combined graph must fit `5 * microbatches + 1 + score_updates <= 511`;
+invalid combinations are rejected when constructing the task.
 
 `role_program.enumerate_layouts()` derives contiguous and bounded balanced
 per-node G/Score rank cuts, plus pipeline-window candidates, from **allocated
@@ -28,6 +30,12 @@ in-flight G window enable G-forward/Score-evaluate overlap on disjoint ranks.
 NCCL requires tag-free send/recv; messages are ordered by each source/target
 pair. Runtime enforces output shapes, dtype, finite values, disjoint physical
 pool ranks and agreement among role-model replicas.
+
+Recoverable callback failures drain every scheduled latent/VJP slot, then fail
+all ranks before any optimizer update. Transport, native-collective and CUDA
+runtime failures raise `RoleTransportFatalError`: the owning `torchrun` worker
+exits promptly so its supervisor can stop its peers. Embedded callers own job
+termination and must restore a completed checkpoint in fresh processes.
 
 Bindings provide `sample_identity(cycle, microbatch, role, actual_sample)` as
 `{sample_id, conditions}` metadata from the input actually consumed. The runtime
@@ -71,8 +79,10 @@ selected producer orders. Internal G/Score overlap comes from native nonblocking
 communication and is already INCLUDED in observed cycle wall time. The planned
 cycle is not the sum of serial G/S call times, and no synthetic overlap discount
 is applied. `run_selected()` verifies the ranked choice and source-bound receipts
-before executing the selected real native worker. Hardware changes invalidate
-these costs rather than assuming A100 and H100 have identical winners.
+before executing the selected real native worker. Device/topology, precision,
+determinism and thread settings bind the calibration identity. Available memory
+is checked separately against the saved plan's device and host requirements;
+ordinary free-memory fluctuations do not invalidate the plan or its checkpoint.
 
 The measured cost is a *diagnostic native cost*, not a verified speedup: the
 original pretrained-model numerical reference, model-specific DMD quality,
@@ -342,7 +352,9 @@ python -m torch.distributed.run --standalone --nproc-per-node=2 \
 
 `--checkpoint` uses the shared atomic, per-rank checkpoint writer: every 30
 minutes at a complete cycle boundary, plus the final cycle, keeping the last
-three. Set `--checkpoint-every`, `--checkpoint-interval-seconds` and
+three. POSIX publication syncs shard files and staging directories before rename,
+then syncs the destination parent and its ancestors before checkpoint retention. Set
+`--checkpoint-every`, `--checkpoint-interval-seconds` and
 `--checkpoint-keep-last` to override. Resume in a new process with the same plan,
 card count and layout using `--resume-from /tmp/role-continuing/checkpoints/cycle-000003`;
 `--cycles` is the total target, including restored cycles. Use a new output directory.

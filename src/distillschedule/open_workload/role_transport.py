@@ -12,7 +12,7 @@ advance until all their dependent VJPs are finished.
 """
 from __future__ import annotations
 from collections import deque
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 import json
 import math
@@ -26,6 +26,19 @@ from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import canonical_bytes, fingerprint
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, transport_bytes_by_rank
 from .role_offload import HostBudget, ActivationOffloader
+
+
+class RoleTransportFatalError(RuntimeError):
+    """Undrained/native failure: the WORLD owner must stop and reap the job.
+
+    An embedding caller owns its process group. It must start fresh processes
+    before restoring a completed checkpoint, not retry or destroy peer groups
+    from inside this executor.
+    """
+
+
+class RoleNativeCapabilityRejected(ValueError):
+    """Synchronized, pre-install capability rejection; no native work started."""
 
 
 @dataclass(frozen=True)
@@ -187,6 +200,59 @@ class RolePoolExecutor:
         self._finite_state=FiniteCheck()
         self._finite_gradients=FiniteCheck()
         self._active_offloaders=[]
+        self._transport_drained=True
+        self._pending_transport=[]
+        self._posting_transport=None
+        self._fatal_error=None
+        self._native_installing=False
+
+    def _fatal_exception_types(self):
+        if self._native_installing or (self._prepared and (
+                self.layout.generator_parallelism!='replicated'
+                or self.layout.score_parallelism!='replicated')):
+            # A callback may fail before peers leave a native subgroup
+            # collective. Even ValueError cannot safely rendezvous on WORLD.
+            return (Exception,)
+        return (RoleTransportFatalError,dist.DistError,MemoryError) + (
+            (RuntimeError,) if self.device.type=='cuda' else ())
+
+    @contextmanager
+    def _failure_scope(self):
+        try:
+            yield
+        except BaseException as exc:
+            self._failed=True
+            native_live=self._prepared and (self.layout.generator_parallelism!='replicated'
+                                            or self.layout.score_parallelism!='replicated')
+            if (not self._transport_drained or self._native_installing or native_live
+                    or isinstance(exc,self._fatal_exception_types())):
+                fatal=exc if isinstance(exc,RoleTransportFatalError) else RoleTransportFatalError(
+                    f'role rank {self.rank} requires fresh WORLD: {type(exc).__name__}: {exc}')
+                self._fatal_error=fatal
+                fatal.executor=self  # Retain in-flight storage until whole-job teardown.
+                if fatal is exc:raise
+                raise fatal from exc
+            raise
+
+    def _communicate(self, fn, *args, **kwargs):
+        # Gloo can report a broken peer as plain RuntimeError, not DistError.
+        # Only communication boundaries use this rule; ordinary CPU callback
+        # failures still follow the drain-and-reject protocol.
+        with self._failure_scope():
+            try:
+                return fn(*args, **kwargs)
+            except RoleTransportFatalError:
+                raise
+            except RuntimeError as exc:
+                raise RoleTransportFatalError(
+                    f'role rank {self.rank} communication failed: {type(exc).__name__}: {exc}') from exc
+
+    def _checked(self, fn, label):
+        from .replicated import checked
+        # checked already converts recoverable callback errors into shared
+        # validation failures; a remaining RuntimeError is a fatal operation
+        # or a broken metadata collective, including a CPU peer's exit.
+        return self._communicate(checked,fn,label,fatal_exceptions=self._fatal_exception_types())
 
     def _event(self, action, i=None):
         self.events.append({'action':action,'microbatch':i,'rank':self.rank,'cycle':self._cycle})
@@ -214,13 +280,18 @@ class RolePoolExecutor:
             row['identity_sha256'] = fingerprint(json.loads(encoded))
             row['error'] = None
         except Exception as exc:
+            if isinstance(exc,self._fatal_exception_types()):raise
             row['error'] = type(exc).__name__ + ': ' + str(exc)
         records.append(row)
 
-    def _check_sample_pairing(self, local):
-        from .replicated import checked, gather
-        records = [row for rows in gather(local) for row in rows]
+    def _check_sample_pairing(self, local, transport_error=None):
+        from .replicated import gather
+        reports = self._communicate(gather,dict(records=local, error=transport_error))
+        records = [row for report in reports for row in report['records']]
         def validate():
+            failures = [report['error'] for report in reports]
+            require(not any(failures), 'role transport computation: rank failures ' + str(failures),
+                    path='role.transport')
             errors = [row for row in records if row['error'] is not None]
             require(not errors, 'sample pairing identity failures: ' + str(errors), path='role.data')
             require(len(records) == 2 * self.task.microbatches,
@@ -238,7 +309,7 @@ class RolePoolExecutor:
                                   identity_sha256=rows[0]['identity_sha256']))
             return dict(schema_version='distillschedule.role_sample_pairing.v1', cycle=self._cycle,
                         checked_before_updates=True, pairs=pairs)
-        return checked(validate, 'role sample pairing')
+        return self._checked(validate, 'role sample pairing')
 
     def _check_gradients(self):
         gradients=[]
@@ -264,7 +335,7 @@ class RolePoolExecutor:
                 'non-finite role parameters or optimizer state',path='role.state')
 
     def _commit_update(self,role):
-        from .replicated import checked
+        checked=self._checked
         active=self.role==role
         checked(lambda:self._check_gradients() if active else None,
                 role+' parameter gradient admission')
@@ -273,7 +344,7 @@ class RolePoolExecutor:
                          else self.layout.score_parallelism)
             ranks=self.layout.generator if role=='generator' else self.layout.score
             if parallelism=='replicated':
-                _sync_gradients(self.module,self.group,len(ranks))
+                self._communicate(_sync_gradients,self.module,self.group,len(ranks))
         # Finite local gradients can overflow during a SUM reduction.
         checked(lambda:self._check_gradients() if active else None,
                 role+' reduced parameter gradient admission')
@@ -286,16 +357,22 @@ class RolePoolExecutor:
         checked(commit,role+' optimizer commit')
 
     def _prepare(self):
+        # Checkpoint attachment prepares before run(); it needs the same fatal
+        # ownership guard as normal execution, including native installation.
+        with self._failure_scope():
+            return self._prepare_models()
+
+    def _prepare_models(self):
         if self._prepared:return
-        from .replicated import checked
+        checked=self._checked
         task,layout=self.task,self.layout
         if self.producer_dispatch is not None:
             from .role_dispatch import validate_dispatch
             checked(lambda: validate_dispatch(task,layout,self.producer_dispatch),
                     'role planned producer admission')
         # Collective group creation order MUST be identical on every rank.
-        gen_group=dist.new_group(ranks=list(layout.generator))
-        score_group=dist.new_group(ranks=list(layout.score))
+        gen_group=self._communicate(dist.new_group,ranks=list(layout.generator))
+        score_group=self._communicate(dist.new_group,ranks=list(layout.score))
         self.gen_group,self.score_group=gen_group,score_group
         group=gen_group if self.role=='generator' else score_group
         group_size=len(layout.generator if self.role=='generator' else layout.score)
@@ -330,7 +407,7 @@ class RolePoolExecutor:
         # No parameter/model sharing across roles is assumed. Within each role,
         # fail closed if replicas did not start from identical weights.
         identities=[None for _ in range(group_size)]
-        dist.all_gather_object(identities,model_identity,group=group)
+        self._communicate(dist.all_gather_object,identities,model_identity,group=group)
         checked(lambda: require(len(set(identities))==1,
               'role replica model initializations differ',path='role.runtime'),
               'role replica identity admission')
@@ -353,7 +430,11 @@ class RolePoolExecutor:
             if self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward':
                 from .role_sharding import admit
                 admit(module,optimizer)
-        checked(native_admission,'role native layout admission')
+        try:
+            checked(native_admission,'role native layout admission')
+        except ValueError as exc:
+            raise RoleNativeCapabilityRejected(str(exc)) from exc
+        self._native_installing=True
         if layout.score_parallelism=='fsdp2_frozen' and self.role=='score':
             from .role_sharding import install_frozen_score
             module,self._score_mesh,self._sharding=install_frozen_score(
@@ -370,6 +451,7 @@ class RolePoolExecutor:
         self.gen_group,self.score_group=gen_group,score_group
         self.group=group
         self._prepared=True
+        self._native_installing=False
 
     def run(self):
         """Run one real cycle; repeated calls reuse models, optimizers and groups."""
@@ -379,7 +461,7 @@ class RolePoolExecutor:
             return self._run()
 
     def _run(self):
-        from .replicated import checked
+        checked=self._checked
         def admission():
             require(not (self._closed or self._failed or self._busy),
                     'closed, failed or active role executor cannot run',path='role.runtime')
@@ -394,22 +476,26 @@ class RolePoolExecutor:
             return (self._cycle,self._versions,self.task.digest,self.layout.to_dict(),self._dispatch_identity,
                     self.state_audit_every_cycles,self.profile_components)
         local=checked(admission,'role cycle admission')
-        entries=[None]*self.hardware.world;dist.all_gather_object(entries,local)
+        entries=[None]*self.hardware.world
+        self._communicate(dist.all_gather_object,entries,local)
         require(all(x==entries[0] for x in entries),'rank cycle/version mismatch',path='role.runtime')
         self._busy=True
         try:
-            self._prepare()
-            result=self._run_cycle()
-            self._versions=dict(result[0]['final_versions']);self._cycle+=1
-            return result
-        except BaseException:
-            # A partly committed iteration is never eligible for blind retry.
-            self._failed=True
-            raise
+            with self._failure_scope():
+                self._prepare()
+                result=self._run_cycle()
+                self._versions=dict(result[0]['final_versions']);self._cycle+=1
+                return result
         finally:
             try:
-                while self._active_offloaders:
-                    self._active_offloaders.pop().close()
+                if self._fatal_error is None:
+                    with self._failure_scope():
+                        while self._active_offloaders:
+                            self._active_offloaders[-1].close()
+                            self._active_offloaders.pop()
+                        if self._failed and self.module is not None:
+                            for parameter in self.module.parameters():
+                                parameter.grad=None
             finally:
                 self._busy=False
 
@@ -417,6 +503,12 @@ class RolePoolExecutor:
         """Release only groups owned here, after a completed cycle has drained."""
         require(not self._busy,'cannot close an active role executor',path='role.runtime')
         if self._closed:return
+        if self._fatal_error is not None:
+            # Never wait on poisoned CUDA streams, free in-flight buffers or
+            # destroy caller-owned groups in a failure handler. The job owner
+            # must stop/reap all workers; retaining these owners is deliberate.
+            self._closed=True
+            return
         if dist.is_initialized():
             for group in (getattr(self,'gen_group',None),getattr(self,'score_group',None)):
                 # FSDP2 parameter metadata retains the named mesh communicator.
@@ -426,7 +518,7 @@ class RolePoolExecutor:
                 if group is not None and group!=dist.GroupMember.NON_GROUP_MEMBER and not (
                     (group is self.gen_group and self._generator_mesh is not None) or
                     (group is self.score_group and self._score_mesh is not None)):
-                    dist.destroy_process_group(group)
+                    self._communicate(dist.destroy_process_group,group)
         self._closed=True
         # The DeviceMesh shares gen_group (no second subgroup).
         self._generator_mesh=None;self._score_mesh=None
@@ -447,53 +539,82 @@ class RolePoolExecutor:
                 'cycle begins with pending parameter gradients',path='role.runtime')
         if optimizer is not None:optimizer.zero_grad(set_to_none=True)
         if self.device.type=='cuda':torch.cuda.reset_peak_memory_stats(self.device)
-        dist.barrier()
+        self._communicate(dist.barrier)
         started=time.perf_counter_ns()
+        self._transport_drained=False
         send_work=[]
         host_budget=HostBudget(self.hardware.host_capacities[self.rank])
         offload_records=[]
         local_score_data=[]
         sample_identities=[]
+        local_error=None
+        native=(layout.generator_parallelism!='replicated' or layout.score_parallelism!='replicated')
+        def computation_failed(exc):
+            nonlocal local_error
+            # A native subgroup may already be in an unmatched collective; a
+            # CUDA runtime failure may make placeholder allocation unsafe.
+            if native or isinstance(exc,self._fatal_exception_types()):
+                raise RoleTransportFatalError(
+                    f'role rank {self.rank} computation requires fresh WORLD: {type(exc).__name__}: {exc}') from exc
+            if local_error is None:
+                local_error=type(exc).__name__+': '+str(exc)
         peak=0;transport_peak=0
         if self.role=='generator':
             inflight=deque()
+            self._pending_transport=[inflight]
             def flush():
-                i, latent, grad, recv_work, sent, source, offloader = inflight.popleft()
-                if offloader is not None:offloader.prefetch()
+                i, latent, grad, recv_work, sent, source, offloader = inflight[0]
+                if offloader is not None and local_error is None:offloader.prefetch()
                 recv_work.wait();sent.wait()
-                _validate_tensor(grad,task,'returned latent gradient')
-                # FSDP's reduce-scatter averages across its shard group. The
-                # input VJP is already divided by GLOBAL logical microbatch
-                # count; compensate once before invoking native autograd.
-                vjp=(grad*group_size if layout.generator_parallelism=='fsdp2_keep_forward' else grad)
-                with components.span('backward',i):
-                    with torch.enable_grad():latent.backward(vjp)
-                self._event('generator_vjp_backward',i)
+                if local_error is None:
+                    try:
+                        _validate_tensor(grad,task,'returned latent gradient')
+                        # Native FSDP averages across shards; this VJP is
+                        # already normalized by GLOBAL logical microbatches.
+                        vjp=(grad*group_size if layout.generator_parallelism=='fsdp2_keep_forward' else grad)
+                        with components.span('backward',i):
+                            with torch.enable_grad():latent.backward(vjp)
+                        self._event('generator_vjp_backward',i)
+                    except Exception as exc:
+                        computation_failed(exc)
                 if offloader is not None:
                     offload_records.append(offloader.statistics)
                     offloader.close()
                     self._active_offloaders.remove(offloader)
+                inflight.popleft()  # Release storage only after both Work waits.
             def produce(i):
                 nonlocal peak,transport_peak
                 owner,consumer=layout.owners(i)
-                offloader=(ActivationOffloader(self.device,module,host_budget)
-                           if layout.activation_policy=='cpu_offload_prefetch' else None)
-                if offloader is not None:self._active_offloaders.append(offloader)
-                with components.saved(module,i), components.span('forward',i):
-                    with torch.enable_grad():
-                        with offloader.hooks() if offloader is not None else nullcontext():
-                            sample=self._sample(i,'generator')
-                            self._record_sample_identity(i,sample,sample_identities)
-                            latent=self.bindings.generator_forward(module,sample)
-                            del sample
-                    _validate_tensor(latent,task,'generator output')
-                    require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
+                offloader=None
+                if local_error is None:
+                    try:
+                        offloader=(ActivationOffloader(self.device,module,host_budget)
+                                   if layout.activation_policy=='cpu_offload_prefetch' else None)
+                        if offloader is not None:self._active_offloaders.append(offloader)
+                        with components.saved(module,i), components.span('forward',i):
+                            with torch.enable_grad():
+                                with offloader.hooks() if offloader is not None else nullcontext():
+                                    sample=self._sample(i,'generator')
+                                    self._record_sample_identity(i,sample,sample_identities)
+                                    latent=self.bindings.generator_forward(module,sample)
+                                    del sample
+                            _validate_tensor(latent,task,'generator output')
+                            require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
+                    except Exception as exc:
+                        computation_failed(exc)
+                if local_error is not None:
+                    # Satisfy every remaining fixed FIFO slot, including ones
+                    # not yet produced when a delayed backward failed.
+                    latent=torch.zeros(task.output_shape,device=self.device,dtype=getattr(torch,task.dtype))
                 # Pre-post response receive; NCCL tag-less point-to-point FIFO.
                 grad=torch.empty_like(latent.detach(),memory_format=torch.contiguous_format)
+                self._posting_transport=(latent,grad,offloader)
                 received=dist.irecv(grad,src=consumer)
                 outbound=latent.detach().contiguous()
+                self._posting_transport=(latent,grad,offloader,received,outbound)
                 sent=dist.isend(outbound,dst=consumer)
                 inflight.append((i,latent,grad,received,sent,outbound,offloader))
+                self._posting_transport=None
                 self._event('generator_forward_send',i)
                 peak=max(peak,len(inflight))
                 transport_peak=max(transport_peak,storage_bytes(
@@ -518,35 +639,45 @@ class RolePoolExecutor:
                         flush()
                 require(not inflight,'planned producer left gradients undrained',path='role.dispatch')
         else:
+            self._pending_transport=[send_work]
             for i in range(task.microbatches):
                 producer,consumer=layout.owners(i)
                 if consumer!=self.rank:continue
                 latent=torch.empty(task.output_shape,device=self.device,dtype=getattr(torch,task.dtype))
+                self._posting_transport=latent
                 dist.recv(latent,src=producer)
-                _validate_tensor(latent,task,'received latent')
-                with components.span('score',i):
-                    source=latent.detach()
-                    sample=self._sample(i,'score')
-                    self._record_sample_identity(i,sample,sample_identities)
-                    if self.bindings.score_input_gradient is not None:
-                        with torch.no_grad():
-                            gradient=self.bindings.score_input_gradient(module,source,sample)
-                        _validate_tensor(gradient,task,'constructed latent gradient')
-                        require(not gradient.requires_grad and gradient.grad_fn is None,
-                                'constructed gradient must be detached first-order data',path='role.runtime')
-                    else:
-                        with torch.enable_grad():
-                            source.requires_grad_(True)
-                            loss=self.bindings.score_loss(module,source,sample)
-                            require(isinstance(loss,torch.Tensor) and loss.ndim==0 and
-                                    bool(torch.isfinite(loss)) and loss.requires_grad,
-                                    'score must produce a finite differentiable scalar loss',path='role.runtime')
-                            gradient=torch.autograd.grad(loss,source,create_graph=False)[0]
-                    gradient=(gradient/task.microbatches).detach().contiguous()
-                    del sample
-                    _validate_tensor(gradient,task,'score input gradient')
+                source=latent.detach()
+                if local_error is None:
+                    try:
+                        _validate_tensor(latent,task,'received latent')
+                        with components.span('score',i):
+                            sample=self._sample(i,'score')
+                            self._record_sample_identity(i,sample,sample_identities)
+                            if self.bindings.score_input_gradient is not None:
+                                with torch.no_grad():
+                                    gradient=self.bindings.score_input_gradient(module,source,sample)
+                                _validate_tensor(gradient,task,'constructed latent gradient')
+                                require(not gradient.requires_grad and gradient.grad_fn is None,
+                                        'constructed gradient must be detached first-order data',path='role.runtime')
+                            else:
+                                with torch.enable_grad():
+                                    source.requires_grad_(True)
+                                    loss=self.bindings.score_loss(module,source,sample)
+                                    require(isinstance(loss,torch.Tensor) and loss.ndim==0 and
+                                            bool(torch.isfinite(loss)) and loss.requires_grad,
+                                            'score must produce a finite differentiable scalar loss',path='role.runtime')
+                                    gradient=torch.autograd.grad(loss,source,create_graph=False)[0]
+                            gradient=(gradient/task.microbatches).detach().contiguous()
+                            del sample
+                            _validate_tensor(gradient,task,'score input gradient')
+                    except Exception as exc:
+                        computation_failed(exc)
+                if local_error is not None:
+                    gradient=torch.zeros_like(latent)
+                self._posting_transport=(latent,source,gradient)
                 send_work.append((dist.isend(gradient,dst=producer),gradient))
-                if task.score_updates:local_score_data.append((latent.detach(),i))
+                self._posting_transport=None
+                if task.score_updates and local_error is None:local_score_data.append((latent.detach(),i))
                 self._event('score_receive_vjp_send',i)
                 transport_peak=max(transport_peak,storage_bytes(
                     (latent,source,gradient,[x[1] for x in send_work],local_score_data)))
@@ -556,16 +687,18 @@ class RolePoolExecutor:
             if 'loss' in locals():del loss
         # Every role has drained transport before entering checked commits.
         # FSDP2 gradients are already reduced and must not be all-reduced again.
-        sample_pairing=self._check_sample_pairing(sample_identities)
+        self._transport_drained=True
+        self._pending_transport.clear()
+        sample_pairing=self._check_sample_pairing(sample_identities,local_error)
         if self.profile_components and self.role=='generator':
-            dist.barrier(group=gen_group)
+            self._communicate(dist.barrier,group=gen_group)
         with components.span('generator_commit') if self.role=='generator' else nullcontext():
             self._commit_update('generator')
         if task.score_updates:
             from .role_score import execute_updates
             with components.span('score_updates') if self.role=='score' else nullcontext():
                 transport_peak=max(transport_peak,execute_updates(self,local_score_data))
-        dist.barrier()
+        self._communicate(dist.barrier)
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         compute_transport_wall_ns=time.perf_counter_ns()-started
         # All-gather small receipts only (no weights or model tensors transmitted).
@@ -574,7 +707,7 @@ class RolePoolExecutor:
         if self.profile_components and self.device.type=='cuda':
             cuda_peak=max([cuda_peak]+[r['peak_allocated_bytes'] for r in components.records])
         from .state_audit import content_due, state_record, _compare_records
-        from .replicated import checked
+        checked=self._checked
         full_audit = content_due()
         checked(lambda:self._check_state(module,optimizer,audit=full_audit),
                 'role final finite state')
@@ -611,7 +744,7 @@ class RolePoolExecutor:
                'gradient_transport':'explicit_tensor_vjp_p2p_no_remote_autograd',
                'host_leases_closed':host_budget.used==0}
         rows=[None]*self.hardware.world
-        dist.all_gather_object(rows,local)
+        self._communicate(dist.all_gather_object,rows,local)
         require({x['rank'] for x in rows}==set(range(self.hardware.world)),
                 'missing rank receipt',path='role.runtime')
         require(all(r['transport_peak_bytes']<=r['transport_bound_bytes'] for r in rows),

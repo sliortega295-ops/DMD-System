@@ -19,7 +19,7 @@ from datetime import timedelta
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import canonical_bytes, file_sha256, fingerprint,write_new_json
 from .role_program import RoleTask, AllocatedWorld
-from .role_transport import RoleFunctions
+from .role_transport import RoleFunctions, RoleTransportFatalError
 
 
 def load_factory(entry,parameters):
@@ -118,6 +118,7 @@ def main(argv=None):
         if name in ('role-run','role-plan'):p.add_argument('--plan' if name=='role-run' else '--calibration',type=Path,required=True)
     args=parser.parse_args(argv)
     owned=False
+    active_world=False
     try:
         if args.command=='role-plan':
             from .role_planning import search
@@ -150,6 +151,7 @@ def main(argv=None):
         if not dist.is_initialized():
             dist.init_process_group(args.distributed,timeout=timedelta(seconds=args.group_timeout))
             owned=True
+        active_world=True
         require(dist.get_backend()==args.distributed,'group backend mismatch',path='role.cli')
         device=torch.device('cuda',torch.cuda.current_device()) if args.distributed=='nccl' else torch.device('cpu')
         hardware=allocated_hardware(args,device)
@@ -193,7 +195,21 @@ def main(argv=None):
                     'gpu_execution':execution['gpu_execution'],'claimable_speedup':False}
         if dist.get_rank()==0:print(json.dumps(result,indent=2,sort_keys=True))
         return 0
-    except (ValueError,TypeError,KeyError,OSError,RuntimeError) as exc:
+    except RuntimeError as exc:
+        if not active_world and not isinstance(exc,RoleTransportFatalError):
+            print('ROLE_ERROR:',exc,file=sys.stderr);return 2
+        print('ROLE_FATAL:',exc,'; stop all workers and restore in a fresh WORLD',
+              file=sys.stderr,flush=True)
+        if owned:
+            # This CLI is a torchrun worker and owns WORLD. Do not wait on
+            # poisoned P2P/CUDA destructors in finally/atexit: the supervisor
+            # must see this nonzero exit promptly and stop its other workers.
+            os._exit(2)
+        if isinstance(exc,RoleTransportFatalError):raise
+        # A healthy peer may encounter a raw Gloo RuntimeError in coordination
+        # after another worker exits. It must not enter WORLD cleanup either.
+        raise RoleTransportFatalError(str(exc)) from exc
+    except (ValueError,TypeError,KeyError,OSError) as exc:
         print('ROLE_ERROR:',exc,file=sys.stderr);return 2
     finally:
         if owned:
