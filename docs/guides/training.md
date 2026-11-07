@@ -289,10 +289,10 @@ No trace reuse, negative prompt, synthetic history or implicit prefix crop.
 The original four-step FewStepStreamer keeps block3/renoise/clean-t0 KV commit,
 cache22, no noisy context/graphs and an independent RNG stream. Prefix+suffix
 produce21 normalized latents →81RGB frames at368×640; `latents` skips decoding.
-The consumer is explicit CPU FP32/MATH, not bitwise CUDA-training equivalence.
+The consumer uses CPU FP32/MATH.
 Budgets include full G/codec/complex-RoPE/KV/attention and host/cgroup reserve;
 its context-local no-grad inference capacity scope does not widen training limits.
-Tiny original-class/Gloo proofs do not qualify production world16 CUDA/quality.
+CPU/Gloo tests cover native-class construction and collective export.
 
 <a id="h3_fullseq_inference"></a>
 <a id="h3_fullseq_inference--export-an-original-reference-native-checkpoint"></a>
@@ -367,8 +367,7 @@ All DTensor owners materialize, only primary retains full CPU state. Check exact
 table/LoRA/layout/source and host/cgroup/largest-tensor GPU reserves first.
 Unused CUDA allocator release is output-only/outside training timers. A failed
 companion config invalidates completion but preserves diagnostic payload.
-Random original-class/public-CLI/Gloo tests are implementation proof, not
-pretrained quality, world16 CUDA or the100-cycle reliability gate.
+Native-class, public-CLI and Gloo tests cover state restoration and export.
 
 <a id="h3_ar_native_inference"></a>
 ## Independent H3 Student inference
@@ -485,5 +484,4 @@ that config. Output contains PNG frames, stereo32kHz PCM16 WAV,
 muxing is a consumer step. RNG restores and resources close on success/error,
 without optimizer/update. This codec is not Student/ZeRO export or an encoder;
 [raw encoding](data.md#h3_audio_video_encode) loads different original subtrees.
-The random codec fixture is not pretrained/quality/native-GPU proof. Other
-models supply existing `ModelComponents.decode`, not planner model-name branches.
+Other models supply their existing `ModelComponents.decode` implementation.

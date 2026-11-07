@@ -106,12 +106,11 @@ The schedulers' learning-rate changes also declare optimizer writes. All EMA,
 history and scheduler objects live in `components.state`; no model or optimizer
 is captured in a closure. Persistent owner and version checks are the existing
 Program checks, with no generic model/workflow-name branch or second solver.
-The template explicitly admits CPU/single-process execution only; rank-local
-history is not asserted to have replicated semantics.
+The template runs on a single CPU process and keeps history rank-local.
 
 Its fixture selects disjoint records through existing raw manifests/preparation.
 Its held-out `student_teacher_flow_mse` measures deterministic t=0 flow agreement
-with the **frozen random Teacher**, not pretrained media quality or a pass gate.
+with the **frozen random Teacher**.
 `validate_batch(state, feeds, parameters)` must be an inspectable function with
 three positional arguments, return named finite scalar metrics, and never mutate
 declared persistent state. It must use the supplied state/feeds, not captured

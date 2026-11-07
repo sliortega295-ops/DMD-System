@@ -30,7 +30,7 @@ supplied separately. The public training API requires PyTorch 2.10 or later.
 ### Try the training lifecycle on CPU
 
 The following example needs no model download. It trains small random networks
-on generated media to demonstrate the API, not pretrained generation quality.
+on generated media to demonstrate the API.
 
 ```sh
 DEMO="$(mktemp -d -t dmd-system.XXXXXX)"

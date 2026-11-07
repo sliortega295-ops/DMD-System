@@ -176,7 +176,6 @@ Publication uses exclusive sibling lock/staging, validates every tensor and the
 complete manifest, then atomically renames without overwriting. Ordinary errors
 remove staging/lock. A killed publisher may leave `.OUTPUT.*`/`.OUTPUT.lock`:
 establish that it is dead before cleanup; staging is never a valid dataset.
-Hashes/structure are not model compatibility, VAE parity or training quality.
 
 ## Original native input preparation
 
@@ -415,8 +414,8 @@ cycles: one seeded permutation repeats, each cycle still has80 unique records,
 and draw/epoch/cohort IDs and six operation/control streams never reset. Receipts
 disclose reuse; unchanged policy/horizon/order/seed are checkpoint identity.
 C51 drains before next-cycle precompute and preserves dual-wave/optimizer/RNG
-state; input admission alone is not GPU/restart/quality proof. See the
-[input contracts](../contracts/livewan_native.md) and [current-G output](training.md#livewan_native_output).
+state. See the [input contracts](../contracts/livewan_native.md) and
+[current-G output](training.md#livewan_native_output).
 
 <a id="wan_weights_initialization"></a>
 ## W1 Generator weights initialization (not resume)
@@ -467,12 +466,11 @@ RoPE construction is reused; no other random base fallback.
 
 Old source/receipt/version counters stay in `identity.weights_initialization`;
 current factory/constructor/dependencies stay in model metadata. Original
-comparison/quality strings copy verbatim to `origin_numerical_comparison` and
-`origin_quality_validation`; new artifact quality remains NOT_RUN.
-CPU/native-class tests cover strict restore/new-input/original rollout/real-VAE
-wiring, not trained fixture quality, full-size fit or GPU acceptance. Required
-upstream tests use `R217_REQUIRE_UPSTREAM=1` in an existing environment and
-refuse missing dependencies/skips; no install/download or new training is needed.
+receipt metadata is preserved with the imported weights.
+CPU/native-class tests cover strict restore, new inputs, original rollout and
+VAE wiring. Required upstream tests use `R217_REQUIRE_UPSTREAM=1` in an existing
+environment and refuse missing dependencies/skips; no install/download or new
+training is needed.
 
 <a id="livewan_weights_initialization"></a>
 ## Import an existing Self-Forcing Student

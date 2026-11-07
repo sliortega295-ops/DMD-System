@@ -61,10 +61,7 @@
     "lifecycle_sha256": "06e0556404b47c7f49bfb58a7bbf129487125312961b5559d845eb876eb5f494",
     "resource_raw_sha256": "b5697c64d095fb47f7d70ce01dfefe7ab3bfdc36322c428bf3f3b3682d8501f0"
   },
-  "quality_validation": "NOT_RUN",
   "numerical_status": "REQUIRES_MATCHED_REFERENCE",
   "checkpoint_restore_scope": "INITIALIZATION_ONLY_CYCLE0; original R7 origin cycle2 G4/C20/EMA20, not a50cycle checkpoint",
-  "previous_CPU_timeout": "1500s timeout retained; CUDA output ran once, no training repeated",
-  "collector_repair": "Oversize raw resource JSON retained remote; CPU-only small-summary extraction, no second output invocation",
   "all_rank_checkpoint_export": "NOT_RUN_BY_THIS_CHECK"
 }

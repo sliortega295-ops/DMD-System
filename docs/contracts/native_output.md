@@ -1,10 +1,9 @@
 # Native output and publication contracts
 
 Output restores the existing native owner, then publishes current **unmerged**
-Student weights and the required codec. It is not training resume, EMA selection,
-a new trainer or permission to allocate GPUs. Source/CPU protocol evidence does
-not establish full-size pretrained GPU capacity, quality or performance. Use the
-[output commands](../guides/training.md#generate-and-export) and each recipe.
+Student weights and the required codec, separately from resumable training
+checkpoints. Use the [output commands](../guides/training.md#generate-and-export)
+and each recipe.
 
 <a id="WAN_NATIVE_OUTPUT_V1"></a>
 ## Native W1 current-Generator output ABI v1

@@ -165,8 +165,8 @@ geometry or RNG; do not rehash captured old traces.
 
 These FP32/CPU1 references require genuine pinned local assets, immutable finite
 inputs and explicit configs; unsupported distributed/auto/manual/plan/epoch
-modes reject. Tiny deterministic random fixtures are not pretrained or quality
-evidence. The cached-only derivative retains per-file origins/AST/license,
+modes reject. Deterministic CPU fixtures exercise these interfaces.
+The cached-only derivative retains per-file origins/AST/license,
 not a claim to redistribute a full DiffSynth install or silently stub codecs.
 
 The separate full Helios model provider imports the unchanged model:

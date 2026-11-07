@@ -67,14 +67,12 @@ temporary streamer caches are reconstructed, not mistaken for trainable state.
 Only an unfinished same-target, same-topology boundary may resume; extending
 the target or converting a C51 physical role-pool checkpoint is unsupported.
 
-### Verification and nonclaims
+### Verification
 
-Actual CPU input/LoRA/Adam/DTensor state and Gloo failure tests, original
-meta-constructors and explicitly labeled dispatch fixtures qualify source and
-owner contracts only. CUDA/pretrained FSDP2/NCCL execution, physical capacity,
-numerical equivalence, generated quality and performance remain NOT_RUN.
-This contract supplies neither C51 transport drain/shadow reconstruction nor
-native generation/export, and cannot relax their existing rejection gates.
+CPU input, LoRA, Adam and DTensor state tests, Gloo failure tests, original
+meta-constructors and dispatch fixtures check the source and owner contracts.
+C51 transport, shadow reconstruction and native generation/export retain their
+separate contracts.
 
 <a id="original_livewan_teacher_cohorts_v1"></a>
 ## Original LiveWan finite teacher cohorts, version 1

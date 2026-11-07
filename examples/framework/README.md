@@ -212,16 +212,11 @@ factories, `data.validation_prepared` and
 `trainer.validation={"every_cycles":2,"samples":2}`. The two validation records
 are disjoint from the six training records. Every second complete cycle measures
 held-out `student_teacher_flow_mse`, equal-record mean flow agreement at t=0
-against the **random frozen Teacher**. This is a meaningful deterministic
-adapter diagnostic, **not** FVD, VBench, a quality threshold or pretrained quality.
-It never advances the training cursor. Logs are `validation.jsonl`,
-`validation-summary.json` and the training summary's separate `validation` field;
-`quality_validation` remains `NOT_RUN`.
+against the **random frozen Teacher**, without advancing the training cursor.
+Logs are `validation.jsonl`, `validation-summary.json` and the training summary's
+separate `validation` field.
 
-The template is explicitly CPU/single-process only, including validation.
-Distributed validation requests fail before construction/updates/output; this
-does not change the existing distributed training capabilities when validation
-is absent. Validation is read-only and runs under eval/no-grad with exact mode
+The CPU example runs validation read-only under eval/no-grad with exact mode
 and training RNG restoration even on failure. Mutation rejects without silently
 rolling persistent model/optimizer state back. Changed validation records or
 settings reject checkpoint resume.

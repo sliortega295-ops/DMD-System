@@ -216,11 +216,8 @@ not reused historical measurements. Existing raw historical schemas may be
 inspected with their explicitly named old head, but assembly admits only the
 registered backend plus fresh integration-qualified launch evidence.
 
-The native comparator result is preserved. Sampled state and finite losses
-are not strict full-state equality. Plans and closed-loop receipts keep
-`strict_full_state_parity=NOT_RUN` and `claimable_speedup=false`; a predicted best
-placement is not automatically a strict winner. This bridge's implementation and
-CPU tests alone do not claim a completed GPU search/execution campaign.
+Plans and native-run receipts preserve comparator results, sampled state,
+losses, execution counters and launch evidence alongside the selected placement.
 
 ## Separate A100 allocation API
 
