@@ -637,7 +637,13 @@ def restore_checkpoint(path, state, *, identity, native_checkpoint=None):
         distributed.checked(lambda: _stage_state(payload["state"], state, progress=progress), "checkpoint state pre-native admission")
         distributed.checked(lambda: native_checkpoint.validate_restore(Path(path)/"native", native["owner"]),
                             "native checkpoint pristine owner/layout admission")
-        native_checkpoint.load(Path(path)/"native", native["owner"])
-    unpack_state(payload["state"], state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
-    restore_rng(payload["rng"])
+    try:
+        if native is not None:
+            native_checkpoint.load(Path(path)/"native", native["owner"])
+        unpack_state(payload["state"], state, progress={key:payload[key] for key in ("cycle", "cursor", "versions")})
+        distributed.checked(lambda: restore_rng(payload["rng"]), 'checkpoint RNG restore')
+    except BaseException:
+        if native_checkpoint is not None:
+            native_checkpoint.invalidate_restore()
+        raise
     return payload

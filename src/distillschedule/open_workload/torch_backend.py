@@ -163,6 +163,9 @@ class Workload:
     immutable_modules: tuple[str, ...] = ()
     identity_extra: Mapping[str, Any] = field(default_factory=dict)
     replica_semantics: Any = None
+    # Stronger than frozen parameters: evaluation mode and all registered
+    # buffers (including nonpersistent ones) must also remain unchanged.
+    immutable_state_modules: tuple[str, ...] = ()
 
     def validate(self):
         require(isinstance(self.program,Program),'Program required',path='open.workload')
@@ -177,6 +180,12 @@ class Workload:
         for path in self.immutable_modules:
             module=resolve_module(self.state,path)
             require(all(not p.requires_grad for p in module.parameters()),'immutable module has trainable parameters',path='open.workload')
+        require(len(set(self.immutable_state_modules)) == len(self.immutable_state_modules)
+                and set(self.immutable_state_modules) <= set(self.immutable_modules),
+                'immutable model state must also declare frozen parameters', path='open.workload')
+        for path in self.immutable_state_modules:
+            require(all(not child.training for child in resolve_module(self.state, path).modules()),
+                    'immutable model state requires eval mode: ' + path, path='open.workload')
         require(all(p.grad is None for obj in self.state.values() if isinstance(obj,nn.Module)
                     for p in obj.parameters()), 'entry must be an explicit zero-gradient boundary',path='open.workload')
         owners={}
@@ -226,6 +235,7 @@ class Workload:
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
                 'model_code':model_code,
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),
+                'immutable_state_modules':list(self.immutable_state_modules),
                 'torch':torch.__version__,'device':str(self.device),
                 **({'owner_execution': owners} if owners else {}),
                 **({'replica_semantics':self.replica_semantics.to_dict()} if self.replica_semantics is not None else {})}
@@ -407,8 +417,55 @@ class Session:
                 values[name] = {'owner': weakref.ref(parameter), 'metadata': metadata, 'token': token,
                                 'signature': tensor_signature(parameter, _local_shards=True)}
             self._immutable[path] = values
+        self._immutable_state = {}
+        for path in workload.immutable_state_modules:
+            module = resolve_module(self.state, path)
+            buffers = {}
+            for name, tensor in module.named_buffers(remove_duplicate=False):
+                metadata, token = _immutable_parameter_state(tensor)
+                buffers[name] = {'owner': weakref.ref(tensor), 'metadata': metadata, 'token': token,
+                                 'signature': tensor_signature(tensor, _local_shards=True)}
+            self._immutable_state[path] = {
+                'modules': {name: weakref.ref(child) for name, child in module.named_modules()},
+                'buffers': buffers}
+
+    def _check_immutable_state(self, *, roots=None, full=False):
+        message = 'declared immutable model state changed'
+        require(tuple(self._immutable_state) == tuple(self.workload.immutable_state_modules),
+                message, path='open.runtime')
+        for path, admitted in self._immutable_state.items():
+            if roots is not None and path.partition('.')[0] not in roots:
+                continue
+            module = resolve_module(self.state, path)
+            modules = dict(module.named_modules())
+            require(modules.keys() == admitted['modules'].keys() and all(
+                admitted['modules'][name]() is child and not child.training
+                for name, child in modules.items()), message, path='open.runtime')
+            current = dict(module.named_buffers(remove_duplicate=False))
+            require(current.keys() == admitted['buffers'].keys(), message, path='open.runtime')
+            for name, tensor in current.items():
+                saved = admitted['buffers'][name]
+                metadata, token = _immutable_parameter_state(tensor)
+                require(saved['owner']() is tensor and not tensor.requires_grad
+                        and metadata == saved['metadata'], message, path='open.runtime')
+                if full or token != saved['token'] or None in token[1]:
+                    require(tensor_signature(tensor, _local_shards=True) == saved['signature'],
+                            message, path='open.runtime')
+                    saved['token'] = token
+
+    def _guard_immutable_state(self, roots=None):
+        if not self._immutable_state:
+            return
+        import torch.distributed as dist
+        check = lambda: self._check_immutable_state(roots=roots)
+        if self.lifecycle is not None and dist.is_initialized() and dist.get_world_size() > 1:
+            from .replicated import checked
+            checked(check, 'immutable model state')
+        else:
+            check()
 
     def _check_immutable(self, *, full=False):
+        self._check_immutable_state(full=full)
         message = 'declared immutable parameters changed'
         require(tuple(self._immutable) == tuple(self.workload.immutable_modules), message, path='open.runtime')
         for path, values in self._immutable.items():
@@ -472,6 +529,8 @@ class Session:
         """
         require(self.persistent, 'trial sessions are one-shot', path='open.runtime')
         workload.validate()
+        require(tuple(workload.immutable_state_modules) == tuple(self._immutable_state),
+                'declared immutable model state contract changed', path='open.runtime')
         from .owner_execution import workload_inventory
         require(workload_inventory(workload) == self.owner_inventory,
                 'owner execution descriptor or source changed', path='open.runtime')
@@ -522,6 +581,7 @@ class Session:
                          self.lifecycle, copy_state=False, persistent=self.persistent)
         require(not self._ran,'sessions are one-shot; clone original initial state for each trial',path='open.runtime')
         self._ran=True
+        self._guard_immutable_state()
         resident = None
         if measure and self.device.type == 'cuda':
             from .resident_trial import cuda_trial_active
@@ -530,6 +590,9 @@ class Session:
         by_id={c.id:c for c in self.workload.program.calls}
         def dispatch(ctx):
             c=by_id[ctx.operation.operation_id]
+            guarded = any(path.partition('.')[0] in c.reads for path in self._immutable_state)
+            if guarded:
+                self._guard_immutable_state(c.reads)
             if self.lifecycle is not None: self.lifecycle.before_call(self, c)
             args={k:self.feeds[k] if k in self.feeds else ctx.values[k] for k in c.inputs}
             states={k:self.state[k] for k in ctx.operation.required_versions}
@@ -587,6 +650,8 @@ class Session:
                             options['context_fn']=lambda:contexts(policy,saved,excluded,self.effects)
                         value=checkpoint(invoke,*inputs,use_reentrant=False,preserve_rng_state=True,**options)
                     else: value=invoke(*inputs)
+            if guarded:
+                self._guard_immutable_state(c.reads)
             if c.grad=='no_grad':
                 from torch.utils._pytree import tree_map
                 value=tree_map(lambda v:v.detach() if isinstance(v,torch.Tensor) else v,value)

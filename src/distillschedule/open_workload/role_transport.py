@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections import deque
 from contextlib import nullcontext
 from dataclasses import dataclass
+import json
 import math
 from typing import Any, Callable
 import time
@@ -22,7 +23,7 @@ import torch
 from torch import nn
 import torch.distributed as dist
 from distillschedule.core.contracts import require
-from distillschedule.workloads.best_known.registry import fingerprint
+from distillschedule.workloads.best_known.registry import canonical_bytes, fingerprint
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, transport_bytes_by_rank
 from .role_offload import HostBudget, ActivationOffloader
 
@@ -54,11 +55,28 @@ class RoleFunctions:
     # additional persistent owner registered below (not hidden in closures).
     checkpoint_safe: bool = False
     state_owners: Callable[[str, nn.Module, Any], dict[str, Any]] | None = None
+    # Read only the ACTUAL sampled input; return {sample_id, conditions} with
+    # shared semantic conditions, not role-private noise/targets. No resampling.
+    sample_identity: Callable[[int, int, str, Any], dict[str, Any]] | None = None
+    # Set by the trusted CLI loader; direct Python factories still bind their
+    # actual callback defaults/closures through role_planning.code_identity.
+    factory_identity: dict[str, str] | None = None
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
                     self.sample, self.generator_forward)),
                 'role workload must supply callable math and data', path='role.bindings')
+        require(callable(self.sample_identity),
+                'role workload must declare actual sample pairing via sample_identity', path='role.bindings')
+        if self.factory_identity is not None:
+            require(type(self.factory_identity) is dict
+                    and set(self.factory_identity) == {'factory_sha256', 'factory_name', 'parameters_sha256'}
+                    and type(self.factory_identity['factory_name']) is str
+                    and self.factory_identity['factory_name'].isidentifier()
+                    and all(type(self.factory_identity[key]) is str and len(self.factory_identity[key]) == 64
+                            and all(c in '0123456789abcdef' for c in self.factory_identity[key])
+                            for key in ('factory_sha256', 'parameters_sha256')),
+                    'invalid role factory configuration identity', path='role.bindings')
         require((callable(self.score_loss) and self.score_input_gradient is None) or
                 (self.score_loss is None and callable(self.score_input_gradient)),
                 'declare exactly one scalar loss or constructed latent gradient',path='role.bindings')
@@ -178,6 +196,49 @@ class RolePoolExecutor:
             return self.bindings.sample_at(self._cycle,index,role,self.device)
         require(self._cycle==0,'continuous execution requires sample_at',path='role.data')
         return self.bindings.sample(index,role,self.device)
+
+    def _record_sample_identity(self, index, sample, records):
+        # Identity errors are deferred until all P2P/VJPs drain. Raising here
+        # would strand the other role waiting for a latent or returned gradient.
+        row = dict(cycle=self._cycle, microbatch=index, rank=self.rank, role=self.role)
+        try:
+            value = self.bindings.sample_identity(self._cycle, index, self.role, sample)
+            require(type(value) is dict and set(value) == {'sample_id', 'conditions'}
+                    and type(value['sample_id']) in (str, int) and value['sample_id'] != ''
+                    and type(value['conditions']) is dict
+                    and all(type(key) is str and key for key in value['conditions']),
+                    'sample_identity must return sample_id and explicit shared conditions', path='role.data')
+            encoded = canonical_bytes(value)
+            require(len(encoded) <= 4096, 'sample identity must be bounded metadata, not tensors',
+                    path='role.data')
+            row['identity_sha256'] = fingerprint(json.loads(encoded))
+            row['error'] = None
+        except Exception as exc:
+            row['error'] = type(exc).__name__ + ': ' + str(exc)
+        records.append(row)
+
+    def _check_sample_pairing(self, local):
+        from .replicated import checked, gather
+        records = [row for rows in gather(local) for row in rows]
+        def validate():
+            errors = [row for row in records if row['error'] is not None]
+            require(not errors, 'sample pairing identity failures: ' + str(errors), path='role.data')
+            require(len(records) == 2 * self.task.microbatches,
+                    'sample pairing has missing or duplicate inputs', path='role.data')
+            pairs = []
+            for index in range(self.task.microbatches):
+                rows = [row for row in records if row['microbatch'] == index]
+                producer, consumer = self.layout.owners(index)
+                require(len(rows) == 2 and {(row['role'], row['rank']) for row in rows}
+                        == {('generator', producer), ('score', consumer)}
+                        and all(row['cycle'] == self._cycle for row in rows)
+                        and rows[0]['identity_sha256'] == rows[1]['identity_sha256'],
+                        'sample pairing differs at microbatch ' + str(index), path='role.data')
+                pairs.append(dict(microbatch=index, generator_rank=producer, score_rank=consumer,
+                                  identity_sha256=rows[0]['identity_sha256']))
+            return dict(schema_version='distillschedule.role_sample_pairing.v1', cycle=self._cycle,
+                        checked_before_updates=True, pairs=pairs)
+        return checked(validate, 'role sample pairing')
 
     def _check_gradients(self):
         gradients=[]
@@ -392,6 +453,7 @@ class RolePoolExecutor:
         host_budget=HostBudget(self.hardware.host_capacities[self.rank])
         offload_records=[]
         local_score_data=[]
+        sample_identities=[]
         peak=0;transport_peak=0
         if self.role=='generator':
             inflight=deque()
@@ -420,7 +482,10 @@ class RolePoolExecutor:
                 with components.saved(module,i), components.span('forward',i):
                     with torch.enable_grad():
                         with offloader.hooks() if offloader is not None else nullcontext():
-                            latent=self.bindings.generator_forward(module,self._sample(i,'generator'))
+                            sample=self._sample(i,'generator')
+                            self._record_sample_identity(i,sample,sample_identities)
+                            latent=self.bindings.generator_forward(module,sample)
+                            del sample
                     _validate_tensor(latent,task,'generator output')
                     require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
                 # Pre-post response receive; NCCL tag-less point-to-point FIFO.
@@ -461,21 +526,24 @@ class RolePoolExecutor:
                 _validate_tensor(latent,task,'received latent')
                 with components.span('score',i):
                     source=latent.detach()
+                    sample=self._sample(i,'score')
+                    self._record_sample_identity(i,sample,sample_identities)
                     if self.bindings.score_input_gradient is not None:
                         with torch.no_grad():
-                            gradient=self.bindings.score_input_gradient(module,source,self._sample(i,'score'))
+                            gradient=self.bindings.score_input_gradient(module,source,sample)
                         _validate_tensor(gradient,task,'constructed latent gradient')
                         require(not gradient.requires_grad and gradient.grad_fn is None,
                                 'constructed gradient must be detached first-order data',path='role.runtime')
                     else:
                         with torch.enable_grad():
                             source.requires_grad_(True)
-                            loss=self.bindings.score_loss(module,source,self._sample(i,'score'))
+                            loss=self.bindings.score_loss(module,source,sample)
                             require(isinstance(loss,torch.Tensor) and loss.ndim==0 and
                                     bool(torch.isfinite(loss)) and loss.requires_grad,
                                     'score must produce a finite differentiable scalar loss',path='role.runtime')
                             gradient=torch.autograd.grad(loss,source,create_graph=False)[0]
                     gradient=(gradient/task.microbatches).detach().contiguous()
+                    del sample
                     _validate_tensor(gradient,task,'score input gradient')
                 send_work.append((dist.isend(gradient,dst=producer),gradient))
                 if task.score_updates:local_score_data.append((latent.detach(),i))
@@ -488,6 +556,7 @@ class RolePoolExecutor:
             if 'loss' in locals():del loss
         # Every role has drained transport before entering checked commits.
         # FSDP2 gradients are already reduced and must not be all-reduced again.
+        sample_pairing=self._check_sample_pairing(sample_identities)
         if self.profile_components and self.role=='generator':
             dist.barrier(group=gen_group)
         with components.span('generator_commit') if self.role=='generator' else nullcontext():
@@ -562,6 +631,7 @@ class RolePoolExecutor:
                 'missing transported input VJPs',path='role.runtime')
         return {'schema_version':'distillschedule.role_pool_execution.v1',
                 'status':'PASS_ROLE_POOL_EXECUTION','task_sha256':task.digest,
+                'sample_pairing':sample_pairing,
                 'layout':layout.to_dict(),'ranks':rows,
                 'cycle':self._cycle,'initial_versions':dict(self._versions),
                 'final_versions':dict(graph.metadata['final_versions']),

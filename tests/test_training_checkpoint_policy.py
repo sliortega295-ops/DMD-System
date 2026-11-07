@@ -510,3 +510,106 @@ def test_cpu_tree_uses_one_independent_copy_without_an_extra_clone():
             assert torch.ops.aten.clone.default not in copies.calls
         tensor.add_(1)
         assert torch.equal(saved, expected)
+
+
+def _native_restore_fault_worker(rank, rendezvous, fault):
+    """SYNTHETIC_TEST_ONLY: actual native boundary, injected CPU engine."""
+    from datetime import timedelta
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    import torch.distributed as dist
+    from distillschedule.training.h3_ar_state import NativeCheckpoint, _ENGINE_CLIENT_METADATA
+    from distillschedule.strategies.h3_ar_session import H3ARSession
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=5))
+    try:
+        model = torch.nn.Linear(1, 1, bias=False).requires_grad_(False)
+        calls = []
+        def load(*args, **kwargs):
+            calls.append(True)
+            assert model.weight.requires_grad
+            if rank == 1 and fault == 'load':
+                raise RuntimeError('native-install-sentinel')
+            with torch.no_grad():
+                model.weight.fill_(3)
+            engine.global_steps = 2
+            client = dict.fromkeys(_ENGINE_CLIENT_METADATA)
+            client.update(cycle=1, native_global_steps=2, frozen_param_shapes=None,
+                          frozen_param_fragments=None, param_shapes=[{'weight': [1, 1]}])
+            if fault == 'result':
+                client['cycle'] = 2
+            return 'SYNTHETIC_TEST_ONLY', client
+        engine = SimpleNamespace(module=model, global_steps=0, load_checkpoint=load)
+        owner = object.__new__(NativeCheckpoint)
+        owner.session = SimpleNamespace(engine=engine)
+        owner.parameters = dict(model.named_parameters())
+        owner.permanent = {id(model.weight)}
+        owner.partition_layout = [[['weight', [1, 1]]]]
+        def validate(*args):
+            if rank == 1 and fault == 'admission':
+                raise RuntimeError('native-admission-sentinel')
+        owner.validate_restore = validate
+        registered_trainables = owner.registered_trainables
+        @contextmanager
+        def trainables():
+            with registered_trainables():
+                if rank == 1 and fault == 'preparation':
+                    raise RuntimeError('native-preparation-sentinel')
+                yield
+            if rank == 1 and fault == 'cleanup':
+                raise RuntimeError('native-cleanup-sentinel')
+        owner.registered_trainables = trainables
+        metadata = {'client_state': {'cycle': 1, 'native_global_steps': 2}}
+        if fault is None:
+            owner.load('.', metadata)
+            assert model.weight.item() == 3 and not model.weight.requires_grad
+            return
+        message = ('native engine did not restore exact' if fault == 'result'
+                   else 'native-' + ('install' if fault == 'load' else fault) + '-sentinel')
+        with pytest.raises(ValueError, match=message) as error:
+            owner.load('.', metadata)
+        errors = [None, None]
+        dist.all_gather_object(errors, str(error.value))
+        assert errors[0] == errors[1] and 'Timed out' not in errors[0]
+        assert not model.weight.requires_grad and owner.session._checkpoint_restore_failed
+        assert len(calls) == (1 if fault in ('load', 'cleanup', 'result') else 0)
+        with pytest.raises(ValueError, match='failed'):
+            owner.load('.', metadata)
+        with pytest.raises(ValueError, match='failed'):
+            H3ARSession.prepare(owner.session, 1)
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('fault', ['load', 'admission', 'preparation', 'cleanup', 'result', None])
+def test_native_restore_exchanges_local_errors_and_invalidates_partial_owner(tmp_path, fault):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_native_restore_fault_worker,
+        args=(str(tmp_path / 'native-init'), fault), nprocs=2, join=True)
+
+
+@pytest.mark.parametrize('fault', ['state', 'rng'])
+def test_native_owner_is_invalidated_if_common_restore_fails_after_native_install(monkeypatch, fault):
+    """SYNTHETIC_TEST_ONLY: shared restore interface, no engine or GPU."""
+    from distillschedule.training import checkpoint as checkpoint_module
+    from distillschedule.training.checkpoint import pack_state, rng_state, restore_checkpoint
+    state = {'value': torch.ones(1)}
+    payload = dict(state=pack_state(state), rng=rng_state(), cycle=1, cursor=1, versions={})
+    monkeypatch.setattr(checkpoint_module, 'read_checkpoint', lambda *args, **kwargs: payload)
+    monkeypatch.setattr(checkpoint_module, 'read_manifest', lambda *args, **kwargs:
+                        {'native_checkpoint': {'owner': {'fixture': 'SYNTHETIC_TEST_ONLY'}}})
+    class Owner:
+        installed = False
+        invalidated = False
+        def validate_restore(self, *args): pass
+        def load(self, *args): self.installed = True
+        def invalidate_restore(self): self.invalidated = True
+    owner = Owner()
+    def fail(*args, **kwargs):
+        assert owner.installed
+        raise RuntimeError('common-' + fault + '-sentinel')
+    monkeypatch.setattr(checkpoint_module, 'unpack_state' if fault == 'state' else 'restore_rng', fail)
+    with pytest.raises(RuntimeError, match='common-' + fault + '-sentinel'):
+        restore_checkpoint('SYNTHETIC_TEST_ONLY', state, identity={}, native_checkpoint=owner)
+    assert owner.installed and owner.invalidated

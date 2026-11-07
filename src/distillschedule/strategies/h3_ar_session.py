@@ -210,6 +210,8 @@ class H3ARSession:
         return dict(student=self.trainer.generator_step, fake=self.trainer.critic_step, ema=0)
 
     def prepare(self, cycle, order=('native_update',)):
+        require(not getattr(self, '_checkpoint_restore_failed', False),
+                'failed native restore owner must be discarded', path='h3_ar.session')
         require(self.versions() == dict(student=cycle-1, fake=cycle-1, ema=0),
                 'actual native versions diverged before dispatch', path='h3_ar.session')
         if self.input_provider is not None:

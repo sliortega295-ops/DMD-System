@@ -22,22 +22,30 @@ def sample(index,role,device):
     shape=(1,2,params['frames'],params['height'],params['width'])
     # Explicit deterministic data/conditioning. Real workloads bind actual
     # dataset tensor sources here, not optimization suggestions.
-    return torch.full(shape,.1*(index+1) if role=='generator' else .03*(index+2),device=device)
+    return {'sample_id':str(index), 'value':torch.full(
+        shape,.1*(index+1) if role=='generator' else .03*(index+2),device=device)}
 
 
 def sample_at(cycle,index,role,device):
     # Preserve cycle zero exactly; later cycles bind different logical inputs.
     # A real dataset adapter supplies its own stable cycle/sample mapping.
-    return sample(index,role,device)+(cycle*.01)
+    actual=sample(index,role,device)
+    return {'sample_id':f'{cycle}:{actual["sample_id"]}', 'value':actual['value']+(cycle*.01)}
 
 
-def generator_forward(module,latent):return module(latent)
+def sample_identity(cycle,index,role,actual):
+    # The example is unconditioned; numeric role targets are intentionally
+    # different. A conditional adapter returns its shared prompt/encoding IDs.
+    return {'sample_id':actual['sample_id'], 'conditions':{}}
 
 
-def score_loss(module,latent,condition):return (module(latent)-condition).square().mean()
+def generator_forward(module,actual):return module(actual['value'])
 
 
-def score_train_loss(module,latent,condition):return (module(latent.detach())-condition).square().mean()
+def score_loss(module,latent,condition):return (module(latent)-condition['value']).square().mean()
+
+
+def score_train_loss(module,latent,condition):return (module(latent.detach())-condition['value']).square().mean()
 
 PARAMETERS={}
 
@@ -52,5 +60,5 @@ def build(parameters):
         score_train_loss if task.score_updates else None,
         data_identity=fingerprint({'data':'synthetic_declared_C3D_example','parameters':parameters}),
         role_storage_estimate_bytes={'generator':20000,'score':20000},sample_at=sample_at,
-        checkpoint_safe=True)
+        checkpoint_safe=True,sample_identity=sample_identity)
     return task,functions

@@ -209,13 +209,15 @@
         "src/distillschedule/training/h3_cached_public.py"
       ],
       "profiles": [],
-      "checks": [],
+      "checks": [
+        "tests/test_training_checkpoint_policy.py"
+      ],
       "tests_run": false,
       "guide": "recipes/h3_ar/README.md",
       "title": "W6 — Autoregressive Audio-Video DMD (Original DiffSynth H3)",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
-      "check_count": 0
+      "check_count": 1
     },
     {
       "id": "h3_fullseq",

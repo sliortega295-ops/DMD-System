@@ -264,6 +264,8 @@ def build_dmd_workload(*, student, fake, teacher, student_optimizer, fake_optimi
         require(isinstance(state[role], torch.nn.Module), 'DMD role must be a module', path='open.dmd')
     require(all(not parameter.requires_grad for parameter in teacher.parameters()),
             'Teacher must already be frozen; builder never changes user models', path='open.dmd')
+    require(all(not module.training for module in teacher.modules()),
+            'Teacher must already be in eval mode; builder never changes user models', path='open.dmd')
     for role in ('student', 'fake'):
         optimizer = state[role + '_optimizer']
         require(isinstance(optimizer, torch.optim.Optimizer), 'Torch optimizer required', path='open.dmd')
@@ -286,5 +288,6 @@ def build_dmd_workload(*, student, fake, teacher, student_optimizer, fake_optimi
             tuple(call.id for call in program.calls if call.backward_of), replica_batch_size)
     return Workload(program, hooks.bindings(program), state, dict(feeds), seed=seed,
         immutable_modules=tuple(dict.fromkeys(('teacher', *immutable_modules))),
+        immutable_state_modules=('teacher',),
         identity_extra={'dmd_builder': dict(program.parameters), 'user': dict(identity_extra or {})},
         replica_semantics=semantics).validate()

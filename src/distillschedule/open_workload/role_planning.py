@@ -8,12 +8,17 @@ conservative but honest first compositional pool backend.
 """
 from __future__ import annotations
 import hashlib
+import ast
+import builtins
+import dis
 import inspect
 import json
 import platform
 from pathlib import Path
 import statistics
+import sysconfig
 import time
+import textwrap
 from dataclasses import asdict
 
 import torch
@@ -33,19 +38,126 @@ PLAN='distillschedule.measured_role_pool_plan.v1'
 
 
 def code_identity(bindings:RoleFunctions):
-    """Callable source fingerprints, not user supplied winner/recipe aliases."""
+    """Source plus actual immutable configuration; never hash captured tensors.
+
+    Mutable runtime owners must not masquerade as constants. Opaque captures
+    are rejected at plan admission, not pickled or reduced to repr/object IDs.
+    """
+    seen={}
+    file_hashes={}
+    dependency_roots=tuple(Path(sysconfig.get_path(key)).resolve() for key in ('stdlib','purelib','platlib'))
+    dynamic_lookups=(getattr,setattr,delattr,vars,globals,locals,eval,exec,__import__)
+    def installed_dependency(value):
+        try:path=inspect.getsourcefile(value)
+        except (OSError,TypeError):return False
+        return path is not None and any(Path(path).resolve().is_relative_to(root) for root in dependency_roots)
+    def source_record(value):
+        path=inspect.getsourcefile(value)
+        if path is not None:
+            path=Path(path)
+            if path not in file_hashes:file_hashes[path]=file_sha256(path)
+        try:source=inspect.getsource(value)
+        except (OSError,TypeError) as exc:raise ValueError('uninspectable role callable configuration') from exc
+        return dict(callable=hashlib.sha256(source.encode()).hexdigest(),
+                    module=file_hashes.get(path)),source
+    def bind(value, *, dependency=False, depth=0):
+        require(depth<=24,'cyclic or excessively nested role configuration',path='role.identity')
+        if value is None or type(value) in (bool,int,float,str):
+            # fingerprint rejects nonfinite floats without reading tensor data.
+            fingerprint(value)
+            return value
+        if type(value) in (list,tuple):
+            return {type(value).__name__:[bind(item,depth=depth+1) for item in value]}
+        if type(value) is dict:
+            require(all(type(key) is str for key in value),'role configuration keys must be strings',path='role.identity')
+            return {'dict':{key:bind(value[key],depth=depth+1) for key in sorted(value)}}
+        if isinstance(value,(torch.dtype,torch.device)):
+            return {type(value).__name__:str(value)}
+        if inspect.ismodule(value):
+            path=getattr(value,'__file__',None)
+            if path and Path(path).is_file():
+                path=Path(path)
+                if path not in file_hashes:file_hashes[path]=file_sha256(path)
+            return dict(imported_module=value.__name__,version=str(getattr(value,'__version__','')),
+                        source=file_hashes.get(path))
+        if inspect.isbuiltin(value) or (inspect.isclass(value) and value.__module__=='builtins'):
+            require(not any(value is function for function in dynamic_lookups),
+                    'dynamic role configuration lookup must be explicit',path='role.identity')
+            return dict(imported_symbol=value.__module__+'.'+value.__qualname__)
+        require(inspect.isfunction(value) or inspect.isclass(value),
+                'dynamic role capture requires explicit configuration and state ownership: '+type(value).__qualname__,
+                path='role.identity')
+        key=(id(value),dependency)
+        if key in seen:return {'code_reference':seen[key]}
+        seen[key]=len(seen)
+        record,source=source_record(value)
+        # Imported dependency implementation is bound by source; its mutable
+        # internal caches/RNG are not the caller's constant configuration.
+        if dependency:return record
+        if inspect.isclass(value):
+            record['constants']={key:bind(item,depth=depth+1) for key,item in sorted(vars(value).items())
+                if not key.startswith('__') and not (inspect.isroutine(item) or isinstance(item,(property,staticmethod,classmethod)))}
+            record['methods']={key:bind(item.__func__ if isinstance(item,(staticmethod,classmethod)) else item,
+                                       depth=depth+1) for key,item in sorted(vars(value).items())
+                if inspect.isfunction(item) or isinstance(item,(staticmethod,classmethod))}
+            record['properties']={key:{accessor:bind(getattr(item,accessor),depth=depth+1)
+                                       for accessor in ('fget','fset','fdel')}
+                for key,item in sorted(vars(value).items()) if isinstance(item,property)}
+            record['bases']=[bind(base,dependency=installed_dependency(base),depth=depth+1)
+                             for base in value.__bases__]
+            return record
+        captures=inspect.getclosurevars(value)
+        # Comprehensions/generators have separate code objects: outer co_names
+        # alone omits globals used by their actual computation.
+        names=set();pending=[value.__code__]
+        while pending:
+            code=pending.pop()
+            names.update(item.argval for item in dis.get_instructions(code)
+                         if item.opname in ('LOAD_GLOBAL','LOAD_NAME'))
+            pending.extend(item for item in code.co_consts if inspect.iscode(item))
+        referenced={key:value.__globals__[key] for key in names if key in value.__globals__}
+        require(not any(getattr(builtins,key,None) in dynamic_lookups for key in names if key not in referenced),
+                'dynamic role configuration lookup must be explicit',path='role.identity')
+        record.update(defaults=bind(value.__defaults__,depth=depth+1),
+                      kwdefaults=bind(value.__kwdefaults__,depth=depth+1),
+                      closure={key:bind(item,depth=depth+1) for key,item in sorted(captures.nonlocals.items())})
+        record['globals']={}
+        for key,item in sorted(referenced.items()):
+            imported=(inspect.isfunction(item) or inspect.isclass(item)) and installed_dependency(item)
+            record['globals'][key]=bind(item,dependency=imported,depth=depth+1)
+        # Bind actual scalar module attributes too (e.g. settings.loss_scale),
+        # not just unchanged settings.py bytes. Do not invoke dynamic getters.
+        attributes={}
+        tree=ast.parse(textwrap.dedent(source))
+        parents={child:parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Name) and isinstance(node.ctx,ast.Load):
+                namespace=referenced.get(node.id,captures.nonlocals.get(node.id))
+                if inspect.ismodule(namespace):
+                    require(isinstance(parents.get(node),ast.Attribute) and parents[node].value is node,
+                            'dynamic module configuration must use explicit attributes',path='role.identity')
+            chain=[]
+            while isinstance(node,ast.Attribute):
+                chain.insert(0,node.attr);node=node.value
+            if not chain or not isinstance(node,ast.Name):continue
+            item=referenced.get(node.id,captures.nonlocals.get(node.id))
+            if not inspect.ismodule(item):continue
+            for part in chain:
+                try:item=inspect.getattr_static(item,part)
+                except AttributeError as exc:raise ValueError('dynamic module configuration must be explicit: '+node.id+'.'+'.'.join(chain)) from exc
+            imported=(inspect.isfunction(item) or inspect.isclass(item)) and installed_dependency(item)
+            attributes[node.id+'.'+'.'.join(chain)]=bind(item,dependency=imported,depth=depth+1)
+        record['attributes']=attributes
+        return record
     files={}
     for name in ('make_model','make_optimizer','sample','generator_forward','score_loss','score_train_loss',
-                 'score_input_gradient','sample_at','score_update_input','state_owners'):
+                 'score_input_gradient','sample_at','score_update_input','state_owners','sample_identity'):
         fn=getattr(bindings,name)
         if fn is None:continue
         require(inspect.isfunction(fn),'role factory functions must be inspectable Python functions',path='role.identity')
-        try:source=inspect.getsource(fn)
-        except (OSError,TypeError) as exc:raise ValueError(f'uninspectable role callable: {name}') from exc
-        source_file=inspect.getsourcefile(fn)
-        files[name]={'callable':hashlib.sha256(source.encode()).hexdigest(),
-                     'module':file_sha256(Path(source_file)) if source_file else None}
-    return fingerprint(files)
+        files[name]=bind(fn)
+    return fingerprint(dict(schema_version='distillschedule.role_callable_configuration.v2',
+                            factory=bindings.factory_identity,functions=files))
 
 
 def source_identity():
@@ -78,13 +190,16 @@ def _run_identity(task,hardware,bindings,device):
         value={'source_head':source_revision(),'source_fingerprint':source_identity(),
                'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
                'source_functions_sha256':code_identity(bindings),
+               'factory':bindings.factory_identity,
                'score_parameters_frozen':bindings.score_parameters_frozen,
                'checkpoint_safe':bindings.checkpoint_safe,'data_identity':bindings.data_identity}
         return props,value
     props,value=checked(local,'role source/data/device identity')
-    identities=[None]*hardware.world
-    dist.all_gather_object(identities,props)
-    value['hardware']=identities
+    entries=[None]*hardware.world
+    dist.all_gather_object(entries,dict(hardware=props,identity=value))
+    require(all(row['identity']==value for row in entries),
+            'ranks disagree on role source/configuration identity',path='role.identity')
+    value['hardware']=[row['hardware'] for row in entries]
     return value
 
 

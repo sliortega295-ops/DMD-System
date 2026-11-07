@@ -482,6 +482,8 @@ def _build_model(parameters, *, construction=None):
                 media_architecture=media.architecture, binding=binding, empty_context=empty_context,
                 generation_sigmas=schedule, trainable=parameters['trainable'], compute_precision=precision,
                 cpu_parameter_limits=limits)
+            if name == 'teacher':
+                roles[name].eval()
         with torch.device(device):
             state = training_state(roles['student'], roles['fake'], roles['teacher'], student_lr=parameters['student_lr'],
                 fake_lr=parameters['fake_lr'], scheduler_gamma=parameters['scheduler_gamma'], ema_decay=parameters['ema_decay'])

@@ -29,6 +29,12 @@ NCCL requires tag-free send/recv; messages are ordered by each source/target
 pair. Runtime enforces output shapes, dtype, finite values, disjoint physical
 pool ranks and agreement among role-model replicas.
 
+Bindings provide `sample_identity(cycle, microbatch, role, actual_sample)` as
+`{sample_id, conditions}` metadata from the input actually consumed. The runtime
+matches each Generator/Score pair before any optimizer update. `conditions`
+contains shared prompt/encoding identities; private role noise and independent
+Score-update samples remain separate. Unconditioned tasks declare `{}`.
+
 **Verified:** actual 2-, 3- and 4-process CPU/Gloo transport, 1:1 and asymmetric
 pool splits, pipeline windows 1/2, both frozen-guidance and separate Score
 optimizer paths. Final model tensors are checked against an independently

@@ -3,7 +3,7 @@
 The real engine saves/loads its FP32 master shards and alternating Adam state.
 This module serializes metadata only; it is not another optimizer backend.
 """
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from copy import deepcopy
 from pathlib import Path
 
@@ -84,6 +84,8 @@ class NativeCheckpoint:
                 parameter.requires_grad_(flags[name])
 
     def validate_checkpoint_boundary(self):
+        _require(not getattr(self.session, '_checkpoint_restore_failed', False),
+                 'failed native restore owner must be discarded')
         import torch
         s = self.session
         _require(s.engine.zero_optimization_stage() == 3 and s.trainer.generator_step == s.trainer.critic_step
@@ -195,11 +197,38 @@ class NativeCheckpoint:
         _require(metadata["client_state"]["cycle"] == self.progress.cursor.completed,
                  "native checkpoint and prepared input cursor differ")
 
+    def invalidate_restore(self):
+        # Installation is not transactional. Never train/save/retry with a
+        # partially restored native engine, even if only another rank failed.
+        self.session._checkpoint_restore_failed = True
+
     def load(self, root, metadata):
-        self.validate_restore(root, metadata)
-        with self.registered_trainables():
-            loaded, client = self.session.engine.load_checkpoint(str(root), tag="state", load_module_strict=False,
-                load_optimizer_states=True, load_lr_scheduler_states=True, load_module_only=False)
+        try:
+            return self._load(root, metadata)
+        except BaseException:
+            self.invalidate_restore()
+            raise
+
+    def _load(self, root, metadata):
+        def admit():
+            _require(not getattr(self.session, '_checkpoint_restore_failed', False),
+                     'failed native restore owner must be discarded')
+            self.validate_restore(root, metadata)
+        distributed.checked(admit, 'native engine restore admission')
+        stack = ExitStack()
+        try:
+            # All purely local preparation must succeed before any rank enters
+            # the engine (which may itself perform collective communication).
+            distributed.checked(lambda: stack.enter_context(self.registered_trainables()),
+                                'native engine restore trainable preparation')
+            loaded, client = distributed.checked(lambda: self.session.engine.load_checkpoint(
+                str(root), tag="state", load_module_strict=False, load_optimizer_states=True,
+                load_lr_scheduler_states=True, load_module_only=False), 'native engine state installation')
+        finally:
+            distributed.checked(stack.close, 'native engine restore trainable cleanup')
+        # This exchanges local loader exceptions after peers return. A failure
+        # inside an engine collective still requires its process-group timeout
+        # and launcher termination; the wrapper cannot roll back that engine.
         # Pinned DeepSpeed0.18.4 returns its own non-excluded metadata alongside
         # user client_state (not just the supplied dictionary). Bind the user
         # fields exactly, and admit only the installed API's known extra keys.

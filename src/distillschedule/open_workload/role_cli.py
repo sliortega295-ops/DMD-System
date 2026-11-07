@@ -6,6 +6,8 @@ No GPU allocation, pretrained model downloads or background orchestration.
 """
 from __future__ import annotations
 import argparse
+from copy import deepcopy
+from dataclasses import replace
 import importlib.util
 import json
 import os
@@ -15,12 +17,15 @@ import sys
 from datetime import timedelta
 
 from distillschedule.core.contracts import require
-from distillschedule.workloads.best_known.registry import file_sha256, fingerprint,write_new_json
+from distillschedule.workloads.best_known.registry import canonical_bytes, file_sha256, fingerprint,write_new_json
 from .role_program import RoleTask, AllocatedWorld
 from .role_transport import RoleFunctions
 
 
 def load_factory(entry,parameters):
+    require(type(parameters) is dict and all(type(key) is str for key in parameters),
+            'role factory parameters must be a JSON object', path='role.cli')
+    parameters=json.loads(canonical_bytes(parameters))
     path,sep,name=entry.rpartition(':')
     require(sep and name.isidentifier(),'role factory must be local.py:callable',path='role.cli')
     source=Path(path).expanduser().resolve()
@@ -32,17 +37,19 @@ def load_factory(entry,parameters):
     spec.loader.exec_module(module)
     factory=getattr(module,name,None)
     require(callable(factory),'unknown role factory entry',path='role.cli')
-    value=factory(parameters)
+    value=factory(deepcopy(parameters))
     require(isinstance(value,(list,tuple)) and len(value)==2 and
             isinstance(value[0],RoleTask) and isinstance(value[1],RoleFunctions),
             'factory must produce (RoleTask, RoleFunctions), not a pool recipe',path='role.cli')
-    task,bindings=value;bindings.validate(task)
+    code={'factory_sha256':source_sha,'factory_name':name,'parameters_sha256':fingerprint(parameters)}
+    task,bindings=value
+    bindings=replace(bindings,factory_identity=code)
+    bindings.validate(task)
     require(file_sha256(source)==source_sha,'role source changed while loading',path='role.cli')
     require(bool(bindings.data_identity) and len(bindings.data_identity)==64 and
             all(c in '0123456789abcdef' for c in bindings.data_identity),
             'explicit content-hashed data cohort required',path='role.cli')
-    return task,bindings,{'factory_sha256':source_sha,'factory_name':name,
-                          'parameters_sha256':fingerprint(parameters)}
+    return task,bindings,code
 
 
 def allocated_hardware(args,device):

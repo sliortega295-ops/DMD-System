@@ -419,6 +419,125 @@ def _immutable_read(ctx):
     return ctx.inputs['x'] + sum(physical_tensor(p).sum() for p in ctx.state['teacher'].parameters())
 
 
+class _StatefulTeacher(torch.nn.Module):
+    def __init__(self, mutation=None):
+        super().__init__()
+        self.register_buffer('running', torch.zeros(()))
+        self.register_buffer('temporary', torch.zeros(()), persistent=False)
+        self.mutation = mutation
+
+    def forward(self, value):
+        if self.mutation == 'buffer':
+            self.running.add_(1)
+        elif self.mutation == 'nonpersistent':
+            self.temporary.add_(1)
+        elif self.mutation == 'mode':
+            self.train()
+        return value + self.running
+
+
+def _teacher_forward(ctx):
+    return ctx.state['teacher'](ctx.inputs['x'])
+
+
+def _teacher_commit(ctx):
+    ctx.state['commits'].append(True)
+
+
+def _teacher_state_session(teacher, *, lifecycle=None):
+    from distillschedule.open_workload.torch_backend import Session, Workload
+    workload = Workload(Program((
+        Call('teacher', 'forward', inputs=('x',), reads=('teacher',)),
+        Call('commit', 'commit', inputs=('teacher',), reads=('commits',), writes=('commits',))),
+        {'teacher': 0, 'commits': 0}, ('x',), ('teacher',)),
+        {'forward': _teacher_forward, 'commit': _teacher_commit},
+        {'teacher': teacher, 'commits': []}, {'x': torch.ones(8, 4)},
+        immutable_modules=('teacher',), immutable_state_modules=('teacher',))
+    option = {'backend': 'torch-callable-resident-v1', 'share_immutable': False,
+              'checkpoint_bindings': []}
+    return Session(workload, option, copy_state=False, persistent=True, lifecycle=lifecycle), workload
+
+
+def test_dmd_builder_rejects_training_teacher_without_changing_its_mode():
+    from distillschedule.open_workload.dmd import DMDHooks, build_dmd_workload
+    teacher = torch.nn.BatchNorm1d(4).requires_grad_(False)
+    student, fake = torch.nn.Linear(4, 4), torch.nn.Linear(4, 4)
+    with pytest.raises(ValueError, match='Teacher.*eval'):
+        build_dmd_workload(student=student, fake=fake, teacher=teacher,
+            student_optimizer=torch.optim.SGD(student.parameters(), lr=.01),
+            fake_optimizer=torch.optim.SGD(fake.parameters(), lr=.01),
+            hooks=DMDHooks(*([_immutable_read] * 6)), feeds={'x': torch.ones(8, 4)},
+            cycles=1, fake_updates=1, fake_sample_policy='reuse_student')
+    assert teacher.training and teacher.num_batches_tracked.item() == 0
+
+
+@pytest.mark.parametrize('mutation', ['buffer', 'nonpersistent', 'mode'])
+def test_immutable_teacher_state_mutation_is_rejected_before_later_update(mutation):
+    session, _ = _teacher_state_session(_StatefulTeacher(mutation).eval())
+    with pytest.raises(ValueError, match='immutable model state'):
+        session.run()
+    assert session.state['commits'] == []
+
+
+def test_teacher_buffer_audit_catches_raw_writes_and_does_not_rehash_unchanged_buffers(monkeypatch):
+    from dataclasses import replace
+    calls = _count_content_hashes(monkeypatch)
+    session, workload = _teacher_state_session(_StatefulTeacher().eval())
+    session.run()
+    admitted = len(calls)
+    session.bind_cycle(replace(workload, program=replace(workload.program,
+        initial_versions=session.receipt['dispatcher']['final_versions'])))
+    session.run()
+    assert len(calls) == admitted
+    session.state['teacher'].temporary.data.add_(1)
+    with pytest.raises(ValueError, match='immutable model state'):
+        session.audit_immutable()
+
+
+def test_teacher_state_contract_cannot_be_removed_between_cycles():
+    from dataclasses import replace
+    session, workload = _teacher_state_session(_StatefulTeacher().eval())
+    session.run()
+    with pytest.raises(ValueError, match='immutable model state'):
+        session.bind_cycle(replace(workload, immutable_state_modules=()))
+
+
+def _distributed_teacher_guard_worker(rank, rendezvous, mutation):
+    from datetime import timedelta
+    import torch.distributed as dist
+    class Lifecycle:
+        def prepare(self, session): pass
+        def before_run(self, session, order): pass
+        def before_call(self, session, call): pass
+        def after_call(self, session, call): pass
+        def finish(self, session): pass
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=10))
+    try:
+        teacher = _StatefulTeacher(mutation if rank == 1 else None).eval()
+        session, _ = _teacher_state_session(teacher, lifecycle=Lifecycle())
+        if mutation is None:
+            session.run()
+            assert session.state['commits'] == [True]
+            return
+        with pytest.raises(ValueError, match='immutable model state') as error:
+            session.run()
+        errors = [None, None]
+        dist.all_gather_object(errors, str(error.value))
+        assert errors[0] == errors[1] and 'Timed out' not in errors[0]
+        assert session.state['commits'] == []
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('mutation', ['buffer', 'mode', None])
+def test_rank_local_teacher_state_change_is_rejected_on_all_lifecycle_ranks(tmp_path, mutation):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_distributed_teacher_guard_worker,
+        args=(str(tmp_path / 'teacher-init'), mutation), nprocs=2, join=True)
+
+
 def _immutable_session(*, persistent=True, lifecycle=None, teacher=None):
     from distillschedule.open_workload.torch_backend import Session, Workload
     if teacher is None:
@@ -980,12 +1099,342 @@ def _audit_role_sample_at(cycle, index, role, device):
     return torch.full((1, 1), 1. + cycle * .1, device=device)
 
 
+def _audit_role_sample_identity(cycle, index, role, actual):
+    # This unconditioned fixture has role-private numeric targets, no shared
+    # prompt/conditioning; both roles explicitly consume the same logical item.
+    return {'sample_id': f'{cycle}:{index}', 'conditions': {}}
+
+
+def _scaled_role_bindings(scale, mode='closure'):
+    from distillschedule.open_workload.role_transport import RoleFunctions
+    if mode == 'closure':
+        def loss(model, source, sample):
+            return scale * _audit_role_loss(model, source, sample)
+    elif mode == 'default':
+        def loss(model, source, sample, factor=scale):
+            return factor * _audit_role_loss(model, source, sample)
+    else:
+        def loss(model, source, sample, *, factor=scale):
+            return factor * _audit_role_loss(model, source, sample)
+    return RoleFunctions(_audit_role_model, _audit_role_optimizer, _audit_role_sample,
+        _audit_role_forward, loss, data_identity='d' * 64, sample_identity=_audit_role_sample_identity)
+
+
+@pytest.mark.parametrize('mode', ['closure', 'default', 'keyword_default'])
+def test_role_plan_identity_changes_with_actual_callable_configuration(mode):
+    from distillschedule.open_workload.role_planning import code_identity
+    assert code_identity(_scaled_role_bindings(2, mode)) != code_identity(_scaled_role_bindings(7, mode))
+    assert code_identity(_scaled_role_bindings(2, mode)) == code_identity(_scaled_role_bindings(2, mode))
+
+
+def test_role_plan_identity_rejects_opaque_dynamic_capture_without_reading_tensor_payload(monkeypatch):
+    from distillschedule.open_workload.role_planning import code_identity
+    def forbidden(*args, **kwargs):
+        raise AssertionError('identity must not copy tensor payload')
+    monkeypatch.setattr(torch.Tensor, 'cpu', forbidden)
+    with pytest.raises(ValueError, match='dynamic|capture|configuration'):
+        code_identity(_scaled_role_bindings(torch.tensor(2.)))
+
+
+_ROLE_LOSS_CONFIGURATION = {'scale': 2}
+
+
+def _configured_global_role_loss(model, source, sample):
+    return _ROLE_LOSS_CONFIGURATION['scale'] * _audit_role_loss(model, source, sample)
+
+
+def _nested_global_role_loss(model, source, sample):
+    return sum(_ROLE_LOSS_CONFIGURATION['scale'] * item.square().sum() for item in (source,))
+
+
+class _ConfiguredRoleModel(torch.nn.Linear):
+    def __init__(self):
+        super().__init__(1, 1)
+
+    def forward(self, value):
+        return super().forward(value) * _ROLE_LOSS_CONFIGURATION['scale']
+
+
+class _PropertyRoleModel(torch.nn.Linear):
+    @property
+    def scale(self):
+        return _ROLE_LOSS_CONFIGURATION['scale']
+
+    def forward(self, value):
+        return super().forward(value) * self.scale
+
+
+class _PlainRoleConfiguration:
+    scale = 2
+
+
+def _configured_role_model(role, device):
+    return _ConfiguredRoleModel().to(device)
+
+
+def _property_role_model(role, device):
+    return _PropertyRoleModel(1, 1).to(device)
+
+
+def _plain_class_role_loss(model, source, sample):
+    return _PlainRoleConfiguration.scale * source.square().sum()
+
+
+def _static_config_role_loss(model, source, sample):
+    return _ROLE_CONFIG_MODULE.scale * source.sum()
+
+
+def _dynamic_config_role_loss(model, source, sample):
+    return getattr(_ROLE_CONFIG_MODULE, 'scale') * source.sum()
+
+
+@pytest.mark.parametrize('callback', ['nested', 'class', 'property'])
+def test_role_identity_binds_nested_code_globals_and_local_model_methods(callback):
+    from dataclasses import replace
+    from distillschedule.open_workload.role_planning import code_identity
+    bindings = replace(_scaled_role_bindings(2), **(
+        {'score_loss': _nested_global_role_loss} if callback == 'nested'
+        else {'make_model': _configured_role_model if callback == 'class' else _property_role_model}))
+    before = code_identity(bindings)
+    try:
+        _ROLE_LOSS_CONFIGURATION['scale'] = 7
+        assert code_identity(bindings) != before
+    finally:
+        _ROLE_LOSS_CONFIGURATION['scale'] = 2
+
+
+def test_role_identity_accepts_plain_local_classes_and_binds_actual_constants(monkeypatch):
+    from dataclasses import replace
+    from distillschedule.open_workload.role_planning import code_identity
+    bindings = replace(_scaled_role_bindings(2), score_loss=_plain_class_role_loss)
+    before = code_identity(bindings)
+    monkeypatch.setattr(_PlainRoleConfiguration, 'scale', 7)
+    assert code_identity(bindings) != before
+
+
+def test_role_identity_binds_actual_static_module_attributes(monkeypatch):
+    from dataclasses import replace
+    from types import ModuleType
+    from distillschedule.open_workload.role_planning import code_identity
+    settings = ModuleType('role_static_config_fixture')
+    settings.scale = 2
+    monkeypatch.setitem(globals(), '_ROLE_CONFIG_MODULE', settings)
+    bindings = replace(_scaled_role_bindings(2), score_loss=_static_config_role_loss)
+    before = code_identity(bindings)
+    settings.scale = 7
+    assert code_identity(bindings) != before
+
+
+def test_role_identity_rejects_dynamic_module_configuration_lookup(monkeypatch):
+    from dataclasses import replace
+    from types import ModuleType
+    from distillschedule.open_workload.role_planning import code_identity
+    settings = ModuleType('role_config_fixture')
+    settings.scale = 2
+    monkeypatch.setitem(globals(), '_ROLE_CONFIG_MODULE', settings)
+    with pytest.raises(ValueError, match='dynamic.*configuration'):
+        code_identity(replace(_scaled_role_bindings(2), score_loss=_dynamic_config_role_loss))
+
+
+def test_role_plan_identity_binds_actual_global_configuration():
+    from dataclasses import replace
+    from distillschedule.open_workload.role_planning import code_identity
+    bindings = replace(_scaled_role_bindings(2), score_loss=_configured_global_role_loss)
+    before = code_identity(bindings)
+    try:
+        _ROLE_LOSS_CONFIGURATION['scale'] = 7
+        assert code_identity(bindings) != before
+    finally:
+        _ROLE_LOSS_CONFIGURATION['scale'] = 2
+
+
+_ROLE_FACTORY_SOURCE = '''import torch
+from torch import nn
+from distillschedule.open_workload.role_program import RoleTask
+from distillschedule.open_workload.role_transport import RoleFunctions
+
+def make_model(role,device):
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(3 if role=='generator' else 7)
+        return nn.Linear(1,1).to(device)
+
+def make_optimizer(role,module):
+    return torch.optim.Adam(module.parameters(),lr=.001) if role=='generator' else None
+
+def sample(index,role,device):
+    return {'sample_id':str(index),'value':torch.ones(1,1,device=device)}
+
+def sample_at(cycle,index,role,device):
+    return {'sample_id':f'{cycle}:{index}','value':torch.full((1,1),1.+.1*cycle,device=device)}
+
+def identity(cycle,index,role,actual):
+    return {'sample_id':actual['sample_id'],'conditions':{}}
+
+def forward(module,actual):return module(actual['value'])
+
+def build(parameters):
+    scale=parameters['scale']
+    parameters.pop('note',None)
+    def loss(module,latent,actual):
+        return scale*(module(latent)-actual['value']).square().mean()
+    return RoleTask(3,(1,1)),RoleFunctions(make_model,make_optimizer,sample,forward,loss,
+        sample_at=sample_at,sample_identity=identity,data_identity='d'*64,checkpoint_safe=True)
+'''
+
+
+def test_role_factory_binds_all_requested_parameters_without_mutating_caller(tmp_path):
+    from distillschedule.open_workload.role_cli import load_factory
+    from distillschedule.open_workload.role_planning import code_identity
+    from distillschedule.workloads.best_known.registry import fingerprint
+    source = tmp_path / 'factory.py'
+    source.write_text(_ROLE_FACTORY_SOURCE)
+    parameters = {'scale': 2, 'note': 'original'}
+    _, first, metadata = load_factory(str(source) + ':build', parameters)
+    _, second, _ = load_factory(str(source) + ':build', {'scale': 2, 'note': 'changed'})
+    assert parameters == {'scale': 2, 'note': 'original'}
+    assert metadata['parameters_sha256'] == fingerprint(parameters)
+    assert first.factory_identity == metadata
+    assert code_identity(first) != code_identity(second)
+
+
+def _role_plan_restart_worker(rank, rendezvous, output, mode):
+    from datetime import timedelta
+    from pathlib import Path
+    import os
+    import random
+    import numpy as np
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_cli import load_factory
+    from distillschedule.open_workload.role_planning import calibrate, search, run_selected, _run_identity
+    from distillschedule.open_workload.role_program import AllocatedWorld
+    from distillschedule.training.checkpoint import pack_state, rng_state
+    from distillschedule.workloads.best_known.registry import write_new_json
+    os.environ.update(RANK=str(rank), WORLD_SIZE='2', LOCAL_RANK=str(rank), LOCAL_WORLD_SIZE='2', GROUP_RANK='0')
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=30))
+    try:
+        root = Path(output)
+        scale = 7 if mode == 'changed' or mode == 'ranks' and rank == 1 else 2
+        task, bindings, _ = load_factory(str(root / 'factory.py') + ':build', {'scale': scale})
+        hardware = AllocatedWorld((1 << 30,) * 2)
+        random.seed(23); np.random.seed(23); torch.manual_seed(23)
+        if mode == 'ranks':
+            with pytest.raises(ValueError, match='configuration identity'):
+                _run_identity(task, hardware, bindings, 'cpu')
+            return
+        if mode == 'calibrate':
+            calibrate(task, hardware, bindings, root / 'calibration', generator_bytes=10000,
+                      score_bytes=10000, max_candidates=1, samples=1, max_native_runs=2)
+            if rank == 0:
+                write_new_json(root / 'plan.json', search(root / 'calibration/calibration.json'))
+            dist.barrier()
+            return
+        if mode == 'changed':
+            with pytest.raises(ValueError, match='identity changed'):
+                run_selected(task, hardware, bindings, root / 'plan.json', root / mode)
+            assert not (root / mode).exists()
+            return
+        import json
+        previous = json.loads((root / 'segment/execution.json').read_text()) if mode == 'resumed' else None
+        receipt, model, optimizer = run_selected(task, hardware, bindings, root / 'plan.json', root / mode,
+            cycles=1 if mode == 'segment' else 2,
+            checkpoint_policy={'checkpoint_every': 1} if mode == 'segment' else None,
+            resume_from=previous['checkpoint_path'] if previous else None)
+        torch.save({'state': pack_state({'model': model, 'optimizer': optimizer}), 'rng': rng_state(),
+                    'cycle': receipt['completed_cycles']}, root / f'{mode}-{rank}.pt')
+        if mode == 'resumed':
+            assert receipt['resumed_from_cycle'] == 1 and receipt['cycles_executed'] == 1
+    finally:
+        dist.destroy_process_group()
+
+
+def test_saved_role_plan_rejects_changed_config_and_resumes_in_fresh_processes(tmp_path):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    pytest.importorskip('numpy')
+    (tmp_path / 'factory.py').write_text(_ROLE_FACTORY_SOURCE)
+    for mode in ('ranks', 'calibrate', 'changed', 'segment', 'resumed', 'reference'):
+        torch.multiprocessing.spawn(_role_plan_restart_worker,
+            args=(str(tmp_path / (mode + '-init')), str(tmp_path), mode), nprocs=2, join=True)
+    for rank in range(2):
+        expected = torch.load(tmp_path / f'reference-{rank}.pt', weights_only=True)
+        resumed = torch.load(tmp_path / f'resumed-{rank}.pt', weights_only=True)
+        _assert_role_tree_equal(expected, resumed)
+
+
 def _audit_role_forward(model, sample):
     return model(sample)
 
 
 def _audit_role_loss(model, source, sample):
     return (model(source) - sample).square().mean()
+
+
+def _role_pairing_worker(rank, rendezvous, fault):
+    from datetime import timedelta
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_transport import RoleFunctions, RolePoolExecutor
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=10))
+    executor = None
+    try:
+        calls, identities = [], []
+        def model(role, device):
+            result = torch.nn.Linear(1, 1, bias=False).to(device)
+            with torch.no_grad():
+                result.weight.fill_(1)
+            return result
+        def optimizer(role, module):
+            return torch.optim.SGD(module.parameters(), lr=.1)
+        def sample(index, role, device):
+            calls.append((index, role))
+            # The second Score sample is for its independent parameter update.
+            update = role == 'score' and len(calls) > 3
+            prompt = 'B' if role == 'score' and fault == 'prompt' else ('C' if update else 'A')
+            return {'sample_id': str(index + (10 if role == 'score' and fault == 'sample' else 0)),
+                    'prompt_id': prompt, 'value': torch.ones(1, 1, device=device),
+                    'target': torch.full((1, 1), 2. if prompt == 'B' else 1., device=device)}
+        def identity(cycle, index, role, actual):
+            identities.append((cycle, index, role))
+            if role == 'score' and fault == 'callback':
+                raise RuntimeError('identity-sentinel')
+            if role == 'score' and fault == 'missing':
+                return {'sample_id': actual['sample_id']}
+            return {'sample_id': actual['sample_id'], 'conditions': {'prompt': actual['prompt_id']}}
+        def forward(module, actual):
+            return module(actual['value'])
+        def loss(module, latent, actual):
+            return (module(latent) - actual['target']).square().mean()
+        bindings = RoleFunctions(model, optimizer, sample, forward, loss, loss, sample_identity=identity)
+        executor = RolePoolExecutor(RoleTask(3, (1, 1), score_updates=1),
+            PoolLayout((0,), (1,), 2), AllocatedWorld((1 << 30,) * 2), bindings, device='cpu')
+        if fault is not None:
+            with pytest.raises(ValueError, match='sample pairing') as error:
+                executor.run()
+            errors = [None, None]
+            dist.all_gather_object(errors, str(error.value))
+            assert errors[0] == errors[1] and 'Timed out' not in errors[0]
+            assert executor.module.weight.item() == 1 and executor._cycle == 0 and executor._failed
+            if fault == 'callback':
+                assert 'identity-sentinel' in errors[0]
+            return
+        receipt, _, _ = executor.run()
+        assert len(identities) == 3 and len(calls) == (3 if rank == 0 else 6)
+        assert len(receipt['sample_pairing']['pairs']) == 3
+        assert receipt['sample_pairing']['checked_before_updates'] is True
+    finally:
+        if executor is not None:
+            executor.close()
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('fault', ['prompt', 'sample', 'callback', 'missing', None])
+def test_role_pool_pairs_actual_sample_conditions_before_any_update(tmp_path, fault):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_pairing_worker,
+        args=(str(tmp_path / 'pairing-init'), fault), nprocs=2, join=True)
 
 
 def _role_state_audit_worker(rank, rendezvous):
@@ -1001,7 +1450,8 @@ def _role_state_audit_worker(rank, rendezvous):
         task = RoleTask(2, (1, 1))
         layout = PoolLayout((0, 1), (2, 3), 1)
         bindings = RoleFunctions(_audit_role_model, _audit_role_optimizer, _audit_role_sample,
-                                _audit_role_forward, _audit_role_loss, sample_at=_audit_role_sample_at)
+                                _audit_role_forward, _audit_role_loss, sample_at=_audit_role_sample_at,
+                                sample_identity=_audit_role_sample_identity)
         executor = RolePoolExecutor(task, layout, AllocatedWorld((1 << 30,) * 4), bindings,
                                     device='cpu', state_audit_every_cycles=3)
         for cycle in range(3):
@@ -1090,7 +1540,8 @@ def _role_fault_worker(rank, rendezvous, output, fault):
             return model.weight.sqrt().sum() if fault == 'score_gradient' else (model.weight - 2).square().sum()
         score_updates = int(fault.startswith('score_'))
         bindings = RoleFunctions(make_model, make_optimizer, _audit_role_sample, forward,
-                                score_loss, train_loss if score_updates else None)
+                                score_loss, train_loss if score_updates else None,
+                                sample_identity=_audit_role_sample_identity)
         layout = PoolLayout((0, 1), (2,), 1) if world == 3 else PoolLayout((0,), (1,), 1)
         executor = RolePoolExecutor(RoleTask(world - 1, (1, 1), score_updates=score_updates),
                                     layout, AllocatedWorld((1 << 30,) * world),
@@ -1172,7 +1623,7 @@ def _role_update_reference_worker(rank, rendezvous):
             return context.retained_latent, context.conditions
         bindings = RoleFunctions(_audit_role_model, optimizer, _audit_role_sample, _audit_role_forward,
             _audit_role_loss, _audit_role_loss, sample_at=_audit_role_sample_at,
-            score_update_input=update_input)
+            score_update_input=update_input, sample_identity=_audit_role_sample_identity)
         executor = RolePoolExecutor(RoleTask(3, (1, 1), score_updates=2),
                                     PoolLayout((0, 1), (2,), 2), AllocatedWorld((1 << 30,) * 3),
                                     bindings, device='cpu')
@@ -1349,7 +1800,7 @@ def _role_restart_worker(rank, rendezvous, output, mode):
         bindings = RoleFunctions(_audit_role_model, make_optimizer, _audit_role_sample,
             _audit_role_forward, _audit_role_loss, _audit_role_loss,
             data_identity='d' * 64, sample_at=sample_at, score_update_input=score_input,
-            checkpoint_safe=True, state_owners=owners)
+            checkpoint_safe=True, state_owners=owners, sample_identity=_audit_role_sample_identity)
         task = RoleTask(3, (1, 1), score_updates=2)
         layout = PoolLayout((0,), (1,), 2)
         if mode == 'reject-data':
@@ -1366,12 +1817,22 @@ def _role_restart_worker(rank, rendezvous, output, mode):
         if mode.startswith('reject-'):
             if mode == 'reject-load':
                 stream.fail_load = rank == 1
+            if mode == 'reject-rng':
+                from distillschedule.training import checkpoint as checkpoint_module
+                restore_rng = checkpoint_module.restore_rng
+                def fail_rng(value):
+                    if rank == 1:
+                        raise RuntimeError('rng-install-sentinel')
+                    restore_rng(value)
+                checkpoint_module.restore_rng = fail_rng
             before = pack_state(checkpoint.state)
             before_rng = rng_state()
             with pytest.raises(ValueError) as error:
                 checkpoint.restore(root / 'segment-checkpoint')
-            if mode == 'reject-load':
-                assert 'checkpoint state restore' in str(error.value) and 'owner-load-sentinel' in str(error.value)
+            if mode in ('reject-load', 'reject-rng'):
+                label, sentinel = (('checkpoint state restore', 'owner-load-sentinel') if mode == 'reject-load'
+                                   else ('checkpoint RNG restore', 'rng-install-sentinel'))
+                assert label in str(error.value) and sentinel in str(error.value)
                 assert executor._failed
                 with pytest.raises(ValueError, match='failed'):
                     executor.run()
@@ -1444,7 +1905,7 @@ def test_role_checkpoint_rejects_corrupt_or_mismatched_restart_before_mutation(t
     torch.multiprocessing.spawn(_role_restart_worker,
         args=(str(tmp_path / 'seed-init'), str(tmp_path), 'segment'), nprocs=2, join=True)
     original = tmp_path / 'segment-checkpoint'
-    for fault in ('missing', 'corrupt', 'progress', 'data', 'layout', 'load'):
+    for fault in ('missing', 'corrupt', 'progress', 'data', 'layout', 'load', 'rng'):
         root = tmp_path / fault
         copied = root / 'segment-checkpoint'
         shutil.copytree(original, copied)
