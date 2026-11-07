@@ -92,7 +92,13 @@ def main(argv=None):
             p.add_argument('--memory-limit-bytes',type=int)
             p.add_argument('--host-memory-limit-bytes',type=int)
             p.add_argument('--gpu-reserve-gib',type=int,default=2)
-        if name=='role-run':p.add_argument('--cycles',type=int,default=1)
+        if name=='role-run':
+            p.add_argument('--cycles',type=int,default=1,help='total completed cycles, including restored cycles')
+            p.add_argument('--checkpoint',action='store_true',help='save complete-cycle training checkpoints')
+            p.add_argument('--checkpoint-every',type=int)
+            p.add_argument('--checkpoint-interval-seconds',type=float)
+            p.add_argument('--checkpoint-keep-last',type=int)
+            p.add_argument('--resume-from',type=Path)
         if name=='role-auto':
             p.add_argument('--cost-mode',choices=('measured_cycle','components'),default='measured_cycle',
                            help='components predicts resident replica FIFO windows from window-one anchors')
@@ -167,9 +173,16 @@ def main(argv=None):
                     'gpu_execution':execution['gpu_execution'],'claimable_speedup':False}
             if dist.get_rank()==0:write_new_json(root/'result.json',result)
         else:
-            execution,_,_=run_selected(task,hardware,bindings,args.plan,root,device=device,cycles=args.cycles)
+            policy={name:getattr(args,name) for name in (
+                'checkpoint_every','checkpoint_interval_seconds','checkpoint_keep_last')
+                if getattr(args,name) is not None}
+            enabled=args.checkpoint or bool(policy) or args.resume_from is not None
+            execution,_,_=run_selected(task,hardware,bindings,args.plan,root,device=device,cycles=args.cycles,
+                checkpoint_policy=policy if enabled else None,resume_from=args.resume_from)
             result={'status':execution['status'],'plan_path':str(args.plan),
                     'selected_implementation':execution['layout'],
+                    'completed_cycles':execution['completed_cycles'],
+                    'checkpoint_path':execution['checkpoint_path'],
                     'gpu_execution':execution['gpu_execution'],'claimable_speedup':False}
         if dist.get_rank()==0:print(json.dumps(result,indent=2,sort_keys=True))
         return 0

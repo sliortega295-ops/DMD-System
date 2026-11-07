@@ -51,5 +51,6 @@ def build(parameters):
     functions=RoleFunctions(make_model,make_optimizer,sample,generator_forward,score_loss,
         score_train_loss if task.score_updates else None,
         data_identity=fingerprint({'data':'synthetic_declared_C3D_example','parameters':parameters}),
-        role_storage_estimate_bytes={'generator':20000,'score':20000},sample_at=sample_at)
+        role_storage_estimate_bytes={'generator':20000,'score':20000},sample_at=sample_at,
+        checkpoint_safe=True)
     return task,functions

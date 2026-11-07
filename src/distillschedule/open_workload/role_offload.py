@@ -9,9 +9,9 @@ and does not prove pinned-bandwidth or accelerator overlap on A100/H100.
 from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-import weakref
 import torch
 from distillschedule.core.contracts import require
+from distillschedule.runtime.saved_tensors import pack_saved_tensor, unpack_saved_tensor
 
 
 @dataclass
@@ -36,8 +36,7 @@ class HostBudget:
 
 @dataclass
 class SavedLease:
-    original: object
-    version: int
+    version_guard: object
     host: torch.Tensor
     device: torch.device
     completed: object = None
@@ -60,7 +59,8 @@ class ActivationOffloader:
         if not isinstance(tensor,torch.Tensor):return tensor
         key=(str(tensor.device),tensor.untyped_storage().data_ptr())
         if key in self.parameter_storage or tensor.device!=self.device:
-            return tensor
+            return pack_saved_tensor(tensor)
+        version_guard = pack_saved_tensor(tensor, release_storage=True)
         byte_count=tensor.numel()*tensor.element_size()
         self.budget.reserve(byte_count)
         try:
@@ -84,17 +84,16 @@ class ActivationOffloader:
             if self._stream is not None:self._stream.synchronize()
             self.budget.release(byte_count)
             raise
-        lease=SavedLease(weakref.ref(tensor),tensor._version,host,self.device,event)
+        lease=SavedLease(version_guard,host,self.device,event)
         self.leases.append(lease)
         self.packed+=1;self.packed_bytes+=byte_count
         return lease
 
     def unpack(self, item):
-        if not isinstance(item,SavedLease):return item
+        if not isinstance(item,SavedLease):
+            return unpack_saved_tensor(item) if isinstance(item,tuple) else item
         require(not self.closed,'unpack after host lease release',path='role.offload')
-        source=item.original()
-        require(source is None or source._version==item.version,
-                'a saved tensor was modified in-place before backward',path='role.offload')
+        unpack_saved_tensor(item.version_guard)
         self.unpacked+=1
         if self.device.type=='cuda':
             stream=torch.cuda.current_stream(self.device)

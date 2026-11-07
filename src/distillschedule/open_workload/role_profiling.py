@@ -11,6 +11,7 @@ import time
 import torch
 import torch.distributed as dist
 from distillschedule.core.contracts import require
+from distillschedule.runtime.saved_tensors import pack_saved_tensor, unpack_saved_tensor
 
 
 def synchronize(device):
@@ -59,14 +60,8 @@ class ComponentRecorder:
             key = (str(t.device), t.untyped_storage().data_ptr())
             if key not in excluded:
                 sizes[key] = t.untyped_storage().nbytes()
-            return (t, t._version)
-        def unpack(value):
-            tensor, version = value
-            require(tensor._version == version,
-                    'saved component-profile tensor mutated before backward',
-                    path='role.components')
-            return tensor
-        with torch.autograd.graph.saved_tensors_hooks(pack, unpack):
+            return pack_saved_tensor(t)
+        with torch.autograd.graph.saved_tensors_hooks(pack, unpack_saved_tensor):
             yield
         self.saved_bytes[str(index)] = sum(sizes.values())
 

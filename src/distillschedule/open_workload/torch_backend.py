@@ -318,14 +318,22 @@ def random_scope(seed,key,device, *, namespace=None):
     if namespace is not None: binding['namespace'] = namespace
     derived=int(fingerprint(binding)[:16],16)%(2**63)
     py=random.getstate()
+    try:
+        import numpy as np
+    except ImportError:
+        np=None
+    numpy_state=np.random.get_state() if np is not None else None
     devices=[device.index if device.index is not None else torch.cuda.current_device()] if device.type=='cuda' else []
     try:
         with torch.random.fork_rng(devices=devices):
             torch.random.default_generator.manual_seed(derived); random.seed(derived)
+            if np is not None:np.random.seed(derived % 2**32)
             if devices:
                 with torch.cuda.device(devices[0]): torch.cuda.manual_seed(derived)
             yield
-    finally: random.setstate(py)
+    finally:
+        random.setstate(py)
+        if np is not None:np.random.set_state(numpy_state)
 
 
 @dataclass(frozen=True)

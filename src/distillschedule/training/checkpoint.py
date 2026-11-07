@@ -306,22 +306,26 @@ def unpack_state(packed, state, *, progress=None):
     from distillschedule.open_workload.torch_backend import unwrap_module
     # No rank begins mutation while any rank rejects a shard/layout/optimizer.
     restored, optimizers = distributed.checked(lambda: _stage_state(packed, state, progress=progress), "checkpoint state admission")
-    for key, row in packed.items():
-        value = unwrap_module(state[key]) if isinstance(state[key], torch.nn.Module) else state[key]
-        if row["kind"] == "module":
-            value.load_state_dict(restored[key], strict=True)
-            for name, child in value.named_modules():
-                child.training = row["training"][name]
-        elif row["kind"] == "optimizer":
-            value.state = optimizers[key].state
-            value.param_groups = optimizers[key].param_groups
-        elif row["kind"] == "stateful":
-            value.load_state_dict(restored[key])
-        elif isinstance(value, torch.Tensor):
-            with torch.no_grad():
-                value.copy_(restored[key].to(value.device))
-        else:
-            state[key] = deepcopy(restored[key])
+    def apply():
+        for key, row in packed.items():
+            value = unwrap_module(state[key]) if isinstance(state[key], torch.nn.Module) else state[key]
+            if row["kind"] == "module":
+                value.load_state_dict(restored[key], strict=True)
+                for name, child in value.named_modules():
+                    child.training = row["training"][name]
+            elif row["kind"] == "optimizer":
+                value.state = optimizers[key].state
+                value.param_groups = optimizers[key].param_groups
+            elif row["kind"] == "stateful":
+                value.load_state_dict(restored[key])
+            elif isinstance(value, torch.Tensor):
+                with torch.no_grad():
+                    value.copy_(restored[key].to(value.device))
+            else:
+                state[key] = deepcopy(restored[key])
+    # Loading an admitted custom owner can still raise. Peers must exchange
+    # that failure before entering subsequent RNG/finite-state collectives.
+    distributed.checked(apply, "checkpoint state restore")
 
 
 def rng_state(*, device=None):

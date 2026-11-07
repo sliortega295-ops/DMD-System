@@ -331,13 +331,24 @@ python -m torch.distributed.run --standalone --nproc-per-node=2 \
   --parameters examples/open_workloads/unseen_score_pipeline.json \
   --distributed gloo --memory-limit-bytes 10000000 \
   --host-memory-limit-bytes 10000000 --plan /tmp/role-auto/plan.json \
-  --cycles 3 --output /tmp/role-continuing --execute
+  --cycles 3 --checkpoint --output /tmp/role-continuing --execute
 ```
 
-Cycle receipts and `execution.json` describe the live executor, not a restart
-checkpoint. A fresh `role-run` constructs the factory's initial state; it does
-not restore the previous diagnostic confirmation. The example uses a small CPU
-Conv3D workload.
+`--checkpoint` uses the shared atomic, per-rank checkpoint writer: every 30
+minutes at a complete cycle boundary, plus the final cycle, keeping the last
+three. Set `--checkpoint-every`, `--checkpoint-interval-seconds` and
+`--checkpoint-keep-last` to override. Resume in a new process with the same plan,
+card count and layout using `--resume-from /tmp/role-continuing/checkpoints/cycle-000003`;
+`--cycles` is the total target, including restored cycles. Use a new output directory.
+
+Bindings opt in with `checkpoint_safe=True` and `sample_at`: inputs are indexed
+by the absolute cycle and all persistent state is explicit. Register live data
+cursors, private RNGs, schedulers or EMA via
+`state_owners(role, module, optimizer) -> {name: owner}`; owners implement
+`state_dict()`/`load_state_dict()` and may validate their saved state. Global
+Python, NumPy, Torch and owned CUDA RNG, model/optimizer state and update versions
+are saved automatically. Groups and transient activation caches are rebuilt.
+Without checkpoint options, the existing in-process execution is unchanged.
 
 ## Component costs and explicit producer dispatch
 

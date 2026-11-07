@@ -155,6 +155,133 @@ def test_observation_guard_keeps_storage_and_alias_version_without_grad_fn():
         unpack_saved_tensor(packed)
 
 
+@pytest.mark.parametrize('saved_kind', ['parameter', 'buffer', 'other_device'])
+def test_activation_offload_checks_versions_for_tensors_not_copied(saved_kind):
+    from distillschedule.open_workload.role_offload import ActivationOffloader, HostBudget
+    model = torch.nn.Module()
+    value = torch.tensor([2.])
+    if saved_kind == 'parameter':
+        model.register_parameter('weight', torch.nn.Parameter(value, requires_grad=False))
+        value = model.weight
+    elif saved_kind == 'buffer':
+        model.register_buffer('weight', value)
+    # A CPU saved tensor is outside this target; no accelerator is allocated.
+    device = 'meta' if saved_kind == 'other_device' else 'cpu'
+    budget = HostBudget(1024)
+    offloader = ActivationOffloader(device, model, budget)
+    try:
+        source = torch.ones(1, requires_grad=True)
+        with offloader.hooks():
+            loss = (source * value).sum()
+        assert offloader.packed == 0 and budget.used == 0
+        value.add_(1)
+        with pytest.raises(RuntimeError, match='modified by an inplace operation'):
+            loss.backward()
+    finally:
+        offloader.close()
+    assert budget.used == 0
+
+
+@pytest.mark.parametrize('prefetch', [False, True])
+def test_activation_offload_checks_alias_version_after_original_tensor_is_gone(prefetch):
+    import gc
+    import weakref
+    from distillschedule.open_workload.role_offload import ActivationOffloader, HostBudget
+    budget = HostBudget(1024)
+    offloader = ActivationOffloader('cpu', torch.nn.Identity(), budget)
+    try:
+        source = torch.tensor([2.], requires_grad=True)
+        with offloader.hooks():
+            value = source * 2
+            loss = value.square().sum()
+        alias = value.detach().view_as(value)
+        original = weakref.ref(value)
+        del value
+        gc.collect()
+        assert original() is None
+        if prefetch:
+            offloader.prefetch()
+        alias.add_(1)
+        with pytest.raises(RuntimeError, match='modified by an inplace operation'):
+            loss.backward()
+    finally:
+        offloader.close()
+    assert budget.used == 0
+
+
+@pytest.mark.parametrize('prefetch', [False, True])
+def test_activation_offload_preserves_unmodified_noncontiguous_backward(prefetch):
+    from distillschedule.open_workload.role_offload import ActivationOffloader, HostBudget
+    source = torch.arange(6., requires_grad=True)
+    budget = HostBudget(1024)
+    offloader = ActivationOffloader('cpu', torch.nn.Identity(), budget)
+    try:
+        with offloader.hooks():
+            value = (source * 2).view(3, 2).t()
+            loss = value.square().sum()
+        if prefetch:
+            offloader.prefetch()
+        loss.backward()
+        torch.testing.assert_close(source.grad, source.detach() * 8, rtol=0, atol=0)
+        assert offloader.packed_bytes == 24
+        assert offloader.unpacked == 1
+    finally:
+        offloader.close()
+    assert budget.used == 0
+
+
+def test_activation_offload_version_guard_does_not_retain_original_storage():
+    import gc
+    import weakref
+    from distillschedule.open_workload.role_offload import ActivationOffloader, HostBudget
+    budget = HostBudget(1024)
+    offloader = ActivationOffloader('cpu', torch.nn.Identity(), budget)
+    try:
+        value = torch.ones(16)
+        storage = value.untyped_storage()
+        original_storage = weakref.ref(storage)
+        packed = offloader.pack(value)
+        del value, storage
+        gc.collect()
+        assert original_storage() is None
+        torch.testing.assert_close(offloader.unpack(packed), torch.ones(16))
+    finally:
+        offloader.close()
+    assert budget.used == 0
+
+
+def test_activation_offload_versionless_tensor_failure_releases_host_budget():
+    from distillschedule.open_workload.role_offload import ActivationOffloader, HostBudget
+    with torch.inference_mode():
+        value = torch.ones(1)
+    budget = HostBudget(1024)
+    offloader = ActivationOffloader('cpu', torch.nn.Identity(), budget)
+    try:
+        with pytest.raises(RuntimeError, match='version counter'):
+            offloader.pack(value)
+    finally:
+        offloader.close()
+    assert budget.used == 0
+
+
+def test_component_saved_tensor_observation_does_not_retain_output_grad_fn():
+    import gc
+    import weakref
+    from distillschedule.open_workload.role_profiling import ComponentRecorder
+    recorder = ComponentRecorder('cpu', enabled=True)
+    source = torch.ones(1, requires_grad=True)
+    with recorder.saved(torch.nn.Identity(), 0):
+        value = source.sigmoid()
+        loss = value.sum()
+    output = weakref.ref(value)
+    del value
+    gc.collect()
+    assert output() is None
+    loss.backward()
+    assert torch.isfinite(source.grad).all()
+    assert recorder.saved_bytes == {'0': 4}
+
+
 def test_cpu_native_calibration_keeps_saved_tensor_mutation_check(monkeypatch):
     from distillschedule.native.engine import NativeEngine
     from distillschedule.native.task import NativeTask
@@ -203,6 +330,88 @@ def test_checkpoint_session_rejects_input_alias_mutation(measure, policy):
 def test_selective_checkpoint_keeps_native_cache_mutation_check(measure):
     with pytest.raises(RuntimeError, match='Tensor cached during selective activation checkpoint has been mutated'):
         _saved_session(mutation='detached_alias', checkpoint_policy='save_matmul', update=True).run(measure=measure)
+
+
+def _numpy_saved_forward(ctx):
+    import numpy as np
+    scale=float(np.random.uniform(.5,1.5))
+    return (ctx.state['model'](ctx.inputs['x'])*scale).sin().square().sum()
+
+
+def _numpy_saved_session(policy=None):
+    from dataclasses import replace
+    from distillschedule.open_workload.torch_backend import Session
+    base=_saved_session(update=True,checkpoint_policy=policy)
+    workload=replace(base.workload,bindings={**base.workload.bindings,'forward':_numpy_saved_forward})
+    return Session(workload,base.implementation)
+
+
+@pytest.mark.parametrize('measure',[False,True])
+@pytest.mark.parametrize('policy',['recompute','save_matmul'])
+def test_checkpoint_numpy_random_binding_keeps_gradient_and_optimizer(measure,policy):
+    np=pytest.importorskip('numpy')
+    np.random.seed(123)
+    reference=_numpy_saved_session()
+    expected=reference.run(measure=measure)
+    np.random.seed(123)
+    selected=_numpy_saved_session(policy)
+    actual=selected.run(measure=measure)
+    for key in expected:
+        torch.testing.assert_close(actual[key],expected[key],rtol=0,atol=0)
+    torch.testing.assert_close(selected.state['optimizer'].state_dict()['state'][0]['momentum_buffer'],
+                               reference.state['optimizer'].state_dict()['state'][0]['momentum_buffer'],
+                               rtol=0,atol=0)
+    assert selected.effects['recompute_calls']==1
+    if policy=='save_matmul':
+        assert selected.effects['selective_save_requests']==1
+
+
+@pytest.mark.parametrize('fail',[False,True])
+def test_logical_random_scope_preserves_numpy_caller_state(fail):
+    import random
+    np=pytest.importorskip('numpy')
+    from distillschedule.open_workload.torch_backend import random_scope
+    np.random.seed(234)
+    before=np.random.get_state()
+    python_before=random.getstate()
+    torch_before=torch.get_rng_state().clone()
+    def invoke():
+        with random_scope(5,'numpy-call',torch.device('cpu')):
+            draws=(np.random.rand(),random.random(),torch.rand(()).item())
+            if fail:raise ValueError('rng-failure-sentinel')
+            return draws
+    if fail:
+        with pytest.raises(ValueError,match='rng-failure-sentinel'):invoke()
+    else:
+        first=invoke()
+        current=np.random.get_state()
+        assert current[0]==before[0] and np.array_equal(current[1],before[1]) and current[2:]==before[2:]
+        np.random.seed(999)
+        other=np.random.get_state()
+        assert invoke()==first
+        current=np.random.get_state()
+        assert current[0]==other[0] and np.array_equal(current[1],other[1]) and current[2:]==other[2:]
+        np.random.set_state(before)
+    after=np.random.get_state()
+    assert after[0]==before[0] and np.array_equal(after[1],before[1]) and after[2:]==before[2:]
+    assert random.getstate()==python_before
+    assert torch.equal(torch.get_rng_state(),torch_before)
+
+
+def test_logical_random_scope_works_without_numpy(monkeypatch):
+    import builtins
+    from distillschedule.open_workload.torch_backend import random_scope
+    original=builtins.__import__
+    def without_numpy(name,*args,**kwargs):
+        if name=='numpy':raise ImportError('numpy is optional')
+        return original(name,*args,**kwargs)
+    monkeypatch.setattr(builtins,'__import__',without_numpy)
+    before=torch.get_rng_state().clone()
+    with random_scope(5,'optional-numpy',torch.device('cpu')):
+        first=torch.rand(2)
+    with random_scope(5,'optional-numpy',torch.device('cpu')):
+        torch.testing.assert_close(torch.rand(2),first,rtol=0,atol=0)
+    assert torch.equal(torch.get_rng_state(),before)
 
 
 def _immutable_read(ctx):
@@ -818,6 +1027,443 @@ def test_role_pool_persistent_cycles_do_not_hash_full_model_each_time(tmp_path):
         pytest.skip('Gloo required')
     torch.multiprocessing.spawn(_role_state_audit_worker, args=(str(tmp_path / 'role-audit'),),
                                 nprocs=4, join=True)
+
+
+class _RoleFaultModel(torch.nn.Module):
+    def __init__(self, role, fault):
+        super().__init__()
+        self.role, self.fault = role, fault
+        initial = 0. if fault == role + '_gradient' or (role == 'generator' and fault == 'reduction_overflow') else 1.
+        self.weight = torch.nn.Parameter(torch.tensor([initial]))
+
+    def to(self, *args, **kwargs):
+        if self.role == 'generator' and self.fault == 'construction_move':
+            raise ValueError('local-construction-sentinel')
+        return super().to(*args, **kwargs)
+
+
+class _RoleFaultOptimizer(torch.optim.SGD):
+    def __init__(self, model):
+        super().__init__(model.parameters(), lr=.01, momentum=.9)
+        self.role, self.fault, self.steps = model.role, model.fault, 0
+
+    def step(self, *args, **kwargs):
+        value = super().step(*args, **kwargs)
+        self.steps += 1
+        parameter = self.param_groups[0]['params'][0]
+        with torch.no_grad():
+            if self.fault == self.role + '_parameter':
+                parameter.fill_(float('inf'))
+            elif self.fault == self.role + '_optimizer':
+                self.state[parameter]['invalid_slot'] = torch.full_like(parameter, float('inf'))
+        return value
+
+
+def _role_fault_worker(rank, rendezvous, output, fault):
+    import json
+    from datetime import timedelta
+    from pathlib import Path
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_transport import RoleFunctions, RolePoolExecutor
+    world = 3 if fault == 'reduction_overflow' else 2
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=world,
+                            timeout=timedelta(seconds=8))
+    executor = None
+    try:
+        def make_model(role, device):
+            if role == 'generator' and fault == 'construction_model':
+                raise ValueError('local-construction-sentinel')
+            return _RoleFaultModel(role, fault)
+        def make_optimizer(role, model):
+            if role == 'generator' and fault == 'construction_optimizer':
+                raise ValueError('local-construction-sentinel')
+            return _RoleFaultOptimizer(model)
+        def forward(model, sample):
+            if fault == 'reduction_overflow':
+                return (model.weight.double().reshape(1, 1) * 3.6e38).float()
+            value = model.weight.sqrt() if fault == 'generator_gradient' else model.weight
+            return value.reshape(1, 1) * sample
+        def score_loss(model, source, sample):
+            return (source * model.weight).sum()
+        def train_loss(model, source, sample):
+            return model.weight.sqrt().sum() if fault == 'score_gradient' else (model.weight - 2).square().sum()
+        score_updates = int(fault.startswith('score_'))
+        bindings = RoleFunctions(make_model, make_optimizer, _audit_role_sample, forward,
+                                score_loss, train_loss if score_updates else None)
+        layout = PoolLayout((0, 1), (2,), 1) if world == 3 else PoolLayout((0,), (1,), 1)
+        executor = RolePoolExecutor(RoleTask(world - 1, (1, 1), score_updates=score_updates),
+                                    layout, AllocatedWorld((1 << 30,) * world),
+                                    bindings, device='cpu')
+        try:
+            executor.run()
+            error = None
+        except Exception as exc:
+            error = type(exc).__name__ + ': ' + str(exc)
+        result = dict(error=error, cycle=executor._cycle, failed=executor._failed,
+                      versions=executor._versions,
+                      steps=None if executor.optimizer is None else executor.optimizer.steps)
+        (Path(output) / f'{rank}.json').write_text(json.dumps(result))
+    finally:
+        if executor is not None:
+            executor.close()
+        dist.destroy_process_group()
+
+
+@pytest.mark.parametrize('fault', ['generator_gradient', 'score_gradient',
+                                 'generator_parameter', 'generator_optimizer',
+                                 'score_parameter', 'score_optimizer'])
+def test_role_pool_nonfinite_gradients_or_committed_state_fail_on_all_ranks(tmp_path, fault):
+    import json
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_fault_worker,
+        args=(str(tmp_path / 'fault-init'), str(tmp_path), fault), nprocs=2, join=True)
+    rows = [json.loads((tmp_path / f'{rank}.json').read_text()) for rank in range(2)]
+    assert all(row['error'] is not None and 'non-finite' in row['error'] for row in rows), rows
+    assert rows[0]['error'] == rows[1]['error']
+    assert all(row['cycle'] == 0 and row['failed'] for row in rows)
+    assert all(not any(row['versions'].values()) for row in rows)
+    if fault == 'generator_gradient':
+        assert rows[0]['steps'] == 0
+    elif fault == 'score_gradient':
+        assert rows[1]['steps'] == 0
+
+
+@pytest.mark.parametrize('fault', ['construction_model', 'construction_move', 'construction_optimizer'])
+def test_role_pool_local_construction_failure_is_exchanged_before_collectives(tmp_path, fault):
+    import json
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_fault_worker,
+        args=(str(tmp_path / 'construction-init'), str(tmp_path), fault), nprocs=2, join=True)
+    rows = [json.loads((tmp_path / f'{rank}.json').read_text()) for rank in range(2)]
+    assert all(row['error'] is not None and 'role local construction' in row['error']
+               and 'local-construction-sentinel' in row['error'] for row in rows), rows
+    assert rows[0]['error'] == rows[1]['error']
+    assert all(row['cycle'] == 0 and row['failed'] for row in rows)
+
+
+def test_role_pool_rejects_overflow_in_gradient_sum_before_any_step(tmp_path):
+    import json
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_fault_worker,
+        args=(str(tmp_path / 'overflow-init'), str(tmp_path), 'reduction_overflow'), nprocs=3, join=True)
+    rows = [json.loads((tmp_path / f'{rank}.json').read_text()) for rank in range(3)]
+    assert len({row['error'] for row in rows}) == 1
+    assert all('reduced parameter gradient admission' in row['error'] and row['cycle'] == 0
+               and row['failed'] for row in rows)
+    assert all(row['steps'] == 0 for row in rows[:2])
+
+
+def _role_update_reference_worker(rank, rendezvous):
+    from datetime import timedelta
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_transport import RoleFunctions, RolePoolExecutor
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=3,
+                            timeout=timedelta(seconds=20))
+    executor = None
+    try:
+        def optimizer(role, model):
+            return torch.optim.SGD(model.parameters(), lr=.01, momentum=.9)
+        def update_input(context):
+            return context.retained_latent, context.conditions
+        bindings = RoleFunctions(_audit_role_model, optimizer, _audit_role_sample, _audit_role_forward,
+            _audit_role_loss, _audit_role_loss, sample_at=_audit_role_sample_at,
+            score_update_input=update_input)
+        executor = RolePoolExecutor(RoleTask(3, (1, 1), score_updates=2),
+                                    PoolLayout((0, 1), (2,), 2), AllocatedWorld((1 << 30,) * 3),
+                                    bindings, device='cpu')
+        generator = _audit_role_model('generator', torch.device('cpu'))
+        score = _audit_role_model('score', torch.device('cpu'))
+        optimizers = {role: optimizer(role, model) for role, model in
+                      (('generator', generator), ('score', score))}
+        for cycle in range(2):
+            retained = []
+            for index in range(3):
+                latent = generator(_audit_role_sample_at(cycle, index, 'generator', 'cpu'))
+                condition = _audit_role_sample_at(cycle, index, 'score', 'cpu')
+                vjp, = torch.autograd.grad(_audit_role_loss(score, latent, condition) / 3, latent)
+                latent.backward(vjp)
+                retained.append((latent.detach(), condition))
+            optimizers['generator'].step(); optimizers['generator'].zero_grad(set_to_none=True)
+            for _ in range(2):
+                for latent, condition in retained:
+                    (_audit_role_loss(score, latent, condition) / 3).backward()
+                optimizers['score'].step(); optimizers['score'].zero_grad(set_to_none=True)
+            executor.run()
+            reference = generator if executor.role == 'generator' else score
+            for actual, expected in zip(executor.module.parameters(), reference.parameters()):
+                torch.testing.assert_close(actual, expected, rtol=1e-6, atol=1e-7)
+            actual_slots = executor.optimizer.state_dict()['state']
+            expected_slots = optimizers[executor.role].state_dict()['state']
+            for key in actual_slots:
+                torch.testing.assert_close(actual_slots[key]['momentum_buffer'],
+                                           expected_slots[key]['momentum_buffer'], rtol=1e-6, atol=1e-7)
+    finally:
+        if executor is not None:
+            executor.close()
+        dist.destroy_process_group()
+
+
+def test_role_pool_uneven_replicas_repeated_score_updates_keep_original_math(tmp_path):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    torch.multiprocessing.spawn(_role_update_reference_worker,
+        args=(str(tmp_path / 'update-reference-init'),), nprocs=3, join=True)
+
+
+@pytest.mark.parametrize('updating', [True, False])
+def test_role_gradient_admission_does_not_discard_frozen_finite_cache(monkeypatch, updating):
+    from distillschedule.open_workload.role_transport import RolePoolExecutor
+    from distillschedule.training.finite import FiniteCheck
+    model = torch.nn.Linear(1, 1)
+    model.register_parameter('base', torch.nn.Parameter(torch.ones(4), requires_grad=False))
+    optimizer = torch.optim.SGD(model.parameters(), lr=.01) if updating else None
+    executor = object.__new__(RolePoolExecutor)
+    executor.module = model
+    executor._finite_state, executor._finite_gradients = FiniteCheck(), FiniteCheck()
+    original = torch.isfinite
+    base_reads, weight_reads = [], []
+    def observed(value, *args, **kwargs):
+        if value is model.base:
+            base_reads.append(1)
+        if value is model.weight:
+            weight_reads.append(1)
+        return original(value, *args, **kwargs)
+    monkeypatch.setattr(torch, 'isfinite', observed)
+    executor._check_state(model, optimizer)
+    model(torch.ones(1, 1)).sum().backward()
+    executor._check_gradients()
+    if optimizer is not None:
+        optimizer.step(); optimizer.zero_grad(set_to_none=True)
+    executor._check_state(model, optimizer)
+    assert len(base_reads) == 1
+    assert len(weight_reads) == (2 if updating else 1)
+    with torch.no_grad():
+        model.base.add_(1)
+    executor._check_state(model, optimizer)
+    assert len(base_reads) == 2
+
+
+@pytest.mark.parametrize('flag,value', [('_busy', True), ('_failed', True), ('_closed', True),
+                                        ('_prepared', False), ('_active_offloaders', [object()])])
+def test_role_checkpoint_rejects_nonboundary_owner(flag, value):
+    from types import SimpleNamespace
+    from distillschedule.open_workload.role_checkpoint import _Progress
+    owner = SimpleNamespace(_busy=False, _failed=False, _closed=False,
+                            _prepared=True, _active_offloaders=[])
+    setattr(owner, flag, value)
+    with pytest.raises(ValueError, match='boundary|leases'):
+        _Progress(owner).validate_checkpoint_boundary()
+
+
+class _RoleDataStream:
+    """Actual private sample RNG/cursor used by the CPU restart fixture."""
+    def __init__(self):
+        self.rng = torch.Generator().manual_seed(123)
+        self.cursor = 0
+        self.fail_load = False
+
+    def state_dict(self):
+        return {'rng': self.rng.get_state(), 'cursor': self.cursor}
+
+    def validate_state_dict(self, state):
+        assert set(state) == {'rng', 'cursor'} and type(state['cursor']) is int and state['cursor'] >= 0
+        torch.Generator().set_state(state['rng'])
+
+    def load_state_dict(self, state):
+        if self.fail_load:
+            raise RuntimeError('owner-load-sentinel')
+        self.validate_state_dict(state)
+        self.rng.set_state(state['rng'])
+        self.cursor = state['cursor']
+
+
+class _RoleTrainingExtras:
+    def __init__(self, module, optimizer):
+        self.module = module
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=.97)
+        self.ema = {name: p.detach().clone() for name, p in module.named_parameters()}
+        self.steps = 0
+
+    def advance(self):
+        self.scheduler.step()
+        with torch.no_grad():
+            for name, parameter in self.module.named_parameters():
+                self.ema[name].lerp_(parameter, .1)
+        self.steps += 1
+
+    def state_dict(self):
+        return dict(scheduler=self.scheduler.state_dict(), ema=self.ema, steps=self.steps)
+
+    def validate_state_dict(self, state):
+        assert set(state) == {'scheduler', 'ema', 'steps'} and type(state['steps']) is int and state['steps'] >= 0
+        assert state['ema'].keys() == self.ema.keys()
+        for name, tensor in state['ema'].items():
+            assert tensor.shape == self.ema[name].shape and tensor.dtype == self.ema[name].dtype
+
+    def load_state_dict(self, state):
+        self.validate_state_dict(state)
+        self.scheduler.load_state_dict(state['scheduler'])
+        for name, tensor in state['ema'].items():
+            self.ema[name].copy_(tensor)
+        self.steps = state['steps']
+
+
+def _role_restart_worker(rank, rendezvous, output, mode):
+    import os
+    import random
+    from datetime import timedelta
+    from pathlib import Path
+    import numpy as np
+    import torch.distributed as dist
+    from distillschedule.open_workload.role_program import RoleTask, PoolLayout, AllocatedWorld
+    from distillschedule.open_workload.role_transport import RoleFunctions, RolePoolExecutor
+    from distillschedule.open_workload.role_checkpoint import RoleCheckpoint
+    from distillschedule.training.checkpoint import pack_state, rng_state
+    os.environ.update(WORLD_SIZE='2', RANK=str(rank), LOCAL_RANK=str(rank), LOCAL_WORLD_SIZE='2', GROUP_RANK='0')
+    dist.init_process_group('gloo', init_method='file://' + rendezvous, rank=rank, world_size=2,
+                            timeout=timedelta(seconds=30))
+    executor = None
+    try:
+        stream = _RoleDataStream()
+        training = {}
+        def sample_at(cycle, index, role, device):
+            stream.cursor += 1
+            value = random.random() + float(np.random.rand()) + torch.rand(()).item()
+            value += torch.rand((), generator=stream.rng).item()
+            return torch.full((1, 1), .1 * value + .01 * (cycle + index), device=device)
+        def make_optimizer(role, model):
+            optimizer = torch.optim.Adam(model.parameters(), lr=.002)
+            owner = _RoleTrainingExtras(model, optimizer)
+            training['owner'] = owner
+            optimizer.register_step_post_hook(lambda *args: owner.advance())
+            return optimizer
+        def owners(role, module, optimizer):
+            return {'data': stream, 'training': training['owner']}
+        def score_input(context):
+            return context.retained_latent, context.conditions
+        bindings = RoleFunctions(_audit_role_model, make_optimizer, _audit_role_sample,
+            _audit_role_forward, _audit_role_loss, _audit_role_loss,
+            data_identity='d' * 64, sample_at=sample_at, score_update_input=score_input,
+            checkpoint_safe=True, state_owners=owners)
+        task = RoleTask(3, (1, 1), score_updates=2)
+        layout = PoolLayout((0,), (1,), 2)
+        if mode == 'reject-data':
+            from dataclasses import replace
+            bindings = replace(bindings, data_identity='a' * 64)
+        elif mode == 'reject-layout':
+            layout = PoolLayout((1,), (0,), 2)
+        executor = RolePoolExecutor(task, layout,
+                                    AllocatedWorld((1 << 30,) * 2), bindings, device='cpu')
+        checkpoint = RoleCheckpoint(executor, {'plan_sha256': 'e' * 64,
+                                               'identity': {'source': 'SYNTHETIC_TEST_ONLY'}})
+        root = Path(output)
+        random.seed(400 + rank); np.random.seed(500 + rank); torch.manual_seed(600 + rank)
+        if mode.startswith('reject-'):
+            if mode == 'reject-load':
+                stream.fail_load = rank == 1
+            before = pack_state(checkpoint.state)
+            before_rng = rng_state()
+            with pytest.raises(ValueError) as error:
+                checkpoint.restore(root / 'segment-checkpoint')
+            if mode == 'reject-load':
+                assert 'checkpoint state restore' in str(error.value) and 'owner-load-sentinel' in str(error.value)
+                assert executor._failed
+                with pytest.raises(ValueError, match='failed'):
+                    executor.run()
+                return
+            _assert_role_tree_equal(before, pack_state(checkpoint.state))
+            _assert_role_tree_equal(before_rng, rng_state())
+            assert executor._cycle == 0 and stream.cursor == 0
+            return
+        if mode == 'resume':
+            checkpoint.restore(root / 'segment-checkpoint')
+            assert executor._cycle == 1
+        target = 1 if mode == 'segment' else 3
+        while executor._cycle < target:
+            executor.run()
+        checkpoint.save(root / (mode + '-checkpoint'))
+        torch.save({'state': pack_state(checkpoint.state), 'rng': rng_state(),
+                    'cycle': executor._cycle}, root / f'{mode}-{rank}.pt')
+    finally:
+        if executor is not None:
+            executor.close()
+        dist.destroy_process_group()
+
+
+def _assert_role_tree_equal(left, right):
+    if isinstance(left, torch.Tensor):
+        assert torch.equal(left, right)
+    elif isinstance(left, dict):
+        assert left.keys() == right.keys()
+        for key in left:
+            _assert_role_tree_equal(left[key], right[key])
+    elif isinstance(left, (list, tuple)):
+        assert type(left) is type(right) and len(left) == len(right)
+        for a, b in zip(left, right):
+            _assert_role_tree_equal(a, b)
+    else:
+        assert left == right
+
+
+def test_role_pool_fresh_process_resume_keeps_models_adam_rng_data_and_versions(tmp_path):
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    pytest.importorskip('numpy')
+    # Three genuinely independent process lifetimes, not in-process state reuse.
+    for mode in ('reference', 'segment', 'resume'):
+        torch.multiprocessing.spawn(_role_restart_worker,
+            args=(str(tmp_path / (mode + '-init')), str(tmp_path), mode), nprocs=2, join=True)
+    for rank in range(2):
+        reference = torch.load(tmp_path / f'reference-{rank}.pt', weights_only=True)
+        resumed = torch.load(tmp_path / f'resume-{rank}.pt', weights_only=True)
+        _assert_role_tree_equal(reference, resumed)
+        assert resumed['cycle'] == 3
+        assert resumed['state']['extra_training']['value']['steps'] == (3 if rank == 0 else 6)
+        progress = resumed['state']['progress']['value']
+        assert progress['versions'] == dict(generator=3, optimizer_g=3, gradient_g=12,
+                                            score=6, optimizer_s=6)
+    import json
+    manifest = json.loads((tmp_path / 'resume-checkpoint/manifest.json').read_text())
+    assert manifest['cursor'] == 9
+    assert manifest['data_progress']['next_cycle'] == 3
+    assert (tmp_path / 'resume-checkpoint/_SUCCESS').is_file()
+
+
+def test_role_checkpoint_rejects_corrupt_or_mismatched_restart_before_mutation(tmp_path):
+    import hashlib
+    import json
+    import shutil
+    if not torch.distributed.is_gloo_available():
+        pytest.skip('Gloo required')
+    pytest.importorskip('numpy')
+    torch.multiprocessing.spawn(_role_restart_worker,
+        args=(str(tmp_path / 'seed-init'), str(tmp_path), 'segment'), nprocs=2, join=True)
+    original = tmp_path / 'segment-checkpoint'
+    for fault in ('missing', 'corrupt', 'progress', 'data', 'layout', 'load'):
+        root = tmp_path / fault
+        copied = root / 'segment-checkpoint'
+        shutil.copytree(original, copied)
+        shard = copied / 'rank-00001.pt'
+        if fault == 'missing':
+            shard.unlink()
+        elif fault == 'corrupt':
+            shard.write_bytes(shard.read_bytes() + b'corrupt')
+        elif fault == 'progress':
+            payload = torch.load(shard, weights_only=True)
+            payload['state']['progress']['value']['versions']['score'] = 999
+            torch.save(payload, shard)
+            manifest_path = copied / 'manifest.json'
+            manifest = json.loads(manifest_path.read_text())
+            manifest['files'][shard.name] = hashlib.sha256(shard.read_bytes()).hexdigest()
+            manifest_path.write_text(json.dumps(manifest))
+            (copied / '_SUCCESS').write_text(hashlib.sha256(manifest_path.read_bytes()).hexdigest())
+        torch.multiprocessing.spawn(_role_restart_worker,
+            args=(str(root / 'reject-init'), str(root), 'reject-' + fault), nprocs=2, join=True)
 
 
 def test_distributed_audit_retains_module_extra_state_consensus():

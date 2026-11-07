@@ -13,6 +13,8 @@ import json
 import platform
 from pathlib import Path
 import statistics
+import time
+from dataclasses import asdict
 
 import torch
 import torch.distributed as dist
@@ -34,46 +36,55 @@ def code_identity(bindings:RoleFunctions):
     """Callable source fingerprints, not user supplied winner/recipe aliases."""
     files={}
     for name in ('make_model','make_optimizer','sample','generator_forward','score_loss','score_train_loss',
-                 'score_input_gradient','sample_at','score_update_input'):
+                 'score_input_gradient','sample_at','score_update_input','state_owners'):
         fn=getattr(bindings,name)
         if fn is None:continue
         require(inspect.isfunction(fn),'role factory functions must be inspectable Python functions',path='role.identity')
         try:source=inspect.getsource(fn)
         except (OSError,TypeError) as exc:raise ValueError(f'uninspectable role callable: {name}') from exc
-        files[name]=hashlib.sha256(source.encode()).hexdigest()
+        source_file=inspect.getsourcefile(fn)
+        files[name]={'callable':hashlib.sha256(source.encode()).hexdigest(),
+                     'module':file_sha256(Path(source_file)) if source_file else None}
     return fingerprint(files)
 
 
 def source_identity():
     root=Path(__file__).resolve().parent
     files=tuple(root/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py','role_profiling.py','role_prediction.py','role_dispatch.py'))
-    return fingerprint({p.name:file_sha256(p) for p in files})
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py',
+         'role_score.py','role_profiling.py','role_prediction.py','role_dispatch.py','role_checkpoint.py',
+         'torch_backend.py'))
+    files+=tuple(root.parent/name for name in ('runtime/saved_tensors.py','training/checkpoint.py',
+        'training/tensor_state.py','training/distributed.py','training/finite.py'))
+    return fingerprint({str(p.relative_to(root.parent)):file_sha256(p) for p in files})
 
 
 def _run_identity(task,hardware,bindings,device):
-    bindings.validate(task)
-    require(bool(getattr(bindings,'data_identity','')),
-            'explicit immutable data/cohort identity required for role calibration',path='role.identity')
-    props={'device':str(torch.device(device)),'torch':torch.__version__,
-           'backend':str(dist.get_backend()),'world_size':dist.get_world_size(),
-           'capacity_bytes':list(hardware.capacities),'node_ids':list(hardware.node_ids),
-           'host_capacity_bytes':list(hardware.host_capacities),
-           'platform':platform.platform(),'cuda_version':torch.version.cuda}
-    if torch.device(device).type=='cuda':
-        p=torch.cuda.get_device_properties(device)
-        props.update({'gpu_name':p.name,'gpu_capability':[p.major,p.minor],
-                      'gpu_total_memory':p.total_memory,'gpu_uuid':str(getattr(p,'uuid','UNAVAILABLE'))})
+    from .replicated import checked
+    from .planning import source_revision
+    def local():
+        bindings.validate(task)
+        require(bool(getattr(bindings,'data_identity','')),
+                'explicit immutable data/cohort identity required for role calibration',path='role.identity')
+        props={'device':str(torch.device(device)),'torch':torch.__version__,
+               'backend':str(dist.get_backend()),'world_size':dist.get_world_size(),
+               'capacity_bytes':list(hardware.capacities),'node_ids':list(hardware.node_ids),
+               'host_capacity_bytes':list(hardware.host_capacities),
+               'platform':platform.platform(),'cuda_version':torch.version.cuda}
+        if torch.device(device).type=='cuda':
+            p=torch.cuda.get_device_properties(device)
+            props.update({'gpu_name':p.name,'gpu_capability':[p.major,p.minor],
+                          'gpu_total_memory':p.total_memory,'gpu_uuid':str(getattr(p,'uuid','UNAVAILABLE'))})
+        value={'source_head':source_revision(),'source_fingerprint':source_identity(),
+               'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
+               'source_functions_sha256':code_identity(bindings),
+               'score_parameters_frozen':bindings.score_parameters_frozen,
+               'checkpoint_safe':bindings.checkpoint_safe,'data_identity':bindings.data_identity}
+        return props,value
+    props,value=checked(local,'role source/data/device identity')
     identities=[None]*hardware.world
     dist.all_gather_object(identities,props)
-    # On multi-node A100/H100 ranks may differ in UUID but must agree on source.
-    from .planning import source_revision
-    revision=source_revision()
-    value={'source_head':revision,'source_fingerprint':source_identity(),
-           'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
-           'source_functions_sha256':code_identity(bindings),
-           'score_parameters_frozen':bindings.score_parameters_frozen,
-           'data_identity':bindings.data_identity,'hardware':identities}
+    value['hardware']=identities
     return value
 
 
@@ -295,36 +306,69 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     return result
 
 
-def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1,state_audit_every_cycles=50):
+def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1,state_audit_every_cycles=50,
+                 checkpoint_policy=None,resume_from=None):
+    from distillschedule.training import distributed
+    from distillschedule.training.checkpoint import CheckpointPolicy, prune_checkpoints
+    from .state_audit import validate_every
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'selected role pool needs allocated process group',path='role.run')
-    require(type(cycles) is int and 1<=cycles<=1024 and
-            (cycles==1 or bindings.sample_at is not None),
-            'explicit sample_at is required for bounded continuous execution',path='role.run')
-    p=_load(plan_path);signed=dict(p);sha=signed.pop('plan_sha256',None)
-    require(p.get('schema_version')==PLAN and sha==fingerprint(signed),
-            'changed role plan',path='role.run')
-    require(p['task']==task.to_dict() and file_sha256(Path(p['calibration']))==p['calibration_sha256'],
-            'role task/calibration changed',path='role.run')
-    calibration=_load(p['calibration'])
-    require(calibration['identity']==p['identity']==_run_identity(task,hardware,bindings,device),
-            'role source/hardware/data identity changed',path='role.run')
-    expected=search(p['calibration'],**p.get('search_settings',{}))
-    required=('candidate_id','implementation','predicted_makespan_ns','graph_sha256',
-              'cost_model_sha256','order','timeline','memory')
-    require(all(p['selected'].get(key)==expected['selected'].get(key) for key in required),
-            'selected role pool differs from source-bound measured search',path='role.run')
-    require(p.get('producer_dispatch')==expected.get('producer_dispatch'),
-            'selected producer dispatch differs from source-bound search',path='role.run')
-    layout=PoolLayout.from_dict(p['selected']['implementation']).validate(task,hardware)
-    root=Path(output).resolve()
-    if dist.get_rank()==0:root.mkdir(parents=True,exist_ok=False)
-    dist.barrier()
+    def local_controls():
+        bindings.validate(task)
+        require(type(cycles) is int and 1<=cycles<=1024 and
+                (cycles==1 or bindings.sample_at is not None),
+                'explicit sample_at is required for bounded continuous execution',path='role.run')
+        validate_every(state_audit_every_cycles)
+        policy=(CheckpointPolicy.from_trainer(checkpoint_policy or {})
+                if checkpoint_policy is not None or resume_from is not None else None)
+        resume_sha=None
+        if resume_from is not None:
+            resume_sha=file_sha256(Path(resume_from)/'manifest.json')
+            require((Path(resume_from)/'_SUCCESS').read_text().strip()==resume_sha,
+                    'resume checkpoint is incomplete or changed',path='role.run')
+        return dict(cycles=cycles,policy=asdict(policy) if policy else None,
+                    resume_manifest=resume_sha,output=str(Path(output).resolve()),
+                    state_audit_every_cycles=state_audit_every_cycles)
+    controls=distributed.checked(local_controls,'role run/restart controls')
+    require(all(row==controls for row in distributed.gather(controls)),
+            'ranks disagree on role run/restart controls',path='role.run')
+    def load_plan():
+        p=_load(plan_path);signed=dict(p);sha=signed.pop('plan_sha256',None)
+        require(p.get('schema_version')==PLAN and sha==fingerprint(signed),
+                'changed role plan',path='role.run')
+        require(p['task']==task.to_dict() and file_sha256(Path(p['calibration']))==p['calibration_sha256'],
+                'role task/calibration changed',path='role.run')
+        calibration=_load(p['calibration'])
+        require(calibration['identity']==p['identity'],'mixed role identities',path='role.run')
+        expected=search(p['calibration'],**p.get('search_settings',{}))
+        required=('candidate_id','implementation','predicted_makespan_ns','graph_sha256',
+                  'cost_model_sha256','order','timeline','memory')
+        require(all(p['selected'].get(key)==expected['selected'].get(key) for key in required),
+                'selected role pool differs from source-bound measured search',path='role.run')
+        require(p.get('producer_dispatch')==expected.get('producer_dispatch'),
+                'selected producer dispatch differs from source-bound search',path='role.run')
+        return p,sha,PoolLayout.from_dict(p['selected']['implementation']).validate(task,hardware)
+    p,sha,layout=distributed.checked(load_plan,'role selected plan admission')
+    require(len(set(distributed.gather(sha)))==1,'ranks loaded different role plans',path='role.run')
+    identity=_run_identity(task,hardware,bindings,device)
+    distributed.checked(lambda:require(p['identity']==identity,
+                'role source/hardware/data identity changed',path='role.run'),'role runtime identity')
+    policy=CheckpointPolicy(**controls['policy']) if controls['policy'] is not None else None
+    root=Path(controls['output'])
+    distributed.primary(lambda:root.mkdir(parents=True,exist_ok=False),'role output directory')
     executor=RolePoolExecutor(task,layout,hardware,bindings,device=device,
         producer_dispatch=p.get('producer_dispatch'),state_audit_every_cycles=state_audit_every_cycles)
     summaries=[]
+    checkpoint=None;latest_checkpoint=None;start=0
     try:
-        for cycle in range(cycles):
+        if policy is not None:
+            from .role_checkpoint import RoleCheckpoint
+            checkpoint=RoleCheckpoint(executor,p)
+        if resume_from is not None:
+            start=checkpoint.restore(resume_from)['cycle']
+            require(start<cycles,'cycles must exceed the restored completed cycle',path='role.run')
+        last_saved=time.monotonic()
+        for cycle in range(start,cycles):
             receipt,module,optimizer=executor.run()
             if p.get('cost_mode')=='components':
                 from .role_prediction import validate_execution,confirm_state
@@ -344,13 +388,23 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
             receipt.update({'selected_plan_sha256':sha,'measured_calibration':p['calibration'],
                             'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
                             'claimable_speedup':False})
-            if dist.get_rank()==0:write_new_json(root/f'cycle-{cycle:06d}.json',receipt)
+            distributed.primary(lambda:write_new_json(root/f'cycle-{cycle:06d}.json',receipt),
+                                'role cycle receipt')
             summaries.append({'cycle':cycle,'wall_ns':receipt['wall_ns'],
                               'initial_versions':receipt['initial_versions'],
                               'final_versions':receipt['final_versions']})
+            if checkpoint is not None:
+                due=policy.due(cycle=executor._cycle,total=cycles,elapsed=time.monotonic()-last_saved)
+                if distributed.gather(due if dist.get_rank()==0 else None)[0]:
+                    latest_checkpoint=checkpoint.save(root/'checkpoints'/f'cycle-{executor._cycle:06d}',
+                                                       policy=asdict(policy))
+                    distributed.primary(lambda:prune_checkpoints(root/'checkpoints',
+                        identity=checkpoint.identity,keep_last=policy.keep_last),'role checkpoint retention')
+                    last_saved=time.monotonic()
     finally:executor.close()
-    receipt.update({'cycles_executed':cycles,'cycle_summaries':summaries,
-                    'training_state':'PERSISTED_IN_PROCESS_NOT_CHECKPOINT_RESTART'})
-    if dist.get_rank()==0:write_new_json(root/'execution.json',receipt)
-    dist.barrier()
+    receipt.update({'cycles_executed':len(summaries),'completed_cycles':cycles,'resumed_from_cycle':start,
+                    'cycle_summaries':summaries,'checkpoint_path':str(latest_checkpoint) if latest_checkpoint else None,
+                    'training_state':('RESUMABLE_COMPLETE_CYCLE' if latest_checkpoint else
+                                      'PERSISTED_IN_PROCESS_NOT_CHECKPOINT_RESTART')})
+    distributed.primary(lambda:write_new_json(root/'execution.json',receipt),'role execution receipt')
     return receipt,module,optimizer

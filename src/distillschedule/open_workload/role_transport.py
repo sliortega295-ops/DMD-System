@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections import deque
 from contextlib import nullcontext
 from dataclasses import dataclass
+import math
 from typing import Any, Callable
 import time
 
@@ -49,6 +50,10 @@ class RoleFunctions:
     # Required for >1 Score update: original algorithm supplies an explicit
     # cycle/update/sample binding instead of silently replaying the old cohort.
     score_update_input: Callable[[Any], tuple[torch.Tensor, Any]] | None = None
+    # Explicit restart contract: cycle-indexed inputs/global RNG, and every
+    # additional persistent owner registered below (not hidden in closures).
+    checkpoint_safe: bool = False
+    state_owners: Callable[[str, nn.Module, Any], dict[str, Any]] | None = None
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
@@ -61,6 +66,9 @@ class RoleFunctions:
                 'sample_at must be a semantic data callable',path='role.bindings')
         require(self.score_update_input is None or callable(self.score_update_input),
                 'score_update_input must be a semantic data callable',path='role.bindings')
+        require(type(self.checkpoint_safe) is bool and
+                (self.state_owners is None or callable(self.state_owners)),
+                'checkpoint_safe must be boolean and state_owners callable',path='role.bindings')
         require(task.score_updates<=1 or self.score_update_input is not None,
                 'repeated score updates require explicit score_update_input semantics',
                 path='role.bindings')
@@ -89,7 +97,7 @@ def _validate_tensor(t, task, name):
 
 
 def _sync_gradients(module, group, world):
-    """Sum already globally normalized per-microbatch gradients across one role."""
+    """Sum normalized gradients inside the checked all-rank commit boundary."""
     params=_parameters(module)
     require(params,'selected role must have actual trainable parameters',path='role.grad')
     missing=torch.tensor([int(p.grad is None) for p in params],device=params[0].device,dtype=torch.int64)
@@ -107,6 +115,16 @@ def _model_identity(module):
     """Small-model correctness gate; full tensor digests are expensive for 14B."""
     from .torch_backend import signature
     return fingerprint(signature(module))
+
+
+def _finite_numbers(value):
+    if isinstance(value,dict):
+        return all(_finite_numbers(v) for v in value.values())
+    if isinstance(value,(tuple,list)):
+        return all(_finite_numbers(v) for v in value)
+    if isinstance(value,complex):
+        return math.isfinite(value.real) and math.isfinite(value.imag)
+    return not isinstance(value,float) or math.isfinite(value)
 
 
 class RolePoolExecutor:
@@ -147,6 +165,10 @@ class RolePoolExecutor:
         self._versions={'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0}
         self._admission=(task.digest,fingerprint(layout.to_dict()),hardware)
         self._bound_bindings=bindings
+        from distillschedule.training.finite import FiniteCheck
+        self._finite_state=FiniteCheck()
+        self._finite_gradients=FiniteCheck()
+        self._active_offloaders=[]
 
     def _event(self, action, i=None):
         self.events.append({'action':action,'microbatch':i,'rank':self.rank,'cycle':self._cycle})
@@ -157,11 +179,56 @@ class RolePoolExecutor:
         require(self._cycle==0,'continuous execution requires sample_at',path='role.data')
         return self.bindings.sample(index,role,self.device)
 
+    def _check_gradients(self):
+        gradients=[]
+        for parameter in _parameters(self.module):
+            gradient=parameter.grad
+            if gradient is None:continue
+            require(gradient.layout==torch.strided and not gradient.requires_grad,
+                    'only first-order dense parameter gradients supported',path='role.grad')
+            gradients.append(gradient)
+        require(self._finite_gradients({},gradients),
+                'non-finite role parameter gradients',path='role.grad')
+
+    def _check_state(self,module,optimizer,*,audit=False):
+        # Always scan updated values and optimizer slots. Unchanged frozen
+        # parameters use the existing weak version cache, without CPU copies.
+        slots=optimizer.state if optimizer is not None else {}
+        groups=([{key:value for key,value in group.items() if key!='params'}
+                 for group in optimizer.param_groups] if optimizer is not None else [])
+        updated=_parameters(module) if optimizer is not None else ()
+        require(_finite_numbers((slots,groups)) and self._finite_state(
+                    {'model':module},{'parameters':updated,'slots':slots,'groups':groups},
+                    audit=audit),
+                'non-finite role parameters or optimizer state',path='role.state')
+
+    def _commit_update(self,role):
+        from .replicated import checked
+        active=self.role==role
+        checked(lambda:self._check_gradients() if active else None,
+                role+' parameter gradient admission')
+        if active:
+            parallelism=(self.layout.generator_parallelism if role=='generator'
+                         else self.layout.score_parallelism)
+            ranks=self.layout.generator if role=='generator' else self.layout.score
+            if parallelism=='replicated':
+                _sync_gradients(self.module,self.group,len(ranks))
+        # Finite local gradients can overflow during a SUM reduction.
+        checked(lambda:self._check_gradients() if active else None,
+                role+' reduced parameter gradient admission')
+        def commit():
+            if not active:return
+            self.optimizer.step()
+            self._check_state(self.module,self.optimizer)
+            self.optimizer.zero_grad(set_to_none=True)
+            self._event(role+'_commit',None)
+        checked(commit,role+' optimizer commit')
+
     def _prepare(self):
         if self._prepared:return
+        from .replicated import checked
         task,layout=self.task,self.layout
         if self.producer_dispatch is not None:
-            from .replicated import checked
             from .role_dispatch import validate_dispatch
             checked(lambda: validate_dispatch(task,layout,self.producer_dispatch),
                     'role planned producer admission')
@@ -171,22 +238,38 @@ class RolePoolExecutor:
         self.gen_group,self.score_group=gen_group,score_group
         group=gen_group if self.role=='generator' else score_group
         group_size=len(layout.generator if self.role=='generator' else layout.score)
-        module=self.bindings.make_model(self.role,self.device)
-        require(isinstance(module,nn.Module),'model factory must return a torch Module',path='role.runtime')
-        module=module.to(self.device)
-        # Frozen guidance still differentiates its INPUT, not its parameters.
-        # Do not fabricate trainable parameters/an optimizer to admit that role.
-        updating=self.role=='generator' or task.score_updates>0
-        optimizer=self.bindings.make_optimizer(self.role,module) if updating else None
-        if updating:
-            require(isinstance(optimizer,torch.optim.Optimizer),
-                    'updating role needs a torch Optimizer',path='role.runtime')
-            require(_parameters(module),'updating role has no trainable parameters',path='role.runtime')
+        def construct_local():
+            from torch.distributed.tensor import DTensor
+            from torch.nn.parallel import DistributedDataParallel
+            from torch.distributed.fsdp import FSDPModule
+            module=self.bindings.make_model(self.role,self.device)
+            require(isinstance(module,nn.Module),'model factory must return a torch Module',path='role.runtime')
+            require(not isinstance(module,(DistributedDataParallel,FSDPModule)) and
+                    not any(isinstance(t,DTensor) for t in (*module.parameters(),*module.buffers())),
+                    'role factories must return local unwrapped models',path='role.runtime')
+            module=module.to(self.device)
+            # Frozen guidance differentiates its input, not its parameters.
+            updating=self.role=='generator' or task.score_updates>0
+            optimizer=self.bindings.make_optimizer(self.role,module) if updating else None
+            if updating:
+                require(isinstance(optimizer,torch.optim.Optimizer),
+                        'updating role needs a torch Optimizer',path='role.runtime')
+                require(_parameters(module),'updating role has no trainable parameters',path='role.runtime')
+                owned={id(p) for p in module.parameters()}
+                updated=[p for group in optimizer.param_groups for p in group['params']]
+                require(len({id(p) for p in updated})==len(updated) and
+                        all(id(p) in owned for p in updated) and
+                        {id(p) for p in _parameters(module)}<={id(p) for p in updated},
+                        'role optimizer must own its model trainables exactly once',path='role.runtime')
+            self._check_state(module,optimizer)
+            return module,optimizer,_model_identity(module)
+        # No rank enters identity/FSDP collectives until every rank has finished
+        # its purely local construction, transfer and optimizer admission.
+        module,optimizer,model_identity=checked(construct_local,'role local construction')
         # No parameter/model sharing across roles is assumed. Within each role,
         # fail closed if replicas did not start from identical weights.
         identities=[None for _ in range(group_size)]
-        dist.all_gather_object(identities,_model_identity(module),group=group)
-        from .replicated import checked
+        dist.all_gather_object(identities,model_identity,group=group)
         checked(lambda: require(len(set(identities))==1,
               'role replica model initializations differ',path='role.runtime'),
               'role replica identity admission')
@@ -262,7 +345,12 @@ class RolePoolExecutor:
             # A partly committed iteration is never eligible for blind retry.
             self._failed=True
             raise
-        finally:self._busy=False
+        finally:
+            try:
+                while self._active_offloaders:
+                    self._active_offloaders.pop().close()
+            finally:
+                self._busy=False
 
     def close(self):
         """Release only groups owned here, after a completed cycle has drained."""
@@ -322,11 +410,13 @@ class RolePoolExecutor:
                 if offloader is not None:
                     offload_records.append(offloader.statistics)
                     offloader.close()
+                    self._active_offloaders.remove(offloader)
             def produce(i):
                 nonlocal peak,transport_peak
                 owner,consumer=layout.owners(i)
                 offloader=(ActivationOffloader(self.device,module,host_budget)
                            if layout.activation_policy=='cpu_offload_prefetch' else None)
+                if offloader is not None:self._active_offloaders.append(offloader)
                 with components.saved(module,i), components.span('forward',i):
                     with torch.enable_grad():
                         with offloader.hooks() if offloader is not None else nullcontext():
@@ -362,14 +452,6 @@ class RolePoolExecutor:
                                 'planned backward lost its forward',path='role.dispatch')
                         flush()
                 require(not inflight,'planned producer left gradients undrained',path='role.dispatch')
-            # Sharded FSDP2 gradients have ALREADY been reduce-scattered.
-            # A second allreduce would corrupt the Adam update.
-            if self.profile_components:dist.barrier(group=gen_group)
-            with components.span('generator_commit'):
-                if layout.generator_parallelism=='replicated':
-                    _sync_gradients(module,gen_group,group_size)
-                optimizer.step();optimizer.zero_grad(set_to_none=True)
-            self._event('generator_commit',None)
         else:
             for i in range(task.microbatches):
                 producer,consumer=layout.owners(i)
@@ -404,11 +486,15 @@ class RolePoolExecutor:
             send_work.clear()
             if 'gradient' in locals():del gradient,source,latent
             if 'loss' in locals():del loss
-        # Score parameter/version update MUST follow all generator VJP use.
-        dist.barrier()
-        if self.role=='score' and task.score_updates:
+        # Every role has drained transport before entering checked commits.
+        # FSDP2 gradients are already reduced and must not be all-reduced again.
+        if self.profile_components and self.role=='generator':
+            dist.barrier(group=gen_group)
+        with components.span('generator_commit') if self.role=='generator' else nullcontext():
+            self._commit_update('generator')
+        if task.score_updates:
             from .role_score import execute_updates
-            with components.span('score_updates'):
+            with components.span('score_updates') if self.role=='score' else nullcontext():
                 transport_peak=max(transport_peak,execute_updates(self,local_score_data))
         dist.barrier()
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
@@ -421,6 +507,8 @@ class RolePoolExecutor:
         from .state_audit import content_due, state_record, _compare_records
         from .replicated import checked
         full_audit = content_due()
+        checked(lambda:self._check_state(module,optimizer,audit=full_audit),
+                'role final finite state')
         state = checked(lambda: state_record({'model': module, 'optimizer': optimizer}, content=full_audit),
                         'role local state audit')
         local={'rank':self.rank,'role':self.role,'events':self.events,

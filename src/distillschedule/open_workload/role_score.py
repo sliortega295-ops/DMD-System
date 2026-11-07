@@ -27,60 +27,67 @@ def execute_updates(executor, retained):
     A repeated-update provider explicitly chooses its own source and conditions;
     returning the retained cohort is allowed only as that provider's semantics.
     """
-    from .role_transport import _validate_tensor, _sync_gradients
+    from .role_transport import _validate_tensor
+    from .replicated import checked
     from .torch_backend import storage_bytes
     task, layout = executor.task, executor.layout
     module, optimizer = executor.module, executor.optimizer
-    require(optimizer is not None, 'Score update needs its original optimizer',
-            path='role.score_update')
+    active=executor.role=='score'
+    checked(lambda:require(optimizer is not None,
+                'Score update needs its original optimizer',path='role.score_update') if active else None,
+            'Score optimizer admission')
     peak = storage_bytes(retained)
     for update in range(task.score_updates):
-        require(all(p.grad is None for p in module.parameters()),
-                'Score update begins with pending gradients',path='role.score_update')
-        for original, index in retained:
-            conditions = executor._sample(index, 'score')
-            source = original
-            provider = executor.bindings.score_update_input
-            if provider is not None:
-                context = ScoreUpdateContext(executor._cycle, update, index,
-                                             original, conditions, executor.device)
-                version = original._version
-                with torch.no_grad():
-                    provided = provider(context)
-                require(isinstance(provided, tuple) and len(provided)==2,
-                        'Score input provider must return (latent, conditions)',
-                        path='role.score_update')
-                require(original._version==version,
-                        'Score input provider mutated the retained cohort',
-                        path='role.score_update')
-                source, conditions = provided
-            _validate_tensor(source, task, 'Score training source')
-            require(source.device==executor.device and not source.requires_grad
-                    and source.grad_fn is None,
-                    'Score training source must be detached on its assigned device',
-                    path='role.score_update')
-            peak = max(peak, storage_bytes((retained, source)))
-            with torch.enable_grad():
-                loss = executor.bindings.score_train_loss(module, source, conditions)
-                require(isinstance(loss, torch.Tensor) and loss.ndim==0
-                        and bool(torch.isfinite(loss)) and loss.requires_grad,
-                        'Score train objective must be finite scalar with gradients',
-                        path='role.score_update')
-                # Native FSDP2 MEAN-reduces parameter gradients. Cancel that
-                # mean once because the objective is already GLOBAL normalized.
-                factor = len(layout.score) if layout.score_parallelism=='fsdp2_train' else 1
-                (loss*(factor/task.microbatches)).backward()
-            executor._event('score_train_backward', index)
-            executor.events[-1]['score_update'] = update
-            # Never keep one update's autograd graph or transformed input in
-            # the next update's live set; retained itself is a detached cohort.
-            del loss, source, conditions
-            if provider is not None:
-                del provided, context
-        if layout.score_parallelism=='replicated':
-            _sync_gradients(module, executor.score_group, len(layout.score))
-        optimizer.step()
-        optimizer.zero_grad(set_to_none=True)
-        executor._event('score_commit', None)
-        executor.events[-1]['score_update'] = update
+        checked(lambda:require(all(p.grad is None for p in module.parameters()),
+                    'Score update begins with pending gradients',path='role.score_update') if active else None,
+                'Score gradient boundary')
+        # Replicated pools may have uneven work. Metadata rendezvous uses local
+        # waves; idle ranks participate without adding model calls or samples.
+        waves=(task.microbatches+len(layout.score)-1)//len(layout.score)
+        for slot in range(waves):
+            def prepare_input():
+                if not active or slot>=len(retained):return None
+                original,index=retained[slot]
+                conditions=executor._sample(index,'score')
+                source=original
+                provider=executor.bindings.score_update_input
+                if provider is not None:
+                    context=ScoreUpdateContext(executor._cycle,update,index,
+                                               original,conditions,executor.device)
+                    version=original._version
+                    with torch.no_grad():provided=provider(context)
+                    require(isinstance(provided,tuple) and len(provided)==2,
+                            'Score input provider must return (latent, conditions)',path='role.score_update')
+                    require(original._version==version,
+                            'Score input provider mutated the retained cohort',path='role.score_update')
+                    source,conditions=provided
+                _validate_tensor(source,task,'Score training source')
+                require(source.device==executor.device and not source.requires_grad
+                        and source.grad_fn is None,
+                        'Score training source must be detached on its assigned device',path='role.score_update')
+                return source,conditions,index
+            prepared=checked(prepare_input,'Score training input admission')
+            if prepared is not None:
+                peak=max(peak,storage_bytes((retained,prepared[0])))
+            def objective():
+                if prepared is None:return None
+                source,conditions,_=prepared
+                with torch.enable_grad():
+                    loss=executor.bindings.score_train_loss(module,source,conditions)
+                    require(isinstance(loss,torch.Tensor) and loss.ndim==0
+                            and bool(torch.isfinite(loss)) and loss.requires_grad,
+                            'Score train objective must be finite scalar with gradients',path='role.score_update')
+                return loss
+            loss=checked(objective,'Score training objective admission')
+            def backward():
+                if loss is None:return
+                with torch.enable_grad():
+                    factor=len(layout.score) if layout.score_parallelism=='fsdp2_train' else 1
+                    (loss*(factor/task.microbatches)).backward()
+                executor._event('score_train_backward',prepared[2])
+                executor.events[-1]['score_update']=update
+            checked(backward,'Score training backward')
+            del prepared,loss
+        executor._commit_update('score')
+        if active:executor.events[-1]['score_update']=update
     return peak
