@@ -10,24 +10,10 @@
     },
     {
       "repository": "DMD-System",
-      "branch": "agent/h100-helios-nograd-retain-20261014",
-      "head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
-      "scope": "W2 latest measured retained-G fence pair; already published",
-      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/8fc70e8ce9f6e0243604812120119c9f4c078e55"
-    },
-    {
-      "repository": "DMD-System",
       "branch": "agent/h100-helios-official-lowvram-20261014",
       "head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
-      "scope": "W3 original official-swap matched pair; also ancestor of W2",
+      "scope": "W3 original official-swap matched pair",
       "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/624515e7c8d1511aa688e95e69cf94f1a2a273f7"
-    },
-    {
-      "repository": "DMD-System",
-      "branch": "agent/h100-livewan-teacher-resident-20261015",
-      "head": "1b8236c243323ff21023935f3b8192ab3e5d136d",
-      "scope": "W4 measured4d7c589 plus later analysis/profiling fixes, not a new faster run",
-      "github_commit_url": "https://github.com/sliortega295-ops/DMD-System/tree/1b8236c243323ff21023935f3b8192ab3e5d136d"
     },
     {
       "repository": "DMD-System",
@@ -58,24 +44,6 @@
       "main_merged": false
     },
     {
-      "id": "W2",
-      "name": "Helios No-GAN",
-      "physical_ranks": 8,
-      "independent_logical_slots": 16,
-      "repository": "DMD-System",
-      "measured_training_head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
-      "baseline_seconds": 95.53463149257004,
-      "optimized_seconds": 94.31143263261765,
-      "observed_ratio": 1.0129697834695954,
-      "baseline_definition": "Same-head retained-G control; only interior fence policy differs",
-      "timer_contract": "Native G1/C5/EMA5 Full5; original outer timer fences kept",
-      "replications": 1,
-      "profiled": false,
-      "formal_speedup_eligible": false,
-      "published_head": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
-      "main_merged": false
-    },
-    {
       "id": "W3",
       "name": "Helios GAN-on",
       "physical_ranks": 8,
@@ -91,24 +59,6 @@
       "profiled": false,
       "formal_speedup_eligible": false,
       "published_head": "624515e7c8d1511aa688e95e69cf94f1a2a273f7",
-      "main_merged": false
-    },
-    {
-      "id": "W4",
-      "name": "Self-Forcing DMD / LiveWan",
-      "physical_ranks": 8,
-      "independent_logical_slots": 16,
-      "repository": "DMD-System",
-      "measured_training_head": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
-      "baseline_seconds": 45.3613984375,
-      "optimized_seconds": 45.257226562499994,
-      "observed_ratio": 1.0023017732837902,
-      "baseline_definition": "H100 Resident vs Teacher-resident candidate; not A100 C51",
-      "timer_contract": "Same-process two cycles; native C2 only; immutable hardware re-audit, not baseline rerun",
-      "replications": 1,
-      "profiled": false,
-      "formal_speedup_eligible": false,
-      "published_head": "1b8236c243323ff21023935f3b8192ab3e5d136d",
       "main_merged": false
     },
     {
@@ -135,8 +85,8 @@
   "files": [
     {
       "path": "artifacts/results/h100.csv",
-      "bytes": 1591,
-      "sha256": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64"
+      "bytes": 1001,
+      "sha256": "f2c505fa46157d71002cb992f619c82eb589eec348c96b5e9a9fbaaef6494e41"
     }
   ],
   "provenance": {

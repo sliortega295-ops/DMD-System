@@ -5,7 +5,7 @@
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
-    "src/distillschedule/workloads/catalog.json": "1d23ea4948680dad056b07c865145568c69886d17d4a7d637515ee55b30e9458",
+    "src/distillschedule/workloads/catalog.json": "6034cdeaea7c8b6fb63f6f2a9696705d7468a01954087015c76fe49ce705aded",
     "src/distillschedule/training/strategy_catalog.py": "77210d8d927cbcbcc7d24b2416166af8ee70d65db7fe16d1b47efe80f6da1ee6",
     "recipes/dmd2_sd15/training.component-checkpoint.json": "2011a0d91faaa0923d635fe7c14f68177e286301c09aa9b25d5c4a2f548484ed",
     "recipes/dmd2_sd15/training.ddp-fp32.json": "510e5aca092425182db0577b00a572fd8b65a4766c18a7ac2c4a2c35a01862c7",

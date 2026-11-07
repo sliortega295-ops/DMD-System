@@ -32,8 +32,8 @@ def verify(root: Path) -> dict:
         if ref['repository'] not in {'DMD-System', 'H3-DMD-for-A100'}:
             raise ValueError('unexpected source repository')
     rows = manifest['workloads']
-    if len(rows) != 5 or {r['id'] for r in rows} != {'W1', 'W2', 'W3', 'W4', 'W6'}:
-        raise ValueError('five measured H100 workloads must remain distinct')
+    if len(rows) != 3 or {r['id'] for r in rows} != {'W1', 'W3', 'W6'}:
+        raise ValueError('published H100 measurements must remain distinct')
     for row in rows:
         for key in ('measured_training_head', 'published_head'):
             if not re.fullmatch('[0-9a-f]{40}', row[key]):

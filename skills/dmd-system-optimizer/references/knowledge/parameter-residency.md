@@ -68,13 +68,13 @@
 - 函数入口：[src/distillschedule/runtime/fsdp2_nograd_persistence.py::generator_nograd_persistent_unshard_scope](https://github.com/sliortega295-ops/DMD-System/blob/fee3e29e25ba481bb87d42270bb3af57a3676ccd/src/distillschedule/runtime/fsdp2_nograd_persistence.py#L43-L162)
 - 来源：[sliortega295-ops/DMD-System / iteration376_c21_generator_persistent_unshard.md](https://github.com/sliortega295-ops/DMD-System/blob/59ae41c6a6a3d295117737ed6b26ef3e9a4102a9/docs/experiments/gan_cuda_baseline_opt_20260829/iteration376_c21_generator_persistent_unshard.md#L20)；定位：观察中的数值文本锚点 L20；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
-### H100 W4 teacher resident 单次差值只有约 0.23%
+### H100 W4 Teacher 驻留需核对暴露搬运
 
 - ID：h100-w4-teacher-resident-small
 - 状态：positive_observation / HISTORICAL_H100_SINGLE_TRIAL_REVIEW
 - 来源类别：Helios H100 history；本次未复现实验。
-- 观察：已测 4d7c589 为 45.361398→45.257227 秒；后续 audit 修复 1b8236 没有新增 GPU 时间。
-- 经验：teacher 保留需先看原先暴露的搬运；小差值缺独立重复时不应标成可靠默认收益。
+- 观察：Teacher 驻留改动与后续 audit 修复分别记录，不把元数据修复当作新的 GPU 测量。
+- 经验：teacher 保留需先看原先暴露的搬运，并按当前调用与容量验证收益。
 - 范围：W4 LiveWan/Self-Forcing H100，单配对、full-state parity NOT_RUN。
 - 历史上下文：{"physical_gpus": 8, "logical_sample_slots": 16, "training_mode": "training", "workload": "W4", "gpu_family": "H100", "gpu_memory_gb": 80}
 - 正确性前提：{"weights_stable_during_reuse": true, "state_release_validated": true}

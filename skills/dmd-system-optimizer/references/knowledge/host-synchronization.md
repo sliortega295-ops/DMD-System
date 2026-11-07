@@ -106,13 +106,13 @@ CPU 时间段很长不等于 GPU 空闲；先关联实际 GPU activity 和依赖
 - 结构化事实：{"correctness_branch": "original_calls_retained", "timing_branch": "calls_elided", "same_path_validation": false}
 - 来源：[sliortega295-ops/DMD-System / iteration373_c18_generator_free_memory.md](https://github.com/sliortega295-ops/DMD-System/blob/d91c3727cb22642dc9f54061315f15703dfe623a/docs/experiments/gan_cuda_baseline_opt_20260829/iteration373_c18_generator_free_memory.md#L6)；定位：观察中的数值文本锚点 L6；同时阅读同节合同、状态与限制。原定位：结果、合同、限制与失败记录
 
-### H100 W2 只有同源 fence-only 差值能归因给 fence
+### H100 W2 内部 fence 调整保留阶段边界
 
 - ID：h100-w2-fence-only-pair
 - 状态：positive_observation / HISTORICAL_H100_SINGLE_TRIAL_REVIEW
 - 来源类别：Helios H100 history；本次未复现实验。
-- 观察：同 8fc70e8 上 95.534631493→94.311432633 秒；41 个单元在阶段结束前 reshard，保留前后 allocator flush 与外 timer fences。
-- 经验：更早 official-swap 的 138.371948 秒跨了 source/策略，不能将整个差距算成 fence 消除收益。
+- 观察：41 个单元在阶段结束前 reshard，保留前后 allocator flush 与外 timer fences。
+- 经验：内部 fence 与角色交换属于不同策略，不能混用对照或将跨策略差距归因给 fence。
 - 范围：W2 Helios No-GAN、同源 retained-G 内部 fence 实验，n=1。
 - 历史上下文：{"physical_gpus": 8, "logical_sample_slots": 16, "training_mode": "training", "workload": "W2", "gpu_family": "H100", "gpu_memory_gb": 80}
 - 正确性前提：{"metadata_semantics_preserved": true, "host_state_lifetime_validated": true}

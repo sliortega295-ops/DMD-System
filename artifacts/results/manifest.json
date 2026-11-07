@@ -9,8 +9,8 @@
     },
     {
       "path": "artifacts/results/h100.csv",
-      "bytes": 1591,
-      "sha256": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64"
+      "bytes": 1001,
+      "sha256": "f2c505fa46157d71002cb992f619c82eb589eec348c96b5e9a9fbaaef6494e41"
     },
     {
       "path": "artifacts/results/official.csv",
@@ -24,8 +24,8 @@
     },
     {
       "path": "artifacts/results/h100_sources.json",
-      "bytes": 6180,
-      "sha256": "a7a7d945ad54a188e342210e70878fdb5ff48a64dbbeae053d85b54b9b792c6e"
+      "bytes": 3894,
+      "sha256": "aac06d189521591103e695840fee6e47bc0f9838cb870211a113538af2c44edd"
     },
     {
       "path": "artifacts/results/planner.json",

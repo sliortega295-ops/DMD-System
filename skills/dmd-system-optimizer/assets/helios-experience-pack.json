@@ -4365,10 +4365,10 @@
     {
       "id": "h100-w2-fence-only-pair",
       "pattern": "host-synchronization",
-      "title": "H100 W2 只有同源 fence-only 差值能归因给 fence",
+      "title": "H100 W2 内部 fence 调整保留阶段边界",
       "outcome": "positive_observation",
-      "observation": "同 8fc70e8 上 95.534631493→94.311432633 秒；41 个单元在阶段结束前 reshard，保留前后 allocator flush 与外 timer fences。",
-      "lesson": "更早 official-swap 的 138.371948 秒跨了 source/策略，不能将整个差距算成 fence 消除收益。",
+      "observation": "41 个单元在阶段结束前 reshard，保留前后 allocator flush 与外 timer fences。",
+      "lesson": "内部 fence 与角色交换属于不同策略，不能混用对照或将跨策略差距归因给 fence。",
       "scope": "W2 Helios No-GAN、同源 retained-G 内部 fence 实验，n=1。",
       "conditions": {
         "physical_gpus": 8,
@@ -4476,10 +4476,10 @@
     {
       "id": "h100-w4-teacher-resident-small",
       "pattern": "parameter-residency",
-      "title": "H100 W4 teacher resident 单次差值只有约 0.23%",
+      "title": "H100 W4 Teacher 驻留需核对暴露搬运",
       "outcome": "positive_observation",
-      "observation": "已测 4d7c589 为 45.361398→45.257227 秒；后续 audit 修复 1b8236 没有新增 GPU 时间。",
-      "lesson": "teacher 保留需先看原先暴露的搬运；小差值缺独立重复时不应标成可靠默认收益。",
+      "observation": "Teacher 驻留改动与后续 audit 修复分别记录，不把元数据修复当作新的 GPU 测量。",
+      "lesson": "teacher 保留需先看原先暴露的搬运，并按当前调用与容量验证收益。",
       "scope": "W4 LiveWan/Self-Forcing H100，单配对、full-state parity NOT_RUN。",
       "conditions": {
         "physical_gpus": 8,

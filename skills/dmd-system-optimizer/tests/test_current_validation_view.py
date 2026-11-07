@@ -55,7 +55,12 @@ class CurrentValidationViewTests(unittest.TestCase):
         guide = (REPO / "docs/guides/performance_validation.md").read_text()
         self.assertIn("Cycle 2 (s)", guide)
         self.assertIn("H100", guide)
-        self.assertIn("G1/C5/EMA5 Full5", guide)
+        self.assertIn("G1/C5/EMA1 Full5", guide)
+        h100 = guide.split("## H100\n", 1)[1].split("## Planning", 1)[0]
+        for workload in ("W2", "W4"):
+            self.assertNotIn(f"| {workload} |", h100)
+        for ratio in ("1.013×", "1.002×"):
+            self.assertNotIn(ratio, h100)
         self.assertIn("gan_nomerge_retime.json", guide)
         self.assertIn("artifacts/results/planner.json", guide)
         for workload in ("W1", "W2", "W3", "W4", "W5", "W6"):

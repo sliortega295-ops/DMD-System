@@ -76,9 +76,7 @@ reference and timing window; these are not hardware-normalized A100 comparisons.
 | Workload | Reference | Reference (s) | DMD-System (s) | Ratio | Window |
 | --- | --- | ---: | ---: | ---: | --- |
 | W1 | Resident | 52.067 | 37.670 | 1.382× | C2 |
-| W2 | Retained-G control | 95.535 | 94.311 | 1.013× | G1/C5/EMA5 Full5 |
 | W3 | Whole-role swap, GPU ZeRO1 | 192.986 | 117.344 | 1.645× | G1/C5/EMA1 Full5 |
-| W4 | Resident | 45.361 | 45.257 | 1.002× | C2 |
 | W5 | Continuous FSDP2 | — | — | — | C2 |
 | W6 | Native FSDP | 320.666 | 278.886 | 1.150× | C2, FA2 |
 

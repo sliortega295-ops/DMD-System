@@ -3,8 +3,8 @@
   "source_index": "c823cb084d0161ba3dd3fba14c9fb673b2c50b9f",
   "scope": "SIX_PROTOCOLS_NOT_SIX_NEW_STRICT_GPU_RELEASES",
   "evidence_files": {
-    "artifacts/results/a100.csv": "e224bbfadb05e057933cbb0b9d3d04cb93b27859f5fac147c5f4b8502b04d010",
-    "artifacts/results/h100.csv": "ba45f219d66ef8afcb65db1959d0167ca290092afd7bea2cfd4e18e58a742d64",
+    "artifacts/results/a100.csv": "c0546c7ab999f3ba90919df0ca9a48a0043a771813cd0b23b404212610b22acf",
+    "artifacts/results/h100.csv": "f2c505fa46157d71002cb992f619c82eb589eec348c96b5e9a9fbaaef6494e41",
     "artifacts/results/gan_nomerge_retime.json": "20abb59127571c626460072452aef109063bc4bc8af1fe81e7405e2a0efe6039",
     "artifacts/results/planner.json": "af24f63fb56af0e6227225db7d666ff34ee35a6e978d56a6edcbe9161529e274"
   },
@@ -89,8 +89,6 @@
         "measured_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
         "published_source": "8fc70e8ce9f6e0243604812120119c9f4c078e55",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/results/h100.csv",
-        "baseline_definition": "Same-head retained-G control; only interior fence policy differs",
         "numerical_status": "NOT_RUN_FULL_STATE"
       },
       "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."
@@ -165,8 +163,6 @@
         "measured_source": "4d7c589acd01a4a6c90ca141da266b3090df2b68",
         "published_source": "1b8236c243323ff21023935f3b8192ab3e5d136d",
         "integration": "SEPARATELY_PINNED_SOURCE_NOT_A_NEW_GPU_VALIDATION",
-        "evidence": "artifacts/results/h100.csv",
-        "baseline_definition": "H100 Resident vs Teacher-resident candidate; not A100 C51",
         "numerical_status": "REVIEW_UNCHANGED_NOT_STRICT_PASS"
       },
       "execution": "Existing native CLI only; this catalog never starts a process, contacts nodes or injects costs."

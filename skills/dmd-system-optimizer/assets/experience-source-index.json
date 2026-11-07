@@ -2577,7 +2577,7 @@
       "tags": [
         "Helios H100 history",
         "host-synchronization",
-        "H100 W2 只有同源 fence-only 差值能归因给 fence"
+        "H100 W2 内部 fence 调整保留阶段边界"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
@@ -2609,7 +2609,7 @@
       "tags": [
         "Helios H100 history",
         "parameter-residency",
-        "H100 W4 teacher resident 单次差值只有约 0.23%"
+        "H100 W4 Teacher 驻留需核对暴露搬运"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",
@@ -2655,7 +2655,7 @@
       "tags": [
         "Helios H100 history",
         "parameter-residency",
-        "H100 W4 teacher resident 单次差值只有约 0.23%"
+        "H100 W4 Teacher 驻留需核对暴露搬运"
       ],
       "source_group": "H100 public receipts",
       "review_status": "CURATED_EXCERPTS",

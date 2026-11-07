@@ -24,9 +24,10 @@ def digest(value):
 class SourceMetadataCharacterizationTests(unittest.TestCase):
     # Captured before normalization, 2026-11-06. Changing a case/source intentionally
     # requires reviewing the expanded historical data, not just the compact file.
+    # H100 near-parity timing text was withdrawn; original source pins are unchanged.
     def test_all_expanded_experience_and_implementation_fields_are_preserved(self):
         self.assertEqual(digest(knowledge.validate_pack()),
-                         "93d0a535404451153a8d36177af3bd346c8272ef66e89794d6ceedabafe8a53a")
+                         "e58348fad569bc3909f42525551b28314bce2e29d00856024b0db33882911464")
         self.assertEqual(digest(navigation.validate_catalog()),
                          "eb56fc07609816410399697124d92dd537111798325cf47bab9b3275bc84f5af")
 
@@ -39,7 +40,7 @@ class SourceMetadataCharacterizationTests(unittest.TestCase):
         # The current-tree navigation snapshot has a separate owner; this digest
         # covers historical recall without binding future runtime source hashes.
         self.assertEqual(digest([knowledge._recall(q, c, limit=20) for q, c in queries]),
-                         "0c021b86f6904d212c5e91257269b890508d04337b1270931a2186be142e0679")
+                         "fe70bad3759e8aca8a25c32cf6a171600ab53fc731ff661ca7d66ba5c7beaca2")
         catalog = navigation.validate_catalog()
         self.assertEqual(digest([navigation.locate(i, {"grad_mode": "grad_enabled"}, catalog=catalog)
                                  for i in catalog]),
@@ -48,7 +49,7 @@ class SourceMetadataCharacterizationTests(unittest.TestCase):
     def test_sources_api_is_preserved_without_adding_code_only_candidates(self):
         self.assertEqual(digest([knowledge.source_search(q, limit=100)
                                  for q in ["H100", "FSDP", "graph", "DMD_LIVEWAN_POOL_DAG"]]),
-                         "b3e840372920e701e5146a1ff23e333dbde9ca1bc98fbbcbcc34a810373b3dc7")
+                         "93008ddc9d6cb460d3654b1c1b4d11cc67d78fc3a2849242c2c6b4a43bdbed8c")
 
     def test_storage_declares_every_exact_pinned_source_once(self):
         index = knowledge.load(knowledge.SOURCE_INDEX)
