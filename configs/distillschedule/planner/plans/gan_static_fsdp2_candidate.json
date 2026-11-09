@@ -1,0 +1,105 @@
+{
+  "name": "gan_static_fsdp2_candidate",
+  "workload": "gan",
+  "backend_family": "fsdp2-static-world16",
+  "gpu_meshes": [16],
+  "global_batch_by_phase": {
+    "full5": 16
+  },
+  "phases": [
+    {
+      "name": "full5",
+      "kind": "sequential",
+      "primitive_keys": [
+        {
+          "workload": "gan",
+          "operation": "generator_update_full",
+          "role": "generator",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "critic_update_full",
+          "role": "score",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "critic_update_full",
+          "role": "score",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "critic_update_full",
+          "role": "score",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "critic_update_full",
+          "role": "score",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "critic_update_full",
+          "role": "score",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "train",
+          "residency": "sharded_resident",
+          "activation_policy": "checkpoint"
+        },
+        {
+          "workload": "gan",
+          "operation": "ema_step",
+          "role": "generator",
+          "backend": "fsdp2",
+          "mesh_size": 16,
+          "local_batch": 1,
+          "grad_mode": "ema",
+          "residency": "sharded_resident",
+          "activation_policy": "none"
+        }
+      ]
+    }
+  ],
+  "transition_names": [],
+  "memory_policy": {
+    "parameter_offload": false,
+    "cpu_block_streaming": false,
+    "model_transition": false,
+    "reshard_after_forward": true
+  },
+  "metadata": {
+    "purpose": "PR13 first unseen-backend validation candidate",
+    "expected_initial_status": "PROFILE_INCOMPLETE"
+  }
+}

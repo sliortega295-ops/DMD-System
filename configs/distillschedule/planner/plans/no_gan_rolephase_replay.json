@@ -1,0 +1,27 @@
+{
+  "name": "no_gan_rolephase_measured",
+  "workload": "no-gan",
+  "backend_family": "mixed-zero3-zero1",
+  "gpu_meshes": [8, 4, 12],
+  "global_batch_by_phase": {
+    "phase_a_step10": 16,
+    "phase_b_critic": 12
+  },
+  "phases": [
+    {
+      "name": "phase_a_step10",
+      "kind": "fixed",
+      "fixed_seconds": 104.687
+    },
+    {
+      "name": "phase_b_critic",
+      "kind": "fixed",
+      "fixed_seconds": 158.494
+    }
+  ],
+  "transition_names": ["no_gan_phase_a_to_phase_b"],
+  "metadata": {
+    "purpose": "component accounting replay only",
+    "not_unseen_plan_prediction": true
+  }
+}

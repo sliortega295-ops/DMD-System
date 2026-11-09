@@ -1,0 +1,149 @@
+{
+  "schema_version": "distillschedule.profile_guided_planner.v0",
+  "hardware": {
+    "name": "baai-2x8-a100-40gb-cgroup760gib",
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "gpu_hbm_bytes": 42949672960,
+    "node_cpu_limit_bytes": 816043786240,
+    "intra_node_bandwidth_gbps": null,
+    "inter_node_bandwidth_gbps": null,
+    "pinned_h2d_bandwidth_gbps": null,
+    "pageable_h2d_bandwidth_gbps": null,
+    "d2h_bandwidth_gbps": null,
+    "collective_latency_us": null,
+    "transfer_launch_latency_us": null
+  },
+  "models": [],
+  "primitives": [],
+  "transitions": [
+    {
+      "name": "no_gan_phase_a_to_phase_b",
+      "source_layout": "8G4S4T-step10a",
+      "target_layout": "4G12C-b12",
+      "wall_seconds": 17.776,
+      "samples": 3,
+      "provenance": "PR6 real-14B formal R1/R2/R3",
+      "metadata": {
+        "samples_seconds": [21.683, 17.776, 17.393],
+        "median_seconds": 17.776,
+        "claim_boundary": "No-GAN B12 target layout"
+      }
+    }
+  ],
+  "plans": [
+    {
+      "name": "no_gan_rolephase_measured",
+      "workload": "no-gan",
+      "full5_seconds": [290.584, 265.316, 279.934],
+      "status": "PASS",
+      "provenance": "PR6 real-14B formal R1/R2/R3",
+      "phase_seconds": {
+        "phase_a_step10": 104.687,
+        "phase_a_to_b_transition": 17.776,
+        "phase_b_critic": 158.494
+      },
+      "claimable_timing": true,
+      "metadata": {
+        "global_batch_phase_a": 16,
+        "global_batch_phase_b": 12,
+        "post_boundary_cleanup_median_seconds": 13.082,
+        "not_a_matched_batch16_speedup": true
+      }
+    },
+    {
+      "name": "gan_sequential_all40_measured",
+      "workload": "gan",
+      "full5_seconds": [656.125, 596.234, 658.338],
+      "status": "PASS",
+      "provenance": "GAN Sequential three formal Full5 runs",
+      "claimable_timing": true,
+      "metadata": {
+        "global_batch": 16,
+        "frozen_streaming_generator_blocks": 40,
+        "frozen_streaming_score_blocks": 40,
+        "generator_updates": 1,
+        "critic_updates": 5,
+        "ema_updates": 1
+      }
+    },
+    {
+      "name": "gan_fixed_8g8score_measured",
+      "workload": "gan",
+      "full5_seconds": [1139.194],
+      "status": "PASS",
+      "provenance": "reported median of three formal runs; raw per-run values absent from mainline profile",
+      "claimable_timing": false,
+      "metadata": {
+        "reported_statistic": "median_of_three",
+        "global_batch": 16,
+        "topology": "8G+8Score persistent"
+      }
+    },
+    {
+      "name": "gan_g40_s10_a128_detailed",
+      "workload": "gan",
+      "full5_seconds": [868.488686],
+      "status": "DIAGNOSTIC",
+      "provenance": "PR7 detailed-event capacity/correctness run",
+      "gpu_peak_bytes": 39111174144,
+      "claimable_timing": false,
+      "metadata": {
+        "max_reserved_bytes": 40290484224,
+        "generator_materializations_per_rank": 600,
+        "generator_materialized_bytes_per_rank": 421673164800,
+        "score_materializations_per_rank": 500,
+        "score_materialized_bytes_per_rank": 351394304000,
+        "streamed_generator_blocks": 40,
+        "streamed_score_blocks": 10,
+        "activation_offload_mib": 128
+      }
+    },
+    {
+      "name": "gan_g40_s10_a128_low_overhead_partial",
+      "workload": "gan",
+      "full5_seconds": [824.685006],
+      "status": "PARTIAL",
+      "provenance": "PR7 single low-overhead run; model execution passed, postprocessing failed",
+      "claimable_timing": false,
+      "metadata": {
+        "model_execution_pass": true,
+        "postprocessing_pass": false,
+        "single_run_only": true
+      }
+    }
+  ],
+  "metadata": {
+    "status": "BOOTSTRAP_ANCHORS_ONLY",
+    "sufficient_for": [
+      "planner schema and deterministic event simulator",
+      "measured component accounting replay",
+      "memory-model structure and cgroup-capacity constraints",
+      "explicit missing-profile generation"
+    ],
+    "insufficient_for": [
+      "claimable unseen FSDP2 prediction",
+      "mesh-size interpolation",
+      "per-stage compute scaling",
+      "per-block offload subset optimization",
+      "activation lifetime prediction",
+      "general transition prediction"
+    ],
+    "known_cpu_capacity_failures": [
+      {
+        "context": "GAN Role-Phase concurrent future-target construction",
+        "memory_peak_bytes": 816039686144,
+        "memory_max_bytes": 816043786240,
+        "oom_kill": true
+      },
+      {
+        "context": "GAN Role-Phase Phase-A selected activation after serial future-target construction",
+        "memory_peak_bytes": 816031342592,
+        "memory_max_bytes": 816043786240,
+        "oom_kill": true
+      }
+    ],
+    "next_high_value_anchor": "PR13 static world16 FSDP2 No-GAN and GAN Full5",
+    "raw_profiler_artifacts_are_external": true
+  }
+}
