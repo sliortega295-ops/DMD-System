@@ -59,11 +59,10 @@ gathers full tensors on all owning ranks and writes shared files on primary.
 no-grad with declared modules in evaluation mode. Its `decode(value,
 parameters)` returns explicit real media: `image` HWC uint8, `video` THWC uint8,
 `audio` with finite TC samples/native sample rate, or both AV. The requested
-portable `--output-kind` must be actually present. Explicit named native
-latents need their exact `latent_schema`; they are never relabeled as media.
-See [output contracts](training.md#generate-and-export) for serialization,
-legacy checkpoint evaluation and finite JSON `--parameters` behavior. Quality
-validation remains NOT_RUN; the framework does not synthesize a renderer.
+portable `--output-kind` must match an output supplied by the adapter. Named
+native latents require their exact `latent_schema`. See
+[output contracts](training.md#generate-and-export) for serialization,
+checkpoint evaluation and finite JSON `--parameters`.
 
 An offline encoder takes decoded media plus its parameter mapping and returns
 the native tensor feeds expected by the model. Reuse that model's local
@@ -137,11 +136,10 @@ model/precision/state/version/layout conditions, actual observed effects and a
 reference comparison. The shared solver consumes measured candidates; adding
 only a configuration flag or a predicted cost does not add backend support.
 
-Use the existing [open Program interface](../workloads/open_workload_program.md),
-[role pools](../workloads/open_role_pools.md) and
-[native planning](../runbooks/native_planner_workflow.md). These paths share the
-planning service but admit different physical capabilities. A new local model
-does not automatically gain FSDP2, cross-pool overlap or a CUDA Graph backend.
+Choose the [open Program interface](../workloads/open_workload_program.md),
+[role pools](../workloads/open_role_pools.md) or
+[native planning](../runbooks/native_planner_workflow.md) for the execution
+capabilities the model needs. These paths share the planning service.
 
 ### Explicit model-owned forward methods
 

@@ -1,8 +1,7 @@
 # W1 original No-GAN CPU reference
 
-This opt-in reference connects the **original W1 full model and Full5 update**
-to the common Program training lifecycle. It is not the W3 GAN trainer with a
-flag disabled, a scalar stand-in, a new loss, or a CUDA backend.
+This opt-in CPU reference runs the original Wan1.3B No-GAN Full5 update
+through the common Program trainer.
 
 ## Contract and scope
 
@@ -13,10 +12,8 @@ flag disabled, a scalar stand-in, a new loss, or a CUDA backend.
   BF16 base inventory, original FP32-only modules, FP32 LoRA and actual Adam,
   schedulers and sparse EMA. All three Generator pyramid-patch adapters remain
   trainable. No merged weights, CUDA Graph or optimized replay cache is used.
-- Execution is **CPU1, source rank0, B1 per-sample**. The input adapter still
-  validates the complete original world16 trace controls and payloads before
-  preparing rank0. It does not run world16 reduction or establish global-B16
-  numerical equivalence. The native world16 recipe is unchanged.
+- Execution uses **one CPU rank, source rank 0, B1 per sample**. The input
+  adapter validates the full 16-rank trace before extracting rank 0.
 - Initialization is genuinely G0/C0/EMA0 with empty Adam state. Finite cohorts
   advance their original source steps without trace replay. The fixed native
   scheduler horizon must accommodate every requested cycle.
@@ -26,12 +23,9 @@ flag disabled, a scalar stand-in, a new loss, or a CUDA backend.
 
 Use a source checkout with the separate `.[train,helios-reference]` environment
 described in [installation](../../docs/guides/installation.md). This full-model
-Diffusers0.37.1 route is distinct from the native-Wan0.35 qualification lane.
-Tiny random assets used by tests are explicitly labeled fixtures, not a
-pretrained model, media encoder or quality result.
-
-See the source-scoped CPU acceptance (source checkout: `docs/guides/performance_validation.md`)
-for actual model, restart, projection and new-input checks and their limits.
+Diffusers0.37.1 route has a separate environment from native Wan0.35.
+See [Student export and inference](#export-current-g-and-generate-with-new-inputs)
+for the CPU output workflow.
 
 ## Prepare supplied original inputs
 
@@ -108,6 +102,5 @@ model, matching source/runtime and new inputs are needed; old training inputs,
 bases, checkpoints and optimizer owners are not. Output is an FP32 BCTHW latent
 diagnostic: the original zero-history inference branch allocates its history
 in FP32. This is distinct from the unchanged mixed BF16/FP32 model inventory;
-the output is not coerced to fit a training-rollout dtype. Without a real VAE decoder, default video output refuses rather
-than relabeling latents as media. Pretrained quality, world16 parity, CUDA and
-performance remain outside this CPU reference's acceptance.
+the output retains its inference dtype. Request `--output-kind latents` for
+this CPU recipe; video output requires a VAE decoder.

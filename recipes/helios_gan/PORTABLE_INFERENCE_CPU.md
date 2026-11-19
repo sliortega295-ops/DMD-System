@@ -1,9 +1,8 @@
 # Current full Generator: portable CPU native latent diagnostic
 
-This is the inference companion to [CPU reference training](REFERENCE_TRAINING_CPU.md),
-not a replacement solver or a new native benchmark. It exports the **actual
-restored current, full, unmerged G**: every frozen base and trained PEFT tensor,
-not EMA, C, Adam, training data or RNG. The existing named-module export format
+This guide exports the current, unmerged Generator from
+[CPU reference training](REFERENCE_TRAINING_CPU.md), including every frozen base
+and trained PEFT tensor. The named-module export format
 (`distillschedule.inference_export.v1`) provides safe tensor loading, strict
 key/shape/dtype/finiteness checks and atomic hash-bound publication.
 
@@ -96,11 +95,9 @@ python scripts/distillctl.py generate /absolute/project/inference.json \
 ```
 
 The API equivalent is `generate_from_export(..., output_kind='latents')`.
-The default remains `video`: it refuses without an actual decoder returning
-THWC uint8 RGB/RGBA. No fake VAE, RGB reshape, PNG frames, or media-quality
-claim is supplied. The explicit latent path saves safe `generation.pt` and a
-receipt declaring finite named FP32 `latents` in **BCTHW** layout, exact shape,
-`LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY`, and `quality_validation=NOT_RUN`.
+`generation.pt` stores named FP32 latents in BCTHW layout; the receipt records
+their shape and schema. Request latents here. The default `video` output
+requires a decoder returning THWC uint8 RGB/RGBA.
 
 The inference factory constructs only the bounded original full G plus the
 same PEFT, initializes original nonpersistent RoPE through the original CPU

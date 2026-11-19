@@ -104,10 +104,10 @@ python recipes/dmd2_sd15/create_cpu_fixture.py /PROJECT/random-sd15 \
 distillctl train /PROJECT/random-sd15/training.json
 ```
 
-The helper builds random tiny actual Diffusers UNet/CLIP/VAE assets and local
-tokenizers; it does not download pretrained weights. The same single-device
-entry accepts explicit CUDA placement. Source-sensitive numerical checks and
-hardware-specific tests are described in [validation](../../docs/guides/performance_validation.md).
+The helper creates small randomly initialized Diffusers UNet/CLIP/VAE assets
+and local tokenizers. The single-device entry also accepts explicit CUDA
+placement. For distributed training, see the
+[native FSDP2 recipe](../../docs/guides/native_workloads.md#dmd2_fsdp2_reference).
 
 ## Optional native UNet checkpoint policy
 

@@ -34,6 +34,6 @@ codec manifest for decoded audio/video.
 
 ## Results
 
-[Performance and source records](../../docs/guides/performance_validation.md)
+[Performance results](../../docs/guides/performance_validation.md)
 include the full-sequence result and its baseline. The original-reference
 lifecycle and the two-cycle optimization preset retain separate configurations.

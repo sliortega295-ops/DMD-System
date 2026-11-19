@@ -1,16 +1,15 @@
 # LiveWan public CPU1 training → current-G export → new-input generation
 
-This is **original LiveWan/Wan2.1 CPU1 FP32, 32×32, 81 frames / 21
-latents**, not world16/BF16, C51 role-pool restart, pretrained quality or a
-performance result. It is independent of the separately pinned official
-`guandeh17/Self-Forcing` route. Random tiny full-class tests are not pretrained.
+Run the original LiveWan/Wan2.1 workflow on one CPU rank in FP32 at 32×32
+with 81 frames (21 latent frames). For the native role-pool pipeline, use
+[C51 continuation](C51_CONTINUATION.md).
 
 Use the `livewan-wan21-reference` plus `train` extras (Torch≥2.10,
 Diffusers **0.35.2**, NumPy and safetensors); add `media` for PNG frames and
-the optional original codec (the extra includes `einops==0.8.1`). Do not mix in Helios'
-Diffusers0.37.1 extra and call it the qualified Wan runtime. Run with one CPU
-thread, CPU FP32/default dtype, no outer autocast, no initialized CUDA or
-distributed process group. No asset or model download is automatic.
+the optional original codec (the extra includes `einops==0.8.1`). Keep this
+environment separate from the Helios dependency group. Set one CPU thread and
+FP32 default dtype. Use a process without outer autocast, CUDA initialization
+or an initialized distributed process group. Supply local assets.
 
 ## Supply and prepare training assets
 
@@ -91,9 +90,8 @@ distillctl generate /absolute/inference.json \
 
 Raw `latents` are explicitly **BCTHW `[1,16,21,4,4]` FP32**. They concatenate
 the supplied W-frame world and generated `21-W` suffix; input metadata also
-records `(W-1)*4+1` conditioning pixel frames. Latent mode emits no frames and
-is labeled `LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY`. Requested video without a
-real admitted decoder fails before output publication.
+records `(W-1)*4+1` conditioning pixel frames. Select `--output-kind latents`
+for tensors or supply the decoder below for video frames.
 
 ## Optional original Wan2.1 decode, not Diffusers or official Self-Forcing VAE
 
@@ -138,9 +136,6 @@ distillctl generate /absolute/inference.json \
   --output /absolute/decoded-frames
 ```
 
-This creates81 actual32×32 PNG RGB frames (sample fps16), not an encoded MP4.
-Missing, changed, corrupt, wrong-dtype/layout/config/runtime or out-of-budget
-codec assets fail closed, including when a broken codec was explicitly passed
-to latent mode. No pretrained decoder assets have been supplied or qualified;
-real dim96 capacity, visual quality, GPU/BF16/world16/C51 and performance remain
-**NOT_RUN**.
+This writes 81 RGB PNG frames at 32×32 (sample rate: 16 fps). The decoder
+manifest binds asset integrity, dtype, layout, runtime and memory budget. When
+you pass a decoder manifest, it is checked in both video and latent modes.

@@ -128,9 +128,7 @@ operator's persistent storage unless transfer is actually required.
 
 ### Checkpoint versus inference weights
 
-A training checkpoint includes optimizer/scheduler/EMA, RNG, data progress and
-logical versions under the exact restore contract. An inference export instead
-contains the declared model state and source/config binding for new inputs.
-They are not interchangeable. Full distributed export can require substantial
-CPU materialization; tiny CPU qualification does not establish large-model host
-capacity. See [training and output contracts](training.md#generate-and-export).
+Use a training checkpoint to resume optimizer/scheduler/EMA, RNG, data progress
+and logical versions. Use an inference export to generate on new inputs. Budget
+host memory for the full tensors that distributed export materializes. See
+[training and output contracts](training.md#generate-and-export).

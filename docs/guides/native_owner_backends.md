@@ -118,9 +118,9 @@ cycle (five by default). Bytes count deduplicated owner storage references
 relinquished per commit, not allocator-freed memory; other observers may hold
 aliases. Native checkpoint-ON/OFF state and restart coverage is CPU-scoped.
 
-See [model environments and test lanes](model_families.md#verification-lanes)
-and [performance/source records](performance_validation.md) for validation of
-each selected recipe.
+See [model environments](model_families.md#separate-installation-lanes) and
+[core checks](model_families.md#core-checks) for setup and testing.
+[Performance](performance_validation.md) reports complete-cycle benchmarks.
 
 <a id="fsdp_boundaries"></a>
 ## Model-owned FSDP parameter groups

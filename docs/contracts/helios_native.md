@@ -96,9 +96,8 @@ preserved Python/CPU Torch RNG. Do not conceal that setup boundary by changing s
 <a id="helios_gan_native_history_checkpoint_cpu_v1"></a>
 ## W3 native-history G checkpoint hidden-input CPU policy v1
 
-**Explicit default-OFF research candidate; Pending cluster validation.**
-No native fit/GO, numerical promotion, quality, timing or long-trajectory claim.
-The original W3 stream/default recipes and W2 policies remain separate.
+This opt-in policy is off by default. Qualify its host and GPU capacity
+on the target allocation before selecting it.
 
 ### Identity and unchanged owners
 
@@ -348,9 +347,9 @@ Temporary input leases are drained and rebuilt, never saved as training state.
 
 See the [public recipe and exact byte accounting](../../recipes/helios_nogan/CHECKPOINT_INPUT_CPU.md)
 for the actual runtime boundary, host files, executed counters and refusal rules.
-CPU synthetic/component proof cannot promote native HSDP capacity, numerical
-parity, timing or quality. Target Torch 2.10 and target GPU evidence remain
-**NOT_RUN** unless independently executed; `native_GO` remains false.
+CPU checks cover the component protocol. The candidate remains at
+`native_GO=false` until a matched run qualifies capacity and numerical
+behavior on the target Torch 2.10 and GPU layout.
 
 <a id="helios_nogan_safe_stream_v1"></a>
 ## W2 native SafeBundle fresh stream v1 (explicit research opt-in)
@@ -393,14 +392,10 @@ and payloads. The first freshly prepared cohort, not a historical trace,
 supplies startup controls. Source, shape, all-rank inputs and effective policy
 are admitted before constructing models.
 
-The operator must explicitly supply an existing
-`LOCAL_KERNELS=kernels-community/flash-attn2=/absolute/local/path`. Missing
-extension is a real GPU dependency **NOT_RUN**; there is no installation,
-download, private fallback path or CPU fake acceptance. Original P0 still
-checks the exact extension SHA256 and the actually imported FA2 callable.
-Allocator overrides are refused. Actual setup, transient rollout, checkpoint
-staging and restore capacity/reserve remain unqualified; no generic multi-model
-trial clone or CPU parity gate is used as a substitute.
+Set `LOCAL_KERNELS=kernels-community/flash-attn2=/absolute/local/path` to the
+pinned local extension. P0 checks its SHA256 and the imported FA2 callable.
+Leave allocator overrides unset. Qualify setup, rollout, checkpoint staging
+and restore capacity on the target allocation.
 
 The public wrapper enters the existing world16 NCCL/Gloo owner and hardened P0
 construction once. The original `_Observer` and `_prepare_cycle` receive the

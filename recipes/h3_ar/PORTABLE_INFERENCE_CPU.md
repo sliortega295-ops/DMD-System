@@ -8,10 +8,8 @@ the original `export_lora` helper (which scales B for a different loader), merge
 LoRA, cast weights, select EMA, change the canonical GAN start500, or modify the
 frozen distributed/native W6 contract.
 
-The inference path uses the maintained original MiniMaxH3DiT, H3Adapter,
-cache/packing parser, `make_schedule` and unchanged eight-step `rollout`. This is
-not full DiffSynth, an independent solver, a codec, a pretrained-model result,
-quality validation, GPU validation, or a performance claim.
+Inference uses MiniMaxH3DiT, H3Adapter, the native cache/packing parser and
+the original eight-step schedule and rollout.
 
 ## Export a complete current checkpoint
 
@@ -94,16 +92,7 @@ The completed `generation.pt`, `generation.json` and `_SUCCESS` contain:
 
 - `video_latents`: finite FP32 `[1,24,T,H,W]`, **BCTHW**.
 - `audio_latents`: finite FP32 `[2,32,T]`, **SCT**, where S=2 is stereo.
-- Exact named latent schema; `LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY` and
-  `quality_validation=NOT_RUN`. No decoded frames/audio are claimed or invented.
+- The named latent schema and tensor shapes in the generation receipt.
 
-The default output kind remains **video**. Without a real decoder that request
-fails, leaving no partial output directory. No fake decoder is provided.
-
-## Evidence and exclusions
-
-The GAN2 fixture remains **tiny, not pretrained and not quality evidence**;
-canonical training still uses GAN500. CUDA/distributed, auto/manual/saved-plan
-modes, changes of source/dependency/precision, alternate samplers, media
-decoding, production pretrained capacity and performance remain unsupported or
-NOT_RUN. No numerical/source-manifest changes are made by this inference route.
+Use the source, dependencies and precision recorded by the export.
+Set `--output-kind latents` for this recipe; `video` requires a decoder.

@@ -1,10 +1,8 @@
-# W3 full native bundle: fresh-cohort continuation (research opt-in)
+# Helios GAN fresh-stream continuation
 
-**Source/CPU integration only. Native world16 GPU continuation, numerical parity,
-capacity and 100-cycle reliability have NOT been accepted.** The underlying
-FA3/down40 bundle is selected explicitly through its source-bound policy. This is
-not the independent CPU reference recipe and does not inherit its model-quality
-or GPU qualifications.
+Use [`training.stream.json`](training.stream.json) to select the native FA3/down40
+bundle for fresh input cohorts and complete-cycle restart. The single-rank path
+is documented in the [CPU reference](REFERENCE_TRAINING_CPU.md).
 
 ## Preserved execution
 
@@ -141,30 +139,20 @@ closed. Without the stop field, the existing full-horizon behavior is unchanged.
 Public export discards this training-only stop control and restores the explicit
 export checkpoint without running training updates.
 
-A graceful early stop has a distinct `STOPPED_*_AT_CHECKPOINT` status, not the
-complete-run status. `training_segment` records the full horizon, start,
-requested stop, completed cycle and actual executed count. Neither an early
-segment nor a resumed segment is formal performance or 100-cycle GPU evidence;
-native GPU reliability/quality acceptance remains **NOT_RUN**.
+A graceful early stop reports `STOPPED_*_AT_CHECKPOINT`.
+`training_segment` records the horizon, start cycle, requested stop,
+completed cycle and number of executed cycles.
 
-## Evidence boundaries and remaining gates
+## Test coverage and output
 
-- New CPU tests cover actual public/source/asset admission, fresh metadata/shape
-  qualification, strict original storage/FIFO scope selection, source-cache
-  switching, Program/cycle/state publication and independent-process restart.
-- The orchestration fixture uses real native Engine/Adam/LR/EMA/checkpoint state
-  but **synthetic P0 operations and kernel counters**. It is not GAN math or GPU
-  proof. A separate target-dependency test exercises one actual new cohort's
-  original producer and official score/critic input adapters; missing native
-  dependencies are explicitly `NOT_RUN`, not counted as a pass.
-- The versioned stream uses the existing reviewed `fsdp2_static.py` overlay
-  `0b939331` / SHA `dd2fd086...`. The old down40 source pin and old two-cycle
-  refusal rules are unchanged. Fresh source integration identities are explicit;
-  no frozen source-layout lock or historical receipt is rewritten.
-- Future native acceptance must prove actual per-cycle FA3/down40/head counters,
-  persistent-unshard release (also on failure), same-topology all-rank restart,
-  numerical/capacity qualification, then the agreed one-seed/100-complete-cycle
-  continuation. Dynamic new-input counters are not the old fixed trace's
-  literal timing profile and carry no speedup credit.
-- Native decoded output and portable current-Student export remain unsupported
-  by this stream recipe. Their separate work is not claimed complete here.
+CPU tests cover asset and input checks, storage/FIFO selection, state publication
+and fresh-process restart. The orchestration fixture uses the native optimizer,
+scheduler, EMA and checkpoint state with P0 operations and counters stubbed.
+With the pinned dependencies, a separate test exercises one original cohort's
+producer and score/critic input adapters.
+
+The stream uses the `fsdp2_static.py` overlay `0b939331`. On the target
+allocation, check per-cycle FA3/down40/GAN-head counters, unshard release and
+capacity. Use a matched run to compare numerics after same-topology restart.
+Follow [native Student output](NATIVE_OUTPUT.md) to export a complete
+checkpoint and generate new-prompt video.

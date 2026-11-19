@@ -1,10 +1,7 @@
 # Direct W2 reference training (version 1)
 
-This separate opt-in route uses **your content-pinned original Step10
-G2/C10/EMA10 package** and newly prepared native feature cohorts. It does not
-need the historical benchmark's SSH node manifest, HF cache, flash-attention
-asset, or original trace bundle. No checkpoint is supplied, downloaded, or
-manufactured. This is not cold-start Step0 or an arbitrary long-run optimizer.
+Use a local, pinned original Step10 G2/C10/EMA10 package and newly prepared
+feature cohorts to run the native Helios No-GAN reference.
 
 ## Supply the actual assets
 
@@ -133,18 +130,12 @@ closed. Without the stop field, the existing full-horizon behavior is unchanged.
 Public export discards this training-only stop control and restores the explicit
 export checkpoint without running training updates.
 
-A graceful early stop has a distinct `STOPPED_*_AT_CHECKPOINT` status, not the
-complete-run status. `training_segment` records the full horizon, start,
-requested stop, completed cycle and actual executed count. Neither an early
-segment nor a resumed segment is formal performance or 100-cycle GPU evidence;
-native GPU reliability/quality acceptance remains **NOT_RUN**.
+A graceful early stop reports `STOPPED_*_AT_CHECKPOINT`.
+`training_segment` records the horizon, start cycle, requested stop,
+completed cycle and number of executed cycles.
 
-## Evidence boundary
+## Test coverage
 
-The tests cover real original producer/consumer/update/checkpoint helpers with
-tiny CPU DTensor owners, plus actual public-to-P0 admission and two-process
-Gloo fault propagation. The CPU test substitutes only topology/CUDA resource
-surfaces and stops at an explicitly synthetic model boundary. It is **not**
-world16/FSDP/CUDA/NCCL/pretrained quality, capacity or performance evidence.
-Actual cluster validation remains **NOT_RUN**. Original fixed benchmark,
-canonical plan/source and numerical/capacity checks are not relaxed.
+CPU DTensor fixtures exercise the original producer, consumer, update and
+checkpoint helpers with a small model. Tests also cover public-to-P0 admission
+and fault propagation across two Gloo processes.

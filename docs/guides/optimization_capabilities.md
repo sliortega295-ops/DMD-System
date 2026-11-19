@@ -138,7 +138,7 @@ rollouts and native clocks rather than adopting this flow policy.
 New capabilities need an applicability predicate, real execution and observable
 effects, plus output/gradient/optimizer/RNG/version checks against the reference.
 See [extensions](extensions.md), [model environments](model_families.md),
-[performance and validation](performance_validation.md) and
+[performance results](performance_validation.md) and
 [source and asset licenses](../../THIRD_PARTY.md).
 
 <a id="optimizer_skill"></a>

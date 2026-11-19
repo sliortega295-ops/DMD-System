@@ -1,9 +1,8 @@
 # Opt-in original cached-AV CPU reference
 
-This **separate, bounded CPU1/world1/FP32 reference** connects the maintained
-cached-only original source to `TrainingConfig`, Program execution and common
-complete-cycle checkpoints. It does not change `training.json`, the native W6
-ZeRO3/FSDP contracts, source16/source83 pins or historical results.
+The cached-AV reference runs on one CPU rank in FP32 through the Program
+trainer and uses complete-cycle checkpoints. For native distributed training,
+see [H3 AR continuation](NATIVE_CONTINUATION.md).
 
 It uses the actual original MiniMaxH3DiT, independent unmerged student/fake
 LoRA64 adapters, velocity discriminator, `DMD2Trainer.update`, `make_optimizers`
@@ -34,11 +33,8 @@ For the explicitly labeled tiny-model fixture, the actual source architecture
 is in `architecture.cpu-tiny-fixture.json`. A locally created deterministic
 full base must be labeled in the safetensors metadata with
 `evidence_kind=FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY`.
-The tests create and pin such a fixture; it is **not pretrained or quality
-evidence**. The other admitted label,
-`LOCAL_PRETRAINED_CACHED_AV_UNVERIFIED_QUALITY`, requires operator-supplied
-payloads with that immutable metadata label and the same strict CPU capacity;
-it is not a claim that a production pretrained model fits or was tested.
+Use `LOCAL_PRETRAINED_CACHED_AV_UNVERIFIED_QUALITY` for supplied pretrained
+base files. Both asset types must fit the declared CPU capacity.
 
 Populate the exact source/runtime objects explicitly in your local manifests:
 
@@ -126,17 +122,12 @@ tests additionally use the separately labeled `GAN_START_2_TEST_FIXTURE` with
 `gan_start_step=2`, crossing the actual GAN branch on output3. This label is
 accepted only for the non-pretrained fixture; it never changes canonical500.
 
-## Evidence and limits
+## Student export and inference
 
-Current **full base + unmerged Student-only export** and fresh-process original
-eight-step generation on NEW genuine cached AV conditions are documented in
-[PORTABLE_INFERENCE_CPU.md](PORTABLE_INFERENCE_CPU.md). Use its separate
-inference factory and explicit `--output-kind latents`; the training owner has
-an export-only structure projection, not a generation callback. Video BCTHW and
-stereo audio SCT outputs are labeled LATENT_DIAGNOSTIC_NOT_MEDIA_QUALITY.
+The [portable inference guide](PORTABLE_INFERENCE_CPU.md) covers unmerged
+Student export and eight-step generation from new cached AV conditions. Use
+its inference factory and `--output-kind latents` to write BCTHW video latents
+and SCT stereo audio latents.
 
-Auto/manual/saved-plan execution, distributed/CUDA, epochs/shuffle/GAS,
-backend substitution, portability across dependency/source/precision changes
-and decoded-media generation remain unadmitted. No legitimate AV decoder is
-provided. These are cached latent results, not video/audio files, pretrained
-quality results, GPU validation or speedups.
+This reference uses fixed-order cached inputs and single-rank CPU execution.
+Keep dependencies, source and precision fixed when resuming.

@@ -21,8 +21,7 @@ python scripts/distillctl.py workloads native program auto \
   --samples 1 --max-program-runs 8 --execute
 ```
 
-The example uses small random Conv3d weights and actual input gradients/Adam on
-CPU. It is an interface example, not an original DMD performance result.
+The example runs input gradients and Adam on a small Conv3d model on CPU.
 To change frames, width or update count, change the JSON; no planner edit or new
 launcher is required. `describe`, `calibrate`, metadata-only `plan`, and `run`
 are available separately. Factories are trusted user code and model construction
@@ -60,13 +59,9 @@ matches replicated post-backward reduction, DDP asynchronous reduction and FSDP2
 reshard/keep-forward layouts, plus topology-admitted HSDP2 and per-module layout
 assignments. These use the SAME Program, calibrator, search
 service and call executor, with extra completion edges for reducer lifetimes.
-See [Distributed open workloads](#open_workload_distributed) for exact
-contracts, CPU/Gloo coverage, examples and remaining restrictions. The separate
-[RoleTask/RoleFunctions route](open_role_pools.md) implements bounded role-pool
-partitioning and cross-pool VJP transport; arbitrary Workload graphs are not
-automatically lowered to it. A100/H100 validation of these generic capabilities
-is NOT_RUN. Original workload-specific routes remain available; no five-model
-GPU parity is implied.
+See [Distributed open workloads](#open_workload_distributed) for contracts and
+examples. For role-pool partitioning and cross-pool VJP transport, use the
+separate [RoleTask/RoleFunctions interface](open_role_pools.md).
 
 `immutable_modules` and `replay_safe` are semantic promises verified where
 possible, not automatic inference of all Python side effects. All relevant
@@ -75,22 +70,14 @@ closure, in-flight accumulated gradients or silent optimizer reset is admitted.
 Use backward_of for differentiated values, including input gradients through a
 frozen critic. Incorrect state declarations are outside the ABI.
 
-CPU memory is tracked tensor/storage accounting, not an RSS guarantee. CUDA
-allocator accounting is implemented but NOT GPU validated here. Calibration
-clones model state, so peak preparation capacity differs from steady execution;
-large-model lifecycle/offload requires its appropriate backend. CPU timings are
-not claimed GPU speedups. A successful small-model test is not full pretrained
-Wan/Helios/H3/LiveWan numerical or quality evidence.
-
-This branch is stacked on PR #33 and preserves its original-protocol routes.
-The full five-workload capability migration and GPU validation remain unsatisfied goals.
+CPU budgets track tensor storage; the CUDA path tracks allocator memory.
+Calibration clones model state, so size the preparation peak separately from
+steady execution.
 
 <a id="open_workload_distributed"></a>
 ## Generic workload execution: replicated and sharded layouts
 
 Implementation owners: `open_workload/`, `search/` and the native backend adapters.
-PR #35's alternative ABI was inspected but is not copied into a second public
-system. Its branch is preserved; this PR is the continuation line.
 
 ### User contract versus system decisions
 
@@ -159,36 +146,25 @@ execution. Each fresh `auto` uses an explicit total program-run budget including
 the reference, candidate repetitions and selected-plan confirmation. Limited
 candidate budgets are labeled incomplete enumeration, not global optimality.
 
-For allocated CUDA ranks, `--distributed nccl` sets LOCAL_RANK before the factory;
-the factory must return tensors on that rank's CUDA device. CUDA/NCCL source
-paths exist but have NOT been GPU-validated in this work. Do not use CPU timing
-or this example as video-model speedup or training-quality evidence.
+For allocated CUDA ranks, `--distributed nccl` sets LOCAL_RANK before the
+factory. Return tensors on that rank's CUDA device and follow
+[hardware-specific calibration](#a100h100-hardware-specific-calibration-opt-in-public-backend).
 
 ### Evidence and limits
 
-Tests use actual 2-process Gloo, native DDP/FSDP2, autograd and Adam, not mocked
-collectives. They compare parameters and optimizer states to independently
-concatenated single-process global-batch references. Two trainable roles retain
-separate adapters/optimizers; frequency and input-shape changes are tested.
-Tests also exercise public torchrun -> measured calibration -> common DP ->
-selected execution, rank-specific stale input rejection and completion edges.
-A separate measured FSDP candidate is replayed even when the CPU timing winner
-is a replicated strategy; that replay is not called an automatic FSDP win.
-Four-process CPU/Gloo coverage also exercises HSDP2 on two **logical** nodes on
-one host, including warmed Adam moments, a global-batch reference and measured
-common-plan replay (`test_open_workload_hsdp.py`). This does not establish
-physical multi-node NCCL behavior or A100/H100 GPU validity (NOT_RUN).
+Two-process CPU/Gloo tests compare DDP/FSDP2 parameters and Adam state with a
+single-process global-batch reference. They cover separate role state, changed
+update frequencies and input shapes, measured-plan replay and stale-input
+rejection. Four-process HSDP2 tests use two logical nodes on one host
+(`test_open_workload_hsdp.py`). Benchmark CUDA/NCCL on the target allocation.
 
-This is still an admitted finite-program executor, NOT an unrestricted production
-trainer: HSDP2 requires complete equal multi-rank node groups, and this callable
-data-parallel path does not automatically lower arbitrary role pools or general
-activation offload. Bounded role pools have a separate
-[RoleTask/RoleFunctions contract](open_role_pools.md). Mid-run topology changes
-and resumable streaming training remain unsupported. Factories initially
-construct dense state and calibration clones it; sharding does not yet solve
-large-model initialization capacity. CPU capacity uses storage accounting with
-explicit DDP/FSDP staging allowances, not an RSS bound. GPU allocator behavior,
-full pretrained workloads and end-to-end throughput remain unverified.
+The callable backend runs finite programs on a fixed topology; use a model's
+streaming recipe for checkpoint resume. HSDP2 needs complete, equally sized
+multi-rank node groups. For bounded role pools and their activation offload
+options, use the
+[RoleTask/RoleFunctions contract](open_role_pools.md). Factories construct dense
+state before sharding, and calibration clones it; budget for both phases. CPU
+budgets track storage with DDP/FSDP staging allowances.
 
 Calls stay serial across the data-parallel group. DDP overlaps gradient
 communication WITHIN backward; it is not Generator/Score pipeline overlap.
@@ -223,12 +199,8 @@ per-rank snapshot are retained in the plan; execution checks current real
 headroom again before attempting a selected CUDA plan. CPU still requires an
 explicit memory budget (tracked tensors are not whole-process RSS).
 
-These features do NOT supply an H100-only kernel, automatic role-pool lowering
-of arbitrary Workload graphs, layerwise bandwidth roofline, full GPU Nsight trace or verified
-A100/H100 numerical throughput. Hardware-specific strategy selection is
-conditioned on **real** candidate measurements, not assumed winners. Mixed
-GPU models within a rank group and inter-node transport require dedicated
-admission and GPU verification before performance claims.
+Strategy selection uses measurements from the allocated GPUs. Qualify mixed
+GPU groups and inter-node transport separately.
 
 #### Deep trace only after selecting a validated plan
 

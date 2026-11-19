@@ -1,10 +1,8 @@
 # Original Helios GAN: public CPU reference lifecycle
 
-This opt-in recipe is **not** the native W3 benchmark in `training.json`.
-It uses the ordinary public `train` / checkpoint / resume lifecycle, the
-existing Program dispatcher, the complete original Helios class, real PEFT,
-and the original Helios loss/three-stage rollout helpers. It does not choose a
-benchmark winner or replace the planner/solver.
+This CPU reference uses the Program trainer with the original Helios class,
+PEFT and three-stage rollout and loss helpers. It supports training,
+checkpointing and resume.
 
 **Supported:** one CPU process, FP32, explicit dense `torch-sdpa`, resident
 physical/global batch 1, accumulation 1, fixed native ratio 5, one latent section,
@@ -62,10 +60,9 @@ The asset manifest must contain:
   with the declared `[1, text_length, text_dim]` FP32 shape. Every safetensors
   payload must declare `evidence_kind` in its immutable header metadata.
 - An explicit total parameter budget and loaded-byte budget; budgets include
-  G+C and LoRA capacity. This bounded reference refuses a parameter budget over
-  100 million or a loaded-byte budget over 2 GiB, not a claim that such sizes
-  have been benchmarked or are fast. Geometry must fit original pyramid/history
-  operations; spatial sizes are multiples of 16. Geometry is never resized.
+  G+C and LoRA capacity. The limits are 100 million parameters and 2 GiB of
+  loaded weights. Use geometry that fits the original pyramid/history
+  operations, with spatial sizes in multiples of 16.
 
 Factory parameters accept only the explicit **absolute** `asset_manifest` path
 and ordinary session-supplied `device` / `seed`. They never contain dataset
@@ -150,23 +147,15 @@ row per call, retains only consumed IDs/content chain (not tensors), and uses
 only the public session for checkpoint progress. Standalone v2 save/restore is
 refused to prevent confusing native-step and prepared-cycle cursors.
 
-## Evidence boundaries and what is next
+## Asset labels and test curriculum
 
-`FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY` is the immutable
-mechanism-test label. Tests create deterministic **test-only** local tiny
-weights, including a nonzero frozen output fixture for real LoRA updates and a
-separate unchanged constructor-zero case. Production only loads these pinned
-bytes; it never manufactures gradients, substitutes losses or edits output
-weights. These fixtures cannot enter the real-data lane by changing a label.
-The fixture curriculum GAN3/EMA2 exercises real boundaries; canonical
-GAN1000/EMA750 arithmetic is not evidence that 1000 steps were trained.
+Tests use deterministic local weights labeled
+`FULL_ORIGINAL_TINY_CPU_FIXTURE_NOT_PRETRAINED_OR_QUALITY` to exercise
+nonzero LoRA updates and the constructor-zero case. The test curriculum
+crosses the GAN3/EMA2 boundaries. Reference training uses GAN1000/EMA750.
 
-Real supplied files use `LOCAL_PRETRAINED_NATIVE_FEATURES_UNVERIFIED_QUALITY`;
-this is accountable file provenance, not a proof that the file's creator made
-an honest pretrained-quality claim. Functional full-class CPU execution,
-pretrained/media quality, decoded video, GPU/world16 execution and performance
-are separate evidence levels. Quality validation remains `NOT_RUN`; no speedup
-is claimed.
+Supplied pretrained assets use the header label
+`LOCAL_PRETRAINED_NATIVE_FEATURES_UNVERIFIED_QUALITY`.
 
 A training checkpoint intentionally omits full frozen G/C tensors and
 reconstructs them from pinned local assets on restart. The separate

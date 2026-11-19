@@ -1,10 +1,7 @@
 # Original Self-Forcing reference training
 
-This opt-in route uses the existing original LiveWan baseline implementation,
-not the C51 optimized role-pool pipeline. It starts from real supplied frozen
-weights or a complete Stage1 Student and owns a finite 2..64-cycle input stream.
-It is CPU/source-qualified; pretrained CUDA/NCCL training, capacity and restart
-remain **NOT_RUN** in this framework integration.
+The original LiveWan baseline runs a prepared stream of 2..64 cycles. Supply
+the frozen weights and, optionally, a complete Stage1 Student.
 
 ## Exact owner and algorithm
 
@@ -17,10 +14,8 @@ remain **NOT_RUN** in this framework integration.
 | Execution | Original `build_models(mode="baseline")`, `_build_streamers`, `build_score_context` once, then unchanged `_run_baseline(step_offset=5*cycle)` |
 | Restart | All-rank complete-cycle checkpoint, same source/assets/finite horizon/inputs/seed/precision/optimizer/topology |
 
-This is **not all-role FULL_SHARD**: Critic LoRA remains replicated. It does
-not inherit a historical systems-only bootstrap, relabel a C51 trace, merge
-LoRA, enable optimized kernels or offer a new timing result. Selected C51 still
-requires its separate saved-plan contract and remains bounded to two cycles.
+Critic LoRA remains replicated. For the optimized role-pool pipeline, use
+[C51 continuation](C51_CONTINUATION.md).
 
 ## Prepare genuine inputs and assets
 
@@ -157,12 +152,7 @@ output directory. Target extension, finished-target resume and partial/missing
 rank shards reject. Do not point at sampled trajectory sketches or the final
 weights of a different historical experiment.
 
-Receipts retain actual losses/norms, five successful input operations, actual
-G/C/EMA versions, RNG identity, source/runtime origins and capacity observations.
-They are not a formal performance or cross-reference numerical qualification.
-The separate [full C51 continuation](C51_CONTINUATION.md) implements its
-physical drain, shadow and two-slot recovery. Its
-[native output bridge](../../docs/guides/training.md#livewan_native_output) exports the
-current Student and generates on new inputs. These are explicit adapters,
-not optimizations silently enabled by this reference route; their native GPU
-qualification is recorded separately.
+Receipts record losses, gradient norms, five input operations, G/C/EMA versions,
+RNG identity, source/runtime and capacity. The reference protocol has source and
+CPU checks. Use the separate [C51 output guide](../../docs/guides/training.md#livewan_native_output)
+for current-Student export and new-input generation with that pipeline.

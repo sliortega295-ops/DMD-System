@@ -203,15 +203,15 @@ distillctl data prepare inputs.json --output prepared \
 # or distillschedule.data.ltx_inputs:prepare_inputs
 ```
 
-SD uses actual CLIP/local VAE; official Self-Forcing actual T5/tokenizer; LTX
-actual Gemma/AV VAE/token transforms, not the tiny statistics encoder.
+The SD preparer uses CLIP and the local VAE. Official Self-Forcing uses T5 and
+its tokenizer. LTX uses Gemma, the audio/video VAEs and native token transforms.
 SD schema-v2 binds variant/relative tokenizer hashes to every row and model,
 plus actual VAE config/file hashes for image latents. Same-shaped incompatible
 bundles reject before train/evaluate/export-generate. Byte-identical relocated
 assets stay compatible; portable generation does not reopen old base/preparer
-paths. Preencoded SD latents require explicit caller assertion
-`preencoded_vae_compatibility:PREENCODED_LATENTS_MATCH_LOCAL_VAE`, not a claim
-that encoding ran.
+paths. For preencoded SD latents, use
+`preencoded_vae_compatibility:PREENCODED_LATENTS_MATCH_LOCAL_VAE` to attest that
+the supplied latents match the selected local VAE.
 
 `data.streams` declares independent prepared manifests/`samples_per_cycle` and
 optional epoch policy. Each saves its own sampler/position and independent

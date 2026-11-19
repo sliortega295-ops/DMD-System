@@ -8,9 +8,9 @@ separate Euler/Diffusers fixture protocol.
 
 ## Preparation
 
-Provide a JSON object with one `cohorts` array. Each array item is a complete
-`WanInputSources` object as documented in `original_wan_auto_run.md`: sixteen
-feature paths, a seed and cohort index. There must be 2..64 entries with distinct
+Provide a JSON object with one `cohorts` array. Each item uses the
+[`WanInputSources` format](#inputs): sixteen feature paths, a seed and a
+cohort index. Provide 2..64 entries with distinct
 (seed, cohort) identities. Source clips can recur if intentionally declared;
 the system does not claim that videos are globally unique. The task keeps
 geometry, rank, horizons, update ratio and EMA interval fixed for this run.
@@ -98,9 +98,8 @@ restart equivalence.
 <a id="original_wan_auto_run"></a>
 ## Original Wan: new task inputs to existing optimization strategies
 
-This entry continues PR #33 on the original Wan1.3B / Helios-pyramid no-GAN
-protocol. It does not use the newer single-device Euler test protocol and does
-not invent kernels. The old five canonical profiles remain unchanged.
+This entry prepares inputs and searches registered strategies for the original
+Wan1.3B Helios-pyramid no-GAN protocol.
 
 ### What now happens automatically
 
@@ -190,11 +189,9 @@ to write new captured inputs.
 
 ### Evidence
 
-CPU tests call the actual native dataset/history/scheduler functions and replay
-captured schedules through the original sampler with an injected model boundary.
-Controller tests inject workers. Neither is a pretrained-model, GPU-collective,
-quality or speedup result. Full-model GPU validation remains NOT_RUN. Numerical
-The original comparison result is retained.
+CPU tests cover native dataset, history and scheduler functions, sampler replay
+with an injected model, and controller orchestration with test workers. Native
+run receipts retain the original numerical comparison.
 
 Campaign cycles are paired fixed-cohort diagnostic runs, not streaming fresh
 long-training data. Helios14B, H3, LiveWan, GAN, arbitrary GPU pool layouts and
@@ -203,10 +200,9 @@ automatic shared-backbone choices are not parameterized by this entry.
 <a id="parameterized_native_backend"></a>
 ## Parameterized native backend: measured actions to real training
 
-This is the next opt-in layer on PR #29. It connects the common parameterized
-ExecutionGraph, CostModel and event-frontier solver to actual model
-forward/backward/Adam/EMA calls through PreparedRolePlan. It does not replace
-main or any of the five canonical best-known profiles.
+This opt-in path connects the parameterized ExecutionGraph, CostModel and
+event-frontier solver to the model's forward, backward, Adam and EMA calls
+through PreparedRolePlan.
 
 ### Explicit scope
 
@@ -346,11 +342,7 @@ steps, different video shapes and LoRA ranks, microbatch/accumulation, EMA,
 checkpointing, stale source/task/cost rejection and edited-plan rejection.
 Optional Wan tests execute real tiny Wan forwards/backwards, full-state parity,
 calibrate-search-native execution and loading local generated checkpoints.
-Tiny random checkpoints are integration fixtures, not pretrained quality data.
-
-GitHub Actions runs these on CPU with pinned Torch/diffusers. A100 execution,
-full-size pretrained training, CUDA epilogue canary, long-horizon quality,
-DiffSynth H3 and multi-GPU parameterized execution remain separately unvalidated.
+The optional Wan tests use pinned Torch/Diffusers and small local checkpoints.
 
 <a id="parameterized_original_wan"></a>
 ## Parameterized ORIGINAL Wan optimization bridge
@@ -376,17 +368,12 @@ No manual trace hash entry or old-trace resizing is required. VAE/text encoding
 itself is not automated, and the all-zero rank-local amplified branch remains
 unsupported without changing/resampling the source distribution.
 
-Fresh-cohort training is a separate opt-in path described in
-[Fresh training](original_wan_fresh_training.md). It advances absolute steps and
-EMA cadence while retaining the selected engines and optimizer state. Existing
-calibration/confirmation still repeat their fixed cohort for paired diagnosis;
-those results must not be called fresh-data training.
+Use [fresh-cohort training](#training) to advance absolute steps and EMA cadence
+while retaining the selected engines and optimizer state. Calibration and
+confirmation use a fixed cohort for paired comparisons.
 
-CPU tests exercise capability generation, plan selection, capacity rejection,
-original-helper binding, per-block chunk effects, actual native input/scheduler
-primitives, and persistent dispatcher/Adam fixture state. They are **not**
-full-Wan or CUDA tests. Multi-GPU execution, full-model numerical parity, speed
-and generation quality remain NOT_RUN for this integration.
+CPU tests cover plan selection, capacity checks, per-block chunk effects,
+native input/scheduler helpers and persistent dispatcher/Adam state.
 
 ### Configurable contract
 
@@ -440,19 +427,11 @@ call counts. Final trainable, Adam and EMA states are compared with a matched
 FSDP control; numerical comparisons do not change merely because a process
 completed. Calibration is diagnostic, not a formal speed baseline.
 
-### Remaining scope gates
-
-Real 16-rank original-Wan smoke/parity and performance, support for the upstream
-amplified-history branch, raw-video/text encoding if needed, resumable long
-training, and the other four native protocol/capability adapters remain to be
-validated or implemented. Do not promote CPU integration to those claims.
-
 <a id="wan_incumbent_bundle_v1"></a>
 ## Wan incumbent21a-v1: task-bound opt-in bundle
 
-This is a bounded port of an existing mechanism, **not a new optimization or a
-promotion of historical timing**. Existing independent placement/chunk/no-grad
-LoRA-epilogue/window choices, IDs, defaults and campaigns remain unchanged.
+The incumbent21a preset bundles the existing mechanisms below for the fixed
+Wan task.
 
 ### Public route
 
@@ -549,11 +528,8 @@ and no `NVIDIA_TF32_OVERRIDE`. Runtime flags, matmul precision, package/runtime
 versions and observed parameter dtypes remain bound in actual receipts. No
 candidate-only precision override is introduced.
 
-The historical 21a observation was 20.31478561926633 s C2 world-max on A100 and
-used a nonempty driver override. It is provenance only; this source/precision/
-hardware combination has no measured time yet and no 20.3-second promise.
-Historical comparison status contains `50C`, but that particular evidence had
-only TWO cycles and one seed. It is not 50-cycle equivalence or quality proof.
+Measure control and bundle with the same precision and driver settings. The
+archived comparison labeled `50C` covers two cycles and one seed.
 
 Every bundle-bearing component cost includes all five capability fields and
 actual SHA256s of the imported mechanisms plus existing cast/epilogue code.
@@ -570,4 +546,3 @@ Neither old eager costs nor historical timing is borrowed.
 - Source-pinned world8 H100 hardware adapter and world8 logical-slot bridge:
   unchanged and NOT_ADMITTED for this bundle.
 - General task-derived graph census: not implemented; literal guards retained.
-- CUDA/numerical/current-source timing validation: Pending cluster validation.

@@ -294,6 +294,6 @@ Execution uses each recipe's device, dtype, topology and capacity settings.
 
 - [Performance results](performance_validation.md)
 - [Official optimized training and recovery](native_workloads.md#official_optimized_training)
-- [Model environments and test lanes](#verification-lanes)
+- [Model environments](#separate-installation-lanes) and [core checks](#core-checks)
 - [Public resident lifecycle](native_owner_backends.md#resident_owner_training)
 - [Source and asset licenses](../../THIRD_PARTY.md)

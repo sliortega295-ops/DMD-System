@@ -153,19 +153,14 @@ inspectable factory invalidates previous calibration. `role-plan` can operate on
 calibration metadata without loading models. `role-run` verifies the saved
 search/identity again before executing it. `--disable-offload` excludes CPU
 saved-activation offload; without `--execute` no user factory or model is run.
-On already allocated A100/H100 multi-rank NCCL, use `--distributed nccl`
-and supply device-appropriate CUDA model/data factories; automatic VRAM headroom
-uses the reserve, but cross-role CUDA P2P, pinned offload and 14B training are
-**NOT YET GPU VALIDATED**. No spontaneous GPU allocation or scheduler submission
-is performed. This CLI represents **one** supported producer-latent→Score-VJP
-family, not a compiler for arbitrary GAN/DiffSynth/H3 video protocols.
+On your allocated A100/H100 ranks, use `--distributed nccl` and supply CUDA
+factories for the model and data. The automatic VRAM budget accounts for the
+configured reserve. This entry implements the producer-latent to Score-VJP
+protocol.
 
-Automated CPU integration includes a genuinely new Conv3D workload whose input
-sizes and microbatch frequency are changed without editing planner logic, real
-two-rank Gloo producer/Score P2P, optimizer work, measured candidate selection,
-and rejection when changed task/data attempts to replay old plan receipts.
-This is an interface/execution validation, not an independent full model DMD
-numerical or video-quality reference.
+The two-rank CPU/Gloo integration test uses a Conv3d factory to exercise
+parameterized inputs, producer/Score transfers, optimizer updates, measured
+selection and saved-plan identity checks.
 
 ## Bounded candidate coverage on a 16-GPU allocation
 

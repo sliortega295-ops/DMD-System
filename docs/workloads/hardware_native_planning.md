@@ -204,17 +204,15 @@ the existence of this CLI is not permission to occupy an already busy node.
 
 ## Evidence levels
 
-| Level | What it establishes | What it does not establish |
-|---|---|---|
-| Source implementation | Public problem/cost/search/serialization and native lowering contracts | New hardware runtime success |
-| CPU synthetic receipts/tests | Schema, identity, tamper rejection, public search and saved-plan round trip | GPU performance, kernel correctness, strict equivalence |
-| Fresh MEASURED native diagnostic loop | Same-source/native/allocation execution, C2 timing and prediction error | Strict full-state parity or claimable speedup |
+| Level | Scope |
+|---|---|
+| Source implementation | Problem, costs, search, serialization and native lowering |
+| CPU fixtures | Schema, identity, tamper rejection and saved-plan round trip |
+| Native diagnostic run | Matched source and allocation, cycle-2 timings and prediction error |
 
-Fixtures are explicitly `CPU_FIXTURE_ONLY`, create non-executable saved plans,
-and are rejected by native calibration/run paths. Their numbers are synthetic,
-not reused historical measurements. Existing raw historical schemas may be
-inspected with their explicitly named old head, but assembly admits only the
-registered backend plus fresh integration-qualified launch evidence.
+`CPU_FIXTURE_ONLY` plans are for inspection. Native assembly requires a
+registered backend and fresh launch receipts. Use the recorded commit to
+inspect older raw schemas.
 
 Plans and native-run receipts preserve comparator results, sampled state,
 losses, execution counters and launch evidence alongside the selected placement.

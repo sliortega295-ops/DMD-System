@@ -200,18 +200,16 @@ launch/teardown text. Missing proof cannot fall back to legacy evidence.
 |3CPU calibration,4CUDA calibration + CPU assembly/search/save |Source/runtime/resource/cost/selection invalidity stops before5 |
 |5actual confirmation of measured winner |Do not force CUDA or admit unmeasured variants |
 
-Old HEAD times, including1437839 operator-selected smoke, are not costs.
-Calibration uses max-rank contextual CUDA-stream stage envelopes, not cross-rank
-wall unions. Five runs close bounded selection execution, not the full
-`ModelValidationSession` journal (≥3diagnostic timing trials), robust speedup,
-continuous-exact semantics or long-run parity. Work/lease bounds remain explicit;
-no profiler/install/automatic retry.
+Use current calibration costs from the maximum per-rank CUDA-stream stage
+envelope. The five runs cover bounded selection; the separate
+`ModelValidationSession` requires at least three diagnostic timing trials.
+Keep the configured work and lease bounds.
 
 Failed admission attempts are immutable numbered records. Read-only
 `workloads r9-owner --plan ... --admission-attempt N` retry requires prior EOFs;
 one exclusive execution-start forbids GPU retry. Unknown terminal state forbids
-new sessions, even queries. New-source cluster validation remains NOT_RUN until
-real site receipts, not synthetic CPU parser/path tests, satisfy the sequence.
+new sessions, even queries. Qualify a new source with fresh cluster receipts for
+the sequence above.
 
 <a id="livewan_c51_planner_v1"></a>
 ## LiveWan C51 full-bundle planner opt-in v1
@@ -341,15 +339,15 @@ not add failed tail6/tail8, attention replay, merge, changed batch/optimizer/mat
 Old `manual-only.v1` retains its calibration/run refusal; default/legacy JSON
 are unchanged and streaming-campaign inventory is not extended.
 
-Calibrate each explicit strategy, assemble actual all-rank receipts, then use
-existing `plan`/`run --plan`. Measured action costs/workspace/output lifetimes
-and frontier search decide, not a forced winner or historical~20s cost fill.
+Calibrate each strategy, assemble the all-rank receipts, then use
+`plan` and `run --plan`. The frontier search uses the measured action costs,
+workspace and output lifetimes.
 `OriginalWanSession` installs existing `checkpoint_block_retention.install`:
 selected4blocks use original normal autograd, other26 original checkpoints;
 Generator dispatch/source/census/versions/capacity/numerics remain unchanged.
-CPU planner/30block/Adam/RNG tests use synthetic costs, not native GPU proof.
-Changed source needs fresh matched calibration and manual-versus-savedC2;
-current-source qualification remains NOT_RUN without those receipts.
+CPU tests exercise the planner, block selection and Adam/RNG handling. For a
+changed source, collect matched calibration and compare unprofiled cycle-2
+timings for the manual and saved plans.
 
 <a id="helios_component_planning"></a>
 ## Helios No-GAN / GAN: measured components and native plans

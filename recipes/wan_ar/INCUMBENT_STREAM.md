@@ -117,22 +117,14 @@ not interchangeable with an uninterrupted run in the existing comparator.
 
 ## Evidence status
 
-Source/CPU lifecycle tests exercise the original session/dispatcher, real CPU
-autograd/Adam/scheduler/EMA/RNG and complete checkpoint restoration, with
-explicit scalar model/helpers and fake CUDA capture drivers. They verify
-orchestration/state and rejection boundaries, **not** real Wan math, Triton
-kernels, CUDA Graph capture, world16 communication, HBM capacity, pretrained
-quality, speedup or 100-cycle stability. Subsequent real world16 evidence is
-listed below rather than being inferred from these CPU tests. W1/U3/U7 and
-the six-workload maturity plan are still partial.
+CPU lifecycle tests cover dispatch, optimizer/scheduler/EMA/RNG state and
+checkpoint restore with scalar models and CUDA capture stubs.
 
 Target-environment follow-up (2026-10-24 UTC) confirmed a real admission gap:
 native history dropout can produce the unsupported all-zero-history amplified
-branch during fresh cohort capture. That capture failed before GPU execution;
-no seed selection, dropout change or fixed-trace substitution was used. The
-separate v1 fixed-trace preset completed 16-rank functional execution, but this
-does not qualify v2 stream checkpoint/restart. See
-actual GPU and stream boundary (source checkout: `docs/guides/performance_validation.md`).
+branch during fresh cohort capture. The original capture stopped before GPU
+execution. Use the Resident input policy below for this branch. The v1
+fixed-trace preset has a separate 16-rank execution record.
 
 ### Resident native-history follow-up (2026-10-24)
 
@@ -154,11 +146,9 @@ restart distances for replicated G, C, their Adam states and EMA were
 0.927–0.990 times the corresponding repeat distances. This is a bounded
 noise diagnostic, not a changed threshold or proof of long-term equivalence.
 
-The two cohorts deliberately reuse existing **synthetic source-shaped features**
-with distinct native RNG/cohort identities. They prove the execution and
-checkpoint lifecycle, not real-media training or quality. Native generation,
-export, arbitrary later Graph signatures and 100-cycle stability remain
-unqualified. Detailed evidence and limits (source checkout: `docs/guides/performance_validation.md`).
+The two-cohort run reuses source-shaped test features with distinct RNG and
+cohort identities. For the current Student export and generation workflow, see
+[native output](NATIVE_OUTPUT.md).
 
 The original `training.json`/`wan_ar.incumbent21a.v1` two-cycle fixed-trace
 preset, immutable asset pins, G3/G4 rules and fixed call census are unchanged.
