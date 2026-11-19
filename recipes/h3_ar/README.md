@@ -1,8 +1,8 @@
-# W6 — Autoregressive Audio-Video DMD (Original DiffSynth H3)
+# W2 — MiniMax H3 DMD2
 
 **Original protocol:** Previous+current AV chunks; continuous sigma; 8-step; G1/F1; LoRA64.
 
-W6 uses the original DiffSynth AR trainer. Its A100 ZeRO-3/native-AP and
+This recipe uses the original DiffSynth AR trainer. Its A100 ZeRO-3/native-AP and
 H100 native-FSDP/FA2 paths have separate hardware configurations.
 
 ## Choose a training path
@@ -35,6 +35,4 @@ representation. Use the supplied `encoder.native.template.json` and
 The code is in `src/distillschedule/strategies/h3_ar_cli.py`, `h3_ar_session.py`
 and `h3_ar_planning.py`. See [direct presets](../../docs/guides/native_workloads.md#native_presets),
 [current-Student output](../../docs/guides/training.md#h3_ar_native_inference) and
-[current performance and validation](../../docs/guides/performance_validation.md).
-Earlier A100/H100 trials retain their original source and measurement scope;
-W6 does not use W5's continuous H3 sampler.
+[performance results](../../docs/guides/performance_validation.md).

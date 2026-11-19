@@ -1,4 +1,4 @@
-# W2 — Helios14B No-GAN
+# W5 — Helios Hier-DMD
 
 **Original protocol:** Hierarchical AR; G1/C5/EMA5.
 
@@ -37,6 +37,4 @@ The adapter entrypoints are `src/distillschedule/search/helios_model_adapter.py`
 and `workflow_cli.py`; [direct presets](../../docs/guides/native_workloads.md#native_presets)
 identify their implementation and input bindings.
 
-See [current performance and validation](../../docs/guides/performance_validation.md).
-The older locked 94-second profile and subsequent partial-retention experiments
-retain their separate source/configuration identities in the research records.
+See [performance results](../../docs/guides/performance_validation.md).

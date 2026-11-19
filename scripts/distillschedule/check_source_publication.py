@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Verify the current measured-result data and its source bindings, without CUDA."""
+"""Verify that the public tables and their release data agree, without CUDA."""
 from __future__ import annotations
+
 import csv
 import hashlib
 import json
@@ -9,55 +10,113 @@ from pathlib import Path
 import re
 
 
+IDS = tuple(f"W{i}" for i in range(1, 7))
+TIMES = ("baseline_reference_s", "resident_offload_reference_s", "realhf_like_reference_s", "system_s")
+FIGURES = {
+    "artifacts/results/a100.csv": ["Figure 5"],
+    "artifacts/results/h100.csv": ["Figure 5"],
+    "artifacts/results/planner.json": ["Figure 7(a)", "Figure 9"],
+}
+
+
+def _workload_rows(guide: str, section: str) -> list[list[str]]:
+    body = guide.split(f"\n## {section}\n", 1)[1].split("\n## ", 1)[0]
+    return [list(map(str.strip, line.strip("|").split("|")))
+            for line in body.splitlines() if re.match(r"^\| W[0-9]+ \|", line)]
+
+
+def _cycle_table(root: Path, hardware: str, guide: str, names: dict[str, str]) -> None:
+    with (root / f"artifacts/results/{hardware}.csv").open(newline="") as stream:
+        table = csv.DictReader(stream)
+        if table.fieldnames != ["id", "name", *TIMES, "reference_ratio"]:
+            raise ValueError(f"unexpected {hardware} result columns")
+        rows = list(table)
+    if {row["id"]: row["name"] for row in rows} != names or tuple(row["id"] for row in rows) != IDS:
+        raise ValueError(f"{hardware} rows must follow the paper's workload IDs")
+
+    for row in rows:
+        for key in TIMES:
+            if key == "resident_offload_reference_s" and hardware == "a100" and row["id"] == "W1":
+                if row[key] != "OOM":
+                    raise ValueError("expected OOM for the A100 W1 resident baseline")
+            elif int(row[key]) <= 0:
+                raise ValueError(f"{hardware} cycle time must be positive")
+        baseline, system, ratio = (float(row[k]) for k in ("baseline_reference_s", "system_s", "reference_ratio"))
+        # Figure 5 rounds latency labels to seconds and speedups to hundredths.
+        lo = (baseline - 0.5) / (system + 0.5)
+        hi = (baseline + 0.5) / (system - 0.5)
+        if not lo - 0.005 <= ratio <= hi + 0.005:
+            raise ValueError(f"{hardware} {row['id']}: speedup outside the label rounding interval")
+
+    expected = [[r["id"], *(r[key] for key in TIMES), r["reference_ratio"] + "×"] for r in rows]
+    if _workload_rows(guide, hardware.upper()) != expected:
+        raise ValueError(f"{hardware} Markdown and CSV results differ")
+
+
 def verify(root: Path) -> dict:
     root = root.resolve()
-    manifest_path = root / 'artifacts/results/manifest.json'
-    manifest = json.loads(manifest_path.read_text())
-    if manifest['schema'] != 'dmd.public_results.v1':
-        raise ValueError('unknown publication schema')
-    seen = set()
-    for row in manifest['files']:
-        path = (root / row['path']).resolve()
-        if not path.is_relative_to(root) or row['path'] in seen:
-            raise ValueError('unsafe or duplicate publication path')
-        seen.add(row['path'])
+    results = root / "artifacts/results"
+    manifest = json.loads((results / "manifest.json").read_text())
+    if manifest["schema"] != "dmd.public_results.v2" or manifest["workload_ids"] != "Table I":
+        raise ValueError("unknown paper result schema")
+
+    hashes: dict[str, str] = {}
+    for row in manifest["files"]:
+        relative = row["path"]
+        if relative in hashes or relative not in FIGURES or row["paper_sources"] != FIGURES[relative]:
+            raise ValueError("invalid or duplicate paper result file")
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root):
+            raise ValueError("paper result resolves outside checkout")
         data = path.read_bytes()
-        if len(data) != row['bytes'] or hashlib.sha256(data).hexdigest() != row['sha256']:
-            raise ValueError('publication bytes/hash changed: ' + row['path'])
         if len(data) >= 1_000_000:
-            raise ValueError('large raw artifact is not a publication summary')
-    for row in manifest['branches']:
-        if len(row['head']) != 40 or any(c not in '0123456789abcdef' for c in row['head']):
-            raise ValueError('invalid source commit identity')
-    required = {'artifacts/results/a100.csv', 'artifacts/results/h100.csv',
-                'artifacts/results/official.csv', 'artifacts/results/gan_nomerge_retime.json',
-                'artifacts/results/h100_sources.json',
-                'artifacts/results/planner.json'}
-    if seen != required or not re.fullmatch('[0-9a-f]{40}', manifest['source_revision']):
-        raise ValueError('current results require the complete source-bound data set')
-    with (root / 'artifacts/results/a100.csv').open(newline='') as stream:
-        measured = list(csv.DictReader(stream))
-    if [r['id'] for r in measured] != ['W1', 'W2', 'W3', 'W4', 'W5', 'W6']:
-        raise ValueError('six measured workloads must remain distinct')
-    for row in measured:
-        baseline, system, ratio = (float(row[k]) for k in
-                                 ('baseline_reference_s', 'system_s', 'reference_ratio'))
-        if (not all(math.isfinite(v) and v > 0 for v in (baseline, system, ratio))
-                or not math.isclose(ratio, baseline / system, rel_tol=1e-12)):
-            raise ValueError('invalid measured time or ratio')
-    gan = json.loads((root / 'artifacts/results/gan_nomerge_retime.json').read_text())
-    if (gan['merge_counts'] != [0] * 16 or gan['reported_C2_s'] != 116.254
-            or float(measured[2]['system_s']) != gan['reported_C2_s']):
-        raise ValueError('current W3 result requires unmerged weights')
-    rows = json.loads((root / 'artifacts/results/planner.json').read_text())['rows']
-    if {row['id'] for row in rows} != {'W1','W2','W3','W4','W5','W6'} or len(rows) != 6:
-        raise ValueError('six workloads must remain distinct')
-    unresolved = next(row for row in rows if row['id'] == 'W5')
-    if unresolved['manual_C2'] is not None or unresolved['selected_C2'] is not None:
-        raise ValueError('unresolved H3 numerical gate must not become a timing result')
-    return {'status': 'PASS_PUBLICATION_INTEGRITY_ONLY', 'files': len(seen),
-            'source_branches': len(manifest['branches']), 'GPU_started': 0}
+            raise ValueError("large raw artifact is not a publication summary")
+        hashes[relative] = hashlib.sha256(data).hexdigest()
+        if len(data) != row["bytes"] or hashes[relative] != row["sha256"]:
+            raise ValueError("publication bytes/hash changed: " + relative)
+    if set(hashes) != set(FIGURES):
+        raise ValueError("missing paper result file")
+    catalog = json.loads((root / "src/distillschedule/workloads/catalog.json").read_text())
+    if catalog["evidence_files"] != hashes:
+        raise ValueError("catalog and paper-result checksums differ")
+    catalog_by_paper_id = {row["paper_id"]: row for row in catalog["workloads"]}
+    if len(catalog["workloads"]) != len(IDS) or set(catalog_by_paper_id) != set(IDS):
+        raise ValueError("paper and CLI workload IDs must map one to one")
+
+    guide = (root / "docs/guides/performance_validation.md").read_text()
+    workload_rows = _workload_rows(guide, "Workloads")
+    if tuple(row[0] for row in workload_rows) != IDS:
+        raise ValueError("workload guide must follow the paper's workload order")
+    names = {}
+    for row in workload_rows:
+        recipe = catalog_by_paper_id[row[0]]
+        if f"](../../{recipe['recipe']})" not in row[-1]:
+            raise ValueError(f"{row[0]}: wrong recipe link")
+        names[row[0]] = row[1]
+    for hardware in ("a100", "h100"):
+        _cycle_table(root, hardware, guide, names)
+
+    planner = json.loads((results / "planner.json").read_text())
+    if (planner["schema_version"] != "dmd.paper_planner_results.v1"
+            or planner["comparison_source"] != "Figure 9"
+            or planner["approximate_sampling_source"] != "Figure 7(a)"
+            or tuple(row["id"] for row in planner["rows"]) != IDS[1:]):
+        raise ValueError("unknown planner figure scope")
+    sampling = planner["approximate_sampling_seconds"]
+    if tuple(sampling) != IDS or any(type(val) is not int or val <= 0 for val in sampling.values()):
+        raise ValueError("approximate sampling must cover all six paper workloads")
+    comparisons = _workload_rows(guide, "Planning and reproduction")
+    if tuple(row[0] for row in comparisons) != IDS[1:]:
+        raise ValueError("planner guide must follow Figure 9's workload order")
+    for displayed, row in zip(comparisons, planner["rows"]):
+        observed = tuple(map(float, (displayed[1], displayed[2], displayed[3].rstrip("%").replace("−", "-"))))
+        manual, selected, gap = (row[key] for key in ("manual_cycle_s", "selected_cycle_s", "gap_percent"))
+        if (observed != (manual, selected, gap) or min(manual, selected) <= 0
+                or not math.isclose((selected / manual - 1) * 100, gap, abs_tol=0.005)):
+            raise ValueError(f"{row['id']}: inconsistent Figure 9 plan comparison")
+    return {"status": "PASS_PUBLICATION_INTEGRITY_ONLY", "files": len(hashes),
+            "workloads": len(IDS), "planner_pairs": len(comparisons), "GPU_started": 0}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(json.dumps(verify(Path(__file__).resolve().parents[2]), indent=2))

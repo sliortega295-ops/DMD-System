@@ -13,7 +13,7 @@ files contain placeholders; copy and edit them before launching training.
 | [Official Self-Forcing](self_forcing_official/README.md) | Causal Wan rollout, native KV cache and update schedule |
 
 The [official optimization guide](../docs/guides/native_workloads.md#official_optimized_training)
-contains the measured SD1.5 and Self-Forcing configurations.
+contains the SD1.5 and Self-Forcing configurations.
 
 ## Flow DMD models
 
@@ -31,19 +31,16 @@ records which execution and output paths are available for each model.
 
 | ID | Recipe |
 | --- | --- |
-| W1 | [Wan1.3B hierarchical No-GAN](wan_ar/README.md) |
-| W2 | [Helios14B No-GAN](helios_nogan/README.md) |
-| W3 | [Helios14B GAN](helios_gan/README.md) |
-| W4 | [LiveWan cross-scale Self-Forcing](self_forcing/README.md) |
-| W5 | [H3 full-sequence AV](h3_fullseq/README.md), with continuous sigma sampling |
-| W6 | [H3 autoregressive AV](h3_ar/README.md), with continuous sigma sampling |
+| W1 | [MiniMax H3 PDMD](h3_fullseq/README.md) |
+| W2 | [MiniMax H3 DMD2](h3_ar/README.md) |
+| W3 | [Wan2.1 DMD](wan_ar/README.md) |
+| W4 | [Wan2.1 SF-DMD](self_forcing/README.md) |
+| W5 | [Helios Hier-DMD](helios_nogan/README.md) |
+| W6 | [Helios Hier-DMD2](helios_gan/README.md) |
 
-Use `distillctl workloads list` and `describe --workload Wn` to inspect these
-six protocols; `distillctl models list` also lists the additional models above.
-The default native `training.json` files select two-cycle performance presets.
-For continuous training and recovery, use the stream/continuation recipe linked
-from each guide. W5's native optimized preset still has an unresolved numerical
-failure; see [native presets](../docs/guides/native_workloads.md#native_presets).
+Inspect a workflow by its recipe name, for example
+`distillctl workloads describe --workload h3_fullseq`. Use the linked stream or
+continuation recipes for continuous training and recovery.
 
 ## Before running
 

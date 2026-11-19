@@ -1,4 +1,4 @@
-# W3 — Helios14B GAN-on
+# W6 — Helios Hier-DMD2
 
 **Original protocol:** DMD + GAN-G/GAN-D; G1/C5/EMA1.
 
@@ -36,6 +36,4 @@ The code is in `src/distillschedule/search/helios_model_adapter.py` and
 [Direct presets](../../docs/guides/native_workloads.md#native_presets) describe the source and
 configuration bindings.
 
-See [current performance and validation](../../docs/guides/performance_validation.md).
-Earlier N70-on/off trials keep their original measurements in the research
-records; their different LoRA settings must not be combined into one comparison.
+See [performance results](../../docs/guides/performance_validation.md).

@@ -2,9 +2,9 @@
 
 The native adapter lowers public requests to existing original-model owners.
 It does not replace algorithms, choose a historical winner or allocate devices.
-Use a clean source checkout and the recipe's separate dependency lane. Original
-benchmark presets remain two-cycle research bindings; W5's optimized backward
-numerical FAIL remains unresolved. Fresh-stream lifecycles are separate.
+Use a clean source checkout and the recipe's separate dependency lane. Benchmark
+presets run for two cycles; use a fresh-stream recipe for checkpoint and resume.
+Workload IDs in this guide are values of `model.workload` in the CLI configs.
 
 ## Start with an explicit request
 
@@ -263,22 +263,8 @@ checks still apply.
 <a id="official_optimized_training"></a>
 ## Official Self-Forcing and DMD2 optimized training
 
-The complete public profiles share `distillctl` train/checkpoint/resume metrics.
-FSDP2 is the primary baseline for both. On16×A100-40GB/globalB16, the original
-unprofiled C2 window (C1 warmup), not a new long-run average, reports:
-
-| Workflow | FSDP2 seconds | Optimized seconds | Speedup |
-| --- | ---: | ---: | ---: |
-| DMD2 SD1.5 GAN512×512, G1/C10 | 7.514 | 3.475 | 2.162× |
-| Official Self-Forcing368×640×81, G1/C5 | 50.739 | 30.959 | 1.639× |
-
-Auxiliary DMD2 Resident/DDP is6.114→3.475s(1.759×). Both optimized public paths
-also completed100cycles, a cycle50 checkpoint/fresh-process continuation,
-same-source world16 Student export and independent new-prompt image/video;
-output tensor/PNG and both-node cleanup checks passed. Original fixture/data
-scope, later longer-cycle records and exact receipt identities remain in the
-[validation appendix](performance_validation.md#official-dmd2-and-self-forcing) and
-[performance guide](performance_validation.md), not reinterpreted here.
+Both optimized recipes support `distillctl` training, checkpoint recovery,
+Student export and generation. FSDP2 is the primary reference for both recipes.
 
 | Workflow | Explicit reference | Complete optimized |
 | --- | --- | --- |
@@ -405,8 +391,6 @@ also runs on all ranks; do not invoke a sharded Generator from rank 0 alone.
   admitted by this versioned backend.
 
 The baseline's exact placement/classifier ABI and source checks are retained.
-Use [current public validation](performance_validation.md#official-dmd2-and-self-forcing), rather
-than treating a CPU FSDP/Adam fixture as new timing or pretrained GPU evidence.
 
 <a id="original_h3_ar_native"></a>
 ## W6 task-native planner workflow
@@ -474,8 +458,8 @@ python scripts/distillctl.py workloads native run \
    for AP. Keep Torch2.10.0+cu128/native offline/USE_TF/USE_FLAX/NCCL policy;
    WORLD_SIZE16/LOCAL_WORLD_SIZE8 and eight fresh receipt UUIDs in original order.
 4. Assemble all16 rank receipts per arm, then plan from both collections. Missing,
-   mixed or edited receipts reject. The common search may select either arm;
-   historical255.670644s is not a cost on this source.
+   mixed or edited receipts reject. The common search may select either arm
+   using these costs.
 5. Read `selected.implementation`, install its allocator environment, execute
    saved plan; compare an explicit `benchmark-manual --implementation zero3-ap`
    arm at identical task/source/assets/capacity/environment/two-cycle boundary.

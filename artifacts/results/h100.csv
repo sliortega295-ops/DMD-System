@@ -1,5 +1,7 @@
-id,name,baseline_definition,baseline_seconds,optimized_seconds,observed_ratio,timer_contract,measured_training_head,published_head
-W1,Wan1.3B,"Resident reference, not FSDP baseline",52.066607125103474,37.669794753193855,1.3821845185575101,same-process two cycles; only cycle2 timed,7a668bcb12ad37d831dced3aca1be4ec7be0a2fe,97b8ecc9cf7747d93619acad1a6083f98faae084
-W3,Helios GAN-on,official whole-role swap; GPU ZeRO1 optimizer/EMA; no activation/gradient/optimizer offload,192.98604553751647,117.3435074267909,1.644624826455933,one GAN G1/C5/EMA1 Full5,624515e7c8d1511aa688e95e69cf94f1a2a273f7,624515e7c8d1511aa688e95e69cf94f1a2a273f7
-W5,Audio-Video DMD (Full-Sequence / H3 Continuous),,,,,,,
-W6,Autoregressive Audio-Video DMD / DiffSynth,Same-source native FSDP vs candidate; not ZeRO-3 renamed FSDP,320.66605521179736,278.88644194882363,1.149808692638563,"Native C2; continuous sigma, AR8 G1/F1 LoRA64; FA2, not FA3",0419b96b9ed9a8dd76737042e6c5020c80f6673a,0419b96b9ed9a8dd76737042e6c5020c80f6673a
+id,name,baseline_reference_s,resident_offload_reference_s,realhf_like_reference_s,system_s,reference_ratio
+W1,MiniMax H3 PDMD,639,637,597,540,1.18
+W2,MiniMax H3 DMD2,321,309,303,279,1.15
+W3,Wan2.1 DMD,57,52,43,38,1.51
+W4,Wan2.1 SF-DMD,55,45,53,45,1.22
+W5,Helios Hier-DMD,116,138,110,94,1.23
+W6,Helios Hier-DMD2,169,193,175,117,1.44

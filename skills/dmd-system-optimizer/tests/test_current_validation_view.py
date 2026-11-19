@@ -1,4 +1,5 @@
 """Current entrypoints must not inherit an archived run's numerical label."""
+import csv
 import json
 from pathlib import Path
 import sys
@@ -51,42 +52,50 @@ class CurrentValidationViewTests(unittest.TestCase):
         self.assertEqual(saved, dmd_current.build_index(REPO, saved["source_revision"]))
         self.assertEqual(len(saved["workflows"]), 14)
 
-    def test_summary_covers_all_workloads_and_keeps_timer_and_sources(self):
+    def test_summary_matches_paper_workload_order_and_comparison_scope(self):
         guide = (REPO / "docs/guides/performance_validation.md").read_text()
-        self.assertIn("Cycle 2 (s)", guide)
-        self.assertIn("H100", guide)
-        self.assertIn("G1/C5/EMA1 Full5", guide)
+        a100 = guide.split("## A100\n", 1)[1].split("## H100", 1)[0]
         h100 = guide.split("## H100\n", 1)[1].split("## Planning", 1)[0]
-        for workload in ("W2", "W4"):
-            self.assertNotIn(f"| {workload} |", h100)
-        for ratio in ("1.013×", "1.002×"):
-            self.assertNotIn(ratio, h100)
-        self.assertIn("gan_nomerge_retime.json", guide)
+        for table in (a100, h100):
+            for i in range(1, 7):
+                self.assertIn(f"| W{i} |", table)
+        self.assertIn("| W1 | 912 | OOM | 1054 | 767 | 1.19× |", a100)
+        self.assertIn("| W4 | 55 | 45 | 53 | 45 | 1.22× |", h100)
         self.assertIn("artifacts/results/planner.json", guide)
-        for workload in ("W1", "W2", "W3", "W4", "W5", "W6"):
-            self.assertIn(workload, guide)
-        for value in ("7.514", "3.475", "50.739", "30.959", "36.175",
-                      "84.260", "42.450", "255.671", "116.254", "911.770", "767.020"):
-            self.assertIn(value, guide)
-        self.assertIn("DMD-System times are measured complete update cycles", guide)
         manifest = json.loads((REPO / "artifacts/results/manifest.json").read_text())
-        scope = manifest["measurement_scope"]["a100"]
-        self.assertEqual(scope["window"], "C2_AFTER_C1_WARMUP")
-        self.assertEqual(scope["physical_gpus"], 16)
-        self.assertEqual(scope["global_batch"], 16)
+        for hardware, gpu_count in (("a100", 16), ("h100", 8)):
+            scope = manifest["measurement_scope"][hardware]
+            self.assertEqual(scope["window"], "complete_cycle")
+            self.assertEqual(scope["physical_gpus"], gpu_count)
+        result_files = {f["path"] for f in manifest["files"]}
+        for retired in ("official.csv", "h100_sources.json", "gan_nomerge_retime.json"):
+            self.assertNotIn(f"artifacts/results/{retired}", result_files)
 
-    def test_recipe_is_concise_and_continuous_results_do_not_relabel_old_timing(self):
+    def test_readmes_use_the_result_workload_names(self):
+        with (REPO / "artifacts/results/a100.csv").open(newline="") as source:
+            names = {row["id"]: row["name"] for row in csv.DictReader(source)}
+        catalog = json.loads((REPO / "src/distillschedule/workloads/catalog.json").read_text())
+        readme = (REPO / "README.md").read_text()
+        recipe_index = (REPO / "recipes/README.md").read_text()
+        for item in catalog["workloads"]:
+            identifier = item["paper_id"]
+            name = names[identifier]
+            recipe = item["recipe"]
+            self.assertIn(f"[{identifier} {name}]({recipe})", readme)
+            self.assertIn(f"| {identifier} | [{name}]({item['slug']}/README.md) |", recipe_index)
+            self.assertEqual((REPO / recipe).read_text().splitlines()[0], f"# {identifier} — {name}")
+
+    def test_full_sequence_recipe_stays_separate_from_paper_plan_pairs(self):
         recipe = (REPO / "recipes/h3_fullseq/README.md").read_text()
         self.assertIn("exactly two fixed-contract cycles", recipe)
         self.assertIn("native numerical check", recipe)
         self.assertIn("training.json", recipe)
-        evidence = json.loads((REPO / "artifacts/results/planner.json").read_text())
-        self.assertEqual(evidence['original_summary_sha256'],
-                         '6064d20602bc4e97863c76e5958949153345b0aac2e75304c81db3c37191c842')
-        w5 = next(row for row in evidence['rows'] if row['id'] == 'W5')
-        self.assertIn('Continuous', w5['name'])
-        self.assertIsNone(w5['manual_C2'])
-        self.assertIsNone(w5['selected_C2'])
+        catalog = json.loads((REPO / "src/distillschedule/workloads/catalog.json").read_text())
+        full_sequence = next(row for row in catalog["workloads"] if row["slug"] == "h3_fullseq")
+        self.assertEqual((full_sequence["id"], full_sequence["paper_id"]), ("W5", "W1"))
+        results = json.loads((REPO / "artifacts/results/planner.json").read_text())
+        self.assertEqual(results["comparison_source"], "Figure 9")
+        self.assertEqual([row["id"] for row in results["rows"]], ["W2", "W3", "W4", "W5", "W6"])
 
 
 if __name__ == "__main__":

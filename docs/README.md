@@ -10,7 +10,7 @@
 | Prepare inputs | [Data formats and preparation](guides/data.md) |
 | Train, save, resume and export | [Training lifecycle](guides/training.md) |
 | Choose an execution strategy | [Native presets](guides/native_workloads.md#native_presets), [official DMD2 and Self-Forcing](guides/native_workloads.md#official_optimized_training) |
-| Read measured results | [Six workloads, official workflows and H100](guides/performance_validation.md) |
+| Read performance results | [Six workloads on A100 and H100](guides/performance_validation.md) |
 | Optimize another project with Codex | [Optimizer Skill](guides/optimization_capabilities.md#optimizer_skill) |
 | Diagnose a failed run | [Troubleshooting](guides/installation.md#troubleshooting) |
 
@@ -38,7 +38,7 @@ Use the recipe's exact policy, not a similarly named model's ABI:
 
 ## Performance
 
-[Performance](guides/performance_validation.md) contains the six workloads,
-official workflows and H100 measurements, grouped by baseline definition.
+[Performance](guides/performance_validation.md) lists the six benchmark workloads,
+the A100/H100 comparisons and the selected-plan results.
 For profile inspection and reproducible commands, use the
 [versioned profile guide](workloads/BEST_KNOWN_WORKLOADS.md).

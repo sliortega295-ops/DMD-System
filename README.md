@@ -56,20 +56,13 @@ new-input generation, or choose a model below. See
 | Flow DMD: images | [FLUX.2 klein Base 4B](recipes/flux_dmd/README.md), [Qwen-Image](recipes/qwen_image_dmd/README.md) |
 | Flow DMD: video | [Wan2.2 TI2V-5B](recipes/wan22_dmd/README.md), [HunyuanVideo-1.5](recipes/hunyuan_video_dmd/README.md) |
 | Flow DMD: audio–video | [LTX-2.5](recipes/ltx25/README.md) |
-| Hierarchical video DMD | [Wan1.3B / W1](recipes/wan_ar/README.md), [Helios No-GAN / W2](recipes/helios_nogan/README.md), [Helios GAN / W3](recipes/helios_gan/README.md) |
-| Cross-scale Self-Forcing | [LiveWan / W4](recipes/self_forcing/README.md) |
-| H3 audio–video DMD | [Full-sequence / W5](recipes/h3_fullseq/README.md), [Autoregressive / W6](recipes/h3_ar/README.md) |
+| MiniMax H3 | [W1 MiniMax H3 PDMD](recipes/h3_fullseq/README.md), [W2 MiniMax H3 DMD2](recipes/h3_ar/README.md) |
+| Wan2.1 | [W3 Wan2.1 DMD](recipes/wan_ar/README.md), [W4 Wan2.1 SF-DMD](recipes/self_forcing/README.md) |
+| Helios | [W5 Helios Hier-DMD](recipes/helios_nogan/README.md), [W6 Helios Hier-DMD2](recipes/helios_gan/README.md) |
 
-W1–W6 identify the original benchmark protocols, not the limit of model support.
-Official Self-Forcing and cross-scale LiveWan have separate recipes. Both H3
-workloads retain continuous sigma sampling and their own full-sequence/AR flows.
-The [support matrix](docs/guides/model_families.md#support_matrix) distinguishes available
-execution paths and the scope of their tests.
-
-The [performance overview](docs/guides/performance_validation.md) collects all six
-workloads, official DMD2/Self-Forcing and H100 results. Use the
-[native presets](docs/guides/native_workloads.md#native_presets) or
-[official optimized recipes](docs/guides/native_workloads.md#official_optimized_training) for direct training.
+[A100 and H100 results](docs/guides/performance_validation.md) ·
+[Native presets](docs/guides/native_workloads.md#native_presets) ·
+[Official optimized recipes](docs/guides/native_workloads.md#official_optimized_training)
 
 ## Optimize an existing project with Codex
 

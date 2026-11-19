@@ -1,4 +1,4 @@
-# W5 — Audio-Video DMD (Full-Sequence / H3 continuous H3)
+# W1 — MiniMax H3 PDMD
 
 **Original protocol:** Full-sequence AV; continuous sigma; 4-step; G1/F5; LoRA128.
 
@@ -30,7 +30,7 @@ The [full-sequence inference guide](../../docs/guides/training.md#h3_fullseq_inf
 frozen-base/current-LoRA/four-table representation, original four-step sampler,
 native checkpoint export and new-process generation of AV tokens. Use
 [`export.native.template.json`](export.native.template.json) and a compatible
-codec manifest for decoded audio/video. This uses the W5 sampler, not W6's.
+codec manifest for decoded audio/video.
 
 ## Results
 

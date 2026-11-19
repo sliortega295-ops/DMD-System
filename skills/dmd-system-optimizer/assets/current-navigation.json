@@ -5,7 +5,7 @@
   "source_hashes": {
     "src/distillschedule/training/catalog.py": "47446ac6600cf4c4154b9c8adf96490e5d178726b1e482ceb01f459e3d49dc0d",
     "src/distillschedule/training/official_profiles.py": "b7471378f042556dc3de9fc1cf90804d94a1a68c5392073b49f8bb0d0a973bbe",
-    "src/distillschedule/workloads/catalog.json": "6034cdeaea7c8b6fb63f6f2a9696705d7468a01954087015c76fe49ce705aded",
+    "src/distillschedule/workloads/catalog.json": "912ad00d8e82375e747171aec4ec5d4c18aa95db834aacdaf52909818c973cff",
     "src/distillschedule/training/strategy_catalog.py": "77210d8d927cbcbcc7d24b2416166af8ee70d65db7fe16d1b47efe80f6da1ee6",
     "recipes/dmd2_sd15/training.component-checkpoint.json": "2011a0d91faaa0923d635fe7c14f68177e286301c09aa9b25d5c4a2f548484ed",
     "recipes/dmd2_sd15/training.ddp-fp32.json": "510e5aca092425182db0577b00a572fd8b65a4766c18a7ac2c4a2c35a01862c7",
@@ -214,7 +214,7 @@
       ],
       "tests_run": false,
       "guide": "recipes/h3_ar/README.md",
-      "title": "W6 — Autoregressive Audio-Video DMD (Original DiffSynth H3)",
+      "title": "W2 — MiniMax H3 DMD2",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 1
@@ -244,7 +244,7 @@
       "checks": [],
       "tests_run": false,
       "guide": "recipes/h3_fullseq/README.md",
-      "title": "W5 — Audio-Video DMD (Full-Sequence / H3 continuous H3)",
+      "title": "W1 — MiniMax H3 PDMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 0
@@ -279,7 +279,7 @@
       "checks": [],
       "tests_run": false,
       "guide": "recipes/helios_gan/README.md",
-      "title": "W3 — Helios14B GAN-on",
+      "title": "W6 — Helios Hier-DMD2",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 0
@@ -317,7 +317,7 @@
       "checks": [],
       "tests_run": false,
       "guide": "recipes/helios_nogan/README.md",
-      "title": "W2 — Helios14B No-GAN",
+      "title": "W5 — Helios Hier-DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 0
@@ -444,7 +444,7 @@
       "checks": [],
       "tests_run": false,
       "guide": "recipes/self_forcing/README.md",
-      "title": "W4 — Self-Forcing DMD / LiveWan C51",
+      "title": "W4 — Wan2.1 SF-DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 0
@@ -523,7 +523,7 @@
       ],
       "tests_run": false,
       "guide": "recipes/self_forcing_official/README.md",
-      "title": "Official Self-Forcing (not LiveWan)",
+      "title": "Official Self-Forcing",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": true,
       "check_count": 1
@@ -590,7 +590,7 @@
       "checks": [],
       "tests_run": false,
       "guide": "recipes/wan_ar/README.md",
-      "title": "W1 — Wan1.3B autoregressive DMD",
+      "title": "W3 — Wan2.1 DMD",
       "strategy_catalog": "src/distillschedule/training/strategy_catalog.py",
       "has_optimized_recipe": false,
       "check_count": 0

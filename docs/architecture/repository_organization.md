@@ -11,14 +11,14 @@
 | `tests/` | Fast core configuration, data, training lifecycle and packaging tests |
 | `docs/guides/` | Current user documentation |
 | `docs/contracts/`, `docs/runbooks/` | Native execution contracts and operating procedures |
-| `artifacts/results/` | Measured results and their source identities |
+| `artifacts/results/` | A100, H100 and planner results |
 | `tools/`, `scripts/` | Developer utilities and command-line helpers |
 | `benchmarks/`, `profiling/` | Isolated performance tests and profiling tools |
 | `third_party/`, `licenses/` | Third-party sources, attribution and licenses |
 
 The ownership sections below describe the boundaries inside the Python package. New training integrations start from the [extension guide](../guides/extensions.md).
 
-The workload catalog identifies W1–W6 for benchmark reproduction; model discovery
+The workload catalog exposes the six native protocols. Model discovery
 and [recipes](../../recipes/README.md) also cover official DMD2, official
 Self-Forcing and additional flow-DMD models. Five older locked profiles are
 available through `distillctl workloads list --legacy`.

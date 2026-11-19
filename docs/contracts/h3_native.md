@@ -284,9 +284,8 @@ costs remain inside the opaque native update and common host capacity policy.
 The saved plan binds every bundle choice, exact helper/library SHA256, source,
 checkpoint admission, rank cache manifest, topology, runtime and capacity.
 
-Historical native first-update control (~316.095 s) and accepted AP Cycle2
-255.6706443373114 s are provenance only. Neither is embedded as a cost or an
-automatic winner. They cannot establish timing on this new integration source.
+The integration does not embed historical native or AP timings as planner costs.
+Collect measurements for the active source and task before selecting a plan.
 
 ### Honest planner scope
 

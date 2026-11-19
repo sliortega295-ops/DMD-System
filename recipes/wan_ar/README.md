@@ -1,4 +1,4 @@
-# W1 — Wan1.3B autoregressive DMD
+# W3 — Wan2.1 DMD
 
 **Original protocol:** Helios hierarchical AR; No-GAN; G1/C5/EMA5.
 
@@ -37,6 +37,4 @@ and `wan_planning.py`. [Direct presets](../../docs/guides/native_workloads.md#na
 map them to the public configuration. A100 and H100 use their corresponding
 hardware configuration.
 
-[Current performance and validation](../../docs/guides/performance_validation.md)
-explains Cycle 2 screening and subsequent longer-cycle validation. Original
-measurements are collected in the [performance page](../../docs/guides/performance_validation.md).
+See [performance results](../../docs/guides/performance_validation.md).

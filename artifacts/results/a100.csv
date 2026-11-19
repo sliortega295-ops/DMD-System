@@ -1,7 +1,7 @@
 id,name,baseline_reference_s,resident_offload_reference_s,realhf_like_reference_s,system_s,reference_ratio
-W1,Wan1.3B / Wan2.1-1.3B-AR,36.175,35.05,39.43,20.588,1.7570915096172526
-W2,Helios14B No-GAN,109.17,688.73,156.25,82.99,1.3154596939390288
-W3,Helios14B GAN-on,164.3,762.44,203.74,116.254,1.4132847041822216
-W4,Self-Forcing DMD / LiveWan,84.26,69.25,62.38,42.45,1.9849234393404005
-W5,Audio-Video DMD (Full-Sequence / H3),911.77,,,767.02,1.1887173737321062
-W6,Autoregressive Audio-Video DMD / Original DiffSynth H3,320.0,,,255.671,1.2516085125023957
+W1,MiniMax H3 PDMD,912,OOM,1054,767,1.19
+W2,MiniMax H3 DMD2,320,932,353,256,1.25
+W3,Wan2.1 DMD,36,35,39,21,1.76
+W4,Wan2.1 SF-DMD,84,69,62,42,1.98
+W5,Helios Hier-DMD,109,689,156,83,1.32
+W6,Helios Hier-DMD2,164,762,162,117,1.41

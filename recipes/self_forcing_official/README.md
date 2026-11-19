@@ -1,9 +1,9 @@
-# Official Self-Forcing (not LiveWan)
+# Official Self-Forcing
 
 Train the actual upstream causal Wan Generator and noncausal Fake Score with
 native random-exit rollout, DMD losses, full trainable parameters and cached
-block attention. This is **official Self-Forcing**, separate from
-[W4 LiveWan](../self_forcing/README.md). Single-device CPU/`cuda:N` uses FP32 MATH
+block attention. For cross-scale training, see [W4 Wan2.1 SF-DMD](../self_forcing/README.md).
+Single-device CPU/`cuda:N` uses FP32 MATH
 SDPA; explicit world16 FSDP2 profiles use BF16 compute with FP32 masters/reduction
 and native FlashAttention-2.
 

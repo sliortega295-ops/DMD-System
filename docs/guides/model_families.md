@@ -33,6 +33,7 @@ Choose the model and algorithm together, then an execution policy:
   and [capability matrix](#support_matrix--additional-model-and-workflow-integrations)
   to choose a reference, explicit optimized or measured saved-plan configuration.
 
+The workload IDs in this guide are values of `model.workload` in the CLI configs.
 Official Self-Forcing and W4 LiveWan have separate recipes. W4 uses a
 14B Teacher and 1.3B Student with its own cross-scale sampling/update rules.
 W5 is full-sequence H3 with an continuous sigma sampling;
@@ -134,9 +135,8 @@ image adapters write PNGs; video adapters write decoded frames; audio adapters
 write native-rate WAVs. Audio-video output includes both frame files and audio.
 Latent export retains an explicitly named native tensor layout.
 
-The [performance and source records](performance_validation.md) link the model-specific
-source and execution checks, and the [official workflow records](performance_validation.md#official-dmd2-and-self-forcing)
-cover continuous optimized training, recovery and new-input generation.
+See the [official training commands](native_workloads.md#official_optimized_training)
+for the DMD2 and Self-Forcing workflows.
 
 ## Separate installation lanes
 
@@ -292,8 +292,8 @@ Execution uses each recipe's device, dtype, topology and capacity settings.
 
 ### Results and verification
 
-- [Performance and source records](performance_validation.md)
-- [Official optimized training and recovery](performance_validation.md#official-dmd2-and-self-forcing)
+- [Performance results](performance_validation.md)
+- [Official optimized training and recovery](native_workloads.md#official_optimized_training)
 - [Model environments and test lanes](#verification-lanes)
 - [Public resident lifecycle](native_owner_backends.md#resident_owner_training)
 - [Source and asset licenses](../../THIRD_PARTY.md)

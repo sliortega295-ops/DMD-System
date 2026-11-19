@@ -1,4 +1,4 @@
-# W4 — Self-Forcing DMD / LiveWan C51
+# W4 — Wan2.1 SF-DMD
 
 **Original protocol:** 14B teacher -> 1.3B student; continuous sigma; G1/C5/EMA0.
 
@@ -35,6 +35,4 @@ uses the current Student, original streamer and Wan VAE for new inputs.
 The implementation is in `src/distillschedule/search/livewan_implementation.py`
 and the native worker (source checkout: `src/distillschedule/runtime/livewan_crossscale_worker.py`).
 See [direct presets](../../docs/guides/native_workloads.md#native_presets) and
-[current performance and validation](../../docs/guides/performance_validation.md).
-Historical C34, C51 and A100/H100 measurements retain their own configuration
-and timing definitions in the research records.
+[performance results](../../docs/guides/performance_validation.md).
