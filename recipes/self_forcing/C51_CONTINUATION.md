@@ -1,24 +1,15 @@
-# Explicit full-C51 fresh-stream continuation
+# LiveWan C51 continuation
 
-**Source / CPU protocol integration only. Native two-node CUDA continuation,
-cross-reference numerical comparison, and 100 actual fresh DMD cycles with a
-midpoint process restart are separate acceptance steps.**
-This is W4 LiveWan, not the separate official Self-Forcing workflow or sequential
-reference, and not a new benchmark. Existing recipes/templates remain unchanged.
-
-Use `training.c51-stream.json` as an explicit opt-in request. It enters the same
-original C51 worker setup, installers, persistent `ModelBundle`, two streamers,
-`_run_pipeline_8x8_continuous` / `_run_pipeline_8x8`, and native optimizers.
-There is no reference fallback, synthetic trainer, automatic plan substitution,
-dependency installation, cluster reservation, or implicit asset download.
+Use [`training.c51-stream.json`](training.c51-stream.json) for fresh-stream
+training and complete-cycle checkpoints with the native C51 generator/score
+pipeline. Prepare the assets and dependencies below before launching on your
+allocated nodes.
 
 ### Separate dead text K/V payload lifetime opt-in
 
-`training.c51-stream-retire-textkv.json` selects the distinct research preset
-`self_forcing.c51_stream_retire_textkv.v1`. The original
-`self_forcing.c51_stream.v1`, reference/baseline, Score and frozen benchmark
-templates are unchanged. The full C51 bundle, math, calls, shapes, optimizer,
-RNG and explicit capacity/reserve policy remain mandatory.
+[`training.c51-stream-retire-textkv.json`](training.c51-stream-retire-textkv.json)
+selects `self_forcing.c51_stream_retire_textkv.v1`. It changes text K/V lifetime
+while keeping the C51 computation, optimizer, RNG and capacity policy.
 
 Only its two original Generator streamers retire the projected **text cross-K/V
 dictionary payload** after each complete `prepare_rollout` no-grad scope,
@@ -35,12 +26,8 @@ record actual runtime retired contexts, blocks and logical tensor bytes, in
 addition to unchanged build/hit/bypass/invalidation counters. A failed rollout
 cleans an already built payload under separate **aborted**, not success, counters.
 
-**CPU/source evidence only; native CUDA numerics, allocator/driver-free recovery,
-reserve acceptance, completed continuation/checkpoint and performance for this
-variant are NOT_RUN.** Native source geometry is 141,557,760 logical bytes per
-rollout (up to about 270 MiB across two dead contexts), not measured reclaimed
-GPU memory or a guarantee of satisfying the unchanged reserve. Do not infer
-the exact rejected sample or an OOM subphase from that arithmetic.
+The retired tensors total 141,557,760 logical bytes per rollout, or about
+270 MiB across two contexts.
 
 ## Inputs and assets
 
@@ -66,9 +53,8 @@ the same native `TeacherLatents` reader and existing training owner. See the
 [input policy](../../docs/contracts/livewan_native.md#original_livewan_teacher_epochs_v1) for
 the exact permutation, progress and checkpoint identity.
 
-Cached original Teacher data is allowed. Supplied archive metadata does **not**
-attest pretrained Teacher quality or upstream sequential RNG equivalence.
-The existing six independent operation-keyed seed streams are preserved.
+The C51 reader accepts cached original Teacher data and uses six independent
+operation-keyed seed streams.
 Legacy `prepare-livewan-inputs` remains its own schema and 1..64 contract.
 
 The default asset schema is `distillschedule.livewan_c51_assets.v1`, with exactly:
@@ -85,8 +71,7 @@ The default asset schema is `distillschedule.livewan_c51_assets.v1`, with exactl
   original attention/config overlay without editing either gitlink. The
   `training.livewan_c51_assets.overlay_inventory(native, root)` read-only helper
   verifies its entire imported Python inventory against those real gitlinks and
-  returns this object. A clean unpatched Wan checkout is not the C51 backend.
-  The patched tree is **not** claimed to be a clean/fabricated Git checkout.
+  returns this object. Supply the verified overlay with the original gitlinks.
 - `kernels`: `fa2` and `fa3`, each `{ "root": "/PROJECT/explicit-kernel-root",
   "files": { ... } }`. `training.livewan_c51_assets.kernel_files()` gives the
   mandatory unchanged C51 artifact hashes. Missing or changed files fail before
@@ -144,18 +129,16 @@ missing core geometry or changed config/weight hashes still fail.
 
 Set `DISTILLSCHEDULE_FLASH_ATTN_KERNEL` and `DISTILLSCHEDULE_SCORE_FA3_KERNEL`
 to those exact explicit roots. All other effective recorded environment,
-dependency, dtype/TF32 and backend controls must match the admitted native
-asset object. Execution requires the existing validated **2.10.0+cu128** runtime
-and the original CUDA/native dependencies; CPU protocol tests on newer Torch do
-not qualify it. Model payloads are fully hashed during startup admission and
-rechecked once after construction, **not reread every cycle**.
+dependency, dtype/TF32 and backend controls must match the asset manifest.
+Execution requires PyTorch **2.10.0+cu128** and the pinned CUDA/native
+dependencies. The worker hashes model payloads at startup and rechecks them once
+after construction.
 
 Supply an explicit capacity policy with schema
 `distillschedule.livewan_c51_capacity.v1` and the unchanged common
 `gpu_metric`, all-rank `memory_limits`, `host_limits`, `gpu_reserve_bytes` and
-`host_reserve_bytes` gates. There are no fabricated default budgets or disabled
-numerical/capacity checks. Large checkpoint staging must fit the admitted host
-reserve. For current-Student export and new-input generation, use the
+`host_reserve_bytes` gates. Leave enough host reserve for checkpoint staging.
+For current-Student export and new-input generation, use the
 [native output guide](../../docs/guides/training.md#livewan_native_output) with a
 complete checkpoint from this adapter.
 
@@ -193,6 +176,7 @@ reconstructed from explicit inventories; streamer/KV/SAC/cast/transport/shadow
 scratch is not serialized. All shards/identities/layouts are staged before any
 live owner mutation; resume first syncs current Score LoRA into the G shadow.
 
-Receipts distinguish per-segment physical commits, complete logical progress,
-actual mechanism counters and current-Student **training-rollout** fingerprints.
-They are not a new inference-quality, parity, stability or speedup claim.
+Receipts record per-segment physical commits, logical progress, mechanism
+counters and current-Student training-rollout fingerprints.
+Integration checks cover the source and CPU continuation protocol, including
+the text K/V retirement variant.

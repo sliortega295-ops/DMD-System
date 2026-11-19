@@ -240,10 +240,10 @@ through [raw AV preparation](data.md#h3_audio_video_encode) and [AV codecs](trai
 ### Native continuity and output
 
 Fresh-stream recipes retain role state and save at complete-cycle boundaries.
-The **two-cycle** presets remain the quick performance-reproduction window,
-not a training-length limit. The [performance and correctness summary](performance_validation.md)
-links the **100-cycle** official-workflow runs, cycle-50 fresh-process restart,
-current-Student export and longer-cycle measurements.
+Use the two-cycle presets to reproduce timings. The
+[official recipe guide](native_workloads.md#official_optimized_training) covers
+training and checkpoint recovery with DMD2 and Self-Forcing.
+See [Performance](performance_validation.md) for A100 and H100 timings.
 
 Portable inference weights carry the current Student and its required components.
 Training checkpoints additionally retain optimizer, scheduler, EMA, RNG, input

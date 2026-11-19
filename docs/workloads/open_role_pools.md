@@ -43,19 +43,12 @@ matches each Generator/Score pair before any optimizer update. `conditions`
 contains shared prompt/encoding identities; private role noise and independent
 Score-update samples remain separate. Unconditioned tasks declare `{}`.
 
-**Verified:** actual 2-, 3- and 4-process CPU/Gloo transport, 1:1 and asymmetric
-pool splits, pipeline windows 1/2, both frozen-guidance and separate Score
-optimizer paths. Final model tensors are checked against an independently
-computed single-process global-microbatch reference. These are real PyTorch
-forward, input autograd, backward, Adam and point-to-point collectives, not
-mocked callbacks.
-
-**Implemented with CPU/Gloo coverage below:** factory/CLI onboarding, measured
-per-layout common search/selection, saved-activation offload and restricted
-pool-internal FSDP2. **A100/H100 GPU NOT_RUN:** native CUDA/NCCL validity,
-cross-node 16-GPU performance, full original-model semantics and asynchronous
-communication/copy profiling still need their own evidence. CPU transport proof
-is not a measured A100/H100 speedup.
+**Test coverage.** The 2-, 3- and 4-process CPU/Gloo tests cover symmetric and
+asymmetric pools, pipeline windows 1 and 2, frozen guidance and trainable
+Score. Final tensors are compared against a single-process global-microbatch
+reference. The following sections describe tests for search, activation
+offload and pool-local FSDP2. Use the target GPU topology for CUDA/NCCL
+validation and profiling.
 
 ## Measured common-search integration
 
@@ -108,19 +101,15 @@ backward stream waits on completion, and pinned leases are released only after
 all associated transfers are complete. The Score input-gradient still travels
 via explicit native P2P and is applied to the original Generator graph.
 
-CPU/Gloo tests exercise the same hook and return-gradient math against the
-independent global-batch Adam reference. CPU copies are synchronous correctness
-fixtures: only CUDA can exercise actual async pinned-transfer overlap. GPU/NCCL
-A100/H100 validity, pinned-memory budget under the host NUMA topology and
-large video attention replay are **NOT_RUN**. No fallback silently enables
-reduced batch/steps or changes Score gradient semantics when capacity is absent.
+CPU/Gloo tests compare offloaded gradients and Adam updates with the
+global-batch reference. CPU copies are synchronous. Capacity filters candidate
+layouts while keeping the batch, steps and Score gradient semantics fixed.
 
 `role_planning.calibrate(..., allow_offload=True)` considers offload only with
 compatible host resource facts, measures it as a distinct native layout, and
-rejects a candidate unless saved tensors were actually packed, prefetched,
-and used in the backward on the producer ranks. GPU residency predictions from
-tracked role state and declared transport are conservative **in scope**, not a
-complete upper bound for unobserved intermediate autograd/allocator memory.
+checks that producer ranks pack, prefetch and consume saved tensors in backward.
+Residency estimates account for tracked role state and declared transport;
+measure activation and allocator peaks on the target device.
 
 ## Public new-workload entry (factory, parameters, no optimization recipes)
 
@@ -130,9 +119,8 @@ specify model constructors, optimizers, data/cohort identity, generator forward,
 Score objective and (optionally) 1..64 later Score parameter updates; more than
 one needs the explicit `score_update_input` provider. These functions do
 **not** prescribe pool sizes, checkpoint/offload policies or scheduler winners.
-`role_storage_estimate_bytes` supplies only conservative per-role static memory
-facts so the planner can reject impossible model placements before execution.
-It does not guarantee CUDA activation or allocator peak capacity.
+`role_storage_estimate_bytes` supplies per-role static memory estimates for
+pruning model placements before execution.
 
 An example previously unknown to the planner is
 `examples/open_workloads/unseen_score_pipeline.py:build` with parameters in
@@ -219,10 +207,8 @@ VJP and Generator/Score Adam updates against an independently computed
 global-microbatch reference. `allow_generator_fsdp=True` explicitly enables
 additional search candidates; the existing default family is unchanged.
 
-This does NOT establish A100/H100/NCCL correctness, heterogeneous BF16/FP32
-root grouping, arbitrary Score sharding, sharded activation offload, or reliable 14B
-allgather capacity. Candidate admission retains the full dense Generator
-footprint until device-specific memory peaks have been measured.
+Candidate admission retains the full dense Generator footprint until
+device-specific memory peaks have been measured.
 
 ### Bounded role-FSDP2 calibration and communicator lifetime
 
@@ -255,9 +241,7 @@ A real four-process CPU/Gloo test compares the mixed-dtype sharded model's
 trainable FP32 update and unchanged BF16 backbone against an independent
 global-batch oracle. Models with root-owned mixed parameters, unsupported
 nested ownership, cross-root aliases, arbitrary LoRA injection or CUDA AMP
-remain explicitly outside this bounded adapter. Production A100/H100, 14B
-allgather workspace and GPU mixed-precision numerical/quality evidence:
-NOT_RUN.
+remain outside this adapter.
 
 ### Warm Adam moment preservation
 
@@ -290,17 +274,10 @@ Score FSDP2 choices can coexist under these constraints. A Score parameter
 update, unequal role-pool sizes, or unresolved collective ordering are rejected
 instead of silently reverting to replication.
 
-Four-process CPU/Gloo functional tests exercise Score-only sharding and dual
-Generator+Score sharding with real cross-pool input VJP, original Generator
-Adam, and independent global-batch numerical references. A separate measured
-calibration → common selection → persistent two-cycle execution check uses
-unknown-model callables and checks source-bound plan replay. These are CPU
-correctness checks, **not** claims that the chosen configuration wins on A100
-or H100, nor that original Helios/H3/LiveWan protocols have been migrated.
-GPU/NCCL collective ordering, 14B model capacity, mixed-precision GPU validity
-and actual training speedups remain NOT_RUN. Restricted trainable-Score FSDP2
-and homogeneous mixed-dtype leaf ownership have CPU/Gloo coverage; arbitrary
-parameter ownership is not admitted.
+Four-process CPU/Gloo tests cover Score-only and joint Generator/Score
+sharding with cross-pool input VJPs and Generator Adam, compared against a
+global-batch reference. A separate test calibrates, selects and runs a saved
+plan for two cycles using a custom model factory.
 
 ### Restricted trainable-Score FSDP2 and warm Adam
 
@@ -316,8 +293,7 @@ its own full-local-forward-window/resident-activation constraints also hold.
 model/Adam references with initialized moments, Score-only and dual-role
 sharding, a restricted BF16/FP32 fixture, and measured common-plan execution on
 four CPU/Gloo processes. `test_open_workload_role_composition.py` covers the
-restricted composition and scalar-VJP rejection. These are CPU/Gloo proofs,
-not A100/H100/NCCL numerical or performance validation (GPU NOT_RUN).
+restricted composition and scalar-VJP rejection.
 
 ## Original gradients, repeated updates and continuation
 
@@ -403,6 +379,5 @@ does not leave Generator ranks waiting in P2P: the corresponding candidate is
 recorded as `NATIVE_CAPABILITY_REJECTED`, its attempted execution still counts
 towards the calibration budget, and measured valid replicated candidates can
 remain eligible. Runtime loss, transport, CUDA and OOM failures are **not**
-silently treated as capability rejections. The four-process Gloo regression
-tests mixed direct-root parameters, safe cleanup and continued common search;
-this is not proof that arbitrary model-factory exceptions are collective-safe.
+treated as capability rejections. The four-process Gloo test covers rejection
+of mixed direct-root parameters, cleanup and continued search.

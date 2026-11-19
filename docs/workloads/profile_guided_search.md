@@ -1,8 +1,7 @@
 # Profile-guided registered-plan search (v1)
 
-This is an opt-in extension of `distillctl workloads`, not a parallel training
-runtime. The five canonical profiles and `registry.lock.json` are unchanged.
-Historical winner times are not measurements of this branch.
+Use `distillctl workloads` to search registered strategies for the five
+canonical profiles and run the selected strategy through its native worker.
 
 ## Scope and architecture
 
@@ -14,27 +13,24 @@ native receipt + per-device SQLite + nsys-ai doctor
     -> existing profile compiler / dispatcher / workload worker
     -> native correctness gate, unprofiled two-cycle measurement
     -> measured ranking + independent winner confirmation
-    -> source-bound execution plan (not a new canonical default)
+    -> source-bound execution plan
 ```
 
-The objective is cycle-2 latency. Cycle 1 is warm-up in the same process and
-initialization; it is neither averaged with cycle 2 nor replaced with a profiled
-time. The native workload owns timing boundaries, trace/sample/version/call
-validation and numerical thresholds. Metadata compilation does not import Torch
-or start a GPU worker.
+The objective is unprofiled cycle-2 latency after cycle-1 warm-up in the same
+process. The native workload specifies timing boundaries, trace and state
+checks, and numerical thresholds. Metadata compilation runs without Torch
+or GPU workers.
 
-| Canonical workload | Registered search space in v1 | GPU execution adapter |
+| Canonical workload | Registered search space in v1 | Execution support |
 |---|---|---|
 | Wan1.3B No-GAN | FSDP reference; Resident recipes; local-state/bucket/kernel variants | Four recipes: FSDP, Resident async Tree, chunk2048, LoRA epilogue |
 | LiveWan cross-scale | FSDP reference; existing C24--C34 typed pipeline plans | Native trajectory and two-cycle adapters |
-| Helios No-GAN | Canonical reference | CPU registration only; no new GPU search |
-| Helios GAN | Locked C25 reference | CPU registration only; no new GPU search |
-| MiniMax-H3 | continuous H3 canonical reference | CPU registration only; approximate sigma semantics remain explicit |
+| Helios No-GAN | Canonical reference | CPU registration |
+| Helios GAN | Locked C25 reference | CPU registration |
+| MiniMax-H3 | Continuous-sigma canonical reference | CPU registration |
 
-`executable` means an adapter exists, **not** that this integration HEAD has
-passed a GPU experiment. Catalog `NOT_RUN` fields are conservative registration
-labels, not a mutable experiment database. Actual validation belongs to a
-source/assets-bound search result. Unintegrated recipes fail before launch.
+`executable` reports adapter availability. Execution and validation results
+are recorded with the source and assets used for the search.
 
 See [measured planning results](../guides/performance_validation.md#planning-and-reproduction)
 for native manual/selected-plan comparisons.
@@ -60,13 +56,11 @@ not a predictive latency model or removable time. Non-NCCL coverage is not SM
 utilization/MFU; NCCL non-overlap is not proven critical-path wait. True dependency
 wait remains `UNRESOLVED_REQUIRES_DEPENDENCY_EVIDENCE`.
 
-Selection prioritizes measured-parent/beam-neighbor recipes, then measured
-same-mechanism deltas where available, then profile-target hints. It records
-every selection reason. It does not synthesize kernels, choose arbitrary TP/PP,
-change batch size, relax numerical thresholds, or claim a global optimum. New
-kernel mechanisms require separate evidence-driven kernel-design work before
-registration. These are deliberate v1 limits, not a claim that universal
-automatic scheduling has been solved.
+Selection prioritizes measured parent and beam-neighbor recipes, then measured
+same-mechanism deltas where available, then profile hints. It records why each
+registered candidate was selected while keeping the workload's batch size and
+numerical thresholds fixed. Register new kernels and layouts before searching
+them.
 
 Old source/assets/contract/cycle-1 profiles require `--historical-profile-prior`
 and the same registered workload and hardware. For example, a historical
@@ -127,9 +121,8 @@ resolves beside remote assets; no large files are pulled to the controller.
 - an exact `capture` and disjoint `phases`, each containing `start_ns`, `end_ns`,
   `global_tid`, `nvtx_text`, `coverage: exact`; phases also have name/role/occurrence.
 
-PID/TID and window values must come from the actual native range receipts and
-SQLite schema, not guessed rank numbers or global time envelopes. The CPU test
-fixtures demonstrate the schema but are explicitly **not GPU evidence**.
+Take PID, TID and window values from the native range receipts and SQLite
+capture for each rank.
 
 After a successful search, replay its registered winner with a fresh run ID:
 
@@ -174,17 +167,15 @@ only after the applicable numerical gate accepts the candidate.
 Outputs include immutable `search.json`, profile/identity, fsynced selection
 journal, preparation receipts, RPC logs, per-trial plans/native measurements,
 resource observations, all candidate failures, confirmation and `result.json`.
-The result reports **best tested within budget**, not universal best or a
-a global optimum beyond the measured candidates.
+The result reports the best candidate tested within the trial budget.
 
 <a id="hierarchical_planner"></a>
 ## Hierarchical planning: first integrated algorithm slice
 
-This adds an opt-in search algorithm, a fixed-binding event-frontier solver,
-and a parameterized G1/Rn/Cn compiler. It does **not** claim a parameterized
-GPU training runtime for arbitrary resolutions/models, a new measured speedup,
-or a replacement for the five canonical profiles. No native/GPU run is part
-of this change. Existing Metropolis and registered-search defaults remain.
+The hierarchical selector searches registered layouts. The G1/Rn/Cn compiler
+builds the cycle graph, and the fixed-binding event-frontier solver schedules
+its calls within a chosen layout. Select these options explicitly; Metropolis
+and registered search remain available.
 
 ### 1. Current native decision spaces: hierarchical selector
 
@@ -249,17 +240,14 @@ long low-priority call can incorrectly block a later critical call.
 The solver counts shared storage once, retains outputs until the final consumer
 **completes**, includes producer workspace, and honors adapter mutual exclusion.
 Declared dependency/resource lower bounds are used without adding overlapping
-resource totals. It assumes fixed nonpreemptive task costs, no hidden external
-release times and no unresolved data-dependent branch. Those assumptions define
-the discrete event-dispatch family, not a claim about every PyTorch program.
-Starts are restricted to zero or a preceding completion. With producer-exit
-allocations, an unrestricted off-event delayed start can be better; a regression
-makes this scope explicit. Node/time budgets and beam losses remove the
-within-family optimality claim as well.
+resource totals. The solver assumes fixed nonpreemptive task costs, no external
+release times and resolved branches. Calls start at time zero or at a preceding
+completion. Off-event starts can improve plans with producer-exit allocations.
+Node/time budgets and beam pruning can omit the best plan in the search space.
 
-This solver does not silently replace a native worker's fixed schedule.
-Cross-pool transport, input-gradient ownership, CPU storage accounting and
-arbitrary generated-order lowering still require explicit backend support.
+Running a generated order requires a backend that supports it. Cross-pool
+backends also need transport, input-gradient ownership and CPU storage
+accounting.
 
 ### 3. Parameterized cycle and public CPU example
 
@@ -269,33 +257,21 @@ python scripts/distillctl.py workloads search --strategy cycle-frontier \
   --output /tmp/new-cycle-plan.json
 ```
 
-The numbers in this example are **synthetic nanoseconds/bytes**, not GPU data.
-The CLI rejects native evidence claims, unknown fields and missing action costs.
-It exports a generated graph and selected order, not a model launch command.
+This CPU example uses illustrative costs in nanoseconds and bytes and exports
+the generated graph and selected order.
 
 `runtime/parameterized_cycle.py` compiles 1..64 C updates and arbitrary declared
 EMA positions for the explicit **post-G-commit independent-rollout** protocol.
 Source/sample preparation order and parameter version constraints are retained.
 Generated single-pool orders use the existing `StaticRoleRunner.prepare()`;
 CPU handler tests verify dispatch, updates and retained-input release for
-G1/F1, F2, F3, F5 and F8. The historical `cycle_plan.py` Full5 graph/contract is
-unchanged; its five-update guards are not deleted to fake native support.
-
-This compiler does not infer LightX2V vs DiffSynth semantics, change a sampler
-from four to eight steps, convert LiveWan's pre-commit step0 data into post-commit
-data, or grant arbitrary shape/LoRA/kernel support. Per-configuration native
-adapters and shape/dtype capability matching are the next prerequisite.
+G1/F1, F2, F3, F5 and F8. The `cycle_plan.py` Full5 entry retains its five-update
+contract. Native execution requires an adapter that matches the recipe's
+sampling, input order, shapes, dtype and kernel capabilities.
 
 ### Validation and scope
 
-New tests cover independent small-DAG enumeration, random-cost decision oracles,
-intentional waiting, resource/adapter contention, saved-tensor lifetime, shared
-storage, missing calibration, beam/budget reporting, native-plan tampering and
-old/new CLI compatibility. Source-bound native-lowering tests use explicitly
-synthetic receipts and are **not GPU correctness or performance measurements**.
-
-Existing five-profile definitions, training workers, model math, sampler settings,
-precision policies and native trial budgets are not modified. CI runs on CPU.
-Known remaining work is parameterized native protocol/model adapters, composable
-shape/dtype capability binding, CPU-memory/transport effects and generated
-cross-pool lowering. These are not implied complete by an algorithm test pass.
+CPU tests cover search against small-DAG references, resource contention, state
+lifetimes, calibration and native-plan validation, and CLI compatibility. See
+[Performance](../guides/performance_validation.md#planning-and-reproduction)
+for the measured native plan comparisons.

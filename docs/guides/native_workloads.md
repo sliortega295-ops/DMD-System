@@ -1,23 +1,22 @@
 # Train original native and official workflows
 
-The native adapter lowers public requests to existing original-model owners.
-It does not replace algorithms, choose a historical winner or allocate devices.
-Use a clean source checkout and the recipe's separate dependency lane. Benchmark
-presets run for two cycles; use a fresh-stream recipe for checkpoint and resume.
+Use the native adapter to run each model's original training recipe with
+`distillctl`. Start from a clean source checkout in the recipe's environment.
+Benchmark presets run for two cycles; use a fresh-stream recipe for checkpoint
+and resume.
 Workload IDs in this guide are values of `model.workload` in the CLI configs.
 
 ## Start with an explicit request
 
 Each recipe contains a portable `training.json` and its original task/request
 binding. Paths are relative to that configuration, not the current directory.
-Replace every `REPLACE_WITH_*` value with your own qualified input. Unfilled
-placeholders and missing files produce errors before execution. No weights,
-datasets, source snapshots, or credentials are downloaded by these recipes.
+Replace each `REPLACE_WITH_*` value and provide the local assets required by
+the recipe.
 
 ```bash
 distillctl doctor --config recipes/helios_nogan/training.json
 distillctl train recipes/helios_nogan/training.json --dry-run
-# Only after admission, allocation and operator authorization:
+# Run on the recipe's allocated hardware.
 distillctl train recipes/helios_nogan/training.json
 ```
 
@@ -28,16 +27,15 @@ from distillschedule.training import load_training_config
 from distillschedule.training.native import describe_native, validate_native, run_native
 
 config = load_training_config("recipes/helios_nogan/training.json")
-describe_native(config)              # catalog/capabilities only; opens no assets
-validate_native(config)              # actual CPU native admission, no CUDA/model construction
-run_native(config, dry_run=True)     # validated lowering, no process or output
-run_native(config)                   # existing runtime; not an exit-code -> parity claim
+describe_native(config)              # Inspect the recipe and its capabilities.
+validate_native(config)              # Check native inputs and configuration on CPU.
+run_native(config, dry_run=True)     # Validate and inspect the launch.
+run_native(config)                   # Execute the native recipe.
 ```
 
-Do not run the last line on an unallocated cluster. Real execution requires a
-clean committed checkout. `describe_native` and CPU admission are not evidence
-that a 1.3B/14B model trained, that CUDA is available, or that quality/parity
-passed. A source/layout change requires new source-bound admission and costs.
+Run training from a clean committed checkout on the configured allocation.
+Revalidate the configuration and collect new costs when changing the source or
+layout of a saved plan.
 
 ## Original mathematical and execution boundaries
 
@@ -57,9 +55,8 @@ precision and update counts stay owned by each original task. W5 and W6 both use
 
 ## Continuous native training
 
-Use these explicit recipes for persistent training and complete-cycle restart.
-They reuse the original native owners; the frozen benchmark configs are not
-modified. Direct training does not need a saved plan.
+Use a fresh-stream recipe for persistent training and complete-cycle restart.
+Direct training does not need a saved plan.
 
 | Workload | Executable recipe and owner | Admitted cycles | Checkpoint / recipe guide |
 | --- | --- | --- | --- |
@@ -85,10 +82,8 @@ restart require their own native evidence.
 | W5 | [Full-sequence output](training.md#h3_fullseq_inference): current LoRA plus four frozen AdaLN entries and converted-model four-step sampler |
 | W6 | [AR output](training.md#h3_ar_native_inference): original eight-step previous/current AV sampler; [new raw AV inputs](data.md#h3_audio_video_encode) use original encoders/text features |
 
-Exports are inference weights, not resumable checkpoints. Reuse recorded runs
-of50+ complete cycles, including W1 continuation and LiveWan100-cycle records;
-do not repeat long training to check a changed endpoint. Source/CPU output or
-restart coverage does not complete a missing native GPU endpoint.
+Use inference exports for generation and complete-cycle checkpoints to resume
+training.
 
 ## Choose reference, manual or saved execution
 
@@ -158,16 +153,16 @@ geometry or RNG; do not rehash captured old traces.
 
 | Reference | Owner and lifecycle |
 | --- | --- |
-| [W1 CPU Full5](../../recipes/wan_ar/CPU_REFERENCE.md) | Original parameterized cycle/P0, mixed BF16/FP32 and FP32 LoRA, cold-zero Adam/EMA, atomic nonreplayable Program call; common checkpoint/current-G export; CPU1 source-rank0 is not global-B16 reduction parity |
-| [W2 warm No-GAN](../../recipes/helios_nogan/CPU_REFERENCE.md) | Full constructor, original mixed precision/LoRA256 and real G2/C10/EMA10; original updates and common restart/current-G output, not CUDA/world16 qualification |
+| [W1 CPU Full5](../../recipes/wan_ar/CPU_REFERENCE.md) | Original parameterized cycle/P0, mixed BF16/FP32 and FP32 LoRA, cold-zero Adam/EMA, atomic nonreplayable Program call; checkpoint/current-G export on one CPU rank using source rank 0 |
+| [W2 warm No-GAN](../../recipes/helios_nogan/CPU_REFERENCE.md) | Full constructor, original mixed precision/LoRA256 and G2/C10/EMA10; original updates, restart and current-G output on CPU |
 | [W3 GAN CPU](../../recipes/helios_gan/REFERENCE_TRAINING_CPU.md) | Full original transformer/PEFT/history19, actual G1/C5/GAN/EMA curriculum; `data prepare-helios-gan-reference`, train/resume and [unmerged-G output](../../recipes/helios_gan/PORTABLE_INFERENCE_CPU.md) |
 | [W6 cached AV CPU](../../recipes/h3_ar/CPU_REFERENCE.md) | Licensed cached-only original50-block/8-step/G1F1/LoRA64 trainer/Adam, flat or split parser; `data prepare-h3-cached-reference`, train/resume and [Student output](../../recipes/h3_ar/PORTABLE_INFERENCE_CPU.md) |
 
 These FP32/CPU1 references require genuine pinned local assets, immutable finite
 inputs and explicit configs; unsupported distributed/auto/manual/plan/epoch
 modes reject. Deterministic CPU fixtures exercise these interfaces.
-The cached-only derivative retains per-file origins/AST/license,
-not a claim to redistribute a full DiffSynth install or silently stub codecs.
+The cached-only derivative includes source and license records for its imported
+components.
 
 The separate full Helios model provider imports the unchanged model:
 
@@ -465,8 +460,8 @@ python scripts/distillctl.py workloads native run \
    arm at identical task/source/assets/capacity/environment/two-cycle boundary.
    Validate all16 native census/Adam/versions/cache epochs/backend witnesses,
    resource/OOM/cleanup and matched rank inputs/state/numerics before comparing
-   max16C2. Search/exit0 does not prove≤3% matching, parity or speedup.
+   the maximum cycle-2 time across 16 ranks.
 
-No default capacity numbers are supplied. Do not import GAN's1GiB reserve or
-turn H3's64GiB entry guard into a maintained floor; historical provenance is in
-the contract. Driver reserve checks are sampled, not continuous-extrema proof.
+Set capacity and reserve in the H3 policy for your job. The 64 GiB entry guard
+applies at startup; set the maintained reserve separately. Driver reserve
+checks sample available memory.

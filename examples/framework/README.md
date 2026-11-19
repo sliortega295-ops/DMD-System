@@ -1,24 +1,14 @@
-# A complete, tiny model-extension path
+# CPU training and model extensions
 
-**`TINY_MEDIA_TRAINING_FIXTURE_NOT_PRETRAINED_QUALITY`**
-
-This example proves plumbing and real CPU autograd, not useful generated media.
-Its tiny Student, Fake and frozen Teacher are **randomly initialized**. The
-Teacher is not pretrained. It is neither W1–W6, a large-model parity test, a GPU
-recipe nor performance evidence. Decoded video is only a coarse diagnostic;
-the audio output is **features, not a reconstructed waveform**.
-
-The packaged `distillschedule.examples.tiny_av` module works from an installed
-wheel. Training needs PyTorch; raw PPM-frame preparation also needs NumPy and
-Pillow. From a source checkout, install the public training/test extras in your
-chosen environment (skip this when already provisioned):
+Run data preparation, training, checkpoint recovery, export and generation on
+CPU with small models and locally generated inputs. The
+`distillschedule.examples.tiny_av` module ships with the package and runs without
+model downloads. From a source checkout, install PyTorch and the example's
+dependencies with:
 
 ```sh
 python -m pip install -e '.[train,test]'
 ```
-
-There are no model downloads or remote services in this example. Its runtime
-commands neither install dependencies nor allocate a GPU.
 
 ## Prepare → train → evaluate → export → new-input generation
 
@@ -64,12 +54,10 @@ and a UTF-8 caption per record. Their paths are relative to the raw manifest:
 }
 ```
 
-Preparation decodes actual files, invokes the configured trusted Python encoder
-and saves its tensor feeds. Here the encoder pools RGB frames and temporal audio
-energy into `latent: [1,4,2,4,4]`; a four-bin UTF-8 histogram and audio statistics
-produce `condition: [1,4,1,1,1]`. It is fixed deterministic feature extraction,
-not a pretrained video/audio/text embedding model. Changing any modality can
-change these feeds. The preparer does not invent latents or replace model math.
+Preparation decodes each record and calls the configured Python encoder.
+The encoder pools RGB frames and audio energy into `latent: [1,4,2,4,4]` and
+combines a four-bin UTF-8 histogram with audio statistics into
+`condition: [1,4,1,1,1]`.
 
 The generated `train.json` contains the ordinary user-facing request:
 
@@ -98,17 +86,12 @@ Paths in that request are relative to its own directory. This is explicitly
 updates. One algorithm-factory call returns exactly one cycle. The root trainer
 owns the four-cycle loop, data progress, checkpointing and execution selection.
 
-Check `run/summary.json` and `run/metrics.jsonl` for the run result rather than
-inferring success from file creation. Complete-cycle checkpoints live under
-`run/checkpoints/`. Evaluation loads the trained Student and invokes its real
-generation/decode callbacks. Export saves module weights and accompanying
-metadata; it does not turn these tiny weights into a pretrained model.
-`generate` then restores the hash-bound exported module weights on explicitly
-new prepared inputs without reading the original training dataset/checkpoint or
-constructing the algorithm. The original factory source and non-device
-parameters must still match. Its `generation.pt` and PNG `frames/` preserve the
-actual decoder output, with quality validation **NOT_RUN**, not invented
-high-resolution media. Exported weights are not a resumable checkpoint.
+Read `run/summary.json` and `run/metrics.jsonl` for training metrics and
+`run/checkpoints/` for resume checkpoints. Evaluation generates from the
+checkpoint's Student. Export saves inference weights and metadata for
+`generate`, which reads new prepared inputs. Keep the factory source and
+non-device parameters the same for export and generation. The example writes
+`generation.pt` and PNGs under `frames/`; its audio output is a feature tensor.
 
 Continue to a total of six cycles from the complete four-cycle checkpoint:
 
@@ -123,9 +106,8 @@ The inspectable hooks in `tiny_av.py` use the existing
 prediction, normalized Fake-minus-Teacher input gradient, detached Student
 surrogate and Fake denoising objective. The Student output retains its autograd
 graph. Teacher/Fake scoring for that update runs detached; Fake's own subsequent
-denoising forward is differentiable. Noise is seeded and explicit, **not a random
-loss standing in for DMD**. This is meaningful lifecycle/gradient evidence even
-though a random frozen Teacher provides no pretrained knowledge or quality.
+denoising forward is differentiable. The example initializes all three roles
+from scratch and uses seeded noise.
 
 `reuse_student` means Fake uses the detached sample from *before* the Student
 update. `fresh_student` instead regenerates from the updated Student for every
@@ -182,7 +164,7 @@ Adapt the three independently owned contracts for a real model:
 Only load factory references you trust: these are executable Python, not a
 sandboxed interchange format. The template's imported tiny hooks are appropriate
 only while their exact latent, guidance, detach and optimizer contract still
-matches your algorithm. Do not rename the fixture and claim real-model parity.
+matches your algorithm.
 
 ## Another workflow: history, EMA and schedulers
 
@@ -190,9 +172,8 @@ matches your algorithm. Do not rename the fixture and claim real-model parity.
 `newmodel.py` above demonstrates a different architecture. This external plugin
 adds previous-cycle Student feature conditioning and an explicit post-cycle
 commit of Student EMA, next-cycle history and two exponential learning-rate
-schedulers, all through the existing `Program`/`Call` ABI. Student surrogate and
-Fake denoising losses remain genuine tiny DMD losses, not dummy random losses.
-The generic planner/runtime needs no model-name or workflow-name edits.
+schedulers, all through the existing `Program`/`Call` ABI. It reuses the
+Student surrogate and Fake denoising objectives.
 
 From the source checkout, run:
 
@@ -224,9 +205,8 @@ settings reject checkpoint resume.
 All parameters, Adam state, EMA, history, schedulers, RNG, cursor and logical
 versions are carried in complete training checkpoints. The fresh-process test
 below compares interrupted/restarted continuation with uninterrupted training,
-including exact held-out metrics. Portable `generate`/`export` instead uses
-**current Student with zero history**, explicitly recorded in model metadata;
-it does not pretend the default module-only export includes EMA/history trees.
+including exact held-out metrics. Portable `export` and `generate` use the
+current Student with zero history; training checkpoints preserve EMA and history.
 
 ## Core checks
 
